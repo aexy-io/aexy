@@ -1,8 +1,9 @@
 """Audit trail service for data table operations."""
 
 import secrets
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import datetime, timedelta, timezone
+
+import bcrypt
 
 from sqlalchemy import select, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,7 +25,7 @@ class TableAuditService:
         record_id: str | None = None,
         changes: dict | None = None,
         ip_address: str | None = None,
-    ) -> TableAuditLog:
+    ) -> TableAuditLog | None:
         """Record an audit entry if auditing is enabled for this table."""
         # Check if auditing is enabled
         result = await self.db.execute(
@@ -77,7 +78,7 @@ class TableAuditService:
         """Delete audit entries older than retention period."""
         from sqlalchemy import delete
 
-        cutoff = datetime.now(timezone.utc) - __import__("datetime").timedelta(days=retention_days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
         stmt = (
             delete(TableAuditLog)
             .where(TableAuditLog.table_id == table_id)
@@ -110,8 +111,7 @@ class TableShareService:
 
         password_hash = None
         if password:
-            import hashlib
-            password_hash = hashlib.sha256(password.encode()).hexdigest()
+            password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
         link = TableShareLink(
             table_id=table_id,
@@ -184,5 +184,4 @@ class TableShareService:
         """Check if the password matches the share link."""
         if not link.password_hash:
             return True  # No password required
-        import hashlib
-        return link.password_hash == hashlib.sha256(password.encode()).hexdigest()
+        return bcrypt.checkpw(password.encode(), link.password_hash.encode())

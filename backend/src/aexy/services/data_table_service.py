@@ -114,7 +114,8 @@ class TableAuthService:
         if not table:
             return None
 
-        # 1. Check if workspace admin/owner
+        # Fetch workspace member once (reused for steps 1, 4, 6)
+        member = None
         if workspace_id:
             from aexy.models.workspace import WorkspaceMember
             member_stmt = select(WorkspaceMember).where(
@@ -124,8 +125,10 @@ class TableAuthService:
             )
             member_result = await self.db.execute(member_stmt)
             member = member_result.scalar_one_or_none()
-            if member and member.role in ("owner", "admin"):
-                return TableAccess(permission="admin")
+
+        # 1. Check if workspace admin/owner
+        if member and member.role in ("owner", "admin"):
+            return TableAccess(permission="admin")
 
         # 2. Table creator → admin
         if table.created_by_id == user_id:
@@ -144,27 +147,18 @@ class TableAuthService:
         if collab:
             best_access = self._collab_to_access(collab)
 
-        # Role-based match
-        if workspace_id:
-            from aexy.models.workspace import WorkspaceMember
-            member_stmt = select(WorkspaceMember).where(
-                WorkspaceMember.workspace_id == workspace_id,
-                WorkspaceMember.developer_id == user_id,
-                WorkspaceMember.status == "active",
+        # Role-based match (reuse member fetched above)
+        if member and member.role_id:
+            role_collab_stmt = select(TableCollaborator).where(
+                TableCollaborator.table_id == table_id,
+                TableCollaborator.role_id == member.role_id,
             )
-            member_result = await self.db.execute(member_stmt)
-            member = member_result.scalar_one_or_none()
-            if member and member.role_id:
-                role_collab_stmt = select(TableCollaborator).where(
-                    TableCollaborator.table_id == table_id,
-                    TableCollaborator.role_id == member.role_id,
-                )
-                role_result = await self.db.execute(role_collab_stmt)
-                role_collab = role_result.scalar_one_or_none()
-                if role_collab:
-                    access = self._collab_to_access(role_collab)
-                    if not best_access or access.level > best_access.level:
-                        best_access = access
+            role_result = await self.db.execute(role_collab_stmt)
+            role_collab = role_result.scalar_one_or_none()
+            if role_collab:
+                access = self._collab_to_access(role_collab)
+                if not best_access or access.level > best_access.level:
+                    best_access = access
 
         # Team-based match
         if workspace_id:
@@ -189,19 +183,9 @@ class TableAuthService:
         if best_access:
             return best_access
 
-        # 6. Visibility fallback
-        if table.visibility == "workspace":
-            # All workspace members get view access
-            if workspace_id:
-                from aexy.models.workspace import WorkspaceMember
-                member_stmt = select(WorkspaceMember).where(
-                    WorkspaceMember.workspace_id == workspace_id,
-                    WorkspaceMember.developer_id == user_id,
-                    WorkspaceMember.status == "active",
-                )
-                member_result = await self.db.execute(member_stmt)
-                if member_result.scalar_one_or_none():
-                    return TableAccess(permission="view")
+        # 6. Visibility fallback — reuse member fetched above
+        if table.visibility == "workspace" and member:
+            return TableAccess(permission="view")
 
         # 7. No access
         return None
@@ -360,6 +344,11 @@ class DataTableService:
                 or_(
                     CRMObject.visibility != "private",
                     CRMObject.created_by_id == user_id,
+                    CRMObject.id.in_(
+                        select(TableCollaborator.table_id).where(
+                            TableCollaborator.developer_id == user_id
+                        )
+                    ),
                 )
             )
 
@@ -381,7 +370,7 @@ class DataTableService:
             "visibility", "row_access_mode", "audit_config",
         }
         for key, value in kwargs.items():
-            if key in allowed_fields and value is not None:
+            if key in allowed_fields:
                 setattr(table, key, value)
 
         await self.db.flush()
@@ -591,6 +580,7 @@ class DataTableService:
         limit: int = 50,
         offset: int = 0,
         access: TableAccess | None = None,
+        user_id: str | None = None,
     ) -> tuple[list[CRMRecord], int]:
         """List records with filtering, sorting, pagination, and row security."""
         table = await self.get_table(table_id)
@@ -607,7 +597,7 @@ class DataTableService:
 
         # Row-level security
         if table and access:
-            stmt = self._apply_row_security(stmt, table, access)
+            stmt = self._apply_row_security(stmt, table, access, user_id=user_id)
 
         # Apply filters
         if filters:
@@ -626,10 +616,6 @@ class DataTableService:
 
         result = await self.db.execute(stmt)
         records = list(result.scalars().all())
-
-        # Strip hidden columns
-        if access and access.hidden_columns:
-            records = self._strip_hidden_columns(records, access)
 
         return records, total
 
@@ -699,8 +685,23 @@ class DataTableService:
         self,
         record_ids: list[str],
         permanent: bool = False,
+        table_id: str | None = None,
+        max_batch: int = 100,
     ) -> int:
-        """Bulk delete records."""
+        """Bulk delete records. Validates table ownership if table_id provided."""
+        if len(record_ids) > max_batch:
+            raise ValueError(f"Bulk delete limited to {max_batch} records at a time")
+
+        # If table_id given, validate all records belong to it in one query
+        if table_id:
+            stmt = select(CRMRecord.id).where(
+                CRMRecord.id.in_(record_ids),
+                CRMRecord.object_id == table_id,
+            )
+            result = await self.db.execute(stmt)
+            valid_ids = {str(row[0]) for row in result.all()}
+            record_ids = [rid for rid in record_ids if rid in valid_ids]
+
         deleted = 0
         for record_id in record_ids:
             if await self.delete_record(record_id, permanent):
@@ -893,6 +894,11 @@ class DataTableService:
 
         return None
 
+    @staticmethod
+    def _escape_like(value: str) -> str:
+        """Escape special LIKE/ILIKE characters to prevent wildcard injection."""
+        return str(value).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
     def _apply_filters(self, stmt, filters: list[dict]):
         """Apply JSONB filter conditions to a query."""
         for f in filters:
@@ -908,13 +914,17 @@ class DataTableService:
             elif op == "not_equals":
                 stmt = stmt.where(CRMRecord.values[attr].astext != str(value))
             elif op == "contains":
-                stmt = stmt.where(CRMRecord.values[attr].astext.ilike(f"%{value}%"))
+                escaped = self._escape_like(value)
+                stmt = stmt.where(CRMRecord.values[attr].astext.ilike(f"%{escaped}%"))
             elif op == "not_contains":
-                stmt = stmt.where(~CRMRecord.values[attr].astext.ilike(f"%{value}%"))
+                escaped = self._escape_like(value)
+                stmt = stmt.where(~CRMRecord.values[attr].astext.ilike(f"%{escaped}%"))
             elif op == "starts_with":
-                stmt = stmt.where(CRMRecord.values[attr].astext.ilike(f"{value}%"))
+                escaped = self._escape_like(value)
+                stmt = stmt.where(CRMRecord.values[attr].astext.ilike(f"{escaped}%"))
             elif op == "ends_with":
-                stmt = stmt.where(CRMRecord.values[attr].astext.ilike(f"%{value}"))
+                escaped = self._escape_like(value)
+                stmt = stmt.where(CRMRecord.values[attr].astext.ilike(f"%{escaped}"))
             elif op == "gt":
                 stmt = stmt.where(
                     cast(CRMRecord.values[attr].astext, Numeric) > float(value)
@@ -984,29 +994,23 @@ class DataTableService:
 
     def _apply_row_security(
         self, stmt, table: CRMObject, access: TableAccess,
+        user_id: str | None = None,
     ):
         """Apply row-level security filters based on table config and access."""
         mode = table.row_access_mode
 
-        if mode == "owner_only":
-            # User must resolve their own ID from the caller context
-            # For now, filter by owner_id or created_by_id
-            # The caller should pass user_id context
-            pass  # Handled by caller via additional where clause
+        if mode == "owner_only" and user_id:
+            # Only show records owned by or created by this user
+            # Admins bypass this filter
+            if not access.can("admin"):
+                stmt = stmt.where(
+                    or_(
+                        CRMRecord.owner_id == user_id,
+                        CRMRecord.created_by_id == user_id,
+                    )
+                )
         elif mode == "rule_based" and access.row_filter:
             stmt = self._apply_filters(stmt, access.row_filter)
 
         return stmt
 
-    def _strip_hidden_columns(
-        self, records: list[CRMRecord], access: TableAccess,
-    ) -> list[CRMRecord]:
-        """Strip hidden column values from records for response serialization.
-
-        Note: This creates copies to avoid mutating the SQLAlchemy objects directly.
-        The actual stripping happens at serialization time in the API layer.
-        For the service layer, we just flag which columns to hide.
-        """
-        # We don't mutate in-place to avoid SQLAlchemy dirty tracking issues.
-        # Instead, the API layer uses access.hidden_columns when serializing.
-        return records
