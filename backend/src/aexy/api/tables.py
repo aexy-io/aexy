@@ -136,6 +136,30 @@ class TableCreate(BaseModel):
     settings: dict | None = None
 
 
+class TableUpdate(BaseModel):
+    """Schema for updating a standalone table."""
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    plural_name: str | None = None
+    description: str | None = None
+    icon: str | None = Field(default=None, max_length=50)
+    color: str | None = Field(default=None, max_length=7)
+    visibility: str | None = None
+    row_access_mode: str | None = None
+    is_active: bool | None = None
+    settings: dict | None = None
+
+
+class ShareLinkCreate(BaseModel):
+    """Schema for creating a share link."""
+    permission: str = "view"
+    password: str | None = None
+    expires_at: str | None = None
+    max_uses: int | None = Field(default=None, ge=1)
+    view_id: str | None = None
+    hidden_columns: list[str] | None = None
+    row_filter: dict | None = None
+
+
 @router.post("", response_model=CRMObjectWithAttributesResponse, status_code=201)
 async def create_table(
     workspace_id: str,
@@ -255,7 +279,7 @@ async def get_table(
 async def update_table(
     workspace_id: str,
     table_id: str,
-    data: dict,
+    data: TableUpdate,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
@@ -265,7 +289,7 @@ async def update_table(
     service = DataTableService(db)
     await service.auth.check_access(table_id, str(current_user.id), "manage", workspace_id)
 
-    table = await service.update_table(table_id, **data)
+    table = await service.update_table(table_id, **data.model_dump(exclude_unset=True))
     if not table:
         raise HTTPException(status_code=404, detail="Table not found")
 
@@ -447,6 +471,7 @@ async def list_records(
         limit=limit,
         offset=offset,
         access=access,
+        user_id=str(current_user.id),
     )
 
     return {
@@ -532,6 +557,11 @@ async def update_record(
     if data.values:
         service.auth.validate_write(data.values, access)
 
+    # Validate the record belongs to this table before modifying
+    existing = await service.get_record(record_id)
+    if not existing or str(existing.object_id) != table_id:
+        raise HTTPException(status_code=404, detail="Record not found in this table")
+
     record = await service.update_record(
         record_id=record_id,
         values=data.values,
@@ -573,6 +603,11 @@ async def delete_record(
         table_id, str(current_user.id), "manage", workspace_id
     )
 
+    # Validate the record belongs to this table
+    existing = await service.get_record(record_id)
+    if not existing or str(existing.object_id) != table_id:
+        raise HTTPException(status_code=404, detail="Record not found in this table")
+
     if not await service.delete_record(record_id, permanent):
         raise HTTPException(status_code=404, detail="Record not found")
 
@@ -595,7 +630,7 @@ async def bulk_delete_records(
         table_id, str(current_user.id), "manage", workspace_id
     )
 
-    deleted = await service.bulk_delete_records(data.record_ids, data.permanent)
+    deleted = await service.bulk_delete_records(data.record_ids, data.permanent, table_id=table_id)
     await db.commit()
     return {"deleted": deleted}
 
@@ -817,7 +852,7 @@ async def list_share_links(
 async def create_share_link(
     workspace_id: str,
     table_id: str,
-    data: dict,
+    data: ShareLinkCreate,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
@@ -833,13 +868,13 @@ async def create_share_link(
     link = await share_svc.create_share_link(
         table_id=table_id,
         created_by_id=str(current_user.id),
-        permission=data.get("permission", "view"),
-        password=data.get("password"),
-        expires_at=data.get("expires_at"),
-        max_uses=data.get("max_uses"),
-        view_id=data.get("view_id"),
-        hidden_columns=data.get("hidden_columns"),
-        row_filter=data.get("row_filter"),
+        permission=data.permission,
+        password=data.password,
+        expires_at=data.expires_at,
+        max_uses=data.max_uses,
+        view_id=data.view_id,
+        hidden_columns=data.hidden_columns,
+        row_filter=data.row_filter,
     )
 
     await db.commit()

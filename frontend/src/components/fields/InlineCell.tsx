@@ -98,8 +98,7 @@ export function InlineCell({
       >
         <FieldRenderer
           value={value}
-          type={attribute.attribute_type}
-          config={attribute.options || {}}
+          attribute={attribute}
           surface="table_cell"
         />
       </div>

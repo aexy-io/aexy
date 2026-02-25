@@ -322,10 +322,8 @@ export function useModuleTriggers(workspaceId: string | null, module: string | n
     enabled: !!workspaceId && !!module,
   });
 
-  const rawTriggers = data?.triggers || [];
-
-  const triggers = useMemo(() => normalizeRegistryItems(rawTriggers), [rawTriggers]);
-  const descriptions = useMemo(() => extractDescriptions(rawTriggers), [rawTriggers]);
+  const triggers = useMemo(() => normalizeRegistryItems(data?.triggers || []), [data]);
+  const descriptions = useMemo(() => extractDescriptions(data?.triggers || []), [data]);
 
   return {
     triggers,
@@ -355,10 +353,8 @@ export function useModuleActions(workspaceId: string | null, module: string | nu
     enabled: !!workspaceId && !!module,
   });
 
-  const rawActions = data?.actions || [];
-
-  const actions = useMemo(() => normalizeRegistryItems(rawActions), [rawActions]);
-  const descriptions = useMemo(() => extractDescriptions(rawActions), [rawActions]);
+  const actions = useMemo(() => normalizeRegistryItems(data?.actions || []), [data]);
+  const descriptions = useMemo(() => extractDescriptions(data?.actions || []), [data]);
 
   return {
     actions,
