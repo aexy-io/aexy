@@ -26,6 +26,8 @@ import {
   useTableCollaborators,
   useTableShareLinks,
 } from "@/hooks/useTables";
+import { useTeams } from "@/hooks/useTeams";
+import { useRoles } from "@/hooks/useRoles";
 import { DataTable } from "@/components/crm/DataTable";
 import { ViewSwitcher, ViewMode } from "@/components/crm/ViewSwitcher";
 import { SavedViewSwitcher } from "@/components/crm/SavedViewSwitcher";
@@ -393,6 +395,8 @@ export default function TableDetailPage() {
     isCreating: isCreatingLink,
   } = useTableShareLinks(workspaceId, tableId);
   const { members: workspaceMembers } = useWorkspaceMembers(workspaceId);
+  const { teams: workspaceTeams } = useTeams(workspaceId);
+  const { roles: workspaceRoles } = useRoles(workspaceId);
 
   // Saved views
   const {
@@ -921,6 +925,8 @@ export default function TableDetailPage() {
         }
         isUpdatingTable={isUpdating}
         workspaceMembers={workspaceMembers}
+        workspaceTeams={workspaceTeams || []}
+        workspaceRoles={workspaceRoles || []}
       />
     </div>
   );
