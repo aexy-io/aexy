@@ -15,6 +15,8 @@ if TYPE_CHECKING:
     from aexy.models.developer import Developer
     from aexy.models.workspace import Workspace
     from aexy.models.workflow import WorkflowDefinition, WorkflowExecution
+    from aexy.models.team import Team
+    from aexy.models.role import CustomRole
 
 
 # =============================================================================
@@ -1529,6 +1531,12 @@ class TableCollaborator(Base):
     )
     developer: Mapped["Developer | None"] = relationship(
         "Developer", foreign_keys=[developer_id], lazy="selectin",
+    )
+    team: Mapped["Team | None"] = relationship(
+        "Team", foreign_keys=[team_id], lazy="selectin",
+    )
+    role: Mapped["CustomRole | None"] = relationship(
+        "CustomRole", foreign_keys=[role_id], lazy="selectin",
     )
 
     __table_args__ = (

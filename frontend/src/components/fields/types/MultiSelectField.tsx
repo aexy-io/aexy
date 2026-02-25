@@ -3,7 +3,8 @@
 import { StatusBadge } from "@/components/crm/CRMBadge";
 import { FieldViewProps, FieldEditProps } from "../types";
 
-export function MultiSelectFieldView({ value, config, surface }: FieldViewProps) {
+/** Variants: "pills" (default), "comma_text", "count_badge" */
+export function MultiSelectFieldView({ value, config, surface, variant }: FieldViewProps) {
   if (value === null || value === undefined) {
     return <span className="text-muted-foreground">{surface === "highlights" ? "Not set" : "—"}</span>;
   }
@@ -11,6 +12,26 @@ export function MultiSelectFieldView({ value, config, surface }: FieldViewProps)
   if (values.length === 0) {
     return <span className="text-muted-foreground">—</span>;
   }
+
+  // Comma-separated text
+  if (variant === "comma_text") {
+    const labels = values.map((v) => {
+      const option = config.options?.find((o) => o.value === v);
+      return option?.label || String(v);
+    });
+    return <span className="text-sm text-foreground truncate">{labels.join(", ")}</span>;
+  }
+
+  // Count badge
+  if (variant === "count_badge") {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/15 text-purple-400">
+        {values.length} selected
+      </span>
+    );
+  }
+
+  // Default pills
   return (
     <div className="flex flex-wrap gap-1">
       {values.map((v) => {
