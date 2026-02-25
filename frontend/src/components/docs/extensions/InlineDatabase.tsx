@@ -382,17 +382,21 @@ function InlineTableView({ tableId }: { tableId: string }) {
   const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
 
   // Initialize columns on first load, and auto-show newly added fields
+  const columnOrderRef = useRef(columnOrder);
+  columnOrderRef.current = columnOrder;
+
   useEffect(() => {
     if (fields.length === 0) return;
+    const currentOrder = columnOrderRef.current;
 
-    if (visibleColumns.length === 0 && columnOrder.length === 0) {
+    if (visibleColumns.length === 0 && currentOrder.length === 0) {
       // First load: show up to 5 columns
       setVisibleColumns(fields.slice(0, 5).map((f) => f.slug));
       setColumnOrder(fields.map((f) => f.slug));
-    } else if (columnOrder.length > 0) {
+    } else if (currentOrder.length > 0) {
       // Detect newly added fields and auto-show them
       const fieldSlugs = fields.map((f) => f.slug);
-      const newSlugs = fieldSlugs.filter((s) => !columnOrder.includes(s));
+      const newSlugs = fieldSlugs.filter((s) => !currentOrder.includes(s));
       if (newSlugs.length > 0) {
         setColumnOrder((prev) => [...prev, ...newSlugs]);
         setVisibleColumns((prev) => {
@@ -401,7 +405,8 @@ function InlineTableView({ tableId }: { tableId: string }) {
         });
       }
     }
-  }, [fields, visibleColumns.length, columnOrder]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fields.length, visibleColumns.length]);
 
   const handleAddColumn = useCallback(async (name: string, type: string) => {
     await addField({ name, attribute_type: type });
@@ -587,7 +592,7 @@ function InlineDatabaseView(props: ReactNodeViewProps) {
           <div className="flex-1" />
           {isModuleEmbed && (
             <a
-              href={effectiveScope === "crm" ? `/crm/${tableId}` : `/tables/${tableId}`}
+              href={effectiveScope === "crm" ? `/crm/${table?.slug || tableId}` : `/tables/${table?.slug || tableId}`}
               target="_blank"
               rel="noopener noreferrer"
               className="p-1 hover:bg-accent rounded text-muted-foreground"
