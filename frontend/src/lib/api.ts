@@ -17770,13 +17770,17 @@ export interface TableField {
   name: string;
   slug: string;
   attribute_type: string;
+  description: string | null;
   is_required: boolean;
   is_unique: boolean;
   is_filterable: boolean;
-  is_primary: boolean;
+  is_sortable: boolean;
+  is_visible: boolean;
+  is_system: boolean;
   default_value: unknown;
-  options: Record<string, unknown> | null;
-  display_order: number;
+  config: Record<string, unknown>;
+  position: number;
+  column_width: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -17870,7 +17874,10 @@ export const tablesApi = {
       default_value?: unknown;
       options?: Record<string, unknown>;
     }): Promise<TableField> => {
-      const response = await api.post(`/workspaces/${workspaceId}/tables/${tableId}/fields`, data);
+      // Backend expects config (AttributeConfig) not top-level options
+      const { options, ...rest } = data;
+      const payload = options ? { ...rest, config: options } : rest;
+      const response = await api.post(`/workspaces/${workspaceId}/tables/${tableId}/fields`, payload);
       return response.data;
     },
     update: async (workspaceId: string, tableId: string, fieldId: string, data: Partial<{
