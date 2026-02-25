@@ -183,7 +183,7 @@ class CRMAttributeCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     slug: str | None = Field(default=None, min_length=1, max_length=100, pattern=r"^[a-z_][a-z0-9_]*$")
     description: str | None = None
-    attribute_type: CRMAttributeType = "text"
+    attribute_type: str = "text"
     config: AttributeConfig | None = None
     is_required: bool = False
     is_unique: bool = False
@@ -218,7 +218,7 @@ class CRMAttributeResponse(BaseModel):
     name: str
     slug: str
     description: str | None = None
-    attribute_type: CRMAttributeType
+    attribute_type: str
     config: dict
     is_required: bool
     is_unique: bool
