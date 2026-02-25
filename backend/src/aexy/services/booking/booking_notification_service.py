@@ -1,5 +1,6 @@
 """Notification service for booking module."""
 
+import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -8,6 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.models.booking import Booking, EventType, BookingWebhook
 from aexy.models.developer import Developer
+
+logger = logging.getLogger(__name__)
 
 
 class BookingNotificationServiceError(Exception):
@@ -24,6 +27,22 @@ class BookingNotificationService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    async def send_confirmation_safe(self, booking: Booking) -> None:
+        """Send booking confirmation emails, swallowing errors.
+
+        Convenience wrapper that creates an EmailService internally,
+        checks if email is configured, and logs any failures without raising.
+        """
+        from aexy.services.email_service import EmailService
+
+        try:
+            email_svc = EmailService()
+            if not email_svc.is_configured:
+                return
+            await self.send_confirmation(booking=booking, email_service=email_svc)
+        except Exception as e:
+            logger.warning(f"Failed to send confirmation emails for booking {booking.id}: {e}")
 
     async def send_confirmation(
         self,

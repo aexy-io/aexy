@@ -21,7 +21,6 @@ from aexy.schemas.booking import (
 from aexy.schemas.booking.booking import HostBrief, EventTypeBrief
 from aexy.services.booking import BookingService, CalendarSyncService
 from aexy.services.booking.booking_notification_service import BookingNotificationService
-from aexy.services.email_service import EmailService
 
 logger = logging.getLogger(__name__)
 
@@ -144,16 +143,7 @@ async def create_booking(
             logger.warning(f"Failed to create calendar event for booking {booking.id}: {e}")
 
         # Send confirmation emails to invitee and host
-        try:
-            notification_service = BookingNotificationService(db)
-            email_svc = EmailService()
-            if email_svc.is_configured:
-                await notification_service.send_confirmation(
-                    booking=booking,
-                    email_service=email_svc,
-                )
-        except Exception as e:
-            logger.warning(f"Failed to send confirmation emails for booking {booking.id}: {e}")
+        await BookingNotificationService(db).send_confirmation_safe(booking)
 
         return booking_to_response(booking)
 
