@@ -1,13 +1,13 @@
 "use client";
 
 import { Node, mergeAttributes } from "@tiptap/core";
-import { ReactNodeViewRenderer, NodeViewWrapper } from "@tiptap/react";
+import { ReactNodeViewRenderer, NodeViewWrapper, type ReactNodeViewProps } from "@tiptap/react";
 import { useState, useMemo, useEffect } from "react";
 import { Table2, Plus, ChevronDown, ChevronUp, Link2 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useTables, useTableFields, useTableRecords } from "@/hooks/useTables";
 import { DataTable } from "@/components/crm/DataTable";
-import type { CRMAttribute, CRMRecord } from "@/lib/api";
+import type { CRMAttribute, CRMAttributeType, CRMRecord } from "@/lib/api";
 
 // TipTap Node Definition
 export const InlineDatabase = Node.create({
@@ -188,21 +188,22 @@ function InlineTableView({ tableId }: { tableId: string }) {
 
   const attributes: CRMAttribute[] = useMemo(
     () =>
-      fields.map((f) => ({
+      fields.map((f, i) => ({
         id: f.id,
         object_id: f.object_id,
         name: f.name,
         slug: f.slug,
-        attribute_type: f.attribute_type,
+        attribute_type: f.attribute_type as CRMAttributeType,
+        description: f.description ?? null,
         is_required: f.is_required,
         is_unique: f.is_unique,
+        is_searchable: false,
         is_filterable: f.is_filterable,
-        is_primary: f.is_primary,
-        is_system: false,
+        is_sortable: f.is_sortable ?? true,
+        is_system: f.is_system ?? false,
+        config: f.config || {},
         default_value: f.default_value,
-        options: f.options,
-        display_order: f.display_order,
-        description: null,
+        order: f.position ?? i,
         created_at: f.created_at,
         updated_at: f.updated_at,
       })),
@@ -214,13 +215,15 @@ function InlineTableView({ tableId }: { tableId: string }) {
       rawRecords.map((r) => ({
         id: r.id,
         object_id: r.object_id,
+        workspace_id: tableId || "",
         values: r.values,
         display_name: null,
+        owner_id: r.created_by_id || null,
         created_by_id: r.created_by_id,
+        is_archived: false,
+        archived_at: null,
         created_at: r.created_at,
         updated_at: r.updated_at,
-        is_deleted: false,
-        deleted_at: null,
       })),
     [rawRecords]
   );
@@ -237,16 +240,17 @@ function InlineTableView({ tableId }: { tableId: string }) {
       onColumnOrderChange={setColumnOrder}
       enableColumnReorder={true}
       enableColumnSelector={false}
+      showNameColumn={false}
     />
   );
 }
 
 // Node View Component
-function InlineDatabaseView({ node, updateAttributes }: {
-  node: { attrs: { tableId: string | null; height: number; collapsed: boolean } };
-  updateAttributes: (attrs: Record<string, unknown>) => void;
-}) {
-  const { tableId, height, collapsed } = node.attrs;
+function InlineDatabaseView(props: ReactNodeViewProps) {
+  const { node, updateAttributes } = props;
+  const tableId = node.attrs.tableId as string | null;
+  const height = (node.attrs.height as number) || 400;
+  const collapsed = (node.attrs.collapsed as boolean) || false;
   const { currentWorkspace } = useWorkspace();
   const { tables } = useTables(currentWorkspace?.id || null);
   const table = tableId ? tables.find((t) => t.id === tableId) : null;
