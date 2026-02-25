@@ -14,6 +14,7 @@ import {
   TableVisibility,
   TableRowAccessMode,
   TablePermission,
+  TableShareLink,
 } from "@/lib/api";
 
 // ==================== Table Hooks ====================
@@ -403,5 +404,53 @@ export function useSavedViews(workspaceId: string | null, tableId: string | null
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
+  };
+}
+
+// ==================== Share Link Hooks ====================
+
+export function useTableShareLinks(workspaceId: string | null, tableId: string | null) {
+  const queryClient = useQueryClient();
+
+  const { data: shareLinks, isLoading } = useQuery<TableShareLink[]>({
+    queryKey: ["tableShareLinks", workspaceId, tableId],
+    queryFn: () => tablesApi.shareLinks.list(workspaceId!, tableId!),
+    enabled: !!workspaceId && !!tableId,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: {
+      permission?: string;
+      password?: string;
+      expires_at?: string;
+      max_uses?: number;
+    }) => tablesApi.shareLinks.create(workspaceId!, tableId!, data),
+    onSuccess: () => {
+      toast.success("Share link created");
+      queryClient.invalidateQueries({ queryKey: ["tableShareLinks", workspaceId, tableId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to create share link");
+    },
+  });
+
+  const revokeMutation = useMutation({
+    mutationFn: (linkId: string) =>
+      tablesApi.shareLinks.revoke(workspaceId!, tableId!, linkId),
+    onSuccess: () => {
+      toast.success("Share link revoked");
+      queryClient.invalidateQueries({ queryKey: ["tableShareLinks", workspaceId, tableId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to revoke share link");
+    },
+  });
+
+  return {
+    shareLinks: shareLinks || [],
+    isLoading,
+    createShareLink: createMutation.mutateAsync,
+    revokeShareLink: revokeMutation.mutateAsync,
+    isCreating: createMutation.isPending,
   };
 }

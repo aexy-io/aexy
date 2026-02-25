@@ -17853,6 +17853,18 @@ export interface TableSavedView {
   updated_at: string;
 }
 
+export interface TableShareLink {
+  id: string;
+  token: string;
+  permission: string;
+  has_password: boolean;
+  expires_at: string | null;
+  max_uses: number | null;
+  use_count: number;
+  is_active: boolean;
+  created_at: string | null;
+}
+
 export const tablesApi = {
   // Tables CRUD
   tables: {
@@ -18037,5 +18049,83 @@ export const tablesApi = {
     delete: async (workspaceId: string, tableId: string, viewId: string): Promise<void> => {
       await api.delete(`/workspaces/${workspaceId}/tables/${tableId}/views/${viewId}`);
     },
+  },
+
+  // Share Links
+  shareLinks: {
+    list: async (workspaceId: string, tableId: string): Promise<TableShareLink[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/tables/${tableId}/share-links`);
+      return response.data;
+    },
+    create: async (workspaceId: string, tableId: string, data: {
+      permission?: string;
+      password?: string;
+      expires_at?: string;
+      max_uses?: number;
+    }): Promise<TableShareLink> => {
+      const response = await api.post(`/workspaces/${workspaceId}/tables/${tableId}/share-links`, data);
+      return response.data;
+    },
+    revoke: async (workspaceId: string, tableId: string, linkId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/tables/${tableId}/share-links/${linkId}`);
+    },
+  },
+};
+
+// ============================================================================
+// Public Tables API (no auth — accessed via share link token)
+// ============================================================================
+
+export interface PublicTableSchema {
+  id: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  color: string | null;
+  fields: {
+    id: string;
+    name: string;
+    slug: string;
+    attribute_type: string;
+    options: Record<string, unknown>;
+    display_order: number;
+  }[];
+  permission: "view" | "edit";
+}
+
+export interface PublicTableRecord {
+  id: string;
+  values: Record<string, unknown>;
+  created_at: string | null;
+}
+
+export const publicTablesApi = {
+  getSchema: async (token: string, password?: string): Promise<PublicTableSchema> => {
+    const headers: Record<string, string> = {};
+    if (password) headers["X-Share-Password"] = password;
+    const response = await api.get(`/public/tables/${token}`, { headers });
+    return response.data;
+  },
+
+  getRecords: async (
+    token: string,
+    params?: { skip?: number; limit?: number },
+    password?: string
+  ): Promise<{ records: PublicTableRecord[]; total: number }> => {
+    const headers: Record<string, string> = {};
+    if (password) headers["X-Share-Password"] = password;
+    const response = await api.get(`/public/tables/${token}/records`, { params, headers });
+    return response.data;
+  },
+
+  createRecord: async (
+    token: string,
+    values: Record<string, unknown>,
+    password?: string
+  ): Promise<PublicTableRecord> => {
+    const headers: Record<string, string> = {};
+    if (password) headers["X-Share-Password"] = password;
+    const response = await api.post(`/public/tables/${token}/records`, { values }, { headers });
+    return response.data;
   },
 };

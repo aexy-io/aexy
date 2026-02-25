@@ -6,12 +6,14 @@ import { AttributeConfig, ConditionalFormatRule, FieldDisplayConfig, FieldSurfac
 // Ensure all field types are registered
 import "./register";
 
-interface FieldRendererProps {
+type FieldRendererProps = {
   value: unknown;
-  attribute: CRMAttribute;
   surface?: FieldSurface;
   displayConfig?: FieldDisplayConfig;
-}
+} & (
+  | { attribute: CRMAttribute; type?: never; config?: never }
+  | { type: string; config?: Record<string, unknown>; attribute?: never }
+);
 
 /**
  * Evaluate conditional formatting rules against a value.
@@ -70,11 +72,14 @@ function evaluateConditionalFormat(
  * Usage:
  *   <FieldRenderer value={record.values[attr.slug]} attribute={attr} surface="table_cell" />
  *   <FieldRenderer value={val} attribute={attr} surface="table_cell" displayConfig={{ variant: "progress_bar" }} />
+ *   <FieldRenderer value={val} type="text" config={{}} surface="table_cell" />
  */
-export function FieldRenderer({ value, attribute, surface = "detail_view", displayConfig }: FieldRendererProps) {
-  const fieldType = getFieldTypeOrFallback(attribute.attribute_type);
+export function FieldRenderer({ value, surface = "detail_view", displayConfig, ...rest }: FieldRendererProps) {
+  const attrType = rest.attribute ? rest.attribute.attribute_type : rest.type!;
+  const rawConfig = rest.attribute ? (rest.attribute.config || {}) : (rest.config || {});
+  const fieldType = getFieldTypeOrFallback(attrType);
   const View = fieldType.view;
-  const config = (attribute.config || {}) as AttributeConfig;
+  const config = rawConfig as AttributeConfig;
 
   // Resolve effective display config: explicit prop > field default
   const effectiveDisplayConfig = displayConfig;
