@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useSearchParams, useRouter } from "next/navigation";
 import { bookingApi, CalendarConnection } from "@/lib/booking-api";
@@ -41,6 +41,21 @@ export default function CalendarsPage() {
   const [connecting, setConnecting] = useState<string | null>(null);
   const [syncing, setSyncing] = useState<string | null>(null);
 
+  const loadConnections = useCallback(async () => {
+    if (!currentWorkspace?.id) return;
+
+    try {
+      const data = await bookingApi.calendars.list(currentWorkspace.id);
+      setConnections(data);
+    } catch (error: any) {
+      console.error("Failed to load calendar connections:", error);
+      const errorMessage = error.response?.data?.detail || "Failed to load calendar connections";
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentWorkspace?.id]);
+
   // Handle OAuth callback results from URL params
   useEffect(() => {
     const success = searchParams.get("success");
@@ -72,28 +87,13 @@ export default function CalendarsPage() {
 
     // Clear URL params after handling
     router.replace("/booking/calendars", { scroll: false });
-  }, [searchParams, currentWorkspace?.id]);
+  }, [searchParams, currentWorkspace?.id, loadConnections]);
 
   useEffect(() => {
     if (currentWorkspace?.id) {
       loadConnections();
     }
-  }, [currentWorkspace?.id]);
-
-  const loadConnections = async () => {
-    if (!currentWorkspace?.id) return;
-
-    try {
-      const data = await bookingApi.calendars.list(currentWorkspace.id);
-      setConnections(data);
-    } catch (error: any) {
-      console.error("Failed to load calendar connections:", error);
-      const errorMessage = error.response?.data?.detail || "Failed to load calendar connections";
-      toast.error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [currentWorkspace?.id, loadConnections]);
 
   const connectCalendar = async (provider: string) => {
     if (!currentWorkspace?.id) return;

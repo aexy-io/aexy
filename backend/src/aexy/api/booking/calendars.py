@@ -339,8 +339,7 @@ async def calendar_oauth_callback(
             existing = await service.list_connections(user_id=user_id, workspace_id=workspace_id)
             has_primary = any(c.is_primary and c.id != connection.id for c in existing)
             if not has_primary:
-                connection.is_primary = True
-                await db.flush()
+                await service.update_connection_settings(connection_id=str(connection.id), is_primary=True)
 
             await db.commit()
 
@@ -423,8 +422,7 @@ async def calendar_oauth_callback(
             existing = await service.list_connections(user_id=user_id, workspace_id=workspace_id)
             has_primary = any(c.is_primary and c.id != connection.id for c in existing)
             if not has_primary:
-                connection.is_primary = True
-                await db.flush()
+                await service.update_connection_settings(connection_id=str(connection.id), is_primary=True)
 
             await db.commit()
 
@@ -524,7 +522,11 @@ async def set_primary_calendar(
 
     connection = await service.get_connection(calendar_id)
 
-    if not connection or connection.user_id != str(current_user.id):
+    if (
+        not connection
+        or connection.user_id != str(current_user.id)
+        or connection.workspace_id != workspace_id
+    ):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Calendar connection not found",

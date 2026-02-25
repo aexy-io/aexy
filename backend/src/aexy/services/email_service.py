@@ -1,5 +1,6 @@
 """Email service for sending notifications via AWS SES or SMTP."""
 
+import html
 import logging
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
@@ -781,8 +782,8 @@ Duration: {duration} minutes
         subject = template["subject"]
         body_text = template["body"]
         body_html = self._create_booking_html_email(
-            title=subject,
-            body=body_text.replace("\n", "<br>"),
+            title=html.escape(subject),
+            body=html.escape(body_text).replace("\n", "<br>"),
             meeting_link=meeting_link,
             location_type=location_type,
         )
