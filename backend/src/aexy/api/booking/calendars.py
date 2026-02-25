@@ -324,7 +324,7 @@ async def calendar_oauth_callback(
 
             # Create calendar connection
             service = CalendarSyncService(db)
-            await service.connect_google_calendar(
+            connection = await service.connect_google_calendar(
                 user_id=user_id,
                 workspace_id=workspace_id,
                 access_token=access_token,
@@ -334,6 +334,14 @@ async def calendar_oauth_callback(
                 calendar_name=calendar_name,
                 account_email=account_email,
             )
+
+            # Auto-set as primary if this is the user's first calendar connection
+            existing = await service.list_connections(user_id=user_id, workspace_id=workspace_id)
+            has_primary = any(c.is_primary and c.id != connection.id for c in existing)
+            if not has_primary:
+                connection.is_primary = True
+                await db.flush()
+
             await db.commit()
 
         elif provider == "microsoft":
@@ -400,7 +408,7 @@ async def calendar_oauth_callback(
 
             # Create calendar connection
             service = CalendarSyncService(db)
-            await service.connect_microsoft_calendar(
+            connection = await service.connect_microsoft_calendar(
                 user_id=user_id,
                 workspace_id=workspace_id,
                 access_token=access_token,
@@ -410,6 +418,14 @@ async def calendar_oauth_callback(
                 calendar_name=calendar_name,
                 account_email=account_email,
             )
+
+            # Auto-set as primary if this is the user's first calendar connection
+            existing = await service.list_connections(user_id=user_id, workspace_id=workspace_id)
+            has_primary = any(c.is_primary and c.id != connection.id for c in existing)
+            if not has_primary:
+                connection.is_primary = True
+                await db.flush()
+
             await db.commit()
 
         else:
@@ -480,6 +496,44 @@ async def update_calendar_settings(
             sync_enabled=data.sync_enabled,
             check_conflicts=data.check_conflicts,
             create_events=data.create_events,
+        )
+
+        await db.commit()
+        await db.refresh(connection)
+
+        return connection_to_response(connection)
+
+    except CalendarConnectionNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Calendar connection not found",
+        )
+
+
+@router.put("/{calendar_id}/primary", response_model=CalendarConnectionResponse)
+async def set_primary_calendar(
+    workspace_id: str,
+    calendar_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Set a calendar as the primary calendar."""
+    from aexy.services.booking.calendar_sync_service import CalendarConnectionNotFoundError
+
+    service = CalendarSyncService(db)
+
+    connection = await service.get_connection(calendar_id)
+
+    if not connection or connection.user_id != str(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Calendar connection not found",
+        )
+
+    try:
+        connection = await service.update_connection_settings(
+            connection_id=calendar_id,
+            is_primary=True,
         )
 
         await db.commit()
