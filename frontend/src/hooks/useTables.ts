@@ -15,6 +15,7 @@ import {
   TableRowAccessMode,
   TablePermission,
   TableShareLink,
+  TableAuditEntry,
 } from "@/lib/api";
 
 // ==================== Table Hooks ====================
@@ -59,6 +60,8 @@ export function useTables(workspaceId: string | null) {
         visibility: TableVisibility;
         row_access_mode: TableRowAccessMode;
         is_active: boolean;
+        settings: Record<string, unknown>;
+        audit_config: { enabled?: boolean; retention_days?: number };
       }>;
     }) => tablesApi.tables.update(workspaceId!, tableId, data),
     onSuccess: () => {
@@ -131,11 +134,13 @@ export function useTableFields(workspaceId: string | null, tableId: string | nul
       fieldId: string;
       data: Partial<{
         name: string;
+        description: string;
         is_required: boolean;
         is_unique: boolean;
         is_filterable: boolean;
         default_value: unknown;
         options: Record<string, unknown>;
+        position: number;
       }>;
     }) => tablesApi.fields.update(workspaceId!, tableId!, fieldId, data),
     onSuccess: () => {
@@ -452,5 +457,27 @@ export function useTableShareLinks(workspaceId: string | null, tableId: string |
     createShareLink: createMutation.mutateAsync,
     revokeShareLink: revokeMutation.mutateAsync,
     isCreating: createMutation.isPending,
+  };
+}
+
+// ==================== Audit Log Hook ====================
+
+export function useTableAuditLog(
+  workspaceId: string | null,
+  tableId: string | null,
+  params?: { limit?: number; offset?: number; action?: string; record_id?: string }
+) {
+  const { data, isLoading, error, refetch } = useQuery<{ entries: TableAuditEntry[]; total: number }>({
+    queryKey: ["tableAuditLog", workspaceId, tableId, params],
+    queryFn: () => tablesApi.auditLog.list(workspaceId!, tableId!, params),
+    enabled: !!workspaceId && !!tableId,
+  });
+
+  return {
+    entries: data?.entries || [],
+    total: data?.total || 0,
+    isLoading,
+    error,
+    refetch,
   };
 }

@@ -18,7 +18,8 @@ import {
   PublicTableSchema,
   PublicTableRecord,
 } from "@/lib/api";
-import { FieldRenderer } from "@/components/fields";
+import { FieldRenderer, FieldEditor } from "@/components/fields";
+import type { CRMAttribute, CRMAttributeType } from "@/lib/api";
 
 function PasswordGate({
   onSubmit,
@@ -74,25 +75,27 @@ function PasswordGate({
   );
 }
 
-function getInputType(attributeType: string): string {
-  switch (attributeType) {
-    case "number":
-    case "currency":
-    case "rating":
-      return "number";
-    case "email":
-      return "email";
-    case "url":
-      return "url";
-    case "phone":
-      return "tel";
-    case "date":
-      return "date";
-    case "checkbox":
-      return "checkbox";
-    default:
-      return "text";
-  }
+/** Convert a public table field into a CRMAttribute shape for FieldEditor */
+function toAttribute(field: { id: string; name: string; slug: string; attribute_type: string; options: Record<string, unknown> }): CRMAttribute {
+  return {
+    id: field.id,
+    object_id: "",
+    name: field.name,
+    slug: field.slug,
+    attribute_type: field.attribute_type as CRMAttributeType,
+    description: null,
+    is_required: false,
+    is_unique: false,
+    is_searchable: false,
+    is_filterable: false,
+    is_sortable: false,
+    is_system: false,
+    config: field.options || {},
+    default_value: null,
+    order: 0,
+    created_at: "",
+    updated_at: "",
+  };
 }
 
 function PublicAddRecordForm({
@@ -156,61 +159,17 @@ function PublicAddRecordForm({
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
         {schema.fields.map((field) => {
-          const inputType = getInputType(field.attribute_type);
-          if (inputType === "checkbox") {
-            return (
-              <label key={field.id} className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={!!values[field.slug]}
-                  onChange={(e) => setValues({ ...values, [field.slug]: e.target.checked })}
-                  className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                />
-                <span className="text-sm text-gray-700">{field.name}</span>
-              </label>
-            );
-          }
-          if (field.attribute_type === "select" && field.options?.options) {
-            const opts = field.options.options as { value: string; label: string }[];
-            return (
-              <div key={field.id}>
-                <label className="block text-xs font-medium text-gray-600 mb-1">{field.name}</label>
-                <select
-                  value={String(values[field.slug] ?? "")}
-                  onChange={(e) => setValues({ ...values, [field.slug]: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="">Select...</option>
-                  {opts.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-              </div>
-            );
-          }
-          if (field.attribute_type === "textarea") {
-            return (
-              <div key={field.id} className="sm:col-span-2">
-                <label className="block text-xs font-medium text-gray-600 mb-1">{field.name}</label>
-                <textarea
-                  value={String(values[field.slug] ?? "")}
-                  onChange={(e) => setValues({ ...values, [field.slug]: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
-                  placeholder={field.name}
-                  rows={3}
-                />
-              </div>
-            );
-          }
+          const attr = toAttribute(field);
+          const isWide = field.attribute_type === "textarea";
           return (
-            <div key={field.id}>
+            <div key={field.id} className={isWide ? "sm:col-span-2" : undefined}>
               <label className="block text-xs font-medium text-gray-600 mb-1">{field.name}</label>
-              <input
-                type={inputType}
-                value={String(values[field.slug] ?? "")}
-                onChange={(e) => setValues({ ...values, [field.slug]: inputType === "number" ? (e.target.value ? Number(e.target.value) : "") : e.target.value })}
-                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              <FieldEditor
+                value={values[field.slug]}
+                attribute={attr}
+                onChange={(val) => setValues({ ...values, [field.slug]: val })}
                 placeholder={field.name}
+                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
           );
