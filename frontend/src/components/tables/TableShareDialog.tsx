@@ -40,6 +40,8 @@ import type {
   TableVisibility,
   WorkspaceMember,
   TableField,
+  TeamListItem,
+  CustomRole,
 } from "@/lib/api";
 
 // ---------------------------------------------------------------------------
@@ -88,21 +90,40 @@ interface TableShareDialogProps {
     row_access_mode?: TableRowAccessMode;
   }) => Promise<unknown>;
   isUpdatingTable?: boolean;
-  // Workspace members for the picker
+  // Workspace members, teams, roles for the picker
   workspaceMembers: WorkspaceMember[];
+  workspaceTeams?: TeamListItem[];
+  workspaceRoles?: CustomRole[];
 }
 
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
 
-function CollaboratorAvatar({ name }: { name: string }) {
+function CollaboratorAvatar({ name, type }: { name: string; type: "Member" | "Team" | "Role" }) {
   const initials = name
     .split(" ")
     .map((w) => w[0])
     .join("")
     .slice(0, 2)
     .toUpperCase();
+
+  if (type === "Team") {
+    return (
+      <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+        <Users className="h-4 w-4 text-blue-400" />
+      </div>
+    );
+  }
+
+  if (type === "Role") {
+    return (
+      <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
+        <Lock className="h-3.5 w-3.5 text-amber-400" />
+      </div>
+    );
+  }
+
   return (
     <div className="h-8 w-8 rounded-full bg-accent flex items-center justify-center text-xs font-medium text-muted-foreground shrink-0">
       {initials || "?"}
@@ -126,11 +147,11 @@ function CollaboratorRow({
   const [showPermDropdown, setShowPermDropdown] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const name = collab.developer_name || collab.role_name || collab.team_name || "Unknown";
-  const type = collab.developer_id ? "Member" : collab.role_id ? "Role" : "Team";
+  const type: "Member" | "Team" | "Role" = collab.developer_id ? "Member" : collab.role_id ? "Role" : "Team";
 
   return (
     <div className="flex items-center gap-3 py-2.5 group">
-      <CollaboratorAvatar name={name} />
+      <CollaboratorAvatar name={name} type={type} />
       <div className="flex-1 min-w-0">
         <div className="text-sm font-medium text-foreground truncate">{name}</div>
         <div className="text-xs text-muted-foreground">{type}</div>
@@ -312,16 +333,27 @@ function ShareLinkRow({
   );
 }
 
+type ShareTargetType = "member" | "team" | "role";
+
 function AddCollaboratorForm({
   workspaceMembers,
+  workspaceTeams = [],
+  workspaceRoles = [],
   existingCollaboratorIds,
+  existingTeamIds,
+  existingRoleIds,
   onAdd,
 }: {
   workspaceMembers: WorkspaceMember[];
+  workspaceTeams?: TeamListItem[];
+  workspaceRoles?: CustomRole[];
   existingCollaboratorIds: Set<string>;
-  onAdd: (developerId: string, permission: TablePermission) => void;
+  existingTeamIds: Set<string>;
+  existingRoleIds: Set<string>;
+  onAdd: (data: { developer_id?: string; team_id?: string; role_id?: string }, permission: TablePermission) => void;
 }) {
-  const [selectedMemberId, setSelectedMemberId] = useState("");
+  const [targetType, setTargetType] = useState<ShareTargetType>("member");
+  const [selectedId, setSelectedId] = useState("");
   const [selectedPermission, setSelectedPermission] = useState<TablePermission>("edit");
 
   const availableMembers = useMemo(
@@ -332,45 +364,121 @@ function AddCollaboratorForm({
     [workspaceMembers, existingCollaboratorIds]
   );
 
+  const availableTeams = useMemo(
+    () => workspaceTeams.filter((t) => t.is_active && !existingTeamIds.has(t.id)),
+    [workspaceTeams, existingTeamIds]
+  );
+
+  const availableRoles = useMemo(
+    () => workspaceRoles.filter((r) => r.is_active && !existingRoleIds.has(r.id)),
+    [workspaceRoles, existingRoleIds]
+  );
+
   const handleAdd = () => {
-    if (!selectedMemberId) return;
-    onAdd(selectedMemberId, selectedPermission);
-    setSelectedMemberId("");
+    if (!selectedId) return;
+    const data =
+      targetType === "team"
+        ? { team_id: selectedId }
+        : targetType === "role"
+        ? { role_id: selectedId }
+        : { developer_id: selectedId };
+    onAdd(data, selectedPermission);
+    setSelectedId("");
   };
 
   return (
-    <div className="flex items-center gap-2">
-      <select
-        value={selectedMemberId}
-        onChange={(e) => setSelectedMemberId(e.target.value)}
-        className="flex-1 px-3 py-1.5 bg-accent border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-      >
-        <option value="">Select a member...</option>
-        {availableMembers.map((m) => (
-          <option key={m.developer_id} value={m.developer_id}>
-            {m.developer_name || m.developer_email || "Unknown"}
-          </option>
+    <div className="space-y-2">
+      {/* Target type tabs */}
+      <div className="flex items-center gap-1 bg-muted/50 p-0.5 rounded-lg w-fit">
+        {(
+          [
+            { key: "member" as const, label: "Member" },
+            { key: "team" as const, label: "Team" },
+            { key: "role" as const, label: "Role" },
+          ] as const
+        ).map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => { setTargetType(key); setSelectedId(""); }}
+            className={cn(
+              "px-3 py-1 text-xs font-medium rounded-md transition-colors",
+              targetType === key
+                ? "bg-accent text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {label}
+          </button>
         ))}
-      </select>
-      <select
-        value={selectedPermission}
-        onChange={(e) => setSelectedPermission(e.target.value as TablePermission)}
-        className="px-3 py-1.5 bg-accent border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-      >
-        {PERMISSION_LEVELS.map((perm) => (
-          <option key={perm} value={perm}>
-            {getPermissionLabel(perm)}
-          </option>
-        ))}
-      </select>
-      <button
-        onClick={handleAdd}
-        disabled={!selectedMemberId}
-        className="p-1.5 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 text-white rounded-lg transition-colors"
-        title="Add collaborator"
-      >
-        <UserPlus className="h-4 w-4" />
-      </button>
+      </div>
+
+      {/* Selector row */}
+      <div className="flex items-center gap-2">
+        <select
+          value={selectedId}
+          onChange={(e) => setSelectedId(e.target.value)}
+          className="flex-1 px-3 py-1.5 bg-accent border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+        >
+          {targetType === "member" && (
+            <>
+              <option value="">Select a member...</option>
+              {availableMembers.map((m) => (
+                <option key={m.developer_id} value={m.developer_id}>
+                  {m.developer_name || m.developer_email || "Unknown"}
+                </option>
+              ))}
+              {availableMembers.length === 0 && (
+                <option value="" disabled>No members available</option>
+              )}
+            </>
+          )}
+          {targetType === "team" && (
+            <>
+              <option value="">Select a team...</option>
+              {availableTeams.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name} ({t.member_count} members)
+                </option>
+              ))}
+              {availableTeams.length === 0 && (
+                <option value="" disabled>No teams available</option>
+              )}
+            </>
+          )}
+          {targetType === "role" && (
+            <>
+              <option value="">Select a role...</option>
+              {availableRoles.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+              {availableRoles.length === 0 && (
+                <option value="" disabled>No roles available</option>
+              )}
+            </>
+          )}
+        </select>
+        <select
+          value={selectedPermission}
+          onChange={(e) => setSelectedPermission(e.target.value as TablePermission)}
+          className="px-3 py-1.5 bg-accent border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+        >
+          {PERMISSION_LEVELS.map((perm) => (
+            <option key={perm} value={perm}>
+              {getPermissionLabel(perm)}
+            </option>
+          ))}
+        </select>
+        <button
+          onClick={handleAdd}
+          disabled={!selectedId}
+          className="p-1.5 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 text-white rounded-lg transition-colors"
+          title="Add collaborator"
+        >
+          <UserPlus className="h-4 w-4" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -536,6 +644,8 @@ export function TableShareDialog({
   onUpdateTable,
   isUpdatingTable = false,
   workspaceMembers,
+  workspaceTeams = [],
+  workspaceRoles = [],
 }: TableShareDialogProps) {
   const [activeTab, setActiveTab] = useState<Tab>("people");
 
@@ -546,8 +656,21 @@ export function TableShareDialog({
     [collaborators]
   );
 
-  const handleAddCollaborator = async (developerId: string, permission: TablePermission) => {
-    await onAddCollaborator({ developer_id: developerId, permission });
+  const existingTeamIds = useMemo(
+    () => new Set(collaborators.map((c) => c.team_id).filter(Boolean) as string[]),
+    [collaborators]
+  );
+
+  const existingRoleIds = useMemo(
+    () => new Set(collaborators.map((c) => c.role_id).filter(Boolean) as string[]),
+    [collaborators]
+  );
+
+  const handleAddCollaborator = async (
+    data: { developer_id?: string; team_id?: string; role_id?: string },
+    permission: TablePermission
+  ) => {
+    await onAddCollaborator({ ...data, permission });
   };
 
   const handleUpdateVisibility = async (v: TableVisibility) => {
@@ -640,7 +763,11 @@ export function TableShareDialog({
               {isAdmin && (
                 <AddCollaboratorForm
                   workspaceMembers={workspaceMembers}
+                  workspaceTeams={workspaceTeams}
+                  workspaceRoles={workspaceRoles}
                   existingCollaboratorIds={existingCollaboratorIds}
+                  existingTeamIds={existingTeamIds}
+                  existingRoleIds={existingRoleIds}
                   onAdd={handleAddCollaborator}
                 />
               )}

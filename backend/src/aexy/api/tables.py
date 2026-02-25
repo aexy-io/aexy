@@ -698,6 +698,8 @@ async def list_collaborators(
             created_at=c.created_at,
             created_by_id=str(c.created_by_id) if c.created_by_id else None,
             developer_name=c.developer.name if c.developer else None,
+            team_name=c.team.name if c.team else None,
+            role_name=c.role.name if c.role else None,
         )
         for c in collabs
     ]
