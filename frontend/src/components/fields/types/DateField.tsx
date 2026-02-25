@@ -46,6 +46,17 @@ function formatDate(value: unknown, includeTime: boolean, variant?: string): str
       return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
     }
 
+    if (variant === "YYYY-MM-DD") {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      const base = `${y}-${m}-${d}`;
+      if (!includeTime) return base;
+      const h = String(date.getHours()).padStart(2, "0");
+      const min = String(date.getMinutes()).padStart(2, "0");
+      return `${base} ${h}:${min}`;
+    }
+
     if (variant === "full" || includeTime) {
       return date.toLocaleString(undefined, {
         year: "numeric",
