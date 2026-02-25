@@ -5,6 +5,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, MoreHorizontal, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CRMRecord, CRMAttribute } from "@/lib/api";
+import { FieldRenderer } from "@/components/fields";
 
 interface KanbanCardProps {
   record: CRMRecord;
@@ -49,17 +50,6 @@ export function KanbanCard({
     })
     .filter((v): v is { attr: CRMAttribute; value: unknown } => v !== null)
     .slice(0, 3); // Max 3 fields
-
-  // Format value for display
-  const formatValue = (value: unknown, attr: CRMAttribute): string => {
-    if (attr.attribute_type === "currency" && typeof value === "number") {
-      return `$${value.toLocaleString()}`;
-    }
-    if (attr.attribute_type === "date" || attr.attribute_type === "datetime") {
-      return new Date(String(value)).toLocaleDateString();
-    }
-    return String(value);
-  };
 
   return (
     <div
@@ -106,7 +96,9 @@ export function KanbanCard({
           {displayValues.map(({ attr, value }) => (
             <div key={attr.slug} className="flex items-center gap-2 text-xs">
               <span className="text-muted-foreground truncate">{attr.name}:</span>
-              <span className="text-foreground truncate">{formatValue(value, attr)}</span>
+              <span className="text-foreground truncate">
+                <FieldRenderer value={value} attribute={attr} surface="kanban_card" />
+              </span>
             </div>
           ))}
         </div>

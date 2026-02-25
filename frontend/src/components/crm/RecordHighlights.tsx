@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CRMRecord, CRMAttribute } from "@/lib/api";
-import { StatusBadge } from "./CRMBadge";
+import { FieldRenderer } from "@/components/fields";
 
 interface HighlightCardProps {
   icon: React.ReactNode;
@@ -99,36 +99,9 @@ function getAttributeIcon(type: string, slug: string) {
   }
 }
 
-// Format value for display
+// Format value for display — delegates to shared FieldRenderer
 function formatValue(value: unknown, attribute: CRMAttribute): React.ReactNode {
-  if (value === null || value === undefined || value === "") {
-    return <span className="text-muted-foreground">Not set</span>;
-  }
-
-  switch (attribute.attribute_type) {
-    case "currency":
-      return (
-        <span className="text-green-400 font-medium">
-          ${typeof value === "number" ? value.toLocaleString() : String(value)}
-        </span>
-      );
-    case "checkbox":
-      return value ? "Yes" : "No";
-    case "status":
-    case "select": {
-      const config = attribute.config as { options?: { value: string; label: string; color?: string }[] } | undefined;
-      const option = config?.options?.find((o) => o.value === value);
-      if (option) {
-        return <StatusBadge label={option.label} color={option.color || "#6366f1"} />;
-      }
-      return String(value);
-    }
-    case "date":
-    case "datetime":
-      return new Date(String(value)).toLocaleDateString();
-    default:
-      return String(value);
-  }
+  return <FieldRenderer value={value} attribute={attribute} surface="highlights" />;
 }
 
 // Get href for clickable values

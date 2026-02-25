@@ -17737,3 +17737,223 @@ export const complianceFoldersApi = {
     );
   },
 };
+
+// ============================================================================
+// Standalone Tables Types & API
+// ============================================================================
+
+export type TablePermission = "view" | "comment" | "edit" | "manage" | "admin";
+export type TableVisibility = "workspace" | "private" | "public";
+export type TableRowAccessMode = "all" | "owner_only" | "team_filtered" | "rule_based";
+
+export interface StandaloneTable {
+  id: string;
+  workspace_id: string;
+  name: string;
+  plural_name: string;
+  description: string | null;
+  icon: string | null;
+  color: string | null;
+  scope: string;
+  visibility: TableVisibility;
+  row_access_mode: TableRowAccessMode;
+  created_by_id: string | null;
+  record_count: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TableField {
+  id: string;
+  object_id: string;
+  name: string;
+  slug: string;
+  attribute_type: string;
+  is_required: boolean;
+  is_unique: boolean;
+  is_filterable: boolean;
+  is_primary: boolean;
+  default_value: unknown;
+  options: Record<string, unknown> | null;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TableRecord {
+  id: string;
+  object_id: string;
+  values: Record<string, unknown>;
+  created_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TableCollaborator {
+  id: string;
+  table_id: string;
+  developer_id: string | null;
+  role_id: string | null;
+  team_id: string | null;
+  permission: TablePermission;
+  hidden_columns: string[];
+  readonly_columns: string[];
+  developer_name?: string | null;
+  team_name?: string | null;
+  role_name?: string | null;
+  created_at: string;
+}
+
+export interface TableAccess {
+  permission: TablePermission;
+  hidden_columns: string[];
+  readonly_columns: string[];
+}
+
+export const tablesApi = {
+  // Tables CRUD
+  tables: {
+    list: async (workspaceId: string, scope?: string): Promise<StandaloneTable[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/tables`, {
+        params: scope ? { scope } : undefined,
+      });
+      return response.data;
+    },
+    get: async (workspaceId: string, tableId: string): Promise<StandaloneTable> => {
+      const response = await api.get(`/workspaces/${workspaceId}/tables/${tableId}`);
+      return response.data;
+    },
+    create: async (workspaceId: string, data: {
+      name: string;
+      plural_name?: string;
+      description?: string;
+      icon?: string;
+      color?: string;
+      visibility?: TableVisibility;
+      row_access_mode?: TableRowAccessMode;
+    }): Promise<StandaloneTable> => {
+      const response = await api.post(`/workspaces/${workspaceId}/tables`, data);
+      return response.data;
+    },
+    update: async (workspaceId: string, tableId: string, data: Partial<{
+      name: string;
+      plural_name: string;
+      description: string;
+      icon: string;
+      color: string;
+      visibility: TableVisibility;
+      row_access_mode: TableRowAccessMode;
+      is_active: boolean;
+    }>): Promise<StandaloneTable> => {
+      const response = await api.patch(`/workspaces/${workspaceId}/tables/${tableId}`, data);
+      return response.data;
+    },
+    delete: async (workspaceId: string, tableId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/tables/${tableId}`);
+    },
+  },
+
+  // Fields
+  fields: {
+    list: async (workspaceId: string, tableId: string): Promise<TableField[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/tables/${tableId}/fields`);
+      return response.data;
+    },
+    create: async (workspaceId: string, tableId: string, data: {
+      name: string;
+      slug?: string;
+      attribute_type: string;
+      is_required?: boolean;
+      is_unique?: boolean;
+      is_filterable?: boolean;
+      default_value?: unknown;
+      options?: Record<string, unknown>;
+    }): Promise<TableField> => {
+      const response = await api.post(`/workspaces/${workspaceId}/tables/${tableId}/fields`, data);
+      return response.data;
+    },
+    update: async (workspaceId: string, tableId: string, fieldId: string, data: Partial<{
+      name: string;
+      is_required: boolean;
+      is_unique: boolean;
+      is_filterable: boolean;
+      default_value: unknown;
+      options: Record<string, unknown>;
+    }>): Promise<TableField> => {
+      const response = await api.patch(`/workspaces/${workspaceId}/tables/${tableId}/fields/${fieldId}`, data);
+      return response.data;
+    },
+    delete: async (workspaceId: string, tableId: string, fieldId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/tables/${tableId}/fields/${fieldId}`);
+    },
+  },
+
+  // Records
+  records: {
+    list: async (workspaceId: string, tableId: string, params?: {
+      skip?: number;
+      limit?: number;
+      sort_by?: string;
+      sort_dir?: "asc" | "desc";
+      filters?: Record<string, unknown>[];
+      search?: string;
+    }): Promise<{ records: TableRecord[]; total: number }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/tables/${tableId}/records`, { params });
+      return response.data;
+    },
+    create: async (workspaceId: string, tableId: string, values: Record<string, unknown>): Promise<TableRecord> => {
+      const response = await api.post(`/workspaces/${workspaceId}/tables/${tableId}/records`, { values });
+      return response.data;
+    },
+    update: async (workspaceId: string, tableId: string, recordId: string, values: Record<string, unknown>): Promise<TableRecord> => {
+      const response = await api.patch(`/workspaces/${workspaceId}/tables/${tableId}/records/${recordId}`, { values });
+      return response.data;
+    },
+    delete: async (workspaceId: string, tableId: string, recordId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/tables/${tableId}/records/${recordId}`);
+    },
+    bulkDelete: async (workspaceId: string, tableId: string, recordIds: string[]): Promise<{ deleted: number }> => {
+      const response = await api.post(`/workspaces/${workspaceId}/tables/${tableId}/records/bulk-delete`, { record_ids: recordIds });
+      return response.data;
+    },
+  },
+
+  // Access
+  access: {
+    getMyAccess: async (workspaceId: string, tableId: string): Promise<TableAccess> => {
+      const response = await api.get(`/workspaces/${workspaceId}/tables/${tableId}/access`);
+      return response.data;
+    },
+  },
+
+  // Collaborators
+  collaborators: {
+    list: async (workspaceId: string, tableId: string): Promise<TableCollaborator[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/tables/${tableId}/collaborators`);
+      return response.data;
+    },
+    add: async (workspaceId: string, tableId: string, data: {
+      developer_id?: string;
+      role_id?: string;
+      team_id?: string;
+      permission?: TablePermission;
+      hidden_columns?: string[];
+      readonly_columns?: string[];
+    }): Promise<TableCollaborator> => {
+      const response = await api.post(`/workspaces/${workspaceId}/tables/${tableId}/collaborators`, data);
+      return response.data;
+    },
+    update: async (workspaceId: string, tableId: string, collabId: string, data: Partial<{
+      permission: TablePermission;
+      hidden_columns: string[];
+      readonly_columns: string[];
+    }>): Promise<TableCollaborator> => {
+      const response = await api.patch(`/workspaces/${workspaceId}/tables/${tableId}/collaborators/${collabId}`, data);
+      return response.data;
+    },
+    remove: async (workspaceId: string, tableId: string, collabId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/tables/${tableId}/collaborators/${collabId}`);
+    },
+  },
+};
