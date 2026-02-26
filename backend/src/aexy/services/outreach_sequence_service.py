@@ -285,6 +285,18 @@ class OutreachSequenceService:
                 f"Compliance check failed: {permission.get('reason', 'Unknown reason')}"
             )
 
+        # Resolve recipient timezone from CRM record if available
+        recipient_tz: str | None = None
+        try:
+            from aexy.models.crm import CRMRecord
+            record = (await self.db.execute(
+                select(CRMRecord).where(CRMRecord.id == record_id)
+            )).scalar_one_or_none()
+            if record and record.values:
+                recipient_tz = record.values.get("timezone")
+        except Exception:
+            pass  # Non-critical — fall back to sequence default
+
         # Create enrollment
         enrollment = OutreachEnrollment(
             id=str(uuid4()),
@@ -293,6 +305,7 @@ class OutreachSequenceService:
             record_id=record_id,
             email=email,
             contact_name=contact_name,
+            recipient_timezone=recipient_tz,
             status=EnrollmentStatus.ACTIVE.value,
             current_step_index=0,
         )
@@ -313,6 +326,8 @@ class OutreachSequenceService:
                 workspace_id=workspace_id,
                 sequence_id=sequence_id,
                 steps=sequence.steps,
+                settings=sequence.settings or {},
+                recipient_timezone=recipient_tz,
             ),
             id=wf_id,
             task_queue=TaskQueue.WORKFLOWS,
