@@ -100,8 +100,11 @@ class CompetitorIntelService:
         if not profile:
             return None
 
+        _COMPETITOR_UPDATABLE = {
+            "name", "domain", "tracked_pages", "current_snapshot", "is_active",
+        }
         for key, value in data.items():
-            if value is not None and hasattr(profile, key):
+            if value is not None and key in _COMPETITOR_UPDATABLE:
                 setattr(profile, key, value)
 
         await self.db.commit()

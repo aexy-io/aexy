@@ -108,8 +108,11 @@ class GTMProviderService:
         if data.get("is_default"):
             await self._clear_slot_default(workspace_id, slot)
 
+        _PROVIDER_UPDATABLE = {
+            "display_name", "config", "is_default", "status", "last_error",
+        }
         for key, value in data.items():
-            if value is not None and hasattr(config, key):
+            if value is not None and key in _PROVIDER_UPDATABLE:
                 setattr(config, key, value)
 
         config.updated_at = datetime.now(timezone.utc)
@@ -400,8 +403,11 @@ class ICPTemplateService:
         if data.get("is_default"):
             await self._clear_default(workspace_id)
 
+        _TEMPLATE_UPDATABLE = {
+            "name", "description", "is_default", "criteria", "weights",
+        }
         for key, value in data.items():
-            if value is not None and hasattr(template, key):
+            if value is not None and key in _TEMPLATE_UPDATABLE:
                 if key == "criteria" and hasattr(value, "model_dump"):
                     value = value.model_dump()
                 setattr(template, key, value)
