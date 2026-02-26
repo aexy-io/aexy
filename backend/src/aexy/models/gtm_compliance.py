@@ -89,7 +89,7 @@ class ContactConsent(Base):
     )
     expiry_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    # Extra data
+    # Extra data (DB column is "metadata" for legacy reasons; use `extra_data` in code)
     extra_data: Mapped[dict] = mapped_column(JSONB, name="metadata", default=dict, nullable=False)
 
     # Timestamps
@@ -178,7 +178,7 @@ class ComplianceAuditLog(Base):
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     jurisdiction: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
-    # Extra data
+    # Extra data (DB column is "metadata" for legacy reasons; use `extra_data` in code)
     extra_data: Mapped[dict] = mapped_column(JSONB, name="metadata", default=dict, nullable=False)
 
     # Timestamps
