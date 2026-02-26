@@ -6,8 +6,15 @@
  *           data-workspace="WORKSPACE_ID"
  *           data-api="https://yourapp.com/api/v1"></script>
  *
+ * Consent modes (set via data-consent attribute):
+ *   - "granted"  : Tracking active immediately (use when consent already obtained)
+ *   - "denied"   : No tracking until consent is granted via window.aexy.consent("granted")
+ *   - (omitted)  : Respects navigator.globalPrivacyControl and existing consent cookie;
+ *                   defaults to granted if no signal is present
+ *
  * Features:
- *   - Cookie-based anonymous_id (1-year TTL)
+ *   - Consent-gated cookie and PII collection (GDPR/ePrivacy compliant)
+ *   - Cookie-based anonymous_id (1-year TTL, only set after consent)
  *   - Automatic page view tracking
  *   - UTM parameter capture
  *   - Scroll depth tracking
@@ -29,6 +36,7 @@
 
   var ENDPOINT = API_BASE + "/t/" + WORKSPACE + "/events";
   var COOKIE_NAME = "_aexy_id";
+  var CONSENT_COOKIE = "_aexy_consent";
   var COOKIE_DAYS = 365;
   var FLUSH_INTERVAL = 5000; // 5 seconds
   var HEARTBEAT_INTERVAL = 15000; // 15 seconds
@@ -40,16 +48,61 @@
   var heartbeatTimer = null;
   var scrollDepth = 0;
   var pageStartTime = Date.now();
+  var isInitialized = false;
 
   // ==========================================================================
-  // Anonymous ID (cookie-based)
+  // Consent Management
+  // ==========================================================================
+
+  var consentState = "pending"; // "granted", "denied", "pending"
+
+  function resolveInitialConsent() {
+    // 1. Explicit attribute on script tag takes priority
+    var attrConsent = script.getAttribute("data-consent");
+    if (attrConsent === "granted") return "granted";
+    if (attrConsent === "denied") return "denied";
+
+    // 2. Check for existing consent cookie (user previously consented)
+    var stored = getCookie(CONSENT_COOKIE);
+    if (stored === "granted") return "granted";
+    if (stored === "denied") return "denied";
+
+    // 3. Respect Global Privacy Control (GPC) signal
+    if (navigator.globalPrivacyControl === true) return "denied";
+
+    // 4. No signal — default to granted for backwards compatibility
+    //    Sites in jurisdictions requiring prior consent should use data-consent="denied"
+    return "granted";
+  }
+
+  function setConsent(state) {
+    if (state !== "granted" && state !== "denied") return;
+
+    consentState = state;
+    // Persist consent choice for 1 year
+    setCookie(CONSENT_COOKIE, state, COOKIE_DAYS);
+
+    if (state === "granted" && !isInitialized) {
+      initTracking();
+    } else if (state === "denied") {
+      // Stop tracking and clear tracking cookie
+      stopTracking();
+      deleteCookie(COOKIE_NAME);
+    }
+  }
+
+  // ==========================================================================
+  // Anonymous ID (cookie-based, consent-gated)
   // ==========================================================================
 
   function getAnonymousId() {
     var id = getCookie(COOKIE_NAME);
     if (!id) {
       id = generateId();
-      setCookie(COOKIE_NAME, id, COOKIE_DAYS);
+      // Only set cookie if consent is granted
+      if (consentState === "granted") {
+        setCookie(COOKIE_NAME, id, COOKIE_DAYS);
+      }
     }
     return id;
   }
@@ -82,6 +135,10 @@
       (location.protocol === "https:" ? ";Secure" : "");
   }
 
+  function deleteCookie(name) {
+    document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Lax";
+  }
+
   // ==========================================================================
   // UTM Parameters
   // ==========================================================================
@@ -111,10 +168,17 @@
   // Event Tracking
   // ==========================================================================
 
-  var anonymousId = getAnonymousId();
+  var anonymousId = null;
   var utmParams = getUTMParams();
 
   function track(eventType, properties) {
+    // Block all tracking if consent is denied
+    if (consentState === "denied") return;
+
+    if (!anonymousId) {
+      anonymousId = getAnonymousId();
+    }
+
     var event = {
       anonymous_id: anonymousId,
       event_type: eventType,
@@ -208,6 +272,7 @@
   // ==========================================================================
 
   function startHeartbeat() {
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
     heartbeatTimer = setInterval(function () {
       var timeOnPage = Math.round((Date.now() - pageStartTime) / 1000);
       track("heartbeat", {
@@ -218,24 +283,44 @@
   }
 
   // ==========================================================================
-  // Initialize
+  // Initialize / Stop
   // ==========================================================================
 
-  // Track initial page view
-  track("page_view", {
-    scroll_depth: 0,
-  });
+  function initTracking() {
+    if (isInitialized) return;
+    isInitialized = true;
 
-  // Start scroll tracking
-  trackScrollDepth();
+    anonymousId = getAnonymousId();
 
-  // Start heartbeat
-  startHeartbeat();
+    // Track initial page view
+    track("page_view", {
+      scroll_depth: 0,
+    });
 
-  // Periodic flush
-  flushTimer = setInterval(flush, FLUSH_INTERVAL);
+    // Start scroll tracking
+    trackScrollDepth();
 
-  // Flush on page unload
+    // Start heartbeat
+    startHeartbeat();
+
+    // Periodic flush
+    flushTimer = setInterval(flush, FLUSH_INTERVAL);
+
+    // Flush on page unload
+    window.addEventListener("beforeunload", onUnload);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    // SPA support — track route changes
+    setupSPATracking();
+  }
+
+  function stopTracking() {
+    if (flushTimer) { clearInterval(flushTimer); flushTimer = null; }
+    if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+    queue = [];
+    isInitialized = false;
+  }
+
   function onUnload() {
     // Send final scroll depth and time-on-page
     var timeOnPage = Math.round((Date.now() - pageStartTime) / 1000);
@@ -246,15 +331,14 @@
     flush();
   }
 
-  window.addEventListener("beforeunload", onUnload);
-  document.addEventListener("visibilitychange", function () {
+  function onVisibilityChange() {
     if (document.visibilityState === "hidden") {
       clearInterval(heartbeatTimer);
       flush();
-    } else {
+    } else if (consentState === "granted") {
       startHeartbeat();
     }
-  });
+  }
 
   // SPA support — track route changes
   var lastUrl = window.location.href;
@@ -278,29 +362,47 @@
     }
   }
 
-  // Listen for History API changes (SPAs)
-  var origPushState = history.pushState;
-  history.pushState = function () {
-    origPushState.apply(this, arguments);
-    setTimeout(checkUrlChange, 0);
-  };
+  function setupSPATracking() {
+    // Listen for History API changes (SPAs)
+    var origPushState = history.pushState;
+    history.pushState = function () {
+      origPushState.apply(this, arguments);
+      setTimeout(checkUrlChange, 0);
+    };
 
-  var origReplaceState = history.replaceState;
-  history.replaceState = function () {
-    origReplaceState.apply(this, arguments);
-    setTimeout(checkUrlChange, 0);
-  };
+    var origReplaceState = history.replaceState;
+    history.replaceState = function () {
+      origReplaceState.apply(this, arguments);
+      setTimeout(checkUrlChange, 0);
+    };
 
-  window.addEventListener("popstate", function () {
-    setTimeout(checkUrlChange, 0);
-  });
+    window.addEventListener("popstate", function () {
+      setTimeout(checkUrlChange, 0);
+    });
+  }
+
+  // ==========================================================================
+  // Resolve consent and start (or wait)
+  // ==========================================================================
+
+  consentState = resolveInitialConsent();
+
+  if (consentState === "granted") {
+    initTracking();
+  }
+  // If "denied" or "pending" — tracking stays paused until consent("granted") is called
 
   // Expose manual tracking API
   window.aexy = {
     track: track,
     identify: function (email, properties) {
+      // identify() requires explicit consent — PII must not be sent without it
+      if (consentState !== "granted") {
+        return;
+      }
       track("identify", Object.assign({ email: email }, properties || {}));
     },
     flush: flush,
+    consent: setConsent,
   };
 })();
