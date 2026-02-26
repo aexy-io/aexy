@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   tablesApi,
+  customFieldTypesApi,
   StandaloneTable,
   TableField,
   TableRecord,
@@ -15,6 +16,8 @@ import {
   TableRowAccessMode,
   TablePermission,
   TableShareLink,
+  TableAuditEntry,
+  WorkspaceFieldType,
 } from "@/lib/api";
 
 // ==================== Table Hooks ====================
@@ -59,6 +62,8 @@ export function useTables(workspaceId: string | null) {
         visibility: TableVisibility;
         row_access_mode: TableRowAccessMode;
         is_active: boolean;
+        settings: Record<string, unknown>;
+        audit_config: { enabled?: boolean; retention_days?: number };
       }>;
     }) => tablesApi.tables.update(workspaceId!, tableId, data),
     onSuccess: () => {
@@ -131,11 +136,13 @@ export function useTableFields(workspaceId: string | null, tableId: string | nul
       fieldId: string;
       data: Partial<{
         name: string;
+        description: string;
         is_required: boolean;
         is_unique: boolean;
         is_filterable: boolean;
         default_value: unknown;
         options: Record<string, unknown>;
+        position: number;
       }>;
     }) => tablesApi.fields.update(workspaceId!, tableId!, fieldId, data),
     onSuccess: () => {
@@ -451,6 +458,105 @@ export function useTableShareLinks(workspaceId: string | null, tableId: string |
     isLoading,
     createShareLink: createMutation.mutateAsync,
     revokeShareLink: revokeMutation.mutateAsync,
+    isCreating: createMutation.isPending,
+  };
+}
+
+// ==================== Audit Log Hook ====================
+
+export function useTableAuditLog(
+  workspaceId: string | null,
+  tableId: string | null,
+  params?: { limit?: number; offset?: number; action?: string; record_id?: string }
+) {
+  const { data, isLoading, error, refetch } = useQuery<{ entries: TableAuditEntry[]; total: number }>({
+    queryKey: ["tableAuditLog", workspaceId, tableId, params],
+    queryFn: () => tablesApi.auditLog.list(workspaceId!, tableId!, params),
+    enabled: !!workspaceId && !!tableId,
+  });
+
+  return {
+    entries: data?.entries || [],
+    total: data?.total || 0,
+    isLoading,
+    error,
+    refetch,
+  };
+}
+
+// ==================== Custom Field Types Hook ====================
+
+export function useCustomFieldTypes(workspaceId: string | null) {
+  const queryClient = useQueryClient();
+
+  const { data: fieldTypes, isLoading, error, refetch } = useQuery<WorkspaceFieldType[]>({
+    queryKey: ["customFieldTypes", workspaceId],
+    queryFn: () => customFieldTypesApi.list(workspaceId!),
+    enabled: !!workspaceId,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: {
+      name: string;
+      slug?: string;
+      base_type: string;
+      default_variant?: string;
+      default_display_config?: Record<string, unknown>;
+      icon?: string;
+      color?: string;
+      validation_rules?: Record<string, unknown>;
+      preset_options?: { value: string; label: string; color?: string }[];
+    }) => customFieldTypesApi.create(workspaceId!, data),
+    onSuccess: () => {
+      toast.success("Custom field type created");
+      queryClient.invalidateQueries({ queryKey: ["customFieldTypes", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to create custom field type");
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ typeId, data }: {
+      typeId: string;
+      data: Partial<{
+        name: string;
+        default_variant: string;
+        default_display_config: Record<string, unknown>;
+        icon: string;
+        color: string;
+        validation_rules: Record<string, unknown>;
+        preset_options: { value: string; label: string; color?: string }[];
+      }>;
+    }) => customFieldTypesApi.update(workspaceId!, typeId, data),
+    onSuccess: () => {
+      toast.success("Custom field type updated");
+      queryClient.invalidateQueries({ queryKey: ["customFieldTypes", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to update custom field type");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (typeId: string) => customFieldTypesApi.delete(workspaceId!, typeId),
+    onSuccess: () => {
+      toast.success("Custom field type deleted");
+      queryClient.invalidateQueries({ queryKey: ["customFieldTypes", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to delete custom field type");
+    },
+  });
+
+  return {
+    fieldTypes: fieldTypes || [],
+    isLoading,
+    error,
+    refetch,
+    createFieldType: createMutation.mutateAsync,
+    updateFieldType: updateMutation.mutateAsync,
+    deleteFieldType: deleteMutation.mutateAsync,
     isCreating: createMutation.isPending,
   };
 }
