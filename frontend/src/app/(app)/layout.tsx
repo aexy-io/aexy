@@ -5,26 +5,21 @@ import { AppShell } from "@/components/layout/AppShell";
 import { GlobalShortcuts } from "@/components/GlobalShortcuts";
 import { CommandPalette } from "@/components/CommandPalette";
 import { KeyboardShortcutsHelp } from "@/components/KeyboardShortcutsHelp";
-import { redirect } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-    const [mounted, setMounted] = useState(false);
-    const { user, logout, isLoading, isAuthenticated } = useAuth();
-
-    // Prevent hydration mismatch by only rendering after client mount
-    useEffect(() => {
-        setMounted(true);
-    }, []);
+    const router = useRouter();
+    const { user, logout, isLoading, isAuthenticated, isResolved } = useAuth();
 
     useEffect(() => {
-        if (mounted && !isLoading && !isAuthenticated) {
-            redirect("/");
+        if (isResolved && !isAuthenticated) {
+            router.push("/");
         }
-    }, [mounted, isLoading, isAuthenticated]);
+    }, [isResolved, isAuthenticated, router]);
 
-    // Show loading state during SSR and initial client render
-    if (!mounted || isLoading) {
+    // Show skeleton until auth state is definitively resolved
+    if (!isResolved || isLoading) {
         return (
             <div className="min-h-screen bg-background flex">
                 {/* Sidebar skeleton */}

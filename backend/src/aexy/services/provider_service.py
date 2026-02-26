@@ -908,6 +908,64 @@ class ProviderService:
                 "provider": provider.provider_type,
             }
 
+    async def send_email(
+        self,
+        provider_id: str,
+        to_email: str,
+        from_email: str,
+        from_name: str,
+        subject: str,
+        html_body: str,
+        text_body: str = "",
+        reply_to: str | None = None,
+        headers: dict | None = None,
+        unsubscribe_url: str | None = None,
+        unsubscribe_email: str | None = None,
+    ) -> dict:
+        """Send an email via a provider looked up by ID.
+
+        Automatically adds RFC 2369 List-Unsubscribe and RFC 8058
+        List-Unsubscribe-Post headers for ISP compliance (required by
+        Google and Yahoo since Feb 2024).
+        """
+        provider = (await self.db.execute(
+            select(EmailProvider).where(EmailProvider.id == provider_id)
+        )).scalar_one_or_none()
+
+        if not provider:
+            return {"success": False, "error": "Provider not found"}
+
+        # Build deliverability headers
+        merged_headers = dict(headers or {})
+
+        # List-Unsubscribe (RFC 2369) — provides ISP-level one-click unsubscribe
+        unsub_parts = []
+        if unsubscribe_url:
+            unsub_parts.append(f"<{unsubscribe_url}>")
+        elif from_email:
+            # Generate a default unsubscribe URL from the sending domain
+            domain = from_email.split("@")[-1] if "@" in from_email else ""
+            if domain:
+                unsub_parts.append(f"<https://{domain}/unsubscribe?email={to_email}>")
+        if unsubscribe_email:
+            unsub_parts.append(f"<mailto:{unsubscribe_email}>")
+        if unsub_parts and "List-Unsubscribe" not in merged_headers:
+            merged_headers["List-Unsubscribe"] = ", ".join(unsub_parts)
+            # RFC 8058 one-click unsubscribe (required by Google/Yahoo)
+            merged_headers["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click"
+
+        return await self.send_via_provider(
+            provider=provider,
+            from_email=from_email,
+            from_name=from_name,
+            to_email=to_email,
+            subject=subject,
+            body_html=html_body,
+            body_text=text_body,
+            reply_to=reply_to,
+            headers=merged_headers,
+        )
+
     async def reset_daily_counts(self, workspace_id: str) -> int:
         """Reset daily send counts for all providers in a workspace."""
         result = await self.db.execute(

@@ -42,6 +42,7 @@ import {
   MonitorCheck,
   Bell,
   Menu,
+  Crosshair,
 } from "lucide-react";
 import { SiGithub } from "@icons-pack/react-simple-icons";
 import Link from "next/link";
@@ -69,6 +70,7 @@ const productLinks = [
   { href: "/products/ai-agents", label: "AI Agents", icon: Bot, desc: "Intelligent automation", color: "from-purple-500 to-violet-500" },
   { href: "/products/uptime", label: "Uptime Monitoring", icon: MonitorCheck, desc: "Endpoint health & incidents", color: "from-emerald-500 to-green-500" },
   { href: "/products/reminders", label: "Compliance Reminders", icon: Bell, desc: "Track recurring commitments", color: "from-blue-500 to-cyan-500" },
+  { href: "/products/gtm-intelligence", label: "GTM Intelligence", icon: Crosshair, desc: "Visitor ID & lead scoring", color: "from-indigo-500 to-violet-500" },
 ];
 
 const solutionLinks = [
@@ -659,16 +661,16 @@ export default function Home() {
                 <div className="text-amber-400 text-sm font-semibold tracking-wider mb-2">CONNECT</div>
                 <h3 className="text-2xl font-bold text-white mb-3">Relationships</h3>
                 <p className="text-white/50 mb-6">
-                  Manage all your business relationships. CRM, email marketing, calendar integration, AI enrichment.
+                  Manage all your business relationships. CRM, GTM intelligence, email marketing, calendar integration.
                 </p>
                 <div className="border-t border-white/10 pt-6 space-y-3">
                   <div className="flex items-center gap-2 text-white/60 text-sm">
                     <CheckCircle2 className="h-4 w-4 text-amber-400" />
-                    Gmail & Calendar sync
+                    Visitor identification & lead scoring
                   </div>
                   <div className="flex items-center gap-2 text-white/60 text-sm">
                     <CheckCircle2 className="h-4 w-4 text-amber-400" />
-                    Contact management
+                    Contact management & CRM
                   </div>
                   <div className="flex items-center gap-2 text-white/60 text-sm">
                     <CheckCircle2 className="h-4 w-4 text-amber-400" />
@@ -676,12 +678,17 @@ export default function Home() {
                   </div>
                   <div className="flex items-center gap-2 text-white/60 text-sm">
                     <CheckCircle2 className="h-4 w-4 text-amber-400" />
-                    Multi-domain email infrastructure
+                    Pluggable provider registry (10 slots)
                   </div>
                 </div>
-                <Link href="/products/email-marketing" className="inline-flex items-center gap-2 text-amber-400 mt-6 text-sm font-medium group-hover:gap-3 transition-all">
-                  Explore Email Marketing <ArrowRight className="h-4 w-4" />
-                </Link>
+                <div className="flex items-center gap-4 mt-6">
+                  <Link href="/products/gtm-intelligence" className="inline-flex items-center gap-2 text-amber-400 text-sm font-medium group-hover:gap-3 transition-all">
+                    GTM Intelligence <ArrowRight className="h-4 w-4" />
+                  </Link>
+                  <Link href="/products/email-marketing" className="inline-flex items-center gap-2 text-white/40 hover:text-amber-400 text-sm font-medium transition-all">
+                    Email Marketing <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
@@ -1100,6 +1107,41 @@ export default function Home() {
                   <p className="text-white/50 text-sm">
                     AI extracts contacts, classifies leads, and enriches records from signatures.
                   </p>
+                </div>
+              </div>
+            </div>
+
+            {/* GTM Intelligence - Medium card */}
+            <div className="col-span-12 md:col-span-6 group">
+              <div className="relative h-full overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500/10 via-violet-500/5 to-transparent border border-white/10 p-8 hover:border-indigo-500/30 transition-all duration-500">
+                <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/20 rounded-full blur-3xl group-hover:bg-indigo-500/30 transition-all duration-500" />
+                <div className="relative">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-3 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-2xl shadow-lg shadow-indigo-500/25">
+                      <Crosshair className="h-6 w-6 text-white" />
+                    </div>
+                    <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-semibold rounded-full border border-emerald-500/20">
+                      NEW
+                    </span>
+                  </div>
+                  <h3 className="text-2xl font-bold text-white mb-3">GTM Intelligence</h3>
+                  <p className="text-white/50 mb-6">
+                    Identify anonymous website visitors, score leads automatically, and route hot prospects to sales with pluggable providers.
+                  </p>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-white/60 text-sm">
+                      <CheckCircle2 className="h-4 w-4 text-indigo-400" />
+                      IP-to-company visitor identification
+                    </div>
+                    <div className="flex items-center gap-2 text-white/60 text-sm">
+                      <CheckCircle2 className="h-4 w-4 text-indigo-400" />
+                      Multi-factor lead scoring (0-100)
+                    </div>
+                    <div className="flex items-center gap-2 text-white/60 text-sm">
+                      <CheckCircle2 className="h-4 w-4 text-indigo-400" />
+                      10-slot hot-swappable provider registry
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
