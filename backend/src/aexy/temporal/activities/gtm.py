@@ -541,13 +541,16 @@ async def score_lead(input: ScoreLeadInput) -> dict:
 async def batch_score_leads(input: BatchScoreLeadsInput) -> dict:
     """Score multiple leads in batch."""
     results = []
-    for record_id in input.record_ids:
+    for i, record_id in enumerate(input.record_ids):
         result = await score_lead(ScoreLeadInput(
             workspace_id=input.workspace_id,
             record_id=record_id,
             icp_template_id=input.icp_template_id,
         ))
         results.append(result)
+        # Send heartbeat every 10 records so Temporal doesn't cancel the activity
+        if (i + 1) % 10 == 0:
+            activity.heartbeat(f"Scored {i + 1}/{len(input.record_ids)} leads")
 
     return {
         "scored": len(results),
@@ -1132,18 +1135,26 @@ async def check_sla_breaches(input: CheckSLABreachesInput) -> dict:
 
     logger.info("Checking SLA breaches")
 
-    async with async_session_maker() as db:
-        service = LeadRoutingService(db)
-        if input.workspace_id:
+    if input.workspace_id:
+        async with async_session_maker() as db:
+            service = LeadRoutingService(db)
             count = await service.check_sla_breaches(input.workspace_id)
-        else:
-            # Check all workspaces
+    else:
+        # Check all workspaces — each in its own session for isolation
+        async with async_session_maker() as db:
             from aexy.models.workspace import Workspace
             from sqlalchemy import select
             ws_result = await db.execute(select(Workspace.id))
-            count = 0
-            for (ws_id,) in ws_result.all():
-                count += await service.check_sla_breaches(ws_id)
+            ws_ids = [ws_id for (ws_id,) in ws_result.all()]
+
+        count = 0
+        for ws_id in ws_ids:
+            try:
+                async with async_session_maker() as db:
+                    service = LeadRoutingService(db)
+                    count += await service.check_sla_breaches(ws_id)
+            except Exception:
+                logger.exception(f"SLA breach check failed for workspace {ws_id}")
 
     return {"breaches_found": count}
 
@@ -1184,17 +1195,26 @@ async def batch_score_customer_health(input: BatchScoreCustomerHealthInput) -> d
 
     logger.info(f"Batch scoring customer health for workspace {input.workspace_id}")
 
-    async with async_session_maker() as db:
-        service = HealthScoringService(db)
-        if input.workspace_id:
+    if input.workspace_id:
+        async with async_session_maker() as db:
+            service = HealthScoringService(db)
             count = await service.batch_score_customers(input.workspace_id)
-        else:
+    else:
+        async with async_session_maker() as db:
             from aexy.models.workspace import Workspace
             from sqlalchemy import select
             ws_result = await db.execute(select(Workspace.id))
-            count = 0
-            for (ws_id,) in ws_result.all():
-                count += await service.batch_score_customers(ws_id)
+            ws_ids = [ws_id for (ws_id,) in ws_result.all()]
+
+        count = 0
+        for ws_id in ws_ids:
+            try:
+                async with async_session_maker() as db:
+                    service = HealthScoringService(db)
+                    count += await service.batch_score_customers(ws_id)
+                activity.heartbeat(f"Scored health for workspace {ws_id}")
+            except Exception:
+                logger.exception(f"Health scoring failed for workspace {ws_id}")
 
     return {"scored": count}
 
@@ -1211,17 +1231,25 @@ async def detect_health_drops(input: DetectHealthDropsInput) -> dict:
 
     logger.info("Detecting health drops")
 
-    async with async_session_maker() as db:
-        service = HealthScoringService(db)
-        if input.workspace_id:
+    if input.workspace_id:
+        async with async_session_maker() as db:
+            service = HealthScoringService(db)
             alerts = await service.detect_health_drops(input.workspace_id)
-        else:
+    else:
+        async with async_session_maker() as db:
             from aexy.models.workspace import Workspace
             from sqlalchemy import select
             ws_result = await db.execute(select(Workspace.id))
-            alerts = []
-            for (ws_id,) in ws_result.all():
-                alerts.extend(await service.detect_health_drops(ws_id))
+            ws_ids = [ws_id for (ws_id,) in ws_result.all()]
+
+        alerts = []
+        for ws_id in ws_ids:
+            try:
+                async with async_session_maker() as db:
+                    service = HealthScoringService(db)
+                    alerts.extend(await service.detect_health_drops(ws_id))
+            except Exception:
+                logger.exception(f"Health drop detection failed for workspace {ws_id}")
 
     return {"alerts_sent": len(alerts)}
 
