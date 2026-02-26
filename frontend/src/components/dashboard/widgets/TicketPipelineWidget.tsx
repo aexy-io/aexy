@@ -41,19 +41,19 @@ export function TicketPipelineWidget() {
 
   return (
     <div className="bg-background/50 border border-border rounded-xl overflow-hidden">
-      <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-orange-500/10 rounded-lg">
-            <GitPullRequest className="h-5 w-5 text-orange-400" />
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="p-1.5 bg-orange-500/10 rounded-lg shrink-0">
+            <GitPullRequest className="h-4 w-4 text-orange-400" />
           </div>
-          <h3 className="text-lg font-semibold text-foreground">Ticket Pipeline</h3>
+          <h3 className="text-sm font-semibold text-foreground truncate">Ticket Pipeline</h3>
           {hasData && (
             <span className="text-muted-foreground text-xs">{totalTickets} total</span>
           )}
         </div>
         <Link
           href="/tickets"
-          className="text-orange-400 hover:text-orange-300 text-sm flex items-center gap-1 transition"
+          className="text-orange-400 hover:text-orange-300 text-xs flex items-center gap-0.5 transition whitespace-nowrap shrink-0"
         >
           View all <ChevronRight className="w-4 h-4" />
         </Link>

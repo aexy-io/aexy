@@ -31,13 +31,13 @@ export function PendingLeaveApprovalsWidget() {
 
   return (
     <div className="bg-background/50 border border-border rounded-xl overflow-hidden">
-      <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-amber-500/10 rounded-lg">
-            <CheckSquare className="h-5 w-5 text-amber-400" />
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="p-1.5 bg-amber-500/10 rounded-lg shrink-0">
+            <CheckSquare className="h-4 w-4 text-amber-400" />
           </div>
-          <div>
-            <h3 className="text-lg font-semibold text-foreground">
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-foreground truncate">
               Leave Approvals
             </h3>
             {approvals && approvals.length > 0 && (
@@ -49,9 +49,9 @@ export function PendingLeaveApprovalsWidget() {
         </div>
         <Link
           href="/leave?tab=approvals"
-          className="text-amber-400 hover:text-amber-300 text-sm flex items-center gap-1 transition"
+          className="text-amber-400 hover:text-amber-300 text-xs flex items-center gap-0.5 transition whitespace-nowrap shrink-0"
         >
-          View all <ChevronRight className="w-4 h-4" />
+          View all <ChevronRight className="w-3.5 h-3.5" />
         </Link>
       </div>
 
