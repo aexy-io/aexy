@@ -22,7 +22,10 @@ class GTMHealthScore(Base):
         UUID(as_uuid=False), ForeignKey("workspaces.id", ondelete="CASCADE"),
         nullable=False, index=True,
     )
-    record_id: Mapped[str] = mapped_column(UUID(as_uuid=False), nullable=False, index=True)
+    record_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("crm_records.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
 
     # Score breakdown (0-100)
     total_score: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

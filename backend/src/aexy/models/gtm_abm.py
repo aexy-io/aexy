@@ -65,7 +65,10 @@ class ABMAccount(Base):
         UUID(as_uuid=False), ForeignKey("abm_target_lists.id", ondelete="CASCADE"),
         nullable=False, index=True,
     )
-    record_id: Mapped[str] = mapped_column(UUID(as_uuid=False), nullable=False, index=True)
+    record_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("crm_records.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
 
     # Relationships
     target_list: Mapped["ABMTargetList"] = relationship(

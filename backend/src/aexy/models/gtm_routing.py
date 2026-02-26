@@ -72,7 +72,10 @@ class GTMLeadAssignment(Base):
         nullable=False, index=True,
     )
 
-    record_id: Mapped[str] = mapped_column(UUID(as_uuid=False), nullable=False, index=True)
+    record_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("crm_records.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
     routing_rule_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False), ForeignKey("gtm_routing_rules.id", ondelete="SET NULL"),
         nullable=True,

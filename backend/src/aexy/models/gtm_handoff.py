@@ -22,7 +22,10 @@ class GTMHandoff(Base):
         UUID(as_uuid=False), ForeignKey("workspaces.id", ondelete="CASCADE"),
         nullable=False, index=True,
     )
-    record_id: Mapped[str] = mapped_column(UUID(as_uuid=False), nullable=False, index=True)
+    record_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("crm_records.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
 
     # Participants
     created_by: Mapped[str] = mapped_column(UUID(as_uuid=False), nullable=False)
