@@ -23,6 +23,7 @@ from .intent import router as intent_router
 from .competitors import router as competitors_router
 from .seo import router as seo_router
 from .abm import router as abm_router
+from .webhooks import router as webhooks_router
 
 router = APIRouter(
     prefix="/workspaces/{workspace_id}/gtm",
@@ -47,3 +48,4 @@ router.include_router(intent_router)
 router.include_router(competitors_router)
 router.include_router(seo_router)
 router.include_router(abm_router)
+router.include_router(webhooks_router)

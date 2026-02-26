@@ -135,6 +135,25 @@ async def identify_visitor_session(input: IdentifyVisitorSessionInput) -> dict:
                 if record_id:
                     identification.matched_record_id = record_id
 
+        # Emit visitor.identified webhook
+        if result.success:
+            try:
+                from aexy.services.gtm_webhook_service import GTMWebhookService
+                webhook_svc = GTMWebhookService(db)
+                await webhook_svc.emit_event(
+                    workspace_id=input.workspace_id,
+                    event_type="visitor.identified",
+                    event_data={
+                        "session_id": input.session_id,
+                        "company_name": result.company_name,
+                        "company_domain": result.company_domain,
+                        "confidence": result.confidence,
+                        "matched_record_id": identification.matched_record_id,
+                    },
+                )
+            except Exception as e:
+                logger.error("Failed to emit visitor.identified webhook: %s", e)
+
         await db.commit()
 
     # ── Pipeline continuation: score → route → alert ──
@@ -689,6 +708,25 @@ async def score_lead(input: ScoreLeadInput) -> dict:
                 last_scored_at=now,
             )
             db.add(lead_score)
+
+        # Emit lead.scored webhook
+        try:
+            from aexy.services.gtm_webhook_service import GTMWebhookService
+            webhook_svc = GTMWebhookService(db)
+            await webhook_svc.emit_event(
+                workspace_id=input.workspace_id,
+                event_type="lead.scored",
+                event_data={
+                    "record_id": input.record_id,
+                    "total_score": total_score,
+                    "lifecycle_stage": lifecycle,
+                    "firmographic": firmo_score,
+                    "behavioral": behav_score,
+                    "engagement": engage_score,
+                },
+            )
+        except Exception as e:
+            logger.error("Failed to emit lead.scored webhook: %s", e)
 
         await db.commit()
 

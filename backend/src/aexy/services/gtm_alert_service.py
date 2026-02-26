@@ -126,6 +126,28 @@ class GTMAlertService:
             except Exception as e:
                 logger.error(f"Failed to dispatch alert: {e}")
 
+        # Fan-out to outbound GTM webhooks
+        # Map internal event types to webhook event types
+        webhook_event_map = {
+            "new_lead": "lead.routed",
+            "lead_scored": "lead.scored",
+            "lead_assigned": "lead.assigned",
+            "sla_breach": "sla.breached",
+            "health_drop": "health.score_changed",
+            "competitor_alert": "competitor.change_detected",
+            "sequence_completed": "sequence.completed",
+            "sequence_replied": "sequence.replied",
+            "sequence_enrolled": "sequence.enrolled",
+            "visitor_identified": "visitor.identified",
+        }
+        webhook_event = webhook_event_map.get(event_type, event_type)
+        try:
+            from aexy.services.gtm_webhook_service import GTMWebhookService
+            webhook_svc = GTMWebhookService(self.db)
+            await webhook_svc.emit_event(workspace_id, webhook_event, event_data)
+        except Exception as e:
+            logger.error("Failed to emit webhook for %s: %s", webhook_event, e)
+
         return log_ids
 
     def _match_conditions(self, conditions: dict, event_data: dict) -> bool:

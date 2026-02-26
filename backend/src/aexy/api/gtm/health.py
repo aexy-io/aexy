@@ -115,3 +115,18 @@ async def update_health_config(
     await check_workspace_permission(workspace_id, current_user, db)
     service = HealthScoringService(db)
     return await service.update_config(workspace_id, data.model_dump(exclude_none=True))
+
+
+@router.get("/health/providers")
+async def get_provider_health(
+    workspace_id: str,
+    hours: int = Query(default=24, ge=1, le=168),
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get provider integration health metrics."""
+    from aexy.services.gtm_webhook_service import GTMProviderHealthService
+    await check_workspace_permission(workspace_id, current_user, db)
+    service = GTMProviderHealthService(db)
+    providers = await service.get_health_summary(workspace_id, hours=hours)
+    return {"providers": providers, "period_hours": hours}
