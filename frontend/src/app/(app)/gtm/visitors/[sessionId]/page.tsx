@@ -202,10 +202,12 @@ export default function GTMVisitorDetailPage() {
 
   async function handleLinkToCRM() {
     if (!workspaceId || !identification) return;
+    const recordId = window.prompt("Enter the CRM record ID to link this visitor to:");
+    if (!recordId?.trim()) return;
     setIsLinking(true);
     try {
       await gtmApi.visitors.link(workspaceId, sessionId, {
-        record_id: "",
+        record_id: recordId.trim(),
       });
       refetch();
     } finally {

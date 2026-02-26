@@ -38,7 +38,7 @@ async def create_seo_audit(
     from aexy.services.seo_audit_service import SEOAuditService
     from aexy.temporal.dispatch import dispatch
     from aexy.temporal.task_queues import TaskQueue
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = SEOAuditService(db)
     audit = await service.create_audit(workspace_id, data.target_url, record_id=data.record_id)
     wf_id = await dispatch(
@@ -116,7 +116,7 @@ async def delete_seo_audit(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.seo_audit_service import SEOAuditService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = SEOAuditService(db)
     deleted = await service.delete_audit(workspace_id, audit_id)
     if not deleted:
@@ -137,7 +137,7 @@ async def create_content_gap_analysis(
     from aexy.services.content_gap_service import ContentGapService
     from aexy.temporal.dispatch import dispatch
     from aexy.temporal.task_queues import TaskQueue
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = ContentGapService(db)
     analysis = await service.create_analysis(workspace_id, data.our_domain, data.competitor_domains)
     wf_id = await dispatch(
@@ -187,7 +187,7 @@ async def delete_content_gap_analysis(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.content_gap_service import ContentGapService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = ContentGapService(db)
     deleted = await service.delete_analysis(workspace_id, analysis_id)
     if not deleted:

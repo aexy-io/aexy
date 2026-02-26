@@ -61,7 +61,7 @@ async def create_intent_signal(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.intent_signal_service import IntentSignalService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = IntentSignalService(db)
     return await service.create_signal(workspace_id, data)
 
@@ -74,7 +74,7 @@ async def dismiss_intent_signal(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.intent_signal_service import IntentSignalService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = IntentSignalService(db)
     result = await service.dismiss_signal(workspace_id, signal_id)
     if not result:
@@ -115,9 +115,9 @@ async def update_intent_config(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.intent_signal_service import IntentSignalService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = IntentSignalService(db)
-    return await service.upsert_config(workspace_id, data.model_dump(exclude_none=True))
+    return await service.upsert_config(workspace_id, data.model_dump(exclude_unset=True))
 
 
 @router.get("/intent/summary", response_model=IntentSummaryResponse)
@@ -140,7 +140,7 @@ async def trigger_intent_collection(
 ):
     from aexy.temporal.dispatch import dispatch
     from aexy.temporal.task_queues import TaskQueue
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     wf_id = await dispatch(
         "collect_intent_signals",
         {"workspace_id": workspace_id},

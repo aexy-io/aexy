@@ -167,17 +167,17 @@ class VisitorSessionResponse(BaseModel):
     utm_campaign: str | None
     ip_address: str | None
     country_code: str | None
-
-    @field_validator("ip_address", mode="before")
-    @classmethod
-    def coerce_ip(cls, v: Any) -> str | None:
-        return str(v) if v is not None else None
     city: str | None
     identification_status: str
     identified_company: str | None
     identified_domain: str | None
     started_at: datetime
     last_activity_at: datetime
+
+    @field_validator("ip_address", mode="before")
+    @classmethod
+    def coerce_ip(cls, v: Any) -> str | None:
+        return str(v) if v is not None else None
 
 
 class VisitorSessionListResponse(BaseModel):
@@ -207,11 +207,6 @@ class VisitorIdentificationResponse(BaseModel):
     session_id: str | None
     ip_address: str
     provider_name: str
-
-    @field_validator("ip_address", mode="before")
-    @classmethod
-    def coerce_ip(cls, v: Any) -> str:
-        return str(v) if v is not None else ""
     company_name: str | None
     company_domain: str | None
     industry: str | None
@@ -222,6 +217,11 @@ class VisitorIdentificationResponse(BaseModel):
     confidence: float
     matched_record_id: str | None
     identified_at: datetime
+
+    @field_validator("ip_address", mode="before")
+    @classmethod
+    def coerce_ip(cls, v: Any) -> str:
+        return str(v) if v is not None else ""
 
 
 class ManualIdentifyRequest(BaseModel):
@@ -675,7 +675,7 @@ class EnrollContactRequest(BaseModel):
 
 class BulkEnrollRequest(BaseModel):
     """Bulk enroll contacts in a sequence."""
-    contacts: list[EnrollContactRequest]
+    contacts: list[EnrollContactRequest] = Field(..., max_length=500)
 
 
 class EnrollmentResponse(BaseModel):

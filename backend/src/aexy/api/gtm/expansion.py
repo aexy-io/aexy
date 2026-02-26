@@ -42,7 +42,7 @@ async def create_expansion_playbook(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.expansion_playbook_service import ExpansionPlaybookService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = ExpansionPlaybookService(db)
     return await service.create_playbook(workspace_id, data.model_dump())
 
@@ -72,9 +72,9 @@ async def update_expansion_playbook(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.expansion_playbook_service import ExpansionPlaybookService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = ExpansionPlaybookService(db)
-    result = await service.update_playbook(workspace_id, playbook_id, data.model_dump(exclude_none=True))
+    result = await service.update_playbook(workspace_id, playbook_id, data.model_dump(exclude_unset=True))
     if not result:
         raise HTTPException(status_code=404, detail="Not found")
     return result
@@ -88,7 +88,7 @@ async def delete_expansion_playbook(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.expansion_playbook_service import ExpansionPlaybookService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = ExpansionPlaybookService(db)
     deleted = await service.delete_playbook(workspace_id, playbook_id)
     if not deleted:
@@ -105,7 +105,7 @@ async def enroll_in_expansion_playbook(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.expansion_playbook_service import ExpansionPlaybookService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = ExpansionPlaybookService(db)
     return await service.enroll(workspace_id, playbook_id, record_id, data)
 
@@ -134,7 +134,7 @@ async def advance_expansion_step(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.expansion_playbook_service import ExpansionPlaybookService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = ExpansionPlaybookService(db)
     result = await service.advance_step(workspace_id, enrollment_id)
     if not result:
@@ -151,7 +151,7 @@ async def record_expansion_outcome(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.expansion_playbook_service import ExpansionPlaybookService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = ExpansionPlaybookService(db)
     result = await service.record_outcome(workspace_id, enrollment_id, data)
     if not result:

@@ -161,6 +161,8 @@ class IntentSignalService:
             logger.info("No job/tech keywords configured for workspace %s", workspace_id)
             return 0
 
+        from aexy.core.url_validation import validate_url_for_fetch, SSRFError
+
         careers_paths = ["/careers", "/jobs", "/open-positions"]
         created = 0
 
@@ -168,6 +170,11 @@ class IntentSignalService:
             for domain in config.monitored_domains:
                 for path in careers_paths:
                     url = f"https://{domain}{path}"
+                    try:
+                        validate_url_for_fetch(url)
+                    except SSRFError:
+                        logger.warning("Blocked SSRF attempt for domain %s", domain)
+                        break
                     try:
                         resp = await client.get(url)
                         if resp.status_code != 200:
@@ -242,10 +249,17 @@ class IntentSignalService:
         if not tech_kw:
             return 0
 
+        from aexy.core.url_validation import validate_url_for_fetch, SSRFError
+
         created = 0
         async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
             for domain in config.monitored_domains:
                 url = f"https://{domain}"
+                try:
+                    validate_url_for_fetch(url)
+                except SSRFError:
+                    logger.warning("Blocked SSRF attempt for domain %s", domain)
+                    continue
                 try:
                     resp = await client.get(url)
                     if resp.status_code != 200:

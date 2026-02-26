@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -222,10 +222,12 @@ export default function SequenceDetailPage() {
   const [activeTab, setActiveTab] = useState<"steps" | "enrollments" | "analytics">("steps");
 
   // Initialize steps from sequence data
-  if (sequence && !stepsInitialized) {
-    setSteps(sequence.steps as SequenceStep[]);
-    setStepsInitialized(true);
-  }
+  useEffect(() => {
+    if (sequence && !stepsInitialized) {
+      setSteps(sequence.steps as SequenceStep[]);
+      setStepsInitialized(true);
+    }
+  }, [sequence, stepsInitialized]);
 
   const addStep = (channel: string) => {
     const actions = ACTION_OPTIONS[channel] || [];

@@ -316,8 +316,14 @@ async def track_image(
             image_id=image_id,
         )
 
-        # Fetch and serve the image from storage
+        # Fetch and serve the image from storage (with SSRF protection)
         try:
+            from aexy.core.url_validation import validate_url_for_fetch, SSRFError
+            try:
+                validate_url_for_fetch(image.storage_url)
+            except SSRFError:
+                raise HTTPException(status_code=403, detail="Blocked storage URL")
+
             async with httpx.AsyncClient() as client:
                 response = await client.get(image.storage_url, timeout=10.0)
 

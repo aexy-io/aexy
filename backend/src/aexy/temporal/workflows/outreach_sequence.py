@@ -20,7 +20,7 @@ Signals:
 """
 
 import asyncio
-import random
+import hashlib
 from datetime import timedelta
 
 from temporalio import workflow
@@ -88,8 +88,12 @@ def _seconds_until_send_window(
     return max(delta, 60)  # At least 60s to avoid tight loops
 
 
-def _select_variant(step: dict) -> tuple[dict, int | None]:
-    """If step has A/B variants, randomly select one. Returns (config, variant_index).
+def _select_variant(step: dict, enrollment_id: str = "") -> tuple[dict, int | None]:
+    """If step has A/B variants, select one deterministically. Returns (config, variant_index).
+
+    Uses a hash of the enrollment_id + step index to produce a deterministic,
+    replay-safe selection instead of ``random.random()`` which is
+    non-deterministic across Temporal workflow replays.
 
     Step config format for A/B:
         config.variants: [{subject, body, weight}, ...]
@@ -106,8 +110,11 @@ def _select_variant(step: dict) -> tuple[dict, int | None]:
     if total <= 0:
         return config, None
 
-    # Weighted random selection (deterministic within Temporal replay)
-    r = random.random() * total
+    # Deterministic hash-based selection (replay-safe)
+    step_index = step.get("step_index", 0)
+    hash_input = f"{enrollment_id}:{step_index}".encode()
+    hash_value = int(hashlib.sha256(hash_input).hexdigest(), 16)
+    r = (hash_value % 10000) / 10000.0 * total
     cumulative = 0
     for idx, (v, w) in enumerate(zip(variants, weights)):
         cumulative += w
@@ -219,7 +226,7 @@ class OutreachSequenceWorkflow:
                     break
 
             # ---- A/B variant selection ----
-            step_config, variant_index = _select_variant(step)
+            step_config, variant_index = _select_variant(step, enrollment_id=input.enrollment_id)
 
             # ---- Build execution input ----
             exec_config = dict(step_config)

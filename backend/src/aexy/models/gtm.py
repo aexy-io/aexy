@@ -106,6 +106,7 @@ class GTMProviderConfig(Base):
 
     __table_args__ = (
         Index("ix_gtm_provider_configs_ws_slot", "workspace_id", "slot"),
+        UniqueConstraint("workspace_id", "slot", "provider_name", name="uq_gtm_provider_workspace_slot_name"),
     )
 
     @validates("credentials")
@@ -416,4 +417,8 @@ class LeadScore(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "record_id", "icp_template_id", name="uq_lead_score_record_template"),
     )

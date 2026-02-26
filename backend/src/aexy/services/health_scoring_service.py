@@ -335,7 +335,7 @@ class HealthScoringService:
             "avg_score": avg_score,
             "improving_count": improving,
             "declining_count": declining,
-            "distribution": [
+            "status_distribution": [
                 {"status": status, "count": count}
                 for status, count in status_distribution.items()
             ],

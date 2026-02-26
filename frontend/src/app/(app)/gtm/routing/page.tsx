@@ -147,7 +147,7 @@ export default function RoutingPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-muted-foreground font-mono">
-                      {rule.sla_minutes ?? "—"}
+                      {rule.sla_first_response_minutes ?? "—"}
                     </td>
                     <td className="px-6 py-4">
                       <span

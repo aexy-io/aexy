@@ -18032,6 +18032,7 @@ export interface StandaloneTable {
 
 export interface SequenceStep {
   step_index: number;
+  channel: "email" | "linkedin" | "sms" | "wait";
   action: string;
   delay_days: number;
   delay_hours: number;
@@ -18361,8 +18362,6 @@ export interface HealthDashboardResponse {
   improving_count: number;
   declining_count: number;
   status_distribution: Record<string, unknown>[];
-  /** Frontend alias for status_distribution */
-  distribution?: Record<string, unknown>[];
   recent_drops: Record<string, unknown>[];
 }
 
@@ -18495,8 +18494,8 @@ export interface IntentSignalListResponse {
 export interface IntentSummaryResponse {
   total_signals: number;
   unprocessed_count: number;
-  by_type: Record<string, unknown>[];
-  by_strength: Record<string, unknown>[];
+  by_type: Record<string, number>;
+  by_strength: Record<string, number>;
   top_companies: Record<string, unknown>[];
 }
 
