@@ -181,21 +181,11 @@ const complianceItems: SidebarItemConfig[] = [
 const gtmItems: SidebarItemConfig[] = [
     { href: "/gtm", label: "Dashboard", icon: LayoutDashboard },
     { href: "/gtm/visitors", label: "Visitors", icon: Eye },
+    { href: "/gtm/scoring", label: "Scoring & ICP", icon: BarChart2 },
+    { href: "/gtm/routing", label: "Routing", icon: UserCheck },
     { href: "/gtm/sequences", label: "Sequences", icon: Mail },
-    { href: "/gtm/scoring", label: "Scoring", icon: BarChart2 },
-    { href: "/gtm/routing", label: "Routing & SLA", icon: UserCheck },
-    { href: "/gtm/health", label: "Health Scores", icon: Activity },
-    { href: "/gtm/expansion", label: "Expansion", icon: TrendingUp },
-    { href: "/gtm/handoffs", label: "Handoffs", icon: ArrowRightLeft },
-    { href: "/gtm/intent", label: "Intent Signals", icon: Crosshair },
-    { href: "/gtm/abm", label: "ABM", icon: Target },
-    { href: "/gtm/competitors", label: "Competitors", icon: Swords },
-    { href: "/gtm/seo", label: "SEO Audit", icon: Globe },
-    { href: "/gtm/content-gap", label: "Content Gaps", icon: FileSearch },
     { href: "/gtm/alerts", label: "Alerts", icon: Bell },
-    { href: "/gtm/analytics", label: "Analytics", icon: BarChart2 },
     { href: "/gtm/compliance", label: "Compliance", icon: ShieldCheck },
-    { href: "/gtm/import", label: "Import", icon: Upload },
     { href: "/gtm/providers", label: "Providers", icon: Plug },
 ];
 

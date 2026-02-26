@@ -7,29 +7,33 @@ import {
   Plus,
   Trash2,
   Loader2,
-  RefreshCw,
   ChevronLeft,
   ChevronRight,
   AlertTriangle,
   CheckCircle2,
   XCircle,
   FileText,
+  Code,
+  Copy,
+  Check,
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { gtmApi, SuppressionEntry, ComplianceAuditEntry, SendPermissionCheck } from "@/lib/api";
 
-type Tab = "suppression" | "audit" | "check";
+type Tab = "tracking" | "suppression" | "audit" | "check";
 
 export default function CompliancePage() {
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || null;
   const queryClient = useQueryClient();
 
-  const [activeTab, setActiveTab] = useState<Tab>("suppression");
+  const [activeTab, setActiveTab] = useState<Tab>("tracking");
+  const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null);
   const [suppressionPage, setSuppressionPage] = useState(1);
-  const [auditPage, setAuditPage] = useState(1);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [auditPage, _setAuditPage] = useState(1);
   const [checkEmail, setCheckEmail] = useState("");
   const [checkResult, setCheckResult] = useState<SendPermissionCheck | null>(null);
   const [isChecking, setIsChecking] = useState(false);
@@ -90,7 +94,34 @@ export default function CompliancePage() {
     addMutation.mutate({ email: addEmail.trim(), reason: addReason, source: "manual" });
   };
 
+  const copyToClipboard = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedSnippet(id);
+    setTimeout(() => setCopiedSnippet(null), 2000);
+  };
+
+  const apiBase = typeof window !== "undefined" ? window.location.origin : "https://yourapp.com";
+
+  const gdprSnippet = `<script src="${apiBase}/aexy-track.js"
+  data-workspace="${workspaceId || "YOUR_WORKSPACE_ID"}"
+  data-api="${apiBase}/api/v1"
+  data-consent="denied"></script>`;
+
+  const canSpamSnippet = `<script src="${apiBase}/aexy-track.js"
+  data-workspace="${workspaceId || "YOUR_WORKSPACE_ID"}"
+  data-api="${apiBase}/api/v1"></script>`;
+
+  const cmpSnippet = `<!-- After your CMP collects consent: -->
+<script>
+  // Grant consent (starts tracking)
+  window.aexy.consent("granted");
+
+  // Revoke consent (stops tracking, deletes cookies)
+  window.aexy.consent("denied");
+</script>`;
+
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
+    { key: "tracking", label: "Tracking Setup", icon: <Code className="w-4 h-4" /> },
     { key: "suppression", label: "Suppression List", icon: <XCircle className="w-4 h-4" /> },
     { key: "audit", label: "Audit Log", icon: <FileText className="w-4 h-4" /> },
     { key: "check", label: "Send Check", icon: <Search className="w-4 h-4" /> },
@@ -107,7 +138,7 @@ export default function CompliancePage() {
               Compliance
             </h1>
             <p className="text-muted-foreground mt-1">
-              GDPR, CAN-SPAM, and CASL compliance infrastructure. Pre-send checks, suppression lists, and audit trails.
+              Tracking consent, suppression lists, pre-send checks, and audit trails for GDPR, CAN-SPAM, and CASL.
             </p>
           </div>
         </div>
@@ -129,6 +160,157 @@ export default function CompliancePage() {
             </button>
           ))}
         </div>
+
+        {/* Tracking Setup Tab */}
+        {activeTab === "tracking" && (
+          <div className="space-y-6">
+            {/* Overview */}
+            <div className="bg-muted/50 border border-border rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-foreground mb-2">Visitor Tracking Script</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Add this script to your website to track anonymous visitors. The script is consent-aware
+                and respects GDPR, ePrivacy, and Global Privacy Control (GPC) signals.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-background/50 border border-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span className="text-sm font-medium text-foreground">Consent-Gated</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    No cookies set and no PII collected until consent is granted. Tracking blocked when denied.
+                  </p>
+                </div>
+                <div className="bg-background/50 border border-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span className="text-sm font-medium text-foreground">GPC Support</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Automatically respects <code className="text-xs bg-muted px-1 rounded">navigator.globalPrivacyControl</code> browser signal.
+                  </p>
+                </div>
+                <div className="bg-background/50 border border-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span className="text-sm font-medium text-foreground">GDPR Erasure</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    All tracked data is included in right-to-erasure requests processed via the compliance API.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* GDPR Snippet */}
+            <div className="bg-muted/50 border border-border rounded-xl p-6">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground">GDPR / ePrivacy (EU, UK, EEA)</h4>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Starts with tracking <strong>disabled</strong>. Use your Consent Management Platform (CMP)
+                    to call <code className="text-xs bg-muted px-1 rounded">window.aexy.consent(&quot;granted&quot;)</code> after the user opts in.
+                  </p>
+                </div>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  Recommended
+                </span>
+              </div>
+              <div className="relative">
+                <pre className="bg-zinc-950 border border-zinc-800 rounded-lg p-4 text-sm text-zinc-300 overflow-x-auto"><code>{gdprSnippet}</code></pre>
+                <button
+                  onClick={() => copyToClipboard(gdprSnippet, "gdpr")}
+                  className="absolute top-3 right-3 p-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 transition-colors"
+                >
+                  {copiedSnippet === "gdpr" ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* CAN-SPAM Snippet */}
+            <div className="bg-muted/50 border border-border rounded-xl p-6">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground">CAN-SPAM / CASL (US, Canada)</h4>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Starts with tracking <strong>enabled</strong> (opt-out model). GPC signal is still respected.
+                    Users can opt out via <code className="text-xs bg-muted px-1 rounded">window.aexy.consent(&quot;denied&quot;)</code>.
+                  </p>
+                </div>
+              </div>
+              <div className="relative">
+                <pre className="bg-zinc-950 border border-zinc-800 rounded-lg p-4 text-sm text-zinc-300 overflow-x-auto"><code>{canSpamSnippet}</code></pre>
+                <button
+                  onClick={() => copyToClipboard(canSpamSnippet, "canspam")}
+                  className="absolute top-3 right-3 p-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 transition-colors"
+                >
+                  {copiedSnippet === "canspam" ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* CMP Integration */}
+            <div className="bg-muted/50 border border-border rounded-xl p-6">
+              <h4 className="text-sm font-semibold text-foreground mb-1">CMP Integration</h4>
+              <p className="text-xs text-muted-foreground mb-3">
+                Use the <code className="text-xs bg-muted px-1 rounded">window.aexy.consent()</code> API to integrate
+                with any Consent Management Platform (OneTrust, Cookiebot, etc.).
+              </p>
+              <div className="relative">
+                <pre className="bg-zinc-950 border border-zinc-800 rounded-lg p-4 text-sm text-zinc-300 overflow-x-auto"><code>{cmpSnippet}</code></pre>
+                <button
+                  onClick={() => copyToClipboard(cmpSnippet, "cmp")}
+                  className="absolute top-3 right-3 p-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 transition-colors"
+                >
+                  {copiedSnippet === "cmp" ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Data collected */}
+            <div className="bg-muted/50 border border-border rounded-xl p-6">
+              <h4 className="text-sm font-semibold text-foreground mb-3">What Data Is Collected</h4>
+              <div className="overflow-hidden rounded-lg border border-border">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border/50 bg-background/50">
+                      <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-2.5">Data</th>
+                      <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-2.5">When</th>
+                      <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-2.5">Retention</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50 text-sm">
+                    <tr>
+                      <td className="px-4 py-2.5 text-foreground">Anonymous ID (cookie)</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">After consent granted</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">1 year (deleted on revoke)</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-2.5 text-foreground">Page views, scroll depth, time on page</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">After consent granted</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">Configurable (default 365 days)</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-2.5 text-foreground">UTM parameters</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">After consent granted</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">Stored with event</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-2.5 text-foreground">IP address</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">With each event batch</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">Anonymized after 90 days</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-2.5 text-foreground">Email (via identify)</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">Only after explicit consent + identify() call</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">Until erasure request</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Suppression Tab */}
         {activeTab === "suppression" && (
