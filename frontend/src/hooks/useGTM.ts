@@ -58,7 +58,7 @@ export function useGTMDashboard(workspaceId: string | null, days: number = 30) {
 
 export function useGTMVisitors(
   workspaceId: string | null,
-  params?: { page?: number; per_page?: number; status?: string; date_from?: string; date_to?: string }
+  params?: { page?: number; per_page?: number; status?: string; date_from?: string; date_to?: string; search?: string }
 ) {
   const { data, isLoading, error, refetch } = useQuery<VisitorListResponse>({
     queryKey: ["gtmVisitors", workspaceId, params],

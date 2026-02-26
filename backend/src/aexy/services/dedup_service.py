@@ -461,8 +461,10 @@ class DedupService:
                 break
 
             phone_expr = CRMRecord.values[field].astext
+            # Normalize phone to digits-only in SQL so +1-555-1234 matches 15551234
+            normalized_phone = func.regexp_replace(phone_expr, r"[^\d]", "", "g")
             subq = (
-                select(phone_expr.label("phone"))
+                select(normalized_phone.label("phone"))
                 .where(
                     and_(
                         CRMRecord.workspace_id == workspace_id,
@@ -471,7 +473,7 @@ class DedupService:
                         phone_expr != "",
                     )
                 )
-                .group_by(phone_expr)
+                .group_by(normalized_phone)
                 .having(func.count(CRMRecord.id) > 1)
                 .limit(limit - len(matches))
                 .subquery()
@@ -483,10 +485,10 @@ class DedupService:
                     and_(
                         CRMRecord.workspace_id == workspace_id,
                         CRMRecord.is_archived == False,
-                        phone_expr.in_(select(subq.c.phone)),
+                        normalized_phone.in_(select(subq.c.phone)),
                     )
                 )
-                .order_by(phone_expr, CRMRecord.created_at.asc())
+                .order_by(normalized_phone, CRMRecord.created_at.asc())
             )
             result = await self.db.execute(query)
             records = list(result.scalars().all())
@@ -649,11 +651,17 @@ class DedupService:
                     fields_merged += 1
 
         elif strategy == "most_complete":
-            # Prefer whichever value is non-empty; if both non-empty keep primary
+            # For each field, prefer the longer/more complete value
             for key, value in duplicate_vals.items():
                 if key.startswith("_"):
                     continue
-                if not merged.get(key) and value:
+                existing = merged.get(key)
+                if not existing and value:
+                    # Primary is empty, use duplicate's value
+                    merged[key] = value
+                    fields_merged += 1
+                elif existing and value and len(str(value)) > len(str(existing)):
+                    # Both have values — prefer the longer (more complete) one
                     merged[key] = value
                     fields_merged += 1
 

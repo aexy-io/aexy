@@ -480,6 +480,8 @@ class OutreachSequenceService:
 
         return enrollments, total
 
+    _MAX_BULK_ENROLL = 500
+
     async def bulk_enroll(
         self,
         workspace_id: str,
@@ -489,10 +491,17 @@ class OutreachSequenceService:
         """Bulk enroll multiple contacts into a sequence.
 
         Each contact dict must have: record_id, email, and optionally contact_name.
+        Maximum batch size is 500 contacts.
 
         Returns:
             dict with enrolled, skipped, and failed counts plus details.
         """
+        if len(contacts) > self._MAX_BULK_ENROLL:
+            raise ValueError(
+                f"Batch size {len(contacts)} exceeds maximum of {self._MAX_BULK_ENROLL}. "
+                f"Split into smaller batches."
+            )
+
         enrolled = 0
         skipped = 0
         failed = 0

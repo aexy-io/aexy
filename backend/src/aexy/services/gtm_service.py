@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import select, and_, func, delete, update, case
+from sqlalchemy import select, and_, or_, func, delete, update, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.core.encryption import encrypt_credentials, decrypt_credentials
@@ -204,20 +204,38 @@ class GTMDashboardService:
         period_start = now - timedelta(days=days)
         prev_start = period_start - timedelta(days=days)
 
-        # Current period counts
-        visitors_q = select(func.count(VisitorSession.id)).where(
+        # Current + previous period visitor/company counts in a single query
+        # using conditional aggregation instead of 4 separate COUNT queries
+        visitor_q = select(
+            func.count(VisitorSession.id).filter(
+                VisitorSession.started_at >= period_start,
+            ).label("total_visitors"),
+            func.count(VisitorSession.id).filter(
+                and_(
+                    VisitorSession.started_at >= period_start,
+                    VisitorSession.identification_status != "anonymous",
+                )
+            ).label("identified_companies"),
+            func.count(VisitorSession.id).filter(
+                and_(
+                    VisitorSession.started_at >= prev_start,
+                    VisitorSession.started_at < period_start,
+                )
+            ).label("prev_visitors"),
+            func.count(VisitorSession.id).filter(
+                and_(
+                    VisitorSession.started_at >= prev_start,
+                    VisitorSession.started_at < period_start,
+                    VisitorSession.identification_status != "anonymous",
+                )
+            ).label("prev_companies"),
+        ).where(
             and_(
                 VisitorSession.workspace_id == workspace_id,
-                VisitorSession.started_at >= period_start,
+                VisitorSession.started_at >= prev_start,
             )
         )
-        companies_q = select(func.count(VisitorSession.id)).where(
-            and_(
-                VisitorSession.workspace_id == workspace_id,
-                VisitorSession.started_at >= period_start,
-                VisitorSession.identification_status != "anonymous",
-            )
-        )
+
         leads_q = select(func.count(LeadScore.id)).where(
             and_(
                 LeadScore.workspace_id == workspace_id,
@@ -226,33 +244,15 @@ class GTMDashboardService:
             )
         )
 
-        # Previous period for comparison
-        prev_visitors_q = select(func.count(VisitorSession.id)).where(
-            and_(
-                VisitorSession.workspace_id == workspace_id,
-                VisitorSession.started_at >= prev_start,
-                VisitorSession.started_at < period_start,
-            )
-        )
-        prev_companies_q = select(func.count(VisitorSession.id)).where(
-            and_(
-                VisitorSession.workspace_id == workspace_id,
-                VisitorSession.started_at >= prev_start,
-                VisitorSession.started_at < period_start,
-                VisitorSession.identification_status != "anonymous",
-            )
-        )
+        visitor_result = await self.db.execute(visitor_q)
+        row = visitor_result.one()
+        total_visitors = row.total_visitors or 0
+        identified_companies = row.identified_companies or 0
+        prev_visitors = row.prev_visitors or 0
+        prev_companies = row.prev_companies or 0
 
-        results = await self.db.execute(visitors_q)
-        total_visitors = results.scalar() or 0
-        results = await self.db.execute(companies_q)
-        identified_companies = results.scalar() or 0
-        results = await self.db.execute(leads_q)
-        new_leads = results.scalar() or 0
-        results = await self.db.execute(prev_visitors_q)
-        prev_visitors = results.scalar() or 0
-        results = await self.db.execute(prev_companies_q)
-        prev_companies = results.scalar() or 0
+        leads_result = await self.db.execute(leads_q)
+        new_leads = leads_result.scalar() or 0
 
         def pct_change(current: int, previous: int) -> float:
             if previous == 0:
@@ -267,37 +267,41 @@ class GTMDashboardService:
             "visitors_change_pct": pct_change(total_visitors, prev_visitors),
             "companies_change_pct": pct_change(identified_companies, prev_companies),
             "leads_change_pct": 0.0,
+            "sequences_change_pct": 0.0,  # Phase 4
         }
 
     async def get_funnel(self, workspace_id: str) -> list[dict[str, Any]]:
         """Get funnel stage data."""
-        # Count leads by lifecycle stage
         stages = ["anonymous", "known", "lead", "mql", "sql", "opportunity", "customer"]
-        stage_counts = {}
 
-        for stage in stages:
-            if stage == "anonymous":
-                # Count anonymous sessions
-                q = select(func.count(VisitorSession.id)).where(
-                    and_(
-                        VisitorSession.workspace_id == workspace_id,
-                        VisitorSession.identification_status == "anonymous",
-                    )
-                )
-            else:
-                q = select(func.count(LeadScore.id)).where(
-                    and_(
-                        LeadScore.workspace_id == workspace_id,
-                        LeadScore.lifecycle_stage == stage,
-                    )
-                )
-            result = await self.db.execute(q)
-            stage_counts[stage] = result.scalar() or 0
+        # 1. Anonymous count from VisitorSession
+        anon_q = select(func.count(VisitorSession.id)).where(
+            and_(
+                VisitorSession.workspace_id == workspace_id,
+                VisitorSession.identification_status == "anonymous",
+            )
+        )
+        anon_result = await self.db.execute(anon_q)
+        stage_counts: dict[str, int] = {"anonymous": anon_result.scalar() or 0}
+
+        # 2. All other stages in a single GROUP BY query
+        lead_q = select(
+            LeadScore.lifecycle_stage,
+            func.count(LeadScore.id),
+        ).where(
+            and_(
+                LeadScore.workspace_id == workspace_id,
+                LeadScore.lifecycle_stage.in_(stages[1:]),
+            )
+        ).group_by(LeadScore.lifecycle_stage)
+        lead_result = await self.db.execute(lead_q)
+        for row_stage, row_count in lead_result.all():
+            stage_counts[row_stage] = row_count
 
         funnel = []
         prev_count = None
         for stage in stages:
-            count = stage_counts[stage]
+            count = stage_counts.get(stage, 0)
             rate = 0.0
             if prev_count and prev_count > 0:
                 rate = round((count / prev_count) * 100, 1)
@@ -636,6 +640,7 @@ class VisitorService:
         utm_source: str | None = None,
         date_from: datetime | None = None,
         date_to: datetime | None = None,
+        search: str | None = None,
     ) -> tuple[list[VisitorSession], int]:
         """List visitor sessions with filters."""
         query = select(VisitorSession).where(
@@ -646,6 +651,18 @@ class VisitorService:
             query = query.where(VisitorSession.identification_status == status)
         if utm_source:
             query = query.where(VisitorSession.utm_source == utm_source)
+        if search:
+            like_pattern = f"%{search}%"
+            # company_name lives on VisitorIdentification, so use a subquery
+            company_match = select(VisitorIdentification.session_id).where(
+                VisitorIdentification.company_name.ilike(like_pattern),
+            ).correlate(None)
+            query = query.where(
+                or_(
+                    VisitorSession.anonymous_id.ilike(like_pattern),
+                    VisitorSession.id.in_(company_match),
+                )
+            )
         if date_from:
             query = query.where(VisitorSession.started_at >= date_from)
         if date_to:
