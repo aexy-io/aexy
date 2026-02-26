@@ -20,7 +20,7 @@ export function useSavedViews(
   const createMutation = useMutation({
     mutationFn: (data: {
       name: string;
-      view_type?: "table" | "board" | "gallery" | "timeline";
+      view_type?: "table" | "kanban" | "board" | "gallery" | "timeline";
       filters?: Record<string, unknown>[];
       sorts?: Record<string, unknown>[];
       visible_attributes?: string[];
@@ -38,7 +38,7 @@ export function useSavedViews(
       viewId: string;
       data: Partial<{
         name: string;
-        view_type: "table" | "board" | "gallery" | "timeline";
+        view_type: "table" | "kanban" | "board" | "gallery" | "timeline";
         filters: Record<string, unknown>[];
         sorts: Record<string, unknown>[];
         visible_attributes: string[];
