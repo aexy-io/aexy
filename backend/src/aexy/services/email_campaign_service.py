@@ -266,7 +266,7 @@ class EmailCampaignService:
 
             # Check if domain can send
             if send_domain:
-                can_send, reason = await domain_service.can_send(send_domain.id)
+                can_send, reason = await domain_service.can_send(send_domain.id, campaign.workspace_id)
                 if not can_send:
                     logger.warning(f"Domain {send_domain.domain} cannot send: {reason}")
                     if campaign.sending_pool_id and routing_config.get("fallback_enabled", True):
@@ -293,6 +293,7 @@ class EmailCampaignService:
 
             if send_domain and send_provider:
                 try:
+                    unsub_url = f"/preferences/{recipient.subscriber_id}" if recipient.subscriber_id else None
                     result = await provider_service.send_email(
                         provider_id=send_provider,
                         to_email=recipient.email,
@@ -302,13 +303,14 @@ class EmailCampaignService:
                         html_body=html_body,
                         text_body=text_body or "",
                         reply_to=reply_to,
+                        unsubscribe_url=unsub_url,
                     )
 
                     if result.get("success"):
                         send_success = True
                         message_id = result.get("message_id")
 
-                        await domain_service.increment_send_count(send_domain.id)
+                        await domain_service.increment_daily_sent(send_domain.id)
                         await reputation_service.record_send_event(
                             domain_id=send_domain.id,
                             event_type="send",
@@ -734,12 +736,13 @@ class EmailCampaignService:
                 domain_id = routing_decision["domain_id"]
                 provider_id = routing_decision.get("provider_id")
 
-                can_send, reason = await domain_service.can_send(domain_id)
+                can_send, reason = await domain_service.can_send(domain_id, workspace_id)
                 if can_send and provider_id:
+                    resolved_from = from_email or routing_decision.get("from_email", f"no-reply@{routing_decision.get('domain')}")
                     result = await provider_service.send_email(
                         provider_id=provider_id,
                         to_email=to_email,
-                        from_email=from_email or routing_decision.get("from_email", f"no-reply@{routing_decision.get('domain')}"),
+                        from_email=resolved_from,
                         from_name=from_name or "Notifications",
                         subject=subject,
                         html_body=html_body,
@@ -749,7 +752,7 @@ class EmailCampaignService:
                     if result.get("success"):
                         send_success = True
                         message_id = result.get("message_id")
-                        await domain_service.increment_send_count(domain_id)
+                        await domain_service.increment_daily_sent(domain_id)
                         logger.info(f"Workflow email sent via domain {routing_decision.get('domain')}")
 
         # Fallback to default email service

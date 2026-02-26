@@ -88,7 +88,7 @@ async def update_warming_metrics(input: UpdateWarmingMetricsInput) -> dict[str, 
         service = WarmingService(db)
         result = await service.update_warming_metrics(
             domain_id=input.domain_id,
-            emails_sent=input.emails_sent,
+            sent=input.emails_sent,
         )
         await db.commit()
         return result

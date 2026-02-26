@@ -152,6 +152,8 @@ services:
       - ./frontend/.env
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+      - NEXT_PUBLIC_GTM_WORKSPACE_ID=${NEXT_PUBLIC_GTM_WORKSPACE_ID:-}
+      - NEXT_PUBLIC_GTM_API_URL=${NEXT_PUBLIC_GTM_API_URL:-http://localhost:8000/api/v1}
     depends_on:
       - backend
     volumes:
