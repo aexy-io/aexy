@@ -176,6 +176,9 @@ class OutreachEnrollment(Base):
         "OutreachStepExecution", back_populates="enrollment", lazy="noload",
     )
 
+    # Recipient timezone for send-window enforcement (e.g. "America/New_York")
+    recipient_timezone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
     # State machine
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, default=EnrollmentStatus.ACTIVE.value,
@@ -247,6 +250,12 @@ class OutreachStepExecution(Base):
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, default=StepExecutionStatus.PENDING.value,
     )
+
+    # A/B variant (None = no test, 0+ = variant index)
+    variant_index: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Reply threading
+    thread_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # Tracking
     provider_message_id: Mapped[str | None] = mapped_column(String(255), nullable=True)

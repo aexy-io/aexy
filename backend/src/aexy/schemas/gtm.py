@@ -673,6 +673,7 @@ class EnrollmentResponse(BaseModel):
     record_id: str
     email: str
     contact_name: str | None = None
+    recipient_timezone: str | None = None
     status: EnrollmentStatusLiteral
     current_step_index: int = 0
     next_step_at: datetime | None = None
@@ -709,6 +710,8 @@ class StepExecutionResponse(BaseModel):
     channel: str
     action: str
     status: str
+    variant_index: int | None = None
+    thread_id: str | None = None
     provider_message_id: str | None = None
     error_message: str | None = None
     sent_at: datetime | None = None

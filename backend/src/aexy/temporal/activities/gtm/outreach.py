@@ -27,6 +27,8 @@ class OutreachEnrollmentInput:
     workspace_id: str
     sequence_id: str
     steps: list  # JSONB step definitions
+    settings: dict | None = None  # Sequence settings (send_window, etc.)
+    recipient_timezone: str | None = None  # Recipient timezone for send-window
 
 
 @dataclass
@@ -221,6 +223,10 @@ async def execute_outreach_step(input: ExecuteStepInput) -> dict:
             )
 
         # 4. Create step execution record
+        # Extract variant_index and thread_id from config (passed by workflow)
+        variant_index = input.config.get("variant_index")
+        thread_id = input.config.get("thread_id")
+
         execution = OutreachStepExecution(
             id=str(uuid4()),
             enrollment_id=input.enrollment_id,
@@ -231,6 +237,8 @@ async def execute_outreach_step(input: ExecuteStepInput) -> dict:
             status=status,
             provider_message_id=provider_message_id,
             error_message=error_message,
+            variant_index=variant_index,
+            thread_id=thread_id or provider_message_id,
             sent_at=sent_at if status != StepExecutionStatus.FAILED.value else None,
         )
         db.add(execution)
@@ -244,6 +252,7 @@ async def execute_outreach_step(input: ExecuteStepInput) -> dict:
         "execution_id": execution.id,
         "status": status,
         "provider_message_id": provider_message_id,
+        "thread_id": thread_id or provider_message_id,
         "error": error_message,
     }
 

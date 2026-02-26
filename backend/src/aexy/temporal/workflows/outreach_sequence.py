@@ -4,6 +4,14 @@ Each enrolled contact gets its own workflow instance that walks through the
 sequence steps with configurable delays, pause/resume support, and early exit
 on reply, bounce, unsubscribe, or manual unenroll.
 
+Features:
+    - Send-window enforcement: steps only execute during allowed hours in
+      the recipient's (or sequence default) timezone.
+    - A/B variant selection: steps with ``variants`` in their config get a
+      randomly chosen variant at execution time.
+    - Reply threading: ``thread_id`` from prior executions is forwarded to
+      subsequent steps so emails are threaded in the recipient's inbox.
+
 Signals:
     exit_sequence  — immediately exit the sequence
     pause          — pause execution (holds between steps)
@@ -12,6 +20,7 @@ Signals:
 """
 
 import asyncio
+import random
 from datetime import timedelta
 
 from temporalio import workflow
@@ -23,6 +32,95 @@ with workflow.unsafe.imports_passed_through():
         ExecuteStepInput,
         FinalizeEnrollmentInput,
     )
+
+
+def _seconds_until_send_window(
+    settings: dict,
+    recipient_tz: str | None,
+) -> int:
+    """Return seconds to wait until the next send window opens, or 0 if inside.
+
+    Uses ``workflow.now()`` for the current time (Temporal-deterministic).
+    Falls back to UTC if timezone is unknown.
+    """
+    sw = settings.get("send_window") or settings
+    start_hour = sw.get("start_hour", sw.get("send_window_start_hour", 0))
+    end_hour = sw.get("end_hour", sw.get("send_window_end_hour", 24))
+
+    if start_hour == 0 and end_hour == 24:
+        return 0  # No send window configured — always open
+
+    tz_name = recipient_tz or sw.get("timezone", "UTC")
+
+    try:
+        from zoneinfo import ZoneInfo
+        tz = ZoneInfo(tz_name)
+    except Exception:
+        return 0  # Unknown timezone — don't block
+
+    now_utc = workflow.now()
+    now_local = now_utc.astimezone(tz)
+
+    # Check day-of-week (0=Mon, 6=Sun) — skip weekends by default
+    weekday = now_local.weekday()
+    days_to_add = 0
+    if weekday == 5:  # Saturday
+        days_to_add = 2
+    elif weekday == 6:  # Sunday
+        days_to_add = 1
+
+    hour = now_local.hour
+    minute = now_local.minute
+
+    if days_to_add == 0 and start_hour <= hour < end_hour:
+        return 0  # Inside the window right now
+
+    # Calculate seconds to next window open
+    if days_to_add == 0 and hour < start_hour:
+        # Today, before window opens
+        delta = (start_hour - hour) * 3600 - minute * 60
+    else:
+        # Tomorrow (or Monday if weekend)
+        if days_to_add == 0:
+            days_to_add = 1
+        delta = days_to_add * 86400 + (start_hour - hour) * 3600 - minute * 60
+
+    return max(delta, 60)  # At least 60s to avoid tight loops
+
+
+def _select_variant(step: dict) -> tuple[dict, int | None]:
+    """If step has A/B variants, randomly select one. Returns (config, variant_index).
+
+    Step config format for A/B:
+        config.variants: [{subject, body, weight}, ...]
+
+    If no variants, returns original config unchanged.
+    """
+    config = step.get("config") or {}
+    variants = config.get("variants")
+    if not variants or len(variants) < 2:
+        return config, None
+
+    weights = [v.get("weight", 1) for v in variants]
+    total = sum(weights)
+    if total <= 0:
+        return config, None
+
+    # Weighted random selection (deterministic within Temporal replay)
+    r = random.random() * total
+    cumulative = 0
+    for idx, (v, w) in enumerate(zip(variants, weights)):
+        cumulative += w
+        if r <= cumulative:
+            # Merge variant fields into config
+            merged = {**config, **{k: v2 for k, v2 in v.items() if k != "weight"}}
+            merged.pop("variants", None)
+            return merged, idx
+
+    # Fallback to last variant
+    merged = {**config, **{k: v2 for k, v2 in variants[-1].items() if k != "weight"}}
+    merged.pop("variants", None)
+    return merged, len(variants) - 1
 
 
 @workflow.defn(name="OutreachSequenceWorkflow", sandboxed=False)
@@ -67,7 +165,10 @@ class OutreachSequenceWorkflow:
     @workflow.run
     async def run(self, input: OutreachEnrollmentInput) -> dict:
         steps = input.steps
+        settings = getattr(input, "settings", None) or {}
+        recipient_tz = getattr(input, "recipient_timezone", None)
         executed = 0
+        last_thread_id: str | None = None
 
         for step in steps:
             # Check exit before each step
@@ -104,8 +205,31 @@ class OutreachSequenceWorkflow:
                 executed += 1
                 continue
 
+            # ---- Send-window enforcement ----
+            wait_secs = _seconds_until_send_window(settings, recipient_tz)
+            if wait_secs > 0:
+                try:
+                    await workflow.wait_condition(
+                        lambda: self.should_exit,
+                        timeout=timedelta(seconds=wait_secs),
+                    )
+                except asyncio.TimeoutError:
+                    pass
+                if self.should_exit:
+                    break
+
+            # ---- A/B variant selection ----
+            step_config, variant_index = _select_variant(step)
+
+            # ---- Build execution input ----
+            exec_config = dict(step_config)
+            if last_thread_id:
+                exec_config["thread_id"] = last_thread_id
+            if variant_index is not None:
+                exec_config["variant_index"] = variant_index
+
             # ---- Execute the step ----
-            await workflow.execute_activity(
+            result = await workflow.execute_activity(
                 "execute_outreach_step",
                 ExecuteStepInput(
                     enrollment_id=input.enrollment_id,
@@ -113,7 +237,7 @@ class OutreachSequenceWorkflow:
                     step_index=step.get("step_index", executed),
                     channel=step.get("channel", "email"),
                     action=step.get("action", "send_email"),
-                    config=step.get("config", {}),
+                    config=exec_config,
                 ),
                 start_to_close_timeout=timedelta(minutes=5),
                 retry_policy=RetryPolicy(
@@ -121,6 +245,11 @@ class OutreachSequenceWorkflow:
                     initial_interval=timedelta(seconds=30),
                 ),
             )
+
+            # Track thread_id from the execution result for reply threading
+            if isinstance(result, dict):
+                last_thread_id = result.get("thread_id") or result.get("provider_message_id") or last_thread_id
+
             executed += 1
 
         # ---- Finalize enrollment ----
