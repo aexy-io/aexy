@@ -5,24 +5,22 @@ from enum import Enum
 from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
+from aexy.models.gtm import (
+    GTMProviderSlot as _GTMProviderSlot,
+    GTMProviderStatus as _GTMProviderStatus,
+    IdentificationStatus as _IdentificationStatus,
+    LifecycleStage as _LifecycleStage,
+)
+
 
 # =============================================================================
-# TYPE LITERALS
+# TYPE LITERALS — derived from model enums (single source of truth)
 # =============================================================================
 
-GTMProviderSlot = Literal[
-    "visitor_identification", "email_verification", "contact_enrichment",
-    "linkedin_automation", "sms", "intent_data", "seo_tracking",
-    "ad_platform", "analytics", "data_warehouse"
-]
-
-GTMProviderStatus = Literal["pending_setup", "active", "error", "suspended"]
-
-IdentificationStatus = Literal["anonymous", "company_identified", "contact_identified"]
-
-LifecycleStage = Literal[
-    "anonymous", "known", "lead", "mql", "sql", "opportunity", "customer"
-]
+GTMProviderSlot = Literal[tuple(e.value for e in _GTMProviderSlot)]  # type: ignore[valid-type]
+GTMProviderStatus = Literal[tuple(e.value for e in _GTMProviderStatus)]  # type: ignore[valid-type]
+IdentificationStatus = Literal[tuple(e.value for e in _IdentificationStatus)]  # type: ignore[valid-type]
+LifecycleStage = Literal[tuple(e.value for e in _LifecycleStage)]  # type: ignore[valid-type]
 
 
 # =============================================================================
@@ -571,11 +569,15 @@ class DedupStatsResponse(BaseModel):
 # OUTREACH SEQUENCES
 # =============================================================================
 
-SequenceStatusLiteral = Literal["draft", "active", "paused", "archived"]
-SequenceChannelLiteral = Literal["email", "linkedin", "sms", "wait"]
-EnrollmentStatusLiteral = Literal[
-    "active", "paused", "completed", "replied", "bounced", "unsubscribed", "exited", "failed"
-]
+from aexy.models.gtm_outreach import (
+    SequenceStatus as _SequenceStatus,
+    SequenceChannel as _SequenceChannel,
+    EnrollmentStatus as _EnrollmentStatus,
+)
+
+SequenceStatusLiteral = Literal[tuple(e.value for e in _SequenceStatus)]  # type: ignore[valid-type]
+SequenceChannelLiteral = Literal[tuple(e.value for e in _SequenceChannel)]  # type: ignore[valid-type]
+EnrollmentStatusLiteral = Literal[tuple(e.value for e in _EnrollmentStatus)]  # type: ignore[valid-type]
 
 
 class SequenceStepConfig(BaseModel):

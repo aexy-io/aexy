@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, func, Index
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from aexy.core.database import Base
 
@@ -35,6 +35,11 @@ class GTMExpansionPlaybook(Base):
 
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="draft")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # Relationships
+    enrollments: Mapped[list["GTMExpansionEnrollment"]] = relationship(
+        "GTMExpansionEnrollment", back_populates="playbook", lazy="noload",
+    )
 
     # Aggregate metrics
     total_enrollments: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
@@ -70,6 +75,11 @@ class GTMExpansionEnrollment(Base):
         nullable=False, index=True,
     )
     record_id: Mapped[str] = mapped_column(UUID(as_uuid=False), nullable=False, index=True)
+
+    # Relationships
+    playbook: Mapped["GTMExpansionPlaybook"] = relationship(
+        "GTMExpansionPlaybook", back_populates="enrollments", lazy="selectin",
+    )
 
     assigned_to: Mapped[str | None] = mapped_column(UUID(as_uuid=False), nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")

@@ -36,8 +36,7 @@ class GTMAlertService:
             created_by=created_by,
         )
         self.db.add(config)
-        await self.db.commit()
-        await self.db.refresh(config)
+        await self.db.flush()
         return config
 
     async def update_alert_config(self, workspace_id: str, alert_id: str, data: dict) -> GTMAlertConfig | None:
@@ -52,8 +51,7 @@ class GTMAlertService:
         for key, value in data.items():
             if value is not None and hasattr(config, key):
                 setattr(config, key, value)
-        await self.db.commit()
-        await self.db.refresh(config)
+        await self.db.flush()
         return config
 
     async def delete_alert_config(self, workspace_id: str, alert_id: str) -> bool:
@@ -62,7 +60,7 @@ class GTMAlertService:
                 and_(GTMAlertConfig.workspace_id == workspace_id, GTMAlertConfig.id == alert_id)
             )
         )
-        await self.db.commit()
+        await self.db.flush()
         return result.rowcount > 0
 
     async def list_alert_configs(self, workspace_id: str, event_type: str | None = None) -> list[GTMAlertConfig]:
@@ -116,7 +114,7 @@ class GTMAlertService:
             log_ids.append(log.id)
 
         if log_ids:
-            await self.db.commit()
+            await self.db.flush()
             # Dispatch delivery via Temporal
             try:
                 from aexy.temporal.dispatch import dispatch
@@ -183,4 +181,4 @@ class GTMAlertService:
                 sent_at=datetime.now(timezone.utc),
             )
         )
-        await self.db.commit()
+        await self.db.flush()
