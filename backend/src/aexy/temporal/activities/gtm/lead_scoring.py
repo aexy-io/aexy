@@ -9,6 +9,7 @@ Activities:
 """
 
 import logging
+import math
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
@@ -136,11 +137,51 @@ async def identify_visitor_session(input: IdentifyVisitorSessionInput) -> dict:
 
         await db.commit()
 
+    # ── Pipeline continuation: score → route → alert ──
+    matched_record_id = identification.matched_record_id if result.success else None
+    if matched_record_id:
+        try:
+            from aexy.temporal.dispatch import dispatch
+            from aexy.temporal.task_queues import TaskQueue
+
+            # 1. Score the identified lead
+            score_result = await dispatch(
+                "score_lead",
+                ScoreLeadInput(
+                    workspace_id=input.workspace_id,
+                    record_id=matched_record_id,
+                ),
+                task_queue=TaskQueue.INTEGRATIONS,
+                workflow_id=f"score-lead-{matched_record_id[:16]}",
+            )
+            logger.info(
+                f"Pipeline: dispatched score_lead for record {matched_record_id}"
+            )
+
+            # 2. Route the lead (routing rules will decide if/how to assign)
+            from aexy.temporal.activities.gtm.alerts_routing import RouteNewLeadInput
+
+            await dispatch(
+                "route_new_lead",
+                RouteNewLeadInput(
+                    workspace_id=input.workspace_id,
+                    record_id=matched_record_id,
+                ),
+                task_queue=TaskQueue.INTEGRATIONS,
+                workflow_id=f"route-lead-{matched_record_id[:16]}",
+            )
+            logger.info(
+                f"Pipeline: dispatched route_new_lead for record {matched_record_id}"
+            )
+        except Exception:
+            logger.exception("Pipeline continuation failed after identification")
+
     return {
         "success": result.success,
         "company_name": result.company_name,
         "company_domain": result.company_domain,
         "confidence": result.confidence,
+        "matched_record_id": matched_record_id,
     }
 
 
@@ -297,14 +338,27 @@ async def verify_email_address(input: VerifyEmailInput) -> dict:
         }
 
 
+def _recency_decay(days_since: float, half_life_days: float = 30.0) -> float:
+    """Exponential decay based on days since activity.
+
+    Returns a multiplier between 0.0 and 1.0.
+    half_life_days=30 means activity from 30 days ago is worth 50%.
+    """
+    if days_since <= 0:
+        return 1.0
+    decay_lambda = math.log(2) / half_life_days
+    return math.exp(-decay_lambda * days_since)
+
+
 @activity.defn
 async def score_lead(input: ScoreLeadInput) -> dict:
     """Score a single lead against ICP template (deterministic, not LLM).
 
     Scoring breakdown:
     - Firmographic: 0-40 (company size, industry, location match)
-    - Behavioral: 0-35 (page views, session duration, scroll depth)
-    - Engagement: 0-25 (email opens, form submissions, return visits)
+    - Behavioral: 0-35 (page views, session duration, scroll depth) — with time-decay
+    - Engagement: 0-25 (email opens, form submissions, return visits) — with time-decay
+    - Negative signals: 0 to -20 (inactivity, bounces, unsubscribes)
     """
     from sqlalchemy import select, and_, func
 
@@ -332,29 +386,38 @@ async def score_lead(input: ScoreLeadInput) -> dict:
                 )
             )).scalar_one_or_none()
 
-        # Calculate firmographic score (0-40)
+        # Read configurable weights from template criteria, with defaults
+        criteria = (template.criteria if template else None) or {}
+        firmo_weight = criteria.get("firmographic", {}).get("weight", 40)
+        behav_weight = criteria.get("behavioral", {}).get("weight", 35)
+        engage_weight = criteria.get("engagement", {}).get("weight", 25)
+        decay_half_life = criteria.get("decay_half_life_days", 30)
+
+        now = datetime.now(timezone.utc)
+
+        # ── Firmographic score (0-firmo_weight) ──────────────────────────
         firmo_score = 0
         firmo_factors = {}
 
         # Get identification data for this record
-        sessions = (await db.execute(
+        sessions = list((await db.execute(
             select(VisitorSession).where(
                 and_(
                     VisitorSession.workspace_id == input.workspace_id,
                     VisitorSession.record_id == input.record_id,
                 )
             )
-        )).scalars().all()
+        )).scalars().all())
 
         # Get identifications
         session_ids = [s.id for s in sessions]
         identifications = []
         if session_ids:
-            identifications = (await db.execute(
+            identifications = list((await db.execute(
                 select(VisitorIdentification).where(
                     VisitorIdentification.session_id.in_(session_ids)
                 )
-            )).scalars().all()
+            )).scalars().all())
 
         if identifications:
             best_ident = max(identifications, key=lambda i: i.confidence)
@@ -365,7 +428,7 @@ async def score_lead(input: ScoreLeadInput) -> dict:
                     firmo_score += 15
                     firmo_factors["industry_match"] = True
                 elif target_industries:
-                    firmo_score += 5  # partial credit for having data
+                    firmo_score += 5
                     firmo_factors["industry_match"] = False
 
             # Company size match
@@ -383,52 +446,76 @@ async def score_lead(input: ScoreLeadInput) -> dict:
                 firmo_score += 10
                 firmo_factors["has_domain"] = True
 
-        # Calculate behavioral score (0-35)
+        # Normalize to weight (raw max is 40, scale to firmo_weight)
+        firmo_score = round(firmo_score * firmo_weight / 40)
+
+        # ── Behavioral score (0-behav_weight) with time-decay ────────────
         behav_score = 0
         behav_factors = {}
 
-        total_page_views = sum(s.page_count for s in sessions)
-        total_duration = sum(s.duration_seconds for s in sessions)
-        max_scroll = max((s.max_scroll_depth for s in sessions), default=0)
+        # Compute recency decay from most recent session
+        last_activity = max(
+            (s.last_activity_at for s in sessions if s.last_activity_at),
+            default=None,
+        )
+        days_since_activity = (
+            (now - last_activity).total_seconds() / 86400
+            if last_activity else 365
+        )
+        decay = _recency_decay(days_since_activity, half_life_days=decay_half_life)
 
-        # Page view scoring (up to 15 points)
+        total_page_views = sum(s.page_count or 0 for s in sessions)
+        total_duration = sum(s.duration_seconds or 0 for s in sessions)
+        max_scroll = max((s.max_scroll_depth or 0 for s in sessions), default=0)
+
+        # Page view scoring (up to 15 raw points)
+        raw_page_pts = 0
         if total_page_views >= 10:
-            behav_score += 15
+            raw_page_pts = 15
         elif total_page_views >= 5:
-            behav_score += 10
+            raw_page_pts = 10
         elif total_page_views >= 2:
-            behav_score += 5
+            raw_page_pts = 5
         behav_factors["page_views"] = total_page_views
 
-        # Duration scoring (up to 10 points)
-        if total_duration >= 300:  # 5+ minutes
-            behav_score += 10
-        elif total_duration >= 120:  # 2+ minutes
-            behav_score += 7
+        # Duration scoring (up to 10 raw points)
+        raw_dur_pts = 0
+        if total_duration >= 300:
+            raw_dur_pts = 10
+        elif total_duration >= 120:
+            raw_dur_pts = 7
         elif total_duration >= 30:
-            behav_score += 3
+            raw_dur_pts = 3
         behav_factors["duration_seconds"] = total_duration
 
-        # Scroll depth scoring (up to 10 points)
+        # Scroll depth scoring (up to 10 raw points)
+        raw_scroll_pts = 0
         if max_scroll >= 80:
-            behav_score += 10
+            raw_scroll_pts = 10
         elif max_scroll >= 50:
-            behav_score += 7
+            raw_scroll_pts = 7
         elif max_scroll >= 25:
-            behav_score += 3
+            raw_scroll_pts = 3
         behav_factors["max_scroll_depth"] = max_scroll
 
-        # Calculate engagement score (0-25)
+        # Apply time-decay to behavioral raw score (max 35), then scale
+        raw_behav = raw_page_pts + raw_dur_pts + raw_scroll_pts
+        behav_score = round(raw_behav * decay * behav_weight / 35)
+        behav_factors["decay_factor"] = round(decay, 3)
+        behav_factors["days_since_activity"] = round(days_since_activity, 1)
+
+        # ── Engagement score (0-engage_weight) with time-decay ───────────
         engage_score = 0
         engage_factors = {}
 
         # Return visits
+        raw_visit_pts = 0
         if len(sessions) >= 3:
-            engage_score += 15
+            raw_visit_pts = 15
         elif len(sessions) >= 2:
-            engage_score += 10
+            raw_visit_pts = 10
         elif len(sessions) >= 1:
-            engage_score += 5
+            raw_visit_pts = 5
         engage_factors["session_count"] = len(sessions)
 
         # Form submissions
@@ -444,11 +531,61 @@ async def score_lead(input: ScoreLeadInput) -> dict:
                 )
             )
             form_count = form_result.scalar() or 0
-        if form_count > 0:
-            engage_score += 10
+        raw_form_pts = 10 if form_count > 0 else 0
         engage_factors["form_submissions"] = form_count
 
-        total_score = min(firmo_score + behav_score + engage_score, 100)
+        # Apply time-decay to engagement raw score (max 25), then scale
+        raw_engage = raw_visit_pts + raw_form_pts
+        engage_score = round(raw_engage * decay * engage_weight / 25)
+
+        # ── Negative signals (0 to -20) ─────────────────────────────────
+        negative_score = 0
+        negative_factors = {}
+
+        # Inactivity penalty: -10 if no activity in 90+ days
+        if days_since_activity >= 90:
+            negative_score -= 10
+            negative_factors["inactivity_days"] = round(days_since_activity)
+
+        # Check suppression list (bounced/unsubscribed)
+        try:
+            from aexy.models.gtm import SuppressionList
+            suppressed = (await db.execute(
+                select(func.count(SuppressionList.id)).where(
+                    and_(
+                        SuppressionList.workspace_id == input.workspace_id,
+                        SuppressionList.record_id == input.record_id,
+                    )
+                )
+            )).scalar() or 0
+            if suppressed > 0:
+                negative_score -= 10
+                negative_factors["suppressed"] = True
+        except Exception:
+            pass  # SuppressionList may not have record_id FK
+
+        # Check outreach bounces
+        try:
+            from aexy.models.gtm_outreach import OutreachEnrollment
+            bounce_count = (await db.execute(
+                select(func.count(OutreachEnrollment.id)).where(
+                    and_(
+                        OutreachEnrollment.workspace_id == input.workspace_id,
+                        OutreachEnrollment.record_id == input.record_id,
+                        OutreachEnrollment.status.in_(["bounced", "unsubscribed"]),
+                    )
+                )
+            )).scalar() or 0
+            if bounce_count > 0:
+                negative_score -= 5 * min(bounce_count, 2)  # max -10
+                negative_factors["bounced_enrollments"] = bounce_count
+        except Exception:
+            pass
+
+        negative_factors["total_penalty"] = negative_score
+
+        # ── Total ────────────────────────────────────────────────────────
+        total_score = max(0, min(firmo_score + behav_score + engage_score + negative_score, 100))
 
         # Determine lifecycle stage
         if total_score >= (template.sql_threshold if template else 70):
@@ -473,10 +610,15 @@ async def score_lead(input: ScoreLeadInput) -> dict:
             )
         )).scalar_one_or_none()
 
-        now = datetime.now(timezone.utc)
+        scoring_factors = {
+            "firmographic": firmo_factors,
+            "behavioral": behav_factors,
+            "engagement": engage_factors,
+            "negative": negative_factors,
+            "weights": {"firmographic": firmo_weight, "behavioral": behav_weight, "engagement": engage_weight},
+        }
 
         if existing:
-            # Append to history
             history = list(existing.score_history or [])
             history.append({
                 "date": now.isoformat(),
@@ -484,7 +626,6 @@ async def score_lead(input: ScoreLeadInput) -> dict:
                 "previous": existing.total_score,
                 "reason": "Rescored",
             })
-            # Keep last 50 entries
             history = history[-50:]
 
             existing.total_score = total_score
@@ -493,11 +634,7 @@ async def score_lead(input: ScoreLeadInput) -> dict:
             existing.engagement_score = engage_score
             existing.lifecycle_stage = lifecycle
             existing.score_history = history
-            existing.scoring_factors = {
-                "firmographic": firmo_factors,
-                "behavioral": behav_factors,
-                "engagement": engage_factors,
-            }
+            existing.scoring_factors = scoring_factors
             existing.last_scored_at = now
         else:
             lead_score = LeadScore(
@@ -515,11 +652,7 @@ async def score_lead(input: ScoreLeadInput) -> dict:
                     "total": total_score,
                     "reason": "Initial score",
                 }],
-                scoring_factors={
-                    "firmographic": firmo_factors,
-                    "behavioral": behav_factors,
-                    "engagement": engage_factors,
-                },
+                scoring_factors=scoring_factors,
                 last_scored_at=now,
             )
             db.add(lead_score)
@@ -532,7 +665,9 @@ async def score_lead(input: ScoreLeadInput) -> dict:
         "firmographic": firmo_score,
         "behavioral": behav_score,
         "engagement": engage_score,
+        "negative": negative_score,
         "lifecycle_stage": lifecycle,
+        "decay_factor": round(decay, 3),
     }
 
 

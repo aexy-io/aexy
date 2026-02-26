@@ -293,6 +293,7 @@ class EmailCampaignService:
 
             if send_domain and send_provider:
                 try:
+                    unsub_url = f"/preferences/{recipient.subscriber_id}" if recipient.subscriber_id else None
                     result = await provider_service.send_email(
                         provider_id=send_provider,
                         to_email=recipient.email,
@@ -302,6 +303,7 @@ class EmailCampaignService:
                         html_body=html_body,
                         text_body=text_body or "",
                         reply_to=reply_to,
+                        unsubscribe_url=unsub_url,
                     )
 
                     if result.get("success"):
@@ -736,10 +738,11 @@ class EmailCampaignService:
 
                 can_send, reason = await domain_service.can_send(domain_id)
                 if can_send and provider_id:
+                    resolved_from = from_email or routing_decision.get("from_email", f"no-reply@{routing_decision.get('domain')}")
                     result = await provider_service.send_email(
                         provider_id=provider_id,
                         to_email=to_email,
-                        from_email=from_email or routing_decision.get("from_email", f"no-reply@{routing_decision.get('domain')}"),
+                        from_email=resolved_from,
                         from_name=from_name or "Notifications",
                         subject=subject,
                         html_body=html_body,
