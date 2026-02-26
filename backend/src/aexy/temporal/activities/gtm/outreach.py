@@ -122,7 +122,7 @@ async def execute_outreach_step(input: ExecuteStepInput) -> dict:
                 from_name = config.get("from_name")
 
                 # Inbox rotation: if no explicit from_email, use RoutingService
-                if not from_email:
+                if not from_email and config.get("sending_pool_id"):
                     try:
                         from aexy.services.routing_service import RoutingService
                         routing = RoutingService(db)
@@ -154,7 +154,7 @@ async def execute_outreach_step(input: ExecuteStepInput) -> dict:
                     sending_pool_id=config.get("sending_pool_id"),
                 )
                 provider_message_id = result.get("message_id")
-                if not result.get("success"):
+                if result.get("status") != "sent":
                     status = StepExecutionStatus.FAILED.value
                     error_message = result.get("error", "Email send failed")
 
