@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useGTMProviders } from "@/hooks/useGTMProviders";
-import { GTMProviderConfig, GTMProviderStatus } from "@/lib/api";
+import { GTMProviderConfig, GTMProviderStatus, gtmApi } from "@/lib/api";
 
 const SLOT_LABELS: Record<string, string> = {
   visitor_identification: "Visitor Identification",
@@ -353,8 +353,25 @@ export default function GTMProvidersPage() {
   } = useGTMProviders(workspaceId);
 
   const [configuringSlot, setConfiguringSlot] = useState<string | null>(null);
+  const [registeredSlots, setRegisteredSlots] = useState<Set<string> | null>(null);
+
+  useEffect(() => {
+    if (!workspaceId) return;
+    gtmApi.providers.listAvailable(workspaceId).then((available) => {
+      setRegisteredSlots(new Set(available.map((a) => a.slot)));
+    }).catch(() => {
+      // Fallback: show all slots if the endpoint fails
+      setRegisteredSlots(null);
+    });
+  }, [workspaceId]);
 
   const ALL_SLOTS = Object.keys(SLOT_LABELS);
+  const activeSlots = registeredSlots
+    ? ALL_SLOTS.filter((s) => registeredSlots.has(s))
+    : ALL_SLOTS;
+  const comingSoonSlots = registeredSlots
+    ? ALL_SLOTS.filter((s) => !registeredSlots.has(s))
+    : [];
 
   function getProviderForSlot(slot: string): GTMProviderConfig | null {
     return providers.find((p) => p.slot === slot) || null;
@@ -453,7 +470,7 @@ export default function GTMProvidersPage() {
 
         {/* Provider Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {ALL_SLOTS.map((slot) => {
+          {activeSlots.map((slot) => {
             const provider = getProviderForSlot(slot);
             const status: GTMProviderStatus = provider
               ? provider.status
@@ -515,6 +532,33 @@ export default function GTMProvidersPage() {
             );
           })}
         </div>
+
+        {/* Coming Soon Slots */}
+        {comingSoonSlots.length > 0 && (
+          <>
+            <h2 className="text-lg font-semibold text-foreground mt-10 mb-4">Coming Soon</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-60">
+              {comingSoonSlots.map((slot) => (
+                <div
+                  key={slot}
+                  className="bg-muted/30 border border-border/50 rounded-xl p-5"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-foreground font-semibold text-sm">
+                      {SLOT_LABELS[slot]}
+                    </h3>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-muted/50 text-muted-foreground border-border">
+                      Coming Soon
+                    </span>
+                  </div>
+                  <p className="text-muted-foreground text-xs leading-relaxed">
+                    {SLOT_DESCRIPTIONS[slot]}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Configure Modal */}

@@ -131,6 +131,25 @@ async def _record_open_event(
                     )
             except Exception as e:
                 logger.error(f"Failed to dispatch email.opened for pixel {pixel_id}: {e}")
+
+            # Re-score lead if linked to a CRM record
+            try:
+                if pixel and pixel.record_id and pixel.workspace_id:
+                    from aexy.temporal.dispatch import dispatch
+                    from aexy.temporal.activities.gtm import ScoreLeadInput
+                    from aexy.temporal.task_queues import TaskQueue
+
+                    await dispatch(
+                        "score_lead",
+                        ScoreLeadInput(
+                            workspace_id=str(pixel.workspace_id),
+                            record_id=str(pixel.record_id),
+                        ),
+                        task_queue=TaskQueue.INTEGRATIONS,
+                        workflow_id=f"rescore-open-{pixel.record_id}",
+                    )
+            except Exception as e:
+                logger.debug(f"Failed to dispatch re-score on open for pixel {pixel_id}: {e}")
     except Exception as e:
         logger.error(f"Failed to record open for pixel {pixel_id}: {e}")
 
@@ -236,6 +255,25 @@ async def _record_click_event(
                     )
             except Exception as e:
                 logger.error(f"Failed to dispatch email.clicked for link {link_id}: {e}")
+
+            # Re-score lead if linked to a CRM record
+            try:
+                if link and link.record_id and link.workspace_id:
+                    from aexy.temporal.dispatch import dispatch
+                    from aexy.temporal.activities.gtm import ScoreLeadInput
+                    from aexy.temporal.task_queues import TaskQueue
+
+                    await dispatch(
+                        "score_lead",
+                        ScoreLeadInput(
+                            workspace_id=str(link.workspace_id),
+                            record_id=str(link.record_id),
+                        ),
+                        task_queue=TaskQueue.INTEGRATIONS,
+                        workflow_id=f"rescore-click-{link.record_id}",
+                    )
+            except Exception as e:
+                logger.debug(f"Failed to dispatch re-score on click for link {link_id}: {e}")
     except Exception as e:
         logger.error(f"Failed to record click for link {link_id}: {e}")
 

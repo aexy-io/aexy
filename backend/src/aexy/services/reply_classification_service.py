@@ -340,8 +340,8 @@ class ReplyClassificationService:
         # Stop all other sequences for this contact
         stopped = await self.stop_all_sequences_for_contact(workspace_id, enrollment.email)
 
-        # Signal Temporal workflow to exit
-        await self._signal_exit_sequence(enrollment)
+        # Signal Temporal workflow — use reply_received so finalize records "replied"
+        await self._signal_exit_sequence(enrollment, replied=True)
 
         logger.info(
             f"Routed enrollment {enrollment.id} to sales, "
@@ -480,19 +480,28 @@ class ReplyClassificationService:
             "enrollment_id": enrollment.id,
         }
 
-    async def _signal_exit_sequence(self, enrollment: OutreachEnrollment) -> None:
-        """Signal the Temporal workflow to exit the sequence, if workflow ID exists."""
+    async def _signal_exit_sequence(
+        self, enrollment: OutreachEnrollment, *, replied: bool = False,
+    ) -> None:
+        """Signal the Temporal workflow to exit the sequence, if workflow ID exists.
+
+        Args:
+            enrollment: The enrollment whose workflow to signal.
+            replied: If True, sends ``reply_received`` signal (exit_reason="replied").
+                     If False, sends ``exit_sequence`` signal (exit_reason="exited").
+        """
         if not enrollment.temporal_workflow_id:
             return
 
+        signal_name = "reply_received" if replied else "exit_sequence"
         try:
             from aexy.temporal.client import get_temporal_client
 
             client = await get_temporal_client()
             handle = client.get_workflow_handle(enrollment.temporal_workflow_id)
-            await handle.signal("exit_sequence")
+            await handle.signal(signal_name)
             logger.info(
-                f"Signaled exit_sequence for workflow {enrollment.temporal_workflow_id}"
+                f"Signaled {signal_name} for workflow {enrollment.temporal_workflow_id}"
             )
         except Exception:
             logger.exception(
