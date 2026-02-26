@@ -21,7 +21,7 @@ interface SavedViewSwitcherProps {
   onSelectView: (view: TableSavedView | null) => void;
   onSaveView: (data: {
     name: string;
-    view_type?: "table" | "board" | "gallery" | "timeline";
+    view_type?: "table" | "kanban" | "board" | "gallery" | "timeline";
     visible_attributes?: string[];
     column_config?: ColumnDisplayConfig[];
     sorts?: Record<string, unknown>[];
@@ -40,7 +40,7 @@ interface SavedViewSwitcherProps {
     visible_attributes?: string[];
     column_config?: ColumnDisplayConfig[];
     sorts?: Record<string, unknown>[];
-    view_type?: "table" | "board";
+    view_type?: "table" | "kanban" | "board";
   };
   isCreating?: boolean;
   isUpdating?: boolean;

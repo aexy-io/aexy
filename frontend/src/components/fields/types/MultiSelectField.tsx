@@ -4,7 +4,8 @@ import { StatusBadge } from "@/components/crm/CRMBadge";
 import { FieldViewProps, FieldEditProps } from "../types";
 
 /** Variants: "pills" (default), "comma_text", "count_badge" */
-export function MultiSelectFieldView({ value, config, surface, variant }: FieldViewProps) {
+export function MultiSelectFieldView({ value, config, surface, displayConfig }: FieldViewProps) {
+  const variant = displayConfig?.variant;
   if (value === null || value === undefined) {
     return <span className="text-muted-foreground">{surface === "highlights" ? "Not set" : "—"}</span>;
   }

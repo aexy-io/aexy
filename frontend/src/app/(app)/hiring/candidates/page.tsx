@@ -35,7 +35,9 @@ import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/EmptyState";
 import { SearchInput } from "@/components/ui/search-input";
 import { DataTable, DataTableColumn } from "@/components/ui/data-table";
-import { hiringApi, HiringCandidate, HiringCandidateStage } from "@/lib/api";
+import { SavedViewSwitcher } from "@/components/crm/SavedViewSwitcher";
+import { useSavedViews } from "@/hooks/useSavedViews";
+import { hiringApi, HiringCandidate, HiringCandidateStage, TableSavedView } from "@/lib/api";
 
 // Candidate stages
 type CandidateStage = HiringCandidateStage;
@@ -298,6 +300,53 @@ export default function CandidatesPage() {
   const [filterSource, setFilterSource] = useState<string>("all");
   const [showAddModal, setShowAddModal] = useState(false);
 
+  // Saved views for hiring candidates
+  const {
+    views: savedViews,
+    createView,
+    updateView,
+    deleteView,
+    isCreating: isCreatingView,
+    isUpdating: isUpdatingView,
+  } = useSavedViews(currentWorkspaceId ?? undefined, "candidate");
+  const [activeViewId, setActiveViewId] = useState<string | null>(null);
+
+  const handleSelectView = useCallback((view: TableSavedView | null) => {
+    if (!view) {
+      setActiveViewId(null);
+      setFilterStage("all");
+      setFilterSource("all");
+      setSearchQuery("");
+      return;
+    }
+    setActiveViewId(view.id);
+    for (const f of view.filters || []) {
+      const attr = f.attribute as string;
+      const val = f.value;
+      if (attr === "stage") setFilterStage(val as CandidateStage);
+      else if (attr === "source") setFilterSource(val as string);
+      else if (attr === "search") setSearchQuery(val as string);
+    }
+    if (view.view_type === "kanban" || view.view_type === "board") setViewMode("kanban");
+    else if (view.view_type === "table") setViewMode("list");
+  }, []);
+
+  const handleSaveView = useCallback(async (data: Parameters<typeof createView>[0]) => {
+    const filterList: Record<string, unknown>[] = [];
+    if (filterStage !== "all") filterList.push({ attribute: "stage", operator: "equals", value: filterStage });
+    if (filterSource !== "all") filterList.push({ attribute: "source", operator: "equals", value: filterSource });
+    if (searchQuery) filterList.push({ attribute: "search", operator: "equals", value: searchQuery });
+    await createView({
+      ...data,
+      view_type: viewMode === "kanban" ? "kanban" : "table",
+      filters: filterList,
+    });
+  }, [createView, filterStage, filterSource, searchQuery, viewMode]);
+
+  const handleUpdateView = useCallback(async (viewId: string, data: Parameters<typeof updateView>[1]) => {
+    await updateView(viewId, data);
+  }, [updateView]);
+
   // Fetch candidates from API
   useEffect(() => {
     const fetchCandidates = async () => {
@@ -487,6 +536,21 @@ export default function CandidatesPage() {
 
         {/* Filters */}
         <div className="flex items-center gap-4 mb-6">
+          <SavedViewSwitcher
+            views={savedViews}
+            activeViewId={activeViewId}
+            onSelectView={handleSelectView}
+            onSaveView={handleSaveView}
+            onUpdateView={handleUpdateView}
+            onDeleteView={deleteView}
+            currentConfig={{
+              view_type: viewMode === "kanban" ? "kanban" : "table",
+              sorts: [],
+            }}
+            isCreating={isCreatingView}
+            isUpdating={isUpdatingView}
+          />
+
           {/* Search */}
           <SearchInput
             value={searchQuery}
