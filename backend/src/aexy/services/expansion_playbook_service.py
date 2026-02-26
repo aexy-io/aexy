@@ -244,8 +244,14 @@ class ExpansionPlaybookService:
                 return False
 
             try:
-                if not op_func(field_value, float(value)):
-                    return False
+                # Use string comparison for UUID/record_id fields;
+                # float() on a UUID raises ValueError.
+                if field == "record_id":
+                    if not op_func(str(field_value), str(value)):
+                        return False
+                else:
+                    if not op_func(field_value, float(value)):
+                        return False
             except (ValueError, TypeError):
                 return False
 

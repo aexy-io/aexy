@@ -62,6 +62,8 @@ import {
     LayoutTemplate,
     Download,
     Table2,
+    BarChart3,
+    HeartPulse,
 } from "lucide-react";
 
 export type SidebarLayoutType = "grouped" | "flat";
@@ -184,6 +186,12 @@ const gtmItems: SidebarItemConfig[] = [
     { href: "/gtm/scoring", label: "Scoring & ICP", icon: BarChart2 },
     { href: "/gtm/routing", label: "Routing", icon: UserCheck },
     { href: "/gtm/sequences", label: "Sequences", icon: Mail },
+    { href: "/gtm/analytics", label: "Analytics", icon: BarChart3 },
+    { href: "/gtm/abm", label: "ABM", icon: Target },
+    { href: "/gtm/competitors", label: "Competitors", icon: Swords },
+    { href: "/gtm/intent", label: "Intent", icon: Zap },
+    { href: "/gtm/health", label: "Health", icon: HeartPulse },
+    { href: "/gtm/import", label: "Import", icon: Upload },
     { href: "/gtm/alerts", label: "Alerts", icon: Bell },
     { href: "/gtm/compliance", label: "Compliance", icon: ShieldCheck },
     { href: "/gtm/providers", label: "Providers", icon: Plug },

@@ -40,7 +40,7 @@ async def create_routing_rule(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.lead_routing_service import LeadRoutingService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = LeadRoutingService(db)
     return await service.create_rule(workspace_id, data.model_dump())
 
@@ -54,9 +54,9 @@ async def update_routing_rule(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.lead_routing_service import LeadRoutingService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = LeadRoutingService(db)
-    result = await service.update_rule(workspace_id, rule_id, data.model_dump(exclude_none=True))
+    result = await service.update_rule(workspace_id, rule_id, data.model_dump(exclude_unset=True))
     if not result:
         raise HTTPException(status_code=404, detail="Not found")
     return result
@@ -70,7 +70,7 @@ async def delete_routing_rule(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.lead_routing_service import LeadRoutingService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = LeadRoutingService(db)
     deleted = await service.delete_rule(workspace_id, rule_id)
     if not deleted:
@@ -85,7 +85,7 @@ async def manual_route_record(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.lead_routing_service import LeadRoutingService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = LeadRoutingService(db)
     return await service.route_record(workspace_id, record_id)
 
@@ -114,7 +114,7 @@ async def record_first_response(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.lead_routing_service import LeadRoutingService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = LeadRoutingService(db)
     result = await service.record_first_response(workspace_id, assignment_id)
     if not result:
@@ -131,7 +131,7 @@ async def reassign_assignment(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.lead_routing_service import LeadRoutingService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = LeadRoutingService(db)
     result = await service.reassign(workspace_id, assignment_id, data)
     if not result:

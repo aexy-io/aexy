@@ -161,6 +161,7 @@ function RecentVisitorsTable({ visitors }: { visitors: RecentVisitorRow[] }) {
               <tr
                 key={visitor.session_id}
                 className="hover:bg-muted/50 transition-colors cursor-pointer"
+                onClick={() => window.location.href = `/gtm/visitors/${visitor.session_id}`}
               >
                 <td className="px-6 py-4">
                   <div className="flex flex-col">

@@ -116,8 +116,29 @@ class ABMService:
         if not target_list:
             raise ValueError(f"Target list {list_id} not found")
 
+        # Collect record_ids that already exist in this target list to skip duplicates
+        incoming_record_ids = [e["record_id"] for e in accounts if e.get("record_id")]
+        existing_result = await self.db.execute(
+            select(ABMAccount.record_id).where(
+                and_(
+                    ABMAccount.workspace_id == workspace_id,
+                    ABMAccount.target_list_id == list_id,
+                    ABMAccount.record_id.in_(incoming_record_ids),
+                )
+            )
+        )
+        existing_record_ids = set(existing_result.scalars().all())
+
         created = []
         for entry in accounts:
+            # Skip accounts whose record_id is already in this target list
+            if entry["record_id"] in existing_record_ids:
+                logger.debug(
+                    "Skipping duplicate record_id %s in list %s",
+                    entry["record_id"], list_id,
+                )
+                continue
+
             account = ABMAccount(
                 id=str(uuid4()),
                 workspace_id=workspace_id,

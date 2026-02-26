@@ -194,6 +194,12 @@ class GTMWebhookService:
 
         return delivery_ids
 
+    async def send_test_event(self, webhook: GTMWebhook) -> str | None:
+        """Send a test ping event to verify webhook connectivity."""
+        return await self._deliver_to_webhook(
+            webhook, "test.ping", {"message": "Test webhook delivery from Aexy GTM"},
+        )
+
     async def _deliver_to_webhook(
         self,
         webhook: GTMWebhook,
@@ -356,10 +362,11 @@ class GTMProviderHealthService:
         """Return per-provider health summary for the last N hours."""
         from aexy.models.gtm_webhook import GTMProviderHealthMetric
 
+        from datetime import timedelta
+
         cutoff = datetime.now(timezone.utc).replace(
             minute=0, second=0, microsecond=0,
-        )
-        cutoff = cutoff.replace(hour=cutoff.hour - min(hours, cutoff.hour))
+        ) - timedelta(hours=hours)
 
         rows = (await self.db.execute(
             select(

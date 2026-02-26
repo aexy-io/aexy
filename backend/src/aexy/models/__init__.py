@@ -481,6 +481,7 @@ from aexy.models.gtm_competitor import CompetitorProfile, CompetitorChange, Batt
 from aexy.models.gtm_seo import SEOAudit, SEOAuditPage
 from aexy.models.gtm_content import ContentAnalysis
 from aexy.models.gtm_abm import ABMTargetList, ABMAccount
+from aexy.models.gtm_webhook import GTMWebhook, GTMWebhookDelivery, GTMProviderHealthMetric
 
 __all__ = [
     # Plan
@@ -966,4 +967,8 @@ __all__ = [
     # GTM ABM
     "ABMTargetList",
     "ABMAccount",
+    # GTM Webhooks
+    "GTMWebhook",
+    "GTMWebhookDelivery",
+    "GTMProviderHealthMetric",
 ]

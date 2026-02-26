@@ -38,7 +38,7 @@ async def create_alert_config(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.gtm_alert_service import GTMAlertService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = GTMAlertService(db)
     result = await service.create_alert_config(workspace_id, data.model_dump())
     await db.commit()
@@ -54,9 +54,9 @@ async def update_alert_config(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.gtm_alert_service import GTMAlertService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = GTMAlertService(db)
-    result = await service.update_alert_config(workspace_id, alert_id, data.model_dump(exclude_none=True))
+    result = await service.update_alert_config(workspace_id, alert_id, data.model_dump(exclude_unset=True))
     if not result:
         raise HTTPException(status_code=404, detail="Not found")
     await db.commit()
@@ -71,7 +71,7 @@ async def delete_alert_config(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.gtm_alert_service import GTMAlertService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = GTMAlertService(db)
     deleted = await service.delete_alert_config(workspace_id, alert_id)
     if not deleted:
@@ -102,7 +102,7 @@ async def test_alert_config(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.gtm_alert_service import GTMAlertService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = GTMAlertService(db)
     result = await service.test_alert(workspace_id, alert_id)
     if not result:

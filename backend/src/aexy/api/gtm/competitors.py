@@ -40,7 +40,7 @@ async def create_competitor(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.competitor_intel_service import CompetitorIntelService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = CompetitorIntelService(db)
     return await service.create_competitor(workspace_id, data.model_dump())
 
@@ -69,7 +69,7 @@ async def acknowledge_competitor_change(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.competitor_intel_service import CompetitorIntelService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = CompetitorIntelService(db)
     result = await service.acknowledge_change(workspace_id, change_id)
     if not result:
@@ -102,9 +102,9 @@ async def update_competitor(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.competitor_intel_service import CompetitorIntelService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = CompetitorIntelService(db)
-    result = await service.update_competitor(workspace_id, competitor_id, data.model_dump(exclude_none=True))
+    result = await service.update_competitor(workspace_id, competitor_id, data.model_dump(exclude_unset=True))
     if not result:
         raise HTTPException(status_code=404, detail="Not found")
     return result
@@ -118,7 +118,7 @@ async def delete_competitor(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.competitor_intel_service import CompetitorIntelService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = CompetitorIntelService(db)
     deleted = await service.delete_competitor(workspace_id, competitor_id)
     if not deleted:
@@ -134,7 +134,7 @@ async def manual_competitor_check(
 ):
     from aexy.temporal.dispatch import dispatch
     from aexy.temporal.task_queues import TaskQueue
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     wf_id = await dispatch(
         "check_competitor_changes",
         {"workspace_id": workspace_id, "competitor_id": competitor_id},
@@ -168,7 +168,7 @@ async def generate_battle_card(
 ):
     from aexy.temporal.dispatch import dispatch
     from aexy.temporal.task_queues import TaskQueue
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     wf_id = await dispatch(
         "generate_battle_card",
         {"workspace_id": workspace_id, "competitor_id": competitor_id},
@@ -187,9 +187,9 @@ async def update_battle_card(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.competitor_intel_service import CompetitorIntelService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = CompetitorIntelService(db)
-    result = await service.update_battle_card(workspace_id, competitor_id, card_id, data.model_dump(exclude_none=True))
+    result = await service.update_battle_card(workspace_id, competitor_id, card_id, data.model_dump(exclude_unset=True))
     if not result:
         raise HTTPException(status_code=404, detail="Not found")
     return result
@@ -204,7 +204,7 @@ async def publish_battle_card(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.competitor_intel_service import CompetitorIntelService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = CompetitorIntelService(db)
     result = await service.publish_battle_card(workspace_id, competitor_id, card_id)
     if not result:

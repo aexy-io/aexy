@@ -38,7 +38,7 @@ async def create_icp_template(
     db: AsyncSession = Depends(get_db),
 ):
     """Create an ICP template."""
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = ICPTemplateService(db)
     template = await service.create_template(
         workspace_id, data.model_dump(), created_by=str(current_user.id),
@@ -72,7 +72,7 @@ async def update_icp_template(
     db: AsyncSession = Depends(get_db),
 ):
     """Update an ICP template."""
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = ICPTemplateService(db)
     template = await service.update_template(
         workspace_id, template_id, data.model_dump(exclude_unset=True),
@@ -91,7 +91,7 @@ async def delete_icp_template(
     db: AsyncSession = Depends(get_db),
 ):
     """Delete an ICP template."""
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = ICPTemplateService(db)
     deleted = await service.delete_template(workspace_id, template_id)
     if not deleted:

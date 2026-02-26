@@ -91,7 +91,7 @@ export default function HealthPage() {
     healthy_count: 0,
     at_risk_count: 0,
     critical_count: 0,
-    distribution: [],
+    status_distribution: [],
   };
   const safeScores = scores ?? [];
   const safeTotal = total ?? 0;
@@ -169,11 +169,11 @@ export default function HealthPage() {
         </div>
 
         {/* Status Distribution */}
-        {(safeDash.distribution ?? []).length > 0 && (
+        {(safeDash.status_distribution ?? []).length > 0 && (
           <div className="bg-muted/50 border border-border rounded-xl p-6 mb-6">
             <h3 className="text-lg font-semibold text-foreground mb-4">Status Distribution</h3>
             <div className="space-y-3">
-              {(safeDash.distribution ?? []).map((d: any) => {
+              {(safeDash.status_distribution ?? []).map((d: any) => {
                 const total = safeDash.total_customers || 1;
                 const pct = ((d.count / total) * 100).toFixed(1);
                 return (

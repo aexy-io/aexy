@@ -45,7 +45,7 @@ async def create_abm_target_list(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.abm_service import ABMService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = ABMService(db)
     return await service.create_target_list(workspace_id, data.model_dump())
 
@@ -104,9 +104,9 @@ async def update_abm_target_list(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.abm_service import ABMService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = ABMService(db)
-    result = await service.update_target_list(workspace_id, list_id, data.model_dump(exclude_none=True))
+    result = await service.update_target_list(workspace_id, list_id, data.model_dump(exclude_unset=True))
     if not result:
         raise HTTPException(status_code=404, detail="Not found")
     return result
@@ -120,7 +120,7 @@ async def delete_abm_target_list(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.abm_service import ABMService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = ABMService(db)
     deleted = await service.delete_target_list(workspace_id, list_id)
     if not deleted:
@@ -136,7 +136,7 @@ async def add_abm_accounts_to_list(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.abm_service import ABMService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     parsed = [item.model_dump() for item in data]
     service = ABMService(db)
     return await service.add_accounts(workspace_id, list_id, parsed)
@@ -151,7 +151,7 @@ async def refresh_abm_target_list(
 ):
     from aexy.temporal.dispatch import dispatch
     from aexy.temporal.task_queues import TaskQueue
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     wf_id = await dispatch(
         "refresh_dynamic_abm_lists",
         {"workspace_id": workspace_id, "list_id": list_id},
@@ -185,9 +185,9 @@ async def update_abm_account(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.abm_service import ABMService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = ABMService(db)
-    result = await service.update_account(workspace_id, account_id, data.model_dump(exclude_none=True))
+    result = await service.update_account(workspace_id, account_id, data.model_dump(exclude_unset=True))
     if not result:
         raise HTTPException(status_code=404, detail="Not found")
     return result
@@ -201,7 +201,7 @@ async def delete_abm_account(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.abm_service import ABMService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = ABMService(db)
     deleted = await service.remove_account(workspace_id, account_id)
     if not deleted:
@@ -217,7 +217,7 @@ async def change_abm_account_stage(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.abm_service import ABMService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = ABMService(db)
     result = await service.change_stage(workspace_id, account_id, data.stage, data.notes)
     if not result:
@@ -234,7 +234,7 @@ async def assign_abm_campaign(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.abm_service import ABMService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = ABMService(db)
     result = await service.assign_campaign(workspace_id, account_id, data.campaign_id, data.campaign_name)
     if not result:
