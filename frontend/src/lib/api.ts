@@ -10614,6 +10614,8 @@ export interface DashboardPreferences {
   widget_order: string[];
   widget_sizes: Record<string, string>;
   layout: Record<string, unknown>;
+  checklist_progress: string[];
+  checklist_dismissed: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -10624,6 +10626,8 @@ export interface DashboardPreferencesUpdate {
   widget_order?: string[];
   widget_sizes?: Record<string, string>;
   layout?: Record<string, unknown>;
+  checklist_progress?: string[];
+  checklist_dismissed?: boolean;
 }
 
 export interface DashboardPresetInfo {
