@@ -83,6 +83,15 @@ class IntentSignalService:
         await self.db.commit()
         return await self.db.get(IntentSignal, signal_id)
 
+    async def get_signal(self, workspace_id: str, signal_id: str) -> IntentSignal | None:
+        """Return a single intent signal by ID."""
+        return await self.db.scalar(
+            select(IntentSignal).where(and_(
+                IntentSignal.workspace_id == workspace_id,
+                IntentSignal.id == signal_id,
+            ))
+        )
+
     async def get_signals_for_record(self, workspace_id: str, record_id: str) -> list[IntentSignal]:
         """Return all signals linked to a CRM record."""
         rows = (
@@ -131,40 +140,161 @@ class IntentSignalService:
     # ------------------------------------------------------------------
 
     async def collect_job_posting_signals(self, workspace_id: str) -> int:
-        """Placeholder: scrape job postings for monitored domains.
+        """Scrape careers/jobs pages for monitored domains and create intent signals.
 
-        Real implementation would fetch careers pages / job board APIs
-        for domains in the config and create signals.  Returns 0 for now.
+        Fetches ``https://{domain}/careers`` (and common variants) looking for
+        job titles or technology keywords from the workspace config.  Each match
+        becomes an intent signal.
         """
+        import httpx
+        import re
+
         config = await self.get_config(workspace_id)
         if not config or not config.monitored_domains:
             logger.info("No monitored domains configured for workspace %s", workspace_id)
             return 0
 
+        keywords = set(k.lower() for k in (config.job_title_keywords or []))
+        tech_kw = set(k.lower() for k in (config.tech_keywords or []))
+        all_keywords = keywords | tech_kw
+        if not all_keywords:
+            logger.info("No job/tech keywords configured for workspace %s", workspace_id)
+            return 0
+
+        careers_paths = ["/careers", "/jobs", "/open-positions"]
+        created = 0
+
+        async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+            for domain in config.monitored_domains:
+                for path in careers_paths:
+                    url = f"https://{domain}{path}"
+                    try:
+                        resp = await client.get(url)
+                        if resp.status_code != 200:
+                            continue
+                        text = resp.text.lower()
+                    except Exception:
+                        continue
+
+                    # Look for keyword matches in the page
+                    matched = [kw for kw in all_keywords if kw in text]
+                    if not matched:
+                        continue
+
+                    # Deduplicate: skip if we already have a recent signal for this domain+type
+                    existing = await self.db.scalar(
+                        select(func.count(IntentSignal.id)).where(and_(
+                            IntentSignal.workspace_id == workspace_id,
+                            IntentSignal.company_domain == domain,
+                            IntentSignal.signal_type == "job_posting",
+                            IntentSignal.is_dismissed == False,  # noqa: E712
+                        ))
+                    )
+                    if existing and existing > 0:
+                        continue
+
+                    # Determine strength by number of keyword matches
+                    strength = "low" if len(matched) < 2 else ("medium" if len(matched) < 4 else "high")
+
+                    signal = IntentSignal(
+                        id=str(uuid4()),
+                        workspace_id=workspace_id,
+                        company_domain=domain,
+                        company_name=domain.split(".")[0].title(),
+                        signal_type="job_posting",
+                        title=f"Job postings mention: {', '.join(matched[:5])}",
+                        description=f"Careers page at {url} mentions keywords relevant to your product.",
+                        source_url=url,
+                        source_name="careers_page",
+                        confidence_score=min(0.9, 0.4 + 0.1 * len(matched)),
+                        intent_strength=strength,
+                        signal_data={"matched_keywords": matched[:20], "url": url},
+                    )
+                    self.db.add(signal)
+                    created += 1
+                    break  # Found careers page for this domain, move to next
+
+        if created:
+            await self.db.commit()
+
         logger.info(
-            "Would collect job posting signals for %d domains in workspace %s",
-            len(config.monitored_domains),
-            workspace_id,
+            "Collected %d job posting signals for %d domains in workspace %s",
+            created, len(config.monitored_domains), workspace_id,
         )
-        return 0
+        return created
 
     async def collect_tech_change_signals(self, workspace_id: str) -> int:
-        """Placeholder: detect technology-stack changes for monitored domains.
+        """Detect technology-stack clues from monitored domain homepages.
 
-        Real implementation would use BuiltWith / Wappalyzer-style checks.
-        Returns 0 for now.
+        Performs lightweight checks for technology keywords (from config) in
+        page HTML meta tags and script sources.  More accurate results would
+        come from a BuiltWith or Wappalyzer-style provider integration.
         """
+        import httpx
+        import re
+
         config = await self.get_config(workspace_id)
         if not config or not config.monitored_domains:
             logger.info("No monitored domains configured for workspace %s", workspace_id)
             return 0
 
+        tech_kw = set(k.lower() for k in (config.tech_keywords or []))
+        if not tech_kw:
+            return 0
+
+        created = 0
+        async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+            for domain in config.monitored_domains:
+                url = f"https://{domain}"
+                try:
+                    resp = await client.get(url)
+                    if resp.status_code != 200:
+                        continue
+                    text = resp.text.lower()
+                except Exception:
+                    continue
+
+                matched = [kw for kw in tech_kw if kw in text]
+                if not matched:
+                    continue
+
+                # Skip if we already have a recent tech_change signal for this domain
+                existing = await self.db.scalar(
+                    select(func.count(IntentSignal.id)).where(and_(
+                        IntentSignal.workspace_id == workspace_id,
+                        IntentSignal.company_domain == domain,
+                        IntentSignal.signal_type == "tech_change",
+                        IntentSignal.is_dismissed == False,  # noqa: E712
+                    ))
+                )
+                if existing and existing > 0:
+                    continue
+
+                signal = IntentSignal(
+                    id=str(uuid4()),
+                    workspace_id=workspace_id,
+                    company_domain=domain,
+                    company_name=domain.split(".")[0].title(),
+                    signal_type="tech_change",
+                    title=f"Tech stack mentions: {', '.join(matched[:5])}",
+                    description=f"Homepage of {domain} references technologies relevant to your product.",
+                    source_url=url,
+                    source_name="homepage_scan",
+                    confidence_score=min(0.8, 0.3 + 0.1 * len(matched)),
+                    intent_strength="low" if len(matched) < 2 else "medium",
+                    signal_data={"matched_keywords": matched[:20], "url": url},
+                )
+                self.db.add(signal)
+                created += 1
+
+        if created:
+            await self.db.commit()
+
         logger.info(
-            "Would collect tech change signals for %d domains in workspace %s",
-            len(config.monitored_domains),
-            workspace_id,
+            "Collected %d tech change signals for %d domains in workspace %s",
+            created, len(config.monitored_domains), workspace_id,
         )
-        return 0
+        return created
 
     # ------------------------------------------------------------------
     # Scoring

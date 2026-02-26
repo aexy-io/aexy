@@ -117,7 +117,7 @@ async def update_intent_config(
     from aexy.services.intent_signal_service import IntentSignalService
     await check_workspace_permission(workspace_id, current_user, db)
     service = IntentSignalService(db)
-    return await service.update_config(workspace_id, data.model_dump(exclude_none=True))
+    return await service.upsert_config(workspace_id, data.model_dump(exclude_none=True))
 
 
 @router.get("/intent/summary", response_model=IntentSummaryResponse)
