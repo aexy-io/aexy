@@ -62,6 +62,7 @@ import {
     Table2,
     BarChart3,
     HeartPulse,
+    UserCheck,
 } from "lucide-react";
 
 export type SidebarLayoutType = "grouped" | "flat";
