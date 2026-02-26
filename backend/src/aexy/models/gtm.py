@@ -4,9 +4,9 @@ from datetime import datetime
 from enum import Enum
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, desc, func, Index
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, desc, func, Index
 from sqlalchemy.dialects.postgresql import INET, JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, validates
 
 from aexy.core.database import Base
 
@@ -104,6 +104,25 @@ class GTMProviderConfig(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False,
     )
 
+    __table_args__ = (
+        Index("ix_gtm_provider_configs_ws_slot", "workspace_id", "slot"),
+    )
+
+    @validates("credentials")
+    def validate_credentials(self, _key: str, value: dict) -> dict:
+        """Ensure credentials are encrypted before persisting."""
+        if not value:
+            return value
+        # Credentials must be wrapped via encrypt_credentials() before assignment.
+        # Raw API keys / secrets should never appear as plain-text dict values.
+        for v in value.values():
+            if isinstance(v, str) and v.startswith("sk-"):
+                raise ValueError(
+                    "Credentials must be encrypted before assignment. "
+                    "Use encrypt_credentials() from aexy.core.encryption."
+                )
+        return value
+
 
 # =============================================================================
 # BEHAVIORAL EVENTS
@@ -160,6 +179,7 @@ class BehavioralEvent(Base):
 
     __table_args__ = (
         Index("ix_behavioral_events_anonymous", "anonymous_id", desc("occurred_at")),
+        Index("ix_behavioral_events_ws_type", "workspace_id", "event_type"),
     )
 
 
@@ -222,6 +242,10 @@ class VisitorSession(Base):
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False,
+    )
+
+    __table_args__ = (
+        Index("ix_visitor_sessions_ws_started", "workspace_id", desc("started_at")),
     )
 
 
