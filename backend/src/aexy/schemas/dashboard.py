@@ -19,6 +19,10 @@ class DashboardPreferencesCreate(BaseModel):
     widget_order: list[str] = Field(default_factory=list)
     widget_sizes: dict[str, WidgetSize] = Field(default_factory=dict)
     layout: dict = Field(default_factory=dict)
+    checklist_progress: list[str] = Field(default_factory=list)
+    checklist_dismissed: bool = False
+    sidebar_page_visits: dict[str, int] = Field(default_factory=dict)
+    sidebar_pinned_items: list[str] = Field(default_factory=list)
 
 
 class DashboardPreferencesUpdate(BaseModel):
@@ -29,6 +33,10 @@ class DashboardPreferencesUpdate(BaseModel):
     widget_order: list[str] | None = None
     widget_sizes: dict[str, WidgetSize] | None = None
     layout: dict | None = None
+    checklist_progress: list[str] | None = None
+    checklist_dismissed: bool | None = None
+    sidebar_page_visits: dict[str, int] | None = None
+    sidebar_pinned_items: list[str] | None = None
 
 
 class DashboardPreferencesResponse(BaseModel):
@@ -41,6 +49,10 @@ class DashboardPreferencesResponse(BaseModel):
     widget_order: list[str]
     widget_sizes: dict[str, str]
     layout: dict
+    checklist_progress: list[str]
+    checklist_dismissed: bool
+    sidebar_page_visits: dict[str, int]
+    sidebar_pinned_items: list[str]
     created_at: datetime
     updated_at: datetime
 

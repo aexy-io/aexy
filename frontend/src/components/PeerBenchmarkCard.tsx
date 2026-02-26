@@ -75,8 +75,8 @@ export function PeerBenchmarkCard({ developerId }: PeerBenchmarkCardProps) {
       <div className="bg-muted rounded-xl p-6 border border-border">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <BarChart2 className="h-5 w-5 text-primary-400" />
-            <h3 className="text-lg font-semibold text-foreground">Peer Benchmark</h3>
+            <BarChart2 className="h-4 w-4 text-primary-400" />
+            <h3 className="text-sm font-semibold text-foreground truncate">Peer Benchmark</h3>
           </div>
           <button
             onClick={fetchBenchmark}

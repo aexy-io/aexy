@@ -28,7 +28,6 @@ import {
     FileStack,
     BarChart,
     Inbox,
-    Headphones,
     Activity,
     Zap,
     Send,
@@ -46,7 +45,6 @@ import {
     FileSearch,
     Bell,
     CalendarDays,
-    UserCheck,
     FolderGit2,
     RefreshCw,
     Palmtree,
@@ -64,6 +62,7 @@ import {
     Table2,
     BarChart3,
     HeartPulse,
+    UserCheck,
 } from "lucide-react";
 
 export type SidebarLayoutType = "grouped" | "flat";
@@ -73,12 +72,14 @@ export interface SidebarItemConfig {
     label: string;
     icon: LucideIcon;
     items?: SidebarItemConfig[];
+    personas?: string[]; // e.g. ["developer","manager"] — omit for all personas
 }
 
 export interface SidebarSectionConfig {
     id: string;
     label: string;
     items: SidebarItemConfig[];
+    personas?: string[]; // section-level persona filter — omit for all personas
 }
 
 export interface SidebarLayoutConfig {
@@ -229,42 +230,54 @@ export const GROUPED_LAYOUT: SidebarLayoutConfig = {
                     icon: Zap,
                     items: automationsItems,
                 },
+                { href: "/templates", label: "Templates", icon: LayoutTemplate },
             ],
         },
         {
             id: "engineering",
             label: "Engineering",
+            personas: ["developer", "manager", "product", "admin"],
             items: [
                 {
                     href: "/tracking",
                     label: "Tracking",
                     icon: Target,
                     items: trackingItems,
+                    personas: ["developer", "manager", "product", "admin"],
                 },
                 {
                     href: "/sprints",
                     label: "Planning",
                     icon: Calendar,
                     items: planningItems,
+                    personas: ["developer", "manager", "product", "admin"],
                 },
-                { href: "/tickets", label: "Tickets", icon: Ticket },
+                {
+                    href: "/tickets",
+                    label: "Tickets",
+                    icon: Ticket,
+                    personas: ["developer", "manager", "product", "support", "admin"],
+                },
                 {
                     href: "/uptime",
                     label: "Uptime",
                     icon: MonitorCheck,
                     items: uptimeItems,
+                    personas: ["developer", "manager", "admin"],
                 },
                 {
                     href: "/insights",
                     label: "Insights",
                     icon: TrendingUp,
                     items: insightsItems,
+                    personas: ["manager", "admin"],
                 },
             ],
         },
         {
             id: "compliance",
             label: "Compliance",
+            personas: ["hr", "manager", "admin"],
             items: [
                 {
                     href: "/compliance",
@@ -289,6 +302,7 @@ export const GROUPED_LAYOUT: SidebarLayoutConfig = {
                     label: "Hiring",
                     icon: Users,
                     items: hiringItems,
+                    personas: ["hr", "manager", "admin"],
                 },
                 {
                     href: "/leave",
@@ -302,6 +316,7 @@ export const GROUPED_LAYOUT: SidebarLayoutConfig = {
         {
             id: "business",
             label: "Business",
+            personas: ["sales", "support", "admin"],
             items: [
                 {
                     href: "/crm",
@@ -336,7 +351,6 @@ export const GROUPED_LAYOUT: SidebarLayoutConfig = {
                 { href: "/docs", label: "Docs", icon: FileText },
                 { href: "/tables", label: "Tables", icon: Table2 },
                 { href: "/forms", label: "Forms", icon: FormInput },
-                { href: "/templates", label: "Templates", icon: LayoutTemplate },
                 {
                     href: "/reports",
                     label: "Reports",
@@ -367,25 +381,34 @@ export const FLAT_LAYOUT: SidebarLayoutConfig = {
                     label: "Tracking",
                     icon: Target,
                     items: trackingItems,
+                    personas: ["developer", "manager", "product", "admin"],
                 },
                 {
                     href: "/sprints",
                     label: "Planning",
                     icon: Calendar,
                     items: planningItems,
+                    personas: ["developer", "manager", "product", "admin"],
                 },
-                { href: "/tickets", label: "Tickets", icon: Ticket },
+                {
+                    href: "/tickets",
+                    label: "Tickets",
+                    icon: Ticket,
+                    personas: ["developer", "manager", "product", "support", "admin"],
+                },
                 {
                     href: "/uptime",
                     label: "Uptime",
                     icon: MonitorCheck,
                     items: uptimeItems,
+                    personas: ["developer", "manager", "admin"],
                 },
                 {
                     href: "/compliance",
                     label: "Compliance",
                     icon: ShieldCheck,
                     items: complianceItems,
+                    personas: ["hr", "manager", "admin"],
                 },
                 {
                     href: "/reviews",
@@ -398,18 +421,21 @@ export const FLAT_LAYOUT: SidebarLayoutConfig = {
                     label: "Hiring",
                     icon: Users,
                     items: hiringItems,
+                    personas: ["hr", "manager", "admin"],
                 },
                 {
                     href: "/crm",
                     label: "CRM",
                     icon: Building2,
                     items: crmItems,
+                    personas: ["sales", "support", "admin"],
                 },
                 {
                     href: "/booking",
                     label: "Booking",
                     icon: CalendarCheck,
                     items: bookingItems,
+                    personas: ["sales", "support", "admin"],
                 },
                 {
                     href: "/agents",
@@ -423,11 +449,13 @@ export const FLAT_LAYOUT: SidebarLayoutConfig = {
                     icon: Zap,
                     items: automationsItems,
                 },
+                { href: "/templates", label: "Templates", icon: LayoutTemplate },
                 {
                     href: "/insights",
                     label: "Insights",
                     icon: TrendingUp,
                     items: insightsItems,
+                    personas: ["manager", "admin"],
                 },
                 { href: "/learning", label: "Learning", icon: GraduationCap },
                 {
@@ -439,6 +467,13 @@ export const FLAT_LAYOUT: SidebarLayoutConfig = {
                 { href: "/docs", label: "Docs", icon: FileText },
                 { href: "/tables", label: "Tables", icon: Table2 },
                 { href: "/forms", label: "Forms", icon: FormInput },
+                {
+                    href: "/email-marketing",
+                    label: "Email",
+                    icon: Mail,
+                    items: emailItems,
+                    personas: ["sales", "support", "admin"],
+                },
                 {
                     href: "/gtm",
                     label: "GTM",

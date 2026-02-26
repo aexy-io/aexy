@@ -185,6 +185,30 @@ export function useDashboardPreferences() {
     [effectivePreferences, updateMutation, setLocalPreferences]
   );
 
+  const updateChecklist = useCallback(
+    async (stepId: string) => {
+      const current = effectivePreferences?.checklist_progress || [];
+      if (current.includes(stepId)) return;
+      const updated = [...current, stepId];
+
+      setLocalPreferences({ checklist_progress: updated });
+
+      await updateMutation.mutateAsync({ checklist_progress: updated });
+      setLocalPreferences(null);
+    },
+    [effectivePreferences, updateMutation, setLocalPreferences]
+  );
+
+  const dismissChecklist = useCallback(
+    async () => {
+      setLocalPreferences({ checklist_dismissed: true });
+
+      await updateMutation.mutateAsync({ checklist_dismissed: true });
+      setLocalPreferences(null);
+    },
+    [updateMutation, setLocalPreferences]
+  );
+
   const resetToPreset = useCallback(
     async (presetType: PresetType = 'developer') => {
       await resetMutation.mutateAsync(presetType);
@@ -224,6 +248,8 @@ export function useDashboardPreferences() {
     reorderWidgets,
     setWidgetSize,
     resetToPreset,
+    updateChecklist,
+    dismissChecklist,
     refetch,
 
     // UI actions

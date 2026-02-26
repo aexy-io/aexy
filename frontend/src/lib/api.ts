@@ -10614,6 +10614,10 @@ export interface DashboardPreferences {
   widget_order: string[];
   widget_sizes: Record<string, string>;
   layout: Record<string, unknown>;
+  checklist_progress: string[];
+  checklist_dismissed: boolean;
+  sidebar_page_visits: Record<string, number>;
+  sidebar_pinned_items: string[];
   created_at: string;
   updated_at: string;
 }
@@ -10624,6 +10628,10 @@ export interface DashboardPreferencesUpdate {
   widget_order?: string[];
   widget_sizes?: Record<string, string>;
   layout?: Record<string, unknown>;
+  checklist_progress?: string[];
+  checklist_dismissed?: boolean;
+  sidebar_page_visits?: Record<string, number>;
+  sidebar_pinned_items?: string[];
 }
 
 export interface DashboardPresetInfo {
@@ -10687,6 +10695,11 @@ export const dashboardApi = {
 
   getWidgetsWithPermissions: async (): Promise<{ widgets: WidgetInfo[]; categories: WidgetCategoryInfo[] }> => {
     const response = await api.get("/dashboard/widgets-with-permissions");
+    return response.data;
+  },
+
+  trackPageVisits: async (visits: Record<string, number>): Promise<{ ok: boolean }> => {
+    const response = await api.post("/dashboard/track-visits", visits);
     return response.data;
   },
 };

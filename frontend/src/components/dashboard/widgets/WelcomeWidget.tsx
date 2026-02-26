@@ -20,8 +20,8 @@ interface WelcomeWidgetProps {
 
 export function WelcomeWidget({ user, onCustomize }: WelcomeWidgetProps) {
   return (
-    <div className="min-w-0">
-      <div className="flex flex-col gap-3">
+    <div className="bg-card border border-border rounded-xl p-5 min-w-0">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           {user?.avatar_url && (
             <div className="relative shrink-0">
@@ -58,11 +58,11 @@ export function WelcomeWidget({ user, onCustomize }: WelcomeWidgetProps) {
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <CustomizeButton onClick={onCustomize} />
+        <div className="flex flex-wrap gap-2 shrink-0">
+          {/* <CustomizeButton onClick={onCustomize} /> */}
           <Link
             href="/reviews"
-            className="px-3 py-1.5 bg-card hover:bg-accent text-muted-foreground hover:text-foreground rounded-lg text-sm font-medium transition flex items-center gap-1.5"
+            className="px-3 py-1.5 bg-muted hover:bg-accent text-muted-foreground hover:text-foreground rounded-lg text-sm font-medium transition flex items-center gap-1.5"
           >
             <ClipboardCheck className="w-3.5 h-3.5" />
             Reviews

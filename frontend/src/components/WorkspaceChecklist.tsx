@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import {
   CheckCircle2,
@@ -15,7 +15,19 @@ import {
   Zap,
   Calendar,
   Link2,
+  MessageSquare,
+  LayoutDashboard,
+  GraduationCap,
+  UserPlus,
+  ClipboardCheck,
+  CalendarOff,
+  Ticket,
+  Building2,
+  FileText,
+  Layers,
 } from "lucide-react";
+import type { PresetType } from "@/config/dashboardPresets";
+import type { DashboardPreferences } from "@/lib/api";
 
 interface ChecklistItem {
   id: string;
@@ -26,88 +38,226 @@ interface ChecklistItem {
   completed: boolean;
 }
 
-const CHECKLIST_ITEMS: Omit<ChecklistItem, "completed">[] = [
-  {
+type ChecklistItemDef = Omit<ChecklistItem, "completed">;
+
+// Shared items reused across presets
+const SHARED_ITEMS: Record<string, ChecklistItemDef> = {
+  "connect-repo": {
     id: "connect-repo",
     label: "Connect a repository",
     description: "Sync your GitHub repos for analysis",
     icon: FolderGit2,
     href: "/settings/repositories",
   },
-  {
+  "invite-team": {
     id: "invite-team",
     label: "Invite team members",
-    description: "Collaborate with your engineering team",
+    description: "Collaborate with your team",
     icon: Users,
     href: "/settings/organization",
   },
-  {
+  "create-agent": {
     id: "create-agent",
     label: "Create an AI agent",
     description: "Automate tasks with intelligent agents",
     icon: Bot,
     href: "/agents/new",
   },
-  {
+  "setup-automation": {
     id: "setup-automation",
     label: "Set up an automation",
     description: "Automate your workflows across modules",
     icon: Zap,
     href: "/automations/new",
   },
-  {
+  "connect-calendar": {
     id: "connect-calendar",
     label: "Connect your calendar",
     description: "Enable booking and scheduling",
     icon: Calendar,
     href: "/booking/calendars",
   },
-  {
+  "add-integration": {
     id: "add-integration",
     label: "Add an integration",
     description: "Connect Slack, Jira, Linear, or more",
     icon: Link2,
     href: "/settings/integrations",
   },
-];
+  "submit-standup": {
+    id: "submit-standup",
+    label: "Submit first standup",
+    description: "Share what you're working on today",
+    icon: MessageSquare,
+    href: "/standups",
+  },
+  "set-learning-goal": {
+    id: "set-learning-goal",
+    label: "Set a learning goal",
+    description: "Track your growth and skill development",
+    icon: GraduationCap,
+    href: "/goals",
+  },
+  "create-sprint": {
+    id: "create-sprint",
+    label: "Create a sprint",
+    description: "Plan and track your team's work",
+    icon: LayoutDashboard,
+    href: "/sprints/new",
+  },
+  "setup-standups": {
+    id: "setup-standups",
+    label: "Set up standups",
+    description: "Configure daily standup check-ins",
+    icon: MessageSquare,
+    href: "/standups/settings",
+  },
+  "setup-backlog": {
+    id: "setup-backlog",
+    label: "Set up a backlog",
+    description: "Organize and prioritize upcoming work",
+    icon: Layers,
+    href: "/backlog",
+  },
+  "setup-hiring": {
+    id: "setup-hiring",
+    label: "Set up hiring pipeline",
+    description: "Configure stages for recruiting candidates",
+    icon: UserPlus,
+    href: "/hiring",
+  },
+  "create-review-cycle": {
+    id: "create-review-cycle",
+    label: "Create a review cycle",
+    description: "Set up performance review periods",
+    icon: ClipboardCheck,
+    href: "/reviews/new",
+  },
+  "configure-leave": {
+    id: "configure-leave",
+    label: "Configure leave policies",
+    description: "Set up time-off and leave management",
+    icon: CalendarOff,
+    href: "/leave/settings",
+  },
+  "setup-tickets": {
+    id: "setup-tickets",
+    label: "Set up ticket pipeline",
+    description: "Configure support ticket stages",
+    icon: Ticket,
+    href: "/tickets/settings",
+  },
+  "setup-crm": {
+    id: "setup-crm",
+    label: "Set up CRM pipeline",
+    description: "Configure your sales pipeline stages",
+    icon: Building2,
+    href: "/crm/settings",
+  },
+  "setup-forms": {
+    id: "setup-forms",
+    label: "Set up forms",
+    description: "Create intake forms for data collection",
+    icon: FileText,
+    href: "/forms/new",
+  },
+};
 
-const STORAGE_KEY = "workspace_checklist_progress";
-const DISMISS_KEY = "workspace_checklist_dismissed";
+const PRESET_CHECKLIST_ITEMS: Record<PresetType, ChecklistItemDef[]> = {
+  developer: [
+    SHARED_ITEMS["connect-repo"],
+    SHARED_ITEMS["submit-standup"],
+    SHARED_ITEMS["set-learning-goal"],
+    SHARED_ITEMS["connect-calendar"],
+    SHARED_ITEMS["create-agent"],
+    SHARED_ITEMS["add-integration"],
+  ],
+  manager: [
+    SHARED_ITEMS["connect-repo"],
+    SHARED_ITEMS["invite-team"],
+    SHARED_ITEMS["create-sprint"],
+    SHARED_ITEMS["setup-standups"],
+    SHARED_ITEMS["create-agent"],
+    SHARED_ITEMS["add-integration"],
+  ],
+  product: [
+    SHARED_ITEMS["create-sprint"],
+    SHARED_ITEMS["setup-backlog"],
+    SHARED_ITEMS["connect-calendar"],
+    SHARED_ITEMS["setup-automation"],
+    SHARED_ITEMS["create-agent"],
+    SHARED_ITEMS["add-integration"],
+  ],
+  hr: [
+    SHARED_ITEMS["setup-hiring"],
+    SHARED_ITEMS["create-review-cycle"],
+    SHARED_ITEMS["invite-team"],
+    SHARED_ITEMS["configure-leave"],
+    SHARED_ITEMS["connect-calendar"],
+    SHARED_ITEMS["add-integration"],
+  ],
+  support: [
+    SHARED_ITEMS["setup-tickets"],
+    SHARED_ITEMS["create-agent"],
+    SHARED_ITEMS["setup-forms"],
+    SHARED_ITEMS["add-integration"],
+    SHARED_ITEMS["connect-calendar"],
+    SHARED_ITEMS["invite-team"],
+  ],
+  sales: [
+    SHARED_ITEMS["setup-crm"],
+    SHARED_ITEMS["create-agent"],
+    SHARED_ITEMS["setup-forms"],
+    SHARED_ITEMS["add-integration"],
+    SHARED_ITEMS["connect-calendar"],
+    SHARED_ITEMS["invite-team"],
+  ],
+  admin: [
+    SHARED_ITEMS["connect-repo"],
+    SHARED_ITEMS["invite-team"],
+    SHARED_ITEMS["create-agent"],
+    SHARED_ITEMS["setup-automation"],
+    SHARED_ITEMS["connect-calendar"],
+    SHARED_ITEMS["add-integration"],
+  ],
+  custom: [
+    SHARED_ITEMS["connect-repo"],
+    SHARED_ITEMS["submit-standup"],
+    SHARED_ITEMS["set-learning-goal"],
+    SHARED_ITEMS["connect-calendar"],
+    SHARED_ITEMS["create-agent"],
+    SHARED_ITEMS["add-integration"],
+  ],
+};
 
-export function WorkspaceChecklist({ onDismiss }: { onDismiss?: () => void }) {
+export function getChecklistItems(presetType: PresetType): ChecklistItemDef[] {
+  return PRESET_CHECKLIST_ITEMS[presetType] || PRESET_CHECKLIST_ITEMS.developer;
+}
+
+interface WorkspaceChecklistProps {
+  onDismiss?: () => void;
+  presetType?: PresetType;
+  completedIds: string[];
+  onMarkComplete: (id: string) => void;
+}
+
+export function WorkspaceChecklist({
+  onDismiss,
+  presetType = "developer",
+  completedIds,
+  onMarkComplete,
+}: WorkspaceChecklistProps) {
   const [isExpanded, setIsExpanded] = useState(true);
-  const [completedIds, setCompletedIds] = useState<string[]>([]);
 
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        setCompletedIds(JSON.parse(stored));
-      } catch {
-        // corrupted data — reset
-        localStorage.removeItem(STORAGE_KEY);
-      }
-    }
-  }, []);
+  const checklistItems = useMemo(() => getChecklistItems(presetType), [presetType]);
 
-  const items: ChecklistItem[] = CHECKLIST_ITEMS.map((item) => ({
+  const items: ChecklistItem[] = checklistItems.map((item) => ({
     ...item,
     completed: completedIds.includes(item.id),
   }));
 
-  const completedCount = completedIds.length;
+  const completedCount = items.filter((i) => i.completed).length;
   const progress = (completedCount / items.length) * 100;
-
-  const markComplete = (id: string) => {
-    const updated = [...completedIds, id];
-    setCompletedIds(updated);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  };
-
-  const handleDismiss = () => {
-    localStorage.setItem(DISMISS_KEY, "true");
-    onDismiss?.();
-  };
 
   return (
     <div className="bg-muted/30 border border-border/50 rounded-xl overflow-hidden">
@@ -153,7 +303,7 @@ export function WorkspaceChecklist({ onDismiss }: { onDismiss?: () => void }) {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              handleDismiss();
+              onDismiss?.();
             }}
             className="p-1 text-muted-foreground hover:text-foreground transition-colors"
           >
@@ -184,7 +334,7 @@ export function WorkspaceChecklist({ onDismiss }: { onDismiss?: () => void }) {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      if (!item.completed) markComplete(item.id);
+                      if (!item.completed) onMarkComplete(item.id);
                     }}
                     className="flex-shrink-0"
                   >
@@ -221,7 +371,7 @@ export function WorkspaceChecklist({ onDismiss }: { onDismiss?: () => void }) {
                   <Link
                     key={item.id}
                     href={item.href}
-                    onClick={() => markComplete(item.id)}
+                    onClick={() => onMarkComplete(item.id)}
                   >
                     {content}
                   </Link>
@@ -247,24 +397,16 @@ export function WorkspaceChecklist({ onDismiss }: { onDismiss?: () => void }) {
   );
 }
 
-export function useShouldShowWorkspaceChecklist() {
-  const [shouldShow, setShouldShow] = useState(false);
+export function useShouldShowWorkspaceChecklist(
+  presetType: PresetType = "developer",
+  preferences?: DashboardPreferences | null,
+) {
+  if (!preferences) return false;
+  if (preferences.checklist_dismissed) return false;
 
-  useEffect(() => {
-    const dismissed = localStorage.getItem(DISMISS_KEY);
-    const onboardingComplete = localStorage.getItem("aexy_onboarding_complete");
-    const progress = localStorage.getItem(STORAGE_KEY);
-    let completedIds: string[] = [];
-    if (progress) {
-      try { completedIds = JSON.parse(progress); } catch { /* ignore corrupted data */ }
-    }
+  const items = getChecklistItems(presetType);
+  const completedIds = preferences.checklist_progress || [];
+  const completedCount = items.filter((item) => completedIds.includes(item.id)).length;
 
-    setShouldShow(
-      onboardingComplete === "true" &&
-        dismissed !== "true" &&
-        completedIds.length < CHECKLIST_ITEMS.length
-    );
-  }, []);
-
-  return shouldShow;
+  return completedCount < items.length;
 }
