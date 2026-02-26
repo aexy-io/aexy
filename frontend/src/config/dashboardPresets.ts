@@ -61,6 +61,8 @@ export const DASHBOARD_PRESETS: Record<PresetType, DashboardPreset> = {
       'taskMatcher',
       'peerBenchmark',
       'aiInsights',
+      'softSkills',
+      'growthTrajectory',
       'aiAgents',
       'performanceReviews',
       'myGoals',
