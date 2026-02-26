@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func, Index, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from aexy.core.database import Base
 
@@ -36,6 +36,11 @@ class ABMTargetList(Base):
         UUID(as_uuid=False), ForeignKey("developers.id", ondelete="SET NULL"),
         nullable=True,
     )
+    # Relationships
+    accounts: Mapped[list["ABMAccount"]] = relationship(
+        "ABMAccount", back_populates="target_list", lazy="noload",
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False,
     )
@@ -61,6 +66,11 @@ class ABMAccount(Base):
         nullable=False, index=True,
     )
     record_id: Mapped[str] = mapped_column(UUID(as_uuid=False), nullable=False, index=True)
+
+    # Relationships
+    target_list: Mapped["ABMTargetList"] = relationship(
+        "ABMTargetList", back_populates="accounts", lazy="selectin",
+    )
 
     tier: Mapped[str] = mapped_column(String(10), nullable=False, default="tier_2")
     stage: Mapped[str] = mapped_column(String(20), nullable=False, default="unaware")

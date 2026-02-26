@@ -6,7 +6,7 @@ from uuid import uuid4
 
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, desc, func, Index
 from sqlalchemy.dialects.postgresql import INET, JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column, validates
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from aexy.core.database import Base
 
@@ -244,6 +244,11 @@ class VisitorSession(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False,
     )
 
+    # Relationships
+    identifications: Mapped[list["VisitorIdentification"]] = relationship(
+        "VisitorIdentification", back_populates="session", lazy="noload",
+    )
+
     __table_args__ = (
         Index("ix_visitor_sessions_ws_started", "workspace_id", desc("started_at")),
     )
@@ -286,6 +291,11 @@ class VisitorIdentification(Base):
     # Confidence & metadata
     confidence: Mapped[float] = mapped_column(Float, default=0.0)
     raw_response: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+
+    # Relationships
+    session: Mapped["VisitorSession | None"] = relationship(
+        "VisitorSession", back_populates="identifications", lazy="selectin",
+    )
 
     # CRM linkage
     matched_record_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), nullable=True)
@@ -335,6 +345,11 @@ class ICPTemplate(Base):
     mql_threshold: Mapped[int] = mapped_column(Integer, default=40, nullable=False)
     sql_threshold: Mapped[int] = mapped_column(Integer, default=70, nullable=False)
 
+    # Relationships
+    lead_scores: Mapped[list["LeadScore"]] = relationship(
+        "LeadScore", back_populates="icp_template", lazy="noload",
+    )
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False,
@@ -381,6 +396,11 @@ class LeadScore(Base):
     # Lifecycle stage
     lifecycle_stage: Mapped[str] = mapped_column(
         String(20), default=LifecycleStage.ANONYMOUS.value, nullable=False,
+    )
+
+    # Relationships
+    icp_template: Mapped["ICPTemplate | None"] = relationship(
+        "ICPTemplate", back_populates="lead_scores", lazy="selectin",
     )
 
     # Score history

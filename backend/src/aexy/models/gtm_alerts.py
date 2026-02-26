@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func, Index
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from aexy.core.database import Base
 
@@ -47,6 +47,11 @@ class GTMAlertConfig(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False,
     )
 
+    # Relationships
+    logs: Mapped[list["GTMAlertLog"]] = relationship(
+        "GTMAlertLog", back_populates="alert_config", lazy="noload",
+    )
+
     __table_args__ = (
         Index("ix_gtm_alert_configs_ws_event", "workspace_id", "event_type"),
     )
@@ -67,6 +72,11 @@ class GTMAlertLog(Base):
     alert_config_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False), ForeignKey("gtm_alert_configs.id", ondelete="CASCADE"),
         nullable=False, index=True,
+    )
+
+    # Relationships
+    alert_config: Mapped["GTMAlertConfig"] = relationship(
+        "GTMAlertConfig", back_populates="logs", lazy="selectin",
     )
 
     event_type: Mapped[str] = mapped_column(String(100), nullable=False)

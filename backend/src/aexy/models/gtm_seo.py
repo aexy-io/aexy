@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, func, Index
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from aexy.core.database import Base
 
@@ -51,6 +51,11 @@ class SEOAudit(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False,
     )
 
+    # Relationships
+    pages: Mapped[list["SEOAuditPage"]] = relationship(
+        "SEOAuditPage", back_populates="audit", lazy="noload",
+    )
+
     __table_args__ = (
         Index("ix_seo_audits_ws_domain", "workspace_id", "domain"),
     )
@@ -67,6 +72,11 @@ class SEOAuditPage(Base):
     audit_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False), ForeignKey("seo_audits.id", ondelete="CASCADE"),
         nullable=False, index=True,
+    )
+
+    # Relationships
+    audit: Mapped["SEOAudit"] = relationship(
+        "SEOAudit", back_populates="pages", lazy="selectin",
     )
 
     url: Mapped[str] = mapped_column(Text, nullable=False)

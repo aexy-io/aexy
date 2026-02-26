@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func, Index
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from aexy.core.database import Base
 
@@ -38,6 +38,11 @@ class GTMRoutingRule(Base):
     # SLA configuration (minutes)
     sla_first_response_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     sla_follow_up_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Relationships
+    assignments: Mapped[list["GTMLeadAssignment"]] = relationship(
+        "GTMLeadAssignment", back_populates="routing_rule", lazy="noload",
+    )
 
     # Fallback
     fallback_assignee_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), nullable=True)
@@ -73,6 +78,11 @@ class GTMLeadAssignment(Base):
         nullable=True,
     )
     assignee_id: Mapped[str] = mapped_column(UUID(as_uuid=False), nullable=False, index=True)
+
+    # Relationships
+    routing_rule: Mapped["GTMRoutingRule | None"] = relationship(
+        "GTMRoutingRule", back_populates="assignments", lazy="selectin",
+    )
 
     assigned_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False,

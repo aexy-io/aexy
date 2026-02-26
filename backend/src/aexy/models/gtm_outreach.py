@@ -6,7 +6,7 @@ from uuid import uuid4
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func, Index
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from aexy.core.database import Base
 
@@ -129,6 +129,11 @@ class OutreachSequence(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False,
     )
 
+    # Relationships
+    enrollments: Mapped[list["OutreachEnrollment"]] = relationship(
+        "OutreachEnrollment", back_populates="sequence", lazy="noload",
+    )
+
     __table_args__ = (
         Index("ix_outreach_seq_ws_status", "workspace_id", "status"),
     )
@@ -159,6 +164,14 @@ class OutreachEnrollment(Base):
     record_id: Mapped[str] = mapped_column(UUID(as_uuid=False), nullable=False, index=True)
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     contact_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # Relationships
+    sequence: Mapped["OutreachSequence"] = relationship(
+        "OutreachSequence", back_populates="enrollments", lazy="selectin",
+    )
+    step_executions: Mapped[list["OutreachStepExecution"]] = relationship(
+        "OutreachStepExecution", back_populates="enrollment", lazy="noload",
+    )
 
     # State machine
     status: Mapped[str] = mapped_column(
@@ -221,6 +234,11 @@ class OutreachStepExecution(Base):
     step_index: Mapped[int] = mapped_column(Integer, nullable=False)
     channel: Mapped[str] = mapped_column(String(20), nullable=False)
     action: Mapped[str] = mapped_column(String(30), nullable=False)
+
+    # Relationships
+    enrollment: Mapped["OutreachEnrollment"] = relationship(
+        "OutreachEnrollment", back_populates="step_executions", lazy="selectin",
+    )
 
     # Execution status
     status: Mapped[str] = mapped_column(

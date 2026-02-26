@@ -89,6 +89,86 @@ from aexy.services.gtm_service import (
     VisitorService,
     GTMScoringService,
 )
+from aexy.schemas.gtm_alerts import (
+    AlertConfigCreate,
+    AlertConfigUpdate,
+    AlertConfigResponse,
+    AlertLogListResponse,
+)
+from aexy.schemas.gtm_routing import (
+    RoutingRuleCreate,
+    RoutingRuleUpdate,
+    RoutingRuleResponse,
+    LeadAssignmentListResponse,
+    ReassignRequest,
+    SLADashboardResponse,
+)
+from aexy.schemas.gtm_health import (
+    HealthConfigUpdate,
+    HealthConfigResponse,
+    HealthDashboardResponse,
+    HealthScoreResponse,
+    HealthScoreListResponse,
+)
+from aexy.schemas.gtm_expansion import (
+    PlaybookCreate,
+    PlaybookUpdate,
+    PlaybookResponse,
+    EnrollRequest,
+    EnrollmentResponse as ExpEnrollmentResponse,
+    EnrollmentListResponse as ExpEnrollmentListResponse,
+    OutcomeRequest,
+    PlaybookAnalyticsResponse,
+)
+from aexy.schemas.gtm_handoff import (
+    HandoffCreate,
+    HandoffResponse,
+    HandoffListResponse,
+    HandoffAnalyticsResponse,
+    DeclineRequest,
+    ConvertRequest,
+)
+from aexy.schemas.gtm_intent import (
+    IntentSignalCreate,
+    IntentSignalResponse,
+    IntentSignalListResponse,
+    IntentConfigUpdate,
+    IntentConfigResponse,
+    IntentSummaryResponse,
+)
+from aexy.schemas.gtm_competitor import (
+    CompetitorCreate,
+    CompetitorUpdate,
+    CompetitorResponse,
+    CompetitorChangeListResponse,
+    BattleCardResponse,
+    BattleCardUpdate,
+)
+from aexy.schemas.gtm_seo import (
+    SEOAuditCreate,
+    SEOAuditResponse,
+    SEOAuditListResponse,
+    SEOAuditPageResponse,
+    SEOScoreHistoryResponse,
+)
+from aexy.schemas.gtm_content import (
+    ContentAnalysisCreate,
+    ContentAnalysisResponse,
+    ContentAnalysisListResponse,
+)
+from aexy.schemas.gtm_abm import (
+    TargetListCreate,
+    TargetListUpdate,
+    TargetListResponse,
+    ABMAccountCreate,
+    ABMAccountUpdate,
+    ABMAccountResponse,
+    ABMAccountListResponse,
+    ABMOverviewResponse,
+    StageChangeRequest,
+    CampaignAssignRequest,
+    AccountJourneyResponse,
+)
 from aexy.services.dedup_service import DedupService
 from aexy.services.gtm_compliance_service import GTMComplianceService
 from aexy.services.outreach_sequence_service import OutreachSequenceService
@@ -1435,50 +1515,48 @@ async def import_csv_async(
 # ALERTS (#32)
 # =============================================================================
 
-@router.get("/alerts/configs")
+@router.get("/alerts/configs", response_model=list[AlertConfigResponse])
 async def list_alert_configs(
     workspace_id: str,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_alerts import AlertConfigResponse
     from aexy.services.gtm_alert_service import GTMAlertService
     await check_workspace_permission(workspace_id, current_user, db)
     service = GTMAlertService(db)
     return await service.list_alert_configs(workspace_id)
 
 
-@router.post("/alerts/configs")
+@router.post("/alerts/configs", response_model=AlertConfigResponse)
 async def create_alert_config(
     workspace_id: str,
-    data: dict,
+    data: AlertConfigCreate,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_alerts import AlertConfigCreate, AlertConfigResponse
     from aexy.services.gtm_alert_service import GTMAlertService
     await check_workspace_permission(workspace_id, current_user, db)
-    parsed = AlertConfigCreate(**data)
     service = GTMAlertService(db)
-    return await service.create_alert_config(workspace_id, parsed.model_dump())
+    result = await service.create_alert_config(workspace_id, data.model_dump())
+    await db.commit()
+    return result
 
 
-@router.put("/alerts/configs/{alert_id}")
+@router.put("/alerts/configs/{alert_id}", response_model=AlertConfigResponse)
 async def update_alert_config(
     workspace_id: str,
     alert_id: str,
-    data: dict,
+    data: AlertConfigUpdate,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_alerts import AlertConfigUpdate, AlertConfigResponse
     from aexy.services.gtm_alert_service import GTMAlertService
     await check_workspace_permission(workspace_id, current_user, db)
-    parsed = AlertConfigUpdate(**data)
     service = GTMAlertService(db)
-    result = await service.update_alert_config(workspace_id, alert_id, parsed.model_dump(exclude_none=True))
+    result = await service.update_alert_config(workspace_id, alert_id, data.model_dump(exclude_none=True))
     if not result:
         raise HTTPException(status_code=404, detail="Not found")
+    await db.commit()
     return result
 
 
@@ -1495,9 +1573,10 @@ async def delete_alert_config(
     deleted = await service.delete_alert_config(workspace_id, alert_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Not found")
+    await db.commit()
 
 
-@router.get("/alerts/logs")
+@router.get("/alerts/logs", response_model=AlertLogListResponse)
 async def list_alert_logs(
     workspace_id: str,
     page: int = Query(default=1, ge=1),
@@ -1506,7 +1585,6 @@ async def list_alert_logs(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_alerts import AlertLogListResponse
     from aexy.services.gtm_alert_service import GTMAlertService
     await check_workspace_permission(workspace_id, current_user, db)
     service = GTMAlertService(db)
@@ -1520,7 +1598,6 @@ async def test_alert_config(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_alerts import EmitEventRequest
     from aexy.services.gtm_alert_service import GTMAlertService
     await check_workspace_permission(workspace_id, current_user, db)
     service = GTMAlertService(db)
@@ -1534,48 +1611,43 @@ async def test_alert_config(
 # ROUTING & SLA (#26)
 # =============================================================================
 
-@router.get("/routing/rules")
+@router.get("/routing/rules", response_model=list[RoutingRuleResponse])
 async def list_routing_rules(
     workspace_id: str,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_routing import RoutingRuleResponse
     from aexy.services.lead_routing_service import LeadRoutingService
     await check_workspace_permission(workspace_id, current_user, db)
     service = LeadRoutingService(db)
     return await service.list_rules(workspace_id)
 
 
-@router.post("/routing/rules")
+@router.post("/routing/rules", response_model=RoutingRuleResponse)
 async def create_routing_rule(
     workspace_id: str,
-    data: dict,
+    data: RoutingRuleCreate,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_routing import RoutingRuleCreate, RoutingRuleResponse
     from aexy.services.lead_routing_service import LeadRoutingService
     await check_workspace_permission(workspace_id, current_user, db)
-    parsed = RoutingRuleCreate(**data)
     service = LeadRoutingService(db)
-    return await service.create_rule(workspace_id, parsed.model_dump())
+    return await service.create_rule(workspace_id, data.model_dump())
 
 
-@router.put("/routing/rules/{rule_id}")
+@router.put("/routing/rules/{rule_id}", response_model=RoutingRuleResponse)
 async def update_routing_rule(
     workspace_id: str,
     rule_id: str,
-    data: dict,
+    data: RoutingRuleUpdate,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_routing import RoutingRuleUpdate, RoutingRuleResponse
     from aexy.services.lead_routing_service import LeadRoutingService
     await check_workspace_permission(workspace_id, current_user, db)
-    parsed = RoutingRuleUpdate(**data)
     service = LeadRoutingService(db)
-    result = await service.update_rule(workspace_id, rule_id, parsed.model_dump(exclude_none=True))
+    result = await service.update_rule(workspace_id, rule_id, data.model_dump(exclude_none=True))
     if not result:
         raise HTTPException(status_code=404, detail="Not found")
     return result
@@ -1609,7 +1681,7 @@ async def manual_route_record(
     return await service.route_record(workspace_id, record_id)
 
 
-@router.get("/routing/assignments")
+@router.get("/routing/assignments", response_model=LeadAssignmentListResponse)
 async def list_routing_assignments(
     workspace_id: str,
     page: int = Query(default=1, ge=1),
@@ -1619,7 +1691,6 @@ async def list_routing_assignments(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_routing import LeadAssignmentListResponse
     from aexy.services.lead_routing_service import LeadRoutingService
     await check_workspace_permission(workspace_id, current_user, db)
     service = LeadRoutingService(db)
@@ -1646,28 +1717,25 @@ async def record_first_response(
 async def reassign_assignment(
     workspace_id: str,
     assignment_id: str,
-    data: dict,
+    data: ReassignRequest,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_routing import ReassignRequest
     from aexy.services.lead_routing_service import LeadRoutingService
     await check_workspace_permission(workspace_id, current_user, db)
-    parsed = ReassignRequest(**data)
     service = LeadRoutingService(db)
-    result = await service.reassign(workspace_id, assignment_id, parsed)
+    result = await service.reassign(workspace_id, assignment_id, data)
     if not result:
         raise HTTPException(status_code=404, detail="Not found")
     return result
 
 
-@router.get("/routing/sla-dashboard")
+@router.get("/routing/sla-dashboard", response_model=SLADashboardResponse)
 async def get_sla_dashboard(
     workspace_id: str,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_routing import SLADashboardResponse
     from aexy.services.lead_routing_service import LeadRoutingService
     await check_workspace_permission(workspace_id, current_user, db)
     service = LeadRoutingService(db)
@@ -1678,20 +1746,19 @@ async def get_sla_dashboard(
 # HEALTH SCORING (#27)
 # =============================================================================
 
-@router.get("/health/dashboard")
+@router.get("/health/dashboard", response_model=HealthDashboardResponse)
 async def get_health_dashboard(
     workspace_id: str,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_health import HealthDashboardResponse
     from aexy.services.health_scoring_service import HealthScoringService
     await check_workspace_permission(workspace_id, current_user, db)
     service = HealthScoringService(db)
     return await service.get_dashboard(workspace_id)
 
 
-@router.get("/health/scores")
+@router.get("/health/scores", response_model=HealthScoreListResponse)
 async def list_health_scores(
     workspace_id: str,
     page: int = Query(default=1, ge=1),
@@ -1700,21 +1767,19 @@ async def list_health_scores(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_health import HealthScoreListResponse
     from aexy.services.health_scoring_service import HealthScoringService
     await check_workspace_permission(workspace_id, current_user, db)
     service = HealthScoringService(db)
     return await service.list_scores(workspace_id, page=page, per_page=per_page, health_status=health_status)
 
 
-@router.get("/health/scores/{record_id}")
+@router.get("/health/scores/{record_id}", response_model=HealthScoreResponse)
 async def get_health_score(
     workspace_id: str,
     record_id: str,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_health import HealthScoreResponse
     from aexy.services.health_scoring_service import HealthScoringService
     await check_workspace_permission(workspace_id, current_user, db)
     service = HealthScoringService(db)
@@ -1754,74 +1819,67 @@ async def batch_score_health(
     return {"workflow_id": wf_id, "message": "Batch scoring started"}
 
 
-@router.get("/health/config")
+@router.get("/health/config", response_model=HealthConfigResponse)
 async def get_health_config(
     workspace_id: str,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_health import HealthConfigResponse
     from aexy.services.health_scoring_service import HealthScoringService
     await check_workspace_permission(workspace_id, current_user, db)
     service = HealthScoringService(db)
     return await service.get_config(workspace_id)
 
 
-@router.put("/health/config")
+@router.put("/health/config", response_model=HealthConfigResponse)
 async def update_health_config(
     workspace_id: str,
-    data: dict,
+    data: HealthConfigUpdate,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_health import HealthConfigUpdate, HealthConfigResponse
     from aexy.services.health_scoring_service import HealthScoringService
     await check_workspace_permission(workspace_id, current_user, db)
-    parsed = HealthConfigUpdate(**data)
     service = HealthScoringService(db)
-    return await service.update_config(workspace_id, parsed.model_dump(exclude_none=True))
+    return await service.update_config(workspace_id, data.model_dump(exclude_none=True))
 
 
 # =============================================================================
 # EXPANSION (#28)
 # =============================================================================
 
-@router.get("/expansion/playbooks")
+@router.get("/expansion/playbooks", response_model=list[PlaybookResponse])
 async def list_expansion_playbooks(
     workspace_id: str,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_expansion import PlaybookResponse
     from aexy.services.expansion_playbook_service import ExpansionPlaybookService
     await check_workspace_permission(workspace_id, current_user, db)
     service = ExpansionPlaybookService(db)
     return await service.list_playbooks(workspace_id)
 
 
-@router.post("/expansion/playbooks")
+@router.post("/expansion/playbooks", response_model=PlaybookResponse)
 async def create_expansion_playbook(
     workspace_id: str,
-    data: dict,
+    data: PlaybookCreate,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_expansion import PlaybookCreate, PlaybookResponse
     from aexy.services.expansion_playbook_service import ExpansionPlaybookService
     await check_workspace_permission(workspace_id, current_user, db)
-    parsed = PlaybookCreate(**data)
     service = ExpansionPlaybookService(db)
-    return await service.create_playbook(workspace_id, parsed.model_dump())
+    return await service.create_playbook(workspace_id, data.model_dump())
 
 
-@router.get("/expansion/playbooks/{playbook_id}")
+@router.get("/expansion/playbooks/{playbook_id}", response_model=PlaybookResponse)
 async def get_expansion_playbook(
     workspace_id: str,
     playbook_id: str,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_expansion import PlaybookResponse
     from aexy.services.expansion_playbook_service import ExpansionPlaybookService
     await check_workspace_permission(workspace_id, current_user, db)
     service = ExpansionPlaybookService(db)
@@ -1831,20 +1889,18 @@ async def get_expansion_playbook(
     return result
 
 
-@router.put("/expansion/playbooks/{playbook_id}")
+@router.put("/expansion/playbooks/{playbook_id}", response_model=PlaybookResponse)
 async def update_expansion_playbook(
     workspace_id: str,
     playbook_id: str,
-    data: dict,
+    data: PlaybookUpdate,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_expansion import PlaybookUpdate, PlaybookResponse
     from aexy.services.expansion_playbook_service import ExpansionPlaybookService
     await check_workspace_permission(workspace_id, current_user, db)
-    parsed = PlaybookUpdate(**data)
     service = ExpansionPlaybookService(db)
-    result = await service.update_playbook(workspace_id, playbook_id, parsed.model_dump(exclude_none=True))
+    result = await service.update_playbook(workspace_id, playbook_id, data.model_dump(exclude_none=True))
     if not result:
         raise HTTPException(status_code=404, detail="Not found")
     return result
@@ -1865,24 +1921,22 @@ async def delete_expansion_playbook(
         raise HTTPException(status_code=404, detail="Not found")
 
 
-@router.post("/expansion/playbooks/{playbook_id}/enroll/{record_id}")
+@router.post("/expansion/playbooks/{playbook_id}/enroll/{record_id}", response_model=ExpEnrollmentResponse)
 async def enroll_in_expansion_playbook(
     workspace_id: str,
     playbook_id: str,
     record_id: str,
-    data: dict,
+    data: EnrollRequest,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_expansion import EnrollRequest, EnrollmentResponse as ExpEnrollmentResponse
     from aexy.services.expansion_playbook_service import ExpansionPlaybookService
     await check_workspace_permission(workspace_id, current_user, db)
-    parsed = EnrollRequest(**data)
     service = ExpansionPlaybookService(db)
-    return await service.enroll(workspace_id, playbook_id, record_id, parsed)
+    return await service.enroll(workspace_id, playbook_id, record_id, data)
 
 
-@router.get("/expansion/enrollments")
+@router.get("/expansion/enrollments", response_model=ExpEnrollmentListResponse)
 async def list_expansion_enrollments(
     workspace_id: str,
     page: int = Query(default=1, ge=1),
@@ -1892,7 +1946,6 @@ async def list_expansion_enrollments(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_expansion import EnrollmentListResponse as ExpEnrollmentListResponse
     from aexy.services.expansion_playbook_service import ExpansionPlaybookService
     await check_workspace_permission(workspace_id, current_user, db)
     service = ExpansionPlaybookService(db)
@@ -1919,28 +1972,25 @@ async def advance_expansion_step(
 async def record_expansion_outcome(
     workspace_id: str,
     enrollment_id: str,
-    data: dict,
+    data: OutcomeRequest,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_expansion import OutcomeRequest
     from aexy.services.expansion_playbook_service import ExpansionPlaybookService
     await check_workspace_permission(workspace_id, current_user, db)
-    parsed = OutcomeRequest(**data)
     service = ExpansionPlaybookService(db)
-    result = await service.record_outcome(workspace_id, enrollment_id, parsed)
+    result = await service.record_outcome(workspace_id, enrollment_id, data)
     if not result:
         raise HTTPException(status_code=404, detail="Not found")
     return result
 
 
-@router.get("/expansion/analytics")
+@router.get("/expansion/analytics", response_model=PlaybookAnalyticsResponse)
 async def get_expansion_analytics(
     workspace_id: str,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_expansion import PlaybookAnalyticsResponse
     from aexy.services.expansion_playbook_service import ExpansionPlaybookService
     await check_workspace_permission(workspace_id, current_user, db)
     service = ExpansionPlaybookService(db)
@@ -1951,22 +2001,20 @@ async def get_expansion_analytics(
 # HANDOFFS (#29)
 # =============================================================================
 
-@router.post("/handoffs")
+@router.post("/handoffs", response_model=HandoffResponse)
 async def create_handoff(
     workspace_id: str,
-    data: dict,
+    data: HandoffCreate,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_handoff import HandoffCreate, HandoffResponse
     from aexy.services.handoff_service import HandoffService
     await check_workspace_permission(workspace_id, current_user, db)
-    parsed = HandoffCreate(**data)
     service = HandoffService(db)
-    return await service.create_handoff(workspace_id, parsed.model_dump(), created_by=str(current_user.id))
+    return await service.create_handoff(workspace_id, data.model_dump(), created_by=str(current_user.id))
 
 
-@router.get("/handoffs")
+@router.get("/handoffs", response_model=HandoffListResponse)
 async def list_handoffs(
     workspace_id: str,
     page: int = Query(default=1, ge=1),
@@ -1983,27 +2031,25 @@ async def list_handoffs(
     return {"items": items, "total": total, "page": page, "per_page": per_page}
 
 
-@router.get("/handoffs/analytics")
+@router.get("/handoffs/analytics", response_model=HandoffAnalyticsResponse)
 async def get_handoff_analytics(
     workspace_id: str,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_handoff import HandoffAnalyticsResponse
     from aexy.services.handoff_service import HandoffService
     await check_workspace_permission(workspace_id, current_user, db)
     service = HandoffService(db)
     return await service.get_handoff_analytics(workspace_id)
 
 
-@router.get("/handoffs/{handoff_id}")
+@router.get("/handoffs/{handoff_id}", response_model=HandoffResponse)
 async def get_handoff(
     workspace_id: str,
     handoff_id: str,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_handoff import HandoffResponse
     from aexy.services.handoff_service import HandoffService
     await check_workspace_permission(workspace_id, current_user, db)
     service = HandoffService(db)
@@ -2033,16 +2079,14 @@ async def accept_handoff(
 async def decline_handoff(
     workspace_id: str,
     handoff_id: str,
-    data: dict,
+    data: DeclineRequest,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_handoff import DeclineRequest
     from aexy.services.handoff_service import HandoffService
     await check_workspace_permission(workspace_id, current_user, db)
-    parsed = DeclineRequest(**data)
     service = HandoffService(db)
-    result = await service.decline_handoff(workspace_id, handoff_id, parsed)
+    result = await service.decline_handoff(workspace_id, handoff_id, data)
     if not result:
         raise HTTPException(status_code=404, detail="Not found")
     return result
@@ -2052,16 +2096,14 @@ async def decline_handoff(
 async def convert_handoff(
     workspace_id: str,
     handoff_id: str,
-    data: dict,
+    data: ConvertRequest,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_handoff import ConvertRequest
     from aexy.services.handoff_service import HandoffService
     await check_workspace_permission(workspace_id, current_user, db)
-    parsed = ConvertRequest(**data)
     service = HandoffService(db)
-    result = await service.convert_to_deal(workspace_id, handoff_id, parsed)
+    result = await service.convert_to_deal(workspace_id, handoff_id, data)
     if not result:
         raise HTTPException(status_code=404, detail="Not found")
     return result
@@ -2071,7 +2113,7 @@ async def convert_handoff(
 # INTENT SIGNALS (#25)
 # =============================================================================
 
-@router.get("/intent/signals")
+@router.get("/intent/signals", response_model=IntentSignalListResponse)
 async def list_intent_signals(
     workspace_id: str,
     page: int = Query(default=1, ge=1),
@@ -2088,14 +2130,13 @@ async def list_intent_signals(
     return {"items": items, "total": total, "page": page, "per_page": per_page}
 
 
-@router.get("/intent/signals/{signal_id}")
+@router.get("/intent/signals/{signal_id}", response_model=IntentSignalResponse)
 async def get_intent_signal(
     workspace_id: str,
     signal_id: str,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_intent import IntentSignalResponse
     from aexy.services.intent_signal_service import IntentSignalService
     await check_workspace_permission(workspace_id, current_user, db)
     service = IntentSignalService(db)
@@ -2105,19 +2146,17 @@ async def get_intent_signal(
     return result
 
 
-@router.post("/intent/signals")
+@router.post("/intent/signals", response_model=IntentSignalResponse)
 async def create_intent_signal(
     workspace_id: str,
-    data: dict,
+    data: IntentSignalCreate,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_intent import IntentSignalCreate, IntentSignalResponse
     from aexy.services.intent_signal_service import IntentSignalService
     await check_workspace_permission(workspace_id, current_user, db)
-    parsed = IntentSignalCreate(**data)
     service = IntentSignalService(db)
-    return await service.create_signal(workspace_id, parsed)
+    return await service.create_signal(workspace_id, data)
 
 
 @router.post("/intent/signals/{signal_id}/dismiss")
@@ -2136,7 +2175,7 @@ async def dismiss_intent_signal(
     return result
 
 
-@router.get("/intent/records/{record_id}/signals")
+@router.get("/intent/records/{record_id}/signals", response_model=list[IntentSignalResponse])
 async def get_record_intent_signals(
     workspace_id: str,
     record_id: str,
@@ -2149,41 +2188,37 @@ async def get_record_intent_signals(
     return await service.get_signals_for_record(workspace_id, record_id)
 
 
-@router.get("/intent/config")
+@router.get("/intent/config", response_model=IntentConfigResponse)
 async def get_intent_config(
     workspace_id: str,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_intent import IntentConfigResponse
     from aexy.services.intent_signal_service import IntentSignalService
     await check_workspace_permission(workspace_id, current_user, db)
     service = IntentSignalService(db)
     return await service.get_config(workspace_id)
 
 
-@router.put("/intent/config")
+@router.put("/intent/config", response_model=IntentConfigResponse)
 async def update_intent_config(
     workspace_id: str,
-    data: dict,
+    data: IntentConfigUpdate,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_intent import IntentConfigUpdate, IntentConfigResponse
     from aexy.services.intent_signal_service import IntentSignalService
     await check_workspace_permission(workspace_id, current_user, db)
-    parsed = IntentConfigUpdate(**data)
     service = IntentSignalService(db)
-    return await service.update_config(workspace_id, parsed.model_dump(exclude_none=True))
+    return await service.update_config(workspace_id, data.model_dump(exclude_none=True))
 
 
-@router.get("/intent/summary")
+@router.get("/intent/summary", response_model=IntentSummaryResponse)
 async def get_intent_summary(
     workspace_id: str,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_intent import IntentSummaryResponse
     from aexy.services.intent_signal_service import IntentSignalService
     await check_workspace_permission(workspace_id, current_user, db)
     service = IntentSignalService(db)
@@ -2211,35 +2246,32 @@ async def trigger_intent_collection(
 # COMPETITORS (#31)
 # =============================================================================
 
-@router.get("/competitors")
+@router.get("/competitors", response_model=list[CompetitorResponse])
 async def list_competitors(
     workspace_id: str,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_competitor import CompetitorResponse
     from aexy.services.competitor_intel_service import CompetitorIntelService
     await check_workspace_permission(workspace_id, current_user, db)
     service = CompetitorIntelService(db)
     return await service.list_competitors(workspace_id)
 
 
-@router.post("/competitors")
+@router.post("/competitors", response_model=CompetitorResponse)
 async def create_competitor(
     workspace_id: str,
-    data: dict,
+    data: CompetitorCreate,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_competitor import CompetitorCreate, CompetitorResponse
     from aexy.services.competitor_intel_service import CompetitorIntelService
     await check_workspace_permission(workspace_id, current_user, db)
-    parsed = CompetitorCreate(**data)
     service = CompetitorIntelService(db)
-    return await service.create_competitor(workspace_id, parsed.model_dump())
+    return await service.create_competitor(workspace_id, data.model_dump())
 
 
-@router.get("/competitors/changes")
+@router.get("/competitors/changes", response_model=CompetitorChangeListResponse)
 async def list_competitor_changes(
     workspace_id: str,
     page: int = Query(default=1, ge=1),
@@ -2248,7 +2280,6 @@ async def list_competitor_changes(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_competitor import CompetitorChangeListResponse
     from aexy.services.competitor_intel_service import CompetitorIntelService
     await check_workspace_permission(workspace_id, current_user, db)
     service = CompetitorIntelService(db)
@@ -2271,14 +2302,13 @@ async def acknowledge_competitor_change(
     return result
 
 
-@router.get("/competitors/{competitor_id}")
+@router.get("/competitors/{competitor_id}", response_model=CompetitorResponse)
 async def get_competitor(
     workspace_id: str,
     competitor_id: str,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_competitor import CompetitorResponse
     from aexy.services.competitor_intel_service import CompetitorIntelService
     await check_workspace_permission(workspace_id, current_user, db)
     service = CompetitorIntelService(db)
@@ -2288,20 +2318,18 @@ async def get_competitor(
     return result
 
 
-@router.put("/competitors/{competitor_id}")
+@router.put("/competitors/{competitor_id}", response_model=CompetitorResponse)
 async def update_competitor(
     workspace_id: str,
     competitor_id: str,
-    data: dict,
+    data: CompetitorUpdate,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_competitor import CompetitorUpdate, CompetitorResponse
     from aexy.services.competitor_intel_service import CompetitorIntelService
     await check_workspace_permission(workspace_id, current_user, db)
-    parsed = CompetitorUpdate(**data)
     service = CompetitorIntelService(db)
-    result = await service.update_competitor(workspace_id, competitor_id, parsed.model_dump(exclude_none=True))
+    result = await service.update_competitor(workspace_id, competitor_id, data.model_dump(exclude_none=True))
     if not result:
         raise HTTPException(status_code=404, detail="Not found")
     return result
@@ -2340,14 +2368,13 @@ async def manual_competitor_check(
     return {"workflow_id": wf_id, "message": "Competitor check started"}
 
 
-@router.get("/competitors/{competitor_id}/battle-card")
+@router.get("/competitors/{competitor_id}/battle-card", response_model=BattleCardResponse)
 async def get_battle_card(
     workspace_id: str,
     competitor_id: str,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_competitor import BattleCardResponse
     from aexy.services.competitor_intel_service import CompetitorIntelService
     await check_workspace_permission(workspace_id, current_user, db)
     service = CompetitorIntelService(db)
@@ -2375,21 +2402,19 @@ async def generate_battle_card(
     return {"workflow_id": wf_id, "message": "Battle card generation started"}
 
 
-@router.put("/competitors/{competitor_id}/battle-card/{card_id}")
+@router.put("/competitors/{competitor_id}/battle-card/{card_id}", response_model=BattleCardResponse)
 async def update_battle_card(
     workspace_id: str,
     competitor_id: str,
     card_id: str,
-    data: dict,
+    data: BattleCardUpdate,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_competitor import BattleCardUpdate, BattleCardResponse
     from aexy.services.competitor_intel_service import CompetitorIntelService
     await check_workspace_permission(workspace_id, current_user, db)
-    parsed = BattleCardUpdate(**data)
     service = CompetitorIntelService(db)
-    result = await service.update_battle_card(workspace_id, competitor_id, card_id, parsed.model_dump(exclude_none=True))
+    result = await service.update_battle_card(workspace_id, competitor_id, card_id, data.model_dump(exclude_none=True))
     if not result:
         raise HTTPException(status_code=404, detail="Not found")
     return result
@@ -2419,18 +2444,16 @@ async def publish_battle_card(
 @router.post("/seo/audits")
 async def create_seo_audit(
     workspace_id: str,
-    data: dict,
+    data: SEOAuditCreate,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_seo import SEOAuditCreate, SEOAuditResponse
     from aexy.services.seo_audit_service import SEOAuditService
     from aexy.temporal.dispatch import dispatch
     from aexy.temporal.task_queues import TaskQueue
     await check_workspace_permission(workspace_id, current_user, db)
-    parsed = SEOAuditCreate(**data)
     service = SEOAuditService(db)
-    audit = await service.create_audit(workspace_id, parsed.target_url, record_id=parsed.record_id)
+    audit = await service.create_audit(workspace_id, data.target_url, record_id=data.record_id)
     wf_id = await dispatch(
         "run_seo_audit",
         {"workspace_id": workspace_id, "audit_id": str(audit.id)},
@@ -2439,7 +2462,7 @@ async def create_seo_audit(
     return {"audit": audit, "workflow_id": wf_id}
 
 
-@router.get("/seo/audits")
+@router.get("/seo/audits", response_model=SEOAuditListResponse)
 async def list_seo_audits(
     workspace_id: str,
     page: int = Query(default=1, ge=1),
@@ -2447,21 +2470,19 @@ async def list_seo_audits(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_seo import SEOAuditListResponse
     from aexy.services.seo_audit_service import SEOAuditService
     await check_workspace_permission(workspace_id, current_user, db)
     service = SEOAuditService(db)
     return await service.list_audits(workspace_id, page=page, per_page=per_page)
 
 
-@router.get("/seo/audits/{audit_id}")
+@router.get("/seo/audits/{audit_id}", response_model=SEOAuditResponse)
 async def get_seo_audit(
     workspace_id: str,
     audit_id: str,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_seo import SEOAuditResponse
     from aexy.services.seo_audit_service import SEOAuditService
     await check_workspace_permission(workspace_id, current_user, db)
     service = SEOAuditService(db)
@@ -2471,14 +2492,13 @@ async def get_seo_audit(
     return result
 
 
-@router.get("/seo/audits/{audit_id}/pages")
+@router.get("/seo/audits/{audit_id}/pages", response_model=list[SEOAuditPageResponse])
 async def get_seo_audit_pages(
     workspace_id: str,
     audit_id: str,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_seo import SEOAuditPageResponse
     from aexy.services.seo_audit_service import SEOAuditService
     await check_workspace_permission(workspace_id, current_user, db)
     service = SEOAuditService(db)
@@ -2488,14 +2508,13 @@ async def get_seo_audit_pages(
     return result
 
 
-@router.get("/seo/history/{domain}")
+@router.get("/seo/history/{domain}", response_model=SEOScoreHistoryResponse)
 async def get_seo_score_history(
     workspace_id: str,
     domain: str,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_seo import SEOScoreHistoryResponse
     from aexy.services.seo_audit_service import SEOAuditService
     await check_workspace_permission(workspace_id, current_user, db)
     service = SEOAuditService(db)
@@ -2524,18 +2543,16 @@ async def delete_seo_audit(
 @router.post("/content-gap/analyses")
 async def create_content_gap_analysis(
     workspace_id: str,
-    data: dict,
+    data: ContentAnalysisCreate,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_content import ContentAnalysisCreate, ContentAnalysisResponse
     from aexy.services.content_gap_service import ContentGapService
     from aexy.temporal.dispatch import dispatch
     from aexy.temporal.task_queues import TaskQueue
     await check_workspace_permission(workspace_id, current_user, db)
-    parsed = ContentAnalysisCreate(**data)
     service = ContentGapService(db)
-    analysis = await service.create_analysis(workspace_id, parsed.our_domain, parsed.competitor_domains)
+    analysis = await service.create_analysis(workspace_id, data.our_domain, data.competitor_domains)
     wf_id = await dispatch(
         "run_content_gap_analysis",
         {"workspace_id": workspace_id, "analysis_id": str(analysis.id)},
@@ -2544,7 +2561,7 @@ async def create_content_gap_analysis(
     return {"analysis": analysis, "workflow_id": wf_id}
 
 
-@router.get("/content-gap/analyses")
+@router.get("/content-gap/analyses", response_model=ContentAnalysisListResponse)
 async def list_content_gap_analyses(
     workspace_id: str,
     page: int = Query(default=1, ge=1),
@@ -2552,7 +2569,6 @@ async def list_content_gap_analyses(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_content import ContentAnalysisListResponse
     from aexy.services.content_gap_service import ContentGapService
     await check_workspace_permission(workspace_id, current_user, db)
     service = ContentGapService(db)
@@ -2560,14 +2576,13 @@ async def list_content_gap_analyses(
     return {"items": items, "total": total, "page": page, "per_page": per_page}
 
 
-@router.get("/content-gap/analyses/{analysis_id}")
+@router.get("/content-gap/analyses/{analysis_id}", response_model=ContentAnalysisResponse)
 async def get_content_gap_analysis(
     workspace_id: str,
     analysis_id: str,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_content import ContentAnalysisResponse
     from aexy.services.content_gap_service import ContentGapService
     await check_workspace_permission(workspace_id, current_user, db)
     service = ContentGapService(db)
@@ -2596,48 +2611,44 @@ async def delete_content_gap_analysis(
 # ABM (#30)
 # =============================================================================
 
-@router.get("/abm/lists")
+@router.get("/abm/lists", response_model=list[TargetListResponse])
 async def list_abm_target_lists(
     workspace_id: str,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_abm import TargetListResponse
     from aexy.services.abm_service import ABMService
     await check_workspace_permission(workspace_id, current_user, db)
     service = ABMService(db)
     return await service.list_target_lists(workspace_id)
 
 
-@router.post("/abm/lists")
+@router.post("/abm/lists", response_model=TargetListResponse)
 async def create_abm_target_list(
     workspace_id: str,
-    data: dict,
+    data: TargetListCreate,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_abm import TargetListCreate, TargetListResponse
     from aexy.services.abm_service import ABMService
     await check_workspace_permission(workspace_id, current_user, db)
-    parsed = TargetListCreate(**data)
     service = ABMService(db)
-    return await service.create_target_list(workspace_id, parsed.model_dump())
+    return await service.create_target_list(workspace_id, data.model_dump())
 
 
-@router.get("/abm/overview")
+@router.get("/abm/overview", response_model=ABMOverviewResponse)
 async def get_abm_overview(
     workspace_id: str,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_abm import ABMOverviewResponse
     from aexy.services.abm_service import ABMService
     await check_workspace_permission(workspace_id, current_user, db)
     service = ABMService(db)
     return await service.get_abm_overview(workspace_id)
 
 
-@router.get("/abm/accounts")
+@router.get("/abm/accounts", response_model=ABMAccountListResponse)
 async def list_abm_accounts(
     workspace_id: str,
     page: int = Query(default=1, ge=1),
@@ -2648,21 +2659,19 @@ async def list_abm_accounts(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_abm import ABMAccountListResponse
     from aexy.services.abm_service import ABMService
     await check_workspace_permission(workspace_id, current_user, db)
     service = ABMService(db)
     return await service.list_accounts(workspace_id, page=page, per_page=per_page, target_list_id=target_list_id, tier=tier, stage=stage)
 
 
-@router.get("/abm/lists/{list_id}")
+@router.get("/abm/lists/{list_id}", response_model=TargetListResponse)
 async def get_abm_target_list(
     workspace_id: str,
     list_id: str,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_abm import TargetListResponse
     from aexy.services.abm_service import ABMService
     await check_workspace_permission(workspace_id, current_user, db)
     service = ABMService(db)
@@ -2672,20 +2681,18 @@ async def get_abm_target_list(
     return result
 
 
-@router.put("/abm/lists/{list_id}")
+@router.put("/abm/lists/{list_id}", response_model=TargetListResponse)
 async def update_abm_target_list(
     workspace_id: str,
     list_id: str,
-    data: dict,
+    data: TargetListUpdate,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_abm import TargetListUpdate, TargetListResponse
     from aexy.services.abm_service import ABMService
     await check_workspace_permission(workspace_id, current_user, db)
-    parsed = TargetListUpdate(**data)
     service = ABMService(db)
-    result = await service.update_target_list(workspace_id, list_id, parsed.model_dump(exclude_none=True))
+    result = await service.update_target_list(workspace_id, list_id, data.model_dump(exclude_none=True))
     if not result:
         raise HTTPException(status_code=404, detail="Not found")
     return result
@@ -2710,14 +2717,13 @@ async def delete_abm_target_list(
 async def add_abm_accounts_to_list(
     workspace_id: str,
     list_id: str,
-    data: list,
+    data: list[ABMAccountCreate],
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_abm import ABMAccountCreate
     from aexy.services.abm_service import ABMService
     await check_workspace_permission(workspace_id, current_user, db)
-    parsed = [ABMAccountCreate(**item).model_dump() for item in data]
+    parsed = [item.model_dump() for item in data]
     service = ABMService(db)
     return await service.add_accounts(workspace_id, list_id, parsed)
 
@@ -2740,14 +2746,13 @@ async def refresh_abm_target_list(
     return {"workflow_id": wf_id, "message": "List refresh started"}
 
 
-@router.get("/abm/accounts/{account_id}")
+@router.get("/abm/accounts/{account_id}", response_model=ABMAccountResponse)
 async def get_abm_account(
     workspace_id: str,
     account_id: str,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_abm import ABMAccountResponse
     from aexy.services.abm_service import ABMService
     await check_workspace_permission(workspace_id, current_user, db)
     service = ABMService(db)
@@ -2757,20 +2762,18 @@ async def get_abm_account(
     return result
 
 
-@router.put("/abm/accounts/{account_id}")
+@router.put("/abm/accounts/{account_id}", response_model=ABMAccountResponse)
 async def update_abm_account(
     workspace_id: str,
     account_id: str,
-    data: dict,
+    data: ABMAccountUpdate,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_abm import ABMAccountUpdate, ABMAccountResponse
     from aexy.services.abm_service import ABMService
     await check_workspace_permission(workspace_id, current_user, db)
-    parsed = ABMAccountUpdate(**data)
     service = ABMService(db)
-    result = await service.update_account(workspace_id, account_id, parsed.model_dump(exclude_none=True))
+    result = await service.update_account(workspace_id, account_id, data.model_dump(exclude_none=True))
     if not result:
         raise HTTPException(status_code=404, detail="Not found")
     return result
@@ -2791,52 +2794,47 @@ async def delete_abm_account(
         raise HTTPException(status_code=404, detail="Not found")
 
 
-@router.post("/abm/accounts/{account_id}/stage")
+@router.post("/abm/accounts/{account_id}/stage", response_model=ABMAccountResponse)
 async def change_abm_account_stage(
     workspace_id: str,
     account_id: str,
-    data: dict,
+    data: StageChangeRequest,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_abm import StageChangeRequest, ABMAccountResponse
     from aexy.services.abm_service import ABMService
     await check_workspace_permission(workspace_id, current_user, db)
-    parsed = StageChangeRequest(**data)
     service = ABMService(db)
-    result = await service.change_stage(workspace_id, account_id, parsed)
+    result = await service.change_stage(workspace_id, account_id, data)
     if not result:
         raise HTTPException(status_code=404, detail="Not found")
     return result
 
 
-@router.post("/abm/accounts/{account_id}/campaign")
+@router.post("/abm/accounts/{account_id}/campaign", response_model=ABMAccountResponse)
 async def assign_abm_campaign(
     workspace_id: str,
     account_id: str,
-    data: dict,
+    data: CampaignAssignRequest,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_abm import CampaignAssignRequest, ABMAccountResponse
     from aexy.services.abm_service import ABMService
     await check_workspace_permission(workspace_id, current_user, db)
-    parsed = CampaignAssignRequest(**data)
     service = ABMService(db)
-    result = await service.assign_campaign(workspace_id, account_id, parsed)
+    result = await service.assign_campaign(workspace_id, account_id, data)
     if not result:
         raise HTTPException(status_code=404, detail="Not found")
     return result
 
 
-@router.get("/abm/accounts/{account_id}/journey")
+@router.get("/abm/accounts/{account_id}/journey", response_model=AccountJourneyResponse)
 async def get_abm_account_journey(
     workspace_id: str,
     account_id: str,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    from aexy.schemas.gtm_abm import AccountJourneyResponse
     from aexy.services.abm_service import ABMService
     await check_workspace_permission(workspace_id, current_user, db)
     service = ABMService(db)

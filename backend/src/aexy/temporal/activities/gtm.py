@@ -1535,3 +1535,82 @@ async def refresh_dynamic_abm_lists(input: RefreshDynamicABMListsInput) -> dict:
                 count += 1
 
     return {"refreshed": count}
+
+
+# =============================================================================
+# IP ADDRESS CLEANUP (GDPR / DATA RETENTION)
+# =============================================================================
+
+@dataclass
+class CleanupIPAddressesInput:
+    retention_days: int = 90
+
+
+@activity.defn(name="cleanup_ip_addresses")
+async def cleanup_ip_addresses(input: CleanupIPAddressesInput) -> dict:
+    """Null out IP addresses older than retention_days for GDPR compliance.
+
+    Cleans three tables:
+    - behavioral_events: NULL ip_address where received_at < cutoff
+    - visitor_sessions: NULL ip_address where created_at < cutoff
+    - visitor_identifications: replace ip_address with '0.0.0.0' where created_at < cutoff
+      (column is NOT NULL so we use a placeholder)
+    """
+    from sqlalchemy import update
+
+    from aexy.models.gtm import BehavioralEvent, VisitorSession, VisitorIdentification
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=input.retention_days)
+
+    logger.info(
+        f"Cleaning up IP addresses older than {input.retention_days} days "
+        f"(cutoff={cutoff.isoformat()})"
+    )
+
+    async with async_session_maker() as db:
+        # 1. NULL out ip_address on behavioral_events
+        result_events = await db.execute(
+            update(BehavioralEvent)
+            .where(BehavioralEvent.received_at < cutoff)
+            .where(BehavioralEvent.ip_address.isnot(None))
+            .values(ip_address=None)
+        )
+        events_updated = result_events.rowcount
+        logger.info(f"Cleaned {events_updated} rows in behavioral_events")
+        activity.heartbeat(f"behavioral_events: {events_updated} rows cleaned")
+
+        # 2. NULL out ip_address on visitor_sessions
+        result_sessions = await db.execute(
+            update(VisitorSession)
+            .where(VisitorSession.created_at < cutoff)
+            .where(VisitorSession.ip_address.isnot(None))
+            .values(ip_address=None)
+        )
+        sessions_updated = result_sessions.rowcount
+        logger.info(f"Cleaned {sessions_updated} rows in visitor_sessions")
+        activity.heartbeat(f"visitor_sessions: {sessions_updated} rows cleaned")
+
+        # 3. Replace ip_address with '0.0.0.0' on visitor_identifications (NOT NULL column)
+        result_idents = await db.execute(
+            update(VisitorIdentification)
+            .where(VisitorIdentification.created_at < cutoff)
+            .where(VisitorIdentification.ip_address != '0.0.0.0')
+            .values(ip_address='0.0.0.0')
+        )
+        idents_updated = result_idents.rowcount
+        logger.info(f"Cleaned {idents_updated} rows in visitor_identifications")
+        activity.heartbeat(f"visitor_identifications: {idents_updated} rows cleaned")
+
+        await db.commit()
+
+    total = events_updated + sessions_updated + idents_updated
+    logger.info(f"IP address cleanup complete: {total} total rows updated")
+
+    return {
+        "retention_days": input.retention_days,
+        "cutoff": cutoff.isoformat(),
+        "behavioral_events_cleaned": events_updated,
+        "visitor_sessions_cleaned": sessions_updated,
+        "visitor_identifications_cleaned": idents_updated,
+        "total_rows_updated": total,
+    }
