@@ -1,7 +1,9 @@
 """Competitor Intelligence Service — track competitors, detect changes, manage battle cards."""
 
 import hashlib
+import json
 import logging
+import re
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -13,6 +15,40 @@ from aexy.core.url_validation import validate_url_for_fetch, SSRFError
 from aexy.models.gtm_competitor import CompetitorProfile, CompetitorChange, BattleCard
 
 logger = logging.getLogger(__name__)
+
+
+def _extract_main_content(html: str) -> str:
+    """Extract meaningful page content by stripping boilerplate elements.
+
+    Removes <script>, <style>, <nav>, <footer>, <header>, <aside> tags and
+    their contents, then extracts text from <main> or <article> if present,
+    falling back to <body>.  Returns lowercased text for stable hashing.
+    """
+    # Remove script/style/nav/footer/header/aside blocks
+    for tag in ("script", "style", "nav", "footer", "header", "aside", "noscript"):
+        html = re.sub(
+            rf"<{tag}[\s>].*?</{tag}>",
+            "",
+            html,
+            flags=re.DOTALL | re.IGNORECASE,
+        )
+
+    # Try to isolate <main> or <article> content
+    for container in ("main", "article"):
+        match = re.search(
+            rf"<{container}[\s>](.*?)</{container}>",
+            html,
+            flags=re.DOTALL | re.IGNORECASE,
+        )
+        if match:
+            html = match.group(1)
+            break
+
+    # Strip all remaining HTML tags
+    text = re.sub(r"<[^>]+>", " ", html)
+    # Collapse whitespace
+    text = re.sub(r"\s+", " ", text).strip().lower()
+    return text
 
 # Map page labels to change types and severity levels.
 _LABEL_CHANGE_TYPE: dict[str, str] = {
@@ -210,7 +246,9 @@ class CompetitorIntelService:
                     pages_updated = True
                     continue
 
-                current_hash = hashlib.sha256(body.encode("utf-8")).hexdigest()
+                # Extract meaningful content, stripping boilerplate
+                main_content = _extract_main_content(body)
+                current_hash = hashlib.sha256(main_content.encode("utf-8")).hexdigest()
 
                 # Update tracking metadata regardless of change.
                 tracked_pages[idx]["last_hash"] = current_hash
@@ -228,6 +266,18 @@ class CompetitorIntelService:
                 change_type = _LABEL_CHANGE_TYPE.get(label.lower(), "content_change")
                 severity = _CHANGE_TYPE_SEVERITY.get(change_type, "info")
 
+                # Try LLM classification for richer change categorization
+                llm_result = await self._classify_change_with_llm(
+                    profile.name, label, url, main_content[:3000],
+                )
+                if llm_result:
+                    classified_type = llm_result.get("change_type")
+                    if classified_type == "cosmetic":
+                        continue  # Skip cosmetic-only changes
+                    if classified_type and classified_type in _CHANGE_TYPE_SEVERITY:
+                        change_type = classified_type
+                        severity = _CHANGE_TYPE_SEVERITY[classified_type]
+
                 change = CompetitorChange(
                     id=str(uuid4()),
                     workspace_id=workspace_id,
@@ -235,12 +285,12 @@ class CompetitorIntelService:
                     page_url=url,
                     page_label=label,
                     change_type=change_type,
-                    title=f"{profile.name}: {label} page changed",
-                    description=f"Content change detected on {url}",
+                    title=(llm_result or {}).get("title") or f"{profile.name}: {label} page changed",
+                    description=(llm_result or {}).get("description") or f"Content change detected on {url}",
                     severity=severity,
                     previous_content_hash=previous_hash,
                     current_content_hash=current_hash,
-                    diff_data={},
+                    diff_data=llm_result or {},
                 )
                 self.db.add(change)
                 new_change_ids.append(change.id)
@@ -270,6 +320,46 @@ class CompetitorIntelService:
             await self.db.commit()
 
         return new_change_ids
+
+    async def _classify_change_with_llm(
+        self,
+        competitor_name: str,
+        page_label: str,
+        page_url: str,
+        content_snippet: str,
+    ) -> dict | None:
+        """Use LLM to classify a page change. Returns None on failure."""
+        try:
+            from aexy.llm.gateway import get_llm_gateway
+
+            gateway = get_llm_gateway()
+            if not gateway:
+                return None
+
+            system_prompt = (
+                "You classify competitor website changes. Respond with ONLY valid JSON.\n"
+                "change_type must be one of: pricing_change, feature_change, product_change, "
+                "positioning_change, release_change, integration_change, hiring_change, "
+                "content_change, security_change, cosmetic.\n"
+                'Use "cosmetic" for trivial CSS/footer/copyright/layout-only changes.\n'
+                "Format: "
+                '{"change_type": "...", "title": "short title", "description": "1-2 sentence summary"}'
+            )
+            user_prompt = (
+                f"Competitor: {competitor_name}\n"
+                f"Page: {page_label} ({page_url})\n\n"
+                f"Current page content (truncated):\n{content_snippet}"
+            )
+
+            response_text, *_ = await gateway.call_llm(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                tokens_estimate=300,
+            )
+            return json.loads(response_text)
+        except Exception:
+            logger.debug("LLM change classification failed for %s, falling back to label", page_url)
+            return None
 
     async def _emit_alerts_for_changes(
         self,
@@ -362,10 +452,11 @@ class CompetitorIntelService:
     async def generate_battle_card(
         self, workspace_id: str, competitor_id: str,
     ) -> BattleCard | None:
-        """Create or update a battle card for the competitor.
+        """Create or update a battle card using LLM analysis.
 
-        Currently generates a placeholder card using snapshot data. In the
-        future this will call the LLM gateway to produce real content.
+        Gathers competitor snapshot, recent changes, and tracked-page content,
+        then calls the LLM to produce structured battle card sections.  Falls
+        back to snapshot-derived placeholders if LLM is unavailable.
         """
         profile = await self.get_competitor(workspace_id, competitor_id)
         if not profile:
@@ -385,29 +476,51 @@ class CompetitorIntelService:
         snapshot = profile.current_snapshot or {}
         now = datetime.now(timezone.utc)
 
-        # Build placeholder content from available snapshot data.
-        strengths = snapshot.get("key_features", [])
+        # Gather recent changes for context
+        recent_changes = (await self.db.execute(
+            select(CompetitorChange)
+            .where(and_(
+                CompetitorChange.competitor_id == competitor_id,
+                CompetitorChange.workspace_id == workspace_id,
+            ))
+            .order_by(CompetitorChange.detected_at.desc())
+            .limit(10)
+        )).scalars().all()
+
+        changes_context = "\n".join(
+            f"- [{c.change_type}] {c.title}: {c.description}"
+            for c in recent_changes
+        ) if recent_changes else "No recent changes detected."
+
+        # Try LLM generation
+        llm_card = await self._generate_battle_card_with_llm(
+            profile.name, profile.domain, snapshot, changes_context,
+        )
+
+        # Extract fields — LLM result or fallback
+        strengths = (llm_card or {}).get("strengths") or snapshot.get("key_features") or []
         if isinstance(strengths, str):
             strengths = [strengths]
+        weaknesses = (llm_card or {}).get("weaknesses") or ["Needs analysis"]
+        our_advantages = (llm_card or {}).get("our_advantages") or ["Needs analysis"]
+        objection_handling = (llm_card or {}).get("objection_handling") or []
+        talk_tracks = (llm_card or {}).get("talk_tracks") or []
+        overview = (llm_card or {}).get("overview") or (
+            f"Competitive analysis for {profile.name} ({profile.domain})."
+        )
 
         pricing_comparison = snapshot.get("pricing_tiers", {})
         if isinstance(pricing_comparison, list):
             pricing_comparison = {"tiers": pricing_comparison}
 
-        positioning = snapshot.get("positioning", "")
-
         if existing:
-            # Bump version and regenerate.
             existing.title = f"Battle Card: {profile.name}"
-            existing.overview = (
-                f"Competitive analysis for {profile.name} ({profile.domain}). "
-                f"Positioning: {positioning or 'Unknown'}."
-            )
+            existing.overview = overview
             existing.strengths = strengths
-            existing.weaknesses = existing.weaknesses or ["Needs analysis"]
-            existing.our_advantages = existing.our_advantages or ["Needs analysis"]
-            existing.objection_handling = existing.objection_handling or []
-            existing.talk_tracks = existing.talk_tracks or []
+            existing.weaknesses = weaknesses
+            existing.our_advantages = our_advantages
+            existing.objection_handling = objection_handling
+            existing.talk_tracks = talk_tracks
             existing.pricing_comparison = pricing_comparison
             existing.version = existing.version + 1
             existing.status = "draft"
@@ -421,15 +534,12 @@ class CompetitorIntelService:
             workspace_id=workspace_id,
             competitor_id=competitor_id,
             title=f"Battle Card: {profile.name}",
-            overview=(
-                f"Competitive analysis for {profile.name} ({profile.domain}). "
-                f"Positioning: {positioning or 'Unknown'}."
-            ),
+            overview=overview,
             strengths=strengths,
-            weaknesses=["Needs analysis"],
-            our_advantages=["Needs analysis"],
-            objection_handling=[],
-            talk_tracks=[],
+            weaknesses=weaknesses,
+            our_advantages=our_advantages,
+            objection_handling=objection_handling,
+            talk_tracks=talk_tracks,
             pricing_comparison=pricing_comparison,
             win_rate=0.0,
             total_deals=0,
@@ -445,6 +555,53 @@ class CompetitorIntelService:
         await self.db.commit()
         await self.db.refresh(card)
         return card
+
+    async def _generate_battle_card_with_llm(
+        self,
+        competitor_name: str,
+        competitor_domain: str,
+        snapshot: dict,
+        changes_context: str,
+    ) -> dict | None:
+        """Call LLM to generate structured battle card content."""
+        try:
+            from aexy.llm.gateway import get_llm_gateway
+
+            gateway = get_llm_gateway()
+            if not gateway:
+                return None
+
+            system_prompt = (
+                "You generate competitive battle cards for sales teams. "
+                "Respond with ONLY valid JSON using this schema:\n"
+                "{\n"
+                '  "overview": "2-3 sentence positioning summary",\n'
+                '  "strengths": ["their strength 1", "..."],\n'
+                '  "weaknesses": ["their weakness 1", "..."],\n'
+                '  "our_advantages": ["our advantage 1", "..."],\n'
+                '  "objection_handling": ["When they say X, respond with Y", "..."],\n'
+                '  "talk_tracks": ["Opening: ...", "Discovery: ...", "Close: ..."]\n'
+                "}\n"
+                "Be specific and actionable. Each array should have 3-5 items."
+            )
+
+            snapshot_text = json.dumps(snapshot, indent=2, default=str)[:2000] if snapshot else "No snapshot data."
+
+            user_prompt = (
+                f"Generate a battle card for competing against {competitor_name} ({competitor_domain}).\n\n"
+                f"Competitor snapshot data:\n{snapshot_text}\n\n"
+                f"Recent detected changes:\n{changes_context}"
+            )
+
+            response_text, *_ = await gateway.call_llm(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                tokens_estimate=1500,
+            )
+            return json.loads(response_text)
+        except Exception:
+            logger.debug("LLM battle card generation failed for %s, using snapshot fallback", competitor_name)
+            return None
 
     async def get_battle_card(
         self, workspace_id: str, competitor_id: str,

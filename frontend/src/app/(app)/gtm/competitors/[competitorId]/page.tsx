@@ -15,7 +15,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
-import { useGTMCompetitor, useGTMBattleCard } from "@/hooks/useGTM";
+import { useGTMCompetitor, useGTMBattleCard, useGTMCompetitorChanges } from "@/hooks/useGTM";
 
 type Tab = "overview" | "changes" | "battlecard";
 
@@ -69,6 +69,10 @@ export default function CompetitorDetailPage() {
   const { battleCard, isLoading: battleCardLoading } = useGTMBattleCard(
     workspaceId,
     competitorId
+  );
+  const { changes, isLoading: changesLoading } = useGTMCompetitorChanges(
+    workspaceId,
+    { competitor_id: competitorId, page: 1, per_page: 50 }
   );
 
   const isLoading = competitorLoading;
@@ -220,12 +224,70 @@ export default function CompetitorDetailPage() {
         )}
 
         {activeTab === "changes" && (
-          <div className="bg-muted/50 border border-border rounded-xl p-8 text-center">
-            <Swords className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
-            <p className="text-muted-foreground font-medium">Changes view</p>
-            <p className="text-muted-foreground text-sm mt-1">
-              Full change history for this competitor coming soon.
-            </p>
+          <div className="space-y-4">
+            {changesLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />
+              </div>
+            ) : !changes?.length ? (
+              <div className="bg-muted/50 border border-border rounded-xl p-8 text-center">
+                <Swords className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
+                <p className="text-muted-foreground font-medium">No changes detected yet</p>
+                <p className="text-muted-foreground text-sm mt-1">
+                  Changes will appear here after the next scheduled check.
+                </p>
+              </div>
+            ) : (
+              <div className="bg-muted/50 border border-border rounded-xl overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-muted-foreground text-xs uppercase tracking-wider">
+                      <th className="text-left px-4 py-3">Change</th>
+                      <th className="text-left px-4 py-3">Type</th>
+                      <th className="text-left px-4 py-3">Severity</th>
+                      <th className="text-left px-4 py-3">Detected</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {changes.map((change: any) => (
+                      <tr key={change.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-foreground">{change.title}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-md">
+                            {change.description}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                            {change.change_type?.replace("_", " ")}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
+                              change.severity === "critical"
+                                ? "bg-red-500/20 text-red-300 border-red-500/30"
+                                : change.severity === "high"
+                                  ? "bg-orange-500/20 text-orange-300 border-orange-500/30"
+                                  : change.severity === "medium"
+                                    ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                                    : "bg-zinc-500/20 text-muted-foreground border-zinc-500/30"
+                            }`}
+                          >
+                            {change.severity}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground text-xs">
+                          {change.detected_at
+                            ? new Date(change.detected_at).toLocaleDateString()
+                            : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
@@ -260,7 +322,7 @@ export default function CompetitorDetailPage() {
                   />
                   <ListSection
                     title="Their Advantages"
-                    items={battleCard.advantages ?? []}
+                    items={battleCard.our_advantages ?? []}
                     icon={<TrendingDown className="w-4 h-4 text-red-400" />}
                     color="text-red-300"
                   />

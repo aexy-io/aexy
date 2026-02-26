@@ -259,21 +259,97 @@ class ABMService:
         workspace_id: str,
         account_id: str,
     ) -> ABMAccount | None:
-        """Recalculate engagement score for an account.
+        """Recalculate engagement score for an account from real data sources.
 
-        Score = min(100, emails_replied*20 + meetings_booked*25
-                       + deals_created*30 + emails_sent*1)
+        Pulls from: outreach enrollments (emails sent/replied), email campaign
+        recipients (opens/clicks), visitor sessions, and intent signals.
+        Falls back to the stored counters for meetings/deals which are
+        updated manually or via CRM sync.
         """
         account = await self.get_account(workspace_id, account_id)
-        if not account:
+        if not account or not account.record_id:
             return None
-        score = min(
-            100,
-            account.emails_replied * 20
+
+        record_id = account.record_id
+
+        # ---- Pull real engagement data ----
+        try:
+            from aexy.models.gtm_outreach import OutreachEnrollment, OutreachStepExecution
+            from aexy.models.email_marketing import CampaignRecipient
+            from aexy.models.gtm import VisitorSession
+            from aexy.models.gtm_intent import IntentSignal
+
+            # Outreach: count sent steps and replied enrollments
+            sent_steps = await self.db.scalar(
+                select(func.count(OutreachStepExecution.id))
+                .join(OutreachEnrollment, OutreachStepExecution.enrollment_id == OutreachEnrollment.id)
+                .where(and_(
+                    OutreachEnrollment.record_id == record_id,
+                    OutreachEnrollment.workspace_id == workspace_id,
+                    OutreachStepExecution.status == "sent",
+                ))
+            ) or 0
+
+            replied_enrollments = await self.db.scalar(
+                select(func.count(OutreachEnrollment.id)).where(and_(
+                    OutreachEnrollment.record_id == record_id,
+                    OutreachEnrollment.workspace_id == workspace_id,
+                    OutreachEnrollment.status == "replied",
+                ))
+            ) or 0
+
+            # Email campaigns: opens + clicks
+            email_agg = (await self.db.execute(
+                select(
+                    func.coalesce(func.sum(CampaignRecipient.open_count), 0),
+                    func.coalesce(func.sum(CampaignRecipient.click_count), 0),
+                ).where(CampaignRecipient.record_id == record_id)
+            )).one_or_none()
+            total_opens = email_agg[0] if email_agg else 0
+            total_clicks = email_agg[1] if email_agg else 0
+
+            # Visitor sessions
+            visit_count = await self.db.scalar(
+                select(func.count(VisitorSession.id)).where(and_(
+                    VisitorSession.workspace_id == workspace_id,
+                    VisitorSession.record_id == record_id,
+                ))
+            ) or 0
+
+            # Intent signals (non-dismissed)
+            intent_count = await self.db.scalar(
+                select(func.count(IntentSignal.id)).where(and_(
+                    IntentSignal.workspace_id == workspace_id,
+                    IntentSignal.record_id == record_id,
+                    IntentSignal.is_dismissed == False,  # noqa: E712
+                ))
+            ) or 0
+
+            # Update stored counters
+            account.emails_sent = sent_steps
+            account.emails_replied = replied_enrollments
+
+        except Exception:
+            # If any model isn't available yet, fall back to stored counters
+            logger.debug("ABM engagement: falling back to stored counters for account %s", account_id)
+            sent_steps = account.emails_sent
+            replied_enrollments = account.emails_replied
+            total_opens = 0
+            total_clicks = 0
+            visit_count = 0
+            intent_count = 0
+
+        # ---- Compute weighted score ----
+        score = min(100, (
+            sent_steps * 1
+            + total_opens * 2
+            + total_clicks * 5
+            + replied_enrollments * 20
+            + visit_count * 3
+            + intent_count * 8
             + account.meetings_booked * 25
             + account.deals_created * 30
-            + account.emails_sent * 1,
-        )
+        ))
         account.engagement_score = score
         await self.db.commit()
         await self.db.refresh(account)

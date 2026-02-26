@@ -219,7 +219,7 @@ async def change_abm_account_stage(
     from aexy.services.abm_service import ABMService
     await check_workspace_permission(workspace_id, current_user, db)
     service = ABMService(db)
-    result = await service.change_stage(workspace_id, account_id, data)
+    result = await service.change_stage(workspace_id, account_id, data.stage, data.notes)
     if not result:
         raise HTTPException(status_code=404, detail="Not found")
     return result
@@ -236,7 +236,7 @@ async def assign_abm_campaign(
     from aexy.services.abm_service import ABMService
     await check_workspace_permission(workspace_id, current_user, db)
     service = ABMService(db)
-    result = await service.assign_campaign(workspace_id, account_id, data)
+    result = await service.assign_campaign(workspace_id, account_id, data.campaign_id, data.campaign_name)
     if not result:
         raise HTTPException(status_code=404, detail="Not found")
     return result
