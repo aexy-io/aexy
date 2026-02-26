@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from sqlalchemy import DateTime, ForeignKey, String, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -68,6 +68,22 @@ class DashboardPreferences(Base):
         JSONB,
         default=dict,
         nullable=False,
+    )
+
+    # Getting started checklist: list of completed step IDs
+    checklist_progress: Mapped[list] = mapped_column(
+        JSONB,
+        default=list,
+        nullable=False,
+        server_default="'[]'::jsonb",
+    )
+
+    # Whether the user dismissed the getting started checklist
+    checklist_dismissed: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+        server_default="false",
     )
 
     # Timestamps

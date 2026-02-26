@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { redirect } from "next/navigation";
 import { analysisApi, DeveloperInsights, SoftSkillsProfile } from "@/lib/api";
 import { useDashboardPreferences } from "@/hooks/useDashboardPreferences";
+import type { PresetType } from "@/config/dashboardPresets";
 import { useDashboardStore } from "@/stores/dashboardStore";
 import { DASHBOARD_WIDGETS } from "@/config/dashboardWidgets";
 import { getWidgetComponent, widgetRegistry } from "@/config/widgetRegistry";
@@ -28,12 +29,12 @@ export default function DashboardPage() {
   const [softSkillsLoading, setSoftSkillsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Getting started checklist
-  const showChecklist = useShouldShowWorkspaceChecklist();
-  const [checklistDismissed, setChecklistDismissed] = useState(false);
-
   // Dashboard customization
-  const { preferences, isLoading: prefsLoading, reorderWidgets, setPreset } = useDashboardPreferences();
+  const { preferences, isLoading: prefsLoading, reorderWidgets, setPreset, updateChecklist, dismissChecklist } = useDashboardPreferences();
+
+  // Getting started checklist
+  const presetType = (preferences?.preset_type || "developer") as PresetType;
+  const showChecklist = useShouldShowWorkspaceChecklist(presetType, preferences);
   const { isModalOpen, setModalOpen, isCustomizing, setCustomizing } = useDashboardStore();
 
   const defaultWidgetOrder = [
@@ -292,8 +293,13 @@ export default function DashboardPage() {
       </div>
 
       {/* Getting Started Checklist */}
-      {showChecklist && !checklistDismissed && (
-        <WorkspaceChecklist onDismiss={() => setChecklistDismissed(true)} />
+      {showChecklist && (
+        <WorkspaceChecklist
+          presetType={presetType}
+          completedIds={preferences?.checklist_progress || []}
+          onMarkComplete={updateChecklist}
+          onDismiss={dismissChecklist}
+        />
       )}
 
       {/* Dynamic Widget Rendering */}
