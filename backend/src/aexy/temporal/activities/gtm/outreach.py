@@ -313,6 +313,30 @@ async def finalize_enrollment(input: FinalizeEnrollmentInput) -> dict:
             elif input.exit_reason == "bounced":
                 sequence.bounced_count += 1
 
+        # Emit webhook event for sequence completion/reply
+        webhook_event = None
+        if input.exit_reason == "completed":
+            webhook_event = "sequence.completed"
+        elif input.exit_reason == "replied":
+            webhook_event = "sequence.replied"
+
+        if webhook_event:
+            try:
+                from aexy.services.gtm_webhook_service import GTMWebhookService
+                webhook_svc = GTMWebhookService(db)
+                await webhook_svc.emit_event(
+                    workspace_id=enrollment.workspace_id,
+                    event_type=webhook_event,
+                    event_data={
+                        "enrollment_id": input.enrollment_id,
+                        "sequence_id": enrollment.sequence_id,
+                        "record_id": enrollment.record_id,
+                        "exit_reason": input.exit_reason,
+                    },
+                )
+            except Exception as e:
+                logger.error("Failed to emit webhook for %s: %s", webhook_event, e)
+
         await db.commit()
 
     logger.info(
