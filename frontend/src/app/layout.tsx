@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { Providers } from "./providers";
 import { Toaster } from "sonner";
@@ -25,6 +26,15 @@ export default function RootLayout({
       <body className={inter.className}>
         <Providers>{children}</Providers>
         <Toaster richColors position="top-right" />
+        {process.env.NEXT_PUBLIC_GTM_WORKSPACE_ID && (
+          <Script
+            src="/aexy-track.js"
+            data-workspace={process.env.NEXT_PUBLIC_GTM_WORKSPACE_ID}
+            data-api={process.env.NEXT_PUBLIC_GTM_API_URL || process.env.NEXT_PUBLIC_API_URL || ""}
+            data-consent="granted"
+            strategy="afterInteractive"
+          />
+        )}
       </body>
     </html>
   );
