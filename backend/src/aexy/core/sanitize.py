@@ -7,6 +7,20 @@ import re
 # Regex to match HTML tags
 HTML_TAG_PATTERN = re.compile(r"<[^>]+>")
 
+# Patterns commonly used in prompt injection attacks
+_PROMPT_INJECTION_PATTERNS = [
+    re.compile(r"ignore\s+(all\s+)?previous\s+instructions", re.IGNORECASE),
+    re.compile(r"ignore\s+(all\s+)?above\s+instructions", re.IGNORECASE),
+    re.compile(r"disregard\s+(all\s+)?previous", re.IGNORECASE),
+    re.compile(r"new\s+instructions?\s*:", re.IGNORECASE),
+    re.compile(r"system\s*prompt\s*:", re.IGNORECASE),
+    re.compile(r"<\s*/?system\s*>", re.IGNORECASE),
+    re.compile(r"\[INST\]", re.IGNORECASE),
+    re.compile(r"\[/INST\]", re.IGNORECASE),
+    re.compile(r"<\|im_start\|>", re.IGNORECASE),
+    re.compile(r"<\|im_end\|>", re.IGNORECASE),
+]
+
 # Maximum lengths for different content types
 MAX_TITLE_LENGTH = 200
 MAX_DESCRIPTION_LENGTH = 5000
@@ -105,3 +119,41 @@ def sanitize_comment(text: str | None) -> str | None:
         Sanitized comment, truncated to MAX_COMMENT_LENGTH.
     """
     return sanitize_text(text, max_length=MAX_COMMENT_LENGTH)
+
+
+def sanitize_for_llm(text: str, max_length: int = 2000) -> str:
+    """Sanitize user/external content before embedding in an LLM prompt.
+
+    Mitigates prompt injection by:
+    1. Truncating to max_length
+    2. Stripping known injection patterns (replaced with [REDACTED])
+    3. Escaping markdown/formatting that could confuse the model boundary
+
+    This is a defense-in-depth measure — the prompt structure itself should
+    also use clear delimiters and instruct the model to treat the content
+    as untrusted data.
+
+    Args:
+        text: External/user content to sanitize.
+        max_length: Maximum character length (default 2000).
+
+    Returns:
+        Sanitized string safe for LLM prompt embedding.
+    """
+    if not text:
+        return ""
+
+    # Truncate first
+    result = text[:max_length]
+
+    # Replace known injection patterns
+    for pattern in _PROMPT_INJECTION_PATTERNS:
+        result = pattern.sub("[REDACTED]", result)
+
+    # Escape triple-backtick fences that could break prompt formatting
+    result = result.replace("```", "` ` `")
+
+    # Escape --- separators that could confuse prompt boundaries
+    result = re.sub(r"^-{3,}$", "- - -", result, flags=re.MULTILINE)
+
+    return result
