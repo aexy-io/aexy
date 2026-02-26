@@ -18708,6 +18708,10 @@ export const gtmApi = {
       const response = await api.post(`/workspaces/${workspaceId}/gtm/providers/${slot}/set-default`, data);
       return response.data;
     },
+    listAvailable: async (workspaceId: string): Promise<{ slot: string; name: string; display_name: string }[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/providers/available`);
+      return response.data;
+    },
   },
   dashboard: {
     overview: async (workspaceId: string, days?: number): Promise<GTMDashboardOverview> => {
