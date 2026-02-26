@@ -557,11 +557,15 @@ class OutreachSequenceService:
         step_index: int,
         channel: str,
         action: str,
+        workspace_id: str | None = None,
     ) -> OutreachStepExecution:
         """Create a step execution record."""
-        # Get workspace_id from enrollment
+        # Get workspace_id from enrollment, with optional workspace_id for auth
+        filters = [OutreachEnrollment.id == enrollment_id]
+        if workspace_id:
+            filters.append(OutreachEnrollment.workspace_id == workspace_id)
         enrollment = (await self.db.execute(
-            select(OutreachEnrollment).where(OutreachEnrollment.id == enrollment_id)
+            select(OutreachEnrollment).where(and_(*filters))
         )).scalar_one_or_none()
 
         if not enrollment:
@@ -584,6 +588,7 @@ class OutreachSequenceService:
         self,
         execution_id: str,
         status: str,
+        workspace_id: str | None = None,
         **timestamps,
     ) -> OutreachStepExecution:
         """Update a step execution status and optional timestamps.
@@ -591,8 +596,11 @@ class OutreachSequenceService:
         Accepted timestamp kwargs: sent_at, delivered_at, opened_at, clicked_at, replied_at.
         Also accepts: provider_message_id, error_message.
         """
+        filters = [OutreachStepExecution.id == execution_id]
+        if workspace_id:
+            filters.append(OutreachStepExecution.workspace_id == workspace_id)
         execution = (await self.db.execute(
-            select(OutreachStepExecution).where(OutreachStepExecution.id == execution_id)
+            select(OutreachStepExecution).where(and_(*filters))
         )).scalar_one_or_none()
 
         if not execution:
@@ -741,14 +749,18 @@ class OutreachSequenceService:
     async def update_sequence_stats(
         self,
         sequence_id: str,
+        workspace_id: str | None = None,
     ) -> None:
         """Recount denormalized stats on the sequence from enrollment data."""
+        filters = [OutreachEnrollment.sequence_id == sequence_id]
+        if workspace_id:
+            filters.append(OutreachEnrollment.workspace_id == workspace_id)
         result = await self.db.execute(
             select(
                 OutreachEnrollment.status,
                 func.count(OutreachEnrollment.id),
             )
-            .where(OutreachEnrollment.sequence_id == sequence_id)
+            .where(and_(*filters))
             .group_by(OutreachEnrollment.status)
         )
         counts = {row[0]: row[1] for row in result.all()}

@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, desc, func, Index
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, UniqueConstraint, desc, func, Index
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -148,6 +148,7 @@ class SuppressionList(Base):
 
     __table_args__ = (
         Index("ix_suppression_lists_ws_email", "workspace_id", "email"),
+        UniqueConstraint("workspace_id", "email", name="uq_suppression_lists_ws_email"),
     )
 
 

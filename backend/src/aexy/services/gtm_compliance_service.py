@@ -12,6 +12,7 @@ from aexy.models.gtm_compliance import (
     SuppressionList,
     ComplianceAuditLog,
 )
+from aexy.models.crm import CRMRecord
 from aexy.models.gtm import BehavioralEvent, LeadScore, VisitorSession
 from aexy.models.gtm_outreach import OutreachEnrollment, OutreachStepExecution
 
@@ -252,7 +253,24 @@ class GTMComplianceService:
         source: str,
         added_by: str | None = None,
     ) -> SuppressionList:
-        """Add an email (and its domain) to the suppression list."""
+        """Add an email (and its domain) to the suppression list.
+
+        If the email is already suppressed in this workspace, returns the
+        existing entry (idempotent).
+        """
+        # Check for existing entry to respect the unique constraint
+        existing = (await self.db.execute(
+            select(SuppressionList).where(
+                and_(
+                    SuppressionList.workspace_id == workspace_id,
+                    SuppressionList.email == email,
+                )
+            )
+        )).scalar_one_or_none()
+
+        if existing:
+            return existing
+
         domain = email.split("@")[-1] if "@" in email else None
 
         entry = SuppressionList(
@@ -378,15 +396,12 @@ class GTMComplianceService:
         )
         deleted_counts["consent_records"] = result.rowcount
 
-        # 2. Delete behavioral events linked to this email's record_id
-        # First find record_ids associated with this email via consent
-        # We need to check if there are behavioral events to clean up
-        # Events are linked by record_id, so we need to find those
-        # Since consent records are already deleted, we look at audit log for record_id
-        # For behavioral events, we use a broader approach based on audit log metadata
+        # 2. Find all record_ids associated with this email from multiple sources.
+        #    Audit logs alone are insufficient — records from bulk imports or direct
+        #    creation may never have triggered a compliance event.
+        record_id_set: set[str] = set()
 
-        # 3. Delete lead scores for records associated with this email
-        # Lead scores are linked by record_id, find via audit logs
+        # Source A: audit logs
         audit_records = await self.db.execute(
             select(ComplianceAuditLog.record_id).where(
                 and_(
@@ -396,7 +411,37 @@ class GTMComplianceService:
                 )
             ).distinct()
         )
-        record_ids = [r[0] for r in audit_records.all() if r[0]]
+        for r in audit_records.all():
+            if r[0]:
+                record_id_set.add(r[0])
+
+        # Source B: CRM records where email is stored in JSONB values
+        crm_records = await self.db.execute(
+            select(CRMRecord.id).where(
+                and_(
+                    CRMRecord.workspace_id == workspace_id,
+                    CRMRecord.values["email"].astext == email,
+                )
+            )
+        )
+        for r in crm_records.all():
+            record_id_set.add(r[0])
+
+        # Source C: outreach enrollments by email (may reference record_ids)
+        enrollment_records = await self.db.execute(
+            select(OutreachEnrollment.record_id).where(
+                and_(
+                    OutreachEnrollment.workspace_id == workspace_id,
+                    OutreachEnrollment.email == email,
+                    OutreachEnrollment.record_id != None,
+                )
+            ).distinct()
+        )
+        for r in enrollment_records.all():
+            if r[0]:
+                record_id_set.add(r[0])
+
+        record_ids = list(record_id_set)
 
         # Delete outreach enrollments and their step executions for this email
         enrollment_ids_result = await self.db.execute(
@@ -467,7 +512,22 @@ class GTMComplianceService:
             deleted_counts["behavioral_events"] = 0
             deleted_counts["lead_scores"] = 0
 
-        # 4. Add to suppression to prevent future contact
+        # 4. Anonymize CRM records (remove PII from values, keep record shell for referential integrity)
+        if record_ids:
+            for rid in record_ids:
+                crm_record = (await self.db.execute(
+                    select(CRMRecord).where(
+                        and_(CRMRecord.id == rid, CRMRecord.workspace_id == workspace_id)
+                    )
+                )).scalar_one_or_none()
+                if crm_record:
+                    crm_record.values = {"_erased": True, "_erased_at": datetime.now(timezone.utc).isoformat()}
+                    crm_record.display_name = "[erased]"
+            deleted_counts["crm_records_anonymized"] = len(record_ids)
+        else:
+            deleted_counts["crm_records_anonymized"] = 0
+
+        # 5. Add to suppression to prevent future contact
         await self.add_to_suppression(
             workspace_id=workspace_id,
             email=email,

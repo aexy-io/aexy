@@ -1068,10 +1068,13 @@ async def send_gtm_alert(input: SendGTMAlertInput) -> dict:
 
         try:
             if config.channel_type == "slack":
+                from string import Template
                 from aexy.temporal.dispatch import dispatch
                 channel = config.channel_config.get("channel", "#gtm-alerts")
-                template = config.message_template or f"GTM Alert: {log.event_type}"
-                message = template.format(**log.event_data) if log.event_data else template
+                template_str = config.message_template or f"GTM Alert: {log.event_type}"
+                # Use string.Template ($variable syntax) instead of str.format() to
+                # prevent format string injection via event_data keys/values.
+                message = Template(template_str).safe_substitute(log.event_data) if log.event_data else template_str
                 await dispatch("send_slack_message", {
                     "workspace_id": input.workspace_id,
                     "channel": channel,
