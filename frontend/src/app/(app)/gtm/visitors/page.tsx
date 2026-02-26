@@ -243,13 +243,13 @@ export default function GTMVisitorsPage() {
                       {session.page_count}
                     </td>
                     <td className="px-6 py-4 text-muted-foreground text-sm">
-                      {formatDuration(session.total_duration_seconds)}
+                      {formatDuration(session.duration_seconds)}
                     </td>
                     <td className="px-6 py-4">
                       <StatusBadge status={session.identification_status} />
                     </td>
                     <td className="px-6 py-4 text-muted-foreground text-sm">
-                      {formatLastSeen(session.last_seen_at)}
+                      {formatLastSeen(session.last_activity_at)}
                     </td>
                   </tr>
                 ))}

@@ -3,7 +3,7 @@
 from datetime import datetime
 from enum import Enum
 from typing import Any, Literal
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from aexy.models.gtm import (
     GTMProviderSlot as _GTMProviderSlot,
@@ -137,6 +137,11 @@ class BehavioralEventResponse(BaseModel):
     occurred_at: datetime
     received_at: datetime
 
+    @field_validator("ip_address", mode="before")
+    @classmethod
+    def coerce_ip(cls, v: Any) -> str | None:
+        return str(v) if v is not None else None
+
 
 # =============================================================================
 # VISITOR SESSION SCHEMAS
@@ -162,6 +167,11 @@ class VisitorSessionResponse(BaseModel):
     utm_campaign: str | None
     ip_address: str | None
     country_code: str | None
+
+    @field_validator("ip_address", mode="before")
+    @classmethod
+    def coerce_ip(cls, v: Any) -> str | None:
+        return str(v) if v is not None else None
     city: str | None
     identification_status: str
     identified_company: str | None
@@ -197,6 +207,11 @@ class VisitorIdentificationResponse(BaseModel):
     session_id: str | None
     ip_address: str
     provider_name: str
+
+    @field_validator("ip_address", mode="before")
+    @classmethod
+    def coerce_ip(cls, v: Any) -> str:
+        return str(v) if v is not None else ""
     company_name: str | None
     company_domain: str | None
     industry: str | None

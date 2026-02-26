@@ -92,9 +92,9 @@ CREATE INDEX IF NOT EXISTS ix_behavioral_events_occurred_at
 -- PERFORMANCE INDEXES for outreach step executions
 -- =============================================================================
 
-CREATE INDEX IF NOT EXISTS ix_outreach_step_exec_ws_executed
-    ON outreach_step_executions(workspace_id, executed_at DESC)
-    WHERE executed_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS ix_outreach_step_exec_ws_sent
+    ON outreach_step_executions(workspace_id, sent_at DESC)
+    WHERE sent_at IS NOT NULL;
 
 -- =============================================================================
 -- PERFORMANCE INDEXES for visitor sessions
