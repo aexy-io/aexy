@@ -454,6 +454,7 @@ async def list_visitors(
     page_size: int = Query(default=25, ge=1, le=100),
     status: str | None = None,
     utm_source: str | None = None,
+    search: str | None = None,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
@@ -462,7 +463,7 @@ async def list_visitors(
     service = VisitorService(db)
     sessions, total = await service.list_sessions(
         workspace_id, page=page, page_size=page_size,
-        status=status, utm_source=utm_source,
+        status=status, utm_source=utm_source, search=search,
     )
     return {
         "sessions": sessions,
@@ -1070,11 +1071,14 @@ async def bulk_enroll(
     """Bulk enroll contacts in a sequence."""
     await check_workspace_permission(workspace_id, current_user, db)
     service = OutreachSequenceService(db)
-    result = await service.bulk_enroll(
-        workspace_id=workspace_id,
-        sequence_id=sequence_id,
-        contacts=[c.model_dump() for c in data.contacts],
-    )
+    try:
+        result = await service.bulk_enroll(
+            workspace_id=workspace_id,
+            sequence_id=sequence_id,
+            contacts=[c.model_dump() for c in data.contacts],
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     await db.commit()
     return result
 
@@ -1496,8 +1500,8 @@ async def delete_alert_config(
 @router.get("/alerts/logs")
 async def list_alert_logs(
     workspace_id: str,
-    page: int = 1,
-    per_page: int = 50,
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=50, ge=1, le=100),
     event_type: str = None,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
@@ -1608,8 +1612,8 @@ async def manual_route_record(
 @router.get("/routing/assignments")
 async def list_routing_assignments(
     workspace_id: str,
-    page: int = 1,
-    per_page: int = 50,
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=50, ge=1, le=100),
     status: str = None,
     assignee_id: str = None,
     current_user: Developer = Depends(get_current_developer),
@@ -1690,8 +1694,8 @@ async def get_health_dashboard(
 @router.get("/health/scores")
 async def list_health_scores(
     workspace_id: str,
-    page: int = 1,
-    per_page: int = 50,
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=50, ge=1, le=100),
     health_status: str = None,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
@@ -1881,8 +1885,8 @@ async def enroll_in_expansion_playbook(
 @router.get("/expansion/enrollments")
 async def list_expansion_enrollments(
     workspace_id: str,
-    page: int = 1,
-    per_page: int = 50,
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=50, ge=1, le=100),
     playbook_id: str = None,
     status: str = None,
     current_user: Developer = Depends(get_current_developer),
@@ -1965,8 +1969,8 @@ async def create_handoff(
 @router.get("/handoffs")
 async def list_handoffs(
     workspace_id: str,
-    page: int = 1,
-    per_page: int = 50,
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=50, ge=1, le=100),
     status: str = None,
     assigned_to: str = None,
     current_user: Developer = Depends(get_current_developer),
@@ -2070,8 +2074,8 @@ async def convert_handoff(
 @router.get("/intent/signals")
 async def list_intent_signals(
     workspace_id: str,
-    page: int = 1,
-    per_page: int = 50,
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=50, ge=1, le=100),
     signal_type: str = None,
     intent_strength: str = None,
     current_user: Developer = Depends(get_current_developer),
@@ -2238,8 +2242,8 @@ async def create_competitor(
 @router.get("/competitors/changes")
 async def list_competitor_changes(
     workspace_id: str,
-    page: int = 1,
-    per_page: int = 50,
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=50, ge=1, le=100),
     competitor_id: str = None,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
@@ -2438,8 +2442,8 @@ async def create_seo_audit(
 @router.get("/seo/audits")
 async def list_seo_audits(
     workspace_id: str,
-    page: int = 1,
-    per_page: int = 50,
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=50, ge=1, le=100),
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
@@ -2543,8 +2547,8 @@ async def create_content_gap_analysis(
 @router.get("/content-gap/analyses")
 async def list_content_gap_analyses(
     workspace_id: str,
-    page: int = 1,
-    per_page: int = 50,
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=50, ge=1, le=100),
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
@@ -2636,8 +2640,8 @@ async def get_abm_overview(
 @router.get("/abm/accounts")
 async def list_abm_accounts(
     workspace_id: str,
-    page: int = 1,
-    per_page: int = 50,
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=50, ge=1, le=100),
     target_list_id: str = None,
     tier: str = None,
     stage: str = None,
