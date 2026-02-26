@@ -57,7 +57,8 @@ async def list_competitor_changes(
     from aexy.services.competitor_intel_service import CompetitorIntelService
     await check_workspace_permission(workspace_id, current_user, db)
     service = CompetitorIntelService(db)
-    return await service.list_changes(workspace_id, page=page, per_page=per_page, competitor_id=competitor_id)
+    items, total = await service.list_changes(workspace_id, page=page, per_page=per_page, competitor_id=competitor_id)
+    return {"items": items, "total": total, "page": page, "per_page": per_page}
 
 
 @router.post("/competitors/changes/{change_id}/acknowledge")
