@@ -85,6 +85,7 @@ export default function GTMVisitorsPage() {
     useGTMVisitors(workspaceId, {
       status: statusFilter === "all" ? undefined : statusFilter,
       page,
+      search: searchQuery || undefined,
     });
 
   const totalPages = Math.max(1, Math.ceil(total / perPage));

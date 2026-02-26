@@ -326,6 +326,7 @@ class GTMDashboardOverview(BaseModel):
     visitors_change_pct: float = 0.0  # % change vs previous period
     companies_change_pct: float = 0.0
     leads_change_pct: float = 0.0
+    sequences_change_pct: float = 0.0
 
 
 class FunnelStageData(BaseModel):

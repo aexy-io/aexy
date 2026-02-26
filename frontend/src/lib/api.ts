@@ -18086,10 +18086,10 @@ export interface GTMDashboardOverview {
   identified_companies: number;
   new_leads: number;
   active_sequences: number;
-  visitors_change: number;
-  companies_change: number;
-  leads_change: number;
-  sequences_change: number;
+  visitors_change_pct: number;
+  companies_change_pct: number;
+  leads_change_pct: number;
+  sequences_change_pct?: number;
 }
 
 export interface FunnelStageData {
@@ -18267,7 +18267,7 @@ export const gtmApi = {
     },
   },
   visitors: {
-    list: async (workspaceId: string, params?: { page?: number; per_page?: number; status?: string; date_from?: string; date_to?: string }): Promise<VisitorListResponse> => {
+    list: async (workspaceId: string, params?: { page?: number; per_page?: number; status?: string; date_from?: string; date_to?: string; search?: string }): Promise<VisitorListResponse> => {
       const response = await api.get(`/workspaces/${workspaceId}/gtm/visitors`, { params });
       return response.data;
     },
