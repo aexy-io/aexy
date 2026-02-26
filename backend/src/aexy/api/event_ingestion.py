@@ -2,13 +2,16 @@
 
 import logging
 import re
+import time
 from datetime import datetime, timezone
 from uuid import uuid4
 
+import redis.asyncio as redis
 from fastapi import APIRouter, Request, HTTPException, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from aexy.core.config import get_settings
 from aexy.core.database import get_async_session
 from aexy.models.gtm import BehavioralEvent
 from aexy.schemas.gtm import EventBatchRequest
@@ -28,6 +31,66 @@ CORS_HEADERS = {
     "Access-Control-Allow-Headers": "Content-Type",
 }
 
+# Rate limit settings for the public event ingestion endpoint
+_RATE_LIMIT_PER_IP_PER_MINUTE = 60       # max requests per IP per minute
+_RATE_LIMIT_PER_WORKSPACE_PER_MINUTE = 300  # max requests per workspace per minute
+_RATE_LIMIT_WINDOW_SECONDS = 60
+
+# Lazy-initialized Redis connection for rate limiting
+_redis_client: redis.Redis | None = None
+
+
+async def _get_redis() -> redis.Redis | None:
+    """Get or create a Redis client for rate limiting."""
+    global _redis_client
+    if _redis_client is not None:
+        return _redis_client
+    try:
+        settings = get_settings()
+        _redis_client = redis.from_url(
+            settings.redis_url,
+            decode_responses=True,
+            socket_connect_timeout=2,
+        )
+        # Test connection
+        await _redis_client.ping()
+        return _redis_client
+    except Exception:
+        logger.warning("Redis unavailable for event ingestion rate limiting")
+        return None
+
+
+async def _check_rate_limit(key: str, max_requests: int) -> bool:
+    """Check and increment a sliding-window rate limit counter.
+
+    Returns True if the request is allowed, False if rate-limited.
+    """
+    r = await _get_redis()
+    if r is None:
+        # If Redis is unavailable, allow the request (fail-open)
+        return True
+
+    now = time.time()
+    window_start = now - _RATE_LIMIT_WINDOW_SECONDS
+
+    try:
+        pipe = r.pipeline()
+        # Remove expired entries
+        pipe.zremrangebyscore(key, 0, window_start)
+        # Count current entries
+        pipe.zcard(key)
+        # Add the new request
+        pipe.zadd(key, {str(now): now})
+        # Set expiry on the key so it doesn't linger
+        pipe.expire(key, _RATE_LIMIT_WINDOW_SECONDS + 10)
+        results = await pipe.execute()
+
+        current_count = results[1]
+        return current_count < max_requests
+    except Exception:
+        logger.warning("Rate limit check failed for key %s", key)
+        return True  # fail-open
+
 
 @router.post("/t/{workspace_key}/events")
 async def ingest_events(
@@ -39,6 +102,7 @@ async def ingest_events(
 
     This is a public endpoint — no auth required.
     Authentication is via workspace_key (UUID that maps to workspace.id).
+    Rate-limited per IP and per workspace to prevent abuse.
     """
     try:
         if not batch.events:
@@ -55,10 +119,30 @@ async def ingest_events(
         now = datetime.now(timezone.utc)
 
         # Validate workspace key by checking format (UUID)
-        # Full validation happens on insert (FK constraint)
         if not UUID_RE.match(workspace_key):
             raise HTTPException(status_code=400, detail="Invalid workspace key")
         workspace_id = workspace_key
+
+        # Rate limiting — per IP and per workspace
+        ip_allowed = await _check_rate_limit(
+            f"gtm:events:ip:{client_ip}", _RATE_LIMIT_PER_IP_PER_MINUTE
+        )
+        if not ip_allowed:
+            return JSONResponse(
+                {"ok": False, "detail": "Rate limit exceeded"},
+                status_code=429,
+                headers={**CORS_HEADERS, "Retry-After": "60"},
+            )
+
+        ws_allowed = await _check_rate_limit(
+            f"gtm:events:ws:{workspace_id}", _RATE_LIMIT_PER_WORKSPACE_PER_MINUTE
+        )
+        if not ws_allowed:
+            return JSONResponse(
+                {"ok": False, "detail": "Rate limit exceeded"},
+                status_code=429,
+                headers={**CORS_HEADERS, "Retry-After": "60"},
+            )
 
         async with get_async_session() as db:
             events_to_insert = []

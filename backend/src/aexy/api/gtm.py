@@ -1946,7 +1946,7 @@ async def create_handoff(
     await check_workspace_permission(workspace_id, current_user, db)
     parsed = HandoffCreate(**data)
     service = HandoffService(db)
-    return await service.create_handoff(workspace_id, parsed.model_dump())
+    return await service.create_handoff(workspace_id, parsed.model_dump(), created_by=str(current_user.id))
 
 
 @router.get("/handoffs")

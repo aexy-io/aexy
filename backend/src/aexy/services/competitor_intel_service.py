@@ -9,6 +9,7 @@ import httpx
 from sqlalchemy import select, and_, func, delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from aexy.core.url_validation import validate_url_for_fetch, SSRFError
 from aexy.models.gtm_competitor import CompetitorProfile, CompetitorChange, BattleCard
 
 logger = logging.getLogger(__name__)
@@ -60,6 +61,8 @@ class CompetitorIntelService:
         # Ensure each tracked page has the expected structure.
         normalised_pages = []
         for page in tracked_pages:
+            # Validate each tracked URL at creation time (SSRF protection)
+            validate_url_for_fetch(page["url"])
             normalised_pages.append({
                 "url": page["url"],
                 "label": page.get("label", "other"),
@@ -170,6 +173,18 @@ class CompetitorIntelService:
                 url = page.get("url", "")
                 label = page.get("label", "other")
                 previous_hash = page.get("last_hash")
+
+                # Validate URL before fetching (SSRF protection)
+                try:
+                    validate_url_for_fetch(url)
+                except SSRFError:
+                    logger.warning(
+                        "Blocked SSRF attempt for competitor %s: %s",
+                        competitor_id, url,
+                    )
+                    tracked_pages[idx]["last_checked_at"] = now_iso
+                    pages_updated = True
+                    continue
 
                 try:
                     response = await client.get(url)

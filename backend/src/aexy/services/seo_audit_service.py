@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 from sqlalchemy import select, and_, func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from aexy.core.url_validation import validate_url_for_fetch, SSRFError
 from aexy.models.gtm_seo import SEOAudit, SEOAuditPage
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,9 @@ class SEOAuditService:
         triggered_by: str | None = None,
     ) -> SEOAudit:
         """Create a new SEO audit with status=pending."""
+        # Validate URL is safe to fetch (prevents SSRF)
+        validate_url_for_fetch(target_url)
+
         parsed = urllib.parse.urlparse(target_url)
         domain = parsed.netloc or parsed.path.split("/")[0]
         # Strip www. prefix for consistent domain grouping
@@ -99,6 +103,13 @@ class SEOAuditService:
                     if normalised in visited:
                         continue
                     visited.add(normalised)
+
+                    # Validate each URL before fetching (SSRF protection)
+                    try:
+                        validate_url_for_fetch(url)
+                    except SSRFError:
+                        logger.warning("Blocked SSRF attempt: %s", url)
+                        continue
 
                     try:
                         resp = await client.get(url)
