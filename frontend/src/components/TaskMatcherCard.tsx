@@ -50,8 +50,8 @@ export function TaskMatcherCard() {
   return (
     <div className="bg-muted rounded-xl p-6 border border-border">
       <div className="flex items-center gap-2 mb-6">
-        <Target className="h-5 w-5 text-primary-400" />
-        <h3 className="text-lg font-semibold text-foreground">Task Matcher</h3>
+        <Target className="h-4 w-4 text-primary-400" />
+        <h3 className="text-sm font-semibold text-foreground truncate">Task Matcher</h3>
       </div>
 
       <div className="space-y-4">

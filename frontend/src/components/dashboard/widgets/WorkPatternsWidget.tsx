@@ -17,12 +17,12 @@ interface WorkPatternsWidgetProps {
 export function WorkPatternsWidget({ workPatterns }: WorkPatternsWidgetProps) {
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">
-      <div className="px-6 py-4 border-b border-border">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-emerald-500/10 rounded-lg">
-            <BarChart3 className="h-5 w-5 text-emerald-400" />
+      <div className="px-4 py-3 border-b border-border">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="p-1.5 bg-emerald-500/10 rounded-lg shrink-0">
+            <BarChart3 className="h-4 w-4 text-emerald-400" />
           </div>
-          <h3 className="text-lg font-semibold text-foreground">Work Patterns</h3>
+          <h3 className="text-sm font-semibold text-foreground truncate">Work Patterns</h3>
         </div>
       </div>
       <div className="p-6">

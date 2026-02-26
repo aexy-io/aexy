@@ -5,6 +5,90 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.5] - 2026-02-27
+
+### Added
+
+#### GTM (Go-To-Market) Module — Phase 2A–2D
+Full AI-powered go-to-market automation system for outreach, lead scoring, visitor tracking, competitor intelligence, and account-based marketing.
+
+**Phase 2A — Scoring Feedback Loop & Foundation**
+- **Scoring feedback loop**: Email open/click events from campaign recipients auto-dispatch Temporal `score_lead` activities, linking engagement to CRM records
+- **Provider slots UI**: Frontend fetches registered provider slots from `/providers/available`, displays configured providers with "Coming Soon" for unimplemented ones
+- **Reply signal correction**: Properly emit `reply_received` when routing replies to sales; Temporal workflows finalize with `exit_reason="replied"`
+
+**Phase 2B — Outreach Excellence & Warmup**
+- **Timezone-aware send windows**: Skip weekends, enforce per-recipient timezone from CRM records
+- **A/B variant selection**: Weighted random assignment with `variant_index` tracking on step executions
+- **Reply threading**: `thread_id` forwarding for conversation continuity across outreach steps
+- **Warmup bug fixes**: Fixed `increment_send_count` naming, `can_send()` missing workspace_id, warming metrics field mismatch
+
+**Phase 2C — Intelligence Layer & LLM Integration**
+- **Competitor intelligence**: Smart content extraction (strips nav/footer/scripts), LLM-powered change classification (pricing, feature, positioning, hiring, cosmetic), auto-skip cosmetic changes
+- **Battle card generation**: LLM produces structured battle cards with strengths, weaknesses, advantages, objection handling, and talk tracks
+- **Competitor changes UI**: Full change history tab with severity badges
+- **Intent signals**: Job posting scraping from /careers pages with keyword matching and confidence scores; tech change detection from homepage scanning
+- **ABM account scoring**: Real engagement calculation wired to outreach executions, campaign opens/clicks, visitor sessions, and intent signals with weighted scoring
+
+**Phase 2D — Scale & Ops**
+- **Outbound webhooks**: HMAC-SHA256 signed deliveries, secret rotation, delivery logging, test endpoint, and alert hub integration with automatic fan-out
+- **Provider health tracking**: Hourly-bucketed API metrics (request counts, latency percentiles, error tracking) via GTMProviderHealthService
+- **Pipeline dashboard**: Aggregated scoring, visitor, outreach, provider health, and webhook stats
+- **Performance indexes**: Added indexes on behavioral_events, outreach executions, and visitor sessions
+- **Connection pool tuning**: Optimized pool_size=10, max_overflow=20, recycle=1800s
+
+#### Progressive Sidebar
+- **Persona-based sidebar filtering**: Sidebar sections/items filtered by active persona (Developer, Manager, HR, Sales, etc.) via `useSidebarPersona` hook with server-persisted preferences
+- **Favorites section**: Pinned items + auto-detected frequently visited pages shown at top of sidebar
+- **Categorized Discover section**: Hidden modules grouped by category (Engineering, People, Business, Productivity) with reason tags — "Available in [persona] view" for persona-hidden items, "Not enabled" for access-gated items
+- **Direct navigation for persona-hidden items**: Arrow button navigates directly to pages the user has access to but aren't shown in current persona
+- **Admin quick-enable toggle**: Admins can enable disabled apps directly from Discover section via `+` button
+- **Page visit tracker**: `usePageVisitTracker` hook records page visits for smart favorites
+- **Label constants**: Added `CATEGORY_LABELS` and `PERSONA_LABELS` to `appDefinitions.ts`
+
+#### Dashboard Enhancements
+- **Persona-specific getting started checklist**: Onboarding checklist tailored to active persona with server-side persistence
+- **Engineering Manager preset**: Added growth trajectory and soft skill tabs
+
+### Fixed
+
+#### GTM Security (44+ issues across all phases)
+- **SSRF protection**: Blocks private IPs, cloud metadata, non-HTTP schemes in SEO audit crawler, competitor page checker, webhooks, email tracking, and intent collection
+- **Prompt injection mitigation**: `sanitize_for_llm()` strips injection patterns from external content before LLM prompts
+- **Rate limiting**: Redis-backed sliding-window rate limiter on public event ingestion (60 req/min per IP, 300 req/min per workspace)
+- **Consent-gated tracking**: Rewrote `aexy-track.js` with data-consent attribute, GPC signal support, and blocked `identify()` without consent
+- **Workspace authorization**: Added workspace_id filter to step execution, status update, and sequence stats endpoints
+- **Mass assignment prevention**: Replaced unconstrained `setattr` with explicit allowlists in update_provider, update_template, update_competitor
+- **GDPR erasure**: Extended to find record_ids from CRM records and outreach enrollments; anonymize CRM records
+- **Format string injection**: Replaced `str.format(**event_data)` with `string.Template.safe_substitute()` in alert templating
+- **CSV payload limits**: 1.5MB size check on async import endpoint
+- **Suppression list dedup**: UniqueConstraint on (workspace_id, email), idempotent add
+- **Required admin role**: Added `required_role="admin"` to 44 write/delete GTM endpoints
+
+#### GTM Code Quality
+- **API monolith split**: Split `api/gtm.py` (2844 lines) into 20 focused sub-modules under `api/gtm/` package
+- **Activity monolith split**: Split `temporal/activities/gtm.py` (1616 lines) into 9 domain modules under `activities/gtm/`
+- **Data retention**: Added `purge_behavioral_events` activity with 365-day configurable retention
+- **Referential integrity**: Added ForeignKey to record_id on 8 GTM models with CASCADE/SET NULL
+- **TypeScript types**: Added 30+ interfaces and typed 64 GTM API function return types
+- **Frontend field mismatches**: Fixed INET serialization, Docker env passthrough, 6 missing GTM sidebar nav pages
+
+#### Dashboard & Sidebar
+- **Widget layout spacing**: Fixed dashboard widget spacing, icon sizes, and card header consistency
+- **Layout spacing**: Fixed layout spacing issues across dashboard cards
+
+### Changed
+- **No-downtime deployments**: Updated ready endpoint to support rolling deployments
+- **Sidebar rendering**: Main nav now renders from persona-filtered layout; Discover section uses full unfiltered layout
+- **Auth hydration**: Resolved race condition in app layout that caused unwanted redirects during initial render
+
+### Database Migrations
+- GTM Phase 2B — outreach_step_executions and outreach_enrollments columns
+- GTM Phase 2D — webhooks, provider health, behavioral event indexes, triggers
+- `migrate_sidebar_preferences.sql` — sidebar_pinned_items and sidebar_page_visits preferences
+
+---
+
 ## [0.6.4] - 2026-02-25
 
 ### Added

@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/hooks/useAuth";
+import { usePageVisitTracker } from "@/hooks/usePageVisitTracker";
 import { AppShell } from "@/components/layout/AppShell";
 import { GlobalShortcuts } from "@/components/GlobalShortcuts";
 import { CommandPalette } from "@/components/CommandPalette";
@@ -11,6 +12,9 @@ import { useEffect } from "react";
 export default function AppLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const { user, logout, isLoading, isAuthenticated, isResolved } = useAuth();
+
+    // Track page visits for frequently-used sidebar section
+    usePageVisitTracker();
 
     useEffect(() => {
         if (isResolved && !isAuthenticated) {

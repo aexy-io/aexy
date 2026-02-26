@@ -63,7 +63,7 @@ export function SprintOverviewWidget() {
           href="/sprints"
           className="text-green-400 hover:text-green-300 text-xs flex items-center gap-1 transition shrink-0 whitespace-nowrap"
         >
-          View all <ChevronRight className="w-3.5 h-3.5" />
+          View all <ChevronRight className="w-4 h-4" />
         </Link>
       </div>
       <div className="p-4">
