@@ -106,3 +106,16 @@ CREATE INDEX IF NOT EXISTS ix_compliance_audit_ws_email ON compliance_audit_logs
 CREATE INDEX IF NOT EXISTS ix_compliance_audit_ws_action ON compliance_audit_logs(workspace_id, action);
 CREATE INDEX IF NOT EXISTS ix_compliance_audit_ws_created ON compliance_audit_logs(workspace_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS ix_compliance_audit_email ON compliance_audit_logs(email);
+
+-- =============================================================================
+-- UNIQUE CONSTRAINTS
+-- =============================================================================
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'uq_suppression_lists_ws_email'
+    ) THEN
+        ALTER TABLE suppression_lists ADD CONSTRAINT uq_suppression_lists_ws_email UNIQUE (workspace_id, email);
+    END IF;
+END $$;

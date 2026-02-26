@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from aexy.core.config import get_settings
 from aexy.core.database import get_async_session
 from aexy.models.gtm import BehavioralEvent
+from aexy.models.workspace import Workspace
 from aexy.schemas.gtm import EventBatchRequest
 
 logger = logging.getLogger(__name__)
@@ -118,10 +119,36 @@ async def ingest_events(
         user_agent = request.headers.get("User-Agent", "")[:500]
         now = datetime.now(timezone.utc)
 
-        # Validate workspace key by checking format (UUID)
+        # Validate workspace key format and existence
         if not UUID_RE.match(workspace_key):
             raise HTTPException(status_code=400, detail="Invalid workspace key")
         workspace_id = workspace_key
+
+        # Verify workspace exists (cached via Redis to avoid DB hit per request)
+        r = await _get_redis()
+        ws_cache_key = f"gtm:ws_exists:{workspace_id}"
+        ws_exists = None
+        if r:
+            try:
+                ws_exists = await r.get(ws_cache_key)
+            except Exception:
+                pass
+
+        if ws_exists is None:
+            async with get_async_session() as check_db:
+                from sqlalchemy import select
+                result = await check_db.scalar(
+                    select(Workspace.id).where(Workspace.id == workspace_id)
+                )
+                ws_exists = "1" if result else "0"
+                if r:
+                    try:
+                        await r.setex(ws_cache_key, 300, ws_exists)  # cache 5 min
+                    except Exception:
+                        pass
+
+        if ws_exists == "0":
+            raise HTTPException(status_code=404, detail="Workspace not found")
 
         # Rate limiting — per IP and per workspace
         ip_allowed = await _check_rate_limit(

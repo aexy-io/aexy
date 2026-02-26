@@ -152,7 +152,7 @@ class GTMComplianceService:
         consent = ContactConsent(
             id=str(uuid4()),
             workspace_id=workspace_id,
-            record_id=record_id or str(uuid4()),
+            record_id=record_id,
             email=email,
             consent_type=consent_type,
             consent_source=source,

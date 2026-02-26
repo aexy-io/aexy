@@ -601,20 +601,37 @@ async def score_lead(input: ScoreLeadInput) -> dict:
 
         # Check suppression list (bounced/unsubscribed)
         try:
-            from aexy.models.gtm import SuppressionList
-            suppressed = (await db.execute(
-                select(func.count(SuppressionList.id)).where(
+            from aexy.models.gtm_compliance import SuppressionList
+            from aexy.models.crm import CRMRecord
+
+            # Look up the record's email from CRM JSONB values
+            crm_record = (await db.execute(
+                select(CRMRecord).where(
                     and_(
-                        SuppressionList.workspace_id == input.workspace_id,
-                        SuppressionList.record_id == input.record_id,
+                        CRMRecord.id == input.record_id,
+                        CRMRecord.workspace_id == input.workspace_id,
                     )
                 )
-            )).scalar() or 0
-            if suppressed > 0:
-                negative_score -= 10
-                negative_factors["suppressed"] = True
+            )).scalar_one_or_none()
+            record_email = (
+                crm_record.values.get("email")
+                if crm_record and crm_record.values
+                else None
+            )
+            if record_email:
+                suppressed = (await db.execute(
+                    select(func.count(SuppressionList.id)).where(
+                        and_(
+                            SuppressionList.workspace_id == input.workspace_id,
+                            SuppressionList.email == record_email,
+                        )
+                    )
+                )).scalar() or 0
+                if suppressed > 0:
+                    negative_score -= 10
+                    negative_factors["suppressed"] = True
         except Exception:
-            pass  # SuppressionList may not have record_id FK
+            pass  # SuppressionList or CRMRecord may not be available
 
         # Check outreach bounces
         try:

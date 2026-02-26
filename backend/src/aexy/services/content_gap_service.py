@@ -3,7 +3,10 @@
 import asyncio
 import logging
 import re
-import xml.etree.ElementTree as ET
+try:
+    import defusedxml.ElementTree as ET  # type: ignore[import-untyped]
+except ImportError:
+    import xml.etree.ElementTree as ET  # type: ignore[no-redef]
 from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4

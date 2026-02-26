@@ -196,9 +196,7 @@ class OutreachSequenceService:
                 f"Cannot pause sequence in {sequence.status} status."
             )
 
-        sequence.status = SequenceStatus.PAUSED.value
-
-        # Pause all active enrollments and signal their Temporal workflows
+        # Pause all active enrollments — signal Temporal first, then update DB
         active_enrollments = (await self.db.execute(
             select(OutreachEnrollment).where(
                 and_(
@@ -212,7 +210,6 @@ class OutreachSequenceService:
         client = await get_temporal_client()
 
         for enrollment in active_enrollments:
-            enrollment.status = EnrollmentStatus.PAUSED.value
             if enrollment.temporal_workflow_id:
                 try:
                     handle = client.get_workflow_handle(enrollment.temporal_workflow_id)
@@ -221,7 +218,10 @@ class OutreachSequenceService:
                     logger.exception(
                         f"Failed to signal pause for enrollment {enrollment.id}"
                     )
+            # Only mark as paused after signal attempt (best-effort)
+            enrollment.status = EnrollmentStatus.PAUSED.value
 
+        sequence.status = SequenceStatus.PAUSED.value
         await self.db.flush()
         logger.info(
             f"Paused outreach sequence {sequence_id} "
@@ -312,30 +312,36 @@ class OutreachSequenceService:
         self.db.add(enrollment)
         await self.db.flush()
 
-        # Start Temporal workflow
+        # Start Temporal workflow — if this fails, roll back the enrollment
         from aexy.temporal.client import get_temporal_client
         from aexy.temporal.activities.gtm import OutreachEnrollmentInput
         from aexy.temporal.task_queues import TaskQueue
 
-        client = await get_temporal_client()
         wf_id = f"outreach-{enrollment.id}"
-        await client.start_workflow(
-            "OutreachSequenceWorkflow",
-            OutreachEnrollmentInput(
-                enrollment_id=enrollment.id,
-                workspace_id=workspace_id,
-                sequence_id=sequence_id,
-                steps=sequence.steps,
-                settings=sequence.settings or {},
-                recipient_timezone=recipient_tz,
-            ),
-            id=wf_id,
-            task_queue=TaskQueue.WORKFLOWS,
-        )
-        enrollment.temporal_workflow_id = wf_id
-        await self.db.flush()
+        try:
+            client = await get_temporal_client()
+            await client.start_workflow(
+                "OutreachSequenceWorkflow",
+                OutreachEnrollmentInput(
+                    enrollment_id=enrollment.id,
+                    workspace_id=workspace_id,
+                    sequence_id=sequence_id,
+                    steps=sequence.steps,
+                    settings=sequence.settings or {},
+                    recipient_timezone=recipient_tz,
+                ),
+                id=wf_id,
+                task_queue=TaskQueue.WORKFLOWS,
+            )
+        except Exception:
+            await self.db.rollback()
+            raise ValueError(
+                f"Failed to start outreach workflow for contact {record_id}. "
+                "Enrollment was not created."
+            )
 
-        # Update sequence stats
+        # Persist workflow ID and update stats atomically
+        enrollment.temporal_workflow_id = wf_id
         sequence.enrolled_count += 1
         sequence.active_count += 1
         await self.db.flush()

@@ -114,7 +114,7 @@ async def update_health_config(
     from aexy.services.health_scoring_service import HealthScoringService
     await check_workspace_permission(workspace_id, current_user, db)
     service = HealthScoringService(db)
-    return await service.update_config(workspace_id, data.model_dump(exclude_none=True))
+    return await service.update_config(workspace_id, data.model_dump(exclude_unset=True))
 
 
 @router.get("/health/providers")

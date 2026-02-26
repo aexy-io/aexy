@@ -184,7 +184,7 @@ class BulkImportService:
         if sequence_id:
             await self._enroll_in_sequence(workspace_id, sequence_id, job)
 
-        await self.db.flush()
+        await self.db.commit()
 
         job.status = "completed"
         job.processed = job.total_rows

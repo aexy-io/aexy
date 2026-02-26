@@ -1,11 +1,12 @@
 """GTM Webhook API endpoints — manage outbound webhooks for GTM events."""
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 
 from aexy.core.database import get_db
+from aexy.core.url_validation import validate_url_for_fetch, SSRFError
 from aexy.api.developers import get_current_developer
 from aexy.models.developer import Developer
 from aexy.services.gtm_webhook_service import GTM_EVENT_TYPES
@@ -17,12 +18,30 @@ router = APIRouter()
 
 # --- Schemas ---
 
+def _validate_webhook_url(url: str) -> str:
+    try:
+        validate_url_for_fetch(url)
+    except SSRFError as e:
+        raise ValueError(f"Invalid webhook URL: {e}")
+    return url
+
+
+def _validate_event_types(events: list[str]) -> list[str]:
+    invalid = [e for e in events if e not in GTM_EVENT_TYPES]
+    if invalid:
+        raise ValueError(f"Invalid event types: {invalid}. Valid types: {GTM_EVENT_TYPES}")
+    return events
+
+
 class GTMWebhookCreate(BaseModel):
     name: str
     url: str
     events: list[str]
     description: str | None = None
     headers: dict | None = None
+
+    _validate_url = field_validator("url")(lambda cls, v: _validate_webhook_url(v))
+    _validate_events = field_validator("events")(lambda cls, v: _validate_event_types(v))
 
 
 class GTMWebhookUpdate(BaseModel):
@@ -32,6 +51,20 @@ class GTMWebhookUpdate(BaseModel):
     description: str | None = None
     headers: dict | None = None
     is_active: bool | None = None
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, v: str | None) -> str | None:
+        if v is not None:
+            return _validate_webhook_url(v)
+        return v
+
+    @field_validator("events")
+    @classmethod
+    def validate_events(cls, v: list[str] | None) -> list[str] | None:
+        if v is not None:
+            return _validate_event_types(v)
+        return v
 
 
 class GTMWebhookResponse(BaseModel):
@@ -101,7 +134,7 @@ async def create_webhook(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.gtm_webhook_service import GTMWebhookService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = GTMWebhookService(db)
     return await service.create_webhook(
         workspace_id=workspace_id,
@@ -138,17 +171,17 @@ async def update_webhook(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.gtm_webhook_service import GTMWebhookService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = GTMWebhookService(db)
     result = await service.update_webhook(
-        workspace_id, webhook_id, **data.model_dump(exclude_none=True),
+        workspace_id, webhook_id, **data.model_dump(exclude_unset=True),
     )
     if not result:
         raise HTTPException(status_code=404, detail="Webhook not found")
     return result
 
 
-@router.delete("/webhooks/{webhook_id}")
+@router.delete("/webhooks/{webhook_id}", status_code=204)
 async def delete_webhook(
     workspace_id: str,
     webhook_id: str,
@@ -156,12 +189,11 @@ async def delete_webhook(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.gtm_webhook_service import GTMWebhookService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = GTMWebhookService(db)
     deleted = await service.delete_webhook(workspace_id, webhook_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Webhook not found")
-    return {"deleted": True}
 
 
 @router.post("/webhooks/{webhook_id}/rotate-secret", response_model=GTMWebhookResponse)
@@ -172,7 +204,7 @@ async def rotate_webhook_secret(
     db: AsyncSession = Depends(get_db),
 ):
     from aexy.services.gtm_webhook_service import GTMWebhookService
-    await check_workspace_permission(workspace_id, current_user, db)
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
     service = GTMWebhookService(db)
     result = await service.rotate_secret(workspace_id, webhook_id)
     if not result:
@@ -211,7 +243,5 @@ async def test_webhook(
     if not webhook:
         raise HTTPException(status_code=404, detail="Webhook not found")
 
-    delivery_id = await service._deliver_to_webhook(
-        webhook, "test.ping", {"message": "Test webhook delivery from Aexy GTM"},
-    )
+    delivery_id = await service.send_test_event(webhook)
     return {"delivery_id": delivery_id, "message": "Test event sent"}
