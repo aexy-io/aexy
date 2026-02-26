@@ -64,16 +64,16 @@ export function SystemHealthWidget() {
 
   return (
     <div className="bg-background/50 border border-border rounded-xl overflow-hidden">
-      <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-emerald-500/10 rounded-lg">
-            <Activity className="h-5 w-5 text-emerald-400" />
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="p-1.5 bg-emerald-500/10 rounded-lg shrink-0">
+            <Activity className="h-4 w-4 text-emerald-400" />
           </div>
-          <h3 className="text-lg font-semibold text-foreground">System Health</h3>
+          <h3 className="text-sm font-semibold text-foreground truncate">System Health</h3>
         </div>
         <Link
           href="/settings"
-          className="text-emerald-400 hover:text-emerald-300 text-sm flex items-center gap-1 transition"
+          className="text-emerald-400 hover:text-emerald-300 text-xs flex items-center gap-0.5 transition whitespace-nowrap shrink-0"
         >
           Settings <ChevronRight className="w-4 h-4" />
         </Link>
@@ -82,11 +82,11 @@ export function SystemHealthWidget() {
         <div className="space-y-4">
           {/* API Status */}
           <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 min-w-0">
               {isOperational ? (
-                <CheckCircle className="h-5 w-5 text-emerald-400" />
+                <CheckCircle className="h-4 w-4 text-emerald-400" />
               ) : (
-                <XCircle className="h-5 w-5 text-red-400" />
+                <XCircle className="h-4 w-4 text-red-400" />
               )}
               <div>
                 <p className="text-sm font-medium text-foreground">API Status</p>
@@ -106,7 +106,7 @@ export function SystemHealthWidget() {
 
           {/* Connection indicator */}
           <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 min-w-0">
               {isOperational ? (
                 <div className="relative">
                   <div className="h-3 w-3 bg-emerald-400 rounded-full" />

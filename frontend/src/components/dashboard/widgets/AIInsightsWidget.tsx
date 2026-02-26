@@ -5,7 +5,7 @@ import { InsightsCard } from "@/components/InsightsCard";
 import { SoftSkillsCard } from "@/components/SoftSkillsCard";
 import { GrowthTrajectoryCard } from "@/components/GrowthTrajectoryCard";
 import { PeerBenchmarkCard } from "@/components/PeerBenchmarkCard";
-import type { DeveloperInsights, SoftSkillsProfile } from "@/lib/api";
+import type { DeveloperInsights, GrowthTrajectory, SoftSkillsProfile } from "@/lib/api";
 
 interface AIInsightsWidgetProps {
   insights: DeveloperInsights | null;
@@ -65,7 +65,7 @@ export function AIInsightsWidget({
       {(showGrowth || showBenchmark) && (
         <div className="grid lg:grid-cols-2 gap-6">
           {showGrowth && (
-            <GrowthTrajectoryCard growth={growth || null} />
+            <GrowthTrajectoryCard growth={(growth as GrowthTrajectory) ?? null} />
           )}
           {showBenchmark && userId && <PeerBenchmarkCard developerId={userId} />}
         </div>

@@ -123,9 +123,9 @@ export function SortableWidgetGrid({
 
   if (!isEditing) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 grid-flow-row-dense">
         {renderableWidgets.map((widgetId,index) => (
-          <div key={widgetId+index} className={getGridClass?.(widgetId) || ""}>{renderWidget(widgetId)}</div>
+          <div key={widgetId+index} className={`${getGridClass?.(widgetId) || ""} min-h-0 [&>*]:h-full [&>*]:flex [&>*]:flex-col [&>*>*:last-child]:flex-1`}>{renderWidget(widgetId)}</div>
         ))}
       </div>
     );
@@ -139,9 +139,9 @@ export function SortableWidgetGrid({
       onDragEnd={handleDragEnd}
     >
       <SortableContext items={renderableWidgets} strategy={rectSortingStrategy}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 grid-flow-row-dense">
           {renderableWidgets.map((widgetId,index) => (
-            <SortableWidget key={widgetId+index} id={widgetId} isEditing={isEditing} className={getGridClass?.(widgetId) || ""}>
+            <SortableWidget key={widgetId+index} id={widgetId} isEditing={isEditing} className={`${getGridClass?.(widgetId) || ""} min-h-0 [&>*]:h-full [&>*]:flex [&>*]:flex-col [&>*>*:last-child]:flex-1`}>
               {renderWidget(widgetId)}
             </SortableWidget>
           ))}

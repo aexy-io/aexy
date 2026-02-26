@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { redirect } from "next/navigation";
 import { analysisApi, DeveloperInsights, SoftSkillsProfile } from "@/lib/api";
 import { useDashboardPreferences } from "@/hooks/useDashboardPreferences";
+import type { PresetType } from "@/config/dashboardPresets";
 import { useDashboardStore } from "@/stores/dashboardStore";
 import { DASHBOARD_WIDGETS } from "@/config/dashboardWidgets";
 import { getWidgetComponent, widgetRegistry } from "@/config/widgetRegistry";
@@ -28,12 +29,12 @@ export default function DashboardPage() {
   const [softSkillsLoading, setSoftSkillsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Getting started checklist
-  const showChecklist = useShouldShowWorkspaceChecklist();
-  const [checklistDismissed, setChecklistDismissed] = useState(false);
-
   // Dashboard customization
-  const { preferences, isLoading: prefsLoading, reorderWidgets, setPreset } = useDashboardPreferences();
+  const { preferences, isLoading: prefsLoading, reorderWidgets, setPreset, updateChecklist, dismissChecklist } = useDashboardPreferences();
+
+  // Getting started checklist
+  const presetType = (preferences?.preset_type || "developer") as PresetType;
+  const showChecklist = useShouldShowWorkspaceChecklist(presetType, preferences);
   const { isModalOpen, setModalOpen, isCustomizing, setCustomizing } = useDashboardStore();
 
   const defaultWidgetOrder = [
@@ -125,8 +126,8 @@ export default function DashboardPage() {
             <div className="h-9 w-9 bg-accent rounded-lg" />
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
             <div key={i} className="bg-card border border-border rounded-xl p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="h-4 w-28 bg-accent rounded" />
@@ -215,9 +216,9 @@ export default function DashboardPage() {
       case "small":
         return "col-span-1";
       case "medium":
-        return "col-span-1 lg:col-span-1";
+        return "col-span-1";
       case "large":
-        return "col-span-1 lg:col-span-2";
+        return "col-span-1 sm:col-span-2";
       case "full":
         return "col-span-full";
       default:
@@ -292,8 +293,13 @@ export default function DashboardPage() {
       </div>
 
       {/* Getting Started Checklist */}
-      {showChecklist && !checklistDismissed && (
-        <WorkspaceChecklist onDismiss={() => setChecklistDismissed(true)} />
+      {showChecklist && (
+        <WorkspaceChecklist
+          presetType={presetType}
+          completedIds={preferences?.checklist_progress || []}
+          onMarkComplete={updateChecklist}
+          onDismiss={dismissChecklist}
+        />
       )}
 
       {/* Dynamic Widget Rendering */}

@@ -26,8 +26,8 @@ export function WidgetRenderer({
   // Size-based grid classes
   const sizeClasses: Record<WidgetSize, string> = {
     small: "col-span-1",
-    medium: "col-span-1 lg:col-span-1",
-    large: "col-span-1 lg:col-span-2",
+    medium: "col-span-1",
+    large: "col-span-1 sm:col-span-2",
     full: "col-span-full",
   };
 
@@ -77,38 +77,20 @@ export function useWidgetVisibility(
 export function getWidgetSizeClass(
   widgetId: string,
   widgetSizes: Record<string, WidgetSize> = {},
-  gridCols: number = 2
 ): string {
   const widget = DASHBOARD_WIDGETS[widgetId];
   const size = widgetSizes[widgetId] || widget?.defaultSize || "medium";
 
-  // For a 2-column grid
-  if (gridCols === 2) {
-    switch (size) {
-      case "small":
-        return "col-span-1";
-      case "medium":
-        return "col-span-1";
-      case "large":
-        return "col-span-2";
-      case "full":
-        return "col-span-full";
-      default:
-        return "col-span-1";
-    }
-  }
-
-  // For a 3-column grid (lg)
   switch (size) {
     case "small":
-      return "lg:col-span-1";
+      return "col-span-1";
     case "medium":
-      return "lg:col-span-1";
+      return "col-span-1";
     case "large":
-      return "lg:col-span-2";
+      return "col-span-1 sm:col-span-2";
     case "full":
       return "col-span-full";
     default:
-      return "lg:col-span-1";
+      return "col-span-1";
   }
 }
