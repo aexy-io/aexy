@@ -68,16 +68,16 @@ export function CRMPipelineWidget() {
 
   return (
     <div className="bg-background/50 border border-border rounded-xl overflow-hidden">
-      <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-cyan-500/10 rounded-lg">
-            <Building2 className="h-5 w-5 text-cyan-400" />
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="p-1.5 bg-cyan-500/10 rounded-lg shrink-0">
+            <Building2 className="h-4 w-4 text-cyan-400" />
           </div>
-          <h3 className="text-lg font-semibold text-foreground">CRM Pipeline</h3>
+          <h3 className="text-sm font-semibold text-foreground truncate">CRM Pipeline</h3>
         </div>
         <Link
           href="/crm"
-          className="text-cyan-400 hover:text-cyan-300 text-sm flex items-center gap-1 transition"
+          className="text-cyan-400 hover:text-cyan-300 text-xs flex items-center gap-0.5 transition whitespace-nowrap shrink-0"
         >
           View CRM <ChevronRight className="w-4 h-4" />
         </Link>
@@ -133,7 +133,7 @@ export function CRMPipelineWidget() {
                     className="flex items-center justify-between p-2 bg-muted/30 rounded-lg"
                   >
                     <span className="text-sm text-foreground">{stage.name}</span>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 min-w-0">
                       <span className="text-xs text-muted-foreground">
                         {stage.count} deals
                       </span>

@@ -56,12 +56,12 @@ export function WorkloadDistributionWidget() {
 
   return (
     <div className="bg-background/50 border border-border rounded-xl overflow-hidden">
-      <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-indigo-500/10 rounded-lg">
-            <BarChart3 className="h-5 w-5 text-indigo-400" />
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="p-1.5 bg-indigo-500/10 rounded-lg shrink-0">
+            <BarChart3 className="h-4 w-4 text-indigo-400" />
           </div>
-          <h3 className="text-lg font-semibold text-foreground">Workload</h3>
+          <h3 className="text-sm font-semibold text-foreground truncate">Workload</h3>
           {imbalanceScore != null && imbalanceScore > 0.5 && (
             <span className="px-2 py-0.5 text-xs font-medium bg-amber-500/20 text-amber-400 rounded-full">
               Imbalanced
@@ -70,7 +70,7 @@ export function WorkloadDistributionWidget() {
         </div>
         <Link
           href="/insights"
-          className="text-indigo-400 hover:text-indigo-300 text-sm flex items-center gap-1 transition"
+          className="text-indigo-400 hover:text-indigo-300 text-xs flex items-center gap-0.5 transition whitespace-nowrap shrink-0"
         >
           View details <ChevronRight className="w-4 h-4" />
         </Link>
