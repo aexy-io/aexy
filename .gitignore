@@ -6,5 +6,5 @@ __pycache__
 celerybeat-schedule
 backend-rust
 
-gtm
-prds
+/gtm
+/prds

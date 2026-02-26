@@ -22,7 +22,10 @@ class IntentSignal(Base):
         UUID(as_uuid=False), ForeignKey("workspaces.id", ondelete="CASCADE"),
         nullable=False, index=True,
     )
-    record_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), nullable=True, index=True)
+    record_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("crm_records.id", ondelete="SET NULL"),
+        nullable=True, index=True,
+    )
 
     company_name: Mapped[str | None] = mapped_column(String(500), nullable=True)
     company_domain: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)

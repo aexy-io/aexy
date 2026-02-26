@@ -209,6 +209,9 @@ def get_all_activities() -> list:
         # Batch 4: ABM
         recalculate_abm_engagement,
         refresh_dynamic_abm_lists,
+        # Batch 5: Maintenance
+        cleanup_ip_addresses,
+        purge_behavioral_events,
     )
 
     return [
@@ -337,6 +340,9 @@ def get_all_activities() -> list:
         # GTM ABM
         recalculate_abm_engagement,
         refresh_dynamic_abm_lists,
+        # GTM Maintenance
+        cleanup_ip_addresses,
+        purge_behavioral_events,
         # Reminders (Compliance)
         generate_reminder_instances,
         process_escalations,
