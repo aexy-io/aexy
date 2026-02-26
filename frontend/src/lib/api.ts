@@ -17932,7 +17932,7 @@ export const savedViewsApi = {
   },
   create: async (workspaceId: string, entityType: SavedViewEntityType, data: {
     name: string;
-    view_type?: "table" | "board" | "gallery" | "timeline";
+    view_type?: "table" | "kanban" | "board" | "gallery" | "timeline";
     filters?: Record<string, unknown>[];
     sorts?: Record<string, unknown>[];
     visible_attributes?: string[];
@@ -17947,7 +17947,7 @@ export const savedViewsApi = {
   },
   update: async (workspaceId: string, entityType: SavedViewEntityType, viewId: string, data: Partial<{
     name: string;
-    view_type: "table" | "board" | "gallery" | "timeline";
+    view_type: "table" | "kanban" | "board" | "gallery" | "timeline";
     filters: Record<string, unknown>[];
     sorts: Record<string, unknown>[];
     visible_attributes: string[];
