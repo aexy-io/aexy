@@ -183,7 +183,7 @@ class CRMAttributeCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     slug: str | None = Field(default=None, min_length=1, max_length=100, pattern=r"^[a-z_][a-z0-9_]*$")
     description: str | None = None
-    attribute_type: CRMAttributeType = "text"
+    attribute_type: str = "text"
     config: AttributeConfig | None = None
     is_required: bool = False
     is_unique: bool = False
@@ -218,7 +218,7 @@ class CRMAttributeResponse(BaseModel):
     name: str
     slug: str
     description: str | None = None
-    attribute_type: CRMAttributeType
+    attribute_type: str
     config: dict
     is_required: bool
     is_unique: bool
@@ -412,6 +412,8 @@ class CRMListCreate(BaseModel):
     date_attribute: str | None = None
     end_date_attribute: str | None = None
     is_private: bool = False
+    entity_type: str = "crm_record"
+    entity_scope_id: str | None = None
 
 
 class CRMListUpdate(BaseModel):
@@ -438,7 +440,7 @@ class CRMListResponse(BaseModel):
 
     id: str
     workspace_id: str
-    object_id: str
+    object_id: str | None = None
     name: str
     slug: str
     description: str | None = None
@@ -455,6 +457,8 @@ class CRMListResponse(BaseModel):
     end_date_attribute: str | None = None
     is_private: bool
     owner_id: str | None = None
+    entity_type: str = "crm_record"
+    entity_scope_id: str | None = None
     entry_count: int
     created_at: datetime
     updated_at: datetime
