@@ -74,7 +74,10 @@ class GTMExpansionEnrollment(Base):
         UUID(as_uuid=False), ForeignKey("gtm_expansion_playbooks.id", ondelete="CASCADE"),
         nullable=False, index=True,
     )
-    record_id: Mapped[str] = mapped_column(UUID(as_uuid=False), nullable=False, index=True)
+    record_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("crm_records.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
 
     # Relationships
     playbook: Mapped["GTMExpansionPlaybook"] = relationship(

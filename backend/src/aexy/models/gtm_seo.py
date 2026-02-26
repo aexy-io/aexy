@@ -25,7 +25,10 @@ class SEOAudit(Base):
 
     target_url: Mapped[str] = mapped_column(Text, nullable=False)
     domain: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    record_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), nullable=True)
+    record_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("crm_records.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     # Scores (0-100)
     overall_score: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
