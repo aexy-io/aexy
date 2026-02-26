@@ -351,30 +351,30 @@ export default function GTMVisitorDetailPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground text-sm">Duration</span>
                   <span className="text-foreground text-sm">
-                    {formatDuration(detail.total_duration_seconds)}
+                    {formatDuration(detail.duration_seconds)}
                   </span>
                 </div>
                 <div className="border-t border-border/50 pt-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-muted-foreground text-sm">First Seen</span>
                     <span className="text-muted-foreground text-xs">
-                      {formatDate(detail.first_seen_at)}
+                      {formatDate(detail.started_at)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground text-sm">Last Seen</span>
                     <span className="text-muted-foreground text-xs">
-                      {formatDate(detail.last_seen_at)}
+                      {formatDate(detail.last_activity_at)}
                     </span>
                   </div>
                 </div>
-                {detail.entry_page && (
+                {detail.first_page_url && (
                   <div className="border-t border-border/50 pt-4">
                     <span className="text-muted-foreground text-sm block mb-1">
                       Entry Page
                     </span>
                     <span className="text-muted-foreground text-xs break-all">
-                      {detail.entry_page}
+                      {detail.first_page_url}
                     </span>
                   </div>
                 )}

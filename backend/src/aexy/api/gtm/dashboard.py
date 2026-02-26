@@ -115,7 +115,7 @@ async def get_pipeline_metrics(
     total_steps_executed = await db.scalar(
         select(func.count(OutreachStepExecution.id)).where(and_(
             OutreachStepExecution.workspace_id == workspace_id,
-            OutreachStepExecution.executed_at >= cutoff,
+            OutreachStepExecution.sent_at >= cutoff,
         ))
     ) or 0
 
