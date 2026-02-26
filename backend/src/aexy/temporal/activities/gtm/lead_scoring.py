@@ -534,9 +534,42 @@ async def score_lead(input: ScoreLeadInput) -> dict:
         raw_form_pts = 10 if form_count > 0 else 0
         engage_factors["form_submissions"] = form_count
 
-        # Apply time-decay to engagement raw score (max 25), then scale
-        raw_engage = raw_visit_pts + raw_form_pts
-        engage_score = round(raw_engage * decay * engage_weight / 25)
+        # Email engagement (opens + clicks from campaign recipients)
+        raw_email_pts = 0
+        try:
+            from aexy.models.email_marketing import CampaignRecipient
+
+            email_agg = (await db.execute(
+                select(
+                    func.coalesce(func.sum(CampaignRecipient.open_count), 0),
+                    func.coalesce(func.sum(CampaignRecipient.click_count), 0),
+                ).where(
+                    and_(
+                        CampaignRecipient.record_id == input.record_id,
+                    )
+                )
+            )).one_or_none()
+            email_opens = int(email_agg[0]) if email_agg else 0
+            email_clicks = int(email_agg[1]) if email_agg else 0
+
+            # Clicks are higher-intent than opens
+            if email_clicks >= 3:
+                raw_email_pts = 10
+            elif email_clicks >= 1:
+                raw_email_pts = 7
+            elif email_opens >= 3:
+                raw_email_pts = 5
+            elif email_opens >= 1:
+                raw_email_pts = 3
+
+            engage_factors["email_opens"] = email_opens
+            engage_factors["email_clicks"] = email_clicks
+        except Exception:
+            pass  # CampaignRecipient table may not exist in all deployments
+
+        # Apply time-decay to engagement raw score (max 35 raw), then scale
+        raw_engage = raw_visit_pts + raw_form_pts + raw_email_pts
+        engage_score = round(raw_engage * decay * engage_weight / 35)
 
         # ── Negative signals (0 to -20) ─────────────────────────────────
         negative_score = 0
