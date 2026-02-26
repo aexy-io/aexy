@@ -57,55 +57,55 @@ export function TrackingSummaryWidget() {
         </Link>
       </div>
       <div className="p-6">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           {/* Standup Status */}
-          <div className="p-4 bg-muted/50 rounded-lg border border-border/50">
-            <div className="flex items-center gap-2 mb-2">
+          <div className="p-3 bg-muted/50 rounded-lg border border-border/50">
+            <div className="flex items-center gap-1.5 mb-2">
               {standupSubmitted ? (
-                <CheckCircle className="h-4 w-4 text-green-400" />
+                <CheckCircle className="h-3.5 w-3.5 text-green-400 shrink-0" />
               ) : (
-                <XCircle className="h-4 w-4 text-muted-foreground" />
+                <XCircle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
               )}
-              <span className="text-muted-foreground text-sm">Standup</span>
+              <span className="text-muted-foreground text-xs whitespace-nowrap">Standup</span>
             </div>
             <p
-              className={`text-lg font-bold ${standupSubmitted ? "text-green-400" : "text-muted-foreground"}`}
+              className={`text-base font-bold ${standupSubmitted ? "text-green-400" : "text-muted-foreground"}`}
             >
               {standupSubmitted ? "Submitted" : "Pending"}
             </p>
           </div>
 
           {/* Active Tasks */}
-          <div className="p-4 bg-muted/50 rounded-lg border border-border/50">
-            <div className="flex items-center gap-2 mb-2">
-              <Target className="h-4 w-4 text-blue-400" />
-              <span className="text-muted-foreground text-sm">Active Tasks</span>
+          <div className="p-3 bg-muted/50 rounded-lg border border-border/50">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Target className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+              <span className="text-muted-foreground text-xs whitespace-nowrap">Active Tasks</span>
             </div>
-            <p className="text-2xl font-bold text-foreground">{activeTasksCount}</p>
+            <p className="text-xl font-bold text-foreground">{activeTasksCount}</p>
           </div>
 
           {/* Blockers */}
-          <div className="p-4 bg-muted/50 rounded-lg border border-border/50">
-            <div className="flex items-center gap-2 mb-2">
+          <div className="p-3 bg-muted/50 rounded-lg border border-border/50">
+            <div className="flex items-center gap-1.5 mb-2">
               <AlertTriangle
-                className={`h-4 w-4 ${activeBlockersCount > 0 ? "text-orange-400" : "text-muted-foreground"}`}
+                className={`h-3.5 w-3.5 shrink-0 ${activeBlockersCount > 0 ? "text-orange-400" : "text-muted-foreground"}`}
               />
-              <span className="text-muted-foreground text-sm">Blockers</span>
+              <span className="text-muted-foreground text-xs whitespace-nowrap">Blockers</span>
             </div>
             <p
-              className={`text-2xl font-bold ${activeBlockersCount > 0 ? "text-orange-400" : "text-foreground"}`}
+              className={`text-xl font-bold ${activeBlockersCount > 0 ? "text-orange-400" : "text-foreground"}`}
             >
               {activeBlockersCount}
             </p>
           </div>
 
           {/* Time Logged */}
-          <div className="p-4 bg-muted/50 rounded-lg border border-border/50">
-            <div className="flex items-center gap-2 mb-2">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground text-sm">Time Today</span>
+          <div className="p-3 bg-muted/50 rounded-lg border border-border/50">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <span className="text-muted-foreground text-xs whitespace-nowrap">Time Today</span>
             </div>
-            <p className="text-2xl font-bold text-foreground">
+            <p className="text-xl font-bold text-foreground">
               {formatTime(timeLoggedToday)}
             </p>
           </div>

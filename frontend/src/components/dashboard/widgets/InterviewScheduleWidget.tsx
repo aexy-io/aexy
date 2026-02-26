@@ -45,7 +45,7 @@ export function InterviewScheduleWidget() {
           href="/hiring"
           className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-0.5 transition whitespace-nowrap shrink-0"
         >
-          View All <ChevronRight className="w-3.5 h-3.5" />
+          View All <ChevronRight className="w-4 h-4" />
         </Link>
       </div>
       <div className="p-6">
