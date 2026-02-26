@@ -87,12 +87,16 @@ async def create_entity_view(
     workspace_id: str,
     entity_type: str,
     data: CRMListCreate,
+    scope_id: str | None = None,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
     """Create a saved view for an entity type."""
     await _check_workspace(workspace_id, current_user, db)
     _validate_entity_type(entity_type)
+
+    # scope_id from query param takes precedence, then body
+    resolved_scope_id = scope_id or data.entity_scope_id
 
     service = DataTableService(db)
     view = await service.create_view(
@@ -109,7 +113,7 @@ async def create_entity_view(
         is_private=data.is_private,
         owner_id=str(current_user.id),
         entity_type=entity_type,
-        entity_scope_id=data.entity_scope_id,
+        entity_scope_id=resolved_scope_id,
     )
 
     await db.commit()
