@@ -57,7 +57,7 @@ export function PendingReviewsWidget() {
           href="/reviews"
           className="text-amber-400 hover:text-amber-300 text-xs flex items-center gap-0.5 transition whitespace-nowrap shrink-0"
         >
-          View all <ChevronRight className="w-3.5 h-3.5" />
+          View all <ChevronRight className="w-4 h-4" />
         </Link>
       </div>
       <div className="p-4 space-y-2">

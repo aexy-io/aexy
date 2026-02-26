@@ -37,8 +37,8 @@ export function InsightsCard({
       <div className="bg-muted rounded-xl p-6 border border-border">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Lightbulb className="h-5 w-5 text-primary-400" />
-            <h3 className="text-lg font-semibold text-foreground">AI Insights</h3>
+            <Lightbulb className="h-4 w-4 text-primary-400" />
+            <h3 className="text-sm font-semibold text-foreground truncate">AI Insights</h3>
           </div>
           {onRefresh && (
             <button

@@ -104,15 +104,15 @@ export function LearningPathWidget() {
               return (
                 <div
                   key={stat.label}
-                  className="p-4 bg-muted/50 rounded-lg border border-border/50"
+                  className="p-3 bg-muted/50 rounded-lg border border-border/50"
                 >
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className={`p-1.5 ${stat.iconBg} rounded-lg`}>
-                      <Icon className={`w-4 h-4 ${stat.iconColor}`} />
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <div className={`p-1 ${stat.iconBg} rounded-md shrink-0`}>
+                      <Icon className={`w-3.5 h-3.5 ${stat.iconColor}`} />
                     </div>
-                    <span className="text-muted-foreground text-sm">{stat.label}</span>
+                    <span className="text-muted-foreground text-xs whitespace-nowrap">{stat.label}</span>
                   </div>
-                  <p className="text-2xl font-bold text-foreground">{stat.value}</p>
+                  <p className="text-xl font-bold text-foreground">{stat.value}</p>
                 </div>
               );
             })}
