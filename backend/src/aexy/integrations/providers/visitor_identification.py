@@ -101,8 +101,25 @@ class SnitcherProvider(VisitorIdentificationProvider):
             company_type=company_type,
             headquarters_location=self._format_location(geo),
             confidence=self._calc_confidence(company),
-            raw_response=data,
+            raw_response=self._sanitize_raw_response(data),
         )
+
+    @staticmethod
+    def _sanitize_raw_response(data: dict) -> dict:
+        """Strip PII keys from third-party API responses before storage."""
+        _PII_KEYS = frozenset({
+            "contacts", "people", "employees", "email", "emails",
+            "phones", "phone", "personal", "person", "social_profiles",
+        })
+
+        def _strip(obj: Any) -> Any:
+            if isinstance(obj, dict):
+                return {k: _strip(v) for k, v in obj.items() if k not in _PII_KEYS}
+            if isinstance(obj, list):
+                return [_strip(item) for item in obj]
+            return obj
+
+        return _strip(data)
 
     @staticmethod
     def _employee_range(count: Any) -> str | None:

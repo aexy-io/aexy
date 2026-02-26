@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, func, Index, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from aexy.core.database import Base
 
@@ -41,6 +41,14 @@ class CompetitorProfile(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False,
     )
 
+    # Relationships
+    changes: Mapped[list["CompetitorChange"]] = relationship(
+        "CompetitorChange", back_populates="competitor", lazy="noload",
+    )
+    battle_cards: Mapped[list["BattleCard"]] = relationship(
+        "BattleCard", back_populates="competitor", lazy="noload",
+    )
+
     __table_args__ = (
         UniqueConstraint("workspace_id", "domain", name="uq_competitor_profiles_ws_domain"),
     )
@@ -61,6 +69,11 @@ class CompetitorChange(Base):
     competitor_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False), ForeignKey("competitor_profiles.id", ondelete="CASCADE"),
         nullable=False, index=True,
+    )
+
+    # Relationships
+    competitor: Mapped["CompetitorProfile"] = relationship(
+        "CompetitorProfile", back_populates="changes", lazy="selectin",
     )
 
     page_url: Mapped[str] = mapped_column(Text, nullable=False)
@@ -103,6 +116,11 @@ class BattleCard(Base):
     competitor_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False), ForeignKey("competitor_profiles.id", ondelete="CASCADE"),
         nullable=False, index=True,
+    )
+
+    # Relationships
+    competitor: Mapped["CompetitorProfile"] = relationship(
+        "CompetitorProfile", back_populates="battle_cards", lazy="selectin",
     )
 
     title: Mapped[str] = mapped_column(String(500), nullable=False)
