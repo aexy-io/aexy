@@ -22,6 +22,7 @@ import {
   Mail,
   Bot,
   Menu,
+  Crosshair,
 } from "lucide-react";
 import {
   Sheet,
@@ -45,6 +46,7 @@ const productLinks = [
   { href: "/products/crm", label: "CRM", icon: Building2, desc: "Relationship management", color: "from-purple-500 to-violet-500" },
   { href: "/products/email-marketing", label: "Email Marketing", icon: Mail, desc: "Campaigns & automation", color: "from-sky-500 to-blue-500" },
   { href: "/products/ai-agents", label: "AI Agents", icon: Bot, desc: "Intelligent automation", color: "from-purple-500 to-violet-500" },
+  { href: "/products/gtm-intelligence", label: "GTM Intelligence", icon: Crosshair, desc: "Visitor ID & lead scoring", color: "from-indigo-500 to-violet-500" },
 ];
 
 const solutionLinks = [
@@ -327,6 +329,7 @@ export function LandingFooter() {
               <li><Link href="/products/crm" className="hover:text-white transition">CRM</Link></li>
               <li><Link href="/products/email-marketing" className="hover:text-white transition">Email Marketing</Link></li>
               <li><Link href="/products/ai-agents" className="hover:text-white transition">AI Agents</Link></li>
+              <li><Link href="/products/gtm-intelligence" className="hover:text-white transition">GTM Intelligence</Link></li>
             </ul>
           </div>
           <div>

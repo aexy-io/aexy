@@ -17765,6 +17765,257 @@ export const complianceFoldersApi = {
   },
 };
 
+// ==================== GTM (Go-To-Market) Types ====================
+
+export type GTMProviderSlot =
+  | "visitor_identification"
+  | "email_verification"
+  | "contact_enrichment"
+  | "linkedin_automation"
+  | "sms"
+  | "intent_data"
+  | "seo_tracking"
+  | "ad_platform"
+  | "analytics"
+  | "data_warehouse";
+
+export type GTMProviderStatus = "active" | "inactive" | "error" | "pending_setup" | "suspended";
+
+export type IdentificationStatus = "anonymous" | "identified" | "resolved" | "failed";
+
+export type LifecycleStage = "anonymous" | "known" | "lead" | "mql" | "sql" | "opportunity" | "customer";
+
+export interface GTMProviderConfig {
+  id: string;
+  workspace_id: string;
+  slot: GTMProviderSlot;
+  provider_name: string;
+  display_name: string | null;
+  status: GTMProviderStatus;
+  is_default: boolean;
+  is_active: boolean;
+  config: Record<string, unknown>;
+  monthly_cost_cents: number;
+  usage_count: number;
+  usage_limit: number | null;
+  last_error: string | null;
+  last_tested_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GTMProviderConfigCreate {
+  slot: GTMProviderSlot;
+  provider_name: string;
+  display_name?: string;
+  credentials: Record<string, string>;
+  config?: Record<string, unknown>;
+  is_default?: boolean;
+}
+
+export interface GTMProviderConfigUpdate {
+  display_name?: string;
+  credentials?: Record<string, string>;
+  config?: Record<string, unknown>;
+  is_default?: boolean;
+  is_active?: boolean;
+}
+
+export interface VisitorSession {
+  id: string;
+  workspace_id: string;
+  anonymous_id: string;
+  started_at: string;
+  last_activity_at: string;
+  page_count: number;
+  event_count: number;
+  duration_seconds: number;
+  max_scroll_depth: number;
+  identification_status: IdentificationStatus;
+  identified_company: string | null;
+  identified_domain: string | null;
+  ip_address: string | null;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  first_page_url: string | null;
+  last_page_url: string | null;
+  entry_referrer: string | null;
+  record_id: string | null;
+  country_code: string | null;
+  city: string | null;
+}
+
+export interface VisitorSessionDetail extends VisitorSession {
+  events: BehavioralEvent[];
+  identification: VisitorIdentification | null;
+}
+
+export interface BehavioralEvent {
+  id: string;
+  anonymous_id: string;
+  event_type: string;
+  page_url: string | null;
+  page_title: string | null;
+  referrer: string | null;
+  properties: Record<string, unknown>;
+  occurred_at: string;
+}
+
+export interface VisitorIdentification {
+  id: string;
+  company_name: string;
+  domain: string | null;
+  industry: string | null;
+  employee_range: string | null;
+  confidence: number;
+  raw_response: Record<string, unknown>;
+  provider_name: string;
+  created_at: string;
+}
+
+export interface ICPTemplate {
+  id: string;
+  workspace_id: string;
+  name: string;
+  description: string | null;
+  criteria: Record<string, unknown>;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ICPTemplateCreate {
+  name: string;
+  description?: string;
+  criteria: Record<string, unknown>;
+  is_default?: boolean;
+}
+
+export interface ICPTemplateUpdate {
+  name?: string;
+  description?: string;
+  criteria?: Record<string, unknown>;
+  is_default?: boolean;
+}
+
+export interface LeadScore {
+  id: string;
+  workspace_id: string;
+  anonymous_id: string | null;
+  record_id: string | null;
+  total_score: number;
+  firmographic_score: number;
+  behavioral_score: number;
+  engagement_score: number;
+  lifecycle_stage: LifecycleStage;
+  score_history: Array<{ date: string; score: number }>;
+  created_at: string;
+  updated_at: string;
+}
+
+// Scoring types
+export interface ScoreDistributionBucket {
+  range: string;
+  count: number;
+}
+
+export interface LifecycleBreakdown {
+  stage: string;
+  count: number;
+}
+
+export interface TopLeadRow {
+  record_id: string;
+  total_score: number;
+  firmographic_score: number;
+  behavioral_score: number;
+  engagement_score: number;
+  lifecycle_stage: string;
+  last_scored_at: string | null;
+}
+
+export interface ScoringOverview {
+  total_scored: number;
+  avg_score: number;
+  score_distribution: ScoreDistributionBucket[];
+  lifecycle_breakdown: LifecycleBreakdown[];
+  top_leads: TopLeadRow[];
+}
+
+export interface ScoredLeadListResponse {
+  leads: TopLeadRow[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
+// Compliance types
+export interface ConsentStatus {
+  email: string;
+  has_consent: boolean;
+  consent_type: string | null;
+  jurisdiction: string | null;
+  consent_date: string | null;
+  is_active: boolean;
+}
+
+export interface SendPermissionCheck {
+  allowed: boolean;
+  reason: string;
+  checks: Array<{ check: string; passed: boolean; detail: string }>;
+}
+
+export interface SuppressionEntry {
+  id: string;
+  email: string;
+  domain: string | null;
+  reason: string;
+  source: string;
+  added_at: string;
+}
+
+export interface ComplianceAuditEntry {
+  id: string;
+  email: string;
+  action: string;
+  reason: string | null;
+  jurisdiction: string | null;
+  created_at: string;
+}
+
+// Dedup types
+export interface DuplicateMatch {
+  record_id: string;
+  duplicate_id: string;
+  confidence: number;
+  match_type: string;
+  match_details: Record<string, unknown>;
+}
+
+export interface DedupStats {
+  total_records: number;
+  potential_duplicates: number;
+  merged_count: number;
+}
+
+// Outreach Sequences
+export interface OutreachSequence {
+  id: string;
+  workspace_id: string;
+  name: string;
+  description: string | null;
+  status: "draft" | "active" | "paused" | "archived";
+  steps: SequenceStep[];
+  settings: Record<string, unknown>;
+  channels: string[];
+  enrolled_count: number;
+  active_count: number;
+  completed_count: number;
+  replied_count: number;
+  bounced_count: number;
+  created_by: string | null;
+}
 // ============================================================================
 // Standalone Tables Types & API
 // ============================================================================
@@ -17794,9 +18045,1286 @@ export interface StandaloneTable {
   updated_at: string;
 }
 
+export interface SequenceStep {
+  step_index: number;
+  channel: "email" | "linkedin" | "sms" | "wait";
+  action: string;
+  delay_days: number;
+  delay_hours: number;
+  config: Record<string, unknown>;
+  conditions: Record<string, unknown>;
+}
+
+export interface OutreachEnrollment {
+  id: string;
+  workspace_id: string;
+  sequence_id: string;
+  record_id: string;
+  email: string;
+  contact_name: string | null;
+  status: "active" | "paused" | "completed" | "replied" | "bounced" | "unsubscribed" | "exited" | "failed";
+  current_step_index: number;
+  next_step_at: string | null;
+  temporal_workflow_id: string | null;
+  exit_reason: string | null;
+  enrolled_at: string;
+  completed_at: string | null;
+  created_at: string;
+}
+
+export interface StepExecution {
+  id: string;
+  enrollment_id: string;
+  step_index: number;
+  channel: string;
+  action: string;
+  status: string;
+  provider_message_id: string | null;
+  error_message: string | null;
+  sent_at: string | null;
+  delivered_at: string | null;
+  opened_at: string | null;
+  clicked_at: string | null;
+  replied_at: string | null;
+  created_at: string;
+}
+
+export interface SequenceAnalytics {
+  sequence_id: string;
+  total_enrolled: number;
+  active: number;
+  completed: number;
+  replied: number;
+  bounced: number;
+  reply_rate: number;
+  completion_rate: number;
+  steps: Record<string, unknown>[];
+}
+
+export interface GTMDashboardOverview {
+  total_visitors: number;
+  identified_companies: number;
+  new_leads: number;
+  active_sequences: number;
+  visitors_change_pct: number;
+  companies_change_pct: number;
+  leads_change_pct: number;
+  sequences_change_pct?: number;
+}
+
+export interface FunnelStageData {
+  stage: string;
+  count: number;
+  conversion_rate: number | null;
+}
+
+export interface RecentVisitorRow {
+  session_id: string;
+  company_name: string | null;
+  company_domain: string | null;
+  page_count: number;
+  duration_seconds: number;
+  identification_status: IdentificationStatus;
+  utm_source: string | null;
+  country_code: string | null;
+  started_at: string;
+}
+
+export interface VisitorListResponse {
+  sessions: VisitorSession[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
+// GTM Analytics types
+export interface PipelineStage {
+  stage: string;
+  count: number;
+  conversion_rate: number;
+}
+
+export interface PipelineAnalytics {
+  stages: PipelineStage[];
+  total_leads: number;
+  period_new: number;
+}
+
+export interface ChannelMetrics {
+  channel: string;
+  total_sent: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  replied: number;
+  bounced: number;
+  open_rate: number;
+  click_rate: number;
+  reply_rate: number;
+  bounce_rate: number;
+}
+
+export interface ChannelAnalytics {
+  channels: ChannelMetrics[];
+}
+
+export interface AttributionChannel {
+  channel: string;
+  attributed_conversions: number;
+  percentage: number;
+}
+
+export interface AttributionAnalytics {
+  channels: AttributionChannel[];
+}
+
+export interface SequenceComparison {
+  id: string;
+  name: string;
+  status: string;
+  enrolled_count: number;
+  active_count: number;
+  completed_count: number;
+  replied_count: number;
+  bounced_count: number;
+  reply_rate: number;
+  completion_rate: number;
+}
+
+export interface SequenceComparisonAnalytics {
+  sequences: SequenceComparison[];
+}
+
+export interface TrendPoint {
+  date: string;
+  count: number;
+}
+
+export interface TrendAnalytics {
+  visitors: TrendPoint[];
+  leads: TrendPoint[];
+  emails_sent: TrendPoint[];
+  replies: TrendPoint[];
+}
+
+// Bulk Import
+export interface ImportRowResult {
+  row: number;
+  email: string;
+  status: string;
+  record_id: string | null;
+  duplicate_of: string | null;
+  error: string | null;
+}
+
+export interface BulkImportResponse {
+  job_id: string;
+  status: string;
+  total_rows: number;
+  processed: number;
+  created: number;
+  duplicates: number;
+  invalid_emails: number;
+  skipped: number;
+  errors: number;
+  enrolled: number;
+  rows: ImportRowResult[];
+}
+
+// Reply Classification
+export interface ReplyClassificationStats {
+  period_days: number;
+  total_classified: number;
+  category_counts: Record<string, number>;
+  auto_actioned: number;
+  auto_action_rate: number;
+}
+
+// Reply Classification Response (single classification result)
+export interface ReplyClassificationResponse {
+  category: string;
+  confidence: number;
+  reasoning: string;
+  action_taken: string | null;
+  auto_actioned: boolean;
+}
+
+// GTM Alert types
+export interface AlertConfigResponse {
+  id: string;
+  workspace_id: string;
+  name: string;
+  event_type: string;
+  conditions: Record<string, unknown>;
+  channel_type: string;
+  channel_config: Record<string, unknown>;
+  message_template: string | null;
+  is_active: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AlertLogResponse {
+  id: string;
+  workspace_id: string;
+  alert_config_id: string;
+  event_type: string;
+  event_data: Record<string, unknown>;
+  channel_type: string;
+  delivery_status: string;
+  error_message: string | null;
+  sent_at: string;
+  created_at: string;
+}
+
+export interface AlertLogListResponse {
+  items: AlertLogResponse[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
+// GTM Routing & SLA types
+export interface RoutingRuleResponse {
+  id: string;
+  workspace_id: string;
+  name: string;
+  priority: number;
+  is_active: boolean;
+  conditions: Record<string, unknown>[];
+  strategy: string;
+  assignee_pool: Record<string, unknown>[];
+  sla_first_response_minutes: number | null;
+  sla_follow_up_minutes: number | null;
+  fallback_assignee_id: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LeadAssignmentResponse {
+  id: string;
+  workspace_id: string;
+  record_id: string;
+  routing_rule_id: string | null;
+  assignee_id: string;
+  assigned_at: string;
+  first_response_at: string | null;
+  sla_first_response_minutes: number | null;
+  sla_breached: boolean;
+  sla_breach_at: string | null;
+  status: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LeadAssignmentListResponse {
+  items: LeadAssignmentResponse[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
+export interface SLADashboardResponse {
+  total_assignments: number;
+  pending_count: number;
+  contacted_count: number;
+  qualified_count: number;
+  avg_response_minutes: number;
+  sla_breach_count: number;
+  sla_breach_rate: number;
+  assignments_by_rep: Record<string, unknown>[];
+}
+
+// GTM Health Scoring types
+export interface HealthScoreResponse {
+  id: string;
+  workspace_id: string;
+  record_id: string;
+  total_score: number;
+  engagement_score: number;
+  usage_score: number;
+  support_score: number;
+  nps_score: number;
+  payment_score: number;
+  health_status: string;
+  trend: string;
+  previous_score: number;
+  score_delta: number;
+  scoring_factors: Record<string, unknown>;
+  score_history: Record<string, unknown>[];
+  last_scored_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface HealthScoreListResponse {
+  items: HealthScoreResponse[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
+export interface HealthDashboardResponse {
+  total_customers: number;
+  healthy_count: number;
+  neutral_count: number;
+  at_risk_count: number;
+  critical_count: number;
+  avg_score: number;
+  improving_count: number;
+  declining_count: number;
+  status_distribution: Record<string, unknown>[];
+  recent_drops: Record<string, unknown>[];
+}
+
+// GTM Expansion Playbook types
+export interface ExpansionPlaybookResponse {
+  id: string;
+  workspace_id: string;
+  name: string;
+  description: string | null;
+  playbook_type: string;
+  trigger_conditions: Record<string, unknown>[];
+  target_product: Record<string, unknown>;
+  steps: Record<string, unknown>[];
+  status: string;
+  is_active: boolean;
+  total_enrollments: number;
+  conversion_count: number;
+  total_revenue_generated: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ExpansionEnrollmentResponse {
+  id: string;
+  workspace_id: string;
+  playbook_id: string;
+  record_id: string;
+  assigned_to: string | null;
+  status: string;
+  current_step_index: number;
+  trigger_data: Record<string, unknown>;
+  outcome: Record<string, unknown>;
+  enrolled_at: string;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ExpansionEnrollmentListResponse {
+  items: ExpansionEnrollmentResponse[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
+export interface PlaybookAnalyticsResponse {
+  total_playbooks: number;
+  active_playbooks: number;
+  total_enrollments: number;
+  active_enrollments: number;
+  total_conversions: number;
+  total_revenue: number;
+  conversion_rate: number;
+  by_type: Record<string, unknown>[];
+}
+
+// GTM Handoff types
+export interface HandoffResponse {
+  id: string;
+  workspace_id: string;
+  record_id: string;
+  created_by: string;
+  assigned_to: string;
+  handoff_type: string;
+  title: string;
+  context: string | null;
+  estimated_value: number | null;
+  products: string[];
+  signals: Record<string, unknown>[];
+  status: string;
+  accepted_at: string | null;
+  declined_reason: string | null;
+  deal_id: string | null;
+  outcome_notes: string | null;
+  sla_accept_minutes: number;
+  sla_breached: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface HandoffListResponse {
+  items: HandoffResponse[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
+export interface HandoffAnalyticsResponse {
+  total_handoffs: number;
+  pending_count: number;
+  accepted_count: number;
+  converted_count: number;
+  declined_count: number;
+  avg_accept_minutes: number;
+  conversion_rate: number;
+  total_converted_value: number;
+  sla_breach_rate: number;
+}
+
+// GTM Intent Signal types
+export interface IntentSignalResponse {
+  id: string;
+  workspace_id: string;
+  record_id: string | null;
+  company_name: string | null;
+  company_domain: string | null;
+  signal_type: string;
+  title: string;
+  description: string | null;
+  source_url: string | null;
+  source_name: string | null;
+  confidence_score: number;
+  intent_strength: string;
+  signal_data: Record<string, unknown>;
+  is_processed: boolean;
+  is_dismissed: boolean;
+  detected_at: string;
+  expires_at: string | null;
+  created_at: string;
+}
+
+export interface IntentSignalListResponse {
+  items: IntentSignalResponse[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
+export interface IntentSummaryResponse {
+  total_signals: number;
+  unprocessed_count: number;
+  by_type: Record<string, number>;
+  by_strength: Record<string, number>;
+  top_companies: Record<string, unknown>[];
+}
+
+// GTM Competitor Intelligence types
+export interface CompetitorResponse {
+  id: string;
+  workspace_id: string;
+  name: string;
+  domain: string;
+  tracked_pages: Record<string, unknown>[];
+  current_snapshot: Record<string, unknown>;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CompetitorChangeResponse {
+  id: string;
+  workspace_id: string;
+  competitor_id: string;
+  page_url: string;
+  page_label: string | null;
+  change_type: string;
+  title: string;
+  description: string | null;
+  severity: string;
+  diff_data: Record<string, unknown>;
+  is_acknowledged: boolean;
+  detected_at: string;
+  created_at: string;
+}
+
+export interface CompetitorChangeListResponse {
+  items: CompetitorChangeResponse[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
+export interface BattleCardResponse {
+  id: string;
+  workspace_id: string;
+  competitor_id: string;
+  title: string;
+  overview: string | null;
+  strengths: string[];
+  weaknesses: string[];
+  our_advantages: string[];
+  /** Frontend alias for our_advantages */
+  advantages?: string[];
+  objection_handling: string[];
+  talk_tracks: string[];
+  pricing_comparison: Record<string, unknown>;
+  win_rate: number;
+  total_deals: number;
+  wins: number;
+  losses: number;
+  common_loss_reasons: string[];
+  common_win_reasons: string[];
+  status: string;
+  version: number;
+  generated_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// GTM SEO Audit types
+export interface SEOAuditResponse {
+  id: string;
+  workspace_id: string;
+  target_url: string;
+  domain: string;
+  record_id: string | null;
+  overall_score: number;
+  meta_score: number;
+  headings_score: number;
+  links_score: number;
+  images_score: number;
+  performance_score: number;
+  findings: Record<string, unknown>;
+  recommendations: Record<string, unknown>[];
+  pages_crawled: number;
+  status: string;
+  error_message: string | null;
+  duration_seconds: number | null;
+  triggered_by: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+}
+
+export interface SEOAuditListResponse {
+  items: SEOAuditResponse[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
+// GTM Content Gap Analysis types
+export interface ContentAnalysisResponse {
+  id: string;
+  workspace_id: string;
+  our_domain: string;
+  competitor_domains: string[];
+  status: string;
+  our_topics: Record<string, unknown>[];
+  competitor_topics: Record<string, unknown>[];
+  gaps: Record<string, unknown>[];
+  opportunities: Record<string, unknown>[];
+  summary: string | null;
+  pages_analyzed: number;
+  error_message: string | null;
+  triggered_by: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+}
+
+export interface ContentAnalysisListResponse {
+  items: ContentAnalysisResponse[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
+// GTM ABM types
+export interface TargetListResponse {
+  id: string;
+  workspace_id: string;
+  name: string;
+  description: string | null;
+  criteria: Record<string, unknown>;
+  is_dynamic: boolean;
+  is_active: boolean;
+  account_count: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ABMAccountResponse {
+  id: string;
+  workspace_id: string;
+  target_list_id: string;
+  record_id: string;
+  tier: string;
+  stage: string;
+  owner_id: string | null;
+  engagement_score: number;
+  total_contacts: number;
+  identified_contacts: number;
+  decision_makers: number;
+  contacts_in_sequences: number;
+  emails_sent: number;
+  emails_replied: number;
+  meetings_booked: number;
+  deals_created: number;
+  assigned_campaigns: Record<string, unknown>[];
+  stage_history: Record<string, unknown>[];
+  notes: string | null;
+  last_activity_at: string | null;
+  added_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ABMAccountListResponse {
+  items: ABMAccountResponse[];
+  accounts?: ABMAccountResponse[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
+export interface ABMOverviewResponse {
+  total_lists: number;
+  total_accounts: number;
+  stage_distribution: Record<string, unknown>[];
+  tier_distribution: Record<string, unknown>[];
+  avg_engagement_score: number;
+  top_accounts: Record<string, unknown>[];
+  penetration_metrics: Record<string, unknown>;
+}
+
+// ==================== GTM API ====================
+
+export const gtmApi = {
+  providers: {
+    list: async (workspaceId: string): Promise<GTMProviderConfig[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/providers`);
+      return response.data;
+    },
+    create: async (workspaceId: string, data: GTMProviderConfigCreate): Promise<GTMProviderConfig> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/providers`, data);
+      return response.data;
+    },
+    update: async (workspaceId: string, slot: string, name: string, data: GTMProviderConfigUpdate): Promise<GTMProviderConfig> => {
+      const response = await api.put(`/workspaces/${workspaceId}/gtm/providers/${slot}/${name}`, data);
+      return response.data;
+    },
+    delete: async (workspaceId: string, slot: string, name: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/gtm/providers/${slot}/${name}`);
+    },
+    test: async (workspaceId: string, slot: string, name: string): Promise<{ success: boolean; message: string }> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/providers/${slot}/${name}/test`);
+      return response.data;
+    },
+    testCredentials: async (workspaceId: string, slot: string, providerName: string, credentials: Record<string, string>): Promise<{ success: boolean; message: string }> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/providers/${slot}/test-credentials`, { provider_name: providerName, credentials });
+      return response.data;
+    },
+    setDefault: async (workspaceId: string, slot: string, data: { provider_name: string }): Promise<GTMProviderConfig> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/providers/${slot}/set-default`, data);
+      return response.data;
+    },
+    listAvailable: async (workspaceId: string): Promise<{ slot: string; name: string; display_name: string }[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/providers/available`);
+      return response.data;
+    },
+  },
+  dashboard: {
+    overview: async (workspaceId: string, days?: number): Promise<GTMDashboardOverview> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/dashboard/overview`, { params: { days } });
+      return response.data;
+    },
+    funnel: async (workspaceId: string, days?: number): Promise<FunnelStageData[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/dashboard/funnel`, { params: { days } });
+      return response.data.stages ?? response.data;
+    },
+    recentVisitors: async (workspaceId: string, limit?: number): Promise<RecentVisitorRow[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/dashboard/recent-visitors`, { params: { limit } });
+      return response.data.visitors ?? response.data;
+    },
+  },
+  visitors: {
+    list: async (workspaceId: string, params?: { page?: number; per_page?: number; status?: string; date_from?: string; date_to?: string; search?: string }): Promise<VisitorListResponse> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/visitors`, { params });
+      return response.data;
+    },
+    get: async (workspaceId: string, sessionId: string): Promise<VisitorSessionDetail> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/visitors/${sessionId}`);
+      return response.data;
+    },
+    identify: async (workspaceId: string, sessionId: string): Promise<{ status: string }> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/visitors/${sessionId}/identify`);
+      return response.data;
+    },
+    link: async (workspaceId: string, sessionId: string, data: { record_id: string }): Promise<{ status: string }> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/visitors/${sessionId}/link`, data);
+      return response.data;
+    },
+  },
+  icpTemplates: {
+    list: async (workspaceId: string): Promise<ICPTemplate[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/icp-templates`);
+      return response.data;
+    },
+    create: async (workspaceId: string, data: ICPTemplateCreate): Promise<ICPTemplate> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/icp-templates`, data);
+      return response.data;
+    },
+    update: async (workspaceId: string, templateId: string, data: ICPTemplateUpdate): Promise<ICPTemplate> => {
+      const response = await api.put(`/workspaces/${workspaceId}/gtm/icp-templates/${templateId}`, data);
+      return response.data;
+    },
+    delete: async (workspaceId: string, templateId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/gtm/icp-templates/${templateId}`);
+    },
+  },
+  scoring: {
+    overview: async (workspaceId: string): Promise<ScoringOverview> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/scoring/overview`);
+      return response.data;
+    },
+    list: async (workspaceId: string, params?: {
+      page?: number; per_page?: number; min_score?: number; max_score?: number;
+      lifecycle_stage?: string; sort_by?: string; sort_dir?: string;
+    }): Promise<ScoredLeadListResponse> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/scoring/leads`, { params });
+      return response.data;
+    },
+    detail: async (workspaceId: string, recordId: string): Promise<LeadScore> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/scoring/leads/${recordId}`);
+      return response.data;
+    },
+  },
+  compliance: {
+    checkSend: async (workspaceId: string, email: string): Promise<SendPermissionCheck> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/compliance/check`, { params: { email } });
+      return response.data;
+    },
+    getConsent: async (workspaceId: string, email: string): Promise<ConsentStatus> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/compliance/consent/${encodeURIComponent(email)}`);
+      return response.data;
+    },
+    recordConsent: async (workspaceId: string, data: {
+      email: string; consent_type: string; consent_source: string; jurisdiction: string; record_id?: string;
+    }): Promise<ConsentStatus> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/compliance/consent`, data);
+      return response.data;
+    },
+    revokeConsent: async (workspaceId: string, email: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/gtm/compliance/consent/${encodeURIComponent(email)}`);
+    },
+    listSuppression: async (workspaceId: string, params?: { page?: number; per_page?: number }): Promise<{
+      entries: SuppressionEntry[]; total: number; page: number; per_page: number;
+    }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/compliance/suppression`, { params });
+      return response.data;
+    },
+    addSuppression: async (workspaceId: string, data: { email: string; reason: string; source?: string }): Promise<SuppressionEntry> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/compliance/suppression`, data);
+      return response.data;
+    },
+    removeSuppression: async (workspaceId: string, email: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/gtm/compliance/suppression/${encodeURIComponent(email)}`);
+    },
+    unsubscribe: async (workspaceId: string, email: string): Promise<void> => {
+      await api.post(`/workspaces/${workspaceId}/gtm/compliance/unsubscribe`, { email });
+    },
+    auditLog: async (workspaceId: string, params?: {
+      email?: string; action?: string; page?: number; per_page?: number;
+    }): Promise<{ entries: ComplianceAuditEntry[]; total: number; page: number; per_page: number }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/compliance/audit`, { params });
+      return response.data;
+    },
+  },
+  dedup: {
+    scan: async (workspaceId: string, limit?: number): Promise<DuplicateMatch[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/dedup/scan`, { params: { limit } });
+      return response.data;
+    },
+    merge: async (workspaceId: string, data: { primary_id: string; duplicate_id: string; strategy?: string }): Promise<{
+      merged_record_id: string; fields_merged: number; events_relinked: number; sessions_relinked: number;
+    }> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/dedup/merge`, data);
+      return response.data;
+    },
+    stats: async (workspaceId: string): Promise<DedupStats> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/dedup/stats`);
+      return response.data;
+    },
+  },
+  sequences: {
+    list: async (workspaceId: string, params?: { status?: string; page?: number; per_page?: number }): Promise<{
+      items: OutreachSequence[]; total: number; page: number; per_page: number;
+    }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/sequences`, { params });
+      return response.data;
+    },
+    get: async (workspaceId: string, sequenceId: string): Promise<OutreachSequence> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/sequences/${sequenceId}`);
+      return response.data;
+    },
+    create: async (workspaceId: string, data: {
+      name: string; description?: string; steps?: SequenceStep[]; settings?: Record<string, unknown>; channels?: string[];
+    }): Promise<OutreachSequence> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/sequences`, data);
+      return response.data;
+    },
+    update: async (workspaceId: string, sequenceId: string, data: Partial<{
+      name: string; description: string; steps: SequenceStep[]; settings: Record<string, unknown>; channels: string[];
+    }>): Promise<OutreachSequence> => {
+      const response = await api.put(`/workspaces/${workspaceId}/gtm/sequences/${sequenceId}`, data);
+      return response.data;
+    },
+    delete: async (workspaceId: string, sequenceId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/gtm/sequences/${sequenceId}`);
+    },
+    activate: async (workspaceId: string, sequenceId: string): Promise<OutreachSequence> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/sequences/${sequenceId}/activate`);
+      return response.data;
+    },
+    pause: async (workspaceId: string, sequenceId: string): Promise<OutreachSequence> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/sequences/${sequenceId}/pause`);
+      return response.data;
+    },
+    enroll: async (workspaceId: string, sequenceId: string, data: {
+      record_id: string; email: string; contact_name?: string;
+    }): Promise<OutreachEnrollment> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/sequences/${sequenceId}/enroll`, data);
+      return response.data;
+    },
+    bulkEnroll: async (workspaceId: string, sequenceId: string, contacts: {
+      record_id: string; email: string; contact_name?: string;
+    }[]): Promise<{ enrolled: number; skipped: number; failed: number; errors: string[] }> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/sequences/${sequenceId}/bulk-enroll`, { contacts });
+      return response.data;
+    },
+    listEnrollments: async (workspaceId: string, sequenceId: string, params?: {
+      status?: string; page?: number; per_page?: number;
+    }): Promise<{ items: OutreachEnrollment[]; total: number; page: number; per_page: number }> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/sequences/${sequenceId}/enrollments`, { params });
+      return response.data;
+    },
+    pauseEnrollment: async (workspaceId: string, enrollmentId: string): Promise<void> => {
+      await api.post(`/workspaces/${workspaceId}/gtm/enrollments/${enrollmentId}/pause`);
+    },
+    resumeEnrollment: async (workspaceId: string, enrollmentId: string): Promise<void> => {
+      await api.post(`/workspaces/${workspaceId}/gtm/enrollments/${enrollmentId}/resume`);
+    },
+    unenroll: async (workspaceId: string, enrollmentId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/gtm/enrollments/${enrollmentId}`);
+    },
+    timeline: async (workspaceId: string, enrollmentId: string): Promise<StepExecution[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/enrollments/${enrollmentId}/timeline`);
+      return response.data;
+    },
+    analytics: async (workspaceId: string, sequenceId: string): Promise<SequenceAnalytics> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/sequences/${sequenceId}/analytics`);
+      return response.data;
+    },
+  },
+  analytics: {
+    pipeline: async (workspaceId: string, days?: number): Promise<PipelineAnalytics> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/analytics/pipeline`, { params: { days } });
+      return response.data;
+    },
+    channels: async (workspaceId: string, days?: number): Promise<ChannelAnalytics> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/analytics/channels`, { params: { days } });
+      return response.data;
+    },
+    attribution: async (workspaceId: string, model?: string, days?: number): Promise<AttributionAnalytics> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/analytics/attribution`, { params: { model, days } });
+      return response.data;
+    },
+    sequences: async (workspaceId: string, days?: number): Promise<SequenceComparisonAnalytics> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/analytics/sequences`, { params: { days } });
+      return response.data;
+    },
+    trends: async (workspaceId: string, days?: number): Promise<TrendAnalytics> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/analytics/trends`, { params: { days } });
+      return response.data;
+    },
+  },
+  import: {
+    run: async (workspaceId: string, data: {
+      csv_content: string; verify_emails?: boolean; skip_duplicates?: boolean; sequence_id?: string;
+    }): Promise<BulkImportResponse> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/import`, data);
+      return response.data;
+    },
+  },
+  replies: {
+    getStats: async (workspaceId: string, days?: number): Promise<ReplyClassificationStats> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/replies/stats`, { params: { days: days || 30 } });
+      return response.data;
+    },
+    classify: async (workspaceId: string, data: {
+      enrollment_id: string; reply_text: string; reply_from?: string;
+    }): Promise<ReplyClassificationResponse> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/replies/classify`, data);
+      return response.data;
+    },
+  },
+  // ---- Alerts (#32) ----
+  alerts: {
+    listConfigs: async (workspaceId: string): Promise<AlertConfigResponse[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/alerts/configs`);
+      return response.data;
+    },
+    createConfig: async (workspaceId: string, data: Record<string, unknown>): Promise<AlertConfigResponse> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/alerts/configs`, data);
+      return response.data;
+    },
+    updateConfig: async (workspaceId: string, alertId: string, data: Record<string, unknown>): Promise<AlertConfigResponse> => {
+      const response = await api.put(`/workspaces/${workspaceId}/gtm/alerts/configs/${alertId}`, data);
+      return response.data;
+    },
+    deleteConfig: async (workspaceId: string, alertId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/gtm/alerts/configs/${alertId}`);
+    },
+    listLogs: async (workspaceId: string, params?: { page?: number; per_page?: number; event_type?: string }): Promise<AlertLogListResponse> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/alerts/logs`, { params });
+      return response.data;
+    },
+    test: async (workspaceId: string, alertId: string): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/alerts/test/${alertId}`);
+      return response.data;
+    },
+  },
+  // ---- Routing & SLA (#26) ----
+  routing: {
+    listRules: async (workspaceId: string): Promise<RoutingRuleResponse[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/routing/rules`);
+      return response.data;
+    },
+    createRule: async (workspaceId: string, data: Record<string, unknown>): Promise<RoutingRuleResponse> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/routing/rules`, data);
+      return response.data;
+    },
+    updateRule: async (workspaceId: string, ruleId: string, data: Record<string, unknown>): Promise<RoutingRuleResponse> => {
+      const response = await api.put(`/workspaces/${workspaceId}/gtm/routing/rules/${ruleId}`, data);
+      return response.data;
+    },
+    deleteRule: async (workspaceId: string, ruleId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/gtm/routing/rules/${ruleId}`);
+    },
+    route: async (workspaceId: string, recordId: string): Promise<LeadAssignmentResponse> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/routing/route/${recordId}`);
+      return response.data;
+    },
+    listAssignments: async (workspaceId: string, params?: { page?: number; per_page?: number; status?: string; assignee_id?: string }): Promise<LeadAssignmentListResponse> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/routing/assignments`, { params });
+      return response.data;
+    },
+    respond: async (workspaceId: string, assignmentId: string): Promise<LeadAssignmentResponse> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/routing/assignments/${assignmentId}/respond`);
+      return response.data;
+    },
+    reassign: async (workspaceId: string, assignmentId: string, data: { new_assignee_id: string; notes?: string }): Promise<LeadAssignmentResponse> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/routing/assignments/${assignmentId}/reassign`, data);
+      return response.data;
+    },
+    slaDashboard: async (workspaceId: string, days?: number): Promise<SLADashboardResponse> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/routing/sla-dashboard`, { params: { days } });
+      return response.data;
+    },
+  },
+  // ---- Health Scoring (#27) ----
+  health: {
+    dashboard: async (workspaceId: string): Promise<HealthDashboardResponse> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/health/dashboard`);
+      return response.data;
+    },
+    listScores: async (workspaceId: string, params?: { page?: number; per_page?: number; health_status?: string }): Promise<HealthScoreListResponse> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/health/scores`, { params });
+      return response.data;
+    },
+    getScore: async (workspaceId: string, recordId: string): Promise<HealthScoreResponse> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/health/scores/${recordId}`);
+      return response.data;
+    },
+    rescore: async (workspaceId: string, recordId: string): Promise<HealthScoreResponse> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/health/scores/${recordId}/rescore`);
+      return response.data;
+    },
+    batchScore: async (workspaceId: string): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/health/batch-score`);
+      return response.data;
+    },
+    getConfig: async (workspaceId: string): Promise<Record<string, unknown>> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/health/config`);
+      return response.data;
+    },
+    updateConfig: async (workspaceId: string, data: Record<string, unknown>): Promise<Record<string, unknown>> => {
+      const response = await api.put(`/workspaces/${workspaceId}/gtm/health/config`, data);
+      return response.data;
+    },
+  },
+  // ---- Expansion Playbooks (#28) ----
+  expansion: {
+    listPlaybooks: async (workspaceId: string): Promise<ExpansionPlaybookResponse[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/expansion/playbooks`);
+      return response.data;
+    },
+    createPlaybook: async (workspaceId: string, data: Record<string, unknown>): Promise<ExpansionPlaybookResponse> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/expansion/playbooks`, data);
+      return response.data;
+    },
+    getPlaybook: async (workspaceId: string, playbookId: string): Promise<ExpansionPlaybookResponse> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/expansion/playbooks/${playbookId}`);
+      return response.data;
+    },
+    updatePlaybook: async (workspaceId: string, playbookId: string, data: Record<string, unknown>): Promise<ExpansionPlaybookResponse> => {
+      const response = await api.put(`/workspaces/${workspaceId}/gtm/expansion/playbooks/${playbookId}`, data);
+      return response.data;
+    },
+    deletePlaybook: async (workspaceId: string, playbookId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/gtm/expansion/playbooks/${playbookId}`);
+    },
+    enroll: async (workspaceId: string, playbookId: string, recordId: string, data?: Record<string, unknown>): Promise<ExpansionEnrollmentResponse> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/expansion/playbooks/${playbookId}/enroll/${recordId}`, data || {});
+      return response.data;
+    },
+    listEnrollments: async (workspaceId: string, params?: { page?: number; per_page?: number; playbook_id?: string; status?: string }): Promise<ExpansionEnrollmentListResponse> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/expansion/enrollments`, { params });
+      return response.data;
+    },
+    advanceEnrollment: async (workspaceId: string, enrollmentId: string): Promise<ExpansionEnrollmentResponse> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/expansion/enrollments/${enrollmentId}/advance`);
+      return response.data;
+    },
+    recordOutcome: async (workspaceId: string, enrollmentId: string, data: Record<string, unknown>): Promise<ExpansionEnrollmentResponse> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/expansion/enrollments/${enrollmentId}/outcome`, data);
+      return response.data;
+    },
+    analytics: async (workspaceId: string): Promise<PlaybookAnalyticsResponse> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/expansion/analytics`);
+      return response.data;
+    },
+  },
+  // ---- Handoffs (#29) ----
+  handoffs: {
+    create: async (workspaceId: string, data: Record<string, unknown>): Promise<HandoffResponse> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/handoffs`, data);
+      return response.data;
+    },
+    list: async (workspaceId: string, params?: { page?: number; per_page?: number; status?: string; assigned_to?: string }): Promise<HandoffListResponse> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/handoffs`, { params });
+      return response.data;
+    },
+    get: async (workspaceId: string, handoffId: string): Promise<HandoffResponse> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/handoffs/${handoffId}`);
+      return response.data;
+    },
+    accept: async (workspaceId: string, handoffId: string): Promise<HandoffResponse> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/handoffs/${handoffId}/accept`);
+      return response.data;
+    },
+    decline: async (workspaceId: string, handoffId: string, data: { reason: string }): Promise<HandoffResponse> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/handoffs/${handoffId}/decline`, data);
+      return response.data;
+    },
+    convert: async (workspaceId: string, handoffId: string, data: Record<string, unknown>): Promise<HandoffResponse> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/handoffs/${handoffId}/convert`, data);
+      return response.data;
+    },
+    analytics: async (workspaceId: string): Promise<HandoffAnalyticsResponse> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/handoffs/analytics`);
+      return response.data;
+    },
+  },
+  // ---- Intent Signals (#25) ----
+  intent: {
+    listSignals: async (workspaceId: string, params?: { page?: number; per_page?: number; signal_type?: string; intent_strength?: string }): Promise<IntentSignalListResponse> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/intent/signals`, { params });
+      return response.data;
+    },
+    createSignal: async (workspaceId: string, data: Record<string, unknown>): Promise<IntentSignalResponse> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/intent/signals`, data);
+      return response.data;
+    },
+    dismissSignal: async (workspaceId: string, signalId: string): Promise<void> => {
+      await api.post(`/workspaces/${workspaceId}/gtm/intent/signals/${signalId}/dismiss`);
+    },
+    getRecordSignals: async (workspaceId: string, recordId: string): Promise<IntentSignalResponse[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/intent/records/${recordId}/signals`);
+      return response.data;
+    },
+    getConfig: async (workspaceId: string): Promise<Record<string, unknown>> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/intent/config`);
+      return response.data;
+    },
+    updateConfig: async (workspaceId: string, data: Record<string, unknown>): Promise<Record<string, unknown>> => {
+      const response = await api.put(`/workspaces/${workspaceId}/gtm/intent/config`, data);
+      return response.data;
+    },
+    summary: async (workspaceId: string): Promise<IntentSummaryResponse> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/intent/summary`);
+      return response.data;
+    },
+    collect: async (workspaceId: string): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/intent/collect`);
+      return response.data;
+    },
+  },
+  // ---- Competitors (#31) ----
+  competitors: {
+    list: async (workspaceId: string): Promise<CompetitorResponse[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/competitors`);
+      return response.data;
+    },
+    create: async (workspaceId: string, data: Record<string, unknown>): Promise<CompetitorResponse> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/competitors`, data);
+      return response.data;
+    },
+    get: async (workspaceId: string, competitorId: string): Promise<CompetitorResponse> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/competitors/${competitorId}`);
+      return response.data;
+    },
+    update: async (workspaceId: string, competitorId: string, data: Record<string, unknown>): Promise<CompetitorResponse> => {
+      const response = await api.put(`/workspaces/${workspaceId}/gtm/competitors/${competitorId}`, data);
+      return response.data;
+    },
+    delete: async (workspaceId: string, competitorId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/gtm/competitors/${competitorId}`);
+    },
+    listChanges: async (workspaceId: string, params?: { page?: number; per_page?: number; competitor_id?: string }): Promise<CompetitorChangeListResponse> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/competitors/changes`, { params });
+      return response.data;
+    },
+    acknowledgeChange: async (workspaceId: string, changeId: string): Promise<void> => {
+      await api.post(`/workspaces/${workspaceId}/gtm/competitors/changes/${changeId}/acknowledge`);
+    },
+    check: async (workspaceId: string, competitorId: string): Promise<Record<string, unknown>> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/competitors/${competitorId}/check`);
+      return response.data;
+    },
+    getBattleCard: async (workspaceId: string, competitorId: string): Promise<BattleCardResponse> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/competitors/${competitorId}/battle-card`);
+      return response.data;
+    },
+    generateBattleCard: async (workspaceId: string, competitorId: string): Promise<BattleCardResponse> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/competitors/${competitorId}/battle-card/generate`);
+      return response.data;
+    },
+    updateBattleCard: async (workspaceId: string, competitorId: string, cardId: string, data: Record<string, unknown>): Promise<BattleCardResponse> => {
+      const response = await api.put(`/workspaces/${workspaceId}/gtm/competitors/${competitorId}/battle-card/${cardId}`, data);
+      return response.data;
+    },
+    publishBattleCard: async (workspaceId: string, competitorId: string, cardId: string): Promise<BattleCardResponse> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/competitors/${competitorId}/battle-card/${cardId}/publish`);
+      return response.data;
+    },
+  },
+  // ---- SEO Audit (#18) ----
+  seo: {
+    createAudit: async (workspaceId: string, data: { target_url: string; record_id?: string; max_pages?: number }): Promise<SEOAuditResponse> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/seo/audits`, data);
+      return response.data;
+    },
+    listAudits: async (workspaceId: string, params?: { page?: number; per_page?: number }): Promise<SEOAuditListResponse> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/seo/audits`, { params });
+      return response.data;
+    },
+    getAudit: async (workspaceId: string, auditId: string): Promise<SEOAuditResponse> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/seo/audits/${auditId}`);
+      return response.data;
+    },
+    getAuditPages: async (workspaceId: string, auditId: string): Promise<Record<string, unknown>[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/seo/audits/${auditId}/pages`);
+      return response.data;
+    },
+    getHistory: async (workspaceId: string, domain: string): Promise<Record<string, unknown>> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/seo/history/${domain}`);
+      return response.data;
+    },
+    deleteAudit: async (workspaceId: string, auditId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/gtm/seo/audits/${auditId}`);
+    },
+  },
+  // ---- Content Gap (#19) ----
+  contentGap: {
+    createAnalysis: async (workspaceId: string, data: { our_domain: string; competitor_domains: string[] }): Promise<ContentAnalysisResponse> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/content-gap/analyses`, data);
+      return response.data;
+    },
+    listAnalyses: async (workspaceId: string, params?: { page?: number; per_page?: number }): Promise<ContentAnalysisListResponse> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/content-gap/analyses`, { params });
+      return response.data;
+    },
+    getAnalysis: async (workspaceId: string, analysisId: string): Promise<ContentAnalysisResponse> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/content-gap/analyses/${analysisId}`);
+      return response.data;
+    },
+    deleteAnalysis: async (workspaceId: string, analysisId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/gtm/content-gap/analyses/${analysisId}`);
+    },
+  },
+  // ---- ABM (#30) ----
+  abm: {
+    listLists: async (workspaceId: string): Promise<TargetListResponse[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/abm/lists`);
+      return response.data;
+    },
+    createList: async (workspaceId: string, data: Record<string, unknown>): Promise<TargetListResponse> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/abm/lists`, data);
+      return response.data;
+    },
+    getList: async (workspaceId: string, listId: string): Promise<TargetListResponse> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/abm/lists/${listId}`);
+      return response.data;
+    },
+    updateList: async (workspaceId: string, listId: string, data: Record<string, unknown>): Promise<TargetListResponse> => {
+      const response = await api.put(`/workspaces/${workspaceId}/gtm/abm/lists/${listId}`, data);
+      return response.data;
+    },
+    deleteList: async (workspaceId: string, listId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/gtm/abm/lists/${listId}`);
+    },
+    addAccounts: async (workspaceId: string, listId: string, accounts: Record<string, unknown>[]): Promise<ABMAccountResponse[]> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/abm/lists/${listId}/accounts`, accounts);
+      return response.data;
+    },
+    refreshList: async (workspaceId: string, listId: string): Promise<TargetListResponse> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/abm/lists/${listId}/refresh`);
+      return response.data;
+    },
+    listAccounts: async (workspaceId: string, params?: { page?: number; per_page?: number; target_list_id?: string; tier?: string; stage?: string }): Promise<ABMAccountListResponse> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/abm/accounts`, { params });
+      return response.data;
+    },
+    getAccount: async (workspaceId: string, accountId: string): Promise<ABMAccountResponse> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/abm/accounts/${accountId}`);
+      return response.data;
+    },
+    updateAccount: async (workspaceId: string, accountId: string, data: Record<string, unknown>): Promise<ABMAccountResponse> => {
+      const response = await api.put(`/workspaces/${workspaceId}/gtm/abm/accounts/${accountId}`, data);
+      return response.data;
+    },
+    deleteAccount: async (workspaceId: string, accountId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/gtm/abm/accounts/${accountId}`);
+    },
+    changeStage: async (workspaceId: string, accountId: string, data: { stage: string; notes?: string }): Promise<ABMAccountResponse> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/abm/accounts/${accountId}/stage`, data);
+      return response.data;
+    },
+    assignCampaign: async (workspaceId: string, accountId: string, data: { campaign_id: string; campaign_name: string }): Promise<ABMAccountResponse> => {
+      const response = await api.post(`/workspaces/${workspaceId}/gtm/abm/accounts/${accountId}/campaign`, data);
+      return response.data;
+    },
+    overview: async (workspaceId: string): Promise<ABMOverviewResponse> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/abm/overview`);
+      return response.data;
+    },
+    accountJourney: async (workspaceId: string, accountId: string): Promise<Record<string, unknown>> => {
+      const response = await api.get(`/workspaces/${workspaceId}/gtm/abm/accounts/${accountId}/journey`);
+      return response.data;
+    },
+  }
+}
 export interface TableField {
   id: string;
-  object_id: string;
   name: string;
   slug: string;
   attribute_type: string;

@@ -32,6 +32,7 @@ def get_all_workflows() -> list:
     from aexy.temporal.workflows.email_campaign import EmailCampaignWorkflow
     from aexy.temporal.workflows.maintenance import CleanupWorkflow
     from aexy.temporal.workflows.onboarding import OnboardingWorkflow
+    from aexy.temporal.workflows.outreach_sequence import OutreachSequenceWorkflow
     from aexy.temporal.workflows.single_activity import SingleActivityWorkflow
     from aexy.temporal.workflows.sync import SyncGmailWorkflow, SyncRepositoryWorkflow
 
@@ -44,6 +45,7 @@ def get_all_workflows() -> list:
         EmailCampaignWorkflow,
         OnboardingWorkflow,
         CleanupWorkflow,
+        OutreachSequenceWorkflow,
     ]
 
 
@@ -175,6 +177,42 @@ def get_all_activities() -> list:
         cleanup_old_executions,
         execute_workflow_action,
     )
+    from aexy.temporal.activities.gtm import (
+        identify_visitor_session,
+        process_visitor_events,
+        verify_email_address,
+        score_lead,
+        batch_score_leads,
+        execute_outreach_step,
+        finalize_enrollment,
+        generate_weekly_gtm_report,
+        classify_outreach_reply,
+        personalize_outreach_batch,
+        run_bulk_import,
+        # Batch 1: Alerts + Routing
+        send_gtm_alert,
+        route_new_lead,
+        check_sla_breaches,
+        # Batch 2: Customer Success
+        score_customer_health,
+        batch_score_customer_health,
+        detect_health_drops,
+        evaluate_expansion_triggers,
+        advance_expansion_step,
+        # Batch 3: Intelligence
+        collect_intent_signals,
+        match_intent_signals_to_records,
+        check_competitor_changes,
+        generate_battle_card,
+        run_seo_audit,
+        run_content_gap_analysis,
+        # Batch 4: ABM
+        recalculate_abm_engagement,
+        refresh_dynamic_abm_lists,
+        # Batch 5: Maintenance
+        cleanup_ip_addresses,
+        purge_behavioral_events,
+    )
 
     return [
         # Analysis
@@ -270,6 +308,41 @@ def get_all_activities() -> list:
         cleanup_old_executions,
         # Insights
         auto_generate_snapshots,
+        # GTM
+        identify_visitor_session,
+        process_visitor_events,
+        verify_email_address,
+        score_lead,
+        batch_score_leads,
+        execute_outreach_step,
+        finalize_enrollment,
+        generate_weekly_gtm_report,
+        classify_outreach_reply,
+        personalize_outreach_batch,
+        run_bulk_import,
+        # GTM Alerts + Routing
+        send_gtm_alert,
+        route_new_lead,
+        check_sla_breaches,
+        # GTM Customer Success
+        score_customer_health,
+        batch_score_customer_health,
+        detect_health_drops,
+        evaluate_expansion_triggers,
+        advance_expansion_step,
+        # GTM Intelligence
+        collect_intent_signals,
+        match_intent_signals_to_records,
+        check_competitor_changes,
+        generate_battle_card,
+        run_seo_audit,
+        run_content_gap_analysis,
+        # GTM ABM
+        recalculate_abm_engagement,
+        refresh_dynamic_abm_lists,
+        # GTM Maintenance
+        cleanup_ip_addresses,
+        purge_behavioral_events,
         # Reminders (Compliance)
         generate_reminder_instances,
         process_escalations,

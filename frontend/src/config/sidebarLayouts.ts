@@ -49,9 +49,19 @@ import {
     RefreshCw,
     Palmtree,
     CheckSquare,
+    Crosshair,
+    Eye,
+    BarChart2,
+    Plug,
+    Upload,
+    ArrowRightLeft,
+    Swords,
+    Globe,
     LayoutTemplate,
     Download,
     Table2,
+    BarChart3,
+    HeartPulse,
 } from "lucide-react";
 
 export type SidebarLayoutType = "grouped" | "flat";
@@ -168,6 +178,23 @@ const complianceItems: SidebarItemConfig[] = [
     { href: "/compliance/training", label: "Training", icon: GraduationCap },
     { href: "/compliance/certifications", label: "Certifications", icon: ShieldCheck },
     { href: "/compliance/calendar", label: "Calendar", icon: CalendarDays },
+];
+
+const gtmItems: SidebarItemConfig[] = [
+    { href: "/gtm", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/gtm/visitors", label: "Visitors", icon: Eye },
+    { href: "/gtm/scoring", label: "Scoring & ICP", icon: BarChart2 },
+    { href: "/gtm/routing", label: "Routing", icon: UserCheck },
+    { href: "/gtm/sequences", label: "Sequences", icon: Mail },
+    { href: "/gtm/analytics", label: "Analytics", icon: BarChart3 },
+    { href: "/gtm/abm", label: "ABM", icon: Target },
+    { href: "/gtm/competitors", label: "Competitors", icon: Swords },
+    { href: "/gtm/intent", label: "Intent", icon: Zap },
+    { href: "/gtm/health", label: "Health", icon: HeartPulse },
+    { href: "/gtm/import", label: "Import", icon: Upload },
+    { href: "/gtm/alerts", label: "Alerts", icon: Bell },
+    { href: "/gtm/compliance", label: "Compliance", icon: ShieldCheck },
+    { href: "/gtm/providers", label: "Providers", icon: Plug },
 ];
 
 /**
@@ -308,6 +335,12 @@ export const GROUPED_LAYOUT: SidebarLayoutConfig = {
                     icon: Mail,
                     items: emailItems,
                 },
+                {
+                    href: "/gtm",
+                    label: "GTM",
+                    icon: Crosshair,
+                    items: gtmItems,
+                },
             ],
         },
         {
@@ -440,6 +473,13 @@ export const FLAT_LAYOUT: SidebarLayoutConfig = {
                     items: emailItems,
                     personas: ["sales", "support", "admin"],
                 },
+                {
+                    href: "/gtm",
+                    label: "GTM",
+                    icon: Crosshair,
+                    items: gtmItems,
+                },
+                { href: "/templates", label: "Templates", icon: LayoutTemplate },
                 {
                     href: "/reports",
                     label: "Reports",
