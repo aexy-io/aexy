@@ -17998,6 +17998,7 @@ export interface OutreachSequence {
   replied_count: number;
   bounced_count: number;
   created_by: string | null;
+}
 // ============================================================================
 // Standalone Tables Types & API
 // ============================================================================
