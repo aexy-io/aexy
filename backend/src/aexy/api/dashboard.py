@@ -220,6 +220,53 @@ def get_default_preferences_for_preset(preset_type: str) -> dict:
 
 # ========== API ENDPOINTS ==========
 
+@router.post("/track-visits")
+async def track_page_visits(
+    visits: dict[str, int],
+    db: AsyncSession = Depends(get_db),
+    current_developer: Developer = Depends(get_current_developer),
+):
+    """Batch-merge page visit counts for frequently-used sidebar computation.
+
+    Accepts a dict of { "/path": count } and atomically merges into stored totals.
+    Frontend accumulates visits in-memory and flushes periodically.
+    """
+    if not visits:
+        return {"ok": True}
+
+    # Cap batch size to prevent abuse
+    if len(visits) > 50:
+        visits = dict(list(visits.items())[:50])
+
+    result = await db.execute(
+        select(DashboardPreferences).where(
+            DashboardPreferences.developer_id == str(current_developer.id)
+        )
+    )
+    preferences = result.scalar_one_or_none()
+
+    if not preferences:
+        defaults = get_default_preferences_for_preset("developer")
+        preferences = DashboardPreferences(
+            developer_id=str(current_developer.id),
+            **defaults,
+        )
+        db.add(preferences)
+
+    stored = dict(preferences.sidebar_page_visits or {})
+    for path, count in visits.items():
+        if not isinstance(count, int) or count < 1:
+            continue
+        # Normalize to top-level route: /crm/inbox -> /crm
+        parts = path.strip("/").split("/")
+        normalized = f"/{parts[0]}" if parts and parts[0] else path
+        stored[normalized] = stored.get(normalized, 0) + count
+    preferences.sidebar_page_visits = stored
+
+    await db.commit()
+    return {"ok": True}
+
+
 @router.get("/preferences", response_model=DashboardPreferencesResponse)
 async def get_preferences(
     db: AsyncSession = Depends(get_db),

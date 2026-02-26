@@ -318,6 +318,25 @@ export const APP_CATALOG: Record<string, AppDefinition> = {
   },
 };
 
+export const CATEGORY_LABELS: Record<AppCategory | "other", string> = {
+  engineering: "Engineering",
+  people: "People",
+  business: "Business",
+  productivity: "Productivity",
+  other: "Other",
+};
+
+export const PERSONA_LABELS: Record<string, string> = {
+  developer: "Developer",
+  manager: "Manager",
+  product: "Product",
+  hr: "HR",
+  support: "Support",
+  sales: "Sales",
+  admin: "Admin",
+  custom: "Custom",
+};
+
 // Get app definition by ID
 export function getAppById(appId: string): AppDefinition | undefined {
   return APP_CATALOG[appId];
@@ -548,6 +567,7 @@ export const SIDEBAR_TO_APP_MAP: Record<string, string> = {
   "/insights/leaderboard": "insights",
   "/insights/developers": "insights",
   "/tables": "tables",
+  "/templates": "automations",
   "/compliance": "compliance",
   "/compliance/reminders": "compliance",
   "/compliance/documents": "compliance",

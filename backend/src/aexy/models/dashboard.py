@@ -86,6 +86,22 @@ class DashboardPreferences(Base):
         server_default="false",
     )
 
+    # Sidebar page visit counts: { "/crm": 42, "/tracking": 15 }
+    sidebar_page_visits: Mapped[dict] = mapped_column(
+        JSONB,
+        default=dict,
+        nullable=False,
+        server_default="'{}'::jsonb",
+    )
+
+    # Sidebar pinned items: ["/crm", "/agents"]
+    sidebar_pinned_items: Mapped[list] = mapped_column(
+        JSONB,
+        default=list,
+        nullable=False,
+        server_default="'[]'::jsonb",
+    )
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
