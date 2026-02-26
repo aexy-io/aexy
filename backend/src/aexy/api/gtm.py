@@ -1393,8 +1393,21 @@ async def import_csv_async(
     """Import contacts from CSV asynchronously (for large imports).
 
     Returns a workflow ID that can be used to check import status.
+    CSV content must be under 1.5MB to fit within Temporal's payload limit.
     """
     await check_workspace_permission(workspace_id, current_user, db)
+
+    # Temporal has a ~2MB payload limit. Reject CSV that would exceed it
+    # (accounting for JSON serialization overhead).
+    csv_size = len(data.csv_content.encode("utf-8"))
+    if csv_size > 1_500_000:
+        raise HTTPException(
+            status_code=413,
+            detail=(
+                f"CSV content is {csv_size / 1_000_000:.1f}MB which exceeds the 1.5MB limit "
+                f"for async import. Use the synchronous /import endpoint for large files."
+            ),
+        )
 
     from aexy.temporal.dispatch import dispatch
     from aexy.temporal.task_queues import TaskQueue
