@@ -9,10 +9,11 @@ import {
   Table2,
   Settings,
   Share2,
+  History,
   X,
-  Type,
   Columns,
   Loader2,
+  Star,
 } from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
@@ -34,37 +35,57 @@ import { SavedViewSwitcher } from "@/components/crm/SavedViewSwitcher";
 import { KanbanBoard } from "@/components/crm/KanbanBoard";
 import { ColumnVisibilityMenu } from "@/components/crm/ColumnSelector";
 import { FieldEditor } from "@/components/fields";
-import { TableShareDialog, TablePermissionBadge } from "@/components/tables";
+import { TableShareDialog, TablePermissionBadge, TableAuditLog } from "@/components/tables";
 import { TableFilterPanel, FilterRule, matchesFilters } from "@/components/tables/TableFilterPanel";
-import { FIELD_TYPE_OPTIONS, getFieldTypeOption } from "@/config/fieldTypes";
-import type { CRMAttribute, CRMRecord, CRMAttributeType, TableSavedView, ColumnDisplayConfig } from "@/lib/api";
+import { FIELD_TYPE_OPTIONS } from "@/config/fieldTypes";
+import { registerCustomFieldTypes, getAllCustomFieldTypes } from "@/components/fields";
+import { useCustomFieldTypes } from "@/hooks/useTables";
+import type { CRMAttribute, CRMRecord, CRMAttributeType, TableSavedView, ColumnDisplayConfig, WorkspaceFieldType } from "@/lib/api";
 
 function AddFieldPanel({
   onAdd,
   isAdding,
   onClose,
+  customFieldTypes,
 }: {
   onAdd: (data: { name: string; attribute_type: string; options?: Record<string, unknown> }) => Promise<unknown>;
   isAdding: boolean;
   onClose: () => void;
+  customFieldTypes?: WorkspaceFieldType[];
 }) {
   const [step, setStep] = useState<"pick" | "configure">("pick");
   const [selectedType, setSelectedType] = useState<CRMAttributeType | null>(null);
   const [fieldName, setFieldName] = useState("");
   const [statusOptions, setStatusOptions] = useState<string[]>(["To Do", "In Progress", "Done"]);
   const [selectOptions, setSelectOptions] = useState<string[]>([""]);
+  const [selectedCustomType, setSelectedCustomType] = useState<WorkspaceFieldType | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const handlePickType = (type: CRMAttributeType) => {
     setSelectedType(type);
+    setSelectedCustomType(null);
     setFieldName("");
+    setStep("configure");
+  };
+
+  const handlePickCustomType = (cft: WorkspaceFieldType) => {
+    setSelectedCustomType(cft);
+    setSelectedType(cft.base_type as CRMAttributeType);
+    setFieldName(cft.name);
+    // Pre-populate select options from preset
+    if (cft.preset_options && cft.preset_options.length > 0) {
+      setSelectOptions(cft.preset_options.map((o) => o.label));
+    }
     setStep("configure");
   };
 
   const handleCreate = async () => {
     if (!selectedType || !fieldName.trim()) return;
+    const attrType = selectedCustomType ? `custom:${selectedCustomType.slug}` : selectedType;
     const options: Record<string, unknown> = {};
-    if (selectedType === "status") {
+    if (selectedCustomType?.preset_options && selectedCustomType.preset_options.length > 0) {
+      options.options = selectedCustomType.preset_options;
+    } else if (selectedType === "status") {
       options.options = statusOptions.filter(Boolean).map((label) => ({
         value: label.toLowerCase().replace(/\s+/g, "_"),
         label,
@@ -81,7 +102,7 @@ function AddFieldPanel({
     } else if (selectedType === "rating") {
       options.max_rating = 5;
     }
-    await onAdd({ name: fieldName.trim(), attribute_type: selectedType, options: Object.keys(options).length > 0 ? options : undefined });
+    await onAdd({ name: fieldName.trim(), attribute_type: attrType, options: Object.keys(options).length > 0 ? options : undefined });
     onClose();
   };
 
@@ -100,20 +121,45 @@ function AddFieldPanel({
       </div>
 
       {step === "pick" ? (
-        <div className="p-3 grid grid-cols-2 gap-2 max-h-[400px] overflow-y-auto">
-          {FIELD_TYPE_OPTIONS.map((ft) => (
-            <button
-              key={ft.type}
-              onClick={() => handlePickType(ft.type)}
-              className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent text-left transition-colors border border-transparent hover:border-border"
-            >
-              <div className="p-1.5 rounded-md bg-purple-500/10 text-purple-500">{ft.icon}</div>
-              <div>
-                <div className="text-sm font-medium text-foreground">{ft.label}</div>
-                <div className="text-xs text-muted-foreground">{ft.description}</div>
+        <div className="p-3 max-h-[400px] overflow-y-auto space-y-3">
+          {customFieldTypes && customFieldTypes.length > 0 && (
+            <>
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Custom</div>
+              <div className="grid grid-cols-2 gap-2">
+                {customFieldTypes.map((cft) => (
+                  <button
+                    key={cft.id}
+                    onClick={() => handlePickCustomType(cft)}
+                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent text-left transition-colors border border-transparent hover:border-border"
+                  >
+                    <div className="p-1.5 rounded-md" style={{ backgroundColor: cft.color ? `${cft.color}20` : "rgba(139, 92, 246, 0.1)" }}>
+                      <Star className="h-4 w-4" style={{ color: cft.color || "#8b5cf6" }} />
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-foreground">{cft.name}</div>
+                      <div className="text-xs text-muted-foreground">{FIELD_TYPE_OPTIONS.find((f) => f.type === cft.base_type)?.label || cft.base_type}</div>
+                    </div>
+                  </button>
+                ))}
               </div>
-            </button>
-          ))}
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Built-in</div>
+            </>
+          )}
+          <div className="grid grid-cols-2 gap-2">
+            {FIELD_TYPE_OPTIONS.map((ft) => (
+              <button
+                key={ft.type}
+                onClick={() => handlePickType(ft.type)}
+                className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent text-left transition-colors border border-transparent hover:border-border"
+              >
+                <div className="p-1.5 rounded-md bg-purple-500/10 text-purple-500">{ft.icon}</div>
+                <div>
+                  <div className="text-sm font-medium text-foreground">{ft.label}</div>
+                  <div className="text-xs text-muted-foreground">{ft.description}</div>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
       ) : (
         <div className="p-4 space-y-4">
@@ -224,70 +270,6 @@ function AddFieldPanel({
   );
 }
 
-function FieldManagerPanel({
-  fields,
-  onDelete,
-  onClose,
-}: {
-  fields: CRMAttribute[];
-  onDelete: (fieldId: string) => Promise<void>;
-  onClose: () => void;
-}) {
-  if (fields.length === 0) {
-    return (
-      <div className="absolute right-0 top-full mt-2 z-50 w-[340px] bg-muted border border-border rounded-xl shadow-xl">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <h3 className="font-semibold text-foreground text-sm">Manage Fields</h3>
-          <button onClick={onClose} className="p-1 hover:bg-accent rounded-lg text-muted-foreground">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="p-4 text-center text-sm text-muted-foreground">No fields yet.</div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="absolute right-0 top-full mt-2 z-50 w-[340px] bg-muted border border-border rounded-xl shadow-xl">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-        <h3 className="font-semibold text-foreground text-sm">Manage Fields ({fields.length})</h3>
-        <button onClick={onClose} className="p-1 hover:bg-accent rounded-lg text-muted-foreground">
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-      <div className="p-2 max-h-[400px] overflow-y-auto space-y-1">
-        {fields.map((field) => {
-          const typeInfo = getFieldTypeOption(field.attribute_type);
-          return (
-            <div
-              key={field.id}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-accent group"
-            >
-              <div className="p-1 rounded bg-purple-500/10 text-purple-500">
-                {typeInfo?.icon || <Type className="h-4 w-4" />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-foreground truncate">{field.name}</div>
-                <div className="text-xs text-muted-foreground">{typeInfo?.label || field.attribute_type}</div>
-              </div>
-              <button
-                onClick={() => {
-                  if (confirm(`Delete field "${field.name}"? This will remove all data in this column.`)) {
-                    onDelete(field.id);
-                  }
-                }}
-                className="p-1 text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                title="Delete field"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 function CreateRecordModal({
   isOpen,
@@ -380,8 +362,16 @@ export default function TableDetailPage() {
   const { tables, updateTable, isUpdating } = useTables(workspaceId);
   const table = tables.find((t) => t.id === tableId);
 
-  const { fields, isLoading: fieldsLoading, addField, deleteField, isAdding } = useTableFields(workspaceId, tableId);
+  const { fields, isLoading: fieldsLoading, addField, isAdding } = useTableFields(workspaceId, tableId);
+  const { fieldTypes: customFieldTypes } = useCustomFieldTypes(workspaceId);
   const { access } = useTableAccess(workspaceId, tableId);
+
+  // Register custom field types for the field registry to resolve custom:slug types
+  useEffect(() => {
+    if (customFieldTypes.length > 0) {
+      registerCustomFieldTypes(customFieldTypes);
+    }
+  }, [customFieldTypes]);
   const {
     collaborators,
     addCollaborator,
@@ -411,8 +401,8 @@ export default function TableDetailPage() {
   const [columnDisplayConfig, setColumnDisplayConfig] = useState<ColumnDisplayConfig[]>([]);
 
   const [showAddField, setShowAddField] = useState(false);
-  const [showFieldManager, setShowFieldManager] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
+  const [showAuditLog, setShowAuditLog] = useState(false);
 
   // Adapt fields to CRMAttribute shape for DataTable compatibility
   const attributes: CRMAttribute[] = useMemo(() => {
@@ -578,6 +568,10 @@ export default function TableDetailPage() {
     await updateRecord({ recordId, values });
   };
 
+  const handleCellSave = async (recordId: string, slug: string, value: unknown) => {
+    await updateRecord({ recordId, values: { [slug]: value } });
+  };
+
   const handleCreateInStage = (stage: string) => {
     const statusField = fields.find((f) => f.attribute_type === "status");
     if (statusField) {
@@ -696,6 +690,14 @@ export default function TableDetailPage() {
             />
 
             <button
+              onClick={() => setShowAuditLog(true)}
+              className="flex items-center gap-2 px-3 py-2 bg-muted hover:bg-accent border border-border text-foreground rounded-lg transition-colors"
+              title="Activity log"
+            >
+              <History className="h-4 w-4" />
+            </button>
+
+            <button
               onClick={() => setShowShareDialog(true)}
               className="flex items-center gap-2 px-3 py-2 bg-muted hover:bg-accent border border-border text-foreground rounded-lg transition-colors"
               title="Share table"
@@ -712,10 +714,7 @@ export default function TableDetailPage() {
             {canEdit && (
               <div className="relative">
                 <button
-                  onClick={() => {
-                    setShowAddField(!showAddField);
-                    setShowFieldManager(false);
-                  }}
+                  onClick={() => setShowAddField(!showAddField)}
                   className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-accent border border-border text-foreground rounded-lg transition-colors"
                 >
                   <Plus className="h-4 w-4" />
@@ -726,31 +725,20 @@ export default function TableDetailPage() {
                     onAdd={addField}
                     isAdding={isAdding}
                     onClose={() => setShowAddField(false)}
+                    customFieldTypes={customFieldTypes}
                   />
                 )}
               </div>
             )}
 
-            {canEdit && fields.length > 0 && (
-              <div className="relative">
-                <button
-                  onClick={() => {
-                    setShowFieldManager(!showFieldManager);
-                    setShowAddField(false);
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 bg-muted hover:bg-accent border border-border text-foreground rounded-lg transition-colors"
-                  title="Manage fields"
-                >
-                  <Settings className="h-4 w-4" />
-                </button>
-                {showFieldManager && (
-                  <FieldManagerPanel
-                    fields={attributes}
-                    onDelete={deleteField}
-                    onClose={() => setShowFieldManager(false)}
-                  />
-                )}
-              </div>
+            {canEdit && (
+              <button
+                onClick={() => router.push(`/tables/${tableId}/settings`)}
+                className="flex items-center gap-2 px-3 py-2 bg-muted hover:bg-accent border border-border text-foreground rounded-lg transition-colors"
+                title="Table settings"
+              >
+                <Settings className="h-4 w-4" />
+              </button>
             )}
 
             {canEdit && (
@@ -813,10 +801,7 @@ export default function TableDetailPage() {
                 Add fields to define the columns in your table. Fields determine what data you can store in each record.
               </p>
               <button
-                onClick={() => {
-                  setShowAddField(true);
-                  setShowFieldManager(false);
-                }}
+                onClick={() => setShowAddField(true)}
                 className="flex items-center gap-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
               >
                 <Plus className="h-4 w-4" />
@@ -849,6 +834,8 @@ export default function TableDetailPage() {
                 showNameColumn={false}
                 enableColumnReorder={true}
                 enableColumnSelector={true}
+                enableInlineEdit={canEdit}
+                onCellSave={canEdit ? handleCellSave : undefined}
               />
             ) : (
               <KanbanBoard
@@ -876,6 +863,13 @@ export default function TableDetailPage() {
         fields={attributes}
         tableName={table?.name || "Table"}
         defaultValues={createDefaultValues}
+      />
+
+      <TableAuditLog
+        workspaceId={workspaceId}
+        tableId={tableId}
+        open={showAuditLog}
+        onClose={() => setShowAuditLog(false)}
       />
 
       <TableShareDialog

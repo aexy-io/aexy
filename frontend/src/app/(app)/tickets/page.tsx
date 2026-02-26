@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -20,10 +20,12 @@ import {
 import { SearchInput } from "@/components/ui/search-input";
 import { ModuleAutomationsPanel } from "@/components/ModuleAutomationsPanel";
 import { EmptyState } from "@/components/EmptyState";
+import { SavedViewSwitcher } from "@/components/crm/SavedViewSwitcher";
+import { useSavedViews } from "@/hooks/useSavedViews";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useTickets, useTicketStats, useTicketForms } from "@/hooks/useTicketing";
-import { TicketStatus, TicketPriority, developerApi } from "@/lib/api";
+import { TicketStatus, TicketPriority, developerApi, TableSavedView } from "@/lib/api";
 import {
   TICKET_STATUS_COLORS,
   TICKET_PRIORITY_COLORS,
@@ -69,6 +71,44 @@ export default function TicketsPage() {
   const [statusFilter, setStatusFilter] = useState<TicketStatus[]>([]);
   const [priorityFilter] = useState<TicketPriority[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Saved views for tickets
+  const {
+    views: savedViews,
+    createView,
+    updateView,
+    deleteView,
+    isCreating: isCreatingView,
+    isUpdating: isUpdatingView,
+  } = useSavedViews(workspaceId ?? undefined, "ticket");
+  const [activeViewId, setActiveViewId] = useState<string | null>(null);
+
+  const handleSelectView = useCallback((view: TableSavedView | null) => {
+    if (!view) {
+      setActiveViewId(null);
+      setStatusFilter([]);
+      setSearchQuery("");
+      return;
+    }
+    setActiveViewId(view.id);
+    for (const f of view.filters || []) {
+      const attr = f.attribute as string;
+      const val = f.value;
+      if (attr === "status") setStatusFilter(Array.isArray(val) ? val as TicketStatus[] : [val as TicketStatus]);
+      else if (attr === "search") setSearchQuery(val as string);
+    }
+  }, []);
+
+  const handleSaveView = useCallback(async (data: Parameters<typeof createView>[0]) => {
+    const filterList: Record<string, unknown>[] = [];
+    if (statusFilter.length) filterList.push({ attribute: "status", operator: "in", value: statusFilter });
+    if (searchQuery) filterList.push({ attribute: "search", operator: "equals", value: searchQuery });
+    await createView({ ...data, filters: filterList });
+  }, [createView, statusFilter, searchQuery]);
+
+  const handleUpdateView = useCallback(async (viewId: string, data: Parameters<typeof updateView>[1]) => {
+    await updateView(viewId, data);
+  }, [updateView]);
 
   const { tickets, total, isLoading } = useTickets(workspaceId, {
     status: statusFilter.length > 0 ? statusFilter : undefined,
@@ -366,6 +406,17 @@ export default function TicketsPage() {
             {/* Filters */}
             <div className="bg-muted rounded-xl border border-border p-4 mb-6">
               <div className="flex flex-wrap items-center gap-4">
+                <SavedViewSwitcher
+                  views={savedViews}
+                  activeViewId={activeViewId}
+                  onSelectView={handleSelectView}
+                  onSaveView={handleSaveView}
+                  onUpdateView={handleUpdateView}
+                  onDeleteView={deleteView}
+                  currentConfig={{ view_type: "table", sorts: [] }}
+                  isCreating={isCreatingView}
+                  isUpdating={isUpdatingView}
+                />
                 <SearchInput
                   value={searchQuery}
                   onChange={setSearchQuery}
