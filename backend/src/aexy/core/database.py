@@ -36,6 +36,10 @@ def _get_engine():
             settings.database_url,
             echo=settings.database_echo,
             pool_pre_ping=True,
+            pool_size=10,
+            max_overflow=20,
+            pool_recycle=1800,
+            pool_timeout=30,
         )
         session_maker = async_sessionmaker(
             engine,
