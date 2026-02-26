@@ -1,7 +1,8 @@
 export { FieldRenderer, FieldEditor } from "./FieldRenderer";
 export { InlineCell } from "./InlineCell";
 export { FieldDisplayConfigPanel } from "./FieldDisplayConfigPanel";
-export { getFieldType, getFieldTypeOrFallback, registerFieldType, getAllFieldTypes } from "./registry";
+export { CustomFieldTypeManager } from "./CustomFieldTypeManager";
+export { getFieldType, getFieldTypeOrFallback, registerFieldType, getAllFieldTypes, registerCustomFieldTypes, getCustomFieldType, getAllCustomFieldTypes } from "./registry";
 export type {
   AttributeConfig,
   FieldSurface,

@@ -190,6 +190,7 @@ from aexy.models.crm import (
     TableCollaborator,
     TableShareLink,
     TableAuditLog,
+    CustomFieldType,
     CRMObjectType,
     CRMAttributeType,
     CRMListViewType,
@@ -645,6 +646,7 @@ __all__ = [
     "TableCollaborator",
     "TableShareLink",
     "TableAuditLog",
+    "CustomFieldType",
     # Google Integration
     "GoogleIntegration",
     "SyncedEmail",

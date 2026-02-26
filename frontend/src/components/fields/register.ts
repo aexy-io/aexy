@@ -131,13 +131,50 @@ registerFieldType({
   variants: [
     { id: "pills", label: "Pill Badges" },
     { id: "comma_text", label: "Comma Text" },
+    { id: "count_badge", label: "Count Badge" },
   ],
 });
 
-registerFieldType({ type: "email", label: "Email", view: EmailFieldView, edit: EmailFieldEdit });
-registerFieldType({ type: "phone", label: "Phone", view: PhoneFieldView, edit: PhoneFieldEdit });
-registerFieldType({ type: "url", label: "URL", view: UrlFieldView, edit: UrlFieldEdit });
-registerFieldType({ type: "textarea", label: "Long Text", view: TextareaFieldView, edit: TextareaFieldEdit });
+registerFieldType({
+  type: "email",
+  label: "Email",
+  view: EmailFieldView,
+  edit: EmailFieldEdit,
+  variants: [
+    { id: "link", label: "Email Link" },
+    { id: "avatar_chip", label: "Avatar Chip" },
+  ],
+});
+registerFieldType({
+  type: "phone",
+  label: "Phone",
+  view: PhoneFieldView,
+  edit: PhoneFieldEdit,
+  variants: [
+    { id: "plain", label: "Plain" },
+    { id: "formatted", label: "Formatted" },
+  ],
+});
+registerFieldType({
+  type: "url",
+  label: "URL",
+  view: UrlFieldView,
+  edit: UrlFieldEdit,
+  variants: [
+    { id: "link", label: "URL Link" },
+    { id: "favicon_link", label: "Favicon Link" },
+  ],
+});
+registerFieldType({
+  type: "textarea",
+  label: "Long Text",
+  view: TextareaFieldView,
+  edit: TextareaFieldEdit,
+  variants: [
+    { id: "plain", label: "Plain Text" },
+    { id: "markdown", label: "Markdown" },
+  ],
+});
 
 registerFieldType({
   type: "rating",

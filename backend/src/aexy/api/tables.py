@@ -148,6 +148,7 @@ class TableUpdate(BaseModel):
     row_access_mode: str | None = None
     is_active: bool | None = None
     settings: dict | None = None
+    audit_config: dict | None = None
 
 
 class ShareLinkCreate(BaseModel):
@@ -986,7 +987,7 @@ async def list_views(
         CRMListResponse(
             id=str(v.id),
             workspace_id=str(v.workspace_id),
-            object_id=str(v.object_id),
+            object_id=str(v.object_id) if v.object_id else None,
             name=v.name,
             slug=v.slug,
             description=v.description,
@@ -1003,6 +1004,8 @@ async def list_views(
             end_date_attribute=v.end_date_attribute,
             is_private=v.is_private,
             owner_id=str(v.owner_id) if v.owner_id else None,
+            entity_type=v.entity_type,
+            entity_scope_id=str(v.entity_scope_id) if v.entity_scope_id else None,
             entry_count=v.entry_count,
             created_at=v.created_at,
             updated_at=v.updated_at,
@@ -1042,7 +1045,7 @@ async def create_view(
     return CRMListResponse(
         id=str(view.id),
         workspace_id=str(view.workspace_id),
-        object_id=str(view.object_id),
+        object_id=str(view.object_id) if view.object_id else None,
         name=view.name,
         slug=view.slug,
         description=view.description,
@@ -1059,6 +1062,8 @@ async def create_view(
         end_date_attribute=view.end_date_attribute,
         is_private=view.is_private,
         owner_id=str(view.owner_id) if view.owner_id else None,
+        entity_type=view.entity_type,
+        entity_scope_id=str(view.entity_scope_id) if view.entity_scope_id else None,
         entry_count=view.entry_count,
         created_at=view.created_at,
         updated_at=view.updated_at,
@@ -1105,7 +1110,7 @@ async def update_view(
     return CRMListResponse(
         id=str(view.id),
         workspace_id=str(view.workspace_id),
-        object_id=str(view.object_id),
+        object_id=str(view.object_id) if view.object_id else None,
         name=view.name,
         slug=view.slug,
         description=view.description,
@@ -1122,6 +1127,8 @@ async def update_view(
         end_date_attribute=view.end_date_attribute,
         is_private=view.is_private,
         owner_id=str(view.owner_id) if view.owner_id else None,
+        entity_type=view.entity_type,
+        entity_scope_id=str(view.entity_scope_id) if view.entity_scope_id else None,
         entry_count=view.entry_count,
         created_at=view.created_at,
         updated_at=view.updated_at,
@@ -1151,4 +1158,223 @@ async def delete_view(
     if not await service.delete_view(view_id, workspace_id=workspace_id):
         raise HTTPException(status_code=404, detail="View not found")
 
+    await db.commit()
+
+
+# =============================================================================
+# CUSTOM FIELD TYPES (Phase 8.7)
+# =============================================================================
+
+class CustomFieldTypeCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    slug: str | None = Field(None, max_length=50)
+    base_type: str = Field(..., max_length=30)
+    default_variant: str | None = None
+    default_display_config: dict | None = None
+    icon: str | None = None
+    color: str | None = None
+    validation_rules: dict | None = None
+    preset_options: list | None = None
+
+
+class CustomFieldTypeUpdate(BaseModel):
+    name: str | None = Field(None, min_length=1, max_length=100)
+    default_variant: str | None = None
+    default_display_config: dict | None = None
+    icon: str | None = None
+    color: str | None = None
+    validation_rules: dict | None = None
+    preset_options: list | None = None
+
+
+custom_field_types_router = APIRouter(
+    prefix="/workspaces/{workspace_id}/custom-field-types",
+    tags=["Custom Field Types"],
+)
+
+
+@custom_field_types_router.get("")
+async def list_custom_field_types(
+    workspace_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """List all custom field types for a workspace."""
+    await check_workspace_permission(workspace_id, current_user, db)
+
+    from aexy.models.crm import CustomFieldType
+    from sqlalchemy import select
+
+    result = await db.execute(
+        select(CustomFieldType)
+        .where(CustomFieldType.workspace_id == workspace_id)
+        .order_by(CustomFieldType.name)
+    )
+    types = result.scalars().all()
+
+    return [
+        {
+            "id": str(t.id),
+            "workspace_id": str(t.workspace_id),
+            "name": t.name,
+            "slug": t.slug,
+            "base_type": t.base_type,
+            "default_variant": t.default_variant,
+            "default_display_config": t.default_display_config,
+            "icon": t.icon,
+            "color": t.color,
+            "validation_rules": t.validation_rules,
+            "preset_options": t.preset_options,
+            "created_by_id": str(t.created_by_id) if t.created_by_id else None,
+            "created_at": t.created_at.isoformat() if t.created_at else None,
+            "updated_at": t.updated_at.isoformat() if t.updated_at else None,
+        }
+        for t in types
+    ]
+
+
+@custom_field_types_router.post("", status_code=201)
+async def create_custom_field_type(
+    workspace_id: str,
+    data: CustomFieldTypeCreate,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a custom field type for a workspace."""
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
+
+    import re
+    from aexy.models.crm import CustomFieldType
+    from sqlalchemy import select
+
+    # Generate slug if not provided
+    slug = data.slug or re.sub(r"[^a-z0-9]+", "_", data.name.lower()).strip("_")
+
+    # Check uniqueness
+    existing = await db.execute(
+        select(CustomFieldType).where(
+            CustomFieldType.workspace_id == workspace_id,
+            CustomFieldType.slug == slug,
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail=f"Custom field type '{slug}' already exists")
+
+    # Validate base_type is a known built-in type
+    valid_base_types = {
+        "text", "textarea", "number", "currency", "date", "datetime",
+        "checkbox", "select", "multi_select", "status", "email", "phone",
+        "url", "rating", "record_reference", "user_reference", "file",
+    }
+    if data.base_type not in valid_base_types:
+        raise HTTPException(status_code=400, detail=f"Invalid base_type '{data.base_type}'")
+
+    cft = CustomFieldType(
+        workspace_id=workspace_id,
+        name=data.name,
+        slug=slug,
+        base_type=data.base_type,
+        default_variant=data.default_variant,
+        default_display_config=data.default_display_config,
+        icon=data.icon,
+        color=data.color,
+        validation_rules=data.validation_rules,
+        preset_options=data.preset_options,
+        created_by_id=str(current_user.id),
+    )
+    db.add(cft)
+    await db.commit()
+    await db.refresh(cft)
+
+    return {
+        "id": str(cft.id),
+        "workspace_id": str(cft.workspace_id),
+        "name": cft.name,
+        "slug": cft.slug,
+        "base_type": cft.base_type,
+        "default_variant": cft.default_variant,
+        "default_display_config": cft.default_display_config,
+        "icon": cft.icon,
+        "color": cft.color,
+        "validation_rules": cft.validation_rules,
+        "preset_options": cft.preset_options,
+        "created_by_id": str(cft.created_by_id) if cft.created_by_id else None,
+        "created_at": cft.created_at.isoformat() if cft.created_at else None,
+        "updated_at": cft.updated_at.isoformat() if cft.updated_at else None,
+    }
+
+
+@custom_field_types_router.patch("/{type_id}")
+async def update_custom_field_type(
+    workspace_id: str,
+    type_id: str,
+    data: CustomFieldTypeUpdate,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update a custom field type."""
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
+
+    from aexy.models.crm import CustomFieldType
+    from sqlalchemy import select
+
+    result = await db.execute(
+        select(CustomFieldType).where(
+            CustomFieldType.id == type_id,
+            CustomFieldType.workspace_id == workspace_id,
+        )
+    )
+    cft = result.scalar_one_or_none()
+    if not cft:
+        raise HTTPException(status_code=404, detail="Custom field type not found")
+
+    update_data = data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(cft, key, value)
+
+    await db.commit()
+    await db.refresh(cft)
+
+    return {
+        "id": str(cft.id),
+        "workspace_id": str(cft.workspace_id),
+        "name": cft.name,
+        "slug": cft.slug,
+        "base_type": cft.base_type,
+        "default_variant": cft.default_variant,
+        "default_display_config": cft.default_display_config,
+        "icon": cft.icon,
+        "color": cft.color,
+        "validation_rules": cft.validation_rules,
+        "preset_options": cft.preset_options,
+        "created_by_id": str(cft.created_by_id) if cft.created_by_id else None,
+        "created_at": cft.created_at.isoformat() if cft.created_at else None,
+        "updated_at": cft.updated_at.isoformat() if cft.updated_at else None,
+    }
+
+
+@custom_field_types_router.delete("/{type_id}", status_code=204)
+async def delete_custom_field_type(
+    workspace_id: str,
+    type_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a custom field type."""
+    await check_workspace_permission(workspace_id, current_user, db, required_role="admin")
+
+    from aexy.models.crm import CustomFieldType
+    from sqlalchemy import select
+
+    result = await db.execute(
+        select(CustomFieldType).where(
+            CustomFieldType.id == type_id,
+            CustomFieldType.workspace_id == workspace_id,
+        )
+    )
+    cft = result.scalar_one_or_none()
+    if not cft:
+        raise HTTPException(status_code=404, detail="Custom field type not found")
+
+    await db.delete(cft)
     await db.commit()
