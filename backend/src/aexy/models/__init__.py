@@ -441,6 +441,48 @@ from aexy.models.leave import (
     AccrualType,
     DEFAULT_LEAVE_TYPES,
 )
+from aexy.models.gtm import (
+    GTMProviderConfig,
+    BehavioralEvent,
+    VisitorSession,
+    VisitorIdentification,
+    ICPTemplate,
+    LeadScore,
+    GTMProviderSlot,
+    GTMProviderStatus,
+    IdentificationStatus,
+    LifecycleStage,
+)
+from aexy.models.gtm_compliance import (
+    ContactConsent,
+    SuppressionList,
+    ComplianceAuditLog,
+    ConsentType as GTMConsentType,
+    Jurisdiction as GTMJurisdiction,
+    SuppressionReason as GTMSuppressionReason,
+    ComplianceAction,
+)
+from aexy.models.gtm_outreach import (
+    OutreachSequence,
+    OutreachEnrollment,
+    OutreachStepExecution,
+    SequenceStatus,
+    SequenceChannel,
+    SequenceAction,
+    EnrollmentStatus,
+    StepExecutionStatus,
+)
+from aexy.models.gtm_alerts import GTMAlertConfig, GTMAlertLog
+from aexy.models.gtm_routing import GTMRoutingRule, GTMLeadAssignment
+from aexy.models.gtm_health import GTMHealthScore, GTMHealthConfig
+from aexy.models.gtm_expansion import GTMExpansionPlaybook, GTMExpansionEnrollment
+from aexy.models.gtm_handoff import GTMHandoff
+from aexy.models.gtm_intent import IntentSignal, IntentSignalConfig
+from aexy.models.gtm_competitor import CompetitorProfile, CompetitorChange, BattleCard
+from aexy.models.gtm_seo import SEOAudit, SEOAuditPage
+from aexy.models.gtm_content import ContentAnalysis
+from aexy.models.gtm_abm import ABMTargetList, ABMAccount
+from aexy.models.gtm_webhook import GTMWebhook, GTMWebhookDelivery, GTMProviderHealthMetric
 
 __all__ = [
     # Plan
@@ -870,4 +912,65 @@ __all__ = [
     "LeaveRequestStatus",
     "AccrualType",
     "DEFAULT_LEAVE_TYPES",
+    # GTM Core
+    "GTMProviderConfig",
+    "BehavioralEvent",
+    "VisitorSession",
+    "VisitorIdentification",
+    "ICPTemplate",
+    "LeadScore",
+    "GTMProviderSlot",
+    "GTMProviderStatus",
+    "IdentificationStatus",
+    "LifecycleStage",
+    # GTM Compliance
+    "ContactConsent",
+    "SuppressionList",
+    "ComplianceAuditLog",
+    "GTMConsentType",
+    "GTMJurisdiction",
+    "GTMSuppressionReason",
+    "ComplianceAction",
+    # GTM Outreach
+    "OutreachSequence",
+    "OutreachEnrollment",
+    "OutreachStepExecution",
+    "SequenceStatus",
+    "SequenceChannel",
+    "SequenceAction",
+    "EnrollmentStatus",
+    "StepExecutionStatus",
+    # GTM Alerts
+    "GTMAlertConfig",
+    "GTMAlertLog",
+    # GTM Routing
+    "GTMRoutingRule",
+    "GTMLeadAssignment",
+    # GTM Health
+    "GTMHealthScore",
+    "GTMHealthConfig",
+    # GTM Expansion
+    "GTMExpansionPlaybook",
+    "GTMExpansionEnrollment",
+    # GTM Handoff
+    "GTMHandoff",
+    # GTM Intent
+    "IntentSignal",
+    "IntentSignalConfig",
+    # GTM Competitor
+    "CompetitorProfile",
+    "CompetitorChange",
+    "BattleCard",
+    # GTM SEO
+    "SEOAudit",
+    "SEOAuditPage",
+    # GTM Content
+    "ContentAnalysis",
+    # GTM ABM
+    "ABMTargetList",
+    "ABMAccount",
+    # GTM Webhooks
+    "GTMWebhook",
+    "GTMWebhookDelivery",
+    "GTMProviderHealthMetric",
 ]
