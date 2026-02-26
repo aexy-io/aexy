@@ -56,7 +56,7 @@ export function CandidateStatsWidget() {
           href="/hiring/analytics"
           className="text-cyan-400 hover:text-cyan-300 text-xs flex items-center gap-0.5 transition whitespace-nowrap shrink-0"
         >
-          Analytics <ChevronRight className="w-3.5 h-3.5" />
+          Analytics <ChevronRight className="w-4 h-4" />
         </Link>
       </div>
       <div className="p-6">
