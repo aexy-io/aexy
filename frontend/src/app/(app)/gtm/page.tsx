@@ -152,7 +152,7 @@ function RecentVisitorsTable({ visitors }: { visitors: RecentVisitorRow[] }) {
                 Status
               </th>
               <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">
-                Score
+                Duration
               </th>
             </tr>
           </thead>
@@ -167,9 +167,9 @@ function RecentVisitorsTable({ visitors }: { visitors: RecentVisitorRow[] }) {
                     <span className="text-foreground text-sm font-medium">
                       {visitor.company_name || "Unknown"}
                     </span>
-                    {visitor.domain && (
+                    {visitor.company_domain && (
                       <span className="text-muted-foreground text-xs">
-                        {visitor.domain}
+                        {visitor.company_domain}
                       </span>
                     )}
                   </div>
@@ -178,7 +178,7 @@ function RecentVisitorsTable({ visitors }: { visitors: RecentVisitorRow[] }) {
                   {visitor.page_count}
                 </td>
                 <td className="px-6 py-4 text-muted-foreground text-sm">
-                  {formatLastSeen(visitor.last_seen_at)}
+                  {formatLastSeen(visitor.started_at)}
                 </td>
                 <td className="px-6 py-4">
                   <span
@@ -190,20 +190,8 @@ function RecentVisitorsTable({ visitors }: { visitors: RecentVisitorRow[] }) {
                     {visitor.identification_status}
                   </span>
                 </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-12 bg-border rounded-full h-1.5">
-                      <div
-                        className="bg-indigo-500 h-1.5 rounded-full"
-                        style={{
-                          width: `${Math.min(visitor.score ?? 0, 100)}%`,
-                        }}
-                      />
-                    </div>
-                    <span className="text-foreground/90 text-sm">
-                      {visitor.score ?? 0}
-                    </span>
-                  </div>
+                <td className="px-6 py-4 text-muted-foreground text-sm">
+                  {visitor.page_count > 0 ? `${visitor.duration_seconds}s` : "—"}
                 </td>
               </tr>
             ))}

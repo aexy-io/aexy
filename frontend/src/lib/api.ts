@@ -17812,10 +17812,12 @@ export interface VisitorSession {
   id: string;
   workspace_id: string;
   anonymous_id: string;
-  first_seen_at: string;
-  last_seen_at: string;
+  started_at: string;
+  last_activity_at: string;
   page_count: number;
-  total_duration_seconds: number;
+  event_count: number;
+  duration_seconds: number;
+  max_scroll_depth: number;
   identification_status: IdentificationStatus;
   identified_company: string | null;
   identified_domain: string | null;
@@ -17823,10 +17825,12 @@ export interface VisitorSession {
   utm_source: string | null;
   utm_medium: string | null;
   utm_campaign: string | null;
-  entry_page: string | null;
-  exit_page: string | null;
+  first_page_url: string | null;
+  last_page_url: string | null;
+  entry_referrer: string | null;
   record_id: string | null;
-  created_at: string;
+  country_code: string | null;
+  city: string | null;
 }
 
 export interface VisitorSessionDetail extends VisitorSession {
@@ -18100,14 +18104,14 @@ export interface FunnelStageData {
 
 export interface RecentVisitorRow {
   session_id: string;
-  anonymous_id: string;
   company_name: string | null;
-  domain: string | null;
+  company_domain: string | null;
   page_count: number;
-  last_seen_at: string;
+  duration_seconds: number;
   identification_status: IdentificationStatus;
-  lifecycle_stage: LifecycleStage | null;
-  score: number | null;
+  utm_source: string | null;
+  country_code: string | null;
+  started_at: string;
 }
 
 export interface VisitorListResponse {
