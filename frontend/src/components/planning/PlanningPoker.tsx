@@ -594,11 +594,11 @@ export function PlanningPoker({
             {state.revealed && (
               <div className="p-4 border-b border-border">
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
-                  {Object.entries(state.votes).map(([oderId, voteVal], index) => {
-                    const participant = state.participants.find((p) => p.id === oderId);
+                  {Object.entries(state.votes).map(([voterId, voteVal], index) => {
+                    const participant = state.participants.find((p) => p.id === voterId);
                     return (
                       <motion.div
-                        key={oderId}
+                        key={voterId}
                         initial={{ rotateY: 180, opacity: 0 }}
                         animate={{ rotateY: 0, opacity: 1 }}
                         transition={{ duration: 0.4, delay: index * 0.1 }}

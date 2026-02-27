@@ -110,7 +110,8 @@ export function usePlanningPoker(sprintId: string) {
     (sessionId: string, userId: string, userName: string) => {
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const host = process.env.NEXT_PUBLIC_WS_URL || `${protocol}//localhost:8000`;
-      const wsUrl = `${host}/api/v1/sprints/${sprintId}/planning-poker/${sessionId}/ws?token=&user_id=${userId}&user_name=${encodeURIComponent(userName)}`;
+      const authToken = typeof window !== "undefined" ? localStorage.getItem("token") || "" : "";
+      const wsUrl = `${host}/api/v1/sprints/${sprintId}/planning-poker/${sessionId}/ws?token=${encodeURIComponent(authToken)}`;
 
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
@@ -262,17 +263,29 @@ export function usePlanningPoker(sprintId: string) {
         }
       };
 
-      ws.onclose = () => {
-        setState((prev) => ({
-          ...prev,
-          isConnected: false,
-          reconnectAttempt: prev.reconnectAttempt + 1,
-        }));
-        reconnectTimeoutRef.current = setTimeout(() => {
-          if (wsRef.current?.readyState === WebSocket.CLOSED) {
-            connectWebSocket(sessionId, userId, userName);
+      ws.onclose = (event) => {
+        setState((prev) => {
+          const attempt = prev.reconnectAttempt + 1;
+          const MAX_RECONNECT_ATTEMPTS = 10;
+
+          // Don't reconnect if closed intentionally (4001 = auth failure) or max attempts reached
+          if (event.code === 4001 || attempt > MAX_RECONNECT_ATTEMPTS) {
+            if (attempt > MAX_RECONNECT_ATTEMPTS) {
+              toast.error("Connection lost. Please refresh the page.");
+            }
+            return { ...prev, isConnected: false, reconnectAttempt: attempt };
           }
-        }, 3000);
+
+          // Exponential backoff: 1s, 2s, 4s, 8s, ... capped at 30s
+          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 30000);
+          reconnectTimeoutRef.current = setTimeout(() => {
+            if (wsRef.current?.readyState === WebSocket.CLOSED) {
+              connectWebSocket(sessionId, userId, userName);
+            }
+          }, delay);
+
+          return { ...prev, isConnected: false, reconnectAttempt: attempt };
+        });
       };
 
       ws.onerror = () => {

@@ -2,15 +2,18 @@
 
 import asyncio
 import logging
+import time
 from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query, status
+from jose import JWTError, jwt
 from pydantic import BaseModel
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from aexy.core.config import get_settings
 from aexy.core.database import async_session_maker, get_db
 from aexy.api.developers import get_current_developer
 from aexy.models.developer import Developer
@@ -27,35 +30,62 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Planning Poker"])
 
+# Chat rate limit: max messages per user per window
+CHAT_RATE_LIMIT = 5  # messages
+CHAT_RATE_WINDOW = 10  # seconds
+
+
+def _build_task_info(task: SprintTask) -> dict:
+    """Build a consistent task info dict for broadcast payloads."""
+    return {
+        "id": str(task.id),
+        "title": task.title,
+        "description": task.description,
+        "priority": task.priority,
+        "task_type": task.task_type,
+        "labels": task.labels or [],
+        "story_points": task.story_points,
+        "status": task.status,
+    }
+
 
 class PlanningPokerManager:
-    """Manages WebSocket connections for planning poker sessions."""
+    """Manages WebSocket connections for planning poker sessions.
+
+    Note: Session state is stored in-memory. Active sessions will be lost if the
+    server restarts. For multi-worker deployments, use a shared store (e.g. Redis).
+    """
 
     def __init__(self):
         # session_id -> list of (websocket, user_info)
         self.active_connections: dict[str, list[tuple[WebSocket, dict]]] = {}
         # session_id -> poker state
         self.sessions: dict[str, dict] = {}
+        # Lock for safe concurrent connection management
+        self._lock = asyncio.Lock()
+        # Chat rate limiting: (session_id, user_id) -> list of timestamps
+        self._chat_timestamps: dict[tuple[str, str], list[float]] = {}
 
     async def connect(
         self, websocket: WebSocket, session_id: str, user_info: dict
     ) -> None:
         await websocket.accept()
 
-        if session_id not in self.active_connections:
-            self.active_connections[session_id] = []
+        async with self._lock:
+            if session_id not in self.active_connections:
+                self.active_connections[session_id] = []
 
-        self.active_connections[session_id].append((websocket, user_info))
+            self.active_connections[session_id].append((websocket, user_info))
 
-        # Add participant to session state
-        if session_id in self.sessions:
-            user_id = user_info.get("id", "")
-            self.sessions[session_id]["participants"][user_id] = {
-                "id": user_id,
-                "name": user_info.get("name", "Unknown"),
-                "avatar_url": user_info.get("avatar_url"),
-                "has_voted": False,
-            }
+            # Add participant to session state
+            if session_id in self.sessions:
+                user_id = user_info.get("id", "")
+                self.sessions[session_id]["participants"][user_id] = {
+                    "id": user_id,
+                    "name": user_info.get("name", "Unknown"),
+                    "avatar_url": user_info.get("avatar_url"),
+                    "has_voted": False,
+                }
 
         await self.broadcast(session_id, {
             "type": "participant_joined",
@@ -65,22 +95,38 @@ class PlanningPokerManager:
 
         logger.info(f"User {user_info.get('name')} joined poker session {session_id}")
 
-    def disconnect(self, websocket: WebSocket) -> str | None:
-        for session_id, connections in self.active_connections.items():
-            for ws, info in connections:
-                if ws == websocket:
-                    self.active_connections[session_id] = [
-                        (w, i) for w, i in connections if w != websocket
-                    ]
-                    user_id = info.get("id", "")
-                    if session_id in self.sessions:
-                        self.sessions[session_id]["participants"].pop(user_id, None)
+    async def disconnect(self, websocket: WebSocket) -> str | None:
+        async with self._lock:
+            for session_id, connections in self.active_connections.items():
+                for ws, info in connections:
+                    if ws == websocket:
+                        self.active_connections[session_id] = [
+                            (w, i) for w, i in connections if w != websocket
+                        ]
+                        user_id = info.get("id", "")
+                        if session_id in self.sessions:
+                            self.sessions[session_id]["participants"].pop(user_id, None)
 
-                    if not self.active_connections[session_id]:
-                        del self.active_connections[session_id]
+                        if not self.active_connections[session_id]:
+                            del self.active_connections[session_id]
 
-                    return session_id
+                        return session_id
         return None
+
+    def check_chat_rate_limit(self, session_id: str, user_id: str) -> bool:
+        """Return True if the user is within rate limits, False if exceeded."""
+        key = (session_id, user_id)
+        now = time.monotonic()
+        timestamps = self._chat_timestamps.get(key, [])
+        # Prune old timestamps outside the window
+        timestamps = [t for t in timestamps if now - t < CHAT_RATE_WINDOW]
+        self._chat_timestamps[key] = timestamps
+
+        if len(timestamps) >= CHAT_RATE_LIMIT:
+            return False
+
+        timestamps.append(now)
+        return True
 
     async def broadcast(
         self, session_id: str, message: dict, exclude: WebSocket | None = None
@@ -97,10 +143,12 @@ class PlanningPokerManager:
             except Exception:
                 disconnected.append(websocket)
 
-        for ws in disconnected:
-            self.active_connections[session_id] = [
-                (w, i) for w, i in self.active_connections[session_id] if w != ws
-            ]
+        if disconnected:
+            async with self._lock:
+                for ws in disconnected:
+                    self.active_connections[session_id] = [
+                        (w, i) for w, i in self.active_connections.get(session_id, []) if w != ws
+                    ]
 
     def create_session(self, session_id: str, sprint_id: str, task_ids: list[str]) -> dict:
         self.sessions[session_id] = {
@@ -151,6 +199,34 @@ class PlanningPokerManager:
 poker_manager = PlanningPokerManager()
 
 
+async def _verify_ws_token(token: str) -> dict | None:
+    """Verify a JWT token from WebSocket query param. Returns payload or None."""
+    if not token:
+        return None
+    try:
+        settings = get_settings()
+        payload = jwt.decode(
+            token,
+            settings.secret_key,
+            algorithms=[settings.algorithm],
+        )
+        developer_id = payload.get("sub")
+        if not developer_id:
+            return None
+        return payload
+    except JWTError:
+        return None
+
+
+async def _resolve_developer(developer_id: str) -> Developer | None:
+    """Load a developer from the DB by ID."""
+    async with async_session_maker() as db:
+        result = await db.execute(
+            select(Developer).where(Developer.id == developer_id)
+        )
+        return result.scalar_one_or_none()
+
+
 @router.post("/sprints/{sprint_id}/planning-poker/start")
 async def start_poker_session(
     sprint_id: str,
@@ -180,19 +256,7 @@ async def start_poker_session(
         unestimated = [t for t in tasks if t.status != "done"]
 
     task_ids = [str(t.id) for t in unestimated]
-    task_info = [
-        {
-            "id": str(t.id),
-            "title": t.title,
-            "description": t.description,
-            "priority": t.priority,
-            "task_type": t.task_type,
-            "labels": t.labels or [],
-            "story_points": t.story_points,
-            "status": t.status,
-        }
-        for t in unestimated
-    ]
+    task_info = [_build_task_info(t) for t in unestimated]
 
     session_id = str(uuid4())
 
@@ -243,10 +307,23 @@ async def poker_websocket(
     sprint_id: str,
     session_id: str,
     token: str = Query(default=""),
-    user_id: str = Query(default=""),
-    user_name: str = Query(default="Anonymous"),
 ):
     """WebSocket endpoint for planning poker real-time interaction."""
+    # Validate JWT token
+    payload = await _verify_ws_token(token)
+    if not payload:
+        await websocket.close(code=4001, reason="Invalid or missing token")
+        return
+
+    developer_id = payload["sub"]
+    developer = await _resolve_developer(developer_id)
+    if not developer:
+        await websocket.close(code=4001, reason="Developer not found")
+        return
+
+    user_id = str(developer.id)
+    user_name = developer.name or "Anonymous"
+
     user_info = {
         "id": user_id,
         "name": user_name,
@@ -399,16 +476,7 @@ async def poker_websocket(
 
                         await poker_manager.broadcast(session_id, {
                             "type": "task_added",
-                            "task": {
-                                "id": str(task.id),
-                                "title": task.title,
-                                "description": task.description,
-                                "priority": task.priority,
-                                "task_type": task.task_type,
-                                "labels": task.labels or [],
-                                "story_points": task.story_points,
-                                "status": task.status,
-                            },
+                            "task": _build_task_info(task),
                             "total_tasks": len(session["task_ids"]),
                         })
 
@@ -446,16 +514,7 @@ async def poker_websocket(
 
                         await poker_manager.broadcast(session_id, {
                             "type": "task_added",
-                            "task": {
-                                "id": new_id,
-                                "title": new_task.title,
-                                "description": new_task.description,
-                                "priority": new_task.priority,
-                                "task_type": new_task.task_type,
-                                "labels": new_task.labels or [],
-                                "story_points": new_task.story_points,
-                                "status": new_task.status,
-                            },
+                            "task": _build_task_info(new_task),
                             "total_tasks": len(session["task_ids"]),
                         })
                 else:
@@ -465,9 +524,16 @@ async def poker_websocket(
                     })
 
             elif msg_type == "chat":
-                # Broadcast chat message to all participants
+                # Broadcast chat message to all participants (rate-limited)
                 text = data.get("text", "").strip()
                 if text:
+                    if not poker_manager.check_chat_rate_limit(session_id, user_id):
+                        await websocket.send_json({
+                            "type": "error",
+                            "message": "Too many messages, slow down",
+                        })
+                        continue
+
                     await poker_manager.broadcast(session_id, {
                         "type": "chat",
                         "user_id": user_id,
@@ -477,7 +543,7 @@ async def poker_websocket(
                     })
 
     except WebSocketDisconnect:
-        doc_id = poker_manager.disconnect(websocket)
+        doc_id = await poker_manager.disconnect(websocket)
         if doc_id:
             await poker_manager.broadcast(doc_id, {
                 "type": "participant_left",
@@ -520,7 +586,7 @@ async def get_available_tasks(
             and_(
                 SprintTask.team_id == sprint.team_id,
                 SprintTask.status.notin_(["done"]),
-                SprintTask.is_archived == False,
+                SprintTask.is_archived.is_(False),
             )
         )
         .order_by(SprintTask.priority.desc(), SprintTask.created_at)
@@ -582,11 +648,8 @@ async def add_tasks_to_session(
         task = await task_service.get_task(tid)
         if task:
             session["task_ids"].append(tid)
-            added.append({
-                "id": str(task.id),
-                "title": task.title,
-                "description": task.description,
-            })
+            task_info = _build_task_info(task)
+            added.append(task_info)
 
     # Set current task if session was empty
     if session["current_task_id"] is None and session["task_ids"]:
