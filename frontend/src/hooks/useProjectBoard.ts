@@ -231,8 +231,8 @@ export function useProjectBoard(
     },
   });
 
-  // Delete task (works for both sprint and project-level tasks)
-  const deleteTaskMutation = useMutation({
+  // Archive task (works for both sprint and project-level tasks)
+  const archiveTaskMutation = useMutation({
     mutationFn: async ({ sprintId, taskId }: { sprintId: string | null; taskId: string }) => {
       if (!sprintId && projectId) {
         // Project-level task - use project tasks API
@@ -240,6 +240,24 @@ export function useProjectBoard(
       }
       if (sprintId) {
         return sprintApi.removeTask(sprintId, taskId);
+      }
+      throw new Error("Either sprintId or projectId is required");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projectTasks", workspaceId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ["sprintTasks"] });
+      queryClient.invalidateQueries({ queryKey: ["sprintStats"] });
+    },
+  });
+
+  // Unarchive task (restore from soft delete)
+  const unarchiveTaskMutation = useMutation({
+    mutationFn: async ({ sprintId, taskId }: { sprintId: string | null; taskId: string }) => {
+      if (!sprintId && projectId) {
+        return projectTasksApi.unarchive(projectId, taskId);
+      }
+      if (sprintId) {
+        return sprintApi.unarchiveTask(sprintId, taskId);
       }
       throw new Error("Either sprintId or projectId is required");
     },
@@ -435,8 +453,10 @@ export function useProjectBoard(
     isUpdatingTask: updateTaskMutation.isPending,
     addTask: addTaskMutation.mutateAsync,
     isAddingTask: addTaskMutation.isPending,
-    deleteTask: deleteTaskMutation.mutateAsync,
-    isDeletingTask: deleteTaskMutation.isPending,
+    archiveTask: archiveTaskMutation.mutateAsync,
+    isArchivingTask: archiveTaskMutation.isPending,
+    unarchiveTask: unarchiveTaskMutation.mutateAsync,
+    isUnarchivingTask: unarchiveTaskMutation.isPending,
   };
 }
 
