@@ -37,6 +37,9 @@ class NotificationEventType(str, Enum):
     # Assessment invitations
     ASSESSMENT_INVITATION = "assessment_invitation"
 
+    # Mentions
+    MENTION = "mention"
+
     # Usage alerts (billing)
     USAGE_ALERT_80 = "usage_alert_80"  # 80% of limit reached
     USAGE_ALERT_90 = "usage_alert_90"  # 90% of limit reached (critical)
@@ -267,6 +270,11 @@ NOTIFICATION_TEMPLATES = {
         "title": "Assessment Invitation",
         "body_template": "You have been invited to take the assessment: {assessment_title}. Please complete it by {deadline}.",
         "email_subject": "You're Invited: {assessment_title} Assessment",
+    },
+    NotificationEventType.MENTION: {
+        "title": "You were mentioned",
+        "body_template": "{mentioner_name} mentioned you in a {entity_type}: {snippet}",
+        "email_subject": "{mentioner_name} mentioned you",
     },
     NotificationEventType.USAGE_ALERT_80: {
         "title": "Usage Alert",

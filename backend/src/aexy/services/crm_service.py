@@ -26,6 +26,11 @@ from aexy.models.crm import (
     CRMAttributeType,
 )
 from aexy.services.data_table_service import DataTableService
+from aexy.services.notification_service import (
+    extract_mentioned_user_ids,
+    notify_mention,
+    _get_text_snippet,
+)
 
 
 def generate_slug(name: str) -> str:
@@ -1084,6 +1089,46 @@ class CRMNoteService:
         self.db.add(note)
         await self.db.flush()
         await self.db.refresh(note)
+
+        # Send mention notifications
+        if author_id and content:
+            mentioned_ids = extract_mentioned_user_ids(content)
+            if mentioned_ids:
+                from aexy.models.developer import Developer
+
+                author_result = await self.db.execute(
+                    select(Developer).where(Developer.id == author_id)
+                )
+                author = author_result.scalar_one_or_none()
+                author_name = author.name or "Someone" if author else "Someone"
+                snippet = _get_text_snippet(content)
+
+                # Get record's object slug for the action URL
+                record = await self.db.execute(
+                    select(CRMRecord).where(CRMRecord.id == record_id)
+                )
+                crm_record = record.scalar_one_or_none()
+                action_url = f"/crm/records/{record_id}"
+                if crm_record:
+                    obj_result = await self.db.execute(
+                        select(CRMObject).where(CRMObject.id == crm_record.object_id)
+                    )
+                    crm_obj = obj_result.scalar_one_or_none()
+                    if crm_obj:
+                        action_url = f"/crm/{crm_obj.slug}/{record_id}"
+
+                for uid in mentioned_ids:
+                    if uid != author_id:
+                        await notify_mention(
+                            db=self.db,
+                            mentioned_user_id=uid,
+                            mentioner_name=author_name,
+                            entity_type="CRM note",
+                            entity_id=record_id,
+                            action_url=action_url,
+                            snippet=snippet,
+                        )
+
         return note
 
     async def get_note(self, note_id: str) -> CRMNote | None:
