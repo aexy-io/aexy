@@ -332,6 +332,7 @@ class SprintTaskResponse(BaseModel):
     carried_over_from_sprint_id: str | None = None
     mentioned_user_ids: list[str] = Field(default_factory=list)
     mentioned_file_paths: list[str] = Field(default_factory=list)
+    is_archived: bool = False
     created_at: datetime
     updated_at: datetime
 

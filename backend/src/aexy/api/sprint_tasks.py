@@ -63,6 +63,7 @@ def task_to_response(task) -> SprintTaskResponse:
         carried_over_from_sprint_id=str(task.carried_over_from_sprint_id) if task.carried_over_from_sprint_id else None,
         mentioned_user_ids=task.mentioned_user_ids or [],
         mentioned_file_paths=task.mentioned_file_paths or [],
+        is_archived=task.is_archived,
         created_at=task.created_at,
         updated_at=task.updated_at,
     )
@@ -450,7 +451,7 @@ async def delete_task(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Remove a task from a sprint."""
+    """Archive a task (soft delete)."""
     await get_sprint_and_check_permission(sprint_id, current_user, db, "member")
 
     task_service = SprintTaskService(db)
@@ -463,8 +464,32 @@ async def delete_task(
             detail="Task not found",
         )
 
-    await task_service.remove_task(task_id)
+    await task_service.archive_task(task_id)
     await db.commit()
+
+
+@router.post("/{task_id}/unarchive", response_model=SprintTaskResponse)
+async def unarchive_task(
+    sprint_id: str,
+    task_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Unarchive a task (restore from soft delete)."""
+    await get_sprint_and_check_permission(sprint_id, current_user, db, "member")
+
+    task_service = SprintTaskService(db)
+
+    task = await task_service.get_task(task_id)
+    if not task or task.sprint_id != sprint_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
+    restored = await task_service.unarchive_task(task_id)
+    await db.commit()
+    return task_to_response(restored)
 
 
 # Subtasks
