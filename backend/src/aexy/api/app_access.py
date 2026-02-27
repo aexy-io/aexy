@@ -29,6 +29,10 @@ from aexy.schemas.app_access import (
     SystemBundleInfo,
     AccessCheckRequest,
     AccessCheckResponse,
+    AppAccessRequestCreate,
+    AppAccessRequestReview,
+    AppAccessRequestResponse,
+    AppAccessRequestListResponse,
 )
 from aexy.services.workspace_service import WorkspaceService
 from aexy.services.app_access_service import AppAccessService
@@ -609,6 +613,220 @@ async def check_access(
         module_id=data.module_id,
         reason=reason,
     )
+
+
+# =============================================================================
+# Access Request Endpoints
+# =============================================================================
+
+
+def _request_to_response(req) -> AppAccessRequestResponse:
+    """Convert AppAccessRequest model to response schema."""
+    app_config = APP_CATALOG.get(req.app_id, {})
+    return AppAccessRequestResponse(
+        id=str(req.id),
+        workspace_id=str(req.workspace_id),
+        requester_id=str(req.requester_id),
+        requester_name=req.requester.name if req.requester else None,
+        app_id=req.app_id,
+        app_name=app_config.get("name", req.app_id),
+        status=req.status,
+        reason=req.reason,
+        reviewed_by_id=str(req.reviewed_by_id) if req.reviewed_by_id else None,
+        reviewer_name=req.reviewer.name if req.reviewer else None,
+        reviewed_at=req.reviewed_at,
+        review_notes=req.review_notes,
+        created_at=req.created_at,
+        updated_at=req.updated_at,
+    )
+
+
+@router.post(
+    "/requests",
+    response_model=AppAccessRequestResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_access_request(
+    workspace_id: str,
+    data: AppAccessRequestCreate,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Submit a request for access to an app."""
+    workspace_service = WorkspaceService(db)
+
+    if not await workspace_service.check_permission(
+        workspace_id, str(current_user.id), "viewer"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not a member of this workspace",
+        )
+
+    service = AppAccessService(db)
+    try:
+        request = await service.create_access_request(
+            workspace_id=workspace_id,
+            requester_id=str(current_user.id),
+            app_id=data.app_id,
+            reason=data.reason,
+        )
+        return _request_to_response(request)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+
+@router.get("/requests", response_model=AppAccessRequestListResponse)
+async def list_access_requests(
+    workspace_id: str,
+    request_status: str | None = Query(None, alias="status", description="Filter by status"),
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """List access requests (admin only)."""
+    workspace_service = WorkspaceService(db)
+
+    if not await workspace_service.check_permission(
+        workspace_id, str(current_user.id), "admin"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin permission required",
+        )
+
+    service = AppAccessService(db)
+    requests = await service.list_access_requests(workspace_id, request_status)
+    return AppAccessRequestListResponse(
+        requests=[_request_to_response(r) for r in requests]
+    )
+
+
+@router.get("/requests/mine", response_model=AppAccessRequestListResponse)
+async def get_my_access_requests(
+    workspace_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get the current user's access requests."""
+    workspace_service = WorkspaceService(db)
+
+    if not await workspace_service.check_permission(
+        workspace_id, str(current_user.id), "viewer"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not a member of this workspace",
+        )
+
+    service = AppAccessService(db)
+    requests = await service.get_my_requests(workspace_id, str(current_user.id))
+    return AppAccessRequestListResponse(
+        requests=[_request_to_response(r) for r in requests]
+    )
+
+
+@router.patch("/requests/{request_id}/approve", response_model=AppAccessRequestResponse)
+async def approve_access_request(
+    workspace_id: str,
+    request_id: str,
+    data: AppAccessRequestReview | None = None,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Approve an access request (admin only)."""
+    workspace_service = WorkspaceService(db)
+
+    if not await workspace_service.check_permission(
+        workspace_id, str(current_user.id), "admin"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin permission required",
+        )
+
+    service = AppAccessService(db)
+    try:
+        request = await service.review_request(
+            request_id=request_id,
+            reviewer_id=str(current_user.id),
+            action="approve",
+            notes=data.notes if data else None,
+        )
+        return _request_to_response(request)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+
+@router.patch("/requests/{request_id}/reject", response_model=AppAccessRequestResponse)
+async def reject_access_request(
+    workspace_id: str,
+    request_id: str,
+    data: AppAccessRequestReview | None = None,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Reject an access request (admin only)."""
+    workspace_service = WorkspaceService(db)
+
+    if not await workspace_service.check_permission(
+        workspace_id, str(current_user.id), "admin"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin permission required",
+        )
+
+    service = AppAccessService(db)
+    try:
+        request = await service.review_request(
+            request_id=request_id,
+            reviewer_id=str(current_user.id),
+            action="reject",
+            notes=data.notes if data else None,
+        )
+        return _request_to_response(request)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+
+@router.delete("/requests/{request_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def withdraw_access_request(
+    workspace_id: str,
+    request_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Withdraw a pending access request (requester only)."""
+    workspace_service = WorkspaceService(db)
+
+    if not await workspace_service.check_permission(
+        workspace_id, str(current_user.id), "viewer"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not a member of this workspace",
+        )
+
+    service = AppAccessService(db)
+    try:
+        await service.withdraw_request(
+            request_id=request_id,
+            requester_id=str(current_user.id),
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
 
 
 # =============================================================================

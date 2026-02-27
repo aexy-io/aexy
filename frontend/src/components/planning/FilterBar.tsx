@@ -14,6 +14,7 @@ import {
   Target,
   Layers,
   Check,
+  Hash,
 } from "lucide-react";
 import { TaskPriority, SprintListItem } from "@/lib/api";
 import { BoardFilters } from "@/hooks/useProjectBoard";
@@ -37,6 +38,7 @@ interface FilterBarProps {
     labels: string[];
     epics: { id: string; name: string }[];
     sprints: SprintListItem[];
+    storyPoints: number[];
   };
   className?: string;
 }
@@ -240,6 +242,77 @@ function PriorityFilter({
   );
 }
 
+function StoryPointsFilter({
+  options,
+  selected,
+  onChange,
+}: {
+  options: number[];
+  selected: number[];
+  onChange: (selected: number[]) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const toggleOption = (points: number) => {
+    if (selected.includes(points)) {
+      onChange(selected.filter((s) => s !== points));
+    } else {
+      onChange([...selected, points]);
+    }
+  };
+
+  return (
+    <FilterDropdown
+      isOpen={isOpen}
+      onOpenChange={setIsOpen}
+      trigger={
+        <button
+          className={cn(
+            "flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm transition-colors",
+            selected.length > 0
+              ? "bg-primary-500/20 border-primary-500/50 text-primary-300"
+              : "bg-muted border-border text-foreground hover:border-border"
+          )}
+        >
+          <Hash className="h-4 w-4" />
+          <span>Points</span>
+          {selected.length > 0 && (
+            <Badge variant="info" size="sm">
+              {selected.length}
+            </Badge>
+          )}
+          <ChevronDown className="h-3 w-3 ml-1" />
+        </button>
+      }
+    >
+      <div className="py-1">
+        {options.map((points) => (
+          <button
+            key={points}
+            onClick={() => toggleOption(points)}
+            className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent/50 transition-colors"
+          >
+            <div
+              className={cn(
+                "w-4 h-4 rounded border flex items-center justify-center transition-colors",
+                selected.includes(points)
+                  ? "bg-primary-500 border-primary-500"
+                  : "border-border"
+              )}
+            >
+              {selected.includes(points) && (
+                <Check className="h-3 w-3 text-foreground" />
+              )}
+            </div>
+            <span className="text-foreground font-medium">{points}</span>
+            <span className="text-muted-foreground text-xs">pts</span>
+          </button>
+        ))}
+      </div>
+    </FilterDropdown>
+  );
+}
+
 export function FilterBar({
   filters,
   onFilterChange,
@@ -278,6 +351,17 @@ export function FilterBar({
     }
   });
 
+  filters.epics.forEach((id) => {
+    const epic = filterOptions.epics.find((e) => e.id === id);
+    if (epic) {
+      activeFilters.push({ key: "epics", label: "Epic", value: epic.name });
+    }
+  });
+
+  filters.storyPoints.forEach((points) => {
+    activeFilters.push({ key: "storyPoints", label: "Points", value: String(points) });
+  });
+
   const removeFilter = (filterKey: keyof BoardFilters, value: string) => {
     if (filterKey === "assignees") {
       const assignee = filterOptions.assignees.find((a) => a.name === value);
@@ -304,6 +388,17 @@ export function FilterBar({
           sprints: filters.sprints.filter((id) => id !== sprint.id),
         });
       }
+    } else if (filterKey === "epics") {
+      const epic = filterOptions.epics.find((e) => e.name === value);
+      if (epic) {
+        onFilterChange({
+          epics: filters.epics.filter((id) => id !== epic.id),
+        });
+      }
+    } else if (filterKey === "storyPoints") {
+      onFilterChange({
+        storyPoints: filters.storyPoints.filter((p) => p !== Number(value)),
+      });
     }
   };
 
@@ -384,6 +479,26 @@ export function FilterBar({
             selected={filters.sprints}
             onChange={(selected) => onFilterChange({ sprints: selected })}
           />
+
+          {/* Epic filter */}
+          {filterOptions.epics.length > 0 && (
+            <MultiSelectFilter
+              label="Epic"
+              icon={<Target className="h-4 w-4" />}
+              options={filterOptions.epics}
+              selected={filters.epics}
+              onChange={(selected) => onFilterChange({ epics: selected })}
+            />
+          )}
+
+          {/* Story Points filter */}
+          {filterOptions.storyPoints.length > 0 && (
+            <StoryPointsFilter
+              options={filterOptions.storyPoints}
+              selected={filters.storyPoints}
+              onChange={(selected) => onFilterChange({ storyPoints: selected })}
+            />
+          )}
 
           {/* Clear all */}
           {hasActiveFilters && (
