@@ -24,6 +24,8 @@ import {
     Loader2,
     ArrowRight,
     Bell,
+    Clock,
+    Send,
 } from "lucide-react";
 import React, { useState, useMemo } from "react";
 import { Button } from "../ui/button";
@@ -37,6 +39,7 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { useSidebarPersona } from "@/hooks/useSidebarPersona";
 import { SidebarItemConfig, SidebarSectionConfig, SidebarLayoutConfig } from "@/config/sidebarLayouts";
 import { appAccessApi } from "@/lib/api";
+import { useAccessRequests } from "@/hooks/useAccessRequests";
 import { getAppIdFromPath, APP_CATALOG, CATEGORY_LABELS, PERSONA_LABELS, AppCategory, AppDefinition } from "@/config/appDefinitions";
 import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 
@@ -171,6 +174,10 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
 
     // Notifications for sidebar badge
     const { unreadCount } = useNotifications(developerId);
+
+    // Access requests for non-admin discover section
+    const { getRequestForApp, createRequest, isCreatingRequest } = useAccessRequests(workspaceId);
+    const [requestingAppId, setRequestingAppId] = useState<string | null>(null);
 
     // Filter a sidebar item based on app access
     const canAccessItem = (item: SidebarItemConfig): boolean => {
@@ -695,7 +702,7 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
                                                                 </p>
                                                                 {di.reason === "no_access" ? (
                                                                     <p className="text-[10px] text-muted-foreground/40 leading-tight">
-                                                                        Not enabled
+                                                                        {!isAdmin && di.appId && getRequestForApp(di.appId) ? "Request pending" : "Not enabled"}
                                                                     </p>
                                                                 ) : di.availableInPersonas && di.availableInPersonas.length > 0 ? (
                                                                     <p className="text-[10px] text-primary/50 leading-tight">
@@ -726,6 +733,41 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
                                                                         <Plus className="h-3 w-3" />
                                                                     )}
                                                                 </button>
+                                                            ) : !isAdmin && di.appId && di.reason === "no_access" ? (
+                                                                (() => {
+                                                                    const pending = getRequestForApp(di.appId);
+                                                                    const isRequesting = requestingAppId === di.appId && isCreatingRequest;
+                                                                    if (pending) {
+                                                                        return (
+                                                                            <span
+                                                                                className="shrink-0 p-1 text-amber-500/60"
+                                                                                title="Request pending"
+                                                                            >
+                                                                                <Clock className="h-3 w-3" />
+                                                                            </span>
+                                                                        );
+                                                                    }
+                                                                    return (
+                                                                        <button
+                                                                            onClick={async () => {
+                                                                                setRequestingAppId(di.appId!);
+                                                                                try {
+                                                                                    await createRequest({ appId: di.appId! });
+                                                                                } catch {}
+                                                                                setRequestingAppId(null);
+                                                                            }}
+                                                                            disabled={isRequesting}
+                                                                            className="shrink-0 p-1 rounded text-muted-foreground/40 hover:text-primary opacity-0 group-hover/discover:opacity-100 transition-opacity disabled:opacity-50"
+                                                                            title={`Request access to ${di.item.label}`}
+                                                                        >
+                                                                            {isRequesting ? (
+                                                                                <Loader2 className="h-3 w-3 animate-spin" />
+                                                                            ) : (
+                                                                                <Send className="h-3 w-3" />
+                                                                            )}
+                                                                        </button>
+                                                                    );
+                                                                })()
                                                             ) : null}
                                                         </div>
                                                     );
@@ -735,8 +777,8 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
                                     );
                                 })}
 
-                                {/* Settings link for no_access items */}
-                                {hasNoAccessItems && (
+                                {/* Settings link for no_access items (admin only) */}
+                                {hasNoAccessItems && isAdmin && (
                                     <Link
                                         href="/settings/access"
                                         className="flex items-center gap-x-2 rounded-md px-2 py-1.5 text-xs text-primary/70 hover:text-primary transition-all font-medium"

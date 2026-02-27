@@ -71,6 +71,11 @@ class NotificationEventType(str, Enum):
     LEAVE_REQUEST_REJECTED = "leave_request_rejected"
     LEAVE_REQUEST_CANCELLED = "leave_request_cancelled"
 
+    # App access requests
+    APP_ACCESS_REQUESTED = "app_access_requested"
+    APP_ACCESS_APPROVED = "app_access_approved"
+    APP_ACCESS_REJECTED = "app_access_rejected"
+
     # Reminder related
     REMINDER_DUE = "reminder_due"  # Reminder is due
     REMINDER_ACKNOWLEDGED = "reminder_acknowledged"  # Reminder was acknowledged
@@ -276,6 +281,10 @@ DEFAULT_NOTIFICATION_PREFERENCES = {
     NotificationEventType.LEAVE_REQUEST_APPROVED: {"in_app": True, "email": True, "slack": False},
     NotificationEventType.LEAVE_REQUEST_REJECTED: {"in_app": True, "email": True, "slack": False},
     NotificationEventType.LEAVE_REQUEST_CANCELLED: {"in_app": True, "email": False, "slack": False},
+    # App access requests
+    NotificationEventType.APP_ACCESS_REQUESTED: {"in_app": True, "email": True, "slack": False},
+    NotificationEventType.APP_ACCESS_APPROVED: {"in_app": True, "email": True, "slack": False},
+    NotificationEventType.APP_ACCESS_REJECTED: {"in_app": True, "email": True, "slack": False},
     NotificationEventType.REMINDER_DUE: {"in_app": True, "email": True, "slack": False},
     NotificationEventType.REMINDER_ACKNOWLEDGED: {"in_app": True, "email": False, "slack": False},
     NotificationEventType.REMINDER_COMPLETED: {"in_app": True, "email": False, "slack": False},

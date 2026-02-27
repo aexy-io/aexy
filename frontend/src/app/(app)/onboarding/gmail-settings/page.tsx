@@ -20,9 +20,12 @@ export default function GmailSettings() {
   const router = useRouter();
   const { data, updateGoogleSettings, setCurrentStep } = useOnboarding();
 
+  // Dynamic step: 5 if repos page was shown (github connected), otherwise 5 anyway
+  const stepNumber = data.connections.github ? 5 : 5;
+
   useEffect(() => {
-    setCurrentStep(5);
-  }, [setCurrentStep]);
+    setCurrentStep(stepNumber);
+  }, [setCurrentStep, stepNumber]);
 
   const features = [
     {
@@ -70,7 +73,7 @@ export default function GmailSettings() {
           <div
             key={step}
             className={`h-1.5 rounded-full transition-all ${
-              step <= 5
+              step <= stepNumber
                 ? "w-8 bg-primary-500"
                 : "w-4 bg-accent"
             }`}
@@ -85,7 +88,7 @@ export default function GmailSettings() {
       >
         {/* Header */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-sm mb-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-400 text-sm mb-4">
             <CheckCircle2 className="w-4 h-4" />
             <span>Google Connected</span>
           </div>
@@ -113,13 +116,15 @@ export default function GmailSettings() {
                 className="flex items-start gap-4 p-4 rounded-xl bg-muted/30 border border-border/50"
               >
                 <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary-500/20 to-primary-600/20 border border-primary-500/20 flex items-center justify-center flex-shrink-0">
-                  <feature.icon className="w-5 h-5 text-primary-400" />
+                  <feature.icon className="w-5 h-5 text-primary-600 dark:text-primary-400" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h4 className="font-medium text-foreground">{feature.title}</h4>
                   <p className="text-sm text-muted-foreground">{feature.description}</p>
                 </div>
                 <button
+                  role="switch"
+                  aria-checked={data.googleSettings[feature.key]}
                   onClick={() => updateGoogleSettings({ [feature.key]: !data.googleSettings[feature.key] })}
                   className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
                     data.googleSettings[feature.key] ? "bg-primary-500" : "bg-accent"
@@ -148,7 +153,7 @@ export default function GmailSettings() {
                   "Email threads will be linked to contacts",
                 ].map((item, i) => (
                   <li key={i} className="flex items-center gap-3 text-sm text-foreground">
-                    <CheckCircle2 className="w-4 h-4 text-primary-400 flex-shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-primary-600 dark:text-primary-400 flex-shrink-0" />
                     {item}
                   </li>
                 ))}
@@ -156,9 +161,9 @@ export default function GmailSettings() {
             </div>
 
             {/* Privacy notice */}
-            <div className="p-5 rounded-xl bg-muted/20 border border-border/30">
+            <div className="p-5 rounded-xl bg-muted/50 border border-border">
               <div className="flex items-start gap-3">
-                <Shield className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+                <Shield className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
                 <div>
                   <h4 className="font-medium text-foreground mb-3">Your privacy matters</h4>
                   <ul className="space-y-2">
