@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { toast } from "sonner";
 import { sprintApi } from "@/lib/api";
 
 interface Participant {
@@ -24,10 +25,41 @@ interface VoteStats {
   consensus: boolean;
 }
 
+export interface AvailableTask {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  story_points: number | null;
+  sprint_id: string | null;
+}
+
+export interface FinalizeResult {
+  finalized: boolean;
+  updated_tasks: { task_id: string; title: string; story_points: number }[];
+  total_estimated: number;
+}
+
+export interface ChatMessage {
+  user_id: string;
+  user_name: string;
+  text: string;
+  timestamp: string;
+}
+
 export interface PokerState {
   sessionId: string | null;
   sprintId: string;
-  tasks: { id: string; title: string; description: string | null }[];
+  tasks: {
+    id: string;
+    title: string;
+    description: string | null;
+    priority: string | null;
+    task_type: string | null;
+    labels: string[];
+    story_points: number | null;
+    status: string | null;
+  }[];
   currentTaskId: string | null;
   currentTaskIndex: number;
   totalTasks: number;
@@ -40,6 +72,11 @@ export interface PokerState {
   isConnected: boolean;
   isStarting: boolean;
   isFinalizing: boolean;
+  availableTasks: AvailableTask[];
+  isLoadingAvailable: boolean;
+  reconnectAttempt: number;
+  finalizeResult: FinalizeResult | null;
+  chatMessages: ChatMessage[];
 }
 
 export function usePlanningPoker(sprintId: string) {
@@ -62,6 +99,11 @@ export function usePlanningPoker(sprintId: string) {
     isConnected: false,
     isStarting: false,
     isFinalizing: false,
+    availableTasks: [],
+    isLoadingAvailable: false,
+    reconnectAttempt: 0,
+    finalizeResult: null,
+    chatMessages: [],
   });
 
   const connectWebSocket = useCallback(
@@ -74,11 +116,17 @@ export function usePlanningPoker(sprintId: string) {
       wsRef.current = ws;
 
       ws.onopen = () => {
-        setState((prev) => ({ ...prev, isConnected: true }));
+        setState((prev) => ({ ...prev, isConnected: true, reconnectAttempt: 0 }));
       };
 
       ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
+        let data;
+        try {
+          data = JSON.parse(event.data);
+        } catch {
+          console.error("Failed to parse WebSocket message");
+          return;
+        }
 
         switch (data.type) {
           case "state":
@@ -154,6 +202,21 @@ export function usePlanningPoker(sprintId: string) {
             }));
             break;
 
+          case "task_added":
+            setState((prev) => {
+              const newTask = data.task;
+              const alreadyExists = prev.tasks.some((t) => t.id === newTask.id);
+              const updatedTasks = alreadyExists ? prev.tasks : [...prev.tasks, newTask];
+              return {
+                ...prev,
+                tasks: updatedTasks,
+                totalTasks: data.total_tasks ?? updatedTasks.length,
+                availableTasks: prev.availableTasks.filter((t) => t.id !== newTask.id),
+                currentTaskId: prev.currentTaskId ?? newTask.id,
+              };
+            });
+            break;
+
           case "session_complete":
             setState((prev) => ({
               ...prev,
@@ -162,18 +225,49 @@ export function usePlanningPoker(sprintId: string) {
             break;
 
           case "participant_joined":
+            setState((prev) => ({
+              ...prev,
+              participants: data.participants || prev.participants,
+            }));
+            if (data.user?.name || data.user_name) {
+              toast(`${data.user?.name || data.user_name} joined the session`);
+            }
+            break;
+
           case "participant_left":
             setState((prev) => ({
               ...prev,
               participants: data.participants || prev.participants,
             }));
+            if (data.user?.name || data.user_name) {
+              toast(`${data.user?.name || data.user_name} left the session`);
+            }
+            break;
+
+          case "chat":
+            setState((prev) => ({
+              ...prev,
+              chatMessages: [...prev.chatMessages, {
+                user_id: data.user_id,
+                user_name: data.user_name,
+                text: data.text,
+                timestamp: data.timestamp,
+              }],
+            }));
+            break;
+
+          case "error":
+            toast.error(data.message || "An error occurred");
             break;
         }
       };
 
       ws.onclose = () => {
-        setState((prev) => ({ ...prev, isConnected: false }));
-        // Reconnect after 3 seconds
+        setState((prev) => ({
+          ...prev,
+          isConnected: false,
+          reconnectAttempt: prev.reconnectAttempt + 1,
+        }));
         reconnectTimeoutRef.current = setTimeout(() => {
           if (wsRef.current?.readyState === WebSocket.CLOSED) {
             connectWebSocket(sessionId, userId, userName);
@@ -241,12 +335,56 @@ export function usePlanningPoker(sprintId: string) {
     }
   }, []);
 
+  const addTask = useCallback(
+    (taskId: string) => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: "add_task", task_id: taskId }));
+      }
+    },
+    []
+  );
+
+  const addTaskByTitle = useCallback(
+    (title: string) => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: "add_task", title }));
+      }
+    },
+    []
+  );
+
+  const sendChat = useCallback((text: string) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN && text.trim()) {
+      wsRef.current.send(JSON.stringify({ type: "chat", text: text.trim() }));
+    }
+  }, []);
+
+  const fetchAvailableTasks = useCallback(async () => {
+    if (!state.sessionId) return;
+    setState((prev) => ({ ...prev, isLoadingAvailable: true }));
+    try {
+      const result = await sprintApi.getAvailableTasks(sprintId, state.sessionId);
+      setState((prev) => ({
+        ...prev,
+        availableTasks: result.tasks,
+        isLoadingAvailable: false,
+      }));
+    } catch {
+      setState((prev) => ({ ...prev, isLoadingAvailable: false }));
+      toast.error("Failed to load available tasks");
+    }
+  }, [sprintId, state.sessionId]);
+
   const finalize = useCallback(async () => {
     if (!state.sessionId) return;
     setState((prev) => ({ ...prev, isFinalizing: true }));
     try {
       const result = await sprintApi.finalizePokerSession(sprintId, state.sessionId);
-      setState((prev) => ({ ...prev, isFinalizing: false }));
+      setState((prev) => ({
+        ...prev,
+        isFinalizing: false,
+        finalizeResult: result as FinalizeResult,
+      }));
       return result;
     } catch (error) {
       setState((prev) => ({ ...prev, isFinalizing: false }));
@@ -274,6 +412,10 @@ export function usePlanningPoker(sprintId: string) {
     reset,
     acceptEstimate,
     nextTask,
+    addTask,
+    addTaskByTitle,
+    fetchAvailableTasks,
     finalize,
+    sendChat,
   };
 }
