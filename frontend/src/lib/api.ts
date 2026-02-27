@@ -3281,6 +3281,22 @@ export const sprintApi = {
     const response = await api.post(`/sprints/${sprintId}/planning-poker/${sessionId}/finalize`);
     return response.data;
   },
+
+  getAvailableTasks: async (sprintId: string, sessionId: string): Promise<{
+    tasks: { id: string; title: string; description: string | null; status: string; story_points: number | null; sprint_id: string | null }[];
+    total: number;
+  }> => {
+    const response = await api.get(`/sprints/${sprintId}/planning-poker/${sessionId}/available-tasks`);
+    return response.data;
+  },
+
+  addTasksToSession: async (sprintId: string, sessionId: string, taskIds: string[]): Promise<{
+    added: { id: string; title: string; description: string | null }[];
+    total_tasks: number;
+  }> => {
+    const response = await api.post(`/sprints/${sprintId}/planning-poker/${sessionId}/add-tasks`, { task_ids: taskIds });
+    return response.data;
+  },
 };
 
 // ============================================================================

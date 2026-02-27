@@ -1337,7 +1337,7 @@ export default function ProjectBoardPage({
   const { projectId } = params;
   const router = useRouter();
 
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { currentWorkspaceId, currentWorkspaceLoading } = useWorkspace();
 
   const {
@@ -2442,8 +2442,8 @@ export default function ProjectBoardPage({
         {showPlanningPoker && currentWorkspaceId && (
           <PlanningPoker
             sprintId={activeSprint?.id || ""}
-            userId={""}
-            userName={""}
+            userId={user?.id || ""}
+            userName={user?.name || "Anonymous"}
             onClose={() => {
               setShowPlanningPoker(false);
               queryClient.invalidateQueries({ queryKey: ["projectTasks"] });

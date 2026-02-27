@@ -7,16 +7,21 @@ from typing import Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query, status
-from sqlalchemy import select
+from pydantic import BaseModel
+from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from aexy.core.database import get_db
+from aexy.core.database import async_session_maker, get_db
 from aexy.api.developers import get_current_developer
 from aexy.models.developer import Developer
 from aexy.models.sprint import Sprint, SprintTask, SprintPlanningSession
 from aexy.services.sprint_service import SprintService
 from aexy.services.sprint_task_service import SprintTaskService
 from aexy.services.workspace_service import WorkspaceService
+
+
+class AddTasksRequest(BaseModel):
+    task_ids: list[str]
 
 logger = logging.getLogger(__name__)
 
@@ -175,7 +180,19 @@ async def start_poker_session(
         unestimated = [t for t in tasks if t.status != "done"]
 
     task_ids = [str(t.id) for t in unestimated]
-    task_info = [{"id": str(t.id), "title": t.title, "description": t.description} for t in unestimated]
+    task_info = [
+        {
+            "id": str(t.id),
+            "title": t.title,
+            "description": t.description,
+            "priority": t.priority,
+            "task_type": t.task_type,
+            "labels": t.labels or [],
+            "story_points": t.story_points,
+            "status": t.status,
+        }
+        for t in unestimated
+    ]
 
     session_id = str(uuid4())
 
@@ -348,6 +365,117 @@ async def poker_websocket(
                         "results": session["results"],
                     })
 
+            elif msg_type == "add_task":
+                # Add a task to the session (existing task by ID or ad-hoc by title)
+                task_id = data.get("task_id")
+                title = data.get("title")
+
+                if task_id:
+                    # Guard against duplicates
+                    if task_id in session["task_ids"]:
+                        await websocket.send_json({
+                            "type": "error",
+                            "message": "Task already in session",
+                        })
+                        continue
+
+                    # Load task from DB
+                    async with async_session_maker() as db:
+                        task_service = SprintTaskService(db)
+                        task = await task_service.get_task(task_id)
+                        if not task:
+                            await websocket.send_json({
+                                "type": "error",
+                                "message": "Task not found",
+                            })
+                            continue
+
+                        session["task_ids"].append(task_id)
+
+                        # If session had no tasks, set current
+                        if session["current_task_id"] is None:
+                            session["current_task_id"] = task_id
+                            session["current_task_index"] = 0
+
+                        await poker_manager.broadcast(session_id, {
+                            "type": "task_added",
+                            "task": {
+                                "id": str(task.id),
+                                "title": task.title,
+                                "description": task.description,
+                                "priority": task.priority,
+                                "task_type": task.task_type,
+                                "labels": task.labels or [],
+                                "story_points": task.story_points,
+                                "status": task.status,
+                            },
+                            "total_tasks": len(session["task_ids"]),
+                        })
+
+                elif title:
+                    # Create ad-hoc task in the sprint
+                    async with async_session_maker() as db:
+                        sprint_service = SprintService(db)
+                        sprint = await sprint_service.get_sprint(session["sprint_id"])
+                        if not sprint:
+                            await websocket.send_json({
+                                "type": "error",
+                                "message": "Sprint not found",
+                            })
+                            continue
+
+                        new_task = SprintTask(
+                            sprint_id=session["sprint_id"],
+                            team_id=sprint.team_id,
+                            workspace_id=sprint.workspace_id,
+                            source_type="manual",
+                            source_id=f"poker-{session_id}-{len(session['task_ids'])}",
+                            title=title,
+                            status="backlog",
+                        )
+                        db.add(new_task)
+                        await db.commit()
+                        await db.refresh(new_task)
+
+                        new_id = str(new_task.id)
+                        session["task_ids"].append(new_id)
+
+                        if session["current_task_id"] is None:
+                            session["current_task_id"] = new_id
+                            session["current_task_index"] = 0
+
+                        await poker_manager.broadcast(session_id, {
+                            "type": "task_added",
+                            "task": {
+                                "id": new_id,
+                                "title": new_task.title,
+                                "description": new_task.description,
+                                "priority": new_task.priority,
+                                "task_type": new_task.task_type,
+                                "labels": new_task.labels or [],
+                                "story_points": new_task.story_points,
+                                "status": new_task.status,
+                            },
+                            "total_tasks": len(session["task_ids"]),
+                        })
+                else:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "Provide task_id or title",
+                    })
+
+            elif msg_type == "chat":
+                # Broadcast chat message to all participants
+                text = data.get("text", "").strip()
+                if text:
+                    await poker_manager.broadcast(session_id, {
+                        "type": "chat",
+                        "user_id": user_id,
+                        "user_name": user_name,
+                        "text": text,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    })
+
     except WebSocketDisconnect:
         doc_id = poker_manager.disconnect(websocket)
         if doc_id:
@@ -357,6 +485,123 @@ async def poker_websocket(
                 "user_name": user_name,
                 "participants": poker_manager._get_participants(doc_id),
             })
+
+
+@router.get("/sprints/{sprint_id}/planning-poker/{session_id}/available-tasks")
+async def get_available_tasks(
+    sprint_id: str,
+    session_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get tasks that can be added to this poker session (not already in session)."""
+    sprint_service = SprintService(db)
+    workspace_service = WorkspaceService(db)
+
+    sprint = await sprint_service.get_sprint(sprint_id)
+    if not sprint:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sprint not found")
+
+    if not await workspace_service.check_permission(
+        sprint.workspace_id, str(current_user.id), "member"
+    ):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member")
+
+    session = poker_manager.sessions.get(session_id)
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+
+    existing_ids = set(session["task_ids"])
+
+    # Get tasks from the same team: both sprint tasks and backlog tasks
+    stmt = (
+        select(SprintTask)
+        .where(
+            and_(
+                SprintTask.team_id == sprint.team_id,
+                SprintTask.status.notin_(["done"]),
+                SprintTask.is_archived == False,
+            )
+        )
+        .order_by(SprintTask.priority.desc(), SprintTask.created_at)
+    )
+    result = await db.execute(stmt)
+    all_tasks = result.scalars().all()
+
+    available = [
+        {
+            "id": str(t.id),
+            "title": t.title,
+            "description": t.description,
+            "status": t.status,
+            "story_points": t.story_points,
+            "sprint_id": t.sprint_id,
+        }
+        for t in all_tasks
+        if str(t.id) not in existing_ids
+    ]
+
+    return {"tasks": available, "total": len(available)}
+
+
+@router.post("/sprints/{sprint_id}/planning-poker/{session_id}/add-tasks")
+async def add_tasks_to_session(
+    sprint_id: str,
+    session_id: str,
+    body: AddTasksRequest,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Bulk add tasks to an active poker session."""
+    sprint_service = SprintService(db)
+    workspace_service = WorkspaceService(db)
+
+    sprint = await sprint_service.get_sprint(sprint_id)
+    if not sprint:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sprint not found")
+
+    if not await workspace_service.check_permission(
+        sprint.workspace_id, str(current_user.id), "member"
+    ):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member")
+
+    session = poker_manager.sessions.get(session_id)
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+
+    existing_ids = set(session["task_ids"])
+    new_task_ids = [tid for tid in body.task_ids if tid not in existing_ids]
+
+    if not new_task_ids:
+        return {"added": [], "total_tasks": len(session["task_ids"])}
+
+    # Load and validate tasks
+    task_service = SprintTaskService(db)
+    added = []
+    for tid in new_task_ids:
+        task = await task_service.get_task(tid)
+        if task:
+            session["task_ids"].append(tid)
+            added.append({
+                "id": str(task.id),
+                "title": task.title,
+                "description": task.description,
+            })
+
+    # Set current task if session was empty
+    if session["current_task_id"] is None and session["task_ids"]:
+        session["current_task_id"] = session["task_ids"][0]
+        session["current_task_index"] = 0
+
+    # Broadcast to all connected clients
+    for task_info in added:
+        await poker_manager.broadcast(session_id, {
+            "type": "task_added",
+            "task": task_info,
+            "total_tasks": len(session["task_ids"]),
+        })
+
+    return {"added": added, "total_tasks": len(session["task_ids"])}
 
 
 @router.post("/sprints/{sprint_id}/planning-poker/{session_id}/finalize")
