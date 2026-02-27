@@ -554,14 +554,14 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50"
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-50 overflow-y-auto py-10"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-muted border border-border rounded-xl w-full max-w-lg p-6 shadow-2xl"
+        className="bg-muted border border-border rounded-xl w-full max-w-2xl p-6 shadow-2xl"
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <h3 className="text-xl font-semibold text-foreground">
@@ -661,7 +661,7 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
                 onChange={handleDescriptionChange}
                 placeholder="Add more details... Use @ to mention team members"
                 users={users}
-                minHeight="80px"
+                minHeight="150px"
               />
             </div>
 
@@ -1048,7 +1048,7 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-muted border border-border rounded-xl w-full max-w-2xl shadow-2xl"
+        className="bg-muted border border-border rounded-xl w-full max-w-4xl shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -1130,7 +1130,7 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
                 onChange={handleDescriptionChange}
                 placeholder="Add more details... Use @ to mention team members"
                 users={users}
-                minHeight="100px"
+                minHeight="200px"
               />
             </div>
 
@@ -1756,7 +1756,7 @@ export default function ProjectBoardPage({
 
       {/* Header */}
       <header className="flex-shrink-0 border-b border-border bg-muted/50 backdrop-blur-sm sticky top-0 z-30">
-        <div className="max-w-[1800px] mx-auto px-4 py-3">
+        <div className="px-4 py-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex flex-col gap-2">
               <Breadcrumb
@@ -1932,7 +1932,7 @@ export default function ProjectBoardPage({
             exit={{ height: 0, opacity: 0 }}
             className="border-b border-border bg-primary-100 dark:bg-primary-900/30 overflow-hidden z-50 relative"
           >
-            <div className="max-w-[1800px] mx-auto px-4 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="px-4 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <span className="text-sm text-foreground font-medium">
                   {selectedCount} task{selectedCount > 1 ? "s" : ""} selected
@@ -2204,7 +2204,7 @@ export default function ProjectBoardPage({
 
       {/* Keyboard shortcuts hint */}
       <div className="flex-shrink-0 border-t border-border bg-muted/30 px-4 py-2">
-        <div className="max-w-[1800px] mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-muted-foreground">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-4">
             <span>
               <kbd className="px-1.5 py-0.5 bg-accent rounded text-muted-foreground">⌘K</kbd> Search
