@@ -1221,17 +1221,17 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
               </select>
             </div>
 
-            {/* Delete button */}
+            {/* Archive button */}
             <div className="pt-4 border-t border-border">
               {showDeleteConfirm ? (
                 <div className="space-y-2">
-                  <p className="text-xs text-red-400">Delete this task?</p>
+                  <p className="text-xs text-amber-400">Archive this task?</p>
                   <div className="flex gap-2">
                     <button
                       onClick={handleDelete}
-                      className="flex-1 px-2 py-1 bg-red-600 hover:bg-red-700 text-foreground rounded text-xs"
+                      className="flex-1 px-2 py-1 bg-amber-600 hover:bg-amber-700 text-foreground rounded text-xs"
                     >
-                      Delete
+                      Archive
                     </button>
                     <button
                       onClick={() => setShowDeleteConfirm(false)}
@@ -1244,9 +1244,9 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
               ) : (
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="w-full px-2 py-1.5 text-red-400 hover:bg-red-500/10 rounded text-sm transition"
+                  className="w-full px-2 py-1.5 text-amber-400 hover:bg-amber-500/10 rounded text-sm transition"
                 >
-                  Delete Task
+                  Archive Task
                 </button>
               )}
             </div>
@@ -1321,7 +1321,7 @@ export default function ProjectBoardPage({
     isUpdatingTask,
     addTask,
     isAddingTask,
-    deleteTask,
+    archiveTask,
   } = useProjectBoard(currentWorkspaceId, projectId);
 
   const {
@@ -1714,19 +1714,17 @@ export default function ProjectBoardPage({
     }
   };
 
-  const handleDeleteTask = async (taskId: string) => {
+  const handleArchiveTask = async (taskId: string) => {
     const task = filteredTasks.find((t) => t.id === taskId);
     if (!task) return;
 
-    if (!confirm("Are you sure you want to delete this task?")) return;
-
     try {
-      await deleteTask({
+      await archiveTask({
         sprintId: task.sprint_id || null,
         taskId: task.id,
       });
     } catch (error) {
-      console.error("Failed to delete task:", error);
+      console.error("Failed to archive task:", error);
     }
   };
 
@@ -2142,7 +2140,7 @@ export default function ProjectBoardPage({
                         isCollapsed={collapsedSprints.has(sprint.id)}
                         onToggleCollapse={() => toggleSprintCollapse(sprint.id)}
                         onTaskClick={handleTaskClick}
-                        onDeleteTask={handleDeleteTask}
+                        onDeleteTask={handleArchiveTask}
                         isOver={overId === sprint.id}
                         onSelect={toggleTask}
                         isSelected={isSelected}
@@ -2174,7 +2172,7 @@ export default function ProjectBoardPage({
                     bgColor={STATUS_CONFIG[status].bgColor}
                     tasks={tasksByStatus[status] || []}
                     onTaskClick={handleTaskClick}
-                    onDeleteTask={handleDeleteTask}
+                    onDeleteTask={handleArchiveTask}
                     onStatusChange={handleQuickStatusChange}
                     showSprintBadge={true}
                     isOver={overId === status}
@@ -2245,7 +2243,7 @@ export default function ProjectBoardPage({
             task={selectedTask}
             onClose={() => setSelectedTask(null)}
             onUpdate={updateTask}
-            onDelete={deleteTask}
+            onDelete={archiveTask}
             isUpdating={isUpdatingTask}
             sprints={sprints}
             epics={epics || []}
