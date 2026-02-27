@@ -122,7 +122,7 @@ export default function ProjectLayoutClient({
     <div className="min-h-screen bg-background">
       {/* Sub-navigation for planning views */}
       <div className="border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-20">
-        <div className="max-w-[1800px] mx-auto px-4">
+        <div className="px-4">
           <nav className="flex items-center gap-1 py-1 overflow-x-auto">
             {/* Planning group */}
             <div className="flex items-center gap-1">

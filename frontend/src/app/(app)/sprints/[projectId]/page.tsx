@@ -402,7 +402,7 @@ export default function SprintsPage({ params }: { params: { projectId: string } 
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="flex-shrink-0 border-b border-border bg-muted/50 backdrop-blur-sm sticky top-0 z-30">
-        <div className="max-w-[1800px] mx-auto px-4 py-3">
+        <div className="px-4 py-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link
@@ -516,10 +516,10 @@ export default function SprintsPage({ params }: { params: { projectId: string } 
 
         {/* Sprint Progress Overview */}
         {activeSprint && (
-          <div className="bg-gradient-to-r from-primary-900/30 to-slate-800 rounded-xl p-6 border border-primary-500/30 mb-8">
+          <div className="bg-gradient-to-r from-primary-50 to-primary-100/50 dark:from-primary-900/30 dark:to-slate-800 rounded-xl p-6 border border-primary-200 dark:border-primary-500/30 mb-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <div>
-                <div className="text-sm text-primary-400 mb-1">Current Sprint</div>
+                <div className="text-sm text-primary-600 dark:text-primary-400 mb-1">Current Sprint</div>
                 <h3 className="text-xl font-semibold text-foreground">{activeSprint.name}</h3>
               </div>
               <Link
@@ -534,19 +534,19 @@ export default function SprintsPage({ params }: { params: { projectId: string } 
               <p className="text-muted-foreground text-sm mb-4">{activeSprint.goal}</p>
             )}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="bg-muted/50 rounded-lg p-3 text-center">
+              <div className="bg-white/70 dark:bg-muted/50 rounded-lg p-3 text-center">
                 <div className="text-2xl font-bold text-foreground">{activeSprint.tasks_count}</div>
                 <div className="text-xs text-muted-foreground">Total Tasks</div>
               </div>
-              <div className="bg-muted/50 rounded-lg p-3 text-center">
-                <div className="text-2xl font-bold text-green-400">{activeSprint.completed_count}</div>
+              <div className="bg-white/70 dark:bg-muted/50 rounded-lg p-3 text-center">
+                <div className="text-2xl font-bold text-green-600 dark:text-green-400">{activeSprint.completed_count}</div>
                 <div className="text-xs text-muted-foreground">Completed</div>
               </div>
-              <div className="bg-muted/50 rounded-lg p-3 text-center">
-                <div className="text-2xl font-bold text-blue-400">{activeSprint.total_points || 0}</div>
+              <div className="bg-white/70 dark:bg-muted/50 rounded-lg p-3 text-center">
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{activeSprint.total_points || 0}</div>
                 <div className="text-xs text-muted-foreground">Story Points</div>
               </div>
-              <div className="bg-muted/50 rounded-lg p-3 text-center">
+              <div className="bg-white/70 dark:bg-muted/50 rounded-lg p-3 text-center">
                 <div className="text-2xl font-bold text-foreground">
                   {activeSprint.tasks_count > 0
                     ? Math.round((activeSprint.completed_count / activeSprint.tasks_count) * 100)
