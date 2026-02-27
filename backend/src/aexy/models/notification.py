@@ -139,6 +139,11 @@ class Notification(Base):
         DateTime(timezone=True),
         nullable=True,
     )
+    slack_sent: Mapped[bool] = mapped_column(Boolean, default=False)
+    slack_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

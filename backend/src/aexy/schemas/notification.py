@@ -40,6 +40,11 @@ class NotificationEventType(str, Enum):
     # Mentions
     MENTION = "mention"
 
+    # App access requests
+    APP_ACCESS_REQUESTED = "app_access_requested"
+    APP_ACCESS_APPROVED = "app_access_approved"
+    APP_ACCESS_REJECTED = "app_access_rejected"
+
     # Usage alerts (billing)
     USAGE_ALERT_80 = "usage_alert_80"  # 80% of limit reached
     USAGE_ALERT_90 = "usage_alert_90"  # 90% of limit reached (critical)
@@ -93,6 +98,8 @@ class NotificationResponse(BaseModel):
     in_app_delivered: bool
     email_sent: bool
     email_sent_at: datetime | None = None
+    slack_sent: bool = False
+    slack_sent_at: datetime | None = None
     created_at: datetime
 
 
@@ -275,6 +282,21 @@ NOTIFICATION_TEMPLATES = {
         "title": "You were mentioned",
         "body_template": "{mentioner_name} mentioned you in a {entity_type}: {snippet}",
         "email_subject": "{mentioner_name} mentioned you",
+    },
+    NotificationEventType.APP_ACCESS_REQUESTED: {
+        "title": "App Access Request",
+        "body_template": "{requester_name} requested access to {app_name}",
+        "email_subject": "New App Access Request: {app_name}",
+    },
+    NotificationEventType.APP_ACCESS_APPROVED: {
+        "title": "Access Request Approved",
+        "body_template": "Your request for access to {app_name} was approved",
+        "email_subject": "Access Approved: {app_name}",
+    },
+    NotificationEventType.APP_ACCESS_REJECTED: {
+        "title": "Access Request Declined",
+        "body_template": "Your request for access to {app_name} was not approved",
+        "email_subject": "Access Request Update: {app_name}",
     },
     NotificationEventType.USAGE_ALERT_80: {
         "title": "Usage Alert",
