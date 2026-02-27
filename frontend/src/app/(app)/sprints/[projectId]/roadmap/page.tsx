@@ -655,7 +655,7 @@ export default function RoadmapPage({
 
       {/* Header */}
       <header className="border-b border-border bg-muted/50 backdrop-blur-sm sticky top-0 z-30">
-        <div className="max-w-[1400px] mx-auto px-4 py-3">
+        <div className="px-4 py-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link
@@ -722,7 +722,7 @@ export default function RoadmapPage({
       </header>
 
       {/* Content */}
-      <main className="max-w-[1400px] mx-auto px-4 py-6">
+      <main className="px-4 py-6">
         {isLoading ? (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="h-8 w-8 animate-spin text-primary-500" />

@@ -2334,6 +2334,8 @@ export interface SprintTask {
   // Mentions
   mentioned_user_ids: string[];
   mentioned_file_paths: string[];
+  // Archive support
+  is_archived: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -2992,6 +2994,11 @@ export const sprintApi = {
     await api.delete(`/sprints/${sprintId}/tasks/${taskId}`);
   },
 
+  unarchiveTask: async (sprintId: string, taskId: string): Promise<SprintTask> => {
+    const response = await api.post(`/sprints/${sprintId}/tasks/${taskId}/unarchive`);
+    return response.data;
+  },
+
   getSubtasks: async (sprintId: string, taskId: string): Promise<SprintTask[]> => {
     const response = await api.get(`/sprints/${sprintId}/tasks/${taskId}/subtasks`);
     return response.data;
@@ -3341,10 +3348,18 @@ export const projectTasksApi = {
   },
 
   /**
-   * Delete a task.
+   * Delete a task (archives it).
    */
   delete: async (teamId: string, taskId: string): Promise<void> => {
     await api.delete(`/teams/${teamId}/tasks/${taskId}`);
+  },
+
+  /**
+   * Unarchive a task (restore from soft delete).
+   */
+  unarchive: async (teamId: string, taskId: string): Promise<SprintTask> => {
+    const response = await api.post(`/teams/${teamId}/tasks/${taskId}/unarchive`);
+    return response.data;
   },
 };
 
