@@ -50,6 +50,35 @@ async def get_burndown_data(
     return BurndownDataResponse(**data)
 
 
+@router.get("/sprints/{sprint_id}/analytics/cycle-time")
+async def get_cycle_time_analytics(
+    sprint_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get cycle time analytics for a sprint."""
+    sprint_service = SprintService(db)
+    workspace_service = WorkspaceService(db)
+    analytics_service = SprintAnalyticsService(db)
+
+    sprint = await sprint_service.get_sprint(sprint_id)
+    if not sprint:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Sprint not found",
+        )
+
+    if not await workspace_service.check_permission(
+        sprint.workspace_id, str(current_user.id), "viewer"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not a member of this workspace",
+        )
+
+    return await analytics_service.get_cycle_time_analytics(sprint_id)
+
+
 @router.get("/sprints/{sprint_id}/metrics", response_model=list[SprintMetricsResponse])
 async def get_sprint_metrics(
     sprint_id: str,

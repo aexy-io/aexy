@@ -183,6 +183,26 @@ class SprintListResponse(BaseModel):
     completed_count: int = 0
     total_points: int = 0
     completed_points: int = 0
+    settings: dict = Field(default_factory=dict)
+
+
+# WIP Limits
+class WipLimitsConfig(BaseModel):
+    """Schema for WIP (Work In Progress) limits per status column."""
+
+    backlog: int | None = Field(default=None, ge=0, description="Max tasks in backlog")
+    todo: int | None = Field(default=None, ge=0, description="Max tasks in todo")
+    in_progress: int | None = Field(default=None, ge=0, description="Max tasks in progress")
+    review: int | None = Field(default=None, ge=0, description="Max tasks in review")
+    done: int | None = Field(default=None, ge=0, description="Max tasks in done")
+
+
+class WipLimitsResponse(BaseModel):
+    """Response for WIP limits with current counts."""
+
+    limits: WipLimitsConfig
+    counts: dict[str, int] = Field(default_factory=dict)
+    violations: list[dict] = Field(default_factory=list)
 
 
 # Sprint Task Schemas
@@ -236,6 +256,7 @@ class SprintTaskUpdate(BaseModel):
     epic_id: str | None = None
     sprint_id: str | None = None  # For moving tasks between sprints
     assignee_id: str | None = None  # For reassigning tasks
+    contributes_to_goal: bool | None = None  # Sprint goal contribution
     mentioned_user_ids: list[str] | None = None  # @mentions
     mentioned_file_paths: list[str] | None = None  # #mentions
 
@@ -329,6 +350,10 @@ class SprintTaskResponse(BaseModel):
     subtasks_count: int = 0
     started_at: datetime | None = None
     completed_at: datetime | None = None
+    work_started_at: datetime | None = None
+    cycle_time_hours: float | None = None
+    lead_time_hours: float | None = None
+    contributes_to_goal: bool = False
     carried_over_from_sprint_id: str | None = None
     mentioned_user_ids: list[str] = Field(default_factory=list)
     mentioned_file_paths: list[str] = Field(default_factory=list)
@@ -647,3 +672,5 @@ class TaskFromTemplateCreate(BaseModel):
     override_story_points: int | None = None
     additional_labels: list[str] = Field(default_factory=list)
     create_subtasks: bool = True
+
+
