@@ -22,6 +22,7 @@ from aexy.models.workflow import (
 from aexy.services.workflow_service import WorkflowService, WorkflowExecutor
 from aexy.services.workspace_service import WorkspaceService
 from aexy.services.crm_automation_service import CRMAutomationService
+from aexy.services.activity_logger import log_activity
 from aexy.schemas.workflow import (
     WorkflowDefinitionCreate,
     WorkflowDefinitionUpdate,
@@ -175,6 +176,16 @@ async def update_workflow(
             detail="Failed to update workflow",
         )
 
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="workflow",
+        entity_id=str(workflow.id),
+        activity_type="updated",
+        actor_id=str(user_id),
+        title="Updated workflow",
+    )
+
     # Sync workflow nodes to automation's actions array on save
     # This ensures the automation executor can run the workflow actions
     automation_service = CRMAutomationService(db)
@@ -307,6 +318,15 @@ async def publish_workflow(
         await db.flush()
 
     workflow = await service.publish_workflow(workflow.id)
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="workflow",
+        entity_id=str(workflow.id),
+        activity_type="published",
+        actor_id=str(current_user.id),
+        title="Published workflow",
+    )
     return workflow
 
 
@@ -331,6 +351,15 @@ async def unpublish_workflow(
         )
 
     workflow = await service.unpublish_workflow(workflow.id)
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="workflow",
+        entity_id=str(workflow.id),
+        activity_type="updated",
+        actor_id=str(current_user.id),
+        title="Unpublished workflow",
+    )
     return workflow
 
 

@@ -33,6 +33,7 @@ from aexy.schemas.release import (
     ReleaseListResult,
 )
 from aexy.services.workspace_service import WorkspaceService
+from aexy.services.activity_logger import log_activity
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/releases", tags=["Releases"])
 
@@ -209,6 +210,19 @@ async def create_release(
     )
 
     db.add(release)
+    await db.flush()
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="release",
+        entity_id=str(release.id),
+        activity_type="created",
+        actor_id=str(current_user.id),
+        title=f"Created release '{release.name}'",
+        metadata={"version": release.version},
+    )
+
     await db.commit()
     await db.refresh(release)
 
@@ -316,6 +330,16 @@ async def update_release(
     for field, value in update_data.items():
         setattr(release, field, value)
 
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="release",
+        entity_id=release_id,
+        activity_type="updated",
+        actor_id=str(current_user.id),
+        title=f"Updated release '{release.name}'",
+    )
+
     await db.commit()
     await db.refresh(release)
 
@@ -338,7 +362,20 @@ async def delete_release(
     if not release or str(release.workspace_id) != workspace_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Release not found")
 
+    release_name = release.name
+
     await db.delete(release)
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="release",
+        entity_id=release_id,
+        activity_type="deleted",
+        actor_id=str(current_user.id),
+        title=f"Deleted release '{release_name}'",
+    )
+
     await db.commit()
 
 
@@ -383,6 +420,17 @@ async def add_sprint_to_release(
         position=next_pos,
     )
     db.add(release_sprint)
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="release",
+        entity_id=release_id,
+        activity_type="updated",
+        actor_id=str(current_user.id),
+        title=f"Added sprint to release '{release.name}'",
+    )
+
     await db.commit()
 
     return {"message": "Sprint added to release"}
@@ -411,6 +459,21 @@ async def remove_sprint_from_release(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sprint not in release")
 
     await db.delete(release_sprint)
+
+    # Get release name for the activity log
+    release_result = await db.execute(select(Release).where(Release.id == release_id))
+    release = release_result.scalar_one_or_none()
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="release",
+        entity_id=release_id,
+        activity_type="updated",
+        actor_id=str(current_user.id),
+        title=f"Removed sprint from release '{release.name}'" if release else "Removed sprint from release",
+    )
+
     await db.commit()
 
 
@@ -447,6 +510,18 @@ async def add_stories_to_release(
                 added_ids.append(story_id)
 
     await _update_release_metrics(db, release)
+
+    if added_ids:
+        await log_activity(
+            db,
+            workspace_id=workspace_id,
+            entity_type="release",
+            entity_id=release_id,
+            activity_type="updated",
+            actor_id=str(current_user.id),
+            title=f"Added {len(added_ids)} story(ies) to release '{release.name}'",
+        )
+
     await db.commit()
 
     return ReleaseAddStoriesResponse(
@@ -474,8 +549,20 @@ async def freeze_release(
     if not release or str(release.workspace_id) != workspace_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Release not found")
 
+    old_status = release.status
     release.status = "code_freeze"
     release.code_freeze_date = date.today()
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="release",
+        entity_id=release_id,
+        activity_type="status_changed",
+        actor_id=str(current_user.id),
+        title=f"Code freeze for release '{release.name}'",
+        changes={"status": {"old": old_status, "new": "code_freeze"}},
+    )
 
     await db.commit()
     await db.refresh(release)
@@ -499,10 +586,23 @@ async def publish_release(
     if not release or str(release.workspace_id) != workspace_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Release not found")
 
+    old_status = release.status
     release.status = "released"
     release.actual_release_date = data.actual_release_date or date.today()
     if data.release_notes:
         release.release_notes = data.release_notes
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="release",
+        entity_id=release_id,
+        activity_type="published",
+        actor_id=str(current_user.id),
+        title=f"Published release '{release.name}'",
+        changes={"status": {"old": old_status, "new": "released"}},
+        metadata={"version": release.version},
+    )
 
     await db.commit()
     await db.refresh(release)

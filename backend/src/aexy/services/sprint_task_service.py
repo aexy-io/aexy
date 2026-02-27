@@ -13,6 +13,7 @@ from aexy.services.task_sources.github_issues import GitHubIssuesSource
 from aexy.services.task_sources.jira import JiraSource
 from aexy.services.task_sources.linear import LinearSource
 from aexy.services.automation_service import dispatch_automation_event
+from aexy.services.activity_logger import log_activity
 
 
 class SprintTaskService:
@@ -99,6 +100,19 @@ class SprintTaskService:
         )
         result = await self.db.execute(stmt)
         created_task = result.scalar_one()
+
+        # Log unified activity
+        if workspace_id:
+            await log_activity(
+                self.db,
+                workspace_id=workspace_id,
+                entity_type="task",
+                entity_id=str(created_task.id),
+                activity_type="created",
+                actor_id=assignee_id,
+                title=f"Created task '{title}'",
+                metadata={"sprint_id": sprint_id, "source_type": source_type},
+            )
 
         # Dispatch task.created event for automations
         if workspace_id:
@@ -258,6 +272,17 @@ class SprintTaskService:
         if not task:
             return False
 
+        # Log before hard delete since entity won't exist after
+        if task.workspace_id:
+            await log_activity(
+                self.db,
+                workspace_id=str(task.workspace_id),
+                entity_type="task",
+                entity_id=str(task.id),
+                activity_type="deleted",
+                title=f"Removed task '{task.title}'",
+            )
+
         await self.db.delete(task)
         await self.db.flush()
         return True
@@ -293,6 +318,19 @@ class SprintTaskService:
 
         # Re-fetch with relationships loaded
         updated_task = await self.get_task(task_id)
+
+        # Log unified activity for assignment
+        if updated_task and updated_task.workspace_id:
+            await log_activity(
+                self.db,
+                workspace_id=updated_task.workspace_id,
+                entity_type="task",
+                entity_id=str(updated_task.id),
+                activity_type="assigned",
+                title=f"Assigned task '{updated_task.title}'",
+                changes={"assignee_id": {"new": developer_id}},
+                metadata={"assignment_reason": reason},
+            )
 
         # Dispatch task.assigned event for automations
         if updated_task and updated_task.workspace_id:
@@ -450,6 +488,21 @@ class SprintTaskService:
         # Re-fetch with relationships loaded
         updated_task = await self.get_task(task_id)
 
+        # Log unified activity for status changes
+        if updated_task and updated_task.workspace_id and old_status != new_status:
+            act_type = "status_changed"
+            if new_status == "done":
+                act_type = "resolved"
+            await log_activity(
+                self.db,
+                workspace_id=updated_task.workspace_id,
+                entity_type="task",
+                entity_id=str(updated_task.id),
+                activity_type=act_type,
+                title=f"Task '{updated_task.title}' status changed",
+                changes={"status": {"old": old_status, "new": new_status}},
+            )
+
         # Dispatch automation events for status changes
         if updated_task and updated_task.workspace_id and old_status != new_status:
             trigger_data = {
@@ -582,6 +635,20 @@ class SprintTaskService:
         Returns:
             Created TaskActivity.
         """
+        # Log to unified activity feed
+        task = await self.get_task(task_id)
+        if task and task.workspace_id:
+            await log_activity(
+                self.db,
+                workspace_id=task.workspace_id,
+                entity_type="task",
+                entity_id=task_id,
+                activity_type="comment",
+                actor_id=actor_id,
+                title=f"Commented on task '{task.title}'",
+                content=comment,
+            )
+
         return await self.log_activity(
             task_id=task_id,
             action="comment",

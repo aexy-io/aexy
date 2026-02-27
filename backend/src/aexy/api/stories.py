@@ -30,6 +30,7 @@ from aexy.schemas.story import (
     StoryListResult,
 )
 from aexy.services.workspace_service import WorkspaceService
+from aexy.services.activity_logger import log_activity
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/stories", tags=["User Stories"])
 
@@ -267,6 +268,17 @@ async def create_story(
     )
     db.add(activity)
 
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="story",
+        entity_id=str(story.id),
+        activity_type="created",
+        actor_id=str(current_user.id),
+        title=f"Created story '{story.title}'",
+        metadata={"key": story.key},
+    )
+
     await db.commit()
     await db.refresh(story)
 
@@ -413,6 +425,16 @@ async def update_story(
             )
             db.add(activity)
 
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="story",
+        entity_id=story_id,
+        activity_type="updated",
+        actor_id=str(current_user.id),
+        title=f"Updated story '{story.title}'",
+    )
+
     await db.commit()
     await db.refresh(story)
 
@@ -440,7 +462,22 @@ async def delete_story(
             detail="Story not found",
         )
 
+    story_title = story.title
+    story_key = story.key
+
     await db.delete(story)
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="story",
+        entity_id=story_id,
+        activity_type="deleted",
+        actor_id=str(current_user.id),
+        title=f"Deleted story '{story_title}'",
+        metadata={"key": story_key},
+    )
+
     await db.commit()
 
 
@@ -481,6 +518,17 @@ async def mark_story_ready(
         comment=data.notes,
     )
     db.add(activity)
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="story",
+        entity_id=story_id,
+        activity_type="status_changed",
+        actor_id=str(current_user.id),
+        title=f"Story '{story.title}' marked as ready",
+        changes={"status": {"old": old_status, "new": "ready"}},
+    )
 
     await db.commit()
     await db.refresh(story)
@@ -527,6 +575,17 @@ async def accept_story(
     )
     db.add(activity)
 
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="story",
+        entity_id=story_id,
+        activity_type="status_changed",
+        actor_id=str(current_user.id),
+        title=f"Accepted story '{story.title}'",
+        changes={"status": {"old": old_status, "new": "accepted"}},
+    )
+
     await db.commit()
     await db.refresh(story)
 
@@ -568,6 +627,17 @@ async def reject_story(
         comment=data.reason,
     )
     db.add(activity)
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="story",
+        entity_id=story_id,
+        activity_type="status_changed",
+        actor_id=str(current_user.id),
+        title=f"Rejected story '{story.title}'",
+        changes={"status": {"old": old_status, "new": "rejected"}},
+    )
 
     await db.commit()
     await db.refresh(story)

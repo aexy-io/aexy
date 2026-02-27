@@ -95,6 +95,38 @@ def _get_display_text(activity: EntityActivity) -> str:
         return activity.title or f"{actor_name} linked to another item"
     elif activity.activity_type == "unlinked":
         return activity.title or f"{actor_name} removed a link"
+    elif activity.activity_type == "published":
+        return activity.title or f"{actor_name} published this {activity.entity_type}"
+    elif activity.activity_type == "archived":
+        return activity.title or f"{actor_name} archived this {activity.entity_type}"
+    elif activity.activity_type == "resolved":
+        return activity.title or f"{actor_name} resolved this {activity.entity_type}"
+    elif activity.activity_type == "escalated":
+        return activity.title or f"{actor_name} escalated this {activity.entity_type}"
+    elif activity.activity_type == "deleted":
+        return activity.title or f"{actor_name} deleted this {activity.entity_type}"
+    elif activity.activity_type == "completed":
+        return activity.title or f"{actor_name} completed this {activity.entity_type}"
+    elif activity.activity_type == "started":
+        return activity.title or f"{actor_name} started this {activity.entity_type}"
+    elif activity.activity_type == "paused":
+        return activity.title or f"{actor_name} paused this {activity.entity_type}"
+    elif activity.activity_type == "resumed":
+        return activity.title or f"{actor_name} resumed this {activity.entity_type}"
+    elif activity.activity_type == "submitted":
+        return activity.title or f"{actor_name} submitted this {activity.entity_type}"
+    elif activity.activity_type == "approved":
+        return activity.title or f"{actor_name} approved this {activity.entity_type}"
+    elif activity.activity_type == "rejected":
+        return activity.title or f"{actor_name} rejected this {activity.entity_type}"
+    elif activity.activity_type == "duplicated":
+        return activity.title or f"{actor_name} duplicated this {activity.entity_type}"
+    elif activity.activity_type == "toggled":
+        return activity.title or f"{actor_name} toggled this {activity.entity_type}"
+    elif activity.activity_type == "withdrawn":
+        return activity.title or f"{actor_name} withdrew this {activity.entity_type}"
+    elif activity.activity_type == "cancelled":
+        return activity.title or f"{actor_name} cancelled this {activity.entity_type}"
 
     return activity.title or f"{actor_name} performed an action"
 
@@ -110,6 +142,22 @@ def _get_activity_icon(activity_type: str) -> str:
         "progress_updated": "trending-up",
         "linked": "link",
         "unlinked": "link-off",
+        "published": "send",
+        "archived": "archive",
+        "resolved": "check-circle",
+        "escalated": "alert-triangle",
+        "deleted": "trash-2",
+        "completed": "check-circle",
+        "started": "play",
+        "paused": "pause",
+        "resumed": "play",
+        "submitted": "send",
+        "approved": "check-circle",
+        "rejected": "x-circle",
+        "duplicated": "copy",
+        "toggled": "toggle-left",
+        "withdrawn": "undo",
+        "cancelled": "x-circle",
     }
     return icons.get(activity_type, "activity")
 

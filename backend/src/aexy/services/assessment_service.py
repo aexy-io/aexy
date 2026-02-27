@@ -39,6 +39,7 @@ from aexy.schemas.assessment import (
     StepStatus,
 )
 from aexy.services.email_service import email_service
+from aexy.services.activity_logger import log_activity
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +80,17 @@ class AssessmentService:
         self.db.add(assessment)
         await self.db.flush()
         await self.db.refresh(assessment)
+
+        await log_activity(
+            self.db,
+            workspace_id=data.organization_id,
+            entity_type="assessment",
+            entity_id=str(assessment.id),
+            activity_type="created",
+            actor_id=created_by,
+            title=f"Created assessment '{data.title}'",
+        )
+
         return assessment
 
     async def clone_assessment(
@@ -315,6 +327,18 @@ class AssessmentService:
         assessment.updated_at = datetime.utcnow()
         await self.db.flush()
         await self.db.refresh(assessment)
+
+        if update_data:
+            await log_activity(
+                self.db,
+                workspace_id=assessment.organization_id,
+                entity_type="assessment",
+                entity_id=str(assessment.id),
+                activity_type="updated",
+                title=f"Updated assessment '{assessment.title}'",
+                changes={k: {"new": str(v) if v is not None else None} for k, v in update_data.items()},
+            )
+
         return assessment
 
     async def delete_assessment(
@@ -329,6 +353,15 @@ class AssessmentService:
 
         if assessment.status != AssessmentStatus.DRAFT.value:
             raise ValueError("Can only delete draft assessments")
+
+        await log_activity(
+            self.db,
+            workspace_id=str(assessment.workspace_id),
+            entity_type="assessment",
+            entity_id=str(assessment.id),
+            activity_type="deleted",
+            title=f"Deleted assessment '{assessment.title}'",
+        )
 
         await self.db.delete(assessment)
         return True
@@ -856,6 +889,17 @@ class AssessmentService:
 
         await self.db.refresh(candidate)
         await self.db.refresh(invitation)
+
+        await log_activity(
+            self.db,
+            workspace_id=organization_id,
+            entity_type="assessment",
+            entity_id=assessment_id,
+            activity_type="updated",
+            title=f"Invited candidate '{candidate_data.email}'",
+            metadata={"candidate_id": str(candidate.id), "candidate_email": candidate_data.email},
+        )
+
         return candidate, invitation
 
     async def remove_candidate(
@@ -1058,6 +1102,17 @@ class AssessmentService:
                         invitation.email_sent_at = datetime.utcnow()
 
         await self.db.flush()
+
+        await log_activity(
+            self.db,
+            workspace_id=assessment.organization_id,
+            entity_type="assessment",
+            entity_id=str(assessment.id),
+            activity_type="published",
+            title=f"Published assessment '{assessment.title}'",
+            metadata={"send_invitations": send_invitations},
+        )
+
         await self.db.refresh(assessment)
         return assessment
 

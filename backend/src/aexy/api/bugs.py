@@ -31,6 +31,7 @@ from aexy.schemas.bug import (
     BugCommentCreate,
 )
 from aexy.services.workspace_service import WorkspaceService
+from aexy.services.activity_logger import log_activity
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/bugs", tags=["Bugs"])
 
@@ -260,6 +261,17 @@ async def create_bug(
     )
     db.add(activity)
 
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="bug",
+        entity_id=str(bug.id),
+        activity_type="created",
+        actor_id=str(current_user.id),
+        title=f"Reported bug '{bug.title}'",
+        metadata={"key": bug.key, "severity": bug.severity},
+    )
+
     await db.commit()
     await db.refresh(bug)
 
@@ -418,6 +430,16 @@ async def update_bug(
             )
             db.add(activity)
 
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="bug",
+        entity_id=bug_id,
+        activity_type="updated",
+        actor_id=str(current_user.id),
+        title=f"Updated bug '{bug.title}'",
+    )
+
     await db.commit()
     await db.refresh(bug)
 
@@ -440,7 +462,22 @@ async def delete_bug(
     if not bug or str(bug.workspace_id) != workspace_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bug not found")
 
+    bug_title = bug.title
+    bug_key = bug.key
+
     await db.delete(bug)
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="bug",
+        entity_id=bug_id,
+        activity_type="deleted",
+        actor_id=str(current_user.id),
+        title=f"Deleted bug '{bug_title}'",
+        metadata={"key": bug_key},
+    )
+
     await db.commit()
 
 
@@ -477,6 +514,17 @@ async def confirm_bug(
         comment=data.notes,
     )
     db.add(activity)
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="bug",
+        entity_id=bug_id,
+        activity_type="status_changed",
+        actor_id=str(current_user.id),
+        title=f"Confirmed bug '{bug.title}'",
+        changes={"status": {"old": old_status, "new": "confirmed"}},
+    )
 
     await db.commit()
     await db.refresh(bug)
@@ -529,6 +577,17 @@ async def mark_bug_fixed(
     )
     db.add(activity)
 
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="bug",
+        entity_id=bug_id,
+        activity_type="resolved",
+        actor_id=str(current_user.id),
+        title=f"Fixed bug '{bug.title}'",
+        changes={"status": {"old": old_status, "new": "fixed"}},
+    )
+
     await db.commit()
     await db.refresh(bug)
 
@@ -567,6 +626,17 @@ async def verify_bug_fix(
         comment=data.notes,
     )
     db.add(activity)
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="bug",
+        entity_id=bug_id,
+        activity_type="status_changed",
+        actor_id=str(current_user.id),
+        title=f"Verified bug fix '{bug.title}'",
+        changes={"status": {"old": old_status, "new": "verified"}},
+    )
 
     await db.commit()
     await db.refresh(bug)
@@ -616,6 +686,17 @@ async def close_bug(
     )
     db.add(activity)
 
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="bug",
+        entity_id=bug_id,
+        activity_type="archived",
+        actor_id=str(current_user.id),
+        title=f"Closed bug '{bug.title}'",
+        changes={"status": {"old": old_status, "new": bug.status}},
+    )
+
     await db.commit()
     await db.refresh(bug)
 
@@ -655,6 +736,17 @@ async def reopen_bug(
         comment=data.reason,
     )
     db.add(activity)
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="bug",
+        entity_id=bug_id,
+        activity_type="status_changed",
+        actor_id=str(current_user.id),
+        title=f"Reopened bug '{bug.title}'",
+        changes={"status": {"old": old_status, "new": "confirmed"}},
+    )
 
     await db.commit()
     await db.refresh(bug)
@@ -740,6 +832,18 @@ async def add_bug_comment(
         comment=data.comment,
     )
     db.add(activity)
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="bug",
+        entity_id=bug_id,
+        activity_type="comment",
+        actor_id=str(current_user.id),
+        title=f"Commented on bug '{bug.title}'",
+        content=data.comment,
+    )
+
     await db.commit()
     await db.refresh(activity)
 

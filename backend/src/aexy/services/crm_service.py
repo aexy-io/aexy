@@ -26,6 +26,7 @@ from aexy.models.crm import (
     CRMAttributeType,
 )
 from aexy.services.data_table_service import DataTableService
+from aexy.services.activity_logger import log_activity
 
 
 def generate_slug(name: str) -> str:
@@ -630,6 +631,18 @@ class CRMRecordService:
             metadata={"values": values},
         )
 
+        # Unified activity feed
+        await log_activity(
+            self.db,
+            workspace_id=workspace_id,
+            entity_type="crm_record",
+            entity_id=str(record.id),
+            activity_type="created",
+            actor_id=created_by_id,
+            title="Created CRM record",
+            metadata={"object_id": object_id},
+        )
+
         # CRM-specific: trigger events (automations and webhooks)
         try:
             from aexy.services.crm_events import CRMEventService
@@ -704,6 +717,31 @@ class CRMRecordService:
                 metadata={"changes": changes},
             )
 
+            # Build old/new change dict for the unified feed
+            entity_changes = {}
+            for ch in changes:
+                field = ch.get("field", "unknown")
+                entity_changes[field] = {
+                    "old": str(ch.get("old")) if ch.get("old") is not None else None,
+                    "new": str(ch.get("new")) if ch.get("new") is not None else None,
+                }
+
+            # Detect stage changes for a more specific activity_type
+            stage_fields = {"stage", "status", "pipeline_stage", "deal_stage"}
+            has_stage_change = bool(stage_fields & set(entity_changes.keys()))
+            activity_type = "status_changed" if has_stage_change else "updated"
+
+            await log_activity(
+                self.db,
+                workspace_id=record.workspace_id,
+                entity_type="crm_record",
+                entity_id=str(record.id),
+                activity_type=activity_type,
+                actor_id=updated_by_id,
+                title="Updated CRM record",
+                changes=entity_changes,
+            )
+
             try:
                 from aexy.services.crm_events import CRMEventService
                 event_service = CRMEventService(self.db)
@@ -743,6 +781,15 @@ class CRMRecordService:
                 activity_type="record.deleted",
                 actor_id=deleted_by_id,
                 metadata={"permanent": permanent},
+            )
+            await log_activity(
+                self.db,
+                workspace_id=record.workspace_id,
+                entity_type="crm_record",
+                entity_id=str(record.id),
+                activity_type="archived",
+                actor_id=deleted_by_id,
+                title="Deleted CRM record",
             )
 
         result = await self.dts.delete_record(record_id, permanent)
