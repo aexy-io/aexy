@@ -65,7 +65,16 @@ export function useWebPush(developerId: string | null | undefined) {
       }
 
       // Get VAPID key
-      const { public_key } = await notificationsApi.getVapidKey();
+      let public_key: string;
+      try {
+        const vapidResp = await notificationsApi.getVapidKey();
+        public_key = vapidResp.public_key;
+      } catch {
+        // VAPID keys not configured on backend — web push is unavailable
+        console.warn("Web push not configured on server");
+        setIsLoading(false);
+        return false;
+      }
 
       // Register service worker
       const registration = await navigator.serviceWorker.register("/sw-push.js");
