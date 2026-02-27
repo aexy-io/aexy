@@ -36,6 +36,7 @@ from aexy.schemas.forms import (
 from aexy.services.forms_service import FormsService
 from aexy.services.form_submission_handler import FormSubmissionHandler
 from aexy.services.workspace_service import WorkspaceService
+from aexy.services.activity_logger import log_activity
 
 
 # =============================================================================
@@ -206,6 +207,17 @@ async def create_form(
         created_by_id=str(current_user.id),
         form_data=form_data,
     )
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="form",
+        entity_id=str(form.id),
+        activity_type="created",
+        actor_id=str(current_user.id),
+        title=f"Created form '{form.name}'",
+    )
+
     return form_to_response(form)
 
 
@@ -267,6 +279,17 @@ async def update_form(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Form not found")
 
     form = await form_service.update_form(form_id, form_data)
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="form",
+        entity_id=form_id,
+        activity_type="updated",
+        actor_id=str(current_user.id),
+        title=f"Updated form '{form.name}'",
+    )
+
     return form_to_response(form)
 
 
@@ -285,7 +308,20 @@ async def delete_form(
     if not form or form.workspace_id != workspace_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Form not found")
 
+    form_name = form.name
+
     await form_service.delete_form(form_id)
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="form",
+        entity_id=form_id,
+        activity_type="deleted",
+        actor_id=str(current_user.id),
+        title=f"Deleted form '{form_name}'",
+    )
+
     return {"status": "deleted"}
 
 
@@ -310,6 +346,17 @@ async def duplicate_form(
         new_name=data.name,
         created_by_id=str(current_user.id),
     )
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="form",
+        entity_id=str(new_form.id),
+        activity_type="duplicated",
+        actor_id=str(current_user.id),
+        title=f"Duplicated form '{new_form.name}'",
+    )
+
     return form_to_response(new_form)
 
 

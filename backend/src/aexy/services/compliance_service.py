@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from aexy.services.automation_service import dispatch_automation_event
+from aexy.services.activity_logger import log_activity
 from aexy.models.compliance import (
     AssignmentStatus,
     AuditActionType,
@@ -163,6 +164,16 @@ class ComplianceService:
             )
         except Exception:
             logger.exception("Failed to dispatch training.created automation event")
+
+        await log_activity(
+            self.db,
+            workspace_id=workspace_id,
+            entity_type="compliance",
+            entity_id=str(training.id),
+            activity_type="created",
+            actor_id=created_by_id,
+            title=f"Created mandatory training '{training.name}'",
+        )
 
         logger.info(f"Created mandatory training {training.id} in workspace {workspace_id}")
         return training
@@ -321,6 +332,15 @@ class ComplianceService:
             description=f"Deactivated mandatory training: {training.name}",
         )
 
+        await log_activity(
+            self.db,
+            workspace_id=workspace_id,
+            entity_type="compliance",
+            entity_id=str(training.id),
+            activity_type="deleted",
+            title=f"Deleted mandatory training '{training.name}'",
+        )
+
         await self.db.commit()
         return True
 
@@ -373,6 +393,17 @@ class ComplianceService:
             )
         except Exception:
             logger.exception("Failed to dispatch training.assigned automation event")
+
+        await log_activity(
+            self.db,
+            workspace_id=workspace_id,
+            entity_type="compliance",
+            entity_id=str(assignment.id),
+            activity_type="assigned",
+            actor_id=actor_id,
+            title="Assigned training",
+            metadata={"developer_id": data.developer_id, "due_date": str(data.due_date)},
+        )
 
         return assignment
 
@@ -739,6 +770,17 @@ class ComplianceService:
                 )
         except Exception:
             logger.exception("Failed to dispatch training.completed automation event")
+
+        await log_activity(
+            self.db,
+            workspace_id=workspace_id,
+            entity_type="compliance",
+            entity_id=str(assignment.id),
+            activity_type="status_changed",
+            actor_id=developer_id,
+            title="Completed training assignment",
+            changes={"status": {"old": "assigned", "new": "completed"}},
+        )
 
         return assignment
 

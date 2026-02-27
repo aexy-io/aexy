@@ -31,6 +31,7 @@ from aexy.schemas.goal import (
     LinkedEpicInfo,
 )
 from aexy.services.workspace_service import WorkspaceService
+from aexy.services.activity_logger import log_activity
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/goals", tags=["Goals"])
 
@@ -280,6 +281,15 @@ async def create_goal(
         actor_id=str(current_user.id),
         title=f"Created {goal.goal_type} '{goal.title}'",
     )
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="goal",
+        entity_id=str(goal.id),
+        activity_type="created",
+        actor_id=str(current_user.id),
+        title=f"Created goal '{goal.title}'",
+    )
 
     await db.commit()
     await db.refresh(goal)
@@ -450,6 +460,15 @@ async def update_goal(
             content=comment,
             changes=changes if changes else None,
         )
+        await log_activity(
+            db,
+            workspace_id=workspace_id,
+            entity_type="goal",
+            entity_id=goal_id,
+            activity_type="updated",
+            actor_id=str(current_user.id),
+            title="Updated goal",
+        )
 
     await db.commit()
     await db.refresh(goal)
@@ -473,7 +492,17 @@ async def delete_goal(
     if not goal or str(goal.workspace_id) != workspace_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Goal not found")
 
+    goal_title = goal.title
     await db.delete(goal)
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="goal",
+        entity_id=goal_id,
+        activity_type="deleted",
+        actor_id=str(current_user.id),
+        title=f"Deleted goal '{goal_title}'",
+    )
     await db.commit()
 
 
@@ -593,6 +622,15 @@ async def update_progress(
                 "new": f"{goal.progress_percentage:.0f}%",
             },
         },
+    )
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="goal",
+        entity_id=goal_id,
+        activity_type="progress_updated",
+        actor_id=str(current_user.id),
+        title=f"Updated progress to {goal.progress_percentage:.0f}%",
     )
 
     await db.commit()

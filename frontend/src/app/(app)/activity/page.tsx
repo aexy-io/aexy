@@ -7,7 +7,7 @@ export default function ActivityPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-muted/50">
-        <div className="max-w-5xl mx-auto px-4 py-6">
+        <div className=" mx-auto px-4 py-6">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary-500/10 rounded-lg">
               <Activity className="h-5 w-5 text-primary-400" />
@@ -22,7 +22,7 @@ export default function ActivityPage() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-8">
+      <main className=" mx-auto px-4 py-8">
         <UnifiedActivityFeed />
       </main>
     </div>

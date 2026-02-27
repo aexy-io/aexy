@@ -19,6 +19,7 @@ from aexy.schemas.role import (
 )
 from aexy.services.role_service import RoleService
 from aexy.services.permission_service import PermissionService
+from aexy.services.activity_logger import log_activity
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/roles", tags=["Roles"])
 
@@ -110,6 +111,17 @@ async def create_role(
         based_on_template=data.based_on_template,
         priority=data.priority,
     )
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="role",
+        entity_id=str(role.id),
+        activity_type="created",
+        actor_id=str(current_user.id),
+        title=f"Created role '{data.name}'",
+    )
+
     await db.commit()
     await db.refresh(role)
     return role
@@ -202,6 +214,17 @@ async def update_role(
         )
 
     role = await role_service.update_role(role_id, **data.model_dump(exclude_unset=True))
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="role",
+        entity_id=role_id,
+        activity_type="updated",
+        actor_id=str(current_user.id),
+        title=f"Updated role '{role.name}'",
+    )
+
     await db.commit()
     await db.refresh(role)
     return role
@@ -230,7 +253,20 @@ async def delete_role(
     if role.is_system:
         raise HTTPException(status_code=400, detail="Cannot delete system roles")
 
+    role_name = role.name
+
     await role_service.delete_role(role_id)
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="role",
+        entity_id=role_id,
+        activity_type="deleted",
+        actor_id=str(current_user.id),
+        title=f"Deleted role '{role_name}'",
+    )
+
     await db.commit()
 
 
@@ -256,6 +292,17 @@ async def duplicate_role(
         raise HTTPException(status_code=404, detail="Role not found")
 
     new_role = await role_service.duplicate_role(role_id, new_name)
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="role",
+        entity_id=str(new_role.id),
+        activity_type="duplicated",
+        actor_id=str(current_user.id),
+        title="Duplicated role",
+    )
+
     await db.commit()
     await db.refresh(new_role)
     return new_role
