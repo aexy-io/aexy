@@ -939,6 +939,8 @@ class AppAccessService:
                         "request_id": str(request.id),
                         "app_id": request.app_id,
                         "workspace_id": request.workspace_id,
+                        "app_name": app_name,
+                        "requester_name": requester_name,
                         "action_url": f"/settings/access?tab=requests",
                     },
                 )
@@ -973,6 +975,7 @@ class AppAccessService:
                     "request_id": str(request.id),
                     "app_id": request.app_id,
                     "workspace_id": request.workspace_id,
+                    "app_name": app_name,
                     "action_url": f"/{APP_CATALOG.get(request.app_id, {}).get('base_route', 'dashboard')}",
                 },
             )

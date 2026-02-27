@@ -74,6 +74,8 @@ ACTIVITY_CONFIG: dict[str, dict[str, Any]] = {
     "deliver_webhook": {"retry": WEBHOOK_RETRY, "timeout": timedelta(minutes=2)},
 
     # Short activities (notifications, SMS, etc.)
+    "send_notification_email": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=2)},
+    "send_notification_slack": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=2)},
     "send_sms": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=2)},
     "send_slack_message": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=2)},
     "send_slack_dm": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=2)},
