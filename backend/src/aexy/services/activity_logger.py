@@ -44,19 +44,20 @@ async def log_activity(
     the caller commits immediately or relies on get_db() auto-commit.
     """
     try:
-        activity = EntityActivity(
-            id=str(uuid4()),
-            workspace_id=workspace_id,
-            entity_type=entity_type,
-            entity_id=entity_id,
-            activity_type=activity_type,
-            actor_id=actor_id,
-            title=title,
-            content=content,
-            changes=changes,
-            activity_metadata=metadata,
-        )
-        db.add(activity)
-        await db.flush()
+        async with db.begin_nested():
+            activity = EntityActivity(
+                id=str(uuid4()),
+                workspace_id=workspace_id,
+                entity_type=entity_type,
+                entity_id=entity_id,
+                activity_type=activity_type,
+                actor_id=actor_id,
+                title=title,
+                content=content,
+                changes=changes,
+                activity_metadata=metadata,
+            )
+            db.add(activity)
+            await db.flush()
     except Exception:
         logger.exception("Failed to log entity activity for %s/%s", entity_type, entity_id)

@@ -73,6 +73,7 @@ class EntityActivityResponse(BaseModel):
     changes: dict | None = None
     metadata: dict | None = None
     created_at: datetime
+    url: str | None = None
 
 
 class EntityActivityListResponse(BaseModel):
@@ -80,6 +81,7 @@ class EntityActivityListResponse(BaseModel):
 
     items: list[EntityActivityResponse]
     total: int
+    page: int = 1
     has_more: bool = False
 
 

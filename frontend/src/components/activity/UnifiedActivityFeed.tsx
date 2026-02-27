@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Activity,
@@ -24,6 +24,7 @@ import {
   Copy,
   ToggleLeft,
   Undo2,
+  RefreshCw,
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useActivityFeed } from "@/hooks/useActivityFeed";
@@ -237,23 +238,23 @@ function getEntityRoute(entityType: EntityActivityType, entityId: string): strin
     case "epic":
       return `/sprints?tab=epics&epic=${entityId}`;
     case "bug":
-      return `/bugs/${entityId}`;
+      return `/sprints`;
     case "goal":
       return `/reviews/goals`;
     case "backlog":
       return `/sprints?tab=backlog`;
     case "release":
-      return `/releases/${entityId}`;
+      return `/sprints`;
     case "roadmap":
-      return `/roadmap`;
+      return `/sprints`;
     case "ticket":
       return `/tickets/${entityId}`;
     case "crm_record":
-      return `/crm/records/${entityId}`;
+      return `/crm`;
     case "document":
       return `/docs/${entityId}`;
     case "assessment":
-      return `/assessments/${entityId}`;
+      return `/hiring/assessments/${entityId}/edit`;
     case "compliance":
       return `/compliance/documents/${entityId}`;
     case "project":
@@ -273,7 +274,7 @@ function getEntityRoute(entityType: EntityActivityType, entityId: string): strin
     case "leave_request":
       return `/leave`;
     case "review":
-      return `/reviews/${entityId}`;
+      return `/reviews/cycles/${entityId}`;
     case "role":
       return `/settings/organization/roles`;
     default:
@@ -310,11 +311,11 @@ function getDateGroupLabel(dateStr: string): string {
   return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
-// ── Activity Item ──
+// ── Activity Item (memoized to prevent re-renders on scroll) ──
 
-function ActivityItem({ activity }: { activity: EntityActivity }) {
+const ActivityItem = React.memo(function ActivityItem({ activity }: { activity: EntityActivity }) {
   const color = getActivityColor(activity.activity_type);
-  const entityLink = getEntityRoute(activity.entity_type, activity.entity_id);
+  const entityLink = activity.url || getEntityRoute(activity.entity_type, activity.entity_id);
   const entityLabel = activity.title || `${activity.entity_type} #${activity.entity_id.slice(0, 8)}`;
 
   return (
@@ -365,7 +366,7 @@ function ActivityItem({ activity }: { activity: EntityActivity }) {
         {activity.activity_type === "status_changed" && activity.changes?.status && (
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
             <span className="px-1.5 py-0.5 bg-muted rounded">{activity.changes.status.old || "none"}</span>
-            <span>→</span>
+            <span>&rarr;</span>
             <span className="px-1.5 py-0.5 bg-muted rounded">{activity.changes.status.new || "none"}</span>
           </div>
         )}
@@ -382,7 +383,7 @@ function ActivityItem({ activity }: { activity: EntityActivity }) {
       </div>
     </div>
   );
-}
+});
 
 // ── Main Component ──
 
@@ -398,6 +399,8 @@ export function UnifiedActivityFeed() {
     isFetchingNextPage,
     hasNextPage,
     fetchNextPage,
+    error,
+    refetch,
   } = useActivityFeed(currentWorkspaceId || null, {
     entity_type: entityTypeFilter,
   });
@@ -421,18 +424,21 @@ export function UnifiedActivityFeed() {
     return () => observer.disconnect();
   }, [handleObserver]);
 
-  // Group activities by date
-  const grouped: { label: string; items: EntityActivity[] }[] = [];
-  let currentGroup = "";
-  for (const item of activities) {
-    const label = getDateGroupLabel(item.created_at);
-    if (label !== currentGroup) {
-      currentGroup = label;
-      grouped.push({ label, items: [item] });
-    } else {
-      grouped[grouped.length - 1].items.push(item);
+  // Group activities by date (memoized to avoid recomputation on unrelated re-renders)
+  const grouped = useMemo(() => {
+    const groups: { label: string; items: EntityActivity[] }[] = [];
+    let currentGroup = "";
+    for (const item of activities) {
+      const label = getDateGroupLabel(item.created_at);
+      if (label !== currentGroup) {
+        currentGroup = label;
+        groups.push({ label, items: [item] });
+      } else {
+        groups[groups.length - 1].items.push(item);
+      }
     }
-  }
+    return groups;
+  }, [activities]);
 
   return (
     <div>
@@ -487,8 +493,28 @@ export function UnifiedActivityFeed() {
         </div>
       )}
 
+      {/* Error state */}
+      {!isLoading && error && (
+        <div className="text-center py-16">
+          <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="w-8 h-8 text-red-400" />
+          </div>
+          <h3 className="text-foreground font-medium mb-1">Failed to load activities</h3>
+          <p className="text-muted-foreground text-sm max-w-sm mx-auto mb-4">
+            Something went wrong while fetching the activity feed.
+          </p>
+          <button
+            onClick={() => refetch()}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-muted text-foreground text-sm font-medium hover:bg-accent transition"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Empty state */}
-      {!isLoading && activities.length === 0 && (
+      {!isLoading && !error && activities.length === 0 && (
         <div className="text-center py-16">
           <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
             <Activity className="w-8 h-8 text-muted-foreground/50" />
@@ -504,7 +530,7 @@ export function UnifiedActivityFeed() {
       {!isLoading && grouped.length > 0 && (
         <div className="space-y-6">
           {grouped.map((group) => (
-            <div key={group.label}>
+            <div key={`${group.label}-${group.items[0]?.id}`}>
               <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm px-4 py-2 mb-1">
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   {group.label}

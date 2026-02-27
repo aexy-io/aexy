@@ -78,12 +78,12 @@ class SprintService:
         await log_activity(
             self.db,
             workspace_id=workspace_id,
-            entity_type="task",
+            entity_type="sprint",
             entity_id=str(sprint.id),
             activity_type="created",
             actor_id=created_by_id,
             title=f"Created sprint '{name}'",
-            metadata={"sprint_name": name, "object_type": "sprint"},
+            metadata={"sprint_name": name},
         )
 
         return sprint
@@ -184,11 +184,11 @@ class SprintService:
         await log_activity(
             self.db,
             workspace_id=str(sprint.workspace_id),
-            entity_type="task",
+            entity_type="sprint",
             entity_id=str(sprint.id),
             activity_type="updated",
             title=f"Updated sprint '{sprint.name}'",
-            metadata={"sprint_name": sprint.name, "object_type": "sprint"},
+            metadata={"sprint_name": sprint.name},
         )
 
         return sprint
@@ -248,12 +248,12 @@ class SprintService:
         await log_activity(
             self.db,
             workspace_id=str(sprint.workspace_id),
-            entity_type="task",
+            entity_type="sprint",
             entity_id=str(sprint.id),
             activity_type="status_changed",
             title=f"Started sprint '{sprint.name}'",
             changes={"status": {"old": old_status, "new": "active"}},
-            metadata={"sprint_name": sprint.name, "object_type": "sprint"},
+            metadata={"sprint_name": sprint.name},
         )
 
         # Record initial metrics
@@ -302,12 +302,12 @@ class SprintService:
         await log_activity(
             self.db,
             workspace_id=str(sprint.workspace_id),
-            entity_type="task",
+            entity_type="sprint",
             entity_id=str(sprint.id),
             activity_type="status_changed",
             title=f"Sprint '{sprint.name}' moved to review",
             changes={"status": {"old": old_status, "new": "review"}},
-            metadata={"sprint_name": sprint.name, "object_type": "sprint"},
+            metadata={"sprint_name": sprint.name},
         )
 
         return sprint
@@ -374,12 +374,12 @@ class SprintService:
         await log_activity(
             self.db,
             workspace_id=str(sprint.workspace_id),
-            entity_type="task",
+            entity_type="sprint",
             entity_id=str(sprint.id),
             activity_type="status_changed",
             title=f"Completed sprint '{sprint.name}'",
             changes={"status": {"old": old_status, "new": "completed"}},
-            metadata={"sprint_name": sprint.name, "object_type": "sprint"},
+            metadata={"sprint_name": sprint.name},
         )
 
         # Calculate and store velocity
