@@ -460,6 +460,20 @@ class Settings(BaseSettings):
         description="Slack OAuth redirect URI",
     )
 
+    # Web Push (VAPID)
+    vapid_private_key: str = Field(
+        default="",
+        description="VAPID private key for web push notifications",
+    )
+    vapid_public_key: str = Field(
+        default="",
+        description="VAPID public key for web push notifications (shared with frontend)",
+    )
+    vapid_claims_email: str = Field(
+        default="mailto:notifications@aexy.dev",
+        description="VAPID claims email (mailto: URI)",
+    )
+
     # Twilio SMS Integration
     twilio_account_sid: str = Field(
         default="",

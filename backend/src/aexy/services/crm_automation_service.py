@@ -356,6 +356,29 @@ class CRMAutomationService:
             automation.runs_this_month += 1
             automation.last_run_at = datetime.now(timezone.utc)
 
+            # Notify creator of automation failure
+            if automation.created_by_id:
+                try:
+                    from aexy.models.notification import NotificationEventType
+                    from aexy.services.notification_service import NotificationService
+
+                    notif_service = NotificationService(self.db)
+                    await notif_service.create_notification(
+                        recipient_id=automation.created_by_id,
+                        event_type=NotificationEventType.AUTOMATION_RUN_FAILED,
+                        title=f"Automation Failed: {automation.name}",
+                        body=f"Automation \"{automation.name}\" failed: {str(e)[:200]}",
+                        context={
+                            "workspace_id": automation.workspace_id,
+                            "automation_id": automation.id,
+                            "automation_name": automation.name,
+                            "error": str(e)[:200],
+                            "action_url": "/automations",
+                        },
+                    )
+                except Exception:
+                    pass
+
         await self.db.flush()
 
     async def _evaluate_conditions(

@@ -29,6 +29,12 @@ class SendNotificationSlackInput:
     workspace_id: str
 
 
+@dataclass
+class SendNotificationWebPushInput:
+    notification_id: str
+    recipient_id: str
+
+
 @activity.defn
 async def send_notification_email(input: SendNotificationEmailInput) -> dict[str, Any]:
     """Send an email for a notification via EmailService."""
@@ -172,4 +178,41 @@ async def send_notification_slack(input: SendNotificationSlackInput) -> dict[str
             "success": response.success,
             "sent_to": slack_user_id,
             "error": response.error,
+        }
+
+
+@activity.defn
+async def send_notification_web_push(input: SendNotificationWebPushInput) -> dict[str, Any]:
+    """Send a web push notification to all active subscriptions for a developer."""
+    logger.info(f"Sending web push notification: notification={input.notification_id}")
+
+    from sqlalchemy import select
+    from aexy.models.notification import Notification
+    from aexy.services.web_push_service import WebPushService
+
+    async with async_session_maker() as db:
+        # Load notification
+        result = await db.execute(
+            select(Notification).where(Notification.id == input.notification_id)
+        )
+        notification = result.scalar_one_or_none()
+        if not notification:
+            logger.warning(f"Notification {input.notification_id} not found")
+            return {"success": False, "error": "Notification not found"}
+
+        context = notification.context or {}
+        action_url = context.get("action_url")
+
+        web_push_service = WebPushService(db)
+        results = await web_push_service.send_push(
+            developer_id=input.recipient_id,
+            title=notification.title,
+            body=notification.body,
+            action_url=action_url,
+        )
+
+        any_success = any(r.get("success") for r in results)
+        return {
+            "success": any_success,
+            "results": results,
         }
