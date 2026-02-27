@@ -119,7 +119,7 @@ export const TaskDescriptionEditor = forwardRef<
         ),
         style: `min-height: ${minHeight}`,
       },
-      handleKeyDown: (view, event) => {
+      handleKeyDown: (_view, event) => {
         // Handle @ for user mentions
         if (event.key === "@" && !showUserSuggestions && users.length > 0) {
           setShowUserSuggestions(true);
@@ -328,7 +328,8 @@ export const TaskDescriptionEditor = forwardRef<
         </div>
       )}
 
-      {editorMode === "rich" ? (
+      {/* Always render EditorContent so the editor view stays attached */}
+      <div className={editorMode === "rich" ? undefined : "hidden"}>
         <EditorContent
           editor={editor}
           className={cn(
@@ -337,7 +338,8 @@ export const TaskDescriptionEditor = forwardRef<
             "[&_.ProseMirror]:leading-relaxed"
           )}
         />
-      ) : (
+      </div>
+      {editorMode === "markdown" && (
         <div className="px-3 py-2">
           <textarea
             value={markdownContent}
