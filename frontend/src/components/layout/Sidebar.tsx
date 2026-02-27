@@ -23,6 +23,7 @@ import {
     Plus,
     Loader2,
     ArrowRight,
+    Bell,
 } from "lucide-react";
 import React, { useState, useMemo } from "react";
 import { Button } from "../ui/button";
@@ -32,6 +33,7 @@ import { useWorkspace } from "@/hooks/useWorkspace";
 import { useSidebarLayout } from "@/hooks/useSidebarLayout";
 import { useAppAccess } from "@/hooks/useAppAccess";
 import { useAuth } from "@/hooks/useAuth";
+import { useNotifications } from "@/hooks/useNotifications";
 import { useSidebarPersona } from "@/hooks/useSidebarPersona";
 import { SidebarItemConfig, SidebarSectionConfig, SidebarLayoutConfig } from "@/config/sidebarLayouts";
 import { appAccessApi } from "@/lib/api";
@@ -166,6 +168,9 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
     const { user: developer } = useAuth();
     const developerId = developer?.id || null;
     const { hasAppAccess, isLoading: accessLoading, isAdmin, effectiveAccess, refetch: refetchAccess } = useAppAccess(workspaceId, developerId);
+
+    // Notifications for sidebar badge
+    const { unreadCount } = useNotifications(developerId);
 
     // Filter a sidebar item based on app access
     const canAccessItem = (item: SidebarItemConfig): boolean => {
@@ -841,8 +846,8 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
                     </div>
 
                     <div className="border-t p-4">
-                        <div className={cn("flex items-center gap-3 mb-4", isCollapsed && "justify-center")}>
-                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                        <div className={cn("flex items-center gap-3 mb-4", isCollapsed && "flex-col gap-2")}>
+                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0">
                                 {user?.name?.[0] || "U"}
                             </div>
                             {!isCollapsed && (
@@ -852,6 +857,21 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
                                     <p className="text-xs text-muted-foreground capitalize">{persona} view</p>
                                 </div>
                             )}
+                            <Link
+                                href="/notifications"
+                                className={cn(
+                                    "relative p-1.5 rounded-md hover:bg-accent transition-all shrink-0",
+                                    pathname === "/notifications" && "bg-accent text-accent-foreground"
+                                )}
+                                title="Notifications"
+                            >
+                                <Bell className="h-4 w-4 text-muted-foreground" />
+                                {unreadCount > 0 && (
+                                    <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-0.5 flex items-center justify-center text-[9px] font-bold text-white bg-red-500 rounded-full">
+                                        {unreadCount > 99 ? "99+" : unreadCount}
+                                    </span>
+                                )}
+                            </Link>
                         </div>
 
                         <nav className="grid gap-1">
