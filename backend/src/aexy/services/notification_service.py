@@ -1,6 +1,7 @@
 """Notification service for managing in-app and email notifications."""
 
 import logging
+import re
 from datetime import datetime
 from typing import Any
 from uuid import uuid4
@@ -26,6 +27,21 @@ from aexy.schemas.notification import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Matches mention:user:{uuid} in href attributes (TipTap mention format)
+MENTION_USER_PATTERN = re.compile(r'mention:user:([0-9a-f-]{36})', re.IGNORECASE)
+HTML_TAG_PATTERN = re.compile(r'<[^>]+>')
+
+
+def extract_mentioned_user_ids(content: str) -> list[str]:
+    """Extract user IDs from mention links in content."""
+    return list(set(MENTION_USER_PATTERN.findall(content)))
+
+
+def _get_text_snippet(html_content: str, max_length: int = 100) -> str:
+    """Strip HTML tags and get a plain-text snippet for notification body."""
+    text = HTML_TAG_PATTERN.sub('', html_content).strip()
+    return text[:max_length] + "..." if len(text) > max_length else text
 
 
 class NotificationService:
@@ -651,6 +667,31 @@ async def notify_deadline_reminder(
         context={
             "task_type": task_type,
             "deadline": deadline,
+            "action_url": action_url,
+        },
+    )
+
+
+async def notify_mention(
+    db: AsyncSession,
+    mentioned_user_id: str,
+    mentioner_name: str,
+    entity_type: str,
+    entity_id: str,
+    action_url: str,
+    snippet: str = "",
+) -> Notification | None:
+    """Send notification when a user is @mentioned."""
+    service = NotificationService(db)
+    return await service.create_notification(
+        recipient_id=mentioned_user_id,
+        event_type=NotificationEventType.MENTION,
+        title=f"{mentioner_name} mentioned you",
+        body=f"{mentioner_name} mentioned you in a {entity_type}" + (f": {snippet}" if snippet else ""),
+        context={
+            "mentioner_name": mentioner_name,
+            "entity_type": entity_type,
+            "entity_id": entity_id,
             "action_url": action_url,
         },
     )
