@@ -4,7 +4,8 @@ import logging
 from typing import Any
 from dataclasses import dataclass
 
-from sqlalchemy import select
+from datetime import datetime
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -375,8 +376,80 @@ class SprintPlanningService:
 
         return proposals
 
+    async def _get_member_availability(
+        self,
+        member_id: str,
+        workspace_id: str,
+        sprint_start: datetime,
+        sprint_end: datetime,
+    ) -> dict:
+        """Calculate per-member availability factoring in leave, on-call, and holidays."""
+        from aexy.models.leave import LeaveRequest, Holiday
+        from aexy.models.oncall import OnCallSchedule
+
+        # Count approved leave days overlapping sprint
+        leave_stmt = (
+            select(func.count())
+            .select_from(LeaveRequest)
+            .where(
+                LeaveRequest.developer_id == member_id,
+                LeaveRequest.status == "approved",
+                LeaveRequest.start_date <= sprint_end,
+                LeaveRequest.end_date >= sprint_start,
+            )
+        )
+        leave_result = await self.db.execute(leave_stmt)
+        leave_request_count = leave_result.scalar() or 0
+
+        # Get actual leave days (sum total_days for overlapping requests)
+        leave_days_stmt = (
+            select(func.coalesce(func.sum(LeaveRequest.total_days), 0))
+            .where(
+                LeaveRequest.developer_id == member_id,
+                LeaveRequest.status == "approved",
+                LeaveRequest.start_date <= sprint_end,
+                LeaveRequest.end_date >= sprint_start,
+            )
+        )
+        leave_days_result = await self.db.execute(leave_days_stmt)
+        leave_days = float(leave_days_result.scalar() or 0)
+
+        # Count on-call shifts overlapping sprint
+        oncall_stmt = (
+            select(func.count())
+            .select_from(OnCallSchedule)
+            .where(
+                OnCallSchedule.developer_id == member_id,
+                OnCallSchedule.start_time <= sprint_end,
+                OnCallSchedule.end_time >= sprint_start,
+            )
+        )
+        oncall_result = await self.db.execute(oncall_stmt)
+        oncall_shifts = oncall_result.scalar() or 0
+        # Estimate oncall days (each shift ~1 day)
+        oncall_days = float(oncall_shifts)
+
+        # Count holidays in sprint range for workspace
+        holiday_stmt = (
+            select(func.count())
+            .select_from(Holiday)
+            .where(
+                Holiday.workspace_id == workspace_id,
+                Holiday.date >= sprint_start.date() if hasattr(sprint_start, 'date') else sprint_start,
+                Holiday.date <= sprint_end.date() if hasattr(sprint_end, 'date') else sprint_end,
+            )
+        )
+        holiday_result = await self.db.execute(holiday_stmt)
+        holiday_days = float(holiday_result.scalar() or 0)
+
+        return {
+            "leave_days": leave_days,
+            "oncall_days": oncall_days,
+            "holiday_days": holiday_days,
+        }
+
     async def analyze_capacity(self, sprint_id: str) -> CapacityAnalysis:
-        """Analyze sprint capacity vs commitment.
+        """Analyze sprint capacity vs commitment with leave/on-call/holiday awareness.
 
         Args:
             sprint_id: Sprint ID.
@@ -384,6 +457,8 @@ class SprintPlanningService:
         Returns:
             Capacity analysis.
         """
+        from sqlalchemy import func as sa_func
+
         sprint = await self._get_sprint_with_tasks(sprint_id)
         if not sprint:
             return CapacityAnalysis(
@@ -397,27 +472,44 @@ class SprintPlanningService:
 
         team_members = await self._get_team_members(sprint.team_id)
 
-        # Calculate capacity
-        total_capacity = (
-            sprint.capacity_hours
-            if sprint.capacity_hours
-            else len(team_members) * self.DEFAULT_DEVELOPER_CAPACITY_HOURS
-        )
+        # Calculate sprint working days
+        if sprint.start_date and sprint.end_date:
+            sprint_days = (sprint.end_date - sprint.start_date).days
+            working_days = sprint_days * 5 / 7  # Rough weekday count
+        else:
+            working_days = 10  # Default 2-week sprint
 
         # Calculate committed hours (from story points)
         total_points = sum(t.story_points or 0 for t in sprint.tasks)
         committed_hours = total_points * self.HOURS_PER_POINT
 
-        utilization = committed_hours / total_capacity if total_capacity > 0 else 0
-        overcommitted = utilization > 1.0
-
-        # Per-member analysis
+        # Per-member analysis with availability
         per_member = []
+        total_capacity = 0
+
         for member in team_members:
             member_tasks = [t for t in sprint.tasks if t.assignee_id == str(member.id)]
             member_points = sum(t.story_points or 0 for t in member_tasks)
             member_hours = member_points * self.HOURS_PER_POINT
-            member_capacity = self.DEFAULT_DEVELOPER_CAPACITY_HOURS
+
+            # Get availability data
+            try:
+                availability = await self._get_member_availability(
+                    str(member.id),
+                    str(sprint.workspace_id),
+                    sprint.start_date,
+                    sprint.end_date,
+                )
+            except Exception:
+                availability = {"leave_days": 0, "oncall_days": 0, "holiday_days": 0}
+
+            available_days = working_days - availability["leave_days"] - availability["holiday_days"]
+            # On-call reduces capacity by 50%
+            effective_days = available_days - (availability["oncall_days"] * 0.5)
+            effective_days = max(0, effective_days)
+            member_capacity = effective_days * 8  # 8 hrs/day
+
+            total_capacity += member_capacity
 
             per_member.append({
                 "developer_id": str(member.id),
@@ -425,9 +517,20 @@ class SprintPlanningService:
                 "assigned_tasks": len(member_tasks),
                 "assigned_points": member_points,
                 "committed_hours": member_hours,
-                "capacity_hours": member_capacity,
-                "utilization": member_hours / member_capacity if member_capacity > 0 else 0,
+                "capacity_hours": round(member_capacity, 1),
+                "utilization": round(member_hours / member_capacity, 2) if member_capacity > 0 else 0,
+                "leave_days": availability["leave_days"],
+                "oncall_days": availability["oncall_days"],
+                "holiday_days": availability["holiday_days"],
+                "available_days": round(effective_days, 1),
             })
+
+        # Use sprint capacity_hours if set, otherwise calculated
+        if sprint.capacity_hours:
+            total_capacity = sprint.capacity_hours
+
+        utilization = committed_hours / total_capacity if total_capacity > 0 else 0
+        overcommitted = utilization > 1.0
 
         # Recommendations
         recommendations = []
@@ -443,11 +546,19 @@ class SprintPlanningService:
         for pm in per_member:
             if pm["utilization"] > 1.2:
                 recommendations.append(
-                    f"{pm['developer_name']} is overloaded. Consider redistributing tasks."
+                    f"{pm['developer_name']} is overloaded ({int(pm['utilization'] * 100)}%). Consider redistributing tasks."
+                )
+            if pm["leave_days"] > 0:
+                recommendations.append(
+                    f"{pm['developer_name']} has {pm['leave_days']} leave day(s) during this sprint."
+                )
+            if pm["oncall_days"] > 0:
+                recommendations.append(
+                    f"{pm['developer_name']} has {int(pm['oncall_days'])} on-call shift(s) (50% capacity reduction)."
                 )
 
         return CapacityAnalysis(
-            total_capacity_hours=total_capacity,
+            total_capacity_hours=round(total_capacity, 1),
             committed_hours=committed_hours,
             utilization_rate=round(utilization, 2),
             overcommitted=overcommitted,

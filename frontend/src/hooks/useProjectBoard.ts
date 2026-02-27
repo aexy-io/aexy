@@ -19,6 +19,7 @@ export interface BoardFilters {
   labels: string[];
   epics: string[];
   sprints: string[];
+  storyPoints: number[];
   search: string;
 }
 
@@ -40,6 +41,7 @@ export function useProjectBoard(
     labels: [],
     epics: [],
     sprints: [],
+    storyPoints: [],
     search: "",
   });
 
@@ -311,6 +313,13 @@ export function useProjectBoard(
         }
       }
 
+      // Story Points filter
+      if (filters.storyPoints.length > 0) {
+        if (task.story_points == null || !filters.storyPoints.includes(task.story_points)) {
+          return false;
+        }
+      }
+
       // Sprint filter
       if (filters.sprints.length > 0) {
         if (!task.sprint_id || !filters.sprints.includes(task.sprint_id)) {
@@ -372,6 +381,7 @@ export function useProjectBoard(
     const assignees = new Map<string, { id: string; name: string; avatar?: string }>();
     const labels = new Set<string>();
     const epics = new Map<string, string>();
+    const storyPointsSet = new Set<number>();
 
     allTasks?.forEach((task) => {
       if (task.assignee_id) {
@@ -383,7 +393,10 @@ export function useProjectBoard(
       }
       task.labels?.forEach((l) => labels.add(l));
       if (task.epic_id) {
-        epics.set(task.epic_id, task.epic_id); // TODO: get epic name
+        epics.set(task.epic_id, task.epic_id);
+      }
+      if (task.story_points != null) {
+        storyPointsSet.add(task.story_points);
       }
     });
 
@@ -392,6 +405,7 @@ export function useProjectBoard(
       labels: Array.from(labels),
       epics: Array.from(epics.entries()).map(([id, name]) => ({ id, name })),
       sprints: sprints || [],
+      storyPoints: Array.from(storyPointsSet).sort((a, b) => a - b),
     };
   }, [allTasks, sprints]);
 
@@ -407,6 +421,7 @@ export function useProjectBoard(
       labels: [],
       epics: [],
       sprints: [],
+      storyPoints: [],
       search: "",
     });
   }, []);
@@ -418,7 +433,8 @@ export function useProjectBoard(
       filters.priorities.length > 0 ||
       filters.labels.length > 0 ||
       filters.epics.length > 0 ||
-      filters.sprints.length > 0
+      filters.sprints.length > 0 ||
+      filters.storyPoints.length > 0
     );
   }, [filters]);
 
