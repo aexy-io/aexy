@@ -1,374 +1,190 @@
-# Aexy Project - Claude Code Instructions
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
-Aexy is an Engineering OS platform with assessment capabilities, LLM integrations, and workflow automation.
+
+Aexy is an Engineering OS platform — a full-stack application with developer analytics, sprint planning, CRM, email marketing, AI agents, workflow automation, and many more modules.
 
 ## Tech Stack
-- **Backend**: Python 3.13, FastAPI, SQLAlchemy (async), Temporal
-- **Frontend**: Next.js 14, React, TypeScript, TailwindCSS
-- **Database**: PostgreSQL (async via asyncpg)
-- **Queue**: Redis (cache, rate limiting), Temporal (workflow engine)
-- **LLM Providers**: Claude (Anthropic), Gemini (Google), Ollama (self-hosted)
 
-## Local Development Setup
+- **Backend**: Python 3.13, FastAPI, SQLAlchemy 2.0 (async via asyncpg), Temporal
+- **Frontend**: Next.js 14 (App Router), React 18, TypeScript, TailwindCSS, Zustand, React Query
+- **Database**: PostgreSQL 18 (async via asyncpg, sync via psycopg2 for background tasks)
+- **Queue/Cache**: Redis 7, Temporal (workflow engine replacing Celery)
+- **LLM**: Claude (Anthropic), Gemini (Google), Ollama — abstracted behind `aexy.llm.gateway`
+- **AI Agents**: LangGraph + LangChain for agent orchestration
+- **Storage**: RustFS (S3-compatible)
 
-### Start Services
+## Development Commands
+
+### Start all services
 ```bash
 docker-compose up -d
 ```
+Services: Backend :8000, Frontend :3000, Temporal UI :8080, PostgreSQL :5432, Redis :6379, RustFS :9000
 
-Services:
-- Backend: http://localhost:8000
-- Frontend: http://localhost:3000
-- Temporal UI: http://localhost:8233
-- PostgreSQL: localhost:5432
-- Redis: localhost:6379
-
-### Environment Files
-- Backend: `backend/.env`
-- Frontend: `frontend/.env`
-
-## Running Database Migrations
-
-Use the migration runner script to apply all pending database migrations.
-
-### List Migration Status
-```bash
-# Via docker (recommended)
-docker exec aexy-backend python scripts/run_migrations.py --list
-
-# Locally (requires asyncpg installed)
-cd backend && python scripts/run_migrations.py --list
-```
-
-### Run All Pending Migrations
-```bash
-# Via docker
-docker exec aexy-backend python scripts/run_migrations.py
-
-# Dry-run first to see what will be executed
-docker exec aexy-backend python scripts/run_migrations.py --dry-run
-```
-
-### Run Specific Migration
-```bash
-# Run a specific migration file
-docker exec aexy-backend python scripts/run_migrations.py --file migrate_knowledge_graph.sql
-
-# Force re-run (use with caution)
-docker exec aexy-backend python scripts/run_migrations.py --file migrate_knowledge_graph.sql --force
-```
-
-### Custom Database URL
-```bash
-# Use custom database URL
-docker exec aexy-backend python scripts/run_migrations.py --database-url postgresql://user:pass@host:5432/db
-```
-
-The migration runner:
-- Tracks applied migrations in `schema_migrations` table
-- Detects changed migrations (checksum mismatch)
-- Runs migrations in alphabetical order
-- Shows execution time for each migration
-
-## Testing LLM Rate Limiting
-
-### 1. Verify Redis Connection
-```bash
-docker exec aexy-redis redis-cli PING
-# Should return: PONG
-```
-
-### 2. Check Rate Limit Status
-```bash
-curl -X GET "http://localhost:8000/api/v1/health/rate-limits" \
-  -H "Authorization: Bearer <token>"
-```
-
-### 3. Monitor Rate Limit Keys in Redis
-```bash
-docker exec aexy-redis redis-cli KEYS "llm:ratelimit:*"
-```
-
-### 4. View Rate Limit Counts
-```bash
-# View minute window for gemini
-docker exec aexy-redis redis-cli ZCARD "llm:ratelimit:gemini:minute"
-
-# View day window for gemini
-docker exec aexy-redis redis-cli ZCARD "llm:ratelimit:gemini:day"
-```
-
-### 5. Test Rate Limiting Manually
-```python
-# In Python shell
-from aexy.services.llm_rate_limiter import get_llm_rate_limiter
-import asyncio
-
-async def test():
-    limiter = get_llm_rate_limiter()
-
-    # Check status
-    status = await limiter.get_status("gemini")
-    print(f"Remaining: {status.requests_remaining_minute}/min")
-
-    # Make test requests
-    for i in range(5):
-        result = await limiter.check_rate_limit("gemini")
-        if result.allowed:
-            await limiter.record_request("gemini", tokens_used=100)
-            print(f"Request {i+1}: allowed")
-        else:
-            print(f"Request {i+1}: blocked - {result.reason}")
-
-asyncio.run(test())
-```
-
-### 6. Test Temporal Activity Retry
-```bash
-# Watch Temporal worker logs
-docker logs -f aexy-temporal-worker
-
-# Trigger an analysis task that will hit rate limits
-# The activity should auto-retry via Temporal's built-in retry policies
-```
-
-### 7. Clear Rate Limit Data (for testing)
-```bash
-docker exec aexy-redis redis-cli KEYS "llm:ratelimit:*" | xargs -r docker exec -i aexy-redis redis-cli DEL
-```
-
-## Configuration
-
-### LLM Rate Limits (Environment Variables)
-```bash
-# Claude
-CLAUDE_REQUESTS_PER_MINUTE=60
-CLAUDE_REQUESTS_PER_DAY=-1  # unlimited
-CLAUDE_TOKENS_PER_MINUTE=100000
-
-# Gemini
-GEMINI_REQUESTS_PER_MINUTE=60
-GEMINI_REQUESTS_PER_DAY=1500
-
-# Ollama (self-hosted, no limits)
-OLLAMA_REQUESTS_PER_MINUTE=-1
-OLLAMA_REQUESTS_PER_DAY=-1
-
-# Global
-RATE_LIMIT_ENABLED=true
-```
-
-## Key Files
-
-### LLM System
-- `backend/src/aexy/llm/gateway.py` - Unified LLM gateway
-- `backend/src/aexy/llm/base.py` - Base classes and errors
-- `backend/src/aexy/llm/claude_provider.py` - Claude integration
-- `backend/src/aexy/llm/gemini_provider.py` - Gemini integration
-
-### Rate Limiting
-- `backend/src/aexy/services/llm_rate_limiter.py` - Rate limiter service
-- `backend/src/aexy/processing/rate_limited_task.py` - Rate limiting utilities
-
-### Configuration
-- `backend/src/aexy/core/config.py` - App settings including rate limits
-
-### Temporal (Background Processing)
-- `backend/src/aexy/temporal/dispatch.py` - Fire-and-forget dispatch (replaces Celery .delay())
-- `backend/src/aexy/temporal/worker.py` - Temporal worker configuration
-- `backend/src/aexy/temporal/schedules.py` - Periodic schedules (replaces Celery Beat)
-- `backend/src/aexy/temporal/activities/` - Activity implementations
-- `backend/src/aexy/temporal/workflows/` - Workflow definitions
-- `backend/src/aexy/temporal/task_queues.py` - Task queue constants
-
-### AI Agents
-- `backend/src/aexy/models/agent.py` - CRMAgent SQLAlchemy model
-- `backend/src/aexy/schemas/agent.py` - Agent Pydantic schemas
-- `backend/src/aexy/api/agents.py` - Agent API endpoints
-- `backend/src/aexy/services/agent_service.py` - Agent business logic
-- `frontend/src/app/(app)/settings/agents/` - Agent management UI
-- `frontend/src/components/agents/` - Agent UI components
-- `frontend/src/hooks/useAgents.ts` - Agent React hooks
-
-## Common Issues
-
-### Rate Limit Hit (429 Error)
-- Check Redis for current counts
-- Wait for the reset window (1 minute for per-minute limits)
-- Or clear rate limit data for testing
-
-### Temporal Activity Not Retrying
-- Check retry policy in `temporal/dispatch.py` ACTIVITY_CONFIG
-- Ensure `LLMRateLimitError` is being raised (triggers Temporal retry)
-- Check Temporal UI for workflow execution history
-
-### Redis Connection Issues
-- Ensure Redis container is running: `docker-compose ps`
-- Check Redis URL in environment: `REDIS_URL=redis://localhost:6379/0`
-
-## Generating Test Tokens for API Testing
-
-When testing authenticated API endpoints, you need a valid JWT token. Use the test token generator script:
-
-### Prerequisites
-- At least one developer account must exist (sign in via web app first)
-- Backend services must be running
-
-### Generate a Test Token
+### Backend
 
 ```bash
-# List available developers
-cd backend && python scripts/generate_test_token.py --list
+# Run backend locally (outside Docker)
+cd backend && uvicorn aexy.main:app --reload
 
-# Generate token for first developer (most common)
-cd backend && python scripts/generate_test_token.py --first
+# Run Temporal worker
+cd backend && python -m aexy.temporal.worker
 
-# Generate token for specific developer ID
-cd backend && python scripts/generate_test_token.py <developer-uuid>
+# Run tests (uses SQLite in-memory)
+cd backend && pytest
 
-# Generate token with custom expiration (default: 30 days)
-cd backend && python scripts/generate_test_token.py --first --days 7
+# Run a single test file
+cd backend && pytest tests/unit/test_something.py
+
+# Run a single test
+cd backend && pytest tests/unit/test_something.py::test_function_name -v
+
+# Lint
+cd backend && ruff check src/
+
+# Type check
+cd backend && mypy src/
 ```
 
-### Using the Token
+### Frontend
 
 ```bash
-# Set as environment variable
-export AEXY_TEST_TOKEN="<generated-token>"
-
-# Test authenticated endpoint
-curl -H "Authorization: Bearer $AEXY_TEST_TOKEN" \
-  http://localhost:8000/api/v1/developers/me
-
-# Test with specific endpoint
-curl -H "Authorization: Bearer $AEXY_TEST_TOKEN" \
-  "http://localhost:8000/api/v1/workspaces/<workspace-id>/knowledge-graph/statistics"
+cd frontend && npm run dev        # Dev server on :3000
+cd frontend && npm run build      # Production build
+cd frontend && npm run lint       # ESLint
+cd frontend && npm run test       # Vitest unit tests
+cd frontend && npm run test:e2e   # Playwright E2E tests
+cd frontend && npm run test:e2e:ui  # Playwright with UI
 ```
 
-### Quick One-Liner (for scripts)
+### Database Migrations
+
+Custom SQL-based system (not Alembic). Migration files live in `backend/scripts/migrate_*.sql`.
+
 ```bash
-# Generate and export token in one command
+docker exec aexy-backend python scripts/run_migrations.py --list      # Status
+docker exec aexy-backend python scripts/run_migrations.py --dry-run   # Preview
+docker exec aexy-backend python scripts/run_migrations.py             # Run all pending
+docker exec aexy-backend python scripts/run_migrations.py --file migrate_feature.sql  # Run specific
+```
+
+Migrations tracked in `schema_migrations` table with checksums. Run in alphabetical order.
+
+### Test Tokens
+
+```bash
+# Generate a JWT for API testing (needs at least one developer account)
+docker exec aexy-backend python scripts/generate_test_token.py --first
+
+# Quick export
 export AEXY_TEST_TOKEN=$(cd backend && python scripts/generate_test_token.py --first 2>/dev/null | grep -A1 "Token:" | tail -1)
 ```
 
-### Token Details
-- Algorithm: HS256
-- Default expiration: 30 days
-- Secret key: Uses `SECRET_KEY` from backend/.env (default: `dev-secret-key-change-in-production`)
+## Architecture
 
-## Browser Testing with Playwright MCP
+### Backend Structure (`backend/src/aexy/`)
 
-For testing the frontend UI with authentication using Playwright MCP tools.
+The backend follows a layered architecture: **API → Service → Model**
 
-### 1. Generate a Test Token
+- `main.py` — FastAPI app factory with lifespan (creates tables on startup)
+- `api/` — ~100 FastAPI routers, all mounted under `/api/v1` in `api/__init__.py`
+- `models/` — ~74 SQLAlchemy ORM models (declarative base in `core/database.py`)
+- `schemas/` — Pydantic v2 request/response schemas
+- `services/` — Business logic layer (~160 service modules)
+- `core/config.py` — Pydantic BaseSettings (loads from `.env`)
+- `core/database.py` — Engine, session management (async + sync), `get_db()` dependency
+- `temporal/` — Workflow engine (see below)
+- `llm/` — Multi-provider LLM abstraction with rate limiting
+- `agents/` — LangGraph-based AI agent implementations
 
+### API Pattern
+
+Every endpoint follows this pattern:
+```python
+@router.post("/", status_code=201)
+async def create_thing(
+    data: ThingCreate,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    service = ThingService(db)
+    return await service.create(current_user.id, data)
+```
+
+Auth is JWT via `get_current_developer` / `get_current_developer_id` from `api/developers.py`. OAuth providers: GitHub, Google.
+
+### Database Sessions
+
+- **In FastAPI endpoints**: `db: AsyncSession = Depends(get_db)` — auto-commits on success, rollbacks on exception
+- **In background tasks / Temporal activities**: `async with get_async_session() as session:` (context manager)
+- **In sync contexts**: `with get_sync_session() as session:` (for psycopg2-based sync access)
+- Engine is per-process cached to handle forked workers (asyncpg can't share connections across forks)
+
+### Temporal (Background Processing)
+
+Temporal replaced Celery. Key concepts:
+
+- `temporal/dispatch.py` — `await dispatch("activity_name", input, task_queue=TaskQueue.ANALYSIS)` (fire-and-forget, replaces `.delay()`)
+- `temporal/workflows/` — Workflow definitions (e.g., `SingleActivityWorkflow` wraps a single activity)
+- `temporal/activities/` — ~44 activity files organized by domain
+- `temporal/task_queues.py` — Queue constants (ANALYSIS, SYNC, CRM, etc.)
+- `temporal/schedules.py` — Periodic schedules (replaces Celery Beat)
+- Worker: `python -m aexy.temporal.worker` (supports `--queues` parameter)
+
+### Frontend Structure (`frontend/src/`)
+
+- `app/` — Next.js App Router. Route groups: `(app)` (protected), `(admin)`, `auth/`, `public/`, `embed/`
+- `app/(app)/` — Main feature modules: dashboard, sprints, crm, agents, analytics, settings, etc.
+- `components/` — Shared React components (Radix UI primitives + custom)
+- `hooks/` — ~71 custom hooks (data fetching, auth, UI state)
+- `lib/api.ts` — Generated API client (~605KB, likely OpenAPI-generated). Base URL: `NEXT_PUBLIC_API_URL`
+- `stores/` — Zustand stores for global state
+- `config/` — App registry (`appDefinitions.ts`), sidebar layouts, dashboard widgets
+
+Auth token stored in localStorage under key `token`. Data fetching via React Query (`@tanstack/react-query`).
+
+### LLM System
+
+- `llm/gateway.py` — Unified gateway, routes to provider by config
+- `llm/claude_provider.py`, `llm/gemini_provider.py` — Provider implementations
+- `services/llm_rate_limiter.py` — Redis-based rate limiting (per-minute, per-day, per-token)
+- Rate limit errors (`LLMRateLimitError`) trigger Temporal retry automatically
+
+### Environment Files
+
+- `backend/.env` — DATABASE_URL, REDIS_URL, TEMPORAL_ADDRESS, SECRET_KEY, LLM API keys
+- `frontend/.env` — NEXT_PUBLIC_API_URL (default: `http://localhost:8000/api/v1`)
+
+## Important Gotchas
+
+- **`db.no_autoflush`** is a sync context manager even on async sessions. Use `with db.no_autoflush:` NOT `async with`.
+- **Pydantic v2**: Cannot use both `model_config = ConfigDict(...)` and `class Config:` on the same model. Use only `model_config`.
+- **Ghost developers** (external contributors synced from GitHub): have nullable `email`. PR/review authors deduplicate by `name == github_login AND email IS NULL`. Commit authors deduplicate by `email == author_email`.
+- **Tests use SQLite in-memory** — some PostgreSQL-specific features won't work in tests.
+- **Frontend build** ignores TypeScript errors and ESLint warnings (`next.config.js` has `ignoreBuildErrors: true`).
+- **`lib/api.ts`** is generated — don't hand-edit it.
+
+## Configuration
+
+### LLM Rate Limits (env vars)
+```
+CLAUDE_REQUESTS_PER_MINUTE=60    GEMINI_REQUESTS_PER_MINUTE=60
+CLAUDE_REQUESTS_PER_DAY=-1       GEMINI_REQUESTS_PER_DAY=1500
+CLAUDE_TOKENS_PER_MINUTE=100000  RATE_LIMIT_ENABLED=true
+```
+
+### Redis debugging
 ```bash
-# Generate token via Docker (recommended - has all dependencies)
-docker exec aexy-backend python scripts/generate_test_token.py --first
+docker exec aexy-redis redis-cli PING
+docker exec aexy-redis redis-cli KEYS "llm:ratelimit:*"
 ```
 
-This will output a JWT token that you can use for authentication.
+## Browser Testing (Playwright MCP)
 
-### 2. Set Token in Browser via Playwright
-
-The frontend stores the auth token in localStorage under the key `token`. Use the `browser_evaluate` tool to set it:
-
-```javascript
-// Set token in localStorage
-localStorage.setItem('token', '<your-jwt-token>');
-```
-
-### 3. Complete Testing Workflow
-
-1. **Navigate to localhost:3000** using `browser_navigate`
-2. **Set the token** using `browser_evaluate`:
-   ```javascript
-   () => {
-     localStorage.setItem('token', '<token>');
-     return 'Token set';
-   }
-   ```
-3. **Navigate to authenticated page** (e.g., `/settings/agents`)
-4. **Use `browser_snapshot`** to get page structure for interaction
-5. **Use `browser_take_screenshot`** for visual verification
-
-### Example Session
-
-```
-# 1. Navigate to app
-browser_navigate: http://localhost:3000
-
-# 2. Set auth token
-browser_evaluate: () => { localStorage.setItem('token', 'eyJhbGci...'); return 'done'; }
-
-# 3. Navigate to protected page
-browser_navigate: http://localhost:3000/settings/agents
-
-# 4. Wait for page load
-browser_wait_for: { time: 2 }
-
-# 5. Take screenshot to verify
-browser_take_screenshot: { type: 'png' }
-
-# 6. Get snapshot for interactions
-browser_snapshot
-```
-
-### Notes
-- The token key is `token` (not `auth_token`)
-- Tokens expire after 30 days by default
-- Some features require a workspace to be selected
-- Use `browser_console_messages` with level `error` to debug issues
-
-## AI Agents API
-
-AI Agents are intelligent automation assistants that handle tasks like email responses, CRM updates, and workflow automation.
-
-### List Agents
-```bash
-curl -H "Authorization: Bearer $AEXY_TEST_TOKEN" \
-  "http://localhost:8000/api/v1/workspaces/<workspace-id>/agents"
-```
-
-### Create Agent
-```bash
-curl -X POST -H "Authorization: Bearer $AEXY_TEST_TOKEN" \
-  -H "Content-Type: application/json" \
-  "http://localhost:8000/api/v1/workspaces/<workspace-id>/agents" \
-  -d '{
-    "name": "Support Bot",
-    "agent_type": "support",
-    "description": "Handles customer inquiries",
-    "mention_handle": "support",
-    "llm_provider": "claude",
-    "temperature": 0.7,
-    "tools": ["reply", "escalate", "search_contacts"],
-    "confidence_threshold": 0.7,
-    "require_approval_below": 0.5
-  }'
-```
-
-### Check Handle Availability
-```bash
-curl -H "Authorization: Bearer $AEXY_TEST_TOKEN" \
-  "http://localhost:8000/api/v1/workspaces/<workspace-id>/agents/check-handle?handle=support"
-```
-
-### Get Agent Metrics
-```bash
-curl -H "Authorization: Bearer $AEXY_TEST_TOKEN" \
-  "http://localhost:8000/api/v1/workspaces/<workspace-id>/agents/<agent-id>/metrics"
-```
-
-### Agent Configuration Fields
-- `name` - Display name
-- `agent_type` - support, sales, scheduling, custom
-- `mention_handle` - @handle trigger (must be unique per workspace)
-- `llm_provider` - claude or gemini
-- `temperature` - 0.0 to 1.0
-- `tools` - Array of tool names (reply, escalate, search_contacts, etc.)
-- `confidence_threshold` - Minimum confidence for auto-response (default: 0.7)
-- `require_approval_below` - Require human approval below this (default: 0.5)
-- `working_hours` - JSON config for active hours
-- `system_prompt` - Agent persona and instructions
+Frontend auth token is stored in localStorage under key `token` (not `auth_token`). To test authenticated pages:
+1. Generate token: `docker exec aexy-backend python scripts/generate_test_token.py --first`
+2. Set via `browser_evaluate`: `localStorage.setItem('token', '<jwt>')`
+3. Navigate to protected route
