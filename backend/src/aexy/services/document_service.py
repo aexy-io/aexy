@@ -700,6 +700,28 @@ class DocumentService:
         self.db.add(collaborator)
         await self.db.commit()
         await self.db.refresh(collaborator)
+
+        # Notify the developer they were added as collaborator
+        try:
+            from aexy.services.notification_service import notify_document_shared
+            from aexy.models.developer import Developer
+
+            doc = await self.get_document(document_id)
+            inviter = await self.db.get(Developer, invited_by_id)
+            sharer_name = inviter.name if inviter else "Someone"
+            doc_title = doc.title if doc else "a document"
+            workspace_id = doc.workspace_id if doc else ""
+            await notify_document_shared(
+                db=self.db,
+                developer_id=developer_id,
+                sharer_name=sharer_name,
+                document_title=doc_title,
+                document_id=document_id,
+                workspace_id=str(workspace_id),
+            )
+        except Exception:
+            pass  # Non-critical
+
         return collaborator
 
     async def update_collaborator_permission(

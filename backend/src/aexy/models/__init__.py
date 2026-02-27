@@ -97,6 +97,10 @@ from aexy.models.notification import (
     EmailNotificationLog,
     NotificationEventType,
     DEFAULT_NOTIFICATION_PREFERENCES,
+    WebPushSubscription,
+    NotificationCategoryPreference,
+    NOTIFICATION_CATEGORIES,
+    EVENT_TYPE_TO_CATEGORY,
 )
 from aexy.models.oncall import (
     OnCallConfig,
@@ -593,6 +597,10 @@ __all__ = [
     "EmailNotificationLog",
     "NotificationEventType",
     "DEFAULT_NOTIFICATION_PREFERENCES",
+    "WebPushSubscription",
+    "NotificationCategoryPreference",
+    "NOTIFICATION_CATEGORIES",
+    "EVENT_TYPE_TO_CATEGORY",
     # On-Call
     "OnCallConfig",
     "OnCallSchedule",
