@@ -147,6 +147,7 @@ class SprintTaskService:
         sprint_id: str,
         status: str | None = None,
         assignee_id: str | None = None,
+        include_archived: bool = False,
     ) -> list[SprintTask]:
         """Get all tasks for a sprint.
 
@@ -154,6 +155,7 @@ class SprintTaskService:
             sprint_id: Sprint ID.
             status: Optional status filter.
             assignee_id: Optional assignee filter.
+            include_archived: Whether to include archived tasks (default: False).
 
         Returns:
             List of SprintTasks.
@@ -167,6 +169,8 @@ class SprintTaskService:
             )
         )
 
+        if not include_archived:
+            stmt = stmt.where(SprintTask.is_archived == False)
         if status:
             stmt = stmt.where(SprintTask.status == status)
         if assignee_id:
@@ -195,6 +199,7 @@ class SprintTaskService:
         stmt = (
             select(SprintTask)
             .where(SprintTask.assignee_id == assignee_id)
+            .where(SprintTask.is_archived == False)
             .options(
                 selectinload(SprintTask.assignee),
                 selectinload(SprintTask.subtasks),
@@ -258,14 +263,34 @@ class SprintTaskService:
         return await self.get_task(task_id)
 
     async def remove_task(self, task_id: str) -> bool:
-        """Remove a task from a sprint."""
+        """Remove a task from a sprint (soft delete via archive)."""
         task = await self.get_task(task_id)
         if not task:
             return False
 
-        await self.db.delete(task)
+        task.is_archived = True
         await self.db.flush()
         return True
+
+    async def archive_task(self, task_id: str) -> SprintTask | None:
+        """Archive a task (soft delete)."""
+        task = await self.get_task(task_id)
+        if not task:
+            return None
+
+        task.is_archived = True
+        await self.db.flush()
+        return await self.get_task(task_id)
+
+    async def unarchive_task(self, task_id: str) -> SprintTask | None:
+        """Unarchive a task (restore from soft delete)."""
+        task = await self.get_task(task_id)
+        if not task:
+            return None
+
+        task.is_archived = False
+        await self.db.flush()
+        return await self.get_task(task_id)
 
     # Assignment
     async def assign_task(
