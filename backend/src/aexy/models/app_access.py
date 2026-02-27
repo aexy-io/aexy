@@ -13,7 +13,17 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from aexy.core.database import Base
 
 if TYPE_CHECKING:
+    from aexy.models.developer import Developer
     from aexy.models.workspace import Workspace
+
+
+class AppAccessRequestStatus(str, Enum):
+    """Status values for app access requests."""
+
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    WITHDRAWN = "withdrawn"
 
 
 class AppAccessLogAction(str, Enum):
@@ -266,3 +276,88 @@ class AppAccessLog(Base):
 
     def __repr__(self) -> str:
         return f"<AppAccessLog {self.action} by {self.actor_id} at {self.created_at}>"
+
+
+class AppAccessRequest(Base):
+    """
+    Request from a non-admin user to gain access to a specific app.
+
+    Lifecycle: pending -> approved/rejected/withdrawn
+    """
+
+    __tablename__ = "app_access_requests"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+
+    workspace_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    requester_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    app_id: Mapped[str] = mapped_column(String(100), nullable=False)
+
+    status: Mapped[str] = mapped_column(
+        String(20),
+        default=AppAccessRequestStatus.PENDING.value,
+        nullable=False,
+    )
+
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    reviewed_by_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id"),
+        nullable=True,
+    )
+
+    reviewed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    review_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    # Relationships
+    workspace: Mapped["Workspace"] = relationship("Workspace", lazy="selectin")
+    requester: Mapped["Developer"] = relationship(
+        "Developer", foreign_keys=[requester_id], lazy="selectin"
+    )
+    reviewer: Mapped["Developer | None"] = relationship(
+        "Developer", foreign_keys=[reviewed_by_id], lazy="selectin"
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id", "requester_id", "app_id", "status",
+            name="uq_access_request_workspace_requester_app_status",
+        ),
+        Index("idx_access_requests_workspace", "workspace_id", "status"),
+        Index("idx_access_requests_requester", "requester_id"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<AppAccessRequest {self.app_id} by {self.requester_id} [{self.status}]>"

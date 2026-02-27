@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
@@ -13,11 +13,35 @@ import {
   Globe,
   ChevronRight,
   ChevronDown,
+  Zap,
 } from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
 import { motion } from "framer-motion";
 import { useOnboarding } from "../OnboardingContext";
 import { repositoriesApi, Repository, Organization } from "@/lib/api";
+
+const languageColors: Record<string, string> = {
+  TypeScript: "bg-blue-500",
+  JavaScript: "bg-yellow-400",
+  Python: "bg-blue-400",
+  Go: "bg-cyan-500",
+  Rust: "bg-orange-600",
+  Java: "bg-red-500",
+  Ruby: "bg-red-600",
+  PHP: "bg-indigo-500",
+  "C#": "bg-green-600",
+  "C++": "bg-pink-600",
+  C: "bg-gray-600",
+  Swift: "bg-orange-500",
+  Kotlin: "bg-purple-500",
+  Dart: "bg-sky-500",
+  Shell: "bg-green-500",
+  HTML: "bg-orange-600",
+  CSS: "bg-purple-600",
+  Vue: "bg-emerald-500",
+  Scala: "bg-red-400",
+  Elixir: "bg-purple-400",
+};
 
 export default function ReposSelection() {
   const router = useRouter();
@@ -29,6 +53,8 @@ export default function ReposSelection() {
   const [selectedRepos, setSelectedRepos] = useState<Set<string>>(new Set(data.githubRepos));
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedOrgs, setExpandedOrgs] = useState<Set<string>>(new Set());
+  const listRef = useRef<HTMLDivElement>(null);
+  const [showBottomFade, setShowBottomFade] = useState(false);
 
   useEffect(() => {
     setCurrentStep(5);
@@ -37,6 +63,22 @@ export default function ReposSelection() {
   useEffect(() => {
     fetchRepositories();
   }, []);
+
+  // Check scroll position for bottom fade
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+
+    const checkScroll = () => {
+      const hasOverflow = el.scrollHeight > el.clientHeight;
+      const isAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 10;
+      setShowBottomFade(hasOverflow && !isAtBottom);
+    };
+
+    checkScroll();
+    el.addEventListener("scroll", checkScroll);
+    return () => el.removeEventListener("scroll", checkScroll);
+  }, [repositories, searchQuery]);
 
   const fetchRepositories = async () => {
     setLoading(true);
@@ -112,6 +154,10 @@ export default function ReposSelection() {
       }
       return next;
     });
+  };
+
+  const selectAllRepos = () => {
+    setSelectedRepos(new Set(repositories.map(r => r.id)));
   };
 
   const handleContinue = async () => {
@@ -206,100 +252,128 @@ export default function ReposSelection() {
           <span className="text-sm text-muted-foreground">
             {selectedRepos.size} of {repositories.length} repositories selected
           </span>
-          {selectedRepos.size > 0 && (
-            <button
-              onClick={() => setSelectedRepos(new Set())}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Clear selection
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            {repositories.length > 0 && (
+              <button
+                onClick={selectAllRepos}
+                className="flex items-center gap-1.5 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                Select all
+              </button>
+            )}
+            {selectedRepos.size > 0 && (
+              <button
+                onClick={() => setSelectedRepos(new Set())}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Clear selection
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Repository list */}
-        <div className="space-y-6 mb-8 max-h-[400px] overflow-y-auto pr-2">
-          {loading ? (
-            <div className="text-center py-12">
-              <RefreshCw className="w-8 h-8 text-muted-foreground animate-spin mx-auto mb-4" />
-              <p className="text-muted-foreground">Loading repositories...</p>
-            </div>
-          ) : Object.keys(reposByOrg).length === 0 ? (
-            <div className="text-center py-12 bg-muted/30 border border-border/50 rounded-xl">
-              <FolderGit2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground mb-2">No repositories found</p>
-              <p className="text-sm text-muted-foreground">
-                Make sure you&apos;ve installed the GitHub App on your repositories.
-              </p>
-            </div>
-          ) : (
-            Object.entries(reposByOrg).map(([orgId, repos]) => {
-              const org = organizations.find(o => o.id === orgId);
-              const allSelected = repos.every(r => selectedRepos.has(r.id));
-              const someSelected = repos.some(r => selectedRepos.has(r.id));
-              const isExpanded = expandedOrgs.has(orgId);
-              const orgName = orgId === "personal" ? "Personal" : (org?.name || orgId);
+        <div className="relative mb-8">
+          <div
+            ref={listRef}
+            className="space-y-6 max-h-[400px] overflow-y-auto pr-2"
+          >
+            {loading ? (
+              <div className="text-center py-12">
+                <RefreshCw className="w-8 h-8 text-muted-foreground animate-spin mx-auto mb-4" />
+                <p className="text-muted-foreground">Loading repositories...</p>
+              </div>
+            ) : Object.keys(reposByOrg).length === 0 ? (
+              <div className="text-center py-12 bg-muted/30 border border-border/50 rounded-xl">
+                <FolderGit2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground mb-2">No repositories found</p>
+                <p className="text-sm text-muted-foreground">
+                  Make sure you&apos;ve installed the GitHub App on your repositories.
+                </p>
+              </div>
+            ) : (
+              Object.entries(reposByOrg).map(([orgId, repos]) => {
+                const org = organizations.find(o => o.id === orgId);
+                const allSelected = repos.every(r => selectedRepos.has(r.id));
+                const someSelected = repos.some(r => selectedRepos.has(r.id));
+                const isExpanded = expandedOrgs.has(orgId);
+                const orgName = orgId === "personal" ? "Personal" : (org?.name || orgId);
 
-              return (
-                <div key={orgId} className="space-y-2">
-                  {/* Organization header */}
-                  <button
-                    onClick={() => toggleOrgExpanded(orgId)}
-                    className="w-full flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-border/50 hover:border-border/50 transition-colors"
-                  >
-                    {isExpanded ? (
-                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                return (
+                  <div key={orgId} className="space-y-2">
+                    {/* Organization header */}
+                    <button
+                      onClick={() => toggleOrgExpanded(orgId)}
+                      className="w-full flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-border/50 hover:border-border/50 transition-colors"
+                    >
+                      {isExpanded ? (
+                        <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                      )}
+                      <div
+                        onClick={(e) => toggleOrgSelection(orgId, e)}
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors cursor-pointer hover:border-primary-400 ${
+                        allSelected
+                          ? "bg-primary-500 border-primary-500"
+                          : someSelected
+                          ? "border-primary-500"
+                          : "border-border"
+                      }`}>
+                        {allSelected && <Check className="w-3 h-3 text-white" />}
+                        {someSelected && !allSelected && <div className="w-2 h-2 bg-primary-500 rounded-sm" />}
+                      </div>
+                      <Building2 className="w-4 h-4 text-muted-foreground" />
+                      <span className="font-medium text-foreground flex-1 text-left">
+                        {orgName}
+                      </span>
+                      <span className="text-sm text-muted-foreground">{repos.length} repos</span>
+                    </button>
+
+                    {/* Repositories - only show when expanded */}
+                    {isExpanded && (
+                      <div className="pl-8 space-y-1">
+                        {repos.map((repo) => (
+                          <button
+                            key={repo.id}
+                            onClick={() => toggleRepo(repo.id)}
+                            className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors"
+                          >
+                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                              selectedRepos.has(repo.id)
+                                ? "bg-primary-500 border-primary-500"
+                                : "border-border"
+                            }`}>
+                              {selectedRepos.has(repo.id) && <Check className="w-3 h-3 text-white" />}
+                            </div>
+                            <FolderGit2 className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-foreground flex-1 text-left">{repo.name}</span>
+                            {/* Language badge */}
+                            {repo.language && (
+                              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                <span className={`w-2.5 h-2.5 rounded-full ${languageColors[repo.language] || "bg-gray-400"}`} />
+                                {repo.language}
+                              </span>
+                            )}
+                            {repo.is_private ? (
+                              <Lock className="w-3 h-3 text-muted-foreground" />
+                            ) : (
+                              <Globe className="w-3 h-3 text-muted-foreground" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
                     )}
-                    <div
-                      onClick={(e) => toggleOrgSelection(orgId, e)}
-                      className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors cursor-pointer hover:border-primary-400 ${
-                      allSelected
-                        ? "bg-primary-500 border-primary-500"
-                        : someSelected
-                        ? "border-primary-500"
-                        : "border-border"
-                    }`}>
-                      {allSelected && <Check className="w-3 h-3 text-foreground" />}
-                      {someSelected && !allSelected && <div className="w-2 h-2 bg-primary-500 rounded-sm" />}
-                    </div>
-                    <Building2 className="w-4 h-4 text-muted-foreground" />
-                    <span className="font-medium text-foreground flex-1 text-left">
-                      {orgName}
-                    </span>
-                    <span className="text-sm text-muted-foreground">{repos.length} repos</span>
-                  </button>
+                  </div>
+                );
+              })
+            )}
+          </div>
 
-                  {/* Repositories - only show when expanded */}
-                  {isExpanded && (
-                    <div className="pl-8 space-y-1">
-                      {repos.map((repo) => (
-                        <button
-                          key={repo.id}
-                          onClick={() => toggleRepo(repo.id)}
-                          className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors"
-                        >
-                          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                            selectedRepos.has(repo.id)
-                              ? "bg-primary-500 border-primary-500"
-                              : "border-border"
-                          }`}>
-                            {selectedRepos.has(repo.id) && <Check className="w-3 h-3 text-foreground" />}
-                          </div>
-                          <FolderGit2 className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-foreground flex-1 text-left">{repo.name}</span>
-                          {repo.is_private ? (
-                            <Lock className="w-3 h-3 text-muted-foreground" />
-                          ) : (
-                            <Globe className="w-3 h-3 text-muted-foreground" />
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })
+          {/* Bottom scroll fade gradient */}
+          {showBottomFade && (
+            <div className="absolute bottom-0 left-0 right-2 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none rounded-b-lg" />
           )}
         </div>
 

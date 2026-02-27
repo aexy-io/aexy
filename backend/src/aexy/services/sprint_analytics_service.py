@@ -585,6 +585,109 @@ class SprintAnalyticsService:
             "recommendations": recommendations,
         }
 
+    # Cycle Time Analytics
+    async def get_cycle_time_analytics(self, sprint_id: str) -> dict:
+        """Get cycle time analytics for a sprint.
+
+        Returns:
+            Dict with average, median, p90 cycle/lead times and per-status dwell times.
+        """
+        from sqlalchemy.orm import selectinload
+
+        stmt = (
+            select(Sprint)
+            .where(Sprint.id == sprint_id)
+            .options(selectinload(Sprint.tasks))
+        )
+        result = await self.db.execute(stmt)
+        sprint = result.scalar_one_or_none()
+
+        if not sprint:
+            return {
+                "cycle_time": {"avg": 0, "median": 0, "p90": 0},
+                "lead_time": {"avg": 0, "median": 0, "p90": 0},
+                "throughput": {"tasks_per_week": 0, "points_per_week": 0},
+                "by_priority": {},
+                "by_assignee": {},
+            }
+
+        completed_tasks = [t for t in (sprint.tasks or []) if t.status == "done"]
+
+        cycle_times = [t.cycle_time_hours for t in completed_tasks if t.cycle_time_hours is not None]
+        lead_times = [t.lead_time_hours for t in completed_tasks if t.lead_time_hours is not None]
+
+        def percentile(data: list[float], p: float) -> float:
+            if not data:
+                return 0
+            sorted_data = sorted(data)
+            k = (len(sorted_data) - 1) * p / 100
+            f = int(k)
+            c = f + 1
+            if c >= len(sorted_data):
+                return sorted_data[f]
+            return sorted_data[f] + (k - f) * (sorted_data[c] - sorted_data[f])
+
+        def stats(data: list[float]) -> dict:
+            if not data:
+                return {"avg": 0, "median": 0, "p90": 0}
+            return {
+                "avg": round(sum(data) / len(data), 1),
+                "median": round(percentile(data, 50), 1),
+                "p90": round(percentile(data, 90), 1),
+            }
+
+        # Throughput calculation
+        tasks_per_week = 0.0
+        points_per_week = 0.0
+        if sprint.start_date and sprint.end_date:
+            sprint_days = (sprint.end_date - sprint.start_date).days
+            sprint_weeks = max(sprint_days / 7, 1)
+            tasks_per_week = len(completed_tasks) / sprint_weeks
+            completed_points = sum(t.story_points or 0 for t in completed_tasks)
+            points_per_week = completed_points / sprint_weeks
+
+        # By priority
+        by_priority: dict[str, dict] = {}
+        for priority in ("critical", "high", "medium", "low"):
+            p_tasks = [t for t in completed_tasks if t.priority == priority]
+            p_cycle = [t.cycle_time_hours for t in p_tasks if t.cycle_time_hours is not None]
+            if p_cycle:
+                by_priority[priority] = {
+                    "count": len(p_tasks),
+                    "avg_cycle_time": round(sum(p_cycle) / len(p_cycle), 1),
+                }
+
+        # By assignee
+        by_assignee: dict[str, dict] = {}
+        for task in completed_tasks:
+            if task.assignee_id and task.cycle_time_hours is not None:
+                aid = str(task.assignee_id)
+                if aid not in by_assignee:
+                    by_assignee[aid] = {
+                        "developer_name": task.assignee.name if task.assignee else "Unknown",
+                        "tasks_completed": 0,
+                        "cycle_times": [],
+                    }
+                by_assignee[aid]["tasks_completed"] += 1
+                by_assignee[aid]["cycle_times"].append(task.cycle_time_hours)
+
+        # Compute averages for assignees
+        for aid, data in by_assignee.items():
+            ct = data.pop("cycle_times")
+            data["avg_cycle_time"] = round(sum(ct) / len(ct), 1) if ct else 0
+
+        return {
+            "cycle_time": stats(cycle_times),
+            "lead_time": stats(lead_times),
+            "throughput": {
+                "tasks_per_week": round(tasks_per_week, 1),
+                "points_per_week": round(points_per_week, 1),
+            },
+            "completed_count": len(completed_tasks),
+            "by_priority": by_priority,
+            "by_assignee": by_assignee,
+        }
+
     # Private helpers
     async def _calculate_sprint_stats(self, sprint: Sprint) -> dict:
         """Calculate statistics for a sprint."""

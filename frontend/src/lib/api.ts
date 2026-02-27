@@ -2295,6 +2295,7 @@ export interface SprintListItem {
   completed_count: number;
   total_points: number;
   completed_points: number;
+  settings?: Record<string, unknown>;
 }
 
 export interface SprintTask {
@@ -2321,6 +2322,10 @@ export interface SprintTask {
   custom_fields: Record<string, unknown>;
   started_at: string | null;
   completed_at: string | null;
+  work_started_at: string | null;
+  cycle_time_hours: number | null;
+  lead_time_hours: number | null;
+  contributes_to_goal: boolean;
   carried_over_from_sprint_id: string | null;
   // Epic reference
   epic_id: string | null;
@@ -2440,6 +2445,10 @@ export interface CapacityAnalysis {
     committed_hours: number;
     capacity_hours: number;
     utilization: number;
+    leave_days?: number;
+    oncall_days?: number;
+    holiday_days?: number;
+    available_days?: number;
   }[];
   recommendations: string[];
 }
@@ -3192,6 +3201,84 @@ export const sprintApi = {
       `/workspaces/${workspaceId}/teams/${teamId}/sprints/${fromSprintId}/carry-over/${toSprintId}`,
       { task_ids: taskIds }
     );
+    return response.data;
+  },
+
+  // WIP Limits
+  getWipLimits: async (sprintId: string): Promise<{
+    limits: Record<string, number | null>;
+    counts: Record<string, number>;
+    violations: { status: string; limit: number; count: number; over_by: number }[];
+  }> => {
+    const response = await api.get(`/sprints/${sprintId}/tasks/wip-limits`);
+    return response.data;
+  },
+
+  updateWipLimits: async (sprintId: string, limits: Record<string, number | null>): Promise<{
+    wip_limits: Record<string, number | null>;
+  }> => {
+    const response = await api.put(`/sprints/${sprintId}/tasks/wip-limits`, limits);
+    return response.data;
+  },
+
+  // Sprint Goal
+  getGoalProgress: async (sprintId: string): Promise<{
+    goal: string | null;
+    total_goal_tasks: number;
+    completed_goal_tasks: number;
+    percentage: number;
+    goal_task_ids: string[];
+  }> => {
+    const response = await api.get(`/sprints/${sprintId}/tasks/goal-progress`);
+    return response.data;
+  },
+
+  // Auto-Assign
+  autoAssign: async (sprintId: string): Promise<{
+    assigned: { task_id: string; task_title: string; developer_id: string; developer_name: string; confidence: number; reasoning: string }[];
+    skipped: { task_id: string; task_title: string; reason: string; suggested_developer: string }[];
+    total_assigned: number;
+    total_skipped: number;
+  }> => {
+    const response = await api.post(`/sprints/${sprintId}/tasks/auto-assign`);
+    return response.data;
+  },
+
+  // Cycle Time Analytics
+  getCycleTimeAnalytics: async (sprintId: string): Promise<{
+    cycle_time: { avg: number; median: number; p90: number };
+    lead_time: { avg: number; median: number; p90: number };
+    throughput: { tasks_per_week: number; points_per_week: number };
+    completed_count: number;
+    by_priority: Record<string, { count: number; avg_cycle_time: number }>;
+    by_assignee: Record<string, { developer_name: string; tasks_completed: number; avg_cycle_time: number }>;
+  }> => {
+    const response = await api.get(`/sprints/${sprintId}/analytics/cycle-time`);
+    return response.data;
+  },
+
+  // Planning Poker
+  startPokerSession: async (sprintId: string): Promise<{
+    session_id: string;
+    sprint_id: string;
+    tasks: { id: string; title: string; description: string | null }[];
+    total_tasks: number;
+  }> => {
+    const response = await api.post(`/sprints/${sprintId}/planning-poker/start`);
+    return response.data;
+  },
+
+  getPokerSessionState: async (sprintId: string, sessionId: string): Promise<Record<string, unknown>> => {
+    const response = await api.get(`/sprints/${sprintId}/planning-poker/${sessionId}`);
+    return response.data;
+  },
+
+  finalizePokerSession: async (sprintId: string, sessionId: string): Promise<{
+    finalized: boolean;
+    updated_tasks: { task_id: string; title: string; story_points: number }[];
+    total_estimated: number;
+  }> => {
+    const response = await api.post(`/sprints/${sprintId}/planning-poker/${sessionId}/finalize`);
     return response.data;
   },
 };
@@ -15076,6 +15163,23 @@ export interface AccessCheckResponse {
   reason: string | null;
 }
 
+export interface AppAccessRequest {
+  id: string;
+  workspace_id: string;
+  requester_id: string;
+  requester_name: string | null;
+  app_id: string;
+  app_name: string | null;
+  status: "pending" | "approved" | "rejected" | "withdrawn";
+  reason: string | null;
+  reviewed_by_id: string | null;
+  reviewer_name: string | null;
+  reviewed_at: string | null;
+  review_notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export const appAccessApi = {
   // App catalog
   getCatalog: async (workspaceId: string): Promise<{ apps: AppInfo[] }> => {
@@ -15253,6 +15357,62 @@ export const appAccessApi = {
       params: { days },
     });
     return response.data;
+  },
+
+  // Access requests
+  createAccessRequest: async (
+    workspaceId: string,
+    appId: string,
+    reason?: string
+  ): Promise<AppAccessRequest> => {
+    const response = await api.post(`/workspaces/${workspaceId}/app-access/requests`, {
+      app_id: appId,
+      reason,
+    });
+    return response.data;
+  },
+
+  getMyRequests: async (workspaceId: string): Promise<{ requests: AppAccessRequest[] }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/app-access/requests/mine`);
+    return response.data;
+  },
+
+  listRequests: async (
+    workspaceId: string,
+    status?: string
+  ): Promise<{ requests: AppAccessRequest[] }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/app-access/requests`, {
+      params: status ? { status } : undefined,
+    });
+    return response.data;
+  },
+
+  approveRequest: async (
+    workspaceId: string,
+    requestId: string,
+    notes?: string
+  ): Promise<AppAccessRequest> => {
+    const response = await api.patch(
+      `/workspaces/${workspaceId}/app-access/requests/${requestId}/approve`,
+      notes ? { notes } : {}
+    );
+    return response.data;
+  },
+
+  rejectRequest: async (
+    workspaceId: string,
+    requestId: string,
+    notes?: string
+  ): Promise<AppAccessRequest> => {
+    const response = await api.patch(
+      `/workspaces/${workspaceId}/app-access/requests/${requestId}/reject`,
+      notes ? { notes } : {}
+    );
+    return response.data;
+  },
+
+  withdrawRequest: async (workspaceId: string, requestId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/app-access/requests/${requestId}`);
   },
 };
 
@@ -15867,7 +16027,7 @@ export interface TeamInsightsResponse {
   computed_at?: string;
 }
 
-export interface LeaderboardEntry {
+export interface GitLeaderboardEntry {
   developer_id: string;
   developer_name?: string | null;
   value: number;
@@ -15879,7 +16039,7 @@ export interface LeaderboardResponse {
   period_type: string;
   period_start: string;
   period_end: string;
-  entries: LeaderboardEntry[];
+  entries: GitLeaderboardEntry[];
 }
 
 export interface SnapshotGenerateResponse {

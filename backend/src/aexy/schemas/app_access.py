@@ -233,3 +233,45 @@ class SystemBundlesResponse(BaseModel):
     """Response containing system bundles."""
 
     bundles: list[SystemBundleInfo]
+
+
+# Access Request Schemas
+class AppAccessRequestCreate(BaseModel):
+    """Schema for creating an app access request."""
+
+    app_id: str = Field(..., min_length=1, max_length=100)
+    reason: str | None = Field(default=None, max_length=1000)
+
+
+class AppAccessRequestReview(BaseModel):
+    """Schema for reviewing (approving/rejecting) an access request."""
+
+    notes: str | None = Field(default=None, max_length=1000)
+
+
+class AppAccessRequestResponse(BaseModel):
+    """Response schema for an app access request."""
+
+    id: str
+    workspace_id: str
+    requester_id: str
+    requester_name: str | None = None
+    app_id: str
+    app_name: str | None = None
+    status: str
+    reason: str | None = None
+    reviewed_by_id: str | None = None
+    reviewer_name: str | None = None
+    reviewed_at: datetime | None = None
+    review_notes: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AppAccessRequestListResponse(BaseModel):
+    """Response containing a list of access requests."""
+
+    requests: list[AppAccessRequestResponse]

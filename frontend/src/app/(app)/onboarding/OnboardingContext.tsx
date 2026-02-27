@@ -4,6 +4,8 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 
 export interface OnboardingData {
   useCases: string[];
+  role: string | null;
+  teamSize: string | null;
   // Workspace info
   workspace: {
     id: string | null;
@@ -43,6 +45,8 @@ interface OnboardingContextType {
 
 const defaultData: OnboardingData = {
   useCases: [],
+  role: null,
+  teamSize: null,
   workspace: {
     id: null,
     name: null,
