@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { developerApi, repositoriesApi, Developer } from "@/lib/api";
@@ -8,9 +9,13 @@ export function useAuth() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  // Read token synchronously — on SSR this is always false.
-  const hasToken =
-    typeof window !== "undefined" && !!localStorage.getItem("token");
+  // Defer localStorage read to after hydration to prevent SSR mismatch.
+  // Before mount: mounted=false → isResolved=false → layout shows skeleton.
+  // After mount: we read localStorage and proceed with auth check.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const hasToken = mounted && !!localStorage.getItem("token");
 
   const {
     data: user,
@@ -32,11 +37,10 @@ export function useAuth() {
 
   const isAuthenticated = !!user && !error;
 
-  // Auth state is definitively known when:
+  // Auth state is definitively known only after mount AND either:
   //  - No token exists (definitely not authed), OR
   //  - The query has completed at least once (success or failure)
-  // This eliminates the one-render gap where mounted=true but query hasn't started.
-  const isResolved = !hasToken || isFetched;
+  const isResolved = mounted && (!hasToken || isFetched);
 
   return {
     user,
