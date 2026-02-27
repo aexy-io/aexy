@@ -239,7 +239,7 @@ from aexy.models.app_definitions import (
     get_default_app_access_for_role,
     validate_app_access_config,
 )
-from aexy.models.app_access import AppAccessTemplate, AppAccessLog, AppAccessLogAction
+from aexy.models.app_access import AppAccessTemplate, AppAccessLog, AppAccessLogAction, AppAccessRequest, AppAccessRequestStatus
 from aexy.models.email_marketing import (
     EmailTemplate,
     EmailCampaign,
@@ -720,6 +720,8 @@ __all__ = [
     "AppAccessTemplate",
     "AppAccessLog",
     "AppAccessLogAction",
+    "AppAccessRequest",
+    "AppAccessRequestStatus",
     "APP_CATALOG",
     "SYSTEM_APP_BUNDLES",
     "ROLE_DEFAULT_APP_ACCESS",

@@ -13,19 +13,65 @@ import {
   Clock,
   AlertCircle,
   Mail,
+  GitBranch,
+  Rocket,
+  Briefcase,
+  Bot,
+  BookOpen,
+  User,
 } from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
 import { motion } from "framer-motion";
 import { useOnboarding } from "../OnboardingContext";
 import { workspaceApi, type MyInvitation } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
+import type { LucideIcon } from "lucide-react";
 
 type WorkspaceMode = "select" | "create" | "join";
+
+const teamSizes = [
+  { id: "solo", label: "Solo" },
+  { id: "small", label: "Small (2-10)" },
+  { id: "medium", label: "Medium (11-50)" },
+  { id: "large", label: "Large (50+)" },
+];
+
+const useCaseModules: Record<string, { icon: LucideIcon; label: string }[]> = {
+  engineering: [
+    { icon: GitBranch, label: "Sprints" },
+    { icon: GitBranch, label: "Standups" },
+    { icon: GitBranch, label: "Insights" },
+  ],
+  gtm: [
+    { icon: Rocket, label: "Leads" },
+    { icon: Rocket, label: "Visitors" },
+    { icon: Rocket, label: "Sequences" },
+  ],
+  sales: [
+    { icon: Briefcase, label: "CRM" },
+    { icon: Briefcase, label: "Pipeline" },
+    { icon: Briefcase, label: "Booking" },
+  ],
+  ai: [
+    { icon: Bot, label: "Agents" },
+    { icon: Bot, label: "Automations" },
+  ],
+  people: [
+    { icon: Users, label: "Reviews" },
+    { icon: Users, label: "Hiring" },
+    { icon: Users, label: "Learning" },
+  ],
+  knowledge: [
+    { icon: BookOpen, label: "Docs" },
+    { icon: BookOpen, label: "Tables" },
+    { icon: BookOpen, label: "Forms" },
+  ],
+};
 
 export default function WorkspaceStep() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { data, updateWorkspace, setCurrentStep } = useOnboarding();
+  const { data, updateData, updateWorkspace, setCurrentStep } = useOnboarding();
   const [mode, setMode] = useState<WorkspaceMode>("select");
   const [workspaceName, setWorkspaceName] = useState("");
   const [workspaceId, setWorkspaceId] = useState("");
@@ -154,6 +200,9 @@ export default function WorkspaceStep() {
     router.push("/onboarding/connect");
   };
 
+  // Build sidebar module preview based on selected use cases
+  const sidebarModules = data.useCases.flatMap(uc => useCaseModules[uc] || []);
+
   return (
     <div className="max-w-4xl mx-auto px-6 py-12">
       {/* Progress indicator */}
@@ -178,7 +227,7 @@ export default function WorkspaceStep() {
         {/* Header */}
         <div className="text-center mb-10">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center mx-auto mb-6">
-            <Building2 className="w-8 h-8 text-foreground" />
+            <Building2 className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-foreground mb-3">
             Set up your workspace
@@ -197,7 +246,7 @@ export default function WorkspaceStep() {
           >
             <div className="flex items-start gap-4">
               <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
-                <Clock className="w-5 h-5 text-amber-400" />
+                <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
               </div>
               <div>
                 <h3 className="font-medium text-foreground mb-1">Join Request Pending</h3>
@@ -221,7 +270,7 @@ export default function WorkspaceStep() {
           >
             <div className="flex items-start gap-4">
               <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
-                <CheckCircle2 className="w-5 h-5 text-green-400" />
+                <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
               </div>
               <div>
                 <h3 className="font-medium text-foreground mb-1">Workspace Ready</h3>
@@ -237,8 +286,8 @@ export default function WorkspaceStep() {
         {!hasWorkspace && mode === "select" && !loadingInvitations && invitations.length > 0 && (
           <div className="max-w-2xl mx-auto mb-8">
             <div className="flex items-center gap-2 mb-4">
-              <Mail className="w-4 h-4 text-primary-400" />
-              <h2 className="text-sm font-medium text-primary-400 uppercase tracking-wide">
+              <Mail className="w-4 h-4 text-primary-600 dark:text-primary-400" />
+              <h2 className="text-sm font-medium text-primary-600 dark:text-primary-400 uppercase tracking-wide">
                 You&apos;ve been invited
               </h2>
             </div>
@@ -253,7 +302,7 @@ export default function WorkspaceStep() {
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-10 h-10 rounded-lg bg-primary-500/10 flex items-center justify-center flex-shrink-0">
-                      <Building2 className="w-5 h-5 text-primary-400" />
+                      <Building2 className="w-5 h-5 text-primary-600 dark:text-primary-400" />
                     </div>
                     <div className="min-w-0">
                       <h3 className="font-medium text-foreground truncate">
@@ -284,7 +333,7 @@ export default function WorkspaceStep() {
             </div>
 
             {error && (
-              <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center gap-2 text-sm text-red-400">
+              <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 {error}
               </div>
@@ -309,9 +358,9 @@ export default function WorkspaceStep() {
               className="p-6 rounded-xl bg-muted/50 border border-border/50 hover:border-primary-500/50 transition-all text-left group"
             >
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center mb-4">
-                <Plus className="w-6 h-6 text-foreground" />
+                <Plus className="w-6 h-6 text-white" />
               </div>
-              <h3 className="font-semibold text-foreground mb-2 group-hover:text-primary-400 transition-colors">
+              <h3 className="font-semibold text-foreground mb-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
                 Create new workspace
               </h3>
               <p className="text-sm text-muted-foreground">
@@ -327,9 +376,9 @@ export default function WorkspaceStep() {
               className="p-6 rounded-xl bg-muted/50 border border-border/50 hover:border-primary-500/50 transition-all text-left group"
             >
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center mb-4">
-                <Users className="w-6 h-6 text-foreground" />
+                <Users className="w-6 h-6 text-white" />
               </div>
-              <h3 className="font-semibold text-foreground mb-2 group-hover:text-primary-400 transition-colors">
+              <h3 className="font-semibold text-foreground mb-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
                 Join existing workspace
               </h3>
               <p className="text-sm text-muted-foreground">
@@ -344,8 +393,32 @@ export default function WorkspaceStep() {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="max-w-md mx-auto"
+            className="max-w-lg mx-auto"
           >
+            {/* Team size selector */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-foreground mb-3">
+                Team size
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {teamSizes.map((size) => (
+                  <button
+                    key={size.id}
+                    onClick={() => updateData({ teamSize: size.id })}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all border ${
+                      data.teamSize === size.id
+                        ? "bg-primary-500/10 border-primary-500/40 text-primary-600 dark:text-primary-400"
+                        : "bg-muted/30 border-border/50 text-muted-foreground hover:text-foreground hover:border-border"
+                    }`}
+                  >
+                    {size.id === "solo" && <User className="w-3 h-3 inline mr-1.5" />}
+                    {size.id !== "solo" && <Users className="w-3 h-3 inline mr-1.5" />}
+                    {size.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="mb-6">
               <label className="block text-sm font-medium text-foreground mb-2">
                 Workspace name
@@ -363,8 +436,28 @@ export default function WorkspaceStep() {
               />
             </div>
 
+            {/* Workspace template preview */}
+            {sidebarModules.length > 0 && (
+              <div className="mb-6 p-4 rounded-xl bg-muted/20 border border-border/30">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
+                  Modules enabled for your workspace
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {sidebarModules.map((mod, i) => (
+                    <div
+                      key={`${mod.label}-${i}`}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary-500/5 border border-primary-500/15 text-xs text-primary-600 dark:text-primary-400"
+                    >
+                      <mod.icon className="w-3 h-3" />
+                      {mod.label}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {error && (
-              <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center gap-2 text-sm text-red-400">
+              <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 {error}
               </div>
@@ -427,7 +520,7 @@ export default function WorkspaceStep() {
             </div>
 
             {error && (
-              <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center gap-2 text-sm text-red-400">
+              <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 {error}
               </div>
