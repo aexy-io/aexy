@@ -554,14 +554,14 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50"
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-50 overflow-y-auto py-10"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-muted border border-border rounded-xl w-full max-w-lg p-6 shadow-2xl"
+        className="bg-muted border border-border rounded-xl w-full max-w-2xl p-6 shadow-2xl"
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <h3 className="text-xl font-semibold text-foreground">
@@ -661,7 +661,7 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
                 onChange={handleDescriptionChange}
                 placeholder="Add more details... Use @ to mention team members"
                 users={users}
-                minHeight="80px"
+                minHeight="150px"
               />
             </div>
 
@@ -1048,7 +1048,7 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-muted border border-border rounded-xl w-full max-w-2xl shadow-2xl"
+        className="bg-muted border border-border rounded-xl w-full max-w-4xl shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -1130,7 +1130,7 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
                 onChange={handleDescriptionChange}
                 placeholder="Add more details... Use @ to mention team members"
                 users={users}
-                minHeight="100px"
+                minHeight="200px"
               />
             </div>
 
@@ -1221,17 +1221,17 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
               </select>
             </div>
 
-            {/* Delete button */}
+            {/* Archive button */}
             <div className="pt-4 border-t border-border">
               {showDeleteConfirm ? (
                 <div className="space-y-2">
-                  <p className="text-xs text-red-400">Delete this task?</p>
+                  <p className="text-xs text-amber-400">Archive this task?</p>
                   <div className="flex gap-2">
                     <button
                       onClick={handleDelete}
-                      className="flex-1 px-2 py-1 bg-red-600 hover:bg-red-700 text-foreground rounded text-xs"
+                      className="flex-1 px-2 py-1 bg-amber-600 hover:bg-amber-700 text-foreground rounded text-xs"
                     >
-                      Delete
+                      Archive
                     </button>
                     <button
                       onClick={() => setShowDeleteConfirm(false)}
@@ -1244,9 +1244,9 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
               ) : (
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="w-full px-2 py-1.5 text-red-400 hover:bg-red-500/10 rounded text-sm transition"
+                  className="w-full px-2 py-1.5 text-amber-400 hover:bg-amber-500/10 rounded text-sm transition"
                 >
-                  Delete Task
+                  Archive Task
                 </button>
               )}
             </div>
@@ -1321,7 +1321,7 @@ export default function ProjectBoardPage({
     isUpdatingTask,
     addTask,
     isAddingTask,
-    deleteTask,
+    archiveTask,
   } = useProjectBoard(currentWorkspaceId, projectId);
 
   const {
@@ -1714,19 +1714,17 @@ export default function ProjectBoardPage({
     }
   };
 
-  const handleDeleteTask = async (taskId: string) => {
+  const handleArchiveTask = async (taskId: string) => {
     const task = filteredTasks.find((t) => t.id === taskId);
     if (!task) return;
 
-    if (!confirm("Are you sure you want to delete this task?")) return;
-
     try {
-      await deleteTask({
+      await archiveTask({
         sprintId: task.sprint_id || null,
         taskId: task.id,
       });
     } catch (error) {
-      console.error("Failed to delete task:", error);
+      console.error("Failed to archive task:", error);
     }
   };
 
@@ -1756,7 +1754,7 @@ export default function ProjectBoardPage({
 
       {/* Header */}
       <header className="flex-shrink-0 border-b border-border bg-muted/50 backdrop-blur-sm sticky top-0 z-30">
-        <div className="max-w-[1800px] mx-auto px-4 py-3">
+        <div className="px-4 py-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex flex-col gap-2">
               <Breadcrumb
@@ -1932,7 +1930,7 @@ export default function ProjectBoardPage({
             exit={{ height: 0, opacity: 0 }}
             className="border-b border-border bg-primary-100 dark:bg-primary-900/30 overflow-hidden z-50 relative"
           >
-            <div className="max-w-[1800px] mx-auto px-4 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="px-4 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <span className="text-sm text-foreground font-medium">
                   {selectedCount} task{selectedCount > 1 ? "s" : ""} selected
@@ -2142,7 +2140,7 @@ export default function ProjectBoardPage({
                         isCollapsed={collapsedSprints.has(sprint.id)}
                         onToggleCollapse={() => toggleSprintCollapse(sprint.id)}
                         onTaskClick={handleTaskClick}
-                        onDeleteTask={handleDeleteTask}
+                        onDeleteTask={handleArchiveTask}
                         isOver={overId === sprint.id}
                         onSelect={toggleTask}
                         isSelected={isSelected}
@@ -2174,7 +2172,7 @@ export default function ProjectBoardPage({
                     bgColor={STATUS_CONFIG[status].bgColor}
                     tasks={tasksByStatus[status] || []}
                     onTaskClick={handleTaskClick}
-                    onDeleteTask={handleDeleteTask}
+                    onDeleteTask={handleArchiveTask}
                     onStatusChange={handleQuickStatusChange}
                     showSprintBadge={true}
                     isOver={overId === status}
@@ -2204,7 +2202,7 @@ export default function ProjectBoardPage({
 
       {/* Keyboard shortcuts hint */}
       <div className="flex-shrink-0 border-t border-border bg-muted/30 px-4 py-2">
-        <div className="max-w-[1800px] mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-muted-foreground">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-4">
             <span>
               <kbd className="px-1.5 py-0.5 bg-accent rounded text-muted-foreground">⌘K</kbd> Search
@@ -2245,7 +2243,7 @@ export default function ProjectBoardPage({
             task={selectedTask}
             onClose={() => setSelectedTask(null)}
             onUpdate={updateTask}
-            onDelete={deleteTask}
+            onDelete={archiveTask}
             isUpdating={isUpdatingTask}
             sprints={sprints}
             epics={epics || []}
