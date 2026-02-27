@@ -105,11 +105,44 @@ class NotificationService:
         await self.db.commit()
         await self.db.refresh(notification)
 
-        # Queue email if enabled
+        # Dispatch email via Temporal if enabled
         if send_email and pref and pref.email_enabled:
-            # Email sending will be handled by Temporal activity
-            # For now, just mark that email should be sent
-            logger.info(f"Email notification queued for {recipient_id}")
+            try:
+                from aexy.temporal.dispatch import dispatch
+                from aexy.temporal.task_queues import TaskQueue
+                from aexy.temporal.activities.notifications import SendNotificationEmailInput
+
+                await dispatch(
+                    "send_notification_email",
+                    SendNotificationEmailInput(
+                        notification_id=notification.id,
+                        recipient_id=recipient_id,
+                    ),
+                    task_queue=TaskQueue.EMAIL,
+                )
+                logger.info(f"Email notification dispatched for {recipient_id}")
+            except Exception:
+                logger.exception(f"Failed to dispatch email for notification {notification.id}")
+
+        # Dispatch Slack via Temporal if enabled and workspace_id available
+        if pref and pref.slack_enabled and context and context.get("workspace_id"):
+            try:
+                from aexy.temporal.dispatch import dispatch
+                from aexy.temporal.task_queues import TaskQueue
+                from aexy.temporal.activities.notifications import SendNotificationSlackInput
+
+                await dispatch(
+                    "send_notification_slack",
+                    SendNotificationSlackInput(
+                        notification_id=notification.id,
+                        recipient_id=recipient_id,
+                        workspace_id=context["workspace_id"],
+                    ),
+                    task_queue=TaskQueue.INTEGRATIONS,
+                )
+                logger.info(f"Slack notification dispatched for {recipient_id}")
+            except Exception:
+                logger.exception(f"Failed to dispatch Slack for notification {notification.id}")
 
         logger.info(f"Created notification {notification.id} for {recipient_id}: {event_type_str}")
         return notification
