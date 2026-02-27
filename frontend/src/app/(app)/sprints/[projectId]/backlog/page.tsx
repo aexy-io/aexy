@@ -694,7 +694,7 @@ export default function BacklogPage({
 
       {/* Header */}
       <header className="flex-shrink-0 border-b border-border bg-muted/50 backdrop-blur-sm sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 py-3">
+        <div className="px-4 py-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link
@@ -754,7 +754,7 @@ export default function BacklogPage({
       <div className="flex-1 flex overflow-hidden">
         {/* Main backlog list */}
         <main className="flex-1 overflow-y-auto">
-          <div className="max-w-4xl mx-auto px-4 py-6">
+          <div className="px-4 py-6">
             {/* Search and filters */}
             <div className="flex items-center gap-3 mb-6">
               <SearchInput

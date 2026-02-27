@@ -54,6 +54,7 @@ class NotificationEventType(str, Enum):
 
     # Task mentions
     TASK_MENTIONED = "task_mentioned"  # User was mentioned in a task description with @
+    MENTION = "mention"  # User was @mentioned in a comment or note
 
     # Usage alerts (billing)
     USAGE_ALERT_80 = "usage_alert_80"  # 80% of limit reached
@@ -265,6 +266,7 @@ DEFAULT_NOTIFICATION_PREFERENCES = {
     NotificationEventType.ONCALL_SWAP_DECLINED: {"in_app": True, "email": True, "slack": False},
     # Task mentions
     NotificationEventType.TASK_MENTIONED: {"in_app": True, "email": True, "slack": False},
+    NotificationEventType.MENTION: {"in_app": True, "email": True, "slack": False},
     # Insights alerts
     NotificationEventType.INSIGHT_ALERT_WARNING: {"in_app": True, "email": False, "slack": False},
     NotificationEventType.INSIGHT_ALERT_CRITICAL: {"in_app": True, "email": True, "slack": False},
