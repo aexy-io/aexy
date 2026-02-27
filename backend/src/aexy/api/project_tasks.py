@@ -62,6 +62,7 @@ def task_to_response(task) -> SprintTaskResponse:
         carried_over_from_sprint_id=str(task.carried_over_from_sprint_id) if task.carried_over_from_sprint_id else None,
         mentioned_user_ids=task.mentioned_user_ids or [],
         mentioned_file_paths=task.mentioned_file_paths or [],
+        is_archived=task.is_archived,
         created_at=task.created_at,
         updated_at=task.updated_at,
     )
@@ -144,7 +145,7 @@ async def list_project_tasks(
     query = select(SprintTask).options(
         selectinload(SprintTask.assignee),
         selectinload(SprintTask.subtasks),
-    ).where(SprintTask.team_id == team_id)
+    ).where(SprintTask.team_id == team_id).where(SprintTask.is_archived == False)
 
     # By default, only get tasks without a sprint
     if not include_sprint_tasks:
@@ -382,7 +383,7 @@ async def delete_task(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Delete a task."""
+    """Archive a task (soft delete)."""
     await get_team_and_check_permission(team_id, current_user, db, "member")
 
     query = select(SprintTask).where(SprintTask.id == task_id, SprintTask.team_id == team_id)
@@ -395,5 +396,36 @@ async def delete_task(
             detail="Task not found",
         )
 
-    await db.delete(task)
+    task.is_archived = True
     await db.commit()
+
+
+@router.post("/{task_id}/unarchive", response_model=SprintTaskResponse)
+async def unarchive_task(
+    team_id: str,
+    task_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Unarchive a task (restore from soft delete)."""
+    await get_team_and_check_permission(team_id, current_user, db, "member")
+
+    query = select(SprintTask).options(
+        selectinload(SprintTask.assignee),
+        selectinload(SprintTask.subtasks),
+    ).where(SprintTask.id == task_id, SprintTask.team_id == team_id)
+
+    result = await db.execute(query)
+    task = result.scalar_one_or_none()
+
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
+    task.is_archived = False
+    await db.commit()
+    await db.refresh(task)
+
+    return task_to_response(task)

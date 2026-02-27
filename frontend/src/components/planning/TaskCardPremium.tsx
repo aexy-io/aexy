@@ -7,7 +7,7 @@ import {
   MoreVertical,
   User,
   ExternalLink,
-  Trash2,
+  Archive,
   Sparkles,
   CheckCircle,
   GitBranch,
@@ -281,10 +281,10 @@ export function TaskCardPremium({
                       onDelete(task.id);
                       setShowMenu(false);
                     }}
-                    className="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-muted flex items-center gap-2"
+                    className="w-full px-3 py-2 text-left text-xs text-amber-400 hover:bg-muted flex items-center gap-2"
                   >
-                    <Trash2 className="h-3 w-3" />
-                    Remove
+                    <Archive className="h-3 w-3" />
+                    Archive
                   </button>
                 )}
               </motion.div>
@@ -457,17 +457,17 @@ export function TaskCardPremium({
             </div>
           )}
 
-          {/* Delete */}
+          {/* Archive */}
           {onDelete && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete(task.id);
               }}
-              className="p-1.5 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-full transition"
-              title="Delete"
+              className="p-1.5 text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10 rounded-full transition"
+              title="Archive"
             >
-              <Trash2 className="h-3 w-3" />
+              <Archive className="h-3 w-3" />
             </button>
           )}
         </div>
