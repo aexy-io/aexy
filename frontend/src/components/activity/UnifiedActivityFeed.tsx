@@ -13,6 +13,17 @@ import {
   Link2,
   Unlink,
   Loader2,
+  Send,
+  Archive,
+  CheckCircle2,
+  AlertTriangle,
+  Trash2,
+  Play,
+  Pause,
+  XCircle,
+  Copy,
+  ToggleLeft,
+  Undo2,
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useActivityFeed } from "@/hooks/useActivityFeed";
@@ -33,6 +44,21 @@ const ENTITY_TYPE_FILTERS: { value: EntityActivityType; label: string }[] = [
   { value: "backlog", label: "Backlog" },
   { value: "release", label: "Releases" },
   { value: "roadmap", label: "Roadmaps" },
+  { value: "ticket", label: "Tickets" },
+  { value: "crm_record", label: "CRM" },
+  { value: "document", label: "Docs" },
+  { value: "assessment", label: "Assessments" },
+  { value: "compliance", label: "Compliance" },
+  { value: "project", label: "Projects" },
+  { value: "sprint", label: "Sprints" },
+  { value: "workflow", label: "Workflows" },
+  { value: "agent", label: "Agents" },
+  { value: "template", label: "Templates" },
+  { value: "campaign", label: "Campaigns" },
+  { value: "form", label: "Forms" },
+  { value: "leave_request", label: "Leave" },
+  { value: "review", label: "Reviews" },
+  { value: "role", label: "Roles" },
 ];
 
 // ── Helpers ──
@@ -55,6 +81,38 @@ function getActivityIcon(type: ActivityActionType) {
       return <Link2 className="h-3.5 w-3.5" />;
     case "unlinked":
       return <Unlink className="h-3.5 w-3.5" />;
+    case "published":
+      return <Send className="h-3.5 w-3.5" />;
+    case "archived":
+      return <Archive className="h-3.5 w-3.5" />;
+    case "resolved":
+      return <CheckCircle2 className="h-3.5 w-3.5" />;
+    case "escalated":
+      return <AlertTriangle className="h-3.5 w-3.5" />;
+    case "deleted":
+      return <Trash2 className="h-3.5 w-3.5" />;
+    case "completed":
+      return <CheckCircle2 className="h-3.5 w-3.5" />;
+    case "started":
+      return <Play className="h-3.5 w-3.5" />;
+    case "paused":
+      return <Pause className="h-3.5 w-3.5" />;
+    case "resumed":
+      return <Play className="h-3.5 w-3.5" />;
+    case "submitted":
+      return <Send className="h-3.5 w-3.5" />;
+    case "approved":
+      return <CheckCircle2 className="h-3.5 w-3.5" />;
+    case "rejected":
+      return <XCircle className="h-3.5 w-3.5" />;
+    case "duplicated":
+      return <Copy className="h-3.5 w-3.5" />;
+    case "toggled":
+      return <ToggleLeft className="h-3.5 w-3.5" />;
+    case "withdrawn":
+      return <Undo2 className="h-3.5 w-3.5" />;
+    case "cancelled":
+      return <XCircle className="h-3.5 w-3.5" />;
     default:
       return <Activity className="h-3.5 w-3.5" />;
   }
@@ -77,6 +135,38 @@ function getActivityColor(type: ActivityActionType): string {
     case "linked":
       return "bg-teal-500/10 text-teal-400";
     case "unlinked":
+      return "bg-red-500/10 text-red-400";
+    case "published":
+      return "bg-green-500/10 text-green-400";
+    case "archived":
+      return "bg-gray-500/10 text-gray-400";
+    case "resolved":
+      return "bg-emerald-500/10 text-emerald-400";
+    case "escalated":
+      return "bg-orange-500/10 text-orange-400";
+    case "deleted":
+      return "bg-red-500/10 text-red-400";
+    case "completed":
+      return "bg-emerald-500/10 text-emerald-400";
+    case "started":
+      return "bg-green-500/10 text-green-400";
+    case "paused":
+      return "bg-yellow-500/10 text-yellow-400";
+    case "resumed":
+      return "bg-green-500/10 text-green-400";
+    case "submitted":
+      return "bg-blue-500/10 text-blue-400";
+    case "approved":
+      return "bg-emerald-500/10 text-emerald-400";
+    case "rejected":
+      return "bg-red-500/10 text-red-400";
+    case "duplicated":
+      return "bg-purple-500/10 text-purple-400";
+    case "toggled":
+      return "bg-amber-500/10 text-amber-400";
+    case "withdrawn":
+      return "bg-gray-500/10 text-gray-400";
+    case "cancelled":
       return "bg-red-500/10 text-red-400";
     default:
       return "bg-muted text-muted-foreground";
@@ -101,6 +191,38 @@ function getActivityVerb(type: ActivityActionType): string {
       return "linked";
     case "unlinked":
       return "unlinked";
+    case "published":
+      return "published";
+    case "archived":
+      return "archived";
+    case "resolved":
+      return "resolved";
+    case "escalated":
+      return "escalated";
+    case "deleted":
+      return "deleted";
+    case "completed":
+      return "completed";
+    case "started":
+      return "started";
+    case "paused":
+      return "paused";
+    case "resumed":
+      return "resumed";
+    case "submitted":
+      return "submitted";
+    case "approved":
+      return "approved";
+    case "rejected":
+      return "rejected";
+    case "duplicated":
+      return "duplicated";
+    case "toggled":
+      return "toggled";
+    case "withdrawn":
+      return "withdrew";
+    case "cancelled":
+      return "cancelled";
     default:
       return "modified";
   }
@@ -124,6 +246,36 @@ function getEntityRoute(entityType: EntityActivityType, entityId: string): strin
       return `/releases/${entityId}`;
     case "roadmap":
       return `/roadmap`;
+    case "ticket":
+      return `/tickets/${entityId}`;
+    case "crm_record":
+      return `/crm/records/${entityId}`;
+    case "document":
+      return `/docs/${entityId}`;
+    case "assessment":
+      return `/assessments/${entityId}`;
+    case "compliance":
+      return `/compliance/documents/${entityId}`;
+    case "project":
+      return `/settings/projects/${entityId}`;
+    case "sprint":
+      return `/sprints?sprint=${entityId}`;
+    case "workflow":
+      return `/automations/${entityId}`;
+    case "agent":
+      return `/agents/${entityId}`;
+    case "template":
+      return `/email-marketing/templates/${entityId}`;
+    case "campaign":
+      return `/email-marketing/campaigns/${entityId}`;
+    case "form":
+      return `/forms/${entityId}`;
+    case "leave_request":
+      return `/leave`;
+    case "review":
+      return `/reviews/${entityId}`;
+    case "role":
+      return `/settings/organization/roles`;
     default:
       return "#";
   }
@@ -196,7 +348,7 @@ function ActivityItem({ activity }: { activity: EntityActivity }) {
           </span>
           <Link
             href={entityLink}
-            className="font-medium text-primary-400 hover:text-primary-300 truncate max-w-[200px] transition"
+            className="font-medium text-primary-400 hover:text-primary-300 truncate transition"
           >
             {entityLabel}
           </Link>
@@ -204,7 +356,7 @@ function ActivityItem({ activity }: { activity: EntityActivity }) {
 
         {/* Comment content */}
         {activity.activity_type === "comment" && activity.content && (
-          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+          <p className="text-sm text-muted-foreground mt-1">
             {activity.content}
           </p>
         )}

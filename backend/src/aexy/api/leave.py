@@ -27,6 +27,7 @@ from aexy.services.leave_policy_service import LeavePolicyService
 from aexy.services.leave_request_service import LeaveRequestService
 from aexy.services.leave_balance_service import LeaveBalanceService
 from aexy.services.holiday_service import HolidayService
+from aexy.services.activity_logger import log_activity
 
 
 router = APIRouter(
@@ -181,6 +182,17 @@ async def submit_leave_request(
             is_half_day=data.is_half_day,
             half_day_period=data.half_day_period,
         )
+
+        await log_activity(
+            db,
+            workspace_id=workspace_id,
+            entity_type="leave_request",
+            entity_id=str(request.id),
+            activity_type="submitted",
+            actor_id=str(current_developer.id),
+            title="Submitted leave request",
+        )
+
         return LeaveRequestResponse.model_validate(request)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -240,6 +252,17 @@ async def approve_leave_request(
     service = LeaveRequestService(db)
     try:
         request = await service.approve(request_id, current_developer.id)
+
+        await log_activity(
+            db,
+            workspace_id=workspace_id,
+            entity_type="leave_request",
+            entity_id=request_id,
+            activity_type="approved",
+            actor_id=str(current_developer.id),
+            title="Approved leave request",
+        )
+
         return LeaveRequestResponse.model_validate(request)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -257,6 +280,17 @@ async def reject_leave_request(
     service = LeaveRequestService(db)
     try:
         request = await service.reject(request_id, current_developer.id, data.reason)
+
+        await log_activity(
+            db,
+            workspace_id=workspace_id,
+            entity_type="leave_request",
+            entity_id=request_id,
+            activity_type="rejected",
+            actor_id=str(current_developer.id),
+            title="Rejected leave request",
+        )
+
         return LeaveRequestResponse.model_validate(request)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -273,6 +307,17 @@ async def cancel_leave_request(
     service = LeaveRequestService(db)
     try:
         request = await service.cancel(request_id, current_developer.id)
+
+        await log_activity(
+            db,
+            workspace_id=workspace_id,
+            entity_type="leave_request",
+            entity_id=request_id,
+            activity_type="cancelled",
+            actor_id=str(current_developer.id),
+            title="Cancelled leave request",
+        )
+
         return LeaveRequestResponse.model_validate(request)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -289,6 +334,17 @@ async def withdraw_leave_request(
     service = LeaveRequestService(db)
     try:
         request = await service.withdraw(request_id, current_developer.id)
+
+        await log_activity(
+            db,
+            workspace_id=workspace_id,
+            entity_type="leave_request",
+            entity_id=request_id,
+            activity_type="withdrawn",
+            actor_id=str(current_developer.id),
+            title="Withdrew leave request",
+        )
+
         return LeaveRequestResponse.model_validate(request)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

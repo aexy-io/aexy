@@ -25,6 +25,7 @@ from aexy.schemas.compliance_document import (
     LinkCreateRequest,
 )
 from aexy.services.storage_service import get_storage_service
+from aexy.services.activity_logger import log_activity
 
 logger = logging.getLogger(__name__)
 
@@ -228,6 +229,16 @@ class ComplianceDocumentService:
             )
             self.db.add(tag)
 
+        await log_activity(
+            self.db,
+            workspace_id=workspace_id,
+            entity_type="compliance",
+            entity_id=str(doc.id),
+            activity_type="created",
+            actor_id=uploaded_by,
+            title=f"Uploaded compliance document '{data.name}'",
+        )
+
         await self.db.commit()
         await self.db.refresh(doc, ["tags"])
         return doc
@@ -359,6 +370,16 @@ class ComplianceDocumentService:
 
         doc.status = ComplianceDocumentStatus.ARCHIVED.value
         doc.archived_at = datetime.now(timezone.utc)
+
+        await log_activity(
+            self.db,
+            workspace_id=workspace_id,
+            entity_type="compliance",
+            entity_id=str(doc.id),
+            activity_type="archived",
+            title=f"Archived compliance document '{doc.name}'",
+        )
+
         await self.db.commit()
         await self.db.refresh(doc)
         return doc
@@ -372,6 +393,16 @@ class ComplianceDocumentService:
 
         doc.status = ComplianceDocumentStatus.DELETED.value
         doc.deleted_at = datetime.now(timezone.utc)
+
+        await log_activity(
+            self.db,
+            workspace_id=workspace_id,
+            entity_type="compliance",
+            entity_id=str(doc.id),
+            activity_type="deleted",
+            title=f"Deleted compliance document '{doc.name}'",
+        )
+
         await self.db.commit()
         return True
 

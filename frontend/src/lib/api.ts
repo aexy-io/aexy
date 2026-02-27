@@ -11826,8 +11826,8 @@ export const okrGoalsApi = {
 
 // ============ Entity Activity Types ============
 
-export type EntityActivityType = "goal" | "task" | "backlog" | "story" | "release" | "roadmap" | "epic" | "bug";
-export type ActivityActionType = "created" | "updated" | "comment" | "status_changed" | "assigned" | "progress_updated" | "linked" | "unlinked";
+export type EntityActivityType = "goal" | "task" | "backlog" | "story" | "release" | "roadmap" | "epic" | "bug" | "ticket" | "crm_record" | "document" | "assessment" | "compliance" | "project" | "sprint" | "workflow" | "agent" | "template" | "campaign" | "form" | "leave_request" | "review" | "role";
+export type ActivityActionType = "created" | "updated" | "comment" | "status_changed" | "assigned" | "progress_updated" | "linked" | "unlinked" | "published" | "archived" | "resolved" | "escalated" | "deleted" | "completed" | "started" | "paused" | "resumed" | "submitted" | "approved" | "rejected" | "duplicated" | "toggled" | "withdrawn" | "cancelled";
 
 export interface ActorInfo {
   id: string;

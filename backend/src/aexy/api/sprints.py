@@ -18,6 +18,7 @@ from aexy.schemas.sprint import (
 )
 from aexy.services.sprint_service import SprintService
 from aexy.services.workspace_service import WorkspaceService
+from aexy.services.activity_logger import log_activity
 
 router = APIRouter(tags=["Sprints"])
 
@@ -138,6 +139,16 @@ async def create_sprint(
         velocity_commitment=data.velocity_commitment,
         created_by_id=str(current_user.id),
         settings=data.settings,
+    )
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="sprint",
+        entity_id=str(sprint.id),
+        activity_type="created",
+        actor_id=str(current_user.id),
+        title=f"Created sprint '{data.name}'",
     )
 
     await db.commit()
@@ -283,6 +294,16 @@ async def update_sprint(
             detail="Sprint not found",
         )
 
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="sprint",
+        entity_id=sprint_id,
+        activity_type="updated",
+        actor_id=str(current_user.id),
+        title=f"Updated sprint '{sprint.name}'",
+    )
+
     await db.commit()
     stats = await sprint_service.get_sprint_stats(sprint.id)
     return sprint_to_response(sprint, stats)
@@ -310,12 +331,27 @@ async def delete_sprint(
             detail="Admin permission required",
         )
 
+    # Capture sprint name before deletion
+    sprint = await sprint_service.get_sprint(sprint_id)
+    sprint_name = sprint.name if sprint else None
+
     try:
         if not await sprint_service.delete_sprint(sprint_id):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Sprint not found",
             )
+
+        await log_activity(
+            db,
+            workspace_id=workspace_id,
+            entity_type="sprint",
+            entity_id=sprint_id,
+            activity_type="deleted",
+            actor_id=str(current_user.id),
+            title=f"Deleted sprint '{sprint_name}'",
+        )
+
         await db.commit()
     except ValueError as e:
         raise HTTPException(
@@ -348,6 +384,17 @@ async def start_sprint(
 
     try:
         sprint = await sprint_service.start_sprint(sprint_id)
+
+        await log_activity(
+            db,
+            workspace_id=workspace_id,
+            entity_type="sprint",
+            entity_id=sprint_id,
+            activity_type="started",
+            actor_id=str(current_user.id),
+            title=f"Started sprint '{sprint.name}'",
+        )
+
         await db.commit()
         stats = await sprint_service.get_sprint_stats(sprint.id)
         return sprint_to_response(sprint, stats)
@@ -447,6 +494,17 @@ async def complete_sprint(
 
     try:
         sprint = await sprint_service.complete_sprint(sprint_id)
+
+        await log_activity(
+            db,
+            workspace_id=workspace_id,
+            entity_type="sprint",
+            entity_id=sprint_id,
+            activity_type="completed",
+            actor_id=str(current_user.id),
+            title=f"Completed sprint '{sprint.name}'",
+        )
+
         await db.commit()
         stats = await sprint_service.get_sprint_stats(sprint.id)
         return sprint_to_response(sprint, stats)

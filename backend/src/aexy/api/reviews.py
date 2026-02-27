@@ -47,6 +47,7 @@ from aexy.schemas.review import (
 from aexy.services.review_service import ReviewService
 from aexy.services.goal_service import GoalService
 from aexy.services.contribution_service import ContributionService
+from aexy.services.activity_logger import log_activity
 
 router = APIRouter(prefix="/reviews")
 
@@ -71,6 +72,14 @@ async def create_review_cycle(
         peer_review_deadline=data.peer_review_deadline,
         manager_review_deadline=data.manager_review_deadline,
         settings=data.settings.model_dump() if data.settings else None,
+    )
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="review",
+        entity_id=str(cycle.id),
+        activity_type="created",
+        title=f"Created review cycle '{data.name}'",
     )
     return ReviewCycleResponse.model_validate(cycle)
 
@@ -130,6 +139,14 @@ async def update_review_cycle(
     if not cycle:
         raise HTTPException(status_code=404, detail="Review cycle not found")
 
+    await log_activity(
+        db,
+        workspace_id=str(cycle.workspace_id),
+        entity_type="review",
+        entity_id=str(cycle.id),
+        activity_type="updated",
+        title=f"Updated review cycle '{cycle.name}'",
+    )
     return ReviewCycleResponse.model_validate(cycle)
 
 
@@ -146,6 +163,14 @@ async def activate_review_cycle(
             status_code=400,
             detail="Cannot activate cycle (may already be active or not found)"
         )
+    await log_activity(
+        db,
+        workspace_id=str(cycle.workspace_id),
+        entity_type="review",
+        entity_id=str(cycle.id),
+        activity_type="started",
+        title=f"Activated review cycle '{cycle.name}'",
+    )
     return ReviewCycleResponse.model_validate(cycle)
 
 
@@ -473,6 +498,19 @@ async def submit_self_review(
             linked_goals=data.linked_goals,
             linked_contributions=data.linked_contributions,
         )
+        # Get review to find workspace_id
+        review = await service.get_individual_review(review_id)
+        if review:
+            cycle = await service.get_review_cycle(review.review_cycle_id)
+            if cycle:
+                await log_activity(
+                    db,
+                    workspace_id=str(cycle.workspace_id),
+                    entity_type="review",
+                    entity_id=review_id,
+                    activity_type="submitted",
+                    title="Submitted self-review",
+                )
         return ReviewSubmissionResponse.model_validate(submission)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -495,6 +533,19 @@ async def submit_manager_review(
             linked_goals=data.linked_goals,
             linked_contributions=data.linked_contributions,
         )
+        # Get review to find workspace_id
+        review = await service.get_individual_review(review_id)
+        if review:
+            cycle = await service.get_review_cycle(review.review_cycle_id)
+            if cycle:
+                await log_activity(
+                    db,
+                    workspace_id=str(cycle.workspace_id),
+                    entity_type="review",
+                    entity_id=review_id,
+                    activity_type="submitted",
+                    title="Submitted manager review",
+                )
         return ReviewSubmissionResponse.model_validate(submission)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -516,6 +567,16 @@ async def finalize_review(
     )
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
+    cycle = await service.get_review_cycle(review.review_cycle_id)
+    if cycle:
+        await log_activity(
+            db,
+            workspace_id=str(cycle.workspace_id),
+            entity_type="review",
+            entity_id=review_id,
+            activity_type="completed",
+            title="Finalized review",
+        )
     return IndividualReviewResponse.model_validate(review)
 
 
@@ -627,6 +688,20 @@ async def submit_peer_review(
         linked_goals=data.linked_goals,
         linked_contributions=data.linked_contributions,
     )
+    # Get review to find workspace_id
+    review = await service.get_individual_review(request.individual_review_id)
+    if review:
+        cycle = await service.get_review_cycle(review.review_cycle_id)
+        if cycle:
+            await log_activity(
+                db,
+                workspace_id=str(cycle.workspace_id),
+                entity_type="review",
+                entity_id=str(request.individual_review_id),
+                activity_type="submitted",
+                actor_id=reviewer_id,
+                title="Submitted peer review",
+            )
     return ReviewSubmissionResponse.model_validate(submission)
 
 
