@@ -5,8 +5,11 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Link from "@tiptap/extension-link";
+import { Markdown } from "tiptap-markdown";
 import { cn } from "@/lib/utils";
-import { User, File, AtSign, Hash } from "lucide-react";
+import { User, File, AtSign, Hash, Code, Type } from "lucide-react";
+
+type EditorMode = "rich" | "markdown";
 
 export interface MentionUser {
   id: string;
@@ -60,6 +63,8 @@ export const TaskDescriptionEditor = forwardRef<
   const [showUserSuggestions, setShowUserSuggestions] = useState(false);
   const [showFileSuggestions, setShowFileSuggestions] = useState(false);
   const [suggestionQuery, setSuggestionQuery] = useState("");
+  const [editorMode, setEditorMode] = useState<EditorMode>("rich");
+  const [markdownContent, setMarkdownContent] = useState("");
 
   // Filter users based on query
   const filteredUsers = users.filter((user) =>
@@ -88,6 +93,15 @@ export const TaskDescriptionEditor = forwardRef<
           class: "text-blue-400 hover:text-blue-300 underline cursor-pointer",
         },
       }),
+      Markdown.configure({
+        html: true,
+        tightLists: true,
+        bulletListMarker: "-",
+        linkify: true,
+        breaks: false,
+        transformPastedText: true,
+        transformCopiedText: true,
+      }),
     ],
     content: content || undefined,
     editable: !readOnly,
@@ -95,7 +109,7 @@ export const TaskDescriptionEditor = forwardRef<
     editorProps: {
       attributes: {
         class: cn(
-          "prose prose-invert prose-slate max-w-none focus:outline-none",
+          "prose dark:prose-invert max-w-none focus:outline-none",
           "prose-p:my-1 prose-headings:my-2",
           "[&_.is-editor-empty:first-child::before]:text-muted-foreground",
           "[&_.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]",
@@ -221,6 +235,53 @@ export const TaskDescriptionEditor = forwardRef<
     });
   }, [editor, suggestionQuery, mentionedUserIds, mentionedFilePaths, onChange]);
 
+  // Toggle editor mode
+  const handleModeToggle = useCallback(() => {
+    if (!editor) return;
+
+    if (editorMode === "rich") {
+      try {
+        const markdown = editor.storage.markdown.getMarkdown();
+        setMarkdownContent(markdown);
+        setEditorMode("markdown");
+      } catch (error) {
+        console.error("Failed to extract markdown:", error);
+      }
+    } else {
+      try {
+        editor.commands.setContent(markdownContent);
+        setEditorMode("rich");
+        // Notify parent with updated JSON
+        const json = editor.getJSON() as Record<string, unknown>;
+        onChange?.(json, {
+          user_ids: Array.from(mentionedUserIds),
+          file_paths: Array.from(mentionedFilePaths),
+        });
+      } catch (error) {
+        console.error("Failed to parse markdown:", error);
+      }
+    }
+  }, [editor, editorMode, markdownContent, onChange, mentionedUserIds, mentionedFilePaths]);
+
+  // Handle markdown textarea change
+  const handleMarkdownChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const newContent = e.target.value;
+      setMarkdownContent(newContent);
+
+      // Update editor content in background so parent gets valid JSON
+      if (editor) {
+        editor.commands.setContent(newContent);
+        const json = editor.getJSON() as Record<string, unknown>;
+        onChange?.(json, {
+          user_ids: Array.from(mentionedUserIds),
+          file_paths: Array.from(mentionedFilePaths),
+        });
+      }
+    },
+    [editor, onChange, mentionedUserIds, mentionedFilePaths]
+  );
+
   // Sync content when it changes externally
   useEffect(() => {
     if (editor && content && !editor.isFocused) {
@@ -244,14 +305,50 @@ export const TaskDescriptionEditor = forwardRef<
 
   return (
     <div className={cn("relative rounded-lg border border-border bg-muted/50", className)}>
-      <EditorContent
-        editor={editor}
-        className={cn(
-          "px-3 py-2",
-          "[&_.ProseMirror]:text-foreground [&_.ProseMirror]:text-sm",
-          "[&_.ProseMirror]:leading-relaxed"
-        )}
-      />
+      {/* Mode toggle */}
+      {!readOnly && (
+        <div className="flex justify-end px-2 pt-1.5">
+          <button
+            type="button"
+            onClick={handleModeToggle}
+            className="flex items-center gap-1 px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground bg-muted hover:bg-accent rounded transition-colors"
+          >
+            {editorMode === "rich" ? (
+              <>
+                <Code className="w-3 h-3" />
+                <span>Markdown</span>
+              </>
+            ) : (
+              <>
+                <Type className="w-3 h-3" />
+                <span>Rich</span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
+      {editorMode === "rich" ? (
+        <EditorContent
+          editor={editor}
+          className={cn(
+            "px-3 py-2",
+            "[&_.ProseMirror]:text-foreground [&_.ProseMirror]:text-sm",
+            "[&_.ProseMirror]:leading-relaxed"
+          )}
+        />
+      ) : (
+        <div className="px-3 py-2">
+          <textarea
+            value={markdownContent}
+            onChange={handleMarkdownChange}
+            placeholder="Write in Markdown..."
+            className="w-full bg-transparent border-none outline-none text-foreground font-mono text-sm leading-relaxed resize-y placeholder-muted-foreground"
+            style={{ minHeight: minHeight }}
+            spellCheck={false}
+          />
+        </div>
+      )}
 
       {/* User mention suggestions */}
       {showUserSuggestions && filteredUsers.length > 0 && (
