@@ -28,6 +28,11 @@ from aexy.schemas.ticketing import (
     EscalationMatrixUpdate,
 )
 from aexy.services.automation_service import dispatch_automation_event
+from aexy.services.notification_service import (
+    extract_mentioned_user_ids,
+    notify_mention,
+    _get_text_snippet,
+)
 
 
 class TicketService:
@@ -528,6 +533,31 @@ class TicketService:
         self.db.add(response)
         await self.db.flush()
         await self.db.refresh(response)
+
+        # Send mention notifications
+        if author_id and comment_data.content:
+            mentioned_ids = extract_mentioned_user_ids(comment_data.content)
+            if mentioned_ids:
+                # Look up author name
+                from aexy.models.developer import Developer
+                author_result = await self.db.execute(
+                    select(Developer).where(Developer.id == author_id)
+                )
+                author = author_result.scalar_one_or_none()
+                author_name = author.name or "Someone" if author else "Someone"
+                snippet = _get_text_snippet(comment_data.content)
+
+                for uid in mentioned_ids:
+                    if uid != author_id:
+                        await notify_mention(
+                            db=self.db,
+                            mentioned_user_id=uid,
+                            mentioner_name=author_name,
+                            entity_type="ticket comment",
+                            entity_id=ticket_id,
+                            action_url=f"/tickets/{ticket_id}",
+                            snippet=snippet,
+                        )
 
         # Dispatch response automation events (skip internal notes)
         if not comment_data.is_internal:

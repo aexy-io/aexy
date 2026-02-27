@@ -13,6 +13,11 @@ from aexy.services.task_sources.github_issues import GitHubIssuesSource
 from aexy.services.task_sources.jira import JiraSource
 from aexy.services.task_sources.linear import LinearSource
 from aexy.services.automation_service import dispatch_automation_event
+from aexy.services.notification_service import (
+    extract_mentioned_user_ids,
+    notify_mention,
+    _get_text_snippet,
+)
 
 
 class SprintTaskService:
@@ -582,12 +587,55 @@ class SprintTaskService:
         Returns:
             Created TaskActivity.
         """
-        return await self.log_activity(
+        activity = await self.log_activity(
             task_id=task_id,
             action="comment",
             actor_id=actor_id,
             comment=comment,
         )
+
+        # Send mention notifications
+        if actor_id and comment:
+            mentioned_ids = extract_mentioned_user_ids(comment)
+            if mentioned_ids:
+                from aexy.models.developer import Developer
+
+                author_result = await self.db.execute(
+                    select(Developer).where(Developer.id == actor_id)
+                )
+                author = author_result.scalar_one_or_none()
+                author_name = author.name or "Someone" if author else "Someone"
+                snippet = _get_text_snippet(comment)
+
+                # Get task for action URL context
+                task = await self.get_task(task_id)
+                if task and task.sprint_id:
+                    # Get team_id from sprint for URL
+                    sprint_result = await self.db.execute(
+                        select(Sprint).where(Sprint.id == task.sprint_id)
+                    )
+                    sprint = sprint_result.scalar_one_or_none()
+                    team_id = sprint.team_id if sprint and hasattr(sprint, 'team_id') else None
+                    if team_id:
+                        action_url = f"/sprints/{team_id}/board?task={task_id}"
+                    else:
+                        action_url = f"/sprints?task={task_id}"
+                else:
+                    action_url = f"/sprints?task={task_id}"
+
+                for uid in mentioned_ids:
+                    if uid != actor_id:
+                        await notify_mention(
+                            db=self.db,
+                            mentioned_user_id=uid,
+                            mentioner_name=author_name,
+                            entity_type="task comment",
+                            entity_id=task_id,
+                            action_url=action_url,
+                            snippet=snippet,
+                        )
+
+        return activity
 
     # Import from sources
     async def import_github_issues(
