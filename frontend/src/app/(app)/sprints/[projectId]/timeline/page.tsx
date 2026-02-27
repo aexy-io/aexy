@@ -292,7 +292,7 @@ export default function TimelinePage({
 
       {/* Header */}
       <header className="flex-shrink-0 border-b border-border bg-muted/50 backdrop-blur-sm sticky top-0 z-30">
-        <div className="max-w-[1800px] mx-auto px-4 py-3">
+        <div className="px-4 py-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link
@@ -432,7 +432,7 @@ export default function TimelinePage({
 
       {/* Legend */}
       <footer className="flex-shrink-0 border-t border-border bg-muted/30 px-4 py-2">
-        <div className="max-w-[1800px] mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <span className="text-xs text-muted-foreground">Status:</span>
             {Object.entries(SPRINT_STATUS_COLORS).map(([status, color]) => (

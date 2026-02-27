@@ -30,8 +30,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useProjects } from "@/hooks/useProjects";
 import { useSprints, useActiveSprint } from "@/hooks/useSprints";
+import { useQuery } from "@tanstack/react-query";
 import { redirect } from "next/navigation";
-import { Project, SprintListItem } from "@/lib/api";
+import { Project, SprintListItem, SprintTask, projectTasksApi } from "@/lib/api";
 import { EpicsTab } from "./components/EpicsTab";
 import { ModuleAutomationsPanel } from "@/components/ModuleAutomationsPanel";
 import { cn } from "@/lib/utils";
@@ -48,10 +49,21 @@ function ProjectCard({
   const { sprints, isLoading } = useSprints(workspaceId, project.id);
   const { sprint: activeSprint } = useActiveSprint(workspaceId, project.id);
 
+  // Fetch project-level backlog tasks (not in any sprint)
+  const { data: backlogTasks } = useQuery<SprintTask[]>({
+    queryKey: ["projectBacklogTasks", project.id],
+    queryFn: () => projectTasksApi.list(project.id, { includeSprintTasks: false }),
+    enabled: !!project.id,
+  });
+
   const planningSprints = sprints.filter((s) => s.status === "planning");
   const completedCount = sprints.filter((s) => s.status === "completed").length;
-  const totalTasks = sprints.reduce((sum, s) => sum + s.tasks_count, 0);
-  const completedTasks = sprints.reduce((sum, s) => sum + s.completed_count, 0);
+  const sprintTotalTasks = sprints.reduce((sum, s) => sum + s.tasks_count, 0);
+  const sprintCompletedTasks = sprints.reduce((sum, s) => sum + s.completed_count, 0);
+  const backlogTotal = backlogTasks?.length ?? 0;
+  const backlogCompleted = backlogTasks?.filter((t) => t.status === "done").length ?? 0;
+  const totalTasks = sprintTotalTasks + backlogTotal;
+  const completedTasks = sprintCompletedTasks + backlogCompleted;
 
   return (
     <motion.div

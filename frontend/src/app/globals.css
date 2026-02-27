@@ -165,19 +165,19 @@
 
 /* TipTap Editor Styles */
 .ProseMirror {
-  color: #e2e8f0;
-  caret-color: #e2e8f0;
+  color: hsl(var(--foreground));
+  caret-color: hsl(var(--foreground));
 }
 
 .ProseMirror p {
-  color: #e2e8f0;
+  color: hsl(var(--foreground));
 }
 
 .ProseMirror h1,
 .ProseMirror h2,
 .ProseMirror h3,
 .ProseMirror h4 {
-  color: #f8fafc;
+  color: hsl(var(--foreground));
 }
 
 .ProseMirror p.is-editor-empty:first-child::before {
