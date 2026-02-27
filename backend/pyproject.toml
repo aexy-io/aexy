@@ -31,6 +31,8 @@ dependencies = [
     "langchain-google-genai>=2.0.0",
     # SMS
     "twilio>=9.0.0",
+    # Web Push
+    "pywebpush>=2.0.0",
     # Email (SMTP and AWS SES)
     "aiosmtplib>=3.0.0",
     "boto3>=1.34.0",

@@ -126,6 +126,25 @@ class GTMAlertService:
             except Exception as e:
                 logger.error(f"Failed to dispatch alert: {e}")
 
+            # Send in-app notifications to alert config creators
+            try:
+                from aexy.services.notification_service import notify_gtm_alert
+
+                notified_ids: set[str] = set()
+                for config in matching_configs:
+                    if config.created_by and config.created_by not in notified_ids:
+                        summary = event_data.get("summary", event_data.get("name", event_type))
+                        await notify_gtm_alert(
+                            db=self.db,
+                            recipient_id=config.created_by,
+                            event_type_name=event_type,
+                            summary=str(summary)[:200],
+                            workspace_id=workspace_id,
+                        )
+                        notified_ids.add(config.created_by)
+            except Exception as e:
+                logger.warning(f"Failed to send GTM in-app notification: {e}")
+
         # Fan-out to outbound GTM webhooks
         # Map internal event types to webhook event types
         webhook_event_map = {
