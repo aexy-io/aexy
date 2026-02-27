@@ -554,14 +554,14 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50"
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-50 overflow-y-auto py-10"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-muted border border-border rounded-xl w-full max-w-lg p-6 shadow-2xl"
+        className="bg-muted border border-border rounded-xl w-full max-w-2xl p-6 shadow-2xl"
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <h3 className="text-xl font-semibold text-foreground">
@@ -661,7 +661,7 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
                 onChange={handleDescriptionChange}
                 placeholder="Add more details... Use @ to mention team members"
                 users={users}
-                minHeight="80px"
+                minHeight="150px"
               />
             </div>
 
@@ -1048,7 +1048,7 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-muted border border-border rounded-xl w-full max-w-2xl shadow-2xl"
+        className="bg-muted border border-border rounded-xl w-full max-w-4xl shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -1130,7 +1130,7 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
                 onChange={handleDescriptionChange}
                 placeholder="Add more details... Use @ to mention team members"
                 users={users}
-                minHeight="100px"
+                minHeight="200px"
               />
             </div>
 
