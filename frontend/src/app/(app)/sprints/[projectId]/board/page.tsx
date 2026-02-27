@@ -63,6 +63,7 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { TaskDescriptionEditor, TaskDescriptionEditorRef, MentionUser } from "@/components/planning/TaskDescriptionEditor";
 import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { Badge, PremiumCard, Skeleton } from "@/components/ui/premium-card";
 import { X, Loader2, FileText, Zap } from "lucide-react";
 import { CycleTimeChart } from "@/components/planning/CycleTimeChart";
@@ -1473,6 +1474,8 @@ export default function ProjectBoardPage({
   const [showWipSettings, setShowWipSettings] = useState(false);
   const [showAnalyticsPanel, setShowAnalyticsPanel] = useState<"cycle-time" | "capacity" | null>(null);
   const [showPlanningDropdown, setShowPlanningDropdown] = useState(false);
+  const [showAutoAssignConfirm, setShowAutoAssignConfirm] = useState(false);
+  const [isAutoAssigning, setIsAutoAssigning] = useState(false);
 
   // WIP Limits
   const activeSprint = sprints.find((s) => s.status === "active") || sprints.find((s) => s.status !== "completed");
@@ -1910,18 +1913,10 @@ export default function ProjectBoardPage({
                         Planning Poker
                       </button>
                       <button
-                        onClick={async () => {
+                        onClick={() => {
                           setShowPlanningDropdown(false);
                           if (!activeSprint) return;
-                          if (!confirm("Auto-assign unassigned tasks based on AI suggestions?")) return;
-                          try {
-                            const result = await sprintApi.autoAssign(activeSprint.id);
-                            alert(`Assigned ${result.total_assigned} tasks. Skipped ${result.total_skipped}.`);
-                            queryClient.invalidateQueries({ queryKey: ["projectTasks"] });
-                            queryClient.invalidateQueries({ queryKey: ["sprintTasks"] });
-                          } catch {
-                            alert("Auto-assign failed. Please try again.");
-                          }
+                          setShowAutoAssignConfirm(true);
                         }}
                         disabled={!activeSprint}
                         className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2 disabled:opacity-50"
@@ -2450,6 +2445,46 @@ export default function ProjectBoardPage({
               queryClient.invalidateQueries({ queryKey: ["sprintTasks"] });
             }}
           />
+        )}
+        {showAutoAssignConfirm && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setShowAutoAssignConfirm(false)}>
+            <div className="bg-muted border border-border rounded-xl w-full max-w-sm p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-lg font-semibold text-foreground mb-2">Auto-Assign Tasks</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                This will use AI to assign unassigned tasks based on developer skills and capacity.
+              </p>
+              <div className="flex items-center gap-2 justify-end">
+                <button
+                  onClick={() => setShowAutoAssignConfirm(false)}
+                  className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!activeSprint) return;
+                    setIsAutoAssigning(true);
+                    try {
+                      const result = await sprintApi.autoAssign(activeSprint.id);
+                      toast.success(`Assigned ${result.total_assigned} tasks. Skipped ${result.total_skipped}.`);
+                      queryClient.invalidateQueries({ queryKey: ["projectTasks"] });
+                      queryClient.invalidateQueries({ queryKey: ["sprintTasks"] });
+                    } catch {
+                      toast.error("Auto-assign failed. Please try again.");
+                    } finally {
+                      setIsAutoAssigning(false);
+                      setShowAutoAssignConfirm(false);
+                    }
+                  }}
+                  disabled={isAutoAssigning}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium transition disabled:opacity-50"
+                >
+                  {isAutoAssigning && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  {isAutoAssigning ? "Assigning..." : "Auto-Assign"}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </AnimatePresence>
     </div>

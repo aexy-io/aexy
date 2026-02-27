@@ -21,6 +21,7 @@ from aexy.schemas.sprint import (
     TaskActivityCreate,
     TaskActivityResponse,
     TaskActivityListResponse,
+    WipLimitsConfig,
 )
 from aexy.services.sprint_service import SprintService
 from aexy.services.sprint_task_service import SprintTaskService
@@ -63,7 +64,7 @@ def task_to_response(task) -> SprintTaskResponse:
         work_started_at=task.work_started_at,
         cycle_time_hours=task.cycle_time_hours,
         lead_time_hours=task.lead_time_hours,
-        contributes_to_goal=task.contributes_to_goal if hasattr(task, 'contributes_to_goal') else False,
+        contributes_to_goal=task.contributes_to_goal,
         carried_over_from_sprint_id=str(task.carried_over_from_sprint_id) if task.carried_over_from_sprint_id else None,
         mentioned_user_ids=task.mentioned_user_ids or [],
         mentioned_file_paths=task.mentioned_file_paths or [],
@@ -429,7 +430,7 @@ async def get_wip_limits(
 @router.put("/wip-limits")
 async def update_wip_limits(
     sprint_id: str,
-    config: dict,
+    config: WipLimitsConfig,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
@@ -437,7 +438,7 @@ async def update_wip_limits(
     sprint = await get_sprint_and_check_permission(sprint_id, current_user, db, "admin")
 
     settings = dict(sprint.settings or {})
-    settings["wip_limits"] = config
+    settings["wip_limits"] = config.model_dump(exclude_none=True)
     sprint.settings = settings
 
     await db.flush()
