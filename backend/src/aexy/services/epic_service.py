@@ -232,7 +232,7 @@ class EpicService:
             workspace_id=workspace_id,
             entity_type="epic",
             entity_id=epic_id,
-            activity_type="archived",
+            activity_type="deleted",
             title=f"Deleted epic '{epic_title}'",
         )
 

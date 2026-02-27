@@ -11851,6 +11851,7 @@ export interface EntityActivity {
   changes?: Record<string, { old?: string; new?: string }>;
   metadata?: Record<string, unknown>;
   created_at: string;
+  url?: string;
 }
 
 export interface TimelineEntry {
@@ -11869,6 +11870,7 @@ export interface TimelineEntry {
 export interface EntityActivityListResponse {
   items: EntityActivity[];
   total: number;
+  page: number;
   has_more: boolean;
 }
 

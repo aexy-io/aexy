@@ -1,6 +1,6 @@
 """Entity Activity API endpoints for timeline tracking."""
 
-from typing import Optional
+from typing import Optional, get_args
 from uuid import uuid4, UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status, BackgroundTasks
@@ -25,6 +25,7 @@ from aexy.schemas.entity_activity import (
     EntityType,
     ActivityType,
 )
+from aexy.services.activity_feed_service import get_entity_url
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/activities", tags=["Entity Activities"])
 
@@ -43,8 +44,12 @@ async def check_workspace_permission(
         )
 
 
-def _format_activity_response(activity: EntityActivity) -> EntityActivityResponse:
+def _format_activity_response(activity: EntityActivity, include_url: bool = False) -> EntityActivityResponse:
     """Format an EntityActivity model to response schema."""
+    url = None
+    if include_url:
+        url = get_entity_url(activity.entity_type, activity.entity_id)
+
     return EntityActivityResponse(
         id=activity.id,
         workspace_id=activity.workspace_id,
@@ -60,6 +65,7 @@ def _format_activity_response(activity: EntityActivity) -> EntityActivityRespons
         changes=activity.changes,
         metadata=activity.activity_metadata,
         created_at=activity.created_at,
+        url=url,
     )
 
 
@@ -194,44 +200,74 @@ async def list_activities(
     entity_id: str | None = Query(default=None),
     activity_type: ActivityType | None = Query(default=None),
     actor_id: str | None = Query(default=None),
-    limit: int = Query(default=50, le=100),
+    types: str | None = Query(default=None, description="Comma-separated entity types, e.g. task,ticket,bug"),
+    page: int | None = Query(default=None, ge=1, description="Page number (1-based). If provided, offset is ignored."),
+    limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_developer: Developer = Depends(get_current_developer),
 ):
-    """List activities for a workspace with optional filters."""
+    """List activities for a workspace with optional filters.
+
+    Supports both offset-based and page-based pagination.
+    When `page` is provided, `offset` is ignored and pagination
+    is computed from `page` and `limit`.
+
+    Use `types` for comma-separated multi-type filtering (e.g. ?types=task,ticket,bug).
+    Use `entity_type` for single-type filtering. If both are provided, `types` takes precedence.
+    """
     await check_workspace_permission(workspace_id, current_developer, db)
 
-    query = (
-        select(EntityActivity)
-        .options(selectinload(EntityActivity.actor))
-        .where(EntityActivity.workspace_id == workspace_id)
-        .order_by(desc(EntityActivity.created_at))
-    )
+    # Build filter conditions (shared between count and data queries)
+    filters = [EntityActivity.workspace_id == workspace_id]
 
-    if entity_type:
-        query = query.where(EntityActivity.entity_type == entity_type)
+    # types (comma-separated) takes precedence over entity_type (single value)
+    if types:
+        valid_types = set(get_args(EntityType))
+        entity_types = [t.strip() for t in types.split(",") if t.strip()]
+        invalid = [t for t in entity_types if t not in valid_types]
+        if invalid:
+            raise HTTPException(status_code=422, detail=f"Invalid entity types: {invalid}")
+        if entity_types:
+            filters.append(EntityActivity.entity_type.in_(entity_types))
+    elif entity_type:
+        filters.append(EntityActivity.entity_type == entity_type)
+
     if entity_id:
-        query = query.where(EntityActivity.entity_id == entity_id)
+        filters.append(EntityActivity.entity_id == entity_id)
     if activity_type:
-        query = query.where(EntityActivity.activity_type == activity_type)
+        filters.append(EntityActivity.activity_type == activity_type)
     if actor_id:
-        query = query.where(EntityActivity.actor_id == actor_id)
+        filters.append(EntityActivity.actor_id == actor_id)
 
-    # Get total count
-    count_query = select(func.count()).select_from(query.subquery())
+    # Get total count (lightweight query without ORDER BY or eager loads)
+    count_query = select(func.count()).select_from(EntityActivity).where(*filters)
     total_result = await db.execute(count_query)
     total = total_result.scalar() or 0
 
-    # Apply pagination
-    query = query.offset(offset).limit(limit)
+    # Page-based pagination takes precedence over offset
+    if page is not None:
+        effective_offset = (page - 1) * limit
+    else:
+        effective_offset = offset
+
+    # Data query with eager loading and ordering
+    query = (
+        select(EntityActivity)
+        .options(selectinload(EntityActivity.actor))
+        .where(*filters)
+        .order_by(desc(EntityActivity.created_at))
+        .offset(effective_offset)
+        .limit(limit)
+    )
     result = await db.execute(query)
     activities = result.scalars().all()
 
     return EntityActivityListResponse(
-        items=[_format_activity_response(a) for a in activities],
+        items=[_format_activity_response(a, include_url=True) for a in activities],
         total=total,
-        has_more=(offset + len(activities)) < total,
+        page=page or ((effective_offset // limit) + 1),
+        has_more=(effective_offset + len(activities)) < total,
     )
 
 
@@ -566,3 +602,5 @@ async def create_entity_activity(
 
     db.add(activity)
     return activity
+
+
