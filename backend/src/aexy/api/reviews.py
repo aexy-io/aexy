@@ -7,6 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.core.database import get_db
+from aexy.api.developers import get_current_developer
+from aexy.models import Developer
 from aexy.llm.gateway import get_llm_gateway
 from aexy.schemas.review import (
     # Review Cycle
@@ -59,6 +61,7 @@ async def create_review_cycle(
     workspace_id: str,
     data: ReviewCycleCreate,
     db: AsyncSession = Depends(get_db),
+    current_user: Developer = Depends(get_current_developer),
 ):
     """Create a new review cycle for a workspace."""
     service = ReviewService(db)
@@ -79,6 +82,7 @@ async def create_review_cycle(
         entity_type="review",
         entity_id=str(cycle.id),
         activity_type="created",
+        actor_id=str(current_user.id),
         title=f"Created review cycle '{data.name}'",
     )
     return ReviewCycleResponse.model_validate(cycle)
@@ -124,6 +128,7 @@ async def update_review_cycle(
     cycle_id: str,
     data: ReviewCycleUpdate,
     db: AsyncSession = Depends(get_db),
+    current_user: Developer = Depends(get_current_developer),
 ):
     """Update a review cycle."""
     service = ReviewService(db)
@@ -145,6 +150,7 @@ async def update_review_cycle(
         entity_type="review",
         entity_id=str(cycle.id),
         activity_type="updated",
+        actor_id=str(current_user.id),
         title=f"Updated review cycle '{cycle.name}'",
     )
     return ReviewCycleResponse.model_validate(cycle)
@@ -154,6 +160,7 @@ async def update_review_cycle(
 async def activate_review_cycle(
     cycle_id: str,
     db: AsyncSession = Depends(get_db),
+    current_user: Developer = Depends(get_current_developer),
 ):
     """Activate a review cycle and create individual reviews."""
     service = ReviewService(db)
@@ -169,6 +176,7 @@ async def activate_review_cycle(
         entity_type="review",
         entity_id=str(cycle.id),
         activity_type="started",
+        actor_id=str(current_user.id),
         title=f"Activated review cycle '{cycle.name}'",
     )
     return ReviewCycleResponse.model_validate(cycle)

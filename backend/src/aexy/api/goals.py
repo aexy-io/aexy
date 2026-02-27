@@ -281,15 +281,6 @@ async def create_goal(
         actor_id=str(current_user.id),
         title=f"Created {goal.goal_type} '{goal.title}'",
     )
-    await log_activity(
-        db,
-        workspace_id=workspace_id,
-        entity_type="goal",
-        entity_id=str(goal.id),
-        activity_type="created",
-        actor_id=str(current_user.id),
-        title=f"Created goal '{goal.title}'",
-    )
 
     await db.commit()
     await db.refresh(goal)
@@ -460,15 +451,6 @@ async def update_goal(
             content=comment,
             changes=changes if changes else None,
         )
-        await log_activity(
-            db,
-            workspace_id=workspace_id,
-            entity_type="goal",
-            entity_id=goal_id,
-            activity_type="updated",
-            actor_id=str(current_user.id),
-            title="Updated goal",
-        )
 
     await db.commit()
     await db.refresh(goal)
@@ -622,15 +604,6 @@ async def update_progress(
                 "new": f"{goal.progress_percentage:.0f}%",
             },
         },
-    )
-    await log_activity(
-        db,
-        workspace_id=workspace_id,
-        entity_type="goal",
-        entity_id=goal_id,
-        activity_type="progress_updated",
-        actor_id=str(current_user.id),
-        title=f"Updated progress to {goal.progress_percentage:.0f}%",
     )
 
     await db.commit()
