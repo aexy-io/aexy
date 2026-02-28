@@ -126,6 +126,9 @@ class NotificationEventType(str, Enum):
     DOCUMENT_MENTIONED = "document_mentioned"
     DOCUMENT_COMMENTED = "document_commented"
 
+    # Chat
+    CHAT_MENTION = "chat_mention"
+
 
 class NotificationContext(BaseModel):
     """Context for notification rendering and navigation."""

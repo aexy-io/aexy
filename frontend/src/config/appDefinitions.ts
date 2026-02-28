@@ -23,6 +23,7 @@ import {
   TrendingUp,
   ShieldCheck,
   Table2,
+  MessageCircle,
   LucideIcon,
 } from "lucide-react";
 
@@ -301,6 +302,16 @@ export const APP_CATALOG: Record<string, AppDefinition> = {
     requiredPermission: "can_view_tables",
     modules: [],
   },
+  chat: {
+    id: "chat",
+    name: "Chat",
+    description: "Team messaging with channels and topics",
+    icon: MessageCircle,
+    category: "productivity",
+    baseRoute: "/chat",
+    requiredPermission: null,
+    modules: [],
+  },
   compliance: {
     id: "compliance",
     name: "Compliance",
@@ -573,6 +584,7 @@ export const SIDEBAR_TO_APP_MAP: Record<string, string> = {
   "/compliance/documents": "compliance",
   "/compliance/training": "compliance",
   "/compliance/certifications": "compliance",
+  "/chat": "chat",
 };
 
 // Get app ID from pathname

@@ -6,6 +6,8 @@ import { AppShell } from "@/components/layout/AppShell";
 import { GlobalShortcuts } from "@/components/GlobalShortcuts";
 import { CommandPalette } from "@/components/CommandPalette";
 import { KeyboardShortcutsHelp } from "@/components/KeyboardShortcutsHelp";
+import { ChatWebSocketProvider } from "@/contexts/ChatWebSocketContext";
+import { FloatingChatWidget } from "@/components/chat/FloatingChatWidget";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
@@ -58,11 +60,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (!isAuthenticated) return null;
 
     return (
-        <AppShell user={user} logout={logout}>
-            <GlobalShortcuts />
-            <CommandPalette />
-            <KeyboardShortcutsHelp />
-            {children}
-        </AppShell>
+        <ChatWebSocketProvider>
+            <AppShell user={user} logout={logout}>
+                <GlobalShortcuts />
+                <CommandPalette />
+                <KeyboardShortcutsHelp />
+                {children}
+                <FloatingChatWidget />
+            </AppShell>
+        </ChatWebSocketProvider>
     );
 }

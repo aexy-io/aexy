@@ -158,6 +158,8 @@ from aexy.api.tables import router as tables_router, custom_field_types_router
 from aexy.api.public_tables import router as public_tables_router
 # Saved Views (cross-module)
 from aexy.api.saved_views import router as saved_views_router
+# Team Chat
+from aexy.api.chat import router as chat_router
 
 api_router = APIRouter()
 
@@ -324,3 +326,5 @@ api_router.include_router(custom_field_types_router, tags=["custom-field-types"]
 api_router.include_router(public_tables_router, tags=["tables-public"])
 # Saved Views (cross-module)
 api_router.include_router(saved_views_router, tags=["saved-views"])
+# Team Chat
+api_router.include_router(chat_router, tags=["chat"])

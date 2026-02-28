@@ -495,6 +495,17 @@ from aexy.models.gtm_seo import SEOAudit, SEOAuditPage
 from aexy.models.gtm_content import ContentAnalysis
 from aexy.models.gtm_abm import ABMTargetList, ABMAccount
 from aexy.models.gtm_webhook import GTMWebhook, GTMWebhookDelivery, GTMProviderHealthMetric
+from aexy.models.chat import (
+    ChatChannel,
+    ChatChannelMember,
+    ChatTopic,
+    ChatMessage,
+    ChatTopicReadState,
+    ChatUserPresence,
+    ChannelVisibility,
+    ChannelMemberRole,
+    PresenceStatus,
+)
 
 __all__ = [
     # Plan
@@ -998,4 +1009,14 @@ __all__ = [
     "GTMWebhook",
     "GTMWebhookDelivery",
     "GTMProviderHealthMetric",
+    # Team Chat
+    "ChatChannel",
+    "ChatChannelMember",
+    "ChatTopic",
+    "ChatMessage",
+    "ChatTopicReadState",
+    "ChatUserPresence",
+    "ChannelVisibility",
+    "ChannelMemberRole",
+    "PresenceStatus",
 ]
