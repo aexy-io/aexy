@@ -5,6 +5,90 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.6] - 2026-02-28
+
+### Added
+
+#### Notification System
+Full multi-channel notification infrastructure with 4 delivery channels (in-app, email, Slack, web push) and workspace-wide event coverage.
+
+- **22 new notification event types** covering leave, uptime, learning, forms, campaigns, automations, hiring, GTM, and documents modules
+- **Email and Slack delivery**: Replace stubbed dispatch with actual Temporal activity-based delivery via EmailService (SES/SMTP) and Slack DMs; add `slack_sent`/`slack_sent_at` tracking columns
+- **Web push notifications**: VAPID key configuration, service worker registration, push subscription management, and `send_notification_web_push` Temporal activity
+- **Mention notifications**: Parse TipTap `mention:user:{uuid}` links from ticket comments, CRM notes, and sprint task comments; deliver in-app notifications respecting preferences (self-mentions skipped)
+- **Category-based preferences**: 10 notification categories (sprints, reviews, agents, uptime, etc.) with per-channel toggles in frontend settings page
+- **Notification sidebar**: Notification bell with unread count and dropdown panel in the main navigation
+- **Graceful VAPID handling**: Web push hook skips silently when VAPID key is not configured
+
+#### Agent Policy Engine (APE)
+Governance layer that evaluates agent tool calls before execution, with audit trail and billing integration.
+
+- **5 policy types**: `tool_block`, `tool_require_approval`, `field_restriction`, `rate_limit`, `token_budget` — workspace-scoped, priority-ordered, per-agent or global
+- **Policy evaluation in LangGraph**: Per-tool-call gating in `BaseAgent._process_tools` — blocked calls return `[BLOCKED] reason` as `ToolMessage` so the LLM can adjust
+- **Decision audit log**: Every tool call evaluation (allow, block, require_approval, rate_limited) recorded in `agent_policy_decisions` table with confidence context
+- **Config change audit**: Append-only `agent_config_audits` table tracks agent create/update/delete/toggle with old/new field diffs
+- **Token usage billing**: Agent execution token counts flow through `UsageService.record_usage()` with `analysis_type="agent_execution"`
+- **Policy notifications**: Blocked and approval-required events notify workspace admins/owners via all 4 notification channels
+- **CRUD API**: Full REST endpoints at `/workspaces/{ws}/crm/agent-policies` with admin-only mutations and workspace permission checks
+- **Backward compatible**: No policy engine = no behavior change; fail-open on evaluation errors
+
+#### Unified Activity Feed
+Cross-module activity logging surfaced in a dedicated `/activity` page with filtering and infinite scroll.
+
+- **Activity logger**: `log_activity()` helper using `begin_nested()` savepoints so logging failures never roll back parent transactions
+- **22 entity types tracked**: Tasks, sprints, bugs, tickets, CRM records, documents, epics, releases, reviews, assessments, compliance, forms, goals, leave, agents, email campaigns, roles, stories, and workflows
+- **UnifiedActivityFeed component**: Date-grouped timeline with entity type filter chips, entity-specific icons/colors, and click-through navigation to source entities
+- **Infinite scroll**: `useActivityFeed` hook with `useInfiniteQuery` and `IntersectionObserver`-based pagination
+- **Backend URL mapping**: `ActivityFeedService.get_entity_url()` resolves entity-specific deep links
+- **Sidebar integration**: Activity feed added to main navigation
+
+#### Sprint Module Upgrade
+- **Planning poker**: Real-time estimation sessions with WebSocket-based voting, card flip animations, keyboard shortcuts (1-7 vote, R reveal, Enter accept), consensus celebration, and online participant indicators
+- **Planning poker chat**: Real-time team chat within poker sessions via WebSocket broadcast
+- **Sprint analytics**: Velocity tracking, burndown data, and sprint comparison endpoints
+- **Task archival**: Soft delete (`is_archived`) replaces hard delete for sprint tasks
+- **App access requests**: Request/approve/reject workflow for module access with notification integration
+- **Improved task view**: Enhanced task detail display with richer metadata
+- **Onboarding redesign**: Upgraded onboarding flow with improved UX across connect, repos, invite, and completion pages
+
+### Fixed
+
+#### Planning Poker Security & Reliability
+- **WebSocket JWT authentication**: Replace unauthenticated `user_id`/`user_name` query params with JWT token verification
+- **Thread-safe connections**: `asyncio.Lock` for WebSocket connect/disconnect to prevent race conditions
+- **Chat rate limiting**: 5 messages per 10-second window per user
+- **Exponential backoff reconnect**: 1s–30s delays with max 10 attempts
+- **SQLAlchemy boolean comparison**: `is_(False)` instead of `== False`
+- **Frontend modals**: Replace browser `confirm()`/`alert()` with proper modal dialogs and toast notifications
+- **Schema cleanup**: Remove unused Pydantic schemas (`PlanningPokerVote`, `PlanningPokerState`, etc.)
+
+#### Unified Activity Feed Quality
+- **`assessment.workspace_id` AttributeError**: Fixed to use `organization_id` (Assessment model doesn't have `workspace_id`)
+- **Duplicate ticket comment logging**: Removed copy-pasted `log_activity` block that created 2 entries per comment
+- **Internal ticket comment leak**: Skip activity logging for internal notes to prevent existence leak in feed
+- **Double-logging in sprints**: Removed API-layer `log_activity` calls where service layer already logs the same operations
+- **Missing actor_id in reviews**: Added `current_user` dependency and `actor_id` to `submit_self_review`, `submit_manager_review`, `finalize_review`
+- **Extra DB queries in reviews**: Replaced 2-query workspace_id lookups with single JOIN query
+
+#### Notification System Fixes
+- **3 broken integrations fixed**: Insights, tracking tasks, and agent mentions now route through `NotificationService` instead of bypassing it
+- **Leave type resolution**: Resolve leave type names from DB instead of passing raw UUIDs in notification bodies
+- **Template variable formatting**: Format notification titles with template variables (not just body text)
+
+### Changed
+- **Notification preferences seeded**: Migration seeds default preferences for all existing users
+- **Sprint goals migration**: Added `sprint_goals` table for sprint goal tracking
+
+### Database Migrations
+- `migrate_notification_slack_sent.sql` — slack_sent tracking columns on notifications
+- `migrate_notification_events.sql` — 22 new event types and category preferences
+- `migrate_notification_providers.sql` — web push subscription storage and VAPID config
+- `migrate_agent_policies.sql` — agent_policies, agent_policy_decisions, agent_config_audits tables with `updated_at` trigger
+- `migrate_app_access_requests.sql` — app access request/approval workflow
+- `migrate_sprint_goals.sql` — sprint goals table
+
+---
+
 ## [0.6.5] - 2026-02-27
 
 ### Added
