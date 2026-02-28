@@ -217,10 +217,8 @@ export function WidgetAskAIView() {
       const conv = await createConversation.mutateAsync(undefined);
       setActiveConversation(conv.id);
       setInput("");
-      // Need to wait for state update — stream after conversation is ready
-      setTimeout(async () => {
-        await streamMessage(content);
-      }, 100);
+      // Pass the new conversation ID directly to avoid stale closure
+      await streamMessage(content, conv.id);
       return;
     }
 

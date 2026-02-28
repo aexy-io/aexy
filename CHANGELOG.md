@@ -47,14 +47,21 @@ Integrated AI chat assistant with multi-provider LLM support, server-side tool e
 ### Fixed
 
 #### Chat Security & Performance
+- **Workspace authorization on all chat endpoints**: Added `_check_workspace` membership guard to every chat API endpoint (channels, topics, messages, presence, file upload)
+- **Private channel access control**: Added `_check_channel_access` helper enforcing membership checks on topic listing, creation, message listing, and message sending for private channels
+- **WebSocket workspace validation**: Reject WebSocket connections from non-workspace-members with close code 4003
 - **WebSocket channel isolation**: Relay messages only to subscribers of the target channel
 - **Input validation**: `max_length` constraints on all chat message and channel inputs
 - **File upload content-type bypass**: Validate actual file content type, not just the declared MIME type
+- **File upload extension validation**: Whitelist allowed file extensions; reject SVG uploads to prevent stored XSS
 - **Channel update authorization**: Enforce ownership/admin checks on channel mutations
-- **N+1 query elimination**: Batch methods for inbox and topic queries; atomic `message_count` updates
+- **Presence status validation**: Reject invalid presence status values (only `online`, `away`, `offline` allowed)
+- **Topic listing limit**: Added `LIMIT 200` to prevent unbounded topic queries
+- **Service/API commit boundary**: Replaced all `db.commit()` in `ChatService` with `db.flush()`; explicit `await db.commit()` in all mutating API endpoints
+- **N+1 query elimination**: Batch methods for inbox and topic queries; atomic `message_count` updates; correlated subqueries for `list_conversations` in Ask AI
 - **TOCTOU race conditions**: `IntegrityError` handling for concurrent topic/message creation
 - **Auto-scroll fix**: Only auto-scroll when user is already at the bottom of the message list
-- **Memory leak fixes**: Clean up Object URLs and typing timeout intervals on component unmount
+- **Memory leak fixes**: Clean up Object URLs, typing timeout intervals, and flash-success timeouts on component unmount
 - **Stale WebSocket reconnect**: Fix reconnection using fresh token after re-auth
 - **React performance**: `React.memo` on `MessageItem`, memoized WebSocket context value, deduplicated `markTopicRead` calls
 
@@ -62,12 +69,29 @@ Integrated AI chat assistant with multi-provider LLM support, server-side tool e
 - **Dual-session bug**: `get_current_developer_id` now uses the injected DB session instead of creating a separate one via `get_async_session()`
 - **Seed migration removed**: Removed insecure seed migration containing hardcoded token hash
 - **Hardcoded URLs removed**: MCP page uses `NEXT_PUBLIC_API_URL` env var instead of hardcoded localhost
+- **Sanitized platform admin errors**: Internal exception details no longer exposed in error responses
 
 #### AI Chat Security
 - **Conversation ownership enforcement**: Cross-user conversation access blocked at service layer
+- **Delete authorization**: Ownership check enforced before conversation deletion
+- **Share link revocation authorization**: Ownership verification before revoking share links
+- **bcrypt password hashing**: Share link passwords hashed with bcrypt instead of SHA-256
 - **Cross-workspace data isolation**: Tools scoped to the requesting user's workspace
 - **Sanitized error messages**: Internal error details stripped from SSE error events
 - **API key protection**: LLM provider keys never exposed in client-facing responses
+- **Pydantic literal validation**: `permission` fields in share schemas use `Literal["read", "write"]` instead of `str`
+
+#### Frontend Security & Stability
+- **Duplicate WebSocket eliminated**: `AskAIChatPanel` now uses `useChatWebSocketContext()` instead of creating a second `useChatWebSocket()` connection
+- **Open redirect prevention**: Notification click-through validates `action_url` is a relative path (starts with `/`, not `//`)
+- **XSS prevention in chat messages**: URL scheme validation (`http:`/`https:` only) before rendering user-provided URLs as `<img>` or `<a>` elements
+- **Race condition fix**: `useStreamMessage` accepts override `conversationId` parameter, eliminating unreliable `setTimeout` in widget first-message flow
+- **Store subscription optimization**: `useStreamMessage` uses `useAskStore.getState()` for mutations during streaming, preventing cascading re-renders
+- **Memoized participant IDs**: `AskShareDialog` wraps `participantIds` Set in `useMemo` for stable dependency tracking
+- **Stable effect dependencies**: `MessageThread` queue-flush effect uses ref for `sendMessage` to prevent infinite re-render loops
+- **Floating widget hook optimization**: Split into wrapper + inner component so hooks don't run on `/chat` pages
+- **Clipboard error handling**: Share link copy wrapped in try/catch with user-facing error toast
+- **Delete confirmation**: AI conversation delete requires `window.confirm()` before proceeding
 
 ### Changed
 - **MCP sidebar placement**: Moved under AI Agents as a sub-item instead of standalone sidebar entry

@@ -3,8 +3,6 @@
 import asyncio
 import json
 import logging
-from typing import Any
-
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect, status
 from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,6 +31,7 @@ from aexy.schemas.chat import (
 )
 from aexy.services.chat_pubsub import get_chat_pubsub
 from aexy.services.chat_service import ChatService
+from aexy.services.workspace_service import WorkspaceService
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +39,26 @@ router = APIRouter(prefix="/workspaces/{workspace_id}/chat", tags=["chat"])
 
 
 # ── Helpers ───────────────────────────────────────────────────────────
+
+async def _check_workspace(db: AsyncSession, workspace_id: str, developer_id: str):
+    """Verify that the developer is a member of the workspace."""
+    ws = WorkspaceService(db)
+    if not await ws.check_permission(workspace_id, developer_id, "member"):
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+
+async def _check_channel_access(
+    service: ChatService, channel_id: str, developer_id: str, workspace_id: str
+) -> None:
+    """Verify the channel exists in the workspace and the user has access (member or public)."""
+    channel = await service.get_channel(channel_id)
+    if not channel or channel.workspace_id != workspace_id:
+        raise HTTPException(status_code=404, detail="Channel not found")
+    if channel.visibility == "private":
+        is_member = await service.is_channel_member(channel_id, developer_id)
+        if not is_member:
+            raise HTTPException(status_code=403, detail="Not a member of this channel")
+
 
 async def _verify_ws_token(token: str) -> dict | None:
     if not token:
@@ -73,11 +92,13 @@ async def setup_chat(
     db: AsyncSession = Depends(get_db),
 ):
     """Create the default General channel + topic. Idempotent."""
+    await _check_workspace(db, workspace_id, str(current_user.id))
     service = ChatService(db)
     channel, topic, message = await service.setup_default_channel(
         workspace_id=workspace_id,
         developer_id=str(current_user.id),
     )
+    await db.commit()
     return {
         "channel": {
             "id": channel.id, "name": channel.name, "slug": channel.slug,
@@ -96,6 +117,7 @@ async def list_channels(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
+    await _check_workspace(db, workspace_id, str(current_user.id))
     service = ChatService(db)
     channels = await service.list_channels(workspace_id, str(current_user.id))
     return ChannelListResponse(channels=channels)
@@ -108,6 +130,7 @@ async def create_channel(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
+    await _check_workspace(db, workspace_id, str(current_user.id))
     service = ChatService(db)
     channel = await service.create_channel(
         workspace_id=workspace_id,
@@ -116,6 +139,7 @@ async def create_channel(
         description=data.description,
         visibility=data.visibility.value,
     )
+    await db.commit()
     pubsub = get_chat_pubsub()
     await pubsub.publish(workspace_id, "channel_created", {
         "id": channel.id, "name": channel.name, "slug": channel.slug,
@@ -136,6 +160,7 @@ async def get_channel(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
+    await _check_workspace(db, workspace_id, str(current_user.id))
     service = ChatService(db)
     channel = await service.get_channel(channel_id)
     if not channel or channel.workspace_id != workspace_id:
@@ -158,6 +183,7 @@ async def update_channel(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
+    await _check_workspace(db, workspace_id, str(current_user.id))
     service = ChatService(db)
     channel = await service.get_channel(channel_id)
     if not channel or channel.workspace_id != workspace_id:
@@ -173,6 +199,7 @@ async def update_channel(
     channel = await service.update_channel(channel_id, **updates)
     if not channel:
         raise HTTPException(status_code=404, detail="Channel not found")
+    await db.commit()
 
     pubsub = get_chat_pubsub()
     await pubsub.publish(workspace_id, "channel_updated", {
@@ -194,6 +221,7 @@ async def join_channel(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
+    await _check_workspace(db, workspace_id, str(current_user.id))
     service = ChatService(db)
     channel = await service.get_channel(channel_id)
     if not channel or channel.workspace_id != workspace_id:
@@ -201,6 +229,7 @@ async def join_channel(
     if channel.visibility == "private":
         raise HTTPException(status_code=403, detail="Cannot join a private channel without invite")
     await service.join_channel(channel_id, str(current_user.id))
+    await db.commit()
     return {"ok": True}
 
 
@@ -211,8 +240,10 @@ async def leave_channel(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
+    await _check_workspace(db, workspace_id, str(current_user.id))
     service = ChatService(db)
     await service.leave_channel(channel_id, str(current_user.id))
+    await db.commit()
     return {"ok": True}
 
 
@@ -223,6 +254,7 @@ async def list_channel_members(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
+    await _check_workspace(db, workspace_id, str(current_user.id))
     service = ChatService(db)
     members = await service.list_members(channel_id)
     return {"members": members}
@@ -237,7 +269,9 @@ async def list_topics(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
+    await _check_workspace(db, workspace_id, str(current_user.id))
     service = ChatService(db)
+    await _check_channel_access(service, channel_id, str(current_user.id), workspace_id)
     topics = await service.list_topics(channel_id, str(current_user.id))
     return TopicListResponse(topics=topics)
 
@@ -250,10 +284,9 @@ async def create_topic(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
+    await _check_workspace(db, workspace_id, str(current_user.id))
     service = ChatService(db)
-    channel = await service.get_channel(channel_id)
-    if not channel or channel.workspace_id != workspace_id:
-        raise HTTPException(status_code=404, detail="Channel not found")
+    await _check_channel_access(service, channel_id, str(current_user.id), workspace_id)
 
     topic, message = await service.create_topic_with_message(
         channel_id=channel_id,
@@ -261,6 +294,7 @@ async def create_topic(
         name=data.name,
         first_message=data.first_message,
     )
+    await db.commit()
     pubsub = get_chat_pubsub()
     await pubsub.publish(workspace_id, "new_topic", {
         "id": topic.id, "channel_id": topic.channel_id, "name": topic.name,
@@ -294,7 +328,12 @@ async def list_messages(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
+    await _check_workspace(db, workspace_id, str(current_user.id))
     service = ChatService(db)
+    topic = await service.get_topic(topic_id)
+    if not topic:
+        raise HTTPException(status_code=404, detail="Topic not found")
+    await _check_channel_access(service, topic.channel_id, str(current_user.id), workspace_id)
     messages, has_more = await service.list_messages(topic_id, before=before, limit=limit)
     return MessageListResponse(messages=messages, has_more=has_more)
 
@@ -307,18 +346,23 @@ async def send_message(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
+    await _check_workspace(db, workspace_id, str(current_user.id))
     service = ChatService(db)
     topic = await service.get_topic(topic_id)
     if not topic:
         raise HTTPException(status_code=404, detail="Topic not found")
 
-    # Verify channel belongs to workspace
+    # Verify channel belongs to workspace and check access
     channel = await service.get_channel(topic.channel_id)
     if not channel or channel.workspace_id != workspace_id:
         raise HTTPException(status_code=404, detail="Topic not found")
 
-    # Auto-join public channel
-    if channel.visibility == "public":
+    # Private channels require membership; public channels auto-join
+    if channel.visibility == "private":
+        is_member = await service.is_channel_member(channel.id, str(current_user.id))
+        if not is_member:
+            raise HTTPException(status_code=403, detail="Not a member of this channel")
+    else:
         await service.join_channel(channel.id, str(current_user.id))
 
     msg = await service.create_message(
@@ -329,6 +373,7 @@ async def send_message(
         reply_to_id=data.reply_to_id,
     )
 
+    await db.commit()
     pubsub = get_chat_pubsub()
     await pubsub.publish(workspace_id, "new_message", msg)
 
@@ -343,10 +388,12 @@ async def edit_message(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
+    await _check_workspace(db, workspace_id, str(current_user.id))
     service = ChatService(db)
     msg = await service.update_message(message_id, str(current_user.id), data.content)
     if not msg:
         raise HTTPException(status_code=404, detail="Message not found or not owned by you")
+    await db.commit()
 
     pubsub = get_chat_pubsub()
     await pubsub.publish(workspace_id, "message_updated", msg)
@@ -360,10 +407,12 @@ async def delete_message(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
+    await _check_workspace(db, workspace_id, str(current_user.id))
     service = ChatService(db)
     ok = await service.delete_message(message_id, str(current_user.id))
     if not ok:
         raise HTTPException(status_code=404, detail="Message not found or not owned by you")
+    await db.commit()
 
     pubsub = get_chat_pubsub()
     await pubsub.publish(workspace_id, "message_deleted", {"id": message_id})
@@ -378,6 +427,7 @@ async def get_inbox(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
+    await _check_workspace(db, workspace_id, str(current_user.id))
     service = ChatService(db)
     topics = await service.get_inbox(workspace_id, str(current_user.id))
     return InboxResponse(topics=topics)
@@ -393,8 +443,10 @@ async def mark_topic_read(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
+    await _check_workspace(db, workspace_id, str(current_user.id))
     service = ChatService(db)
     await service.mark_topic_read(topic_id, str(current_user.id), data.message_id)
+    await db.commit()
     return {"ok": True}
 
 
@@ -406,6 +458,7 @@ async def get_presence(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
+    await _check_workspace(db, workspace_id, str(current_user.id))
     service = ChatService(db)
     users = await service.get_online_users(workspace_id)
     return PresenceListResponse(users=users)
@@ -414,7 +467,7 @@ async def get_presence(
 # ── File upload endpoint ─────────────────────────────────────────────
 
 ALLOWED_CHAT_TYPES = {
-    "image/png", "image/jpeg", "image/gif", "image/webp", "image/svg+xml",
+    "image/png", "image/jpeg", "image/gif", "image/webp",
     "application/pdf",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -429,10 +482,21 @@ async def upload_chat_file(
     workspace_id: str,
     file: UploadFile = File(...),
     current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
 ):
     """Upload a file for use in chat messages. Returns a URL."""
+    await _check_workspace(db, workspace_id, str(current_user.id))
+
     if not file.content_type or file.content_type not in ALLOWED_CHAT_TYPES:
         raise HTTPException(status_code=400, detail=f"File type {file.content_type or 'unknown'} not allowed")
+    # Validate file extension as a secondary check
+    ALLOWED_EXTENSIONS = {
+        "png", "jpg", "jpeg", "gif", "webp", "pdf", "docx", "xlsx",
+        "txt", "csv", "zip", "gz",
+    }
+    ext = (file.filename or "").rsplit(".", 1)[-1].lower() if "." in (file.filename or "") else ""
+    if ext and ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail=f"File extension .{ext} not allowed")
 
     # Read in chunks to fail early on oversized files
     chunks: list[bytes] = []
@@ -685,6 +749,13 @@ async def chat_websocket(
         await websocket.close(code=4001, reason="Developer not found")
         return
 
+    # Verify workspace membership
+    async with async_session_maker() as db:
+        ws_svc = WorkspaceService(db)
+        if not await ws_svc.check_permission(workspace_id, developer_id, "member"):
+            await websocket.close(code=4003, reason="Not a workspace member")
+            return
+
     user_info = {
         "id": str(developer.id),
         "name": developer.name,
@@ -775,6 +846,8 @@ async def chat_websocket(
 
             elif msg_type == "presence":
                 new_status = msg.get("status", "online")
+                if new_status not in ("online", "away", "offline"):
+                    continue
                 async with async_session_maker() as db:
                     svc = ChatService(db)
                     await svc.update_presence(workspace_id, developer_id, new_status)

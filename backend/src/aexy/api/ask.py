@@ -170,6 +170,7 @@ async def delete_conversation(
     """Delete a conversation (owner only)."""
     await _check_workspace(db, workspace_id, str(current_developer.id))
     service = AskService(db)
+    await _check_owner(service, conversation_id, str(current_developer.id))
     deleted = await service.delete_conversation(
         conversation_id, workspace_id, str(current_developer.id)
     )
@@ -421,9 +422,14 @@ async def revoke_share_link(
     db: AsyncSession = Depends(get_db),
     current_developer: Developer = Depends(get_current_developer),
 ):
-    """Revoke a share link."""
+    """Revoke a share link (owner only)."""
     await _check_workspace(db, workspace_id, str(current_developer.id))
     service = AskService(db)
+    # Verify the caller owns the conversation this link belongs to
+    link = await service.get_share_link(link_id)
+    if not link:
+        raise HTTPException(status_code=404, detail="Share link not found")
+    await _check_owner(service, str(link.conversation_id), str(current_developer.id))
     revoked = await service.revoke_share_link(link_id)
     if not revoked:
         raise HTTPException(status_code=404, detail="Share link not found")

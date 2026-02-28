@@ -62,6 +62,7 @@ export function AskAIView({
 
   const handleDelete = (e: React.MouseEvent, convId: string) => {
     e.stopPropagation();
+    if (!window.confirm("Delete this conversation? This cannot be undone.")) return;
     deleteConversation.mutate(convId);
   };
 

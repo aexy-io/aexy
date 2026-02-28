@@ -10,6 +10,9 @@ interface ChatWebSocketContextValue {
   sendStopTyping: (topicId: string, channelId: string) => void;
   markRead: (topicId: string, messageId: string) => void;
   subscribeChannels: (channelIds: string[]) => void;
+  subscribeAiConversations: (conversationIds: string[]) => void;
+  sendAiTyping: (conversationId: string) => void;
+  sendAiStopTyping: (conversationId: string) => void;
   workspaceId: string | undefined;
 }
 
@@ -26,9 +29,12 @@ export function ChatWebSocketProvider({ children }: { children: ReactNode }) {
       sendStopTyping: ws.sendStopTyping,
       markRead: ws.markRead,
       subscribeChannels: ws.subscribeChannels,
+      subscribeAiConversations: ws.subscribeAiConversations,
+      sendAiTyping: ws.sendAiTyping,
+      sendAiStopTyping: ws.sendAiStopTyping,
       workspaceId: currentWorkspaceId ?? undefined,
     }),
-    [ws.isConnected, ws.sendTyping, ws.sendStopTyping, ws.markRead, ws.subscribeChannels, currentWorkspaceId]
+    [ws.isConnected, ws.sendTyping, ws.sendStopTyping, ws.markRead, ws.subscribeChannels, ws.subscribeAiConversations, ws.sendAiTyping, ws.sendAiStopTyping, currentWorkspaceId]
   );
 
   return (

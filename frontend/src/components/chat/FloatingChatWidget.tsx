@@ -18,6 +18,15 @@ type Tab = "threads" | "notifications" | "activity" | "ai";
 
 export function FloatingChatWidget() {
   const pathname = usePathname();
+
+  // Don't render on chat pages — avoids running hooks unnecessarily
+  const isChatPage = pathname?.startsWith("/chat");
+  if (isChatPage) return null;
+
+  return <FloatingChatWidgetInner />;
+}
+
+function FloatingChatWidgetInner() {
   const { user } = useAuth();
   const { workspaceId } = useChatWebSocketContext();
   const { unreadCount: notifUnread } = useNotifications(user?.id);
@@ -26,10 +35,6 @@ export function FloatingChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("threads");
-
-  // Don't show on chat pages
-  const isChatPage = pathname?.startsWith("/chat");
-  if (isChatPage) return null;
 
   // Count total inbox unread
   const inboxUnread = inboxTopics?.reduce((sum, t) => sum + (t.unread_count || 0), 0) || 0;

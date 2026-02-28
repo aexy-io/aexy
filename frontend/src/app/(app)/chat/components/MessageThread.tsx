@@ -30,6 +30,8 @@ export function MessageThread({
 }: MessageThreadProps) {
   const { data: messages, isLoading } = useMessages(workspaceId, topicId);
   const sendMessage = useSendMessage(workspaceId, topicId);
+  const sendMessageRef = useRef(sendMessage);
+  sendMessageRef.current = sendMessage;
   const uploadFile = useUploadFile(workspaceId);
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -73,14 +75,14 @@ export function MessageThread({
       const queue = [...messageQueue];
       setMessageQueue([]);
       queue.forEach((content) => {
-        sendMessage.mutate({ content }, {
+        sendMessageRef.current.mutate({ content }, {
           onError: () => {
             setSendError("Failed to send queued message. Please try again.");
           },
         });
       });
     }
-  }, [isConnected, messageQueue, sendMessage]);
+  }, [isConnected, messageQueue]);
 
   const handleSend = useCallback(
     (content: string) => {

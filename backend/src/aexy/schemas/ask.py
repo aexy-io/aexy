@@ -1,6 +1,7 @@
 """Pydantic schemas for Ask AI feature."""
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -69,12 +70,12 @@ class AskConversationWithMessages(AskConversationResponse):
 class AskParticipantAdd(BaseModel):
     """Add a participant to a conversation."""
     developer_id: str
-    permission: str = "write"  # "read" | "write"
+    permission: Literal["read", "write"] = "write"
 
 
 class AskParticipantUpdate(BaseModel):
     """Update a participant's permission."""
-    permission: str  # "read" | "write"
+    permission: Literal["read", "write"]
 
 
 class AskParticipantResponse(BaseModel):
@@ -93,7 +94,7 @@ class AskParticipantResponse(BaseModel):
 
 class AskShareLinkCreate(BaseModel):
     """Create a share link for a conversation."""
-    permission: str = "read"  # "read" | "write"
+    permission: Literal["read", "write"] = "read"
     password: str | None = None
     expires_at: datetime | None = None
     max_uses: int | None = None

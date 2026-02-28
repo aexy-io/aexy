@@ -51,7 +51,8 @@ export function WidgetNotificationsView() {
 
   const handleClick = (n: Notification) => {
     if (!n.is_read) markAsRead(n.id);
-    if (n.context?.action_url) router.push(n.context.action_url);
+    const url = n.context?.action_url;
+    if (url && url.startsWith("/") && !url.startsWith("//")) router.push(url);
   };
 
   return (
