@@ -20,6 +20,9 @@ import {
   X,
   Send,
   User,
+  Globe,
+  Lock,
+  Settings,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
@@ -188,7 +191,6 @@ function RequestDetailModal({
 
   const category = CATEGORY_CONFIG[request.category] || CATEGORY_CONFIG.other;
   const CategoryIcon = category.icon;
-
   // Load comments
   useEffect(() => {
     const loadComments = async () => {
@@ -476,7 +478,7 @@ export default function RoadmapPage({
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { currentWorkspaceId, currentWorkspaceLoading } = useWorkspace();
   const { members: workspaceMembers } = useWorkspaceMembers(currentWorkspaceId);
-  const { project } = useProject(currentWorkspaceId, projectId);
+  const { project, isLoading: projectLoading } = useProject(currentWorkspaceId, projectId);
 
   const [requests, setRequests] = useState<RoadmapRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -489,7 +491,6 @@ export default function RoadmapPage({
   // Check if user is admin/owner
   const currentMember = workspaceMembers.find((m) => m.developer_id === user?.id);
   const isAdmin = currentMember?.role === "owner" || currentMember?.role === "admin";
-
   const loadRequests = async () => {
     if (!project?.public_slug) return;
 
@@ -559,7 +560,7 @@ export default function RoadmapPage({
     }
   };
 
-  if (authLoading || currentWorkspaceLoading) {
+  if (authLoading || currentWorkspaceLoading || projectLoading) {
     return (
       <div className="p-6 animate-pulse">
         <div className="flex items-center justify-between mb-6">
@@ -590,6 +591,55 @@ export default function RoadmapPage({
     redirect("/");
   }
 
+  // Project loaded but not publicly available
+  if (project && !project.public_slug) {
+    return (
+      <div className="min-h-screen bg-background">
+        <CommandPalette projectId={projectId} />
+        <header className="border-b border-border bg-muted/50 backdrop-blur-sm sticky top-0 z-30">
+          <div className="max-w-[1400px] mx-auto px-4 py-3">
+            <div className="flex items-center gap-4">
+              <Link
+                href={`/sprints/${projectId}`}
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Link>
+              <div>
+                <h1 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                  <Vote className="h-5 w-5 text-primary-500" />
+                  Feature Requests
+                </h1>
+              </div>
+            </div>
+          </div>
+        </header>
+        <main className="max-w-[1400px] mx-auto px-4 py-16">
+          <div className="text-center">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
+              <Lock className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-medium text-foreground mb-2">
+              Project is not publicly available
+            </h3>
+            <p className="text-muted-foreground max-w-md mx-auto">
+              The roadmap requires the project to be public. Enable public visibility from the project settings to start collecting feature requests.
+            </p>
+            {isAdmin && (
+              <Link
+                href={`/settings/projects/${projectId}`}
+                className="inline-flex items-center gap-2 mt-6 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium transition"
+              >
+                <Settings className="h-4 w-4" />
+                Go to Project Settings
+              </Link>
+            )}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   // Group requests by status
   const groupedRequests = {
     under_review: requests.filter((r) => r.status === "under_review"),
@@ -601,7 +651,7 @@ export default function RoadmapPage({
 
   return (
     <div className="min-h-screen bg-background">
-      <CommandPalette workspaceId={currentWorkspaceId} projectId={projectId} />
+      <CommandPalette  projectId={projectId} />
 
       {/* Header */}
       <header className="border-b border-border bg-muted/50 backdrop-blur-sm sticky top-0 z-30">

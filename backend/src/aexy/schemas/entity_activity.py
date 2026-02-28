@@ -7,13 +7,20 @@ from pydantic import BaseModel, ConfigDict, Field
 
 # Entity types supported by the activity system
 EntityType = Literal[
-    "goal", "task", "backlog", "story", "release", "roadmap", "epic", "bug"
+    "goal", "task", "backlog", "story", "release", "roadmap", "epic", "bug",
+    "ticket", "crm_record", "document", "assessment", "compliance",
+    "project", "sprint", "workflow", "agent", "template", "campaign",
+    "form", "leave_request", "review", "role",
 ]
 
 # Activity types
 ActivityType = Literal[
     "created", "updated", "comment", "status_changed", "assigned",
-    "progress_updated", "linked", "unlinked"
+    "progress_updated", "linked", "unlinked",
+    "published", "archived", "resolved", "escalated",
+    "deleted", "completed", "started", "paused", "resumed",
+    "submitted", "approved", "rejected", "duplicated", "toggled",
+    "withdrawn", "cancelled",
 ]
 
 
@@ -66,6 +73,7 @@ class EntityActivityResponse(BaseModel):
     changes: dict | None = None
     metadata: dict | None = None
     created_at: datetime
+    url: str | None = None
 
 
 class EntityActivityListResponse(BaseModel):
@@ -73,6 +81,7 @@ class EntityActivityListResponse(BaseModel):
 
     items: list[EntityActivityResponse]
     total: int
+    page: int = 1
     has_more: bool = False
 
 

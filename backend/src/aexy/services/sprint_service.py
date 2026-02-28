@@ -17,6 +17,7 @@ from aexy.models.sprint import (
 )
 from aexy.models.team import Team, TeamMember
 from aexy.services.automation_service import dispatch_automation_event
+from aexy.services.activity_logger import log_activity
 
 
 class SprintService:
@@ -73,6 +74,18 @@ class SprintService:
         self.db.add(sprint)
         await self.db.flush()
         await self.db.refresh(sprint)
+
+        await log_activity(
+            self.db,
+            workspace_id=workspace_id,
+            entity_type="sprint",
+            entity_id=str(sprint.id),
+            activity_type="created",
+            actor_id=created_by_id,
+            title=f"Created sprint '{name}'",
+            metadata={"sprint_name": name},
+        )
+
         return sprint
 
     async def get_sprint(self, sprint_id: str) -> Sprint | None:
@@ -167,6 +180,17 @@ class SprintService:
 
         await self.db.flush()
         await self.db.refresh(sprint)
+
+        await log_activity(
+            self.db,
+            workspace_id=str(sprint.workspace_id),
+            entity_type="sprint",
+            entity_id=str(sprint.id),
+            activity_type="updated",
+            title=f"Updated sprint '{sprint.name}'",
+            metadata={"sprint_name": sprint.name},
+        )
+
         return sprint
 
     async def delete_sprint(self, sprint_id: str) -> bool:
@@ -177,6 +201,15 @@ class SprintService:
 
         if sprint.status != "planning":
             raise ValueError("Can only delete sprints in planning status")
+
+        await log_activity(
+            self.db,
+            workspace_id=str(sprint.workspace_id),
+            entity_type="sprint",
+            entity_id=str(sprint.id),
+            activity_type="deleted",
+            title=f"Deleted sprint '{sprint.name}'",
+        )
 
         await self.db.delete(sprint)
         await self.db.flush()
@@ -207,9 +240,21 @@ class SprintService:
         if existing_active:
             raise ValueError("Team already has an active sprint")
 
+        old_status = sprint.status
         sprint.status = "active"
         await self.db.flush()
         await self.db.refresh(sprint)
+
+        await log_activity(
+            self.db,
+            workspace_id=str(sprint.workspace_id),
+            entity_type="sprint",
+            entity_id=str(sprint.id),
+            activity_type="status_changed",
+            title=f"Started sprint '{sprint.name}'",
+            changes={"status": {"old": old_status, "new": "active"}},
+            metadata={"sprint_name": sprint.name},
+        )
 
         # Record initial metrics
         await self._record_metrics_snapshot(sprint)
@@ -249,9 +294,22 @@ class SprintService:
         if sprint.status != "active":
             raise ValueError(f"Cannot start review for sprint in '{sprint.status}' status")
 
+        old_status = sprint.status
         sprint.status = "review"
         await self.db.flush()
         await self.db.refresh(sprint)
+
+        await log_activity(
+            self.db,
+            workspace_id=str(sprint.workspace_id),
+            entity_type="sprint",
+            entity_id=str(sprint.id),
+            activity_type="status_changed",
+            title=f"Sprint '{sprint.name}' moved to review",
+            changes={"status": {"old": old_status, "new": "review"}},
+            metadata={"sprint_name": sprint.name},
+        )
+
         return sprint
 
     async def start_retrospective(self, sprint_id: str) -> Sprint:
@@ -309,8 +367,20 @@ class SprintService:
         if sprint.status != "retrospective":
             raise ValueError(f"Cannot complete sprint in '{sprint.status}' status")
 
+        old_status = sprint.status
         sprint.status = "completed"
         await self.db.flush()
+
+        await log_activity(
+            self.db,
+            workspace_id=str(sprint.workspace_id),
+            entity_type="sprint",
+            entity_id=str(sprint.id),
+            activity_type="status_changed",
+            title=f"Completed sprint '{sprint.name}'",
+            changes={"status": {"old": old_status, "new": "completed"}},
+            metadata={"sprint_name": sprint.name},
+        )
 
         # Calculate and store velocity
         await self._calculate_velocity(sprint)

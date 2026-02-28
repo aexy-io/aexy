@@ -24,6 +24,7 @@ from aexy.schemas.sprint import (
 )
 from aexy.services.workspace_service import WorkspaceService
 from aexy.services.notification_service import NotificationService
+from aexy.services.activity_logger import log_activity
 
 router = APIRouter(prefix="/teams/{team_id}/tasks", tags=["Project Tasks"])
 
@@ -197,6 +198,19 @@ async def create_project_task(
     )
 
     db.add(task)
+    await db.flush()
+
+    await log_activity(
+        db,
+        workspace_id=str(team.workspace_id),
+        entity_type="task",
+        entity_id=str(task.id),
+        activity_type="created",
+        actor_id=str(current_user.id),
+        title=f"Created task '{task.title}'",
+        metadata={"team_id": team_id},
+    )
+
     await db.commit()
     await db.refresh(task)
 
@@ -294,6 +308,17 @@ async def update_task(
     if data.mentioned_file_paths is not None:
         task.mentioned_file_paths = data.mentioned_file_paths
 
+    if task.workspace_id:
+        await log_activity(
+            db,
+            workspace_id=str(task.workspace_id),
+            entity_type="task",
+            entity_id=task_id,
+            activity_type="updated",
+            actor_id=str(current_user.id),
+            title=f"Updated task '{task.title}'",
+        )
+
     await db.commit()
     await db.refresh(task)
 
@@ -337,7 +362,24 @@ async def update_task_status(
             detail="Task not found",
         )
 
+    old_status = task.status
     task.status = data.status
+
+    if task.workspace_id and old_status != data.status:
+        act_type = "status_changed"
+        if data.status == "done":
+            act_type = "resolved"
+        await log_activity(
+            db,
+            workspace_id=str(task.workspace_id),
+            entity_type="task",
+            entity_id=task_id,
+            activity_type=act_type,
+            actor_id=str(current_user.id),
+            title=f"Task '{task.title}' status changed",
+            changes={"status": {"old": old_status, "new": data.status}},
+        )
+
     await db.commit()
     await db.refresh(task)
 
@@ -394,6 +436,19 @@ async def delete_task(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found",
+        )
+
+    task_title = task.title
+
+    if task.workspace_id:
+        await log_activity(
+            db,
+            workspace_id=str(task.workspace_id),
+            entity_type="task",
+            entity_id=task_id,
+            activity_type="deleted",
+            actor_id=str(current_user.id),
+            title=f"Deleted task '{task_title}'",
         )
 
     task.is_archived = True

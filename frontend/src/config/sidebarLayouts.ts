@@ -212,6 +212,7 @@ export const GROUPED_LAYOUT: SidebarLayoutConfig = {
             label: "", // No label for dashboard
             items: [
                 { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+                { href: "/activity", label: "Activity", icon: Activity },
             ],
         },
         {
@@ -376,6 +377,7 @@ export const FLAT_LAYOUT: SidebarLayoutConfig = {
             label: "",
             items: [
                 { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+                { href: "/activity", label: "Activity", icon: Activity },
                 {
                     href: "/tracking",
                     label: "Tracking",
