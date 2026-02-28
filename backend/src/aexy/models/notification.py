@@ -87,6 +87,11 @@ class NotificationEventType(str, Enum):
     # Agent mentions
     AGENT_INVOKED = "agent_invoked"
 
+    # Agent policy events
+    AGENT_TOOL_BLOCKED = "agent_tool_blocked"
+    AGENT_APPROVAL_REQUIRED = "agent_approval_required"
+    AGENT_CONFIG_CHANGED = "agent_config_changed"
+
     # Blocker escalation
     BLOCKER_ESCALATED = "blocker_escalated"
 
@@ -441,6 +446,9 @@ NOTIFICATION_CATEGORIES: dict[str, list[str]] = {
     ],
     "agents": [
         NotificationEventType.AGENT_INVOKED.value,
+        NotificationEventType.AGENT_TOOL_BLOCKED.value,
+        NotificationEventType.AGENT_APPROVAL_REQUIRED.value,
+        NotificationEventType.AGENT_CONFIG_CHANGED.value,
     ],
     "uptime": [
         NotificationEventType.UPTIME_INCIDENT_CREATED.value,
@@ -533,6 +541,10 @@ DEFAULT_NOTIFICATION_PREFERENCES = {
     NotificationEventType.REMINDER_ASSIGNED: {"in_app": True, "email": True, "slack": False, "web_push": False},
     # Agent mentions
     NotificationEventType.AGENT_INVOKED: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    # Agent policy events
+    NotificationEventType.AGENT_TOOL_BLOCKED: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    NotificationEventType.AGENT_APPROVAL_REQUIRED: {"in_app": True, "email": True, "slack": True, "web_push": True},
+    NotificationEventType.AGENT_CONFIG_CHANGED: {"in_app": True, "email": False, "slack": False, "web_push": False},
     # Blocker escalation
     NotificationEventType.BLOCKER_ESCALATED: {"in_app": True, "email": True, "slack": True, "web_push": True},
     # Uptime
