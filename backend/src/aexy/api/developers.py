@@ -15,6 +15,7 @@ from aexy.core.database import get_db
 from aexy.models.developer import Developer, GoogleConnection
 from aexy.schemas.developer import DeveloperResponse, DeveloperUpdate
 from aexy.schemas.sprint import SprintTaskResponse
+from aexy.services.api_token_service import ApiTokenService
 from aexy.services.developer_service import DeveloperNotFoundError, DeveloperService
 from aexy.services.sprint_task_service import SprintTaskService
 
@@ -31,11 +32,26 @@ security = HTTPBearer()
 
 async def get_current_developer_id(
     credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncSession = Depends(get_db),
 ) -> str:
-    """Extract and validate developer ID from JWT token."""
+    """Extract and validate developer ID from JWT or API token."""
+    token = credentials.credentials
+
+    # API token auth (aexy_ prefix)
+    if token.startswith("aexy_"):
+        service = ApiTokenService(db)
+        api_token = await service.validate(token)
+        if api_token is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired API token",
+            )
+        return api_token.developer_id
+
+    # JWT auth
     try:
         payload = jwt.decode(
-            credentials.credentials,
+            token,
             settings.secret_key,
             algorithms=[settings.algorithm],
         )
@@ -81,9 +97,24 @@ async def get_optional_current_developer(
     if not credentials:
         return None
 
+    token = credentials.credentials
+
+    # API token auth (aexy_ prefix)
+    if token.startswith("aexy_"):
+        token_service = ApiTokenService(db)
+        api_token = await token_service.validate(token)
+        if api_token is None:
+            return None
+        dev_service = DeveloperService(db)
+        try:
+            return await dev_service.get_by_id(api_token.developer_id)
+        except DeveloperNotFoundError:
+            return None
+
+    # JWT auth
     try:
         payload = jwt.decode(
-            credentials.credentials,
+            token,
             settings.secret_key,
             algorithms=[settings.algorithm],
         )

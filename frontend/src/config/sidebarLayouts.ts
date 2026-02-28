@@ -146,6 +146,7 @@ const uptimeItems: SidebarItemConfig[] = [
 const aiAgentsItems: SidebarItemConfig[] = [
     { href: "/agents", label: "All Agents", icon: Bot },
     { href: "/agents/new", label: "Create Agent", icon: UserPlus },
+    { href: "/mcp", label: "MCP", icon: Plug },
 ];
 
 const automationsItems: SidebarItemConfig[] = [
