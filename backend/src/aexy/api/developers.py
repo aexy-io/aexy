@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 
 from aexy.core.config import get_settings
-from aexy.core.database import get_async_session, get_db
+from aexy.core.database import get_db
 from aexy.models.developer import Developer, GoogleConnection
 from aexy.schemas.developer import DeveloperResponse, DeveloperUpdate
 from aexy.schemas.sprint import SprintTaskResponse
@@ -32,21 +32,21 @@ security = HTTPBearer()
 
 async def get_current_developer_id(
     credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncSession = Depends(get_db),
 ) -> str:
     """Extract and validate developer ID from JWT or API token."""
     token = credentials.credentials
 
     # API token auth (aexy_ prefix)
     if token.startswith("aexy_"):
-        async with get_async_session() as db:
-            service = ApiTokenService(db)
-            api_token = await service.validate(token)
-            if api_token is None:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid or expired API token",
-                )
-            return api_token.developer_id
+        service = ApiTokenService(db)
+        api_token = await service.validate(token)
+        if api_token is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired API token",
+            )
+        return api_token.developer_id
 
     # JWT auth
     try:
