@@ -82,6 +82,11 @@ class NotificationEventType(str, Enum):
     # Agent mentions
     AGENT_INVOKED = "agent_invoked"
 
+    # Agent policy events
+    AGENT_TOOL_BLOCKED = "agent_tool_blocked"
+    AGENT_APPROVAL_REQUIRED = "agent_approval_required"
+    AGENT_CONFIG_CHANGED = "agent_config_changed"
+
     # Blocker escalation
     BLOCKER_ESCALATED = "blocker_escalated"
 
@@ -464,6 +469,21 @@ NOTIFICATION_TEMPLATES = {
         "title": "Agent Working",
         "body_template": "The {agent_name} agent has been invoked and is processing your request",
         "email_subject": "{agent_name} is working on your request",
+    },
+    NotificationEventType.AGENT_TOOL_BLOCKED: {
+        "title": "Agent Tool Blocked",
+        "body_template": "{agent_name} attempted to use '{tool_name}' but was blocked by policy",
+        "email_subject": "Agent tool blocked: {tool_name}",
+    },
+    NotificationEventType.AGENT_APPROVAL_REQUIRED: {
+        "title": "Agent Action Needs Approval",
+        "body_template": "{agent_name} wants to use '{tool_name}' — approval required",
+        "email_subject": "Approval needed: {agent_name} wants to use {tool_name}",
+    },
+    NotificationEventType.AGENT_CONFIG_CHANGED: {
+        "title": "Agent Config Changed",
+        "body_template": "{changed_by_name} {change_type}d the configuration for {agent_name}",
+        "email_subject": "Agent config {change_type}d: {agent_name}",
     },
     # Blocker
     NotificationEventType.BLOCKER_ESCALATED: {
