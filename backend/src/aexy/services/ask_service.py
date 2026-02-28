@@ -2,6 +2,7 @@
 
 import json
 import logging
+import time
 from collections.abc import AsyncGenerator
 from uuid import uuid4
 
@@ -242,6 +243,7 @@ class AskService:
         msg_count: int,
     ) -> AsyncGenerator[str, None]:
         """Stream response using OpenAI API with tool calling."""
+        start_time = time.monotonic()
         messages = self._build_openai_messages(conv.messages, user_content)
 
         full_text = ""
@@ -397,6 +399,7 @@ class AskService:
                 })
 
         # Save assistant message
+        latency_ms = int((time.monotonic() - start_time) * 1000)
         assistant_msg = AskMessage(
             id=str(uuid4()),
             conversation_id=conv.id,
@@ -408,6 +411,7 @@ class AskService:
                 "output_tokens": total_output_tokens,
             },
             message_index=msg_count + 1,
+            latency_ms=latency_ms,
         )
         self.db.add(assistant_msg)
         await self.db.flush()
@@ -417,7 +421,7 @@ class AskService:
             "input_tokens": total_input_tokens,
             "output_tokens": total_output_tokens,
         })
-        yield self._sse({"type": "done", "message_id": str(assistant_msg.id)})
+        yield self._sse({"type": "done", "message_id": str(assistant_msg.id), "latency_ms": latency_ms})
 
     def _build_openai_messages(
         self, existing_messages: list[AskMessage], new_user_content: str
@@ -469,6 +473,7 @@ class AskService:
         msg_count: int,
     ) -> AsyncGenerator[str, None]:
         """Stream response using Gemini API with tool calling."""
+        start_time = time.monotonic()
         # Build Gemini conversation history
         contents = self._build_gemini_contents(conv.messages, user_content)
 
@@ -591,6 +596,7 @@ class AskService:
             contents.append({"role": "user", "parts": function_response_parts})
 
         # Save assistant message
+        latency_ms = int((time.monotonic() - start_time) * 1000)
         assistant_msg = AskMessage(
             id=str(uuid4()),
             conversation_id=conv.id,
@@ -602,6 +608,7 @@ class AskService:
                 "output_tokens": total_output_tokens,
             },
             message_index=msg_count + 1,
+            latency_ms=latency_ms,
         )
         self.db.add(assistant_msg)
         await self.db.flush()
@@ -611,7 +618,7 @@ class AskService:
             "input_tokens": total_input_tokens,
             "output_tokens": total_output_tokens,
         })
-        yield self._sse({"type": "done", "message_id": str(assistant_msg.id)})
+        yield self._sse({"type": "done", "message_id": str(assistant_msg.id), "latency_ms": latency_ms})
 
     def _build_gemini_contents(
         self, existing_messages: list[AskMessage], new_user_content: str
@@ -669,6 +676,7 @@ class AskService:
         msg_count: int,
     ) -> AsyncGenerator[str, None]:
         """Stream response using Anthropic API."""
+        start_time = time.monotonic()
         api_messages = self._build_anthropic_messages(conv.messages, user_content)
 
         full_text = ""
@@ -766,6 +774,7 @@ class AskService:
             api_messages.append({"role": "assistant", "content": assistant_content})
             api_messages.append({"role": "user", "content": tool_results})
 
+        latency_ms = int((time.monotonic() - start_time) * 1000)
         assistant_msg = AskMessage(
             id=str(uuid4()),
             conversation_id=conv.id,
@@ -777,6 +786,7 @@ class AskService:
                 "output_tokens": total_output_tokens,
             },
             message_index=msg_count + 1,
+            latency_ms=latency_ms,
         )
         self.db.add(assistant_msg)
         await self.db.flush()
@@ -786,7 +796,7 @@ class AskService:
             "input_tokens": total_input_tokens,
             "output_tokens": total_output_tokens,
         })
-        yield self._sse({"type": "done", "message_id": str(assistant_msg.id)})
+        yield self._sse({"type": "done", "message_id": str(assistant_msg.id), "latency_ms": latency_ms})
 
     async def _call_anthropic_stream(
         self, messages: list[dict]
