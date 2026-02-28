@@ -163,6 +163,12 @@ async def update_channel(
     if not channel or channel.workspace_id != workspace_id:
         raise HTTPException(status_code=404, detail="Channel not found")
 
+    # Authorization: only channel creator or owner can update
+    if channel.created_by_id != str(current_user.id):
+        is_owner = await service.is_channel_owner(channel_id, str(current_user.id))
+        if not is_owner:
+            raise HTTPException(status_code=403, detail="Only channel owner can update settings")
+
     updates = data.model_dump(exclude_unset=True)
     channel = await service.update_channel(channel_id, **updates)
     if not channel:
@@ -425,12 +431,21 @@ async def upload_chat_file(
     current_user: Developer = Depends(get_current_developer),
 ):
     """Upload a file for use in chat messages. Returns a URL."""
-    if file.content_type and file.content_type not in ALLOWED_CHAT_TYPES:
-        raise HTTPException(status_code=400, detail=f"File type {file.content_type} not allowed")
+    if not file.content_type or file.content_type not in ALLOWED_CHAT_TYPES:
+        raise HTTPException(status_code=400, detail=f"File type {file.content_type or 'unknown'} not allowed")
 
-    data = await file.read()
-    if len(data) > MAX_CHAT_FILE_SIZE:
-        raise HTTPException(status_code=400, detail="File too large (max 20MB)")
+    # Read in chunks to fail early on oversized files
+    chunks: list[bytes] = []
+    total_size = 0
+    while True:
+        chunk = await file.read(8192)
+        if not chunk:
+            break
+        total_size += len(chunk)
+        if total_size > MAX_CHAT_FILE_SIZE:
+            raise HTTPException(status_code=400, detail="File too large (max 20MB)")
+        chunks.append(chunk)
+    data = b"".join(chunks)
 
     from uuid import uuid4
     from aexy.services.storage_service import StorageService
@@ -576,12 +591,14 @@ class ChatConnectionManager:
         self.connections: dict[str, list[tuple[WebSocket, dict, set[str]]]] = {}
         self._lock = asyncio.Lock()
 
-    async def connect(self, ws: WebSocket, workspace_id: str, user_info: dict) -> None:
+    async def connect(self, ws: WebSocket, workspace_id: str, user_info: dict) -> set[str]:
         await ws.accept()
+        subs: set[str] = set()
         async with self._lock:
             if workspace_id not in self.connections:
                 self.connections[workspace_id] = []
-            self.connections[workspace_id].append((ws, user_info, set()))
+            self.connections[workspace_id].append((ws, user_info, subs))
+        return subs
 
     async def disconnect(self, ws: WebSocket, workspace_id: str) -> dict | None:
         async with self._lock:
@@ -658,7 +675,7 @@ async def chat_websocket(
         "avatar_url": getattr(developer, "avatar_url", None),
     }
 
-    await chat_manager.connect(websocket, workspace_id, user_info)
+    subs = await chat_manager.connect(websocket, workspace_id, user_info)
 
     # Auto-subscribe to user's channels
     async with async_session_maker() as db:
@@ -676,7 +693,7 @@ async def chat_websocket(
 
     # Start Redis subscriber task to relay events to this connection
     redis_task = asyncio.create_task(
-        _relay_redis_events(websocket, workspace_id, user_info)
+        _relay_redis_events(websocket, workspace_id, user_info, subs)
     )
 
     try:
@@ -744,16 +761,32 @@ async def chat_websocket(
         })
 
 
-async def _relay_redis_events(ws: WebSocket, workspace_id: str, user_info: dict) -> None:
+async def _relay_redis_events(
+    ws: WebSocket, workspace_id: str, user_info: dict, subscribed_channels: set[str],
+) -> None:
     """Background task: subscribe to Redis pub/sub and forward events to the WS client."""
+    # Channel-scoped event types that should only be sent to subscribed users
+    CHANNEL_SCOPED_EVENTS = {
+        "new_message", "new_topic", "topic_updated",
+        "message_updated", "message_deleted",
+    }
     pubsub = get_chat_pubsub()
     try:
         async for event in pubsub.subscribe(workspace_id):
-            # Don't echo typing events back to the sender
             event_data = event.get("data", {})
-            if event.get("type") in ("typing", "stop_typing"):
+            event_type = event.get("type")
+
+            # Don't echo typing events back to the sender
+            if event_type in ("typing", "stop_typing"):
                 if event_data.get("developer_id") == user_info.get("id"):
                     continue
+
+            # Filter channel-scoped events to subscribed channels only
+            channel_id = event_data.get("channel_id")
+            if channel_id and event_type in CHANNEL_SCOPED_EVENTS:
+                if channel_id not in subscribed_channels:
+                    continue
+
             try:
                 await ws.send_json(event)
             except Exception:

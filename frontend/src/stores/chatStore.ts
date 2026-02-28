@@ -94,12 +94,15 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
         (u) => !(u.developer_id === developerId && u.topic_id === topicId)
       ),
     })),
-  clearStaleTyping: () =>
-    set((state) => ({
-      typingUsers: state.typingUsers.filter(
-        (u) => Date.now() - u.timestamp < TYPING_TIMEOUT_MS
-      ),
-    })),
+  clearStaleTyping: () => {
+    const now = Date.now();
+    const current = get().typingUsers;
+    if (current.length === 0) return;
+    const filtered = current.filter((u) => now - u.timestamp < TYPING_TIMEOUT_MS);
+    if (filtered.length !== current.length) {
+      set({ typingUsers: filtered });
+    }
+  },
 
   presenceMap: {},
   updatePresence: (developerId, status, name) =>

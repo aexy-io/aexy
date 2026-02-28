@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Send, Smile, Paperclip, X, Image, FileText, AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -54,6 +54,31 @@ export function MessageComposer({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const emojiRef = useRef<HTMLDivElement>(null);
+
+  // Close emoji picker on click outside
+  useEffect(() => {
+    if (!showEmoji) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (emojiRef.current && !emojiRef.current.contains(e.target as Node)) {
+        setShowEmoji(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showEmoji]);
+
+  // Cleanup Object URLs and typing timeout on unmount
+  const pendingFilesRef = useRef(pendingFiles);
+  pendingFilesRef.current = pendingFiles;
+  useEffect(() => {
+    return () => {
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      pendingFilesRef.current.forEach((pf) => {
+        if (pf.preview) URL.revokeObjectURL(pf.preview);
+      });
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    };
+  }, []);
 
   const handleTyping = useCallback(() => {
     if (!isTypingRef.current) {
@@ -109,12 +134,16 @@ export function MessageComposer({
     onSend(finalContent, attachments);
     setContent("");
     setPendingFiles([]);
+    setIsExpanded(false);
     if (isTypingRef.current) {
       isTypingRef.current = false;
       onStopTyping?.();
     }
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    textareaRef.current?.focus();
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.focus();
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

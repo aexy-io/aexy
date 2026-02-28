@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { ChatMessage } from "@/lib/api";
 import { formatDistanceToNow } from "date-fns";
 import { Reply, FileText, Download } from "lucide-react";
@@ -67,7 +68,7 @@ function renderContent(content: string) {
   return parts.length > 0 ? parts : content;
 }
 
-export function MessageItem({ message, onReply, compact }: MessageItemProps) {
+export const MessageItem = memo(function MessageItem({ message, onReply, compact }: MessageItemProps) {
   const time = formatDistanceToNow(new Date(message.created_at), { addSuffix: true });
   const senderName = message.sender?.name || "Unknown";
   const initials = senderName
@@ -130,4 +131,4 @@ export function MessageItem({ message, onReply, compact }: MessageItemProps) {
       )}
     </div>
   );
-}
+});

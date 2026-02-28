@@ -32,7 +32,7 @@ class ChannelCreate(BaseModel):
 
 class ChannelUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=255)
-    description: str | None = None
+    description: str | None = Field(None, max_length=1000)
     is_archived: bool | None = None
 
 
@@ -75,7 +75,7 @@ class ChannelMemberResponse(BaseModel):
 
 class TopicCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
-    first_message: str = Field(..., min_length=1)
+    first_message: str = Field(..., min_length=1, max_length=10000)
 
 
 class TopicResponse(BaseModel):
@@ -101,12 +101,12 @@ class TopicListResponse(BaseModel):
 # ── Message schemas ──────────────────────────────────────────────────
 
 class MessageCreate(BaseModel):
-    content: str = Field(..., min_length=1)
+    content: str = Field(..., min_length=1, max_length=10000)
     reply_to_id: str | None = None
 
 
 class MessageUpdate(BaseModel):
-    content: str = Field(..., min_length=1)
+    content: str = Field(..., min_length=1, max_length=10000)
 
 
 class SenderInfo(BaseModel):
