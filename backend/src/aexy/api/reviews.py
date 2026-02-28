@@ -50,6 +50,8 @@ from aexy.services.review_service import ReviewService
 from aexy.services.goal_service import GoalService
 from aexy.services.contribution_service import ContributionService
 from aexy.services.activity_logger import log_activity
+from aexy.models.review import IndividualReview, ReviewCycle
+from sqlalchemy import select
 
 router = APIRouter(prefix="/reviews")
 
@@ -495,6 +497,7 @@ async def get_review_contributions(
 async def submit_self_review(
     review_id: str,
     data: SelfReviewSubmission,
+    current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
     """Submit a self-review."""
@@ -506,19 +509,23 @@ async def submit_self_review(
             linked_goals=data.linked_goals,
             linked_contributions=data.linked_contributions,
         )
-        # Get review to find workspace_id
-        review = await service.get_individual_review(review_id)
-        if review:
-            cycle = await service.get_review_cycle(review.review_cycle_id)
-            if cycle:
-                await log_activity(
-                    db,
-                    workspace_id=str(cycle.workspace_id),
-                    entity_type="review",
-                    entity_id=review_id,
-                    activity_type="submitted",
-                    title="Submitted self-review",
-                )
+        # Get workspace_id via single JOIN
+        result = await db.execute(
+            select(ReviewCycle.workspace_id)
+            .join(IndividualReview, IndividualReview.review_cycle_id == ReviewCycle.id)
+            .where(IndividualReview.id == review_id)
+        )
+        ws_id = result.scalar_one_or_none()
+        if ws_id:
+            await log_activity(
+                db,
+                workspace_id=str(ws_id),
+                entity_type="review",
+                entity_id=review_id,
+                activity_type="submitted",
+                actor_id=str(current_user.id),
+                title="Submitted self-review",
+            )
         return ReviewSubmissionResponse.model_validate(submission)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -528,6 +535,7 @@ async def submit_self_review(
 async def submit_manager_review(
     review_id: str,
     data: ManagerReviewSubmission,
+    current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
     """Submit a manager review."""
@@ -541,19 +549,23 @@ async def submit_manager_review(
             linked_goals=data.linked_goals,
             linked_contributions=data.linked_contributions,
         )
-        # Get review to find workspace_id
-        review = await service.get_individual_review(review_id)
-        if review:
-            cycle = await service.get_review_cycle(review.review_cycle_id)
-            if cycle:
-                await log_activity(
-                    db,
-                    workspace_id=str(cycle.workspace_id),
-                    entity_type="review",
-                    entity_id=review_id,
-                    activity_type="submitted",
-                    title="Submitted manager review",
-                )
+        # Get workspace_id via single JOIN
+        result = await db.execute(
+            select(ReviewCycle.workspace_id)
+            .join(IndividualReview, IndividualReview.review_cycle_id == ReviewCycle.id)
+            .where(IndividualReview.id == review_id)
+        )
+        ws_id = result.scalar_one_or_none()
+        if ws_id:
+            await log_activity(
+                db,
+                workspace_id=str(ws_id),
+                entity_type="review",
+                entity_id=review_id,
+                activity_type="submitted",
+                actor_id=str(current_user.id),
+                title="Submitted manager review",
+            )
         return ReviewSubmissionResponse.model_validate(submission)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -563,6 +575,7 @@ async def submit_manager_review(
 async def finalize_review(
     review_id: str,
     data: FinalReviewData,
+    current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
     """Finalize a review (manager action)."""
@@ -575,14 +588,21 @@ async def finalize_review(
     )
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
-    cycle = await service.get_review_cycle(review.review_cycle_id)
-    if cycle:
+    # Get workspace_id via single JOIN
+    result = await db.execute(
+        select(ReviewCycle.workspace_id)
+        .join(IndividualReview, IndividualReview.review_cycle_id == ReviewCycle.id)
+        .where(IndividualReview.id == review_id)
+    )
+    ws_id = result.scalar_one_or_none()
+    if ws_id:
         await log_activity(
             db,
-            workspace_id=str(cycle.workspace_id),
+            workspace_id=str(ws_id),
             entity_type="review",
             entity_id=review_id,
             activity_type="completed",
+            actor_id=str(current_user.id),
             title="Finalized review",
         )
     return IndividualReviewResponse.model_validate(review)

@@ -595,37 +595,22 @@ class TicketService:
         await self.db.flush()
         await self.db.refresh(response)
 
-        # Log entity activity for the comment
-        comment_activity_type = "comment"
-        if comment_data.new_status and comment_data.new_status != old_status:
-            comment_activity_type = "status_changed"
-        await log_activity(
-            self.db,
-            workspace_id=ticket.workspace_id,
-            entity_type="ticket",
-            entity_id=str(ticket.id),
-            activity_type=comment_activity_type,
-            actor_id=author_id,
-            title=f"{'Changed status' if comment_activity_type == 'status_changed' else 'Added response'} on ticket #{ticket.ticket_number}",
-            content=comment_data.content if not comment_data.is_internal else None,
-            changes={"status": {"old": old_status, "new": comment_data.new_status}} if comment_data.new_status and comment_data.new_status != old_status else None,
-        )
-
-        # Log entity activity for the comment
-        comment_activity_type = "comment"
-        if comment_data.new_status and comment_data.new_status != old_status:
-            comment_activity_type = "status_changed"
-        await log_activity(
-            self.db,
-            workspace_id=ticket.workspace_id,
-            entity_type="ticket",
-            entity_id=str(ticket.id),
-            activity_type=comment_activity_type,
-            actor_id=author_id,
-            title=f"{'Changed status' if comment_activity_type == 'status_changed' else 'Added response'} on ticket #{ticket.ticket_number}",
-            content=comment_data.content if not comment_data.is_internal else None,
-            changes={"status": {"old": old_status, "new": comment_data.new_status}} if comment_data.new_status and comment_data.new_status != old_status else None,
-        )
+        # Log entity activity for the comment (skip internal notes to avoid leaking their existence)
+        if not comment_data.is_internal:
+            comment_activity_type = "comment"
+            if comment_data.new_status and comment_data.new_status != old_status:
+                comment_activity_type = "status_changed"
+            await log_activity(
+                self.db,
+                workspace_id=ticket.workspace_id,
+                entity_type="ticket",
+                entity_id=str(ticket.id),
+                activity_type=comment_activity_type,
+                actor_id=author_id,
+                title=f"{'Changed status' if comment_activity_type == 'status_changed' else 'Added response'} on ticket #{ticket.ticket_number}",
+                content=comment_data.content,
+                changes={"status": {"old": old_status, "new": comment_data.new_status}} if comment_data.new_status and comment_data.new_status != old_status else None,
+            )
 
         # Send mention notifications
         if author_id and comment_data.content:

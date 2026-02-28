@@ -356,7 +356,7 @@ class AssessmentService:
 
         await log_activity(
             self.db,
-            workspace_id=str(assessment.workspace_id),
+            workspace_id=str(assessment.organization_id),
             entity_type="assessment",
             entity_id=str(assessment.id),
             activity_type="deleted",
