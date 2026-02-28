@@ -217,7 +217,9 @@ async def update_agent(
         raise HTTPException(status_code=404, detail="Agent not found")
 
     update_data = data.model_dump(exclude_unset=True)
-    agent = await service.update_agent(agent_id, **update_data)
+    agent = await service.update_agent(
+        agent_id, changed_by_id=str(current_developer.id), **update_data
+    )
     if not agent:
         raise HTTPException(status_code=400, detail="Cannot modify system agent")
 
@@ -239,7 +241,7 @@ async def delete_agent(
     if not agent or agent.workspace_id != workspace_id:
         raise HTTPException(status_code=404, detail="Agent not found")
 
-    success = await service.delete_agent(agent_id)
+    success = await service.delete_agent(agent_id, changed_by_id=str(current_developer.id))
     if not success:
         raise HTTPException(status_code=400, detail="Cannot delete system agent")
 
@@ -261,7 +263,7 @@ async def toggle_agent(
     if not agent or agent.workspace_id != workspace_id:
         raise HTTPException(status_code=404, detail="Agent not found")
 
-    agent = await service.toggle_agent(agent_id)
+    agent = await service.toggle_agent(agent_id, changed_by_id=str(current_developer.id))
     await db.commit()
     return agent
 

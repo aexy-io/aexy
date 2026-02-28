@@ -176,6 +176,34 @@ class FormSubmissionHandler:
         await self.db.flush()
         await self.db.refresh(submission)
 
+        # Send in-app notification to form owner
+        if form.created_by_id:
+            try:
+                from aexy.services.notification_service import (
+                    notify_form_submission_received,
+                    notify_form_submission_failed,
+                )
+
+                if submission.status == FormSubmissionStatus.FAILED.value:
+                    await notify_form_submission_failed(
+                        db=self.db,
+                        owner_id=form.created_by_id,
+                        form_name=form.name,
+                        submission_id=submission.id,
+                        workspace_id=form.workspace_id,
+                    )
+                else:
+                    await notify_form_submission_received(
+                        db=self.db,
+                        owner_id=form.created_by_id,
+                        form_name=form.name,
+                        submitter_name=submission.name or submission.email or "Anonymous",
+                        submission_id=submission.id,
+                        workspace_id=form.workspace_id,
+                    )
+            except Exception:
+                pass  # Non-critical
+
         # Dispatch form.submitted event for automations
         await dispatch_automation_event(
             db=self.db,
