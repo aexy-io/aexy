@@ -7,6 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.core.database import get_db
+from aexy.api.developers import get_current_developer
+from aexy.models import Developer
 from aexy.llm.gateway import get_llm_gateway
 from aexy.schemas.review import (
     # Review Cycle
@@ -47,6 +49,9 @@ from aexy.schemas.review import (
 from aexy.services.review_service import ReviewService
 from aexy.services.goal_service import GoalService
 from aexy.services.contribution_service import ContributionService
+from aexy.services.activity_logger import log_activity
+from aexy.models.review import IndividualReview, ReviewCycle
+from sqlalchemy import select
 
 router = APIRouter(prefix="/reviews")
 
@@ -58,6 +63,7 @@ async def create_review_cycle(
     workspace_id: str,
     data: ReviewCycleCreate,
     db: AsyncSession = Depends(get_db),
+    current_user: Developer = Depends(get_current_developer),
 ):
     """Create a new review cycle for a workspace."""
     service = ReviewService(db)
@@ -71,6 +77,15 @@ async def create_review_cycle(
         peer_review_deadline=data.peer_review_deadline,
         manager_review_deadline=data.manager_review_deadline,
         settings=data.settings.model_dump() if data.settings else None,
+    )
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="review",
+        entity_id=str(cycle.id),
+        activity_type="created",
+        actor_id=str(current_user.id),
+        title=f"Created review cycle '{data.name}'",
     )
     return ReviewCycleResponse.model_validate(cycle)
 
@@ -115,6 +130,7 @@ async def update_review_cycle(
     cycle_id: str,
     data: ReviewCycleUpdate,
     db: AsyncSession = Depends(get_db),
+    current_user: Developer = Depends(get_current_developer),
 ):
     """Update a review cycle."""
     service = ReviewService(db)
@@ -130,6 +146,15 @@ async def update_review_cycle(
     if not cycle:
         raise HTTPException(status_code=404, detail="Review cycle not found")
 
+    await log_activity(
+        db,
+        workspace_id=str(cycle.workspace_id),
+        entity_type="review",
+        entity_id=str(cycle.id),
+        activity_type="updated",
+        actor_id=str(current_user.id),
+        title=f"Updated review cycle '{cycle.name}'",
+    )
     return ReviewCycleResponse.model_validate(cycle)
 
 
@@ -137,6 +162,7 @@ async def update_review_cycle(
 async def activate_review_cycle(
     cycle_id: str,
     db: AsyncSession = Depends(get_db),
+    current_user: Developer = Depends(get_current_developer),
 ):
     """Activate a review cycle and create individual reviews."""
     service = ReviewService(db)
@@ -146,6 +172,15 @@ async def activate_review_cycle(
             status_code=400,
             detail="Cannot activate cycle (may already be active or not found)"
         )
+    await log_activity(
+        db,
+        workspace_id=str(cycle.workspace_id),
+        entity_type="review",
+        entity_id=str(cycle.id),
+        activity_type="started",
+        actor_id=str(current_user.id),
+        title=f"Activated review cycle '{cycle.name}'",
+    )
     return ReviewCycleResponse.model_validate(cycle)
 
 
@@ -462,6 +497,7 @@ async def get_review_contributions(
 async def submit_self_review(
     review_id: str,
     data: SelfReviewSubmission,
+    current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
     """Submit a self-review."""
@@ -473,6 +509,23 @@ async def submit_self_review(
             linked_goals=data.linked_goals,
             linked_contributions=data.linked_contributions,
         )
+        # Get workspace_id via single JOIN
+        result = await db.execute(
+            select(ReviewCycle.workspace_id)
+            .join(IndividualReview, IndividualReview.review_cycle_id == ReviewCycle.id)
+            .where(IndividualReview.id == review_id)
+        )
+        ws_id = result.scalar_one_or_none()
+        if ws_id:
+            await log_activity(
+                db,
+                workspace_id=str(ws_id),
+                entity_type="review",
+                entity_id=review_id,
+                activity_type="submitted",
+                actor_id=str(current_user.id),
+                title="Submitted self-review",
+            )
         return ReviewSubmissionResponse.model_validate(submission)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -482,6 +535,7 @@ async def submit_self_review(
 async def submit_manager_review(
     review_id: str,
     data: ManagerReviewSubmission,
+    current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
     """Submit a manager review."""
@@ -495,6 +549,23 @@ async def submit_manager_review(
             linked_goals=data.linked_goals,
             linked_contributions=data.linked_contributions,
         )
+        # Get workspace_id via single JOIN
+        result = await db.execute(
+            select(ReviewCycle.workspace_id)
+            .join(IndividualReview, IndividualReview.review_cycle_id == ReviewCycle.id)
+            .where(IndividualReview.id == review_id)
+        )
+        ws_id = result.scalar_one_or_none()
+        if ws_id:
+            await log_activity(
+                db,
+                workspace_id=str(ws_id),
+                entity_type="review",
+                entity_id=review_id,
+                activity_type="submitted",
+                actor_id=str(current_user.id),
+                title="Submitted manager review",
+            )
         return ReviewSubmissionResponse.model_validate(submission)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -504,6 +575,7 @@ async def submit_manager_review(
 async def finalize_review(
     review_id: str,
     data: FinalReviewData,
+    current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
     """Finalize a review (manager action)."""
@@ -516,6 +588,23 @@ async def finalize_review(
     )
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
+    # Get workspace_id via single JOIN
+    result = await db.execute(
+        select(ReviewCycle.workspace_id)
+        .join(IndividualReview, IndividualReview.review_cycle_id == ReviewCycle.id)
+        .where(IndividualReview.id == review_id)
+    )
+    ws_id = result.scalar_one_or_none()
+    if ws_id:
+        await log_activity(
+            db,
+            workspace_id=str(ws_id),
+            entity_type="review",
+            entity_id=review_id,
+            activity_type="completed",
+            actor_id=str(current_user.id),
+            title="Finalized review",
+        )
     return IndividualReviewResponse.model_validate(review)
 
 
@@ -627,6 +716,20 @@ async def submit_peer_review(
         linked_goals=data.linked_goals,
         linked_contributions=data.linked_contributions,
     )
+    # Get review to find workspace_id
+    review = await service.get_individual_review(request.individual_review_id)
+    if review:
+        cycle = await service.get_review_cycle(review.review_cycle_id)
+        if cycle:
+            await log_activity(
+                db,
+                workspace_id=str(cycle.workspace_id),
+                entity_type="review",
+                entity_id=str(request.individual_review_id),
+                activity_type="submitted",
+                actor_id=reviewer_id,
+                title="Submitted peer review",
+            )
     return ReviewSubmissionResponse.model_validate(submission)
 
 

@@ -8,6 +8,7 @@ from sqlalchemy import and_, delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from aexy.services.activity_logger import log_activity
 from aexy.models.documentation import (
     CollaborationSession,
     Document,
@@ -91,6 +92,16 @@ class DocumentService:
             is_auto_save=False,
         )
 
+        await log_activity(
+            self.db,
+            workspace_id=workspace_id,
+            entity_type="document",
+            entity_id=str(document.id),
+            activity_type="created",
+            actor_id=created_by_id,
+            title=f"Created document '{title}'",
+        )
+
         await self.db.commit()
         await self.db.refresh(document)
         return document
@@ -164,6 +175,27 @@ class DocumentService:
                 is_auto_save=is_auto_save,
             )
 
+        # Log to unified feed (skip auto-saves to avoid noise)
+        if not is_auto_save:
+            changes = {}
+            if title is not None:
+                changes["title"] = {"new": title}
+            if visibility is not None:
+                changes["visibility"] = {"new": visibility}
+            if content_changed:
+                changes["content"] = {"new": "(updated)"}
+            if changes:
+                await log_activity(
+                    self.db,
+                    workspace_id=document.workspace_id,
+                    entity_type="document",
+                    entity_id=str(document.id),
+                    activity_type="updated",
+                    actor_id=updated_by_id,
+                    title=f"Updated document '{document.title}'",
+                    changes=changes,
+                )
+
         await self.db.commit()
         await self.db.refresh(document)
         return document
@@ -177,6 +209,16 @@ class DocumentService:
         document = await self.get_document(document_id, workspace_id)
         if not document:
             return False
+
+        # Log before hard delete since entity won't exist after
+        await log_activity(
+            self.db,
+            workspace_id=str(document.workspace_id),
+            entity_type="document",
+            entity_id=str(document.id),
+            activity_type="deleted",
+            title=f"Deleted document '{document.title}'",
+        )
 
         # Delete recursively (cascade will handle children)
         await self.db.delete(document)
@@ -698,6 +740,21 @@ class DocumentService:
         )
 
         self.db.add(collaborator)
+
+        # Get workspace_id for the unified feed
+        document = await self.get_document(document_id)
+        if document:
+            await log_activity(
+                self.db,
+                workspace_id=document.workspace_id,
+                entity_type="document",
+                entity_id=document_id,
+                activity_type="linked",
+                actor_id=invited_by_id,
+                title=f"Shared document '{document.title}'",
+                metadata={"collaborator_id": developer_id, "permission": permission},
+            )
+
         await self.db.commit()
         await self.db.refresh(collaborator)
 
@@ -760,6 +817,20 @@ class DocumentService:
         )
 
         result = await self.db.execute(stmt)
+
+        # Log to unified feed
+        if result.rowcount > 0:
+            document = await self.get_document(document_id)
+            if document:
+                await log_activity(
+                    self.db,
+                    workspace_id=str(document.workspace_id),
+                    entity_type="document",
+                    entity_id=str(document.id),
+                    activity_type="unlinked",
+                    title=f"Removed collaborator from document '{document.title}'",
+                )
+
         await self.db.commit()
         return result.rowcount > 0
 

@@ -33,6 +33,7 @@ from aexy.services.notification_service import (
     notify_mention,
     _get_text_snippet,
 )
+from aexy.services.activity_logger import log_activity
 
 
 class TicketService:
@@ -114,6 +115,16 @@ class TicketService:
                 "field_values": ticket.field_values,
                 "workspace_id": workspace_id,
             },
+        )
+
+        await log_activity(
+            self.db,
+            workspace_id=workspace_id,
+            entity_type="ticket",
+            entity_id=str(ticket.id),
+            activity_type="created",
+            title=f"Created ticket #{ticket.ticket_number}",
+            metadata={"ticket_number": ticket.ticket_number, "submitter_email": ticket.submitter_email},
         )
 
         return ticket
@@ -398,6 +409,36 @@ class TicketService:
                 },
             )
 
+        # Log entity activity
+        changes = {}
+        if "status" in data and data["status"] != old_status:
+            changes["status"] = {"old": old_status, "new": data["status"]}
+        if "priority" in data and data["priority"] != old_priority:
+            changes["priority"] = {"old": old_priority, "new": data["priority"]}
+        for field, value in data.items():
+            if field not in ("status", "priority"):
+                changes[field] = {"new": str(value) if value is not None else None}
+
+        if changes:
+            activity_type = "status_changed" if "status" in changes else "updated"
+            if "status" in changes and data.get("status") == TicketStatus.RESOLVED.value:
+                activity_type = "resolved"
+            title = (
+                f"Changed status from {old_status} to {data['status']}"
+                if "status" in changes
+                else f"Updated ticket #{ticket.ticket_number}"
+            )
+            await log_activity(
+                self.db,
+                workspace_id=ticket.workspace_id,
+                entity_type="ticket",
+                entity_id=str(ticket.id),
+                activity_type=activity_type,
+                actor_id=updated_by_id,
+                title=title,
+                changes=changes,
+            )
+
         return ticket
 
     async def assign_ticket(
@@ -465,6 +506,16 @@ class TicketService:
                     "workspace_id": ticket.workspace_id,
                 },
             )
+            await log_activity(
+                self.db,
+                workspace_id=ticket.workspace_id,
+                entity_type="ticket",
+                entity_id=str(ticket.id),
+                activity_type="assigned",
+                actor_id=assigned_by_id,
+                title=f"Assigned ticket #{ticket.ticket_number}",
+                changes={"assignee_id": {"old": old_assignee, "new": assignee_id}},
+            )
 
         return ticket
 
@@ -473,6 +524,16 @@ class TicketService:
         ticket = await self.get_ticket(ticket_id)
         if not ticket:
             return False
+
+        # Log before hard delete since entity won't exist after
+        await log_activity(
+            self.db,
+            workspace_id=str(ticket.workspace_id),
+            entity_type="ticket",
+            entity_id=str(ticket.id),
+            activity_type="deleted",
+            title=f"Deleted ticket #{ticket.ticket_number}",
+        )
 
         await self.db.delete(ticket)
         await self.db.flush()
@@ -533,6 +594,23 @@ class TicketService:
         self.db.add(response)
         await self.db.flush()
         await self.db.refresh(response)
+
+        # Log entity activity for the comment (skip internal notes to avoid leaking their existence)
+        if not comment_data.is_internal:
+            comment_activity_type = "comment"
+            if comment_data.new_status and comment_data.new_status != old_status:
+                comment_activity_type = "status_changed"
+            await log_activity(
+                self.db,
+                workspace_id=ticket.workspace_id,
+                entity_type="ticket",
+                entity_id=str(ticket.id),
+                activity_type=comment_activity_type,
+                actor_id=author_id,
+                title=f"{'Changed status' if comment_activity_type == 'status_changed' else 'Added response'} on ticket #{ticket.ticket_number}",
+                content=comment_data.content,
+                changes={"status": {"old": old_status, "new": comment_data.new_status}} if comment_data.new_status and comment_data.new_status != old_status else None,
+            )
 
         # Send mention notifications
         if author_id and comment_data.content:
@@ -968,6 +1046,15 @@ class TicketService:
                             "notified_users": escalation.notified_users,
                             "workspace_id": ticket.workspace_id,
                         },
+                    )
+                    await log_activity(
+                        self.db,
+                        workspace_id=ticket.workspace_id,
+                        entity_type="ticket",
+                        entity_id=str(ticket.id),
+                        activity_type="escalated",
+                        title=f"Escalated ticket #{ticket.ticket_number} to {level}",
+                        metadata={"escalation_level": level},
                     )
                     return escalation
 

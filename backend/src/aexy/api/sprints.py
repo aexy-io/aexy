@@ -18,7 +18,6 @@ from aexy.schemas.sprint import (
 )
 from aexy.services.sprint_service import SprintService
 from aexy.services.workspace_service import WorkspaceService
-
 router = APIRouter(tags=["Sprints"])
 
 
@@ -317,6 +316,7 @@ async def delete_sprint(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Sprint not found",
             )
+
         await db.commit()
     except ValueError as e:
         raise HTTPException(

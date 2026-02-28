@@ -10,6 +10,7 @@ from aexy.models.developer import Developer
 from aexy.services.template_service import TemplateService
 from aexy.services.campaign_service import CampaignService
 from aexy.services.workspace_service import WorkspaceService
+from aexy.services.activity_logger import log_activity
 from aexy.schemas.email_marketing import (
     # Template schemas
     EmailTemplateCreate,
@@ -76,6 +77,17 @@ async def create_template(
         data=data,
         created_by_id=current_user.id,
     )
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="template",
+        entity_id=str(template.id),
+        activity_type="created",
+        actor_id=str(current_user.id),
+        title=f"Created template '{data.name}'",
+    )
+
     return template
 
 
@@ -143,6 +155,17 @@ async def update_template(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Template not found",
         )
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="template",
+        entity_id=template_id,
+        activity_type="updated",
+        actor_id=str(current_user.id),
+        title=f"Updated template '{template.name}'",
+    )
+
     return template
 
 
@@ -163,6 +186,16 @@ async def delete_template(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Template not found",
         )
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="template",
+        entity_id=template_id,
+        activity_type="deleted",
+        actor_id=str(current_user.id),
+        title="Deleted template",
+    )
 
 
 @router.post("/templates/{template_id}/preview", response_model=TemplatePreviewResponse)
@@ -210,6 +243,17 @@ async def duplicate_template(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Template not found",
         )
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="template",
+        entity_id=str(template.id),
+        activity_type="duplicated",
+        actor_id=str(current_user.id),
+        title=f"Duplicated template '{template.name}'",
+    )
+
     return template
 
 
@@ -256,6 +300,17 @@ async def create_campaign(
         data=data,
         created_by_id=current_user.id,
     )
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="campaign",
+        entity_id=str(campaign.id),
+        activity_type="created",
+        actor_id=str(current_user.id),
+        title=f"Created campaign '{data.name}'",
+    )
+
     return campaign
 
 
@@ -328,6 +383,17 @@ async def update_campaign(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Campaign not found",
         )
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="campaign",
+        entity_id=campaign_id,
+        activity_type="updated",
+        actor_id=str(current_user.id),
+        title=f"Updated campaign '{campaign.name}'",
+    )
+
     return campaign
 
 
@@ -355,6 +421,16 @@ async def delete_campaign(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Campaign not found",
         )
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="campaign",
+        entity_id=campaign_id,
+        activity_type="deleted",
+        actor_id=str(current_user.id),
+        title="Deleted campaign",
+    )
 
 
 @router.post("/campaigns/{campaign_id}/duplicate", response_model=EmailCampaignResponse)
@@ -413,6 +489,17 @@ async def schedule_campaign(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Campaign not found",
         )
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="campaign",
+        entity_id=campaign_id,
+        activity_type="status_changed",
+        actor_id=str(current_user.id),
+        title=f"Scheduled campaign '{campaign.name}'",
+    )
+
     return campaign
 
 
@@ -481,6 +568,17 @@ async def pause_campaign(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Campaign not found",
         )
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="campaign",
+        entity_id=campaign_id,
+        activity_type="paused",
+        actor_id=str(current_user.id),
+        title=f"Paused campaign '{campaign.name}'",
+    )
+
     return campaign
 
 
@@ -509,6 +607,16 @@ async def resume_campaign(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Campaign not found",
         )
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="campaign",
+        entity_id=campaign_id,
+        activity_type="resumed",
+        actor_id=str(current_user.id),
+        title=f"Resumed campaign '{campaign.name}'",
+    )
 
     # Resume sending if it was in sending state
     if campaign.status == "sending":
@@ -550,6 +658,17 @@ async def cancel_campaign(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Campaign not found",
         )
+
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="campaign",
+        entity_id=campaign_id,
+        activity_type="cancelled",
+        actor_id=str(current_user.id),
+        title=f"Cancelled campaign '{campaign.name}'",
+    )
+
     return campaign
 
 
