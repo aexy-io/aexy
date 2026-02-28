@@ -11,9 +11,10 @@ import { useChatWebSocketContext } from "@/contexts/ChatWebSocketContext";
 import { WidgetChatView } from "./WidgetChatView";
 import { WidgetNotificationsView } from "./WidgetNotificationsView";
 import { WidgetActivityView } from "./WidgetActivityView";
+import { WidgetAskAIView } from "./WidgetAskAIView";
 import { cn } from "@/lib/utils";
 
-type Tab = "threads" | "notifications" | "activity";
+type Tab = "threads" | "notifications" | "activity" | "ai";
 
 export function FloatingChatWidget() {
   const pathname = usePathname();
@@ -82,6 +83,7 @@ export function FloatingChatWidget() {
               { key: "threads", label: "Threads", badge: inboxUnread },
               { key: "notifications", label: "Notifications", badge: notifUnread },
               { key: "activity", label: "Activity", badge: 0 },
+              { key: "ai", label: "AI", badge: 0 },
             ] as const).map((tab) => (
               <button
                 key={tab.key}
@@ -134,6 +136,7 @@ export function FloatingChatWidget() {
         {activeTab === "threads" && <WidgetChatView />}
         {activeTab === "notifications" && <WidgetNotificationsView />}
         {activeTab === "activity" && <WidgetActivityView />}
+        {activeTab === "ai" && <WidgetAskAIView />}
       </div>
     </div>
   );

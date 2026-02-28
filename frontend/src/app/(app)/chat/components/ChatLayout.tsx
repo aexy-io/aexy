@@ -4,12 +4,17 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useChatStore } from "@/stores/chatStore";
 import { useChannels, useTopics } from "@/hooks/useChat";
 import { useChatWebSocketContext } from "@/contexts/ChatWebSocketContext";
-import { ChatChannel, ChatTopic, InboxTopic } from "@/lib/api";
+import { useCreateAskConversation } from "@/hooks/useAsk";
+import { ChatChannel, ChatTopic, InboxTopic, AskConversation } from "@/lib/api";
 import { ChannelList } from "./ChannelList";
 import { TopicList } from "./TopicList";
 import { InboxView } from "./InboxView";
 import { MessageThread } from "./MessageThread";
+import { AskAIView } from "./AskAIView";
+import { AskAIChatPanel } from "./AskAIChatPanel";
 import { Wifi, WifiOff } from "lucide-react";
+
+type Mode = "inbox" | "channel" | "ai";
 
 interface ChatLayoutProps {
   workspaceId: string;
@@ -23,13 +28,16 @@ export function ChatLayout({ workspaceId, initialChannelSlug, initialTopicId }: 
   const [selectedChannel, setSelectedChannel] = useState<ChatChannel | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<{ id: string; name: string; channelId: string } | null>(null);
 
+  // AI mode state
+  const [mode, setMode] = useState<Mode>(initialChannelSlug ? "channel" : "inbox");
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const createConversation = useCreateAskConversation(workspaceId);
+
   // If URL has params, use those; otherwise try restoring from store
   const effectiveSlug = initialChannelSlug || lastChannelSlug;
 
   // Capture initial topic ID in a ref so setActiveChannel clearing the store doesn't lose it
   const initialTopicRef = useRef(initialTopicId || activeTopicId);
-
-  const [showInbox, setShowInbox] = useState(!effectiveSlug);
 
   // Fetch channels for URL param hydration (shared cache with ChannelList)
   const { data: channels } = useChannels(workspaceId);
@@ -47,13 +55,10 @@ export function ChatLayout({ workspaceId, initialChannelSlug, initialTopicId }: 
     if (!channel) return;
 
     setSelectedChannel(channel);
-    // Only call setActiveChannel when restoring from URL params;
-    // when restoring from saved store state, the store is already correct
-    // and calling setActiveChannel would clear the saved topicId.
     if (initialChannelSlug) {
       setActiveChannel(channel.id, channel.slug);
     }
-    setShowInbox(false);
+    setMode("channel");
 
     if (!initialTopicRef.current) {
       hydratedRef.current = true;
@@ -76,7 +81,7 @@ export function ChatLayout({ workspaceId, initialChannelSlug, initialTopicId }: 
       setSelectedChannel(channel);
       setActiveChannel(channel.id, channel.slug);
       setSelectedTopic(null);
-      setShowInbox(false);
+      setMode("channel");
       window.history.replaceState(null, "", `/chat/${channel.slug}`);
     },
     [setActiveChannel]
@@ -95,7 +100,6 @@ export function ChatLayout({ workspaceId, initialChannelSlug, initialTopicId }: 
 
   const handleSelectInboxTopic = useCallback(
     (topic: InboxTopic) => {
-      // Find the channel from the loaded channels list so middle panel shows TopicList
       const channel = channels?.find((c) => c.id === topic.channel_id);
       if (channel) {
         setSelectedChannel(channel);
@@ -103,19 +107,36 @@ export function ChatLayout({ workspaceId, initialChannelSlug, initialTopicId }: 
       }
       setSelectedTopic({ id: topic.id, name: topic.name, channelId: topic.channel_id });
       setActiveTopic(topic.id, topic.name);
-      setShowInbox(false);
+      setMode("channel");
       window.history.replaceState(null, "", `/chat/${topic.channel_slug}/${topic.id}`);
     },
     [setActiveTopic, setActiveChannel, channels]
   );
 
   const handleSelectInbox = useCallback(() => {
-    setShowInbox(true);
+    setMode("inbox");
     setSelectedChannel(null);
     setActiveChannel(null);
     setSelectedTopic(null);
     window.history.replaceState(null, "", "/chat");
   }, [setActiveChannel]);
+
+  const handleSelectAI = useCallback(() => {
+    setMode("ai");
+    setSelectedChannel(null);
+    setActiveChannel(null);
+    setSelectedTopic(null);
+    window.history.replaceState(null, "", "/chat");
+  }, [setActiveChannel]);
+
+  const handleSelectConversation = useCallback((conv: AskConversation) => {
+    setSelectedConversationId(conv.id);
+  }, []);
+
+  const handleNewConversation = useCallback(async () => {
+    const conv = await createConversation.mutateAsync(undefined);
+    setSelectedConversationId(conv.id);
+  }, [createConversation]);
 
   const handleTyping = useCallback(() => {
     if (selectedTopic) {
@@ -137,7 +158,9 @@ export function ChatLayout({ workspaceId, initialChannelSlug, initialTopicId }: 
           workspaceId={workspaceId}
           onSelectChannel={handleSelectChannel}
           onSelectInbox={handleSelectInbox}
-          showInbox={showInbox && !selectedChannel}
+          onSelectAI={handleSelectAI}
+          showInbox={mode === "inbox"}
+          showAI={mode === "ai"}
         />
         {/* Connection status */}
         <div className="flex-shrink-0 px-3 py-1.5 border-t border-border flex items-center gap-1.5 text-[10px] text-muted-foreground">
@@ -155,9 +178,16 @@ export function ChatLayout({ workspaceId, initialChannelSlug, initialTopicId }: 
         </div>
       </div>
 
-      {/* Middle: Topics or Inbox */}
+      {/* Middle: Topics / Inbox / AI Conversations */}
       <div className="w-72 flex-shrink-0 border-r border-border">
-        {showInbox && !selectedChannel ? (
+        {mode === "ai" ? (
+          <AskAIView
+            workspaceId={workspaceId}
+            activeConversationId={selectedConversationId}
+            onSelectConversation={handleSelectConversation}
+            onNewConversation={handleNewConversation}
+          />
+        ) : mode === "inbox" ? (
           <InboxView workspaceId={workspaceId} onSelectTopic={handleSelectInboxTopic} />
         ) : selectedChannel ? (
           <TopicList
@@ -173,9 +203,25 @@ export function ChatLayout({ workspaceId, initialChannelSlug, initialTopicId }: 
         )}
       </div>
 
-      {/* Right: Messages */}
+      {/* Right: Messages / AI Chat */}
       <div className="flex-1 min-w-0">
-        {selectedTopic ? (
+        {mode === "ai" && selectedConversationId ? (
+          <AskAIChatPanel
+            workspaceId={workspaceId}
+            conversationId={selectedConversationId}
+          />
+        ) : mode === "ai" ? (
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
+            <p className="text-sm">Select a conversation or start a new one</p>
+            <button
+              onClick={handleNewConversation}
+              disabled={createConversation.isPending}
+              className="px-3 py-1.5 text-xs rounded bg-purple-500 text-white hover:bg-purple-600 disabled:opacity-50"
+            >
+              {createConversation.isPending ? "Creating..." : "New Chat"}
+            </button>
+          </div>
+        ) : selectedTopic ? (
           <MessageThread
             workspaceId={workspaceId}
             topicId={selectedTopic.id}

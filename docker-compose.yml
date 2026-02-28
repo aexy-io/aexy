@@ -89,6 +89,7 @@ services:
       - LLM_PROVIDER=gemini
       - LLM_MODEL=gemini-2.0-flash
       - GEMINI_API_KEY=${GEMINI_API_KEY:-your-gemini-api-key}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
       - S3_ENDPOINT_URL=http://rustfs:9000
       - S3_ACCESS_KEY_ID=${RUSTFS_ROOT_USER:-aexy-admin}

@@ -496,6 +496,7 @@ from aexy.models.gtm_content import ContentAnalysis
 from aexy.models.gtm_abm import ABMTargetList, ABMAccount
 from aexy.models.gtm_webhook import GTMWebhook, GTMWebhookDelivery, GTMProviderHealthMetric
 from aexy.models.api_token import ApiToken
+from aexy.models.ask import AskConversation, AskMessage
 from aexy.models.chat import (
     ChatChannel,
     ChatChannelMember,
@@ -1012,6 +1013,9 @@ __all__ = [
     "GTMProviderHealthMetric",
     # API Tokens
     "ApiToken",
+    # Ask AI
+    "AskConversation",
+    "AskMessage",
     # Team Chat
     "ChatChannel",
     "ChatChannelMember",
