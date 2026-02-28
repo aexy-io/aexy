@@ -5,17 +5,19 @@ import { useChannels, useJoinChannel, useInbox, useSetupChat } from "@/hooks/use
 import { useChatStore } from "@/stores/chatStore";
 import { ChannelCreateDialog } from "./ChannelCreateDialog";
 import { ChatChannel } from "@/lib/api";
-import { Hash, Lock, Plus, Inbox, MessageCircle } from "lucide-react";
+import { Hash, Lock, Plus, Inbox, MessageCircle, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ChannelListProps {
   workspaceId: string;
   onSelectChannel: (channel: ChatChannel) => void;
   onSelectInbox: () => void;
+  onSelectAI?: () => void;
   showInbox?: boolean;
+  showAI?: boolean;
 }
 
-export function ChannelList({ workspaceId, onSelectChannel, onSelectInbox, showInbox }: ChannelListProps) {
+export function ChannelList({ workspaceId, onSelectChannel, onSelectInbox, onSelectAI, showInbox, showAI }: ChannelListProps) {
   const { data: channels, isLoading } = useChannels(workspaceId);
   const { data: inboxTopics } = useInbox(workspaceId);
   const [showCreate, setShowCreate] = useState(false);
@@ -78,6 +80,20 @@ export function ChannelList({ workspaceId, onSelectChannel, onSelectInbox, showI
           </span>
         )}
       </button>
+
+      {/* Ask AI */}
+      {onSelectAI && (
+        <button
+          onClick={onSelectAI}
+          className={cn(
+            "flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent/50 transition-colors w-full text-left",
+            showAI && "bg-accent"
+          )}
+        >
+          <Bot className="h-4 w-4 text-purple-400" />
+          <span className="font-medium">Ask AI</span>
+        </button>
+      )}
 
       {/* Channel list */}
       <div className="flex-1 overflow-y-auto py-1">

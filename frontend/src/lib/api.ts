@@ -20302,3 +20302,61 @@ export const chatApi = {
     return response.data;
   },
 };
+
+// ── Ask AI Types ─────────────────────────────────────────────────────
+
+export interface AskConversation {
+  id: string;
+  workspace_id: string;
+  developer_id: string;
+  title: string | null;
+  created_at: string;
+  updated_at: string | null;
+  message_count: number;
+}
+
+export interface AskToolCallInfo {
+  id: string;
+  tool_name: string;
+  tool_input: Record<string, unknown>;
+  tool_result?: unknown;
+  status: string;
+}
+
+export interface AskMessage {
+  id: string;
+  conversation_id: string;
+  role: "user" | "assistant";
+  content: string | null;
+  tool_calls: AskToolCallInfo[];
+  token_usage: { input_tokens: number; output_tokens: number } | null;
+  message_index: number;
+  created_at: string;
+}
+
+export interface AskConversationWithMessages extends AskConversation {
+  messages: AskMessage[];
+}
+
+// ── Ask AI API ───────────────────────────────────────────────────────
+
+export const askApi = {
+  listConversations: async (workspaceId: string): Promise<AskConversation[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/ask/conversations`);
+    return response.data;
+  },
+
+  createConversation: async (workspaceId: string, title?: string): Promise<AskConversation> => {
+    const response = await api.post(`/workspaces/${workspaceId}/ask/conversations`, { title });
+    return response.data;
+  },
+
+  getConversation: async (workspaceId: string, conversationId: string): Promise<AskConversationWithMessages> => {
+    const response = await api.get(`/workspaces/${workspaceId}/ask/conversations/${conversationId}`);
+    return response.data;
+  },
+
+  deleteConversation: async (workspaceId: string, conversationId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/ask/conversations/${conversationId}`);
+  },
+};
