@@ -268,7 +268,7 @@ export default function McpPage() {
             </div>
             <div className="space-y-2">
               <p className="text-sm font-medium">Install the MCP server</p>
-              <CodeBlock code="git clone https://github.com/aexy-io/mcp-server.git cd mcp-server && uv sync" />
+              <CodeBlock code="git clone https://github.com/aexy-io/mcp-server.git && cd mcp-server && uv sync" />
             </div>
           </div>
           <div className="flex gap-3">
