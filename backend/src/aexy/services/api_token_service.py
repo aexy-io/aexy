@@ -56,20 +56,6 @@ class ApiTokenService:
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
-    async def revoke(self, developer_id: str, token_id: str) -> ApiToken | None:
-        """Revoke a token (set is_active=False)."""
-        stmt = select(ApiToken).where(
-            ApiToken.id == token_id,
-            ApiToken.developer_id == developer_id,
-        )
-        result = await self.db.execute(stmt)
-        token = result.scalar_one_or_none()
-        if token is None:
-            return None
-        token.is_active = False
-        await self.db.flush()
-        return token
-
     async def delete(self, developer_id: str, token_id: str) -> bool:
         """Hard-delete a token."""
         stmt = select(ApiToken).where(
@@ -100,7 +86,12 @@ class ApiTokenService:
         if token.expires_at and token.expires_at < datetime.now(timezone.utc):
             return None
 
-        # Update last_used_at
-        token.last_used_at = datetime.now(timezone.utc)
-        await self.db.flush()
+        # Debounce last_used_at — only update if older than 5 minutes
+        now = datetime.now(timezone.utc)
+        if (
+            token.last_used_at is None
+            or (now - token.last_used_at).total_seconds() > 300
+        ):
+            token.last_used_at = now
+            await self.db.flush()
         return token

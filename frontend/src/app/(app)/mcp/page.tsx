@@ -3,8 +3,6 @@
 import { useState } from "react";
 import {
   Plug,
-  Copy,
-  CheckCircle2,
   ChevronDown,
   ChevronRight,
   ExternalLink,
@@ -13,30 +11,9 @@ import {
   Wrench,
 } from "lucide-react";
 import Link from "next/link";
+import { CopyButton } from "@/components/ui/copy-button";
 
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-  const handleCopy = () => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-  return (
-    <button
-      onClick={handleCopy}
-      className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition-colors"
-      title="Copy"
-    >
-      {copied ? (
-        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-      ) : (
-        <Copy className="h-3.5 w-3.5" />
-      )}
-    </button>
-  );
-}
-
-function CodeBlock({ code, language }: { code: string; language?: string }) {
+function CodeBlock({ code }: { code: string }) {
   return (
     <div className="relative group">
       <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -122,22 +99,28 @@ const TOOL_CATEGORIES = [
   },
 ];
 
-const CLAUDE_CONFIG = `{
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+
+function getClaudeConfig(apiUrl: string) {
+  return `{
   "mcpServers": {
     "aexy": {
       "command": "uv",
       "args": ["run", "--directory", "/path/to/aexy/mcp-server", "aexy-mcp"],
       "env": {
-        "AEXY_API_URL": "http://localhost:8000/api/v1",
+        "AEXY_API_URL": "${apiUrl}",
         "AEXY_API_TOKEN": "<your-api-token>",
         "AEXY_ENABLE_TEMPORAL": "true"
       }
     }
   }
 }`;
+}
 
-const GENERIC_CONFIG = `# Environment variables for the MCP server
-export AEXY_API_URL="http://localhost:8000/api/v1"
+function getGenericConfig(apiUrl: string) {
+  return `# Environment variables for the MCP server
+export AEXY_API_URL="${apiUrl}"
 export AEXY_API_TOKEN="<your-api-token>"
 export AEXY_ENABLE_TEMPORAL="true"
 export TEMPORAL_ADDRESS="localhost:7233"
@@ -145,6 +128,7 @@ export TEMPORAL_NAMESPACE="default"
 
 # Run the MCP server via stdio
 uv run --directory /path/to/aexy/mcp-server aexy-mcp`;
+}
 
 type ClientTab = "claude" | "codex" | "other";
 
@@ -336,7 +320,7 @@ export default function McpPage() {
                 </code>{" "}
                 or global Claude Code settings:
               </p>
-              <CodeBlock code={CLAUDE_CONFIG} language="json" />
+              <CodeBlock code={getClaudeConfig(API_BASE)} />
               <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3">
                 <p className="text-xs text-muted-foreground">
                   <strong className="text-foreground">Note:</strong> Set{" "}
@@ -373,7 +357,7 @@ export default function McpPage() {
                 </span>
                 <div className="bg-accent/50 border border-border rounded-lg divide-y divide-border text-sm">
                   {[
-                    ["AEXY_API_URL", "http://localhost:8000/api/v1", "Aexy backend API URL"],
+                    ["AEXY_API_URL", API_BASE, "Aexy backend API URL"],
                     ["AEXY_API_TOKEN", "<your-token>", "API token from Settings"],
                     ["AEXY_ENABLE_TEMPORAL", "true", "Enable Temporal tools"],
                   ].map(([name, value, desc]) => (
@@ -398,7 +382,7 @@ export default function McpPage() {
                 For any MCP-compatible client, use the stdio transport with
                 these environment variables:
               </p>
-              <CodeBlock code={GENERIC_CONFIG} />
+              <CodeBlock code={getGenericConfig(API_BASE)} />
               <div className="bg-accent/50 border border-border rounded-lg p-3">
                 <p className="text-xs text-muted-foreground">
                   <strong className="text-foreground">Environment variables reference:</strong>
