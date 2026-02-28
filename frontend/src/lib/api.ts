@@ -4800,7 +4800,55 @@ export type NotificationEventType =
   | "goal_at_risk"
   | "goal_completed"
   | "workspace_invite"
-  | "team_added";
+  | "team_added"
+  | "oncall_shift_starting"
+  | "oncall_shift_started"
+  | "oncall_shift_ending"
+  | "oncall_swap_requested"
+  | "oncall_swap_accepted"
+  | "oncall_swap_declined"
+  | "task_mentioned"
+  | "mention"
+  | "usage_alert_80"
+  | "usage_alert_90"
+  | "usage_alert_100"
+  | "insight_alert_warning"
+  | "insight_alert_critical"
+  | "leave_request_submitted"
+  | "leave_request_approved"
+  | "leave_request_rejected"
+  | "leave_request_cancelled"
+  | "app_access_requested"
+  | "app_access_approved"
+  | "app_access_rejected"
+  | "reminder_due"
+  | "reminder_acknowledged"
+  | "reminder_completed"
+  | "reminder_escalated"
+  | "reminder_overdue"
+  | "reminder_assigned"
+  | "agent_invoked"
+  | "blocker_escalated"
+  | "uptime_incident_created"
+  | "uptime_incident_resolved"
+  | "learning_approval_requested"
+  | "learning_approval_decided"
+  | "learning_goal_assigned"
+  | "learning_goal_overdue"
+  | "learning_activity_completed"
+  | "form_submission_received"
+  | "form_submission_failed"
+  | "campaign_completed"
+  | "campaign_scheduled"
+  | "automation_run_failed"
+  | "automation_run_completed"
+  | "assessment_invitation_sent"
+  | "assessment_completed"
+  | "candidate_stage_changed"
+  | "gtm_alert_triggered"
+  | "document_shared"
+  | "document_mentioned"
+  | "document_commented";
 
 export interface Notification {
   id: string;
@@ -4844,13 +4892,35 @@ export interface NotificationPreference {
   in_app_enabled: boolean;
   email_enabled: boolean;
   slack_enabled: boolean;
+  web_push_enabled: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface CategoryPreference {
+  id: string;
+  category: string;
+  in_app_enabled: boolean;
+  email_enabled: boolean;
+  slack_enabled: boolean;
+  web_push_enabled: boolean;
+  slack_channel_id: string | null;
+  slack_channel_name: string | null;
+}
+
+export interface WebPushSubscriptionResponse {
+  id: string;
+  developer_id: string;
+  endpoint: string;
+  is_active: boolean;
+  created_at: string;
 }
 
 export interface NotificationPreferencesResponse {
   preferences: Record<string, NotificationPreference>;
   available_event_types: string[];
+  categories: Record<string, CategoryPreference>;
+  category_map: Record<string, string[]>;
 }
 
 // ============ Notification API ============
@@ -4932,9 +5002,60 @@ export const notificationsApi = {
       in_app_enabled?: boolean;
       email_enabled?: boolean;
       slack_enabled?: boolean;
+      web_push_enabled?: boolean;
     }
   ): Promise<NotificationPreference> => {
     const response = await api.put(`/notifications/preferences/${eventType}`, data, {
+      params: { developer_id: developerId },
+    });
+    return response.data;
+  },
+
+  // Web Push
+  subscribePush: async (
+    developerId: string,
+    subscription: { endpoint: string; p256dh_key: string; auth_key: string; user_agent?: string }
+  ): Promise<WebPushSubscriptionResponse> => {
+    const response = await api.post("/notifications/push-subscription", subscription, {
+      params: { developer_id: developerId },
+    });
+    return response.data;
+  },
+
+  unsubscribePush: async (developerId: string, endpoint: string): Promise<void> => {
+    await api.delete("/notifications/push-subscription", {
+      params: { developer_id: developerId, endpoint },
+    });
+  },
+
+  getVapidKey: async (): Promise<{ public_key: string }> => {
+    const response = await api.get("/notifications/push-vapid-key");
+    return response.data;
+  },
+
+  // Category Preferences
+  getCategoryPreferences: async (
+    developerId: string
+  ): Promise<Record<string, CategoryPreference>> => {
+    const response = await api.get("/notifications/category-preferences", {
+      params: { developer_id: developerId },
+    });
+    return response.data;
+  },
+
+  updateCategoryPreference: async (
+    developerId: string,
+    category: string,
+    data: {
+      in_app_enabled?: boolean;
+      email_enabled?: boolean;
+      slack_enabled?: boolean;
+      web_push_enabled?: boolean;
+      slack_channel_id?: string | null;
+      slack_channel_name?: string | null;
+    }
+  ): Promise<CategoryPreference> => {
+    const response = await api.put(`/notifications/category-preferences/${category}`, data, {
       params: { developer_id: developerId },
     });
     return response.data;

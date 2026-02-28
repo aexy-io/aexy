@@ -15,8 +15,11 @@ from aexy.models.notification import (
     DEFAULT_NOTIFICATION_PREFERENCES,
     EmailNotificationLog,
     Notification,
+    NotificationCategoryPreference,
     NotificationEventType,
     NotificationPreference,
+    NOTIFICATION_CATEGORIES,
+    EVENT_TYPE_TO_CATEGORY,
 )
 from aexy.schemas.notification import (
     NotificationContext,
@@ -144,6 +147,25 @@ class NotificationService:
             except Exception:
                 logger.exception(f"Failed to dispatch Slack for notification {notification.id}")
 
+        # Dispatch Web Push via Temporal if enabled
+        if pref and pref.web_push_enabled:
+            try:
+                from aexy.temporal.dispatch import dispatch
+                from aexy.temporal.task_queues import TaskQueue
+                from aexy.temporal.activities.notifications import SendNotificationWebPushInput
+
+                await dispatch(
+                    "send_notification_web_push",
+                    SendNotificationWebPushInput(
+                        notification_id=notification.id,
+                        recipient_id=recipient_id,
+                    ),
+                    task_queue=TaskQueue.OPERATIONS,
+                )
+                logger.info(f"Web push notification dispatched for {recipient_id}")
+            except Exception:
+                logger.exception(f"Failed to dispatch web push for notification {notification.id}")
+
         logger.info(f"Created notification {notification.id} for {recipient_id}: {event_type_str}")
         return notification
 
@@ -170,10 +192,14 @@ class NotificationService:
         )
 
         template = NOTIFICATION_TEMPLATES.get(SchemaEventType(event_type_enum.value), {})
-        title = template.get("title", "Notification")
+        title_template = template.get("title", "Notification")
         body_template = template.get("body_template", "You have a new notification.")
 
-        # Render body with context
+        # Render title and body with context
+        try:
+            title = title_template.format(**context)
+        except (KeyError, IndexError):
+            title = title_template
         try:
             body = body_template.format(**context)
         except KeyError as e:
@@ -397,6 +423,7 @@ class NotificationService:
                     in_app_enabled=defaults["in_app"],
                     email_enabled=defaults["email"],
                     slack_enabled=defaults["slack"],
+                    web_push_enabled=defaults.get("web_push", False),
                 )
                 self.db.add(pref)
                 existing[event_type.value] = pref
@@ -439,7 +466,7 @@ class NotificationService:
                 event_enum = NotificationEventType(event_type)
                 defaults = DEFAULT_NOTIFICATION_PREFERENCES.get(event_enum, {})
             except ValueError:
-                defaults = {"in_app": True, "email": True, "slack": False}
+                defaults = {"in_app": True, "email": True, "slack": False, "web_push": False}
 
             pref = NotificationPreference(
                 id=str(uuid4()),
@@ -448,6 +475,7 @@ class NotificationService:
                 in_app_enabled=defaults.get("in_app", True),
                 email_enabled=defaults.get("email", True),
                 slack_enabled=defaults.get("slack", False),
+                web_push_enabled=defaults.get("web_push", False),
             )
             self.db.add(pref)
             await self.db.commit()
@@ -462,6 +490,7 @@ class NotificationService:
         in_app_enabled: bool | None = None,
         email_enabled: bool | None = None,
         slack_enabled: bool | None = None,
+        web_push_enabled: bool | None = None,
     ) -> NotificationPreference:
         """Update a notification preference.
 
@@ -471,6 +500,7 @@ class NotificationService:
             in_app_enabled: Enable in-app notifications.
             email_enabled: Enable email notifications.
             slack_enabled: Enable Slack notifications.
+            web_push_enabled: Enable web push notifications.
 
         Returns:
             Updated NotificationPreference.
@@ -483,10 +513,106 @@ class NotificationService:
             pref.email_enabled = email_enabled
         if slack_enabled is not None:
             pref.slack_enabled = slack_enabled
+        if web_push_enabled is not None:
+            pref.web_push_enabled = web_push_enabled
 
         await self.db.commit()
         await self.db.refresh(pref)
         return pref
+
+    # ============ Category Preferences ============
+
+    async def get_category_preferences(
+        self,
+        developer_id: str,
+    ) -> dict[str, NotificationCategoryPreference]:
+        """Get all category-level notification preferences for a user.
+
+        Creates default category preferences if they don't exist.
+
+        Returns:
+            Dict of category -> preference.
+        """
+        query = select(NotificationCategoryPreference).where(
+            NotificationCategoryPreference.developer_id == developer_id
+        )
+        result = await self.db.execute(query)
+        existing = {p.category: p for p in result.scalars().all()}
+
+        # Create missing defaults for all categories
+        created = False
+        for category in NOTIFICATION_CATEGORIES:
+            if category not in existing:
+                cat_pref = NotificationCategoryPreference(
+                    id=str(uuid4()),
+                    developer_id=developer_id,
+                    category=category,
+                    in_app_enabled=True,
+                    email_enabled=True,
+                    slack_enabled=False,
+                    web_push_enabled=False,
+                )
+                self.db.add(cat_pref)
+                existing[category] = cat_pref
+                created = True
+
+        if created:
+            await self.db.commit()
+            for pref in existing.values():
+                await self.db.refresh(pref)
+
+        return existing
+
+    async def update_category_preference(
+        self,
+        developer_id: str,
+        category: str,
+        in_app_enabled: bool | None = None,
+        email_enabled: bool | None = None,
+        slack_enabled: bool | None = None,
+        web_push_enabled: bool | None = None,
+        slack_channel_id: str | None = None,
+        slack_channel_name: str | None = None,
+    ) -> NotificationCategoryPreference:
+        """Update a category-level preference and optionally propagate to child events."""
+        if category not in NOTIFICATION_CATEGORIES:
+            raise ValueError(f"Invalid category: {category}")
+
+        # Get or create category preference
+        cat_prefs = await self.get_category_preferences(developer_id)
+        cat_pref = cat_prefs[category]
+
+        if in_app_enabled is not None:
+            cat_pref.in_app_enabled = in_app_enabled
+        if email_enabled is not None:
+            cat_pref.email_enabled = email_enabled
+        if slack_enabled is not None:
+            cat_pref.slack_enabled = slack_enabled
+        if web_push_enabled is not None:
+            cat_pref.web_push_enabled = web_push_enabled
+        # Allow clearing slack channel by passing empty string
+        if slack_channel_id is not None:
+            cat_pref.slack_channel_id = slack_channel_id or None
+        if slack_channel_name is not None:
+            cat_pref.slack_channel_name = slack_channel_name or None
+
+        # Propagate master toggle changes to all child event preferences
+        event_types = NOTIFICATION_CATEGORIES[category]
+        for event_type_value in event_types:
+            pref = await self.get_preference(developer_id, event_type_value)
+            if pref:
+                if in_app_enabled is not None:
+                    pref.in_app_enabled = in_app_enabled
+                if email_enabled is not None:
+                    pref.email_enabled = email_enabled
+                if slack_enabled is not None:
+                    pref.slack_enabled = slack_enabled
+                if web_push_enabled is not None:
+                    pref.web_push_enabled = web_push_enabled
+
+        await self.db.commit()
+        await self.db.refresh(cat_pref)
+        return cat_pref
 
     # ============ Bulk Operations ============
 
@@ -726,5 +852,495 @@ async def notify_mention(
             "entity_type": entity_type,
             "entity_id": entity_id,
             "action_url": action_url,
+        },
+    )
+
+
+# ============ Leave Notifications ============
+
+
+async def notify_leave_request_submitted(
+    db: AsyncSession,
+    approver_id: str,
+    requester_name: str,
+    leave_type: str,
+    start_date: str,
+    end_date: str,
+    request_id: str,
+    workspace_id: str,
+) -> Notification | None:
+    """Notify approver when a leave request is submitted."""
+    service = NotificationService(db)
+    return await service.create_notification_from_event(
+        recipient_id=approver_id,
+        event_type=NotificationEventType.LEAVE_REQUEST_SUBMITTED,
+        context={
+            "requester_name": requester_name,
+            "leave_type": leave_type,
+            "start_date": start_date,
+            "end_date": end_date,
+            "request_id": request_id,
+            "workspace_id": workspace_id,
+            "action_url": "/leave/requests",
+        },
+    )
+
+
+async def notify_leave_request_approved(
+    db: AsyncSession,
+    developer_id: str,
+    leave_type: str,
+    start_date: str,
+    end_date: str,
+    request_id: str,
+    workspace_id: str,
+) -> Notification | None:
+    """Notify developer when leave request is approved."""
+    service = NotificationService(db)
+    return await service.create_notification_from_event(
+        recipient_id=developer_id,
+        event_type=NotificationEventType.LEAVE_REQUEST_APPROVED,
+        context={
+            "leave_type": leave_type,
+            "start_date": start_date,
+            "end_date": end_date,
+            "request_id": request_id,
+            "workspace_id": workspace_id,
+            "action_url": "/leave/requests",
+        },
+    )
+
+
+async def notify_leave_request_rejected(
+    db: AsyncSession,
+    developer_id: str,
+    leave_type: str,
+    start_date: str,
+    end_date: str,
+    request_id: str,
+    workspace_id: str,
+) -> Notification | None:
+    """Notify developer when leave request is rejected."""
+    service = NotificationService(db)
+    return await service.create_notification_from_event(
+        recipient_id=developer_id,
+        event_type=NotificationEventType.LEAVE_REQUEST_REJECTED,
+        context={
+            "leave_type": leave_type,
+            "start_date": start_date,
+            "end_date": end_date,
+            "request_id": request_id,
+            "workspace_id": workspace_id,
+            "action_url": "/leave/requests",
+        },
+    )
+
+
+async def notify_leave_request_cancelled(
+    db: AsyncSession,
+    approver_id: str,
+    requester_name: str,
+    leave_type: str,
+    start_date: str,
+    end_date: str,
+    request_id: str,
+    workspace_id: str,
+) -> Notification | None:
+    """Notify approver when leave request is cancelled."""
+    service = NotificationService(db)
+    return await service.create_notification_from_event(
+        recipient_id=approver_id,
+        event_type=NotificationEventType.LEAVE_REQUEST_CANCELLED,
+        context={
+            "requester_name": requester_name,
+            "leave_type": leave_type,
+            "start_date": start_date,
+            "end_date": end_date,
+            "request_id": request_id,
+            "workspace_id": workspace_id,
+            "action_url": "/leave/requests",
+        },
+    )
+
+
+# ============ Review / Goal Notifications ============
+
+
+async def notify_review_acknowledged(
+    db: AsyncSession,
+    manager_id: str,
+    developer_name: str,
+    review_id: str,
+) -> Notification | None:
+    """Notify manager when employee acknowledges review."""
+    service = NotificationService(db)
+    return await service.create_notification_from_event(
+        recipient_id=manager_id,
+        event_type=NotificationEventType.REVIEW_ACKNOWLEDGED,
+        context={
+            "developer_name": developer_name,
+            "review_id": review_id,
+            "action_url": f"/reviews/{review_id}",
+        },
+    )
+
+
+async def notify_goal_completed(
+    db: AsyncSession,
+    developer_id: str,
+    goal_id: str,
+    goal_title: str,
+) -> Notification | None:
+    """Notify developer when goal is completed."""
+    service = NotificationService(db)
+    return await service.create_notification_from_event(
+        recipient_id=developer_id,
+        event_type=NotificationEventType.GOAL_COMPLETED,
+        context={
+            "goal_id": goal_id,
+            "goal_title": goal_title,
+            "action_url": f"/reviews/goals/{goal_id}",
+        },
+    )
+
+
+# ============ Workspace / Team Notifications ============
+
+
+async def notify_workspace_invite(
+    db: AsyncSession,
+    developer_id: str,
+    workspace_name: str,
+    workspace_id: str,
+) -> Notification | None:
+    """Notify developer when invited to a workspace."""
+    service = NotificationService(db)
+    return await service.create_notification_from_event(
+        recipient_id=developer_id,
+        event_type=NotificationEventType.WORKSPACE_INVITE,
+        context={
+            "workspace_name": workspace_name,
+            "workspace_id": workspace_id,
+            "action_url": "/settings/workspace",
+        },
+    )
+
+
+async def notify_team_added(
+    db: AsyncSession,
+    developer_id: str,
+    team_name: str,
+    workspace_name: str,
+    workspace_id: str,
+) -> Notification | None:
+    """Notify developer when added to a team."""
+    service = NotificationService(db)
+    return await service.create_notification_from_event(
+        recipient_id=developer_id,
+        event_type=NotificationEventType.TEAM_ADDED,
+        context={
+            "team_name": team_name,
+            "workspace_name": workspace_name,
+            "workspace_id": workspace_id,
+            "action_url": "/settings/teams",
+        },
+    )
+
+
+# ============ Learning Notifications ============
+
+
+async def notify_learning_approval_requested(
+    db: AsyncSession,
+    approver_id: str,
+    requester_name: str,
+    course_title: str,
+    request_id: str,
+    workspace_id: str,
+) -> Notification | None:
+    """Notify approver when learning approval is requested."""
+    service = NotificationService(db)
+    return await service.create_notification_from_event(
+        recipient_id=approver_id,
+        event_type=NotificationEventType.LEARNING_APPROVAL_REQUESTED,
+        context={
+            "requester_name": requester_name,
+            "course_title": course_title,
+            "request_id": request_id,
+            "workspace_id": workspace_id,
+            "action_url": "/learning/approvals",
+        },
+    )
+
+
+async def notify_learning_approval_decided(
+    db: AsyncSession,
+    developer_id: str,
+    course_title: str,
+    decision: str,
+    request_id: str,
+    workspace_id: str,
+) -> Notification | None:
+    """Notify developer when learning approval is decided."""
+    service = NotificationService(db)
+    return await service.create_notification_from_event(
+        recipient_id=developer_id,
+        event_type=NotificationEventType.LEARNING_APPROVAL_DECIDED,
+        context={
+            "course_title": course_title,
+            "decision": decision,
+            "request_id": request_id,
+            "workspace_id": workspace_id,
+            "action_url": "/learning/approvals",
+        },
+    )
+
+
+async def notify_learning_goal_assigned(
+    db: AsyncSession,
+    developer_id: str,
+    goal_title: str,
+    goal_id: str,
+    workspace_id: str,
+) -> Notification | None:
+    """Notify developer when a learning goal is assigned."""
+    service = NotificationService(db)
+    return await service.create_notification_from_event(
+        recipient_id=developer_id,
+        event_type=NotificationEventType.LEARNING_GOAL_ASSIGNED,
+        context={
+            "goal_title": goal_title,
+            "goal_id": goal_id,
+            "workspace_id": workspace_id,
+            "action_url": f"/learning/goals/{goal_id}",
+        },
+    )
+
+
+async def notify_learning_goal_overdue(
+    db: AsyncSession,
+    developer_id: str,
+    goal_title: str,
+    goal_id: str,
+    workspace_id: str,
+) -> Notification | None:
+    """Notify developer when a learning goal is overdue."""
+    service = NotificationService(db)
+    return await service.create_notification_from_event(
+        recipient_id=developer_id,
+        event_type=NotificationEventType.LEARNING_GOAL_OVERDUE,
+        context={
+            "goal_title": goal_title,
+            "goal_id": goal_id,
+            "workspace_id": workspace_id,
+            "action_url": f"/learning/goals/{goal_id}",
+        },
+    )
+
+
+async def notify_learning_activity_completed(
+    db: AsyncSession,
+    developer_id: str,
+    activity_title: str,
+    points: int,
+    workspace_id: str,
+) -> Notification | None:
+    """Notify developer when a learning activity is completed."""
+    service = NotificationService(db)
+    return await service.create_notification_from_event(
+        recipient_id=developer_id,
+        event_type=NotificationEventType.LEARNING_ACTIVITY_COMPLETED,
+        context={
+            "activity_title": activity_title,
+            "points": points,
+            "workspace_id": workspace_id,
+            "action_url": "/learning/activities",
+        },
+    )
+
+
+# ============ Form Notifications ============
+
+
+async def notify_form_submission_received(
+    db: AsyncSession,
+    owner_id: str,
+    form_name: str,
+    submitter_name: str,
+    submission_id: str,
+    workspace_id: str,
+) -> Notification | None:
+    """Notify form owner when a submission is received."""
+    service = NotificationService(db)
+    return await service.create_notification_from_event(
+        recipient_id=owner_id,
+        event_type=NotificationEventType.FORM_SUBMISSION_RECEIVED,
+        context={
+            "form_name": form_name,
+            "submitter_name": submitter_name or "Anonymous",
+            "submission_id": submission_id,
+            "workspace_id": workspace_id,
+            "action_url": "/forms/submissions",
+        },
+    )
+
+
+async def notify_form_submission_failed(
+    db: AsyncSession,
+    owner_id: str,
+    form_name: str,
+    submission_id: str,
+    workspace_id: str,
+) -> Notification | None:
+    """Notify form owner when a submission fails."""
+    service = NotificationService(db)
+    return await service.create_notification_from_event(
+        recipient_id=owner_id,
+        event_type=NotificationEventType.FORM_SUBMISSION_FAILED,
+        context={
+            "form_name": form_name,
+            "submission_id": submission_id,
+            "workspace_id": workspace_id,
+            "action_url": "/forms/submissions",
+        },
+    )
+
+
+# ============ Campaign Notifications ============
+
+
+async def notify_campaign_scheduled(
+    db: AsyncSession,
+    creator_id: str,
+    campaign_name: str,
+    scheduled_at: str,
+    workspace_id: str,
+) -> Notification | None:
+    """Notify creator when campaign is scheduled."""
+    service = NotificationService(db)
+    return await service.create_notification_from_event(
+        recipient_id=creator_id,
+        event_type=NotificationEventType.CAMPAIGN_SCHEDULED,
+        context={
+            "campaign_name": campaign_name,
+            "scheduled_at": scheduled_at,
+            "workspace_id": workspace_id,
+            "action_url": "/email-marketing/campaigns",
+        },
+    )
+
+
+async def notify_campaign_completed(
+    db: AsyncSession,
+    creator_id: str,
+    campaign_name: str,
+    total_recipients: int,
+    workspace_id: str,
+) -> Notification | None:
+    """Notify creator when campaign is completed."""
+    service = NotificationService(db)
+    return await service.create_notification_from_event(
+        recipient_id=creator_id,
+        event_type=NotificationEventType.CAMPAIGN_COMPLETED,
+        context={
+            "campaign_name": campaign_name,
+            "total_recipients": total_recipients,
+            "workspace_id": workspace_id,
+            "action_url": "/email-marketing/campaigns",
+        },
+    )
+
+
+# ============ Document Notifications ============
+
+
+async def notify_document_shared(
+    db: AsyncSession,
+    developer_id: str,
+    sharer_name: str,
+    document_title: str,
+    document_id: str,
+    workspace_id: str,
+) -> Notification | None:
+    """Notify developer when a document is shared with them."""
+    service = NotificationService(db)
+    return await service.create_notification_from_event(
+        recipient_id=developer_id,
+        event_type=NotificationEventType.DOCUMENT_SHARED,
+        context={
+            "sharer_name": sharer_name,
+            "document_title": document_title,
+            "document_id": document_id,
+            "workspace_id": workspace_id,
+            "action_url": f"/docs/{document_id}",
+        },
+    )
+
+
+# ============ GTM Notifications ============
+
+
+async def notify_gtm_alert(
+    db: AsyncSession,
+    recipient_id: str,
+    event_type_name: str,
+    summary: str,
+    workspace_id: str,
+) -> Notification | None:
+    """Notify when a GTM alert is triggered."""
+    service = NotificationService(db)
+    return await service.create_notification_from_event(
+        recipient_id=recipient_id,
+        event_type=NotificationEventType.GTM_ALERT_TRIGGERED,
+        context={
+            "event_type": event_type_name,
+            "summary": summary,
+            "workspace_id": workspace_id,
+            "action_url": "/gtm/alerts",
+        },
+    )
+
+
+# ============ Assessment Notifications ============
+
+
+async def notify_assessment_published(
+    db: AsyncSession,
+    creator_id: str,
+    assessment_title: str,
+    invitation_count: int,
+    workspace_id: str,
+) -> Notification | None:
+    """Notify creator when assessment is published."""
+    service = NotificationService(db)
+    return await service.create_notification_from_event(
+        recipient_id=creator_id,
+        event_type=NotificationEventType.ASSESSMENT_INVITATION_SENT,
+        context={
+            "assessment_title": assessment_title,
+            "invitation_count": invitation_count,
+            "workspace_id": workspace_id,
+            "action_url": "/hiring/assessments",
+        },
+    )
+
+
+async def notify_assessment_completed(
+    db: AsyncSession,
+    creator_id: str,
+    candidate_name: str,
+    assessment_title: str,
+    workspace_id: str,
+) -> Notification | None:
+    """Notify creator when candidate completes assessment."""
+    service = NotificationService(db)
+    return await service.create_notification_from_event(
+        recipient_id=creator_id,
+        event_type=NotificationEventType.ASSESSMENT_COMPLETED,
+        context={
+            "candidate_name": candidate_name,
+            "assessment_title": assessment_title,
+            "workspace_id": workspace_id,
+            "action_url": "/hiring/assessments",
         },
     )

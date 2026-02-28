@@ -220,6 +220,44 @@ async def send_uptime_notification(input: SendUptimeNotificationInput) -> dict[s
                         headers={"Content-Type": "application/json"},
                     )
 
+            # Send in-app notification to workspace members
+            try:
+                from aexy.models.notification import NotificationEventType
+                from aexy.services.notification_service import NotificationService
+                from aexy.models.workspace import WorkspaceMember
+
+                event_type = (
+                    NotificationEventType.UPTIME_INCIDENT_CREATED
+                    if input.notification_type == "incident"
+                    else NotificationEventType.UPTIME_INCIDENT_RESOLVED
+                )
+                # Notify workspace admins/owners
+                members_result = await db.execute(
+                    select(WorkspaceMember.developer_id).where(
+                        WorkspaceMember.workspace_id == str(monitor.workspace_id),
+                        WorkspaceMember.role.in_(["owner", "admin"]),
+                        WorkspaceMember.status == "active",
+                    )
+                )
+                admin_ids = [r[0] for r in members_result.all()]
+                notif_service = NotificationService(db)
+                for admin_id in admin_ids:
+                    await notif_service.create_notification(
+                        recipient_id=admin_id,
+                        event_type=event_type,
+                        title=title,
+                        body=f"Endpoint: {endpoint}",
+                        context={
+                            "workspace_id": str(monitor.workspace_id),
+                            "monitor_id": monitor.id,
+                            "monitor_name": monitor.name,
+                            "incident_id": incident.id,
+                            "action_url": "/uptime",
+                        },
+                    )
+            except Exception as notif_err:
+                logger.warning(f"Failed to send in-app uptime notification: {notif_err}")
+
             return {"status": "sent", "type": input.notification_type}
         except Exception as e:
             logger.error(f"Error sending notification: {e}")

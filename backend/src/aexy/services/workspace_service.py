@@ -220,6 +220,22 @@ class WorkspaceService:
         self.db.add(member)
         await self.db.flush()
         await self.db.refresh(member)
+
+        # Notify the developer they were invited/added to workspace
+        try:
+            from aexy.services.notification_service import notify_workspace_invite
+
+            workspace = await self.get_workspace(workspace_id)
+            ws_name = workspace.name if workspace else "a workspace"
+            await notify_workspace_invite(
+                db=self.db,
+                developer_id=developer_id,
+                workspace_name=ws_name,
+                workspace_id=workspace_id,
+            )
+        except Exception:
+            pass  # Non-critical
+
         return member
 
     async def get_member(
