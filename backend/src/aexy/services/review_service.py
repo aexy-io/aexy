@@ -626,6 +626,23 @@ class ReviewService:
 
         await self.db.flush()
 
+        # Notify manager that employee acknowledged the review
+        if review.manager_id:
+            try:
+                from aexy.services.notification_service import notify_review_acknowledged
+                from aexy.models.developer import Developer
+
+                dev = await self.db.get(Developer, review.developer_id)
+                dev_name = dev.name if dev else "A team member"
+                await notify_review_acknowledged(
+                    db=self.db,
+                    manager_id=review.manager_id,
+                    developer_name=dev_name,
+                    review_id=review_id,
+                )
+            except Exception as e:
+                logger.warning(f"Failed to send review acknowledged notification: {e}")
+
         return review
 
     # ============ Peer Review Request Management ============

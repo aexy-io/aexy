@@ -9,7 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.integrations import get_mailagent_client, MailagentError
 from aexy.models.entity_activity import EntityActivity
-from aexy.models.notification import Notification, NotificationEventType
+from aexy.models.notification import NotificationEventType
+from aexy.services.notification_service import NotificationService
 
 
 # Pattern to match @agent-name mentions
@@ -144,20 +145,22 @@ class AgentMentionService:
         entity_id: UUID,
     ) -> None:
         """Create a notification that an agent was invoked."""
-        notification = Notification(
-            recipient_id=str(recipient_id),
-            event_type="agent_invoked",
-            title=f"{agent_name} is working on your request",
-            body=f"The {agent_name} agent has been invoked and is processing your request. You'll be notified when there are actions to review.",
-            context={
-                "workspace_id": str(workspace_id),
-                "agent_name": agent_name,
-                "entity_type": entity_type,
-                "entity_id": str(entity_id),
-            },
-        )
-        self.db.add(notification)
-        await self.db.commit()
+        try:
+            notif_service = NotificationService(self.db)
+            await notif_service.create_notification(
+                recipient_id=str(recipient_id),
+                event_type=NotificationEventType.AGENT_INVOKED,
+                title=f"{agent_name} is working on your request",
+                body=f"The {agent_name} agent has been invoked and is processing your request. You'll be notified when there are actions to review.",
+                context={
+                    "workspace_id": str(workspace_id),
+                    "agent_name": agent_name,
+                    "entity_type": entity_type,
+                    "entity_id": str(entity_id),
+                },
+            )
+        except Exception:
+            pass  # Non-critical, don't fail the agent invocation
 
     async def get_available_agents(
         self, workspace_id: UUID

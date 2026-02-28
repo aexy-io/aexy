@@ -143,6 +143,21 @@ class LearningManagementService:
         )
         await self.db.commit()
 
+        # Notify developer when goal is assigned by someone else
+        if data.developer_id != set_by_id:
+            try:
+                from aexy.services.notification_service import notify_learning_goal_assigned
+
+                await notify_learning_goal_assigned(
+                    db=self.db,
+                    developer_id=data.developer_id,
+                    goal_title=goal.title,
+                    goal_id=goal.id,
+                    workspace_id=workspace_id,
+                )
+            except Exception as e:
+                logger.warning("Failed to send learning goal notification: %s", e)
+
         logger.info(f"Created learning goal {goal.id} for developer {data.developer_id}")
         return goal
 
@@ -648,6 +663,21 @@ class LearningManagementService:
             description=f"{'Approved' if data.approved else 'Rejected'}: {request.course_title}",
         )
         await self.db.commit()
+
+        # Notify requester of approval decision
+        try:
+            from aexy.services.notification_service import notify_learning_approval_decided
+
+            await notify_learning_approval_decided(
+                db=self.db,
+                developer_id=request.requester_id,
+                course_title=request.course_title,
+                decision="approved" if data.approved else "rejected",
+                request_id=request.id,
+                workspace_id=workspace_id,
+            )
+        except Exception as e:
+            logger.warning("Failed to send approval decision notification: %s", e)
 
         logger.info(f"Decision made on approval request {request_id}: {'approved' if data.approved else 'rejected'}")
         return request
@@ -1420,12 +1450,29 @@ class LearningManagementService:
         goals = list(result.scalars().all())
 
         count = 0
+        overdue_goals = []
         for goal in goals:
             goal.status = GoalStatus.OVERDUE.value
+            overdue_goals.append(goal)
             count += 1
 
         if count > 0:
             await self.db.commit()
             logger.info(f"Marked {count} goals as overdue")
+
+            # Notify developers of overdue goals
+            try:
+                from aexy.services.notification_service import notify_learning_goal_overdue
+
+                for goal in overdue_goals:
+                    await notify_learning_goal_overdue(
+                        db=self.db,
+                        developer_id=goal.developer_id,
+                        goal_title=goal.title,
+                        goal_id=goal.id,
+                        workspace_id=goal.workspace_id,
+                    )
+            except Exception as e:
+                logger.warning("Failed to send overdue goal notifications: %s", e)
 
         return count

@@ -340,6 +340,19 @@ class GoalService:
 
         await self.db.flush()
 
+        # Notify developer of goal completion
+        try:
+            from aexy.services.notification_service import notify_goal_completed
+
+            await notify_goal_completed(
+                db=self.db,
+                developer_id=goal.developer_id,
+                goal_id=goal_id,
+                goal_title=goal.title,
+            )
+        except Exception:
+            pass  # Non-critical
+
         return goal
 
     async def auto_link_contributions(

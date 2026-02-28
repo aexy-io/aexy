@@ -97,6 +97,18 @@ from aexy.models.notification import (
     EmailNotificationLog,
     NotificationEventType,
     DEFAULT_NOTIFICATION_PREFERENCES,
+    WebPushSubscription,
+    NotificationCategoryPreference,
+    NOTIFICATION_CATEGORIES,
+    EVENT_TYPE_TO_CATEGORY,
+)
+from aexy.models.agent_policy import (
+    AgentPolicy,
+    AgentPolicyDecision,
+    AgentConfigAudit,
+    PolicyType,
+    PolicyDecisionType,
+    ConfigChangeType,
 )
 from aexy.models.oncall import (
     OnCallConfig,
@@ -593,6 +605,17 @@ __all__ = [
     "EmailNotificationLog",
     "NotificationEventType",
     "DEFAULT_NOTIFICATION_PREFERENCES",
+    "WebPushSubscription",
+    "NotificationCategoryPreference",
+    "NOTIFICATION_CATEGORIES",
+    "EVENT_TYPE_TO_CATEGORY",
+    # Agent Policies
+    "AgentPolicy",
+    "AgentPolicyDecision",
+    "AgentConfigAudit",
+    "PolicyType",
+    "PolicyDecisionType",
+    "ConfigChangeType",
     # On-Call
     "OnCallConfig",
     "OnCallSchedule",

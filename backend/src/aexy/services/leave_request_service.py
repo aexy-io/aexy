@@ -1,5 +1,6 @@
 """Leave request service - core workflow for submitting, approving, and managing leave."""
 
+import logging
 from datetime import date, datetime, timedelta, timezone
 from uuid import uuid4
 
@@ -16,6 +17,8 @@ from aexy.models.leave import (
 from aexy.models.booking import AvailabilityOverride
 from aexy.models.team import TeamMember
 from aexy.models.workspace import WorkspaceMember
+
+logger = logging.getLogger(__name__)
 
 
 class LeaveRequestService:
@@ -151,6 +154,28 @@ class LeaveRequestService:
                 )
 
         await self.db.refresh(request)
+
+        # Notify approver of new leave request
+        if approver_id and leave_type.requires_approval:
+            try:
+                from aexy.services.notification_service import notify_leave_request_submitted
+                from aexy.models.developer import Developer
+
+                dev = await self.db.get(Developer, developer_id)
+                dev_name = dev.name if dev else "A team member"
+                await notify_leave_request_submitted(
+                    db=self.db,
+                    approver_id=approver_id,
+                    requester_name=dev_name,
+                    leave_type=leave_type.name,
+                    start_date=str(start_date),
+                    end_date=str(end_date),
+                    request_id=request.id,
+                    workspace_id=workspace_id,
+                )
+            except Exception as e:
+                logger.warning("Failed to send leave request notification: %s", e)
+
         return request
 
     async def approve(self, request_id: str, approver_id: str) -> LeaveRequest:
@@ -184,6 +209,25 @@ class LeaveRequestService:
 
         await self.db.flush()
         await self.db.refresh(request)
+
+        # Notify requester of approval
+        try:
+            from aexy.services.notification_service import notify_leave_request_approved
+
+            lt = await self.db.get(LeaveType, request.leave_type_id)
+            lt_name = lt.name if lt else "Leave"
+            await notify_leave_request_approved(
+                db=self.db,
+                developer_id=request.developer_id,
+                leave_type=lt_name,
+                start_date=str(request.start_date),
+                end_date=str(request.end_date),
+                request_id=request.id,
+                workspace_id=request.workspace_id,
+            )
+        except Exception as e:
+            logger.warning("Failed to send leave approval notification: %s", e)
+
         return request
 
     async def reject(
@@ -214,6 +258,25 @@ class LeaveRequestService:
 
         await self.db.flush()
         await self.db.refresh(request)
+
+        # Notify requester of rejection
+        try:
+            from aexy.services.notification_service import notify_leave_request_rejected
+
+            lt = await self.db.get(LeaveType, request.leave_type_id)
+            lt_name = lt.name if lt else "Leave"
+            await notify_leave_request_rejected(
+                db=self.db,
+                developer_id=request.developer_id,
+                leave_type=lt_name,
+                start_date=str(request.start_date),
+                end_date=str(request.end_date),
+                request_id=request.id,
+                workspace_id=request.workspace_id,
+            )
+        except Exception as e:
+            logger.warning("Failed to send leave rejection notification: %s", e)
+
         return request
 
     async def cancel(self, request_id: str, developer_id: str) -> LeaveRequest:
@@ -245,6 +308,30 @@ class LeaveRequestService:
 
         await self.db.flush()
         await self.db.refresh(request)
+
+        # Notify approver of cancellation
+        if request.approver_id:
+            try:
+                from aexy.services.notification_service import notify_leave_request_cancelled
+                from aexy.models.developer import Developer
+
+                dev = await self.db.get(Developer, developer_id)
+                dev_name = dev.name if dev else "A team member"
+                lt = await self.db.get(LeaveType, request.leave_type_id)
+                lt_name = lt.name if lt else "Leave"
+                await notify_leave_request_cancelled(
+                    db=self.db,
+                    approver_id=request.approver_id,
+                    requester_name=dev_name,
+                    leave_type=lt_name,
+                    start_date=str(request.start_date),
+                    end_date=str(request.end_date),
+                    request_id=request.id,
+                    workspace_id=request.workspace_id,
+                )
+            except Exception as e:
+                logger.warning("Failed to send leave cancellation notification: %s", e)
+
         return request
 
     async def withdraw(self, request_id: str, developer_id: str) -> LeaveRequest:

@@ -261,6 +261,20 @@ class LearningActivityService:
         await self.db.commit()
         await self.db.refresh(activity)
 
+        # Notify developer of activity completion and points
+        try:
+            from aexy.services.notification_service import notify_learning_activity_completed
+
+            await notify_learning_activity_completed(
+                db=self.db,
+                developer_id=developer_id,
+                activity_title=activity.title or activity.activity_type,
+                points=points,
+                workspace_id=getattr(activity, "workspace_id", ""),
+            )
+        except Exception:
+            pass  # Non-critical
+
         logger.info(
             f"Completed activity {activity_id} for developer {developer_id}, "
             f"awarded {points} points"
