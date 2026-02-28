@@ -12,6 +12,7 @@ import {
   ArrowLeft,
   Shield,
   Loader2,
+  BarChart2,
 } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -43,6 +44,11 @@ const adminNavItems = [
     title: "Users",
     href: "/admin/users",
     icon: Users,
+  },
+  {
+    title: "AI Benchmarking",
+    href: "/admin/ai-benchmarking",
+    icon: BarChart2,
   },
 ];
 

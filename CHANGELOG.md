@@ -5,6 +5,104 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.7] - 2026-03-01
+
+### Added
+
+#### Team Chat System
+Zulip-inspired real-time team chat with channels, topics, and threaded messages, accessible from a dedicated `/chat` page and a floating widget on every page.
+
+- **Channels and topics**: Create and browse channels with topic-based threading; topic list with unread counts, last message preview, and participant count
+- **Real-time messaging**: WebSocket-powered message delivery with typing indicators, presence status, and per-channel relay filtering
+- **Floating chat widget**: FAB-accessible widget with Threads, Notifications, and Activity tabs; shared WebSocket connection via `ChatWebSocketProvider` (no duplicate connections)
+- **Unified inbox**: Aggregated unread threads across all channels with click-through navigation
+- **Google Meet integration**: Create Meet links directly from the message composer via Google Calendar API
+- **Thread persistence**: Both widget and full page remember last opened channel/topic across sessions via Zustand store
+- **Message composer**: Emoji picker, file attachments (drag-and-drop upload to RustFS), typing indicators, and responsive toolbar layout
+- **Sprint task import**: Import tasks from external sources into sprint boards
+
+#### Ask AI — Agentic Chat
+Integrated AI chat assistant with multi-provider LLM support, server-side tool execution, and streaming responses.
+
+- **Ask AI in chat page**: AI tab in the channel sidebar with conversation list (own + shared), date-grouped history, search, and inline delete
+- **Agentic tool loop**: Server-side tool calling with workspace-scoped tools (sprints, tasks, tickets); tool calls streamed to client with status indicators
+- **Multi-provider streaming**: SSE streaming via Anthropic, OpenAI, and Gemini providers through the unified LLM gateway
+- **Ask AI in floating widget**: Compact AI chat view in the floating widget with conversation history browsing, share button, and participant avatar stack
+- **Conversation sharing**: Share AI conversations with workspace members via direct add (with permission levels: read/write/owner) or share links (token-based, optional password, expiry, max uses)
+- **Real-time collaboration**: Redis pub/sub for participant presence, AI lock to prevent concurrent responses, message queue for collaborative conversations
+- **Share notifications**: In-app notifications when added as participant or when someone joins via share link, with click-through navigation to the conversation
+- **Notification settings**: Chat category added to notification preferences page with `chat_mention` and `ai_conversation_shared` event types
+
+#### AI Feedback & Benchmarking
+- **Feedback collection**: Thumbs up/down on AI outputs across Ask AI, Agents, and Automations
+- **Latency tracking**: Per-response latency measurement across all three LLM streaming providers
+- **Admin benchmarking dashboard**: Volume trends, token usage breakdown, tool success rates, and negative feedback review queue
+
+#### API Token Auth & MCP Integration
+- **API token system**: `ApiToken` model with `aexy_` prefixed tokens, CRUD endpoints, create/validate/revoke service methods
+- **Dual auth support**: API tokens accepted alongside JWT in auth middleware for external integrations
+- **MCP setup page**: Frontend configuration page for Model Context Protocol integration with connection instructions
+- **API tokens settings page**: Token management UI with copy-to-clipboard, delete confirmation, and last-used tracking (debounced to 5-min intervals)
+
+### Fixed
+
+#### Chat Security & Performance
+- **Workspace authorization on all chat endpoints**: Added `_check_workspace` membership guard to every chat API endpoint (channels, topics, messages, presence, file upload)
+- **Private channel access control**: Added `_check_channel_access` helper enforcing membership checks on topic listing, creation, message listing, and message sending for private channels
+- **WebSocket workspace validation**: Reject WebSocket connections from non-workspace-members with close code 4003
+- **WebSocket channel isolation**: Relay messages only to subscribers of the target channel
+- **Input validation**: `max_length` constraints on all chat message and channel inputs
+- **File upload content-type bypass**: Validate actual file content type, not just the declared MIME type
+- **File upload extension validation**: Whitelist allowed file extensions; reject SVG uploads to prevent stored XSS
+- **Channel update authorization**: Enforce ownership/admin checks on channel mutations
+- **Presence status validation**: Reject invalid presence status values (only `online`, `away`, `offline` allowed)
+- **Topic listing limit**: Added `LIMIT 200` to prevent unbounded topic queries
+- **Service/API commit boundary**: Replaced all `db.commit()` in `ChatService` with `db.flush()`; explicit `await db.commit()` in all mutating API endpoints
+- **N+1 query elimination**: Batch methods for inbox and topic queries; atomic `message_count` updates; correlated subqueries for `list_conversations` in Ask AI
+- **TOCTOU race conditions**: `IntegrityError` handling for concurrent topic/message creation
+- **Auto-scroll fix**: Only auto-scroll when user is already at the bottom of the message list
+- **Memory leak fixes**: Clean up Object URLs, typing timeout intervals, and flash-success timeouts on component unmount
+- **Stale WebSocket reconnect**: Fix reconnection using fresh token after re-auth
+- **React performance**: `React.memo` on `MessageItem`, memoized WebSocket context value, deduplicated `markTopicRead` calls
+
+#### Auth & API Security
+- **Dual-session bug**: `get_current_developer_id` now uses the injected DB session instead of creating a separate one via `get_async_session()`
+- **Seed migration removed**: Removed insecure seed migration containing hardcoded token hash
+- **Hardcoded URLs removed**: MCP page uses `NEXT_PUBLIC_API_URL` env var instead of hardcoded localhost
+- **Sanitized platform admin errors**: Internal exception details no longer exposed in error responses
+
+#### AI Chat Security
+- **Conversation ownership enforcement**: Cross-user conversation access blocked at service layer
+- **Delete authorization**: Ownership check enforced before conversation deletion
+- **Share link revocation authorization**: Ownership verification before revoking share links
+- **bcrypt password hashing**: Share link passwords hashed with bcrypt instead of SHA-256
+- **Cross-workspace data isolation**: Tools scoped to the requesting user's workspace
+- **Sanitized error messages**: Internal error details stripped from SSE error events
+- **API key protection**: LLM provider keys never exposed in client-facing responses
+- **Pydantic literal validation**: `permission` fields in share schemas use `Literal["read", "write"]` instead of `str`
+
+#### Frontend Security & Stability
+- **Duplicate WebSocket eliminated**: `AskAIChatPanel` now uses `useChatWebSocketContext()` instead of creating a second `useChatWebSocket()` connection
+- **Open redirect prevention**: Notification click-through validates `action_url` is a relative path (starts with `/`, not `//`)
+- **XSS prevention in chat messages**: URL scheme validation (`http:`/`https:` only) before rendering user-provided URLs as `<img>` or `<a>` elements
+- **Race condition fix**: `useStreamMessage` accepts override `conversationId` parameter, eliminating unreliable `setTimeout` in widget first-message flow
+- **Store subscription optimization**: `useStreamMessage` uses `useAskStore.getState()` for mutations during streaming, preventing cascading re-renders
+- **Memoized participant IDs**: `AskShareDialog` wraps `participantIds` Set in `useMemo` for stable dependency tracking
+- **Stable effect dependencies**: `MessageThread` queue-flush effect uses ref for `sendMessage` to prevent infinite re-render loops
+- **Floating widget hook optimization**: Split into wrapper + inner component so hooks don't run on `/chat` pages
+- **Clipboard error handling**: Share link copy wrapped in try/catch with user-facing error toast
+- **Delete confirmation**: AI conversation delete requires `window.confirm()` before proceeding
+
+### Changed
+- **MCP sidebar placement**: Moved under AI Agents as a sub-item instead of standalone sidebar entry
+- **CopyButton extraction**: Duplicated copy-to-clipboard logic extracted to shared `components/ui/copy-button`
+- **Delete confirmation UX**: API token delete uses inline Delete/Cancel step instead of browser `confirm()`
+
+### Database Migrations
+- `migrate_ask_collaborative.sql` — `ask_conversation_participants` and `ask_share_links` tables for collaborative AI conversations
+
+---
+
 ## [0.6.6] - 2026-02-28
 
 ### Added

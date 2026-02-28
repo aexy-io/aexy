@@ -63,6 +63,7 @@ import {
     BarChart3,
     HeartPulse,
     UserCheck,
+    MessageCircle,
 } from "lucide-react";
 
 export type SidebarLayoutType = "grouped" | "flat";
@@ -214,6 +215,7 @@ export const GROUPED_LAYOUT: SidebarLayoutConfig = {
             items: [
                 { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
                 { href: "/activity", label: "Activity", icon: Activity },
+                { href: "/chat", label: "Chat", icon: MessageCircle },
             ],
         },
         {
@@ -379,6 +381,7 @@ export const FLAT_LAYOUT: SidebarLayoutConfig = {
             items: [
                 { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
                 { href: "/activity", label: "Activity", icon: Activity },
+                { href: "/chat", label: "Chat", icon: MessageCircle },
                 {
                     href: "/tracking",
                     label: "Tracking",

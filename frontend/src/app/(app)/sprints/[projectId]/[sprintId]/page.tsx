@@ -45,8 +45,10 @@ import { useWorkspace, useCustomTaskStatuses } from "@/hooks/useWorkspace";
 import { useSprint, useSprintTasks, useSprintAI, useSprintStats, useTaskActivities } from "@/hooks/useSprints";
 import { useEpics } from "@/hooks/useEpics";
 import { useProject } from "@/hooks/useProjects";
+import { useSprints } from "@/hooks/useSprints";
 import { SprintTask, TaskStatus, TaskPriority, AssignmentSuggestion, EpicListItem, TaskActivity } from "@/lib/api";
 import { TASK_STATUS_COLORS, PRIORITY_COLORS } from "@/lib/statusColors";
+import { ImportTasksModal } from "@/components/planning/ImportTasksModal";
 import { redirect } from "next/navigation";
 
 const COLUMN_CONFIG: Record<TaskStatus, { label: string; color: string; bgColor: string }> = {
@@ -1039,11 +1041,13 @@ export default function SprintBoardPage({
 
   const { epics } = useEpics(currentWorkspaceId);
   const { project } = useProject(currentWorkspaceId, projectId);
+  const { sprints: allSprints } = useSprints(currentWorkspaceId, projectId);
 
   // Custom statuses
   const { statuses: customStatuses } = useCustomTaskStatuses(currentWorkspaceId);
 
   const [showAddTask, setShowAddTask] = useState(false);
+  const [showImportTasks, setShowImportTasks] = useState(false);
   const [selectedTask, setSelectedTask] = useState<SprintTask | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -1280,6 +1284,14 @@ export default function SprintBoardPage({
 
               {/* Actions */}
               <button
+                onClick={() => setShowImportTasks(true)}
+                className="flex items-center gap-2 px-3 py-2 bg-accent hover:bg-muted text-foreground rounded-lg transition text-sm"
+              >
+                <ArrowRightLeft className="h-4 w-4" />
+                Import
+              </button>
+
+              <button
                 onClick={() => setShowAddTask(true)}
                 className="flex items-center gap-2 px-3 py-2 bg-accent hover:bg-muted text-foreground rounded-lg transition text-sm"
               >
@@ -1452,6 +1464,17 @@ export default function SprintBoardPage({
           onDelete={handleDelete}
           isUpdating={isUpdatingTask}
           epics={epics}
+        />
+      )}
+
+      {/* Import Tasks Modal */}
+      {showImportTasks && sprint && (
+        <ImportTasksModal
+          projectId={projectId}
+          targetSprintId={sprintId}
+          targetSprintName={sprint.name}
+          sprints={allSprints || []}
+          onClose={() => setShowImportTasks(false)}
         />
       )}
     </div>
