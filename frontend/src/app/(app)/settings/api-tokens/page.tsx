@@ -5,36 +5,14 @@ import {
   KeyRound,
   Plus,
   Loader2,
-  Copy,
   CheckCircle2,
   Trash2,
   AlertTriangle,
   ShieldAlert,
 } from "lucide-react";
 import { useApiTokens, ApiTokenCreated } from "@/hooks/useApiTokens";
+import { CopyButton } from "@/components/ui/copy-button";
 import { formatDistanceToNow } from "date-fns";
-
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-  const handleCopy = () => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-  return (
-    <button
-      onClick={handleCopy}
-      className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition-colors"
-      title="Copy to clipboard"
-    >
-      {copied ? (
-        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-      ) : (
-        <Copy className="h-3.5 w-3.5" />
-      )}
-    </button>
-  );
-}
 
 const EXPIRY_OPTIONS = [
   { value: 30, label: "30 days" },
@@ -53,6 +31,7 @@ export default function ApiTokensPage() {
   const [expiresInDays, setExpiresInDays] = useState<number | null>(90);
   const [newlyCreatedToken, setNewlyCreatedToken] = useState<ApiTokenCreated | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const handleCreate = async () => {
     if (!name.trim()) return;
@@ -70,6 +49,7 @@ export default function ApiTokensPage() {
   };
 
   const handleDelete = async (tokenId: string) => {
+    setConfirmDeleteId(null);
     setDeletingId(tokenId);
     try {
       await deleteToken(tokenId);
@@ -260,18 +240,35 @@ export default function ApiTokensPage() {
                 )}
               </div>
               <div className="flex justify-end">
-                <button
-                  onClick={() => handleDelete(token.id)}
-                  disabled={deletingId === token.id}
-                  className="p-1.5 text-muted-foreground hover:text-red-400 hover:bg-red-400/10 rounded transition-colors"
-                  title="Delete token"
-                >
-                  {deletingId === token.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
+                {confirmDeleteId === token.id ? (
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => handleDelete(token.id)}
+                      disabled={deletingId === token.id}
+                      className="px-2 py-1 text-xs font-medium text-red-400 hover:bg-red-400/10 rounded transition-colors"
+                    >
+                      {deletingId === token.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        "Delete"
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setConfirmDeleteId(null)}
+                      className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground rounded transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setConfirmDeleteId(token.id)}
+                    className="p-1.5 text-muted-foreground hover:text-red-400 hover:bg-red-400/10 rounded transition-colors"
+                    title="Delete token"
+                  >
                     <Trash2 className="h-4 w-4" />
-                  )}
-                </button>
+                  </button>
+                )}
               </div>
             </div>
           ))}
