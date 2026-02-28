@@ -29,6 +29,7 @@ import {
   BarChart3,
   Users2,
   Gauge,
+  ArrowRightLeft,
 } from "lucide-react";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
@@ -69,6 +70,7 @@ import { X, Loader2, FileText, Zap } from "lucide-react";
 import { CycleTimeChart } from "@/components/planning/CycleTimeChart";
 import { CapacityPlanner } from "@/components/planning/CapacityPlanner";
 import { PlanningPoker } from "@/components/planning/PlanningPoker";
+import { ImportTasksModal } from "@/components/planning/ImportTasksModal";
 import {
   SPRINT_STATUS_COLORS as SPRINT_STATUS_COLORS_BASE,
   TASK_STATUS_COLORS as TASK_STATUS_COLORS_BASE,
@@ -1489,6 +1491,8 @@ export default function ProjectBoardPage({
   const [showPlanningDropdown, setShowPlanningDropdown] = useState(false);
   const [showAutoAssignConfirm, setShowAutoAssignConfirm] = useState(false);
   const [isAutoAssigning, setIsAutoAssigning] = useState(false);
+  const [showImportTasks, setShowImportTasks] = useState(false);
+  const [importTargetSprint, setImportTargetSprint] = useState<{ id: string; name: string } | null>(null);
 
   // WIP Limits
   const activeSprint = sprints.find((s) => s.status === "active") || sprints.find((s) => s.status !== "completed");
@@ -1882,6 +1886,20 @@ export default function ProjectBoardPage({
                   Status
                 </button>
               </div>
+
+              {/* Import Tasks */}
+              {activeSprint && (
+                <button
+                  onClick={() => {
+                    setImportTargetSprint({ id: activeSprint.id, name: activeSprint.name });
+                    setShowImportTasks(true);
+                  }}
+                  className="flex items-center gap-2 px-3 py-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg text-sm transition"
+                >
+                  <ArrowRightLeft className="h-4 w-4" />
+                  Import
+                </button>
+              )}
 
               {/* Add Task */}
               <button
@@ -2498,6 +2516,18 @@ export default function ProjectBoardPage({
               </div>
             </div>
           </div>
+        )}
+        {showImportTasks && importTargetSprint && (
+          <ImportTasksModal
+            projectId={projectId}
+            targetSprintId={importTargetSprint.id}
+            targetSprintName={importTargetSprint.name}
+            sprints={sprints}
+            onClose={() => {
+              setShowImportTasks(false);
+              setImportTargetSprint(null);
+            }}
+          />
         )}
       </AnimatePresence>
     </div>

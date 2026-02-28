@@ -131,6 +131,9 @@ class NotificationEventType(str, Enum):
     DOCUMENT_MENTIONED = "document_mentioned"
     DOCUMENT_COMMENTED = "document_commented"
 
+    # Chat
+    CHAT_MENTION = "chat_mention"
+
 
 class Notification(Base):
     """In-app notification for a user.
@@ -486,6 +489,9 @@ NOTIFICATION_CATEGORIES: dict[str, list[str]] = {
         NotificationEventType.DOCUMENT_MENTIONED.value,
         NotificationEventType.DOCUMENT_COMMENTED.value,
     ],
+    "chat": [
+        NotificationEventType.CHAT_MENTION.value,
+    ],
 }
 
 # Reverse mapping: event_type -> category
@@ -575,4 +581,6 @@ DEFAULT_NOTIFICATION_PREFERENCES = {
     NotificationEventType.DOCUMENT_SHARED: {"in_app": True, "email": True, "slack": False, "web_push": False},
     NotificationEventType.DOCUMENT_MENTIONED: {"in_app": True, "email": True, "slack": False, "web_push": False},
     NotificationEventType.DOCUMENT_COMMENTED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    # Chat
+    NotificationEventType.CHAT_MENTION: {"in_app": True, "email": True, "slack": False, "web_push": False},
 }

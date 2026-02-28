@@ -160,6 +160,8 @@ from aexy.api.public_tables import router as public_tables_router
 from aexy.api.saved_views import router as saved_views_router
 # API Tokens (MCP & integrations)
 from aexy.api.api_tokens import router as api_tokens_router
+# Team Chat
+from aexy.api.chat import router as chat_router
 
 api_router = APIRouter()
 
@@ -328,3 +330,5 @@ api_router.include_router(public_tables_router, tags=["tables-public"])
 api_router.include_router(saved_views_router, tags=["saved-views"])
 # API Tokens (MCP & integrations)
 api_router.include_router(api_tokens_router, tags=["api-tokens"])
+# Team Chat
+api_router.include_router(chat_router, tags=["chat"])
