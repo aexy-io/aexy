@@ -45,7 +45,7 @@ BEGIN
                 in_app_enabled, email_enabled, slack_enabled, web_push_enabled,
                 created_at, updated_at
             ) VALUES (
-                gen_random_uuid()::text, dev_record.id, evt,
+                gen_random_uuid(), dev_record.id, evt,
                 true, -- in_app_enabled
                 CASE
                     WHEN evt IN ('blocker_escalated', 'uptime_incident_created', 'uptime_incident_resolved',
@@ -93,7 +93,7 @@ BEGIN
                 in_app_enabled, email_enabled, slack_enabled, web_push_enabled,
                 created_at, updated_at
             ) VALUES (
-                gen_random_uuid()::text, dev_record.id, cat,
+                gen_random_uuid(), dev_record.id, cat,
                 true, true, false, false,
                 NOW(), NOW()
             )
