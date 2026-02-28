@@ -12,18 +12,26 @@ import {
   UserPlus,
   Loader2,
   AlertCircle,
+  ChevronDown,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useOnboarding } from "../OnboardingContext";
 import { workspaceApi } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
 
+interface InviteEntry {
+  email: string;
+  role: "admin" | "member";
+}
+
 export default function InviteTeam() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data, updateData, setCurrentStep } = useOnboarding();
   const [email, setEmail] = useState("");
-  const [emails, setEmails] = useState<string[]>(data.invitedEmails);
+  const [invites, setInvites] = useState<InviteEntry[]>(
+    data.invitedEmails.map(e => ({ email: e, role: "member" }))
+  );
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [sentCount, setSentCount] = useState(0);
@@ -37,30 +45,45 @@ export default function InviteTeam() {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
 
-  const addEmail = () => {
-    const trimmedEmail = email.trim().toLowerCase();
+  const addEmails = (raw: string) => {
+    // Parse comma, space, newline, semicolon separated emails
+    const parts = raw.split(/[,;\s\n]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
+    const newInvites = [...invites];
+    const existingEmails = new Set(newInvites.map(i => i.email));
+    let addedCount = 0;
 
-    if (!trimmedEmail) {
-      return;
+    for (const part of parts) {
+      if (validateEmail(part) && !existingEmails.has(part)) {
+        newInvites.push({ email: part, role: "member" });
+        existingEmails.add(part);
+        addedCount++;
+      }
     }
 
-    if (!validateEmail(trimmedEmail)) {
+    if (parts.length > 0 && addedCount === 0 && parts.length === 1 && !validateEmail(parts[0])) {
       setError("Please enter a valid email address");
       return;
     }
 
-    if (emails.includes(trimmedEmail)) {
-      setError("This email has already been added");
-      return;
+    if (addedCount > 0) {
+      setInvites(newInvites);
+      setEmail("");
+      setError(null);
     }
-
-    setEmails([...emails, trimmedEmail]);
-    setEmail("");
-    setError(null);
   };
 
-  const removeEmail = (emailToRemove: string) => {
-    setEmails(emails.filter(e => e !== emailToRemove));
+  const addEmail = () => {
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail) return;
+    addEmails(trimmedEmail);
+  };
+
+  const removeInvite = (emailToRemove: string) => {
+    setInvites(invites.filter(i => i.email !== emailToRemove));
+  };
+
+  const updateRole = (email: string, role: "admin" | "member") => {
+    setInvites(invites.map(i => i.email === email ? { ...i, role } : i));
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -70,24 +93,34 @@ export default function InviteTeam() {
     }
   };
 
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const pastedText = e.clipboardData.getData("text");
+    // Check if paste contains multiple emails (has separators)
+    if (/[,;\n\s]/.test(pastedText) && pastedText.includes("@")) {
+      e.preventDefault();
+      addEmails(pastedText);
+    }
+  };
+
   const handleContinue = async () => {
-    updateData({ invitedEmails: emails });
+    const emailList = invites.map(i => i.email);
+    updateData({ invitedEmails: emailList });
     setFailedEmails([]);
 
     // Send invites if we have a workspace and emails
-    if (data.workspace.id && emails.length > 0) {
+    if (data.workspace.id && invites.length > 0) {
       setIsSending(true);
       setSentCount(0);
       const failed: string[] = [];
 
       try {
-        for (const inviteEmail of emails) {
+        for (const invite of invites) {
           try {
-            await workspaceApi.inviteMember(data.workspace.id, inviteEmail, "member");
+            await workspaceApi.inviteMember(data.workspace.id, invite.email, invite.role);
             setSentCount((prev) => prev + 1);
           } catch (err) {
-            console.error(`Failed to invite ${inviteEmail}:`, err);
-            failed.push(inviteEmail);
+            console.error(`Failed to invite ${invite.email}:`, err);
+            failed.push(invite.email);
           }
         }
       } finally {
@@ -95,17 +128,17 @@ export default function InviteTeam() {
       }
 
       // Invalidate pending invites cache so org settings page shows them
-      if (failed.length < emails.length) {
+      if (failed.length < invites.length) {
         queryClient.invalidateQueries({ queryKey: ["pendingInvites", data.workspace.id] });
       }
 
       // If some invites failed, show errors instead of navigating
       if (failed.length > 0) {
         setFailedEmails(failed);
-        if (failed.length === emails.length) {
+        if (failed.length === invites.length) {
           setError("Failed to send invitations. You may not have permission to invite members to this workspace.");
         } else {
-          setError(`Failed to invite: ${failed.join(", ")}. ${emails.length - failed.length} invite(s) sent successfully.`);
+          setError(`Failed to invite: ${failed.join(", ")}. ${invites.length - failed.length} invite(s) sent successfully.`);
         }
         return;
       }
@@ -138,7 +171,7 @@ export default function InviteTeam() {
         {/* Header */}
         <div className="text-center mb-10">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center mx-auto mb-6">
-            <Users className="w-8 h-8 text-foreground" />
+            <Users className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-foreground mb-3">
             Invite your team
@@ -166,6 +199,7 @@ export default function InviteTeam() {
                     setError(null);
                   }}
                   onKeyDown={handleKeyDown}
+                  onPaste={handlePaste}
                   placeholder="colleague@company.com"
                   className="w-full pl-10 pr-4 py-3 bg-muted/50 border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary-500/50"
                 />
@@ -179,7 +213,7 @@ export default function InviteTeam() {
               </button>
             </div>
             {error && !failedEmails.length && (
-              <p className="mt-2 text-sm text-red-400">{error}</p>
+              <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>
             )}
           </div>
 
@@ -187,9 +221,9 @@ export default function InviteTeam() {
           {failedEmails.length > 0 && error && (
             <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30">
               <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <p className="text-sm text-red-400">{error}</p>
+                  <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
                   <button
                     onClick={() => router.push("/onboarding/complete")}
                     className="mt-2 text-sm text-muted-foreground hover:text-foreground underline transition-colors"
@@ -202,47 +236,62 @@ export default function InviteTeam() {
           )}
 
           {/* Email list */}
-          {emails.length > 0 && (
+          {invites.length > 0 && (
             <div className="space-y-2 mb-8">
               <p className="text-sm text-muted-foreground mb-3">
-                {emails.length} invite{emails.length !== 1 ? "s" : ""} ready to send
+                {invites.length} invite{invites.length !== 1 ? "s" : ""} ready to send
               </p>
-              {emails.map((inviteEmail, index) => (
+              {invites.map((invite, index) => (
                 <motion.div
-                  key={inviteEmail}
+                  key={invite.email}
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.2, delay: index * 0.05 }}
-                  className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 rounded-lg ${
-                    failedEmails.includes(inviteEmail)
+                  className={`flex items-center justify-between gap-3 p-3 rounded-lg ${
+                    failedEmails.includes(invite.email)
                       ? "bg-red-500/10 border border-red-500/30"
                       : "bg-muted/30 border border-border/50"
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center flex-shrink-0">
                       <UserPlus className="w-4 h-4 text-muted-foreground" />
                     </div>
-                    <span className="text-foreground">{inviteEmail}</span>
+                    <span className="text-foreground truncate">{invite.email}</span>
                   </div>
-                  <button
-                    onClick={() => removeEmail(inviteEmail)}
-                    className="p-1 text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="relative">
+                      <select
+                        value={invite.role}
+                        onChange={(e) => updateRole(invite.email, e.target.value as "admin" | "member")}
+                        className="appearance-none bg-muted/50 border border-border/50 rounded-md pl-2 pr-7 py-1 text-xs text-foreground focus:outline-none focus:border-primary-500/50 cursor-pointer"
+                      >
+                        <option value="member">Member</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                      <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
+                    </div>
+                    <button
+                      onClick={() => removeInvite(invite.email)}
+                      className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
                 </motion.div>
               ))}
             </div>
           )}
 
           {/* Empty state */}
-          {emails.length === 0 && (
+          {invites.length === 0 && (
             <div className="text-center py-8 bg-muted/20 border border-border/30 rounded-xl mb-8">
-              <UserPlus className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground mb-1">No invites added yet</p>
-              <p className="text-sm text-muted-foreground">
-                You can always invite teammates later from Settings
+              <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-4">
+                <UserPlus className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <p className="text-foreground font-medium mb-1">Your team is waiting</p>
+              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                Add email addresses above or paste a list. You can always invite teammates later from Settings.
               </p>
             </div>
           )}
@@ -251,7 +300,7 @@ export default function InviteTeam() {
           <div className="bg-muted/20 border border-border/30 rounded-xl p-4 mb-8">
             <p className="text-sm text-muted-foreground">
               <strong className="text-foreground">Tip:</strong> You can paste multiple
-              email addresses separated by commas or spaces.
+              email addresses separated by commas, spaces, or new lines.
             </p>
           </div>
         </div>
@@ -289,11 +338,11 @@ export default function InviteTeam() {
               {isSending ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Sending {sentCount}/{emails.length}...
+                  Sending {sentCount}/{invites.length}...
                 </>
-              ) : emails.length > 0 ? (
+              ) : invites.length > 0 ? (
                 <>
-                  Send {emails.length} Invite{emails.length !== 1 ? "s" : ""}
+                  Send {invites.length} Invite{invites.length !== 1 ? "s" : ""}
                   <ArrowRight className="w-4 h-4" />
                 </>
               ) : (

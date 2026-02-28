@@ -275,7 +275,8 @@ async def _check_overdue_blockers() -> dict[str, Any]:
 
     from aexy.core.database import async_session_maker
     from aexy.models.tracking import Blocker, BlockerStatus, BlockerSeverity
-    from aexy.models.notification import Notification, NotificationEventType
+    from aexy.models.notification import NotificationEventType
+    from aexy.services.notification_service import NotificationService
     from aexy.models.team import TeamMember
 
     cutoff_critical = datetime.utcnow() - timedelta(hours=4)
@@ -321,20 +322,24 @@ async def _check_overdue_blockers() -> dict[str, Any]:
                 if leader:
                     blocker.escalated_to_id = leader.developer_id
 
-                    # Create notification
-                    notification = Notification(
-                        developer_id=leader.developer_id,
-                        event_type=NotificationEventType.GOAL_AT_RISK.value,  # Reusing existing type
-                        title="Blocker Escalated",
-                        message=f"Blocker has been active too long: {blocker.description[:100]}",
-                        context={
-                            "blocker_id": blocker.id,
-                            "severity": blocker.severity,
-                            "reported_by": blocker.developer_id,
-                        },
-                    )
-                    db.add(notification)
-                    notifications_sent += 1
+                    # Create notification via service (respects preferences + multi-channel)
+                    try:
+                        notif_service = NotificationService(db)
+                        notif = await notif_service.create_notification(
+                            recipient_id=leader.developer_id,
+                            event_type=NotificationEventType.BLOCKER_ESCALATED,
+                            title="Blocker Escalated",
+                            body=f"Blocker has been active too long: {blocker.description[:100]}",
+                            context={
+                                "blocker_id": blocker.id,
+                                "severity": blocker.severity,
+                                "reported_by": blocker.developer_id,
+                            },
+                        )
+                        if notif:
+                            notifications_sent += 1
+                    except Exception as notif_exc:
+                        logger.warning("Failed to send blocker notification: %s", notif_exc)
 
         await db.commit()
 

@@ -36,6 +36,7 @@ from aexy.api.sprints import router as sprints_router
 from aexy.api.sprint_tasks import router as sprint_tasks_router
 from aexy.api.sprint_analytics import router as sprint_analytics_router
 from aexy.api.retrospectives import router as retrospectives_router
+from aexy.api.planning_poker import router as planning_poker_router
 from aexy.api.project_tasks import router as project_tasks_router
 from aexy.api.task_templates import router as task_templates_router
 # Task Configuration
@@ -102,6 +103,8 @@ from aexy.api.google_integration import callback_router as google_callback_route
 # AI Agents
 from aexy.api.agents import router as agents_router
 from aexy.api.agents import writing_style_router
+from aexy.api.agent_policies import router as agent_policies_router
+from aexy.api.agent_policies import audit_router as agent_audit_router
 # Automation-Agent Integration
 from aexy.api.automation_agents import router as automation_agents_router
 # Dashboard Customization
@@ -196,6 +199,7 @@ api_router.include_router(workspace_teams_router, tags=["workspace-teams"])
 api_router.include_router(sprints_router, tags=["sprints"])
 api_router.include_router(sprint_tasks_router, tags=["sprint-tasks"])
 api_router.include_router(sprint_analytics_router, tags=["sprint-analytics"])
+api_router.include_router(planning_poker_router, tags=["planning-poker"])
 api_router.include_router(retrospectives_router, tags=["retrospectives"])
 api_router.include_router(project_tasks_router, tags=["project-tasks"])
 api_router.include_router(task_templates_router, tags=["task-templates"])
@@ -263,6 +267,9 @@ api_router.include_router(google_callback_router, tags=["google-integration"])
 # AI Agents
 api_router.include_router(agents_router, tags=["agents"])
 api_router.include_router(writing_style_router, tags=["writing-style"])
+# Agent Policy Engine
+api_router.include_router(agent_policies_router, tags=["agent-policies"])
+api_router.include_router(agent_audit_router, tags=["agent-audit"])
 # Automation-Agent Integration
 api_router.include_router(automation_agents_router, tags=["automation-agents"])
 # Dashboard Customization

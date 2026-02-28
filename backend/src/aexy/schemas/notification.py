@@ -40,10 +40,91 @@ class NotificationEventType(str, Enum):
     # Mentions
     MENTION = "mention"
 
+    # App access requests
+    APP_ACCESS_REQUESTED = "app_access_requested"
+    APP_ACCESS_APPROVED = "app_access_approved"
+    APP_ACCESS_REJECTED = "app_access_rejected"
+
     # Usage alerts (billing)
     USAGE_ALERT_80 = "usage_alert_80"  # 80% of limit reached
     USAGE_ALERT_90 = "usage_alert_90"  # 90% of limit reached (critical)
     USAGE_ALERT_100 = "usage_alert_100"  # Limit reached
+
+    # On-call
+    ONCALL_SHIFT_STARTING = "oncall_shift_starting"
+    ONCALL_SHIFT_STARTED = "oncall_shift_started"
+    ONCALL_SHIFT_ENDING = "oncall_shift_ending"
+    ONCALL_SWAP_REQUESTED = "oncall_swap_requested"
+    ONCALL_SWAP_ACCEPTED = "oncall_swap_accepted"
+    ONCALL_SWAP_DECLINED = "oncall_swap_declined"
+
+    # Task mentions
+    TASK_MENTIONED = "task_mentioned"
+
+    # Insights
+    INSIGHT_ALERT_WARNING = "insight_alert_warning"
+    INSIGHT_ALERT_CRITICAL = "insight_alert_critical"
+
+    # Leave
+    LEAVE_REQUEST_SUBMITTED = "leave_request_submitted"
+    LEAVE_REQUEST_APPROVED = "leave_request_approved"
+    LEAVE_REQUEST_REJECTED = "leave_request_rejected"
+    LEAVE_REQUEST_CANCELLED = "leave_request_cancelled"
+
+    # Reminders
+    REMINDER_DUE = "reminder_due"
+    REMINDER_ACKNOWLEDGED = "reminder_acknowledged"
+    REMINDER_COMPLETED = "reminder_completed"
+    REMINDER_ESCALATED = "reminder_escalated"
+    REMINDER_OVERDUE = "reminder_overdue"
+    REMINDER_ASSIGNED = "reminder_assigned"
+
+    # Agent mentions
+    AGENT_INVOKED = "agent_invoked"
+
+    # Agent policy events
+    AGENT_TOOL_BLOCKED = "agent_tool_blocked"
+    AGENT_APPROVAL_REQUIRED = "agent_approval_required"
+    AGENT_CONFIG_CHANGED = "agent_config_changed"
+
+    # Blocker escalation
+    BLOCKER_ESCALATED = "blocker_escalated"
+
+    # Uptime
+    UPTIME_INCIDENT_CREATED = "uptime_incident_created"
+    UPTIME_INCIDENT_RESOLVED = "uptime_incident_resolved"
+
+    # Learning
+    LEARNING_APPROVAL_REQUESTED = "learning_approval_requested"
+    LEARNING_APPROVAL_DECIDED = "learning_approval_decided"
+    LEARNING_GOAL_ASSIGNED = "learning_goal_assigned"
+    LEARNING_GOAL_OVERDUE = "learning_goal_overdue"
+    LEARNING_ACTIVITY_COMPLETED = "learning_activity_completed"
+
+    # Forms
+    FORM_SUBMISSION_RECEIVED = "form_submission_received"
+    FORM_SUBMISSION_FAILED = "form_submission_failed"
+
+    # Campaigns
+    CAMPAIGN_COMPLETED = "campaign_completed"
+    CAMPAIGN_SCHEDULED = "campaign_scheduled"
+
+    # Automations
+    AUTOMATION_RUN_FAILED = "automation_run_failed"
+    AUTOMATION_RUN_COMPLETED = "automation_run_completed"
+
+    # Hiring / Assessments
+    ASSESSMENT_INVITATION_SENT = "assessment_invitation_sent"
+    ASSESSMENT_COMPLETED = "assessment_completed"
+    CANDIDATE_STAGE_CHANGED = "candidate_stage_changed"
+
+    # GTM
+    GTM_ALERT_TRIGGERED = "gtm_alert_triggered"
+
+    # Documents
+    DOCUMENT_SHARED = "document_shared"
+    DOCUMENT_MENTIONED = "document_mentioned"
+    DOCUMENT_COMMENTED = "document_commented"
 
 
 class NotificationContext(BaseModel):
@@ -93,6 +174,8 @@ class NotificationResponse(BaseModel):
     in_app_delivered: bool
     email_sent: bool
     email_sent_at: datetime | None = None
+    slack_sent: bool = False
+    slack_sent_at: datetime | None = None
     created_at: datetime
 
 
@@ -133,6 +216,7 @@ class NotificationPreferenceBase(BaseModel):
     in_app_enabled: bool = True
     email_enabled: bool = True
     slack_enabled: bool = False
+    web_push_enabled: bool = False
 
 
 class NotificationPreferenceUpdate(BaseModel):
@@ -141,6 +225,7 @@ class NotificationPreferenceUpdate(BaseModel):
     in_app_enabled: bool | None = None
     email_enabled: bool | None = None
     slack_enabled: bool | None = None
+    web_push_enabled: bool | None = None
 
 
 class NotificationPreferenceResponse(NotificationPreferenceBase):
@@ -160,6 +245,8 @@ class NotificationPreferencesResponse(BaseModel):
 
     preferences: dict[str, NotificationPreferenceResponse]
     available_event_types: list[str]
+    categories: dict[str, "CategoryPreferenceResponse"] = Field(default_factory=dict)
+    category_map: dict[str, list[str]] = Field(default_factory=dict)
 
 
 class BulkPreferenceUpdate(BaseModel):
@@ -169,6 +256,56 @@ class BulkPreferenceUpdate(BaseModel):
     in_app_enabled: bool | None = None
     email_enabled: bool | None = None
     slack_enabled: bool | None = None
+    web_push_enabled: bool | None = None
+
+
+# Web Push Subscription schemas
+class WebPushSubscriptionCreate(BaseModel):
+    """Create a web push subscription."""
+
+    endpoint: str
+    p256dh_key: str
+    auth_key: str
+    user_agent: str | None = None
+
+
+class WebPushSubscriptionResponse(BaseModel):
+    """Web push subscription response."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    developer_id: str
+    endpoint: str
+    is_active: bool
+    created_at: datetime
+
+
+# Category Preference schemas
+class CategoryPreferenceResponse(BaseModel):
+    """Category-level notification preference response."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    category: str
+    in_app_enabled: bool = True
+    email_enabled: bool = True
+    slack_enabled: bool = False
+    web_push_enabled: bool = False
+    slack_channel_id: str | None = None
+    slack_channel_name: str | None = None
+
+
+class CategoryPreferenceUpdate(BaseModel):
+    """Update category-level notification preference."""
+
+    in_app_enabled: bool | None = None
+    email_enabled: bool | None = None
+    slack_enabled: bool | None = None
+    web_push_enabled: bool | None = None
+    slack_channel_id: str | None = None
+    slack_channel_name: str | None = None
 
 
 # Email notification log schemas
@@ -276,6 +413,21 @@ NOTIFICATION_TEMPLATES = {
         "body_template": "{mentioner_name} mentioned you in a {entity_type}: {snippet}",
         "email_subject": "{mentioner_name} mentioned you",
     },
+    NotificationEventType.APP_ACCESS_REQUESTED: {
+        "title": "App Access Request",
+        "body_template": "{requester_name} requested access to {app_name}",
+        "email_subject": "New App Access Request: {app_name}",
+    },
+    NotificationEventType.APP_ACCESS_APPROVED: {
+        "title": "Access Request Approved",
+        "body_template": "Your request for access to {app_name} was approved",
+        "email_subject": "Access Approved: {app_name}",
+    },
+    NotificationEventType.APP_ACCESS_REJECTED: {
+        "title": "Access Request Declined",
+        "body_template": "Your request for access to {app_name} was not approved",
+        "email_subject": "Access Request Update: {app_name}",
+    },
     NotificationEventType.USAGE_ALERT_80: {
         "title": "Usage Alert",
         "body_template": "You've used 80% of your {resource_type}. Current usage: {current}/{limit}.",
@@ -290,5 +442,161 @@ NOTIFICATION_TEMPLATES = {
         "title": "Limit Reached",
         "body_template": "You've reached your {resource_type} limit ({limit}). Upgrade your plan to continue using this feature.",
         "email_subject": "Action Required: {resource_type} Limit Reached",
+    },
+    # Leave
+    NotificationEventType.LEAVE_REQUEST_SUBMITTED: {
+        "title": "Leave Request Submitted",
+        "body_template": "{requester_name} submitted a leave request ({leave_type}, {start_date} - {end_date})",
+        "email_subject": "Leave Request from {requester_name}",
+    },
+    NotificationEventType.LEAVE_REQUEST_APPROVED: {
+        "title": "Leave Request Approved",
+        "body_template": "Your leave request ({leave_type}, {start_date} - {end_date}) has been approved",
+        "email_subject": "Leave Request Approved",
+    },
+    NotificationEventType.LEAVE_REQUEST_REJECTED: {
+        "title": "Leave Request Rejected",
+        "body_template": "Your leave request ({leave_type}, {start_date} - {end_date}) was rejected",
+        "email_subject": "Leave Request Rejected",
+    },
+    NotificationEventType.LEAVE_REQUEST_CANCELLED: {
+        "title": "Leave Request Cancelled",
+        "body_template": "{requester_name} cancelled their approved leave ({leave_type}, {start_date} - {end_date})",
+        "email_subject": "Leave Request Cancelled by {requester_name}",
+    },
+    # Agent
+    NotificationEventType.AGENT_INVOKED: {
+        "title": "Agent Working",
+        "body_template": "The {agent_name} agent has been invoked and is processing your request",
+        "email_subject": "{agent_name} is working on your request",
+    },
+    NotificationEventType.AGENT_TOOL_BLOCKED: {
+        "title": "Agent Tool Blocked",
+        "body_template": "{agent_name} attempted to use '{tool_name}' but was blocked by policy",
+        "email_subject": "Agent tool blocked: {tool_name}",
+    },
+    NotificationEventType.AGENT_APPROVAL_REQUIRED: {
+        "title": "Agent Action Needs Approval",
+        "body_template": "{agent_name} wants to use '{tool_name}' — approval required",
+        "email_subject": "Approval needed: {agent_name} wants to use {tool_name}",
+    },
+    NotificationEventType.AGENT_CONFIG_CHANGED: {
+        "title": "Agent Config Changed",
+        "body_template": "{changed_by_name} {change_type}d the configuration for {agent_name}",
+        "email_subject": "Agent config {change_type}d: {agent_name}",
+    },
+    # Blocker
+    NotificationEventType.BLOCKER_ESCALATED: {
+        "title": "Blocker Escalated",
+        "body_template": "A blocker has been active too long: {description}",
+        "email_subject": "Blocker Escalated: Action Required",
+    },
+    # Uptime
+    NotificationEventType.UPTIME_INCIDENT_CREATED: {
+        "title": "Service Down",
+        "body_template": "{monitor_name} is down — incident created",
+        "email_subject": "[DOWN] {monitor_name} is not responding",
+    },
+    NotificationEventType.UPTIME_INCIDENT_RESOLVED: {
+        "title": "Service Recovered",
+        "body_template": "{monitor_name} is back up — incident resolved",
+        "email_subject": "[RECOVERED] {monitor_name} is back up",
+    },
+    # Learning
+    NotificationEventType.LEARNING_APPROVAL_REQUESTED: {
+        "title": "Learning Approval Requested",
+        "body_template": "{requester_name} requested approval for: {course_title}",
+        "email_subject": "Learning Approval Request: {course_title}",
+    },
+    NotificationEventType.LEARNING_APPROVAL_DECIDED: {
+        "title": "Learning Request {decision}",
+        "body_template": "Your request for \"{course_title}\" has been {decision}",
+        "email_subject": "Learning Request {decision}: {course_title}",
+    },
+    NotificationEventType.LEARNING_GOAL_ASSIGNED: {
+        "title": "Learning Goal Assigned",
+        "body_template": "A new learning goal has been assigned to you: {goal_title}",
+        "email_subject": "New Learning Goal: {goal_title}",
+    },
+    NotificationEventType.LEARNING_GOAL_OVERDUE: {
+        "title": "Learning Goal Overdue",
+        "body_template": "Your learning goal \"{goal_title}\" is past its due date",
+        "email_subject": "Overdue: Learning Goal \"{goal_title}\"",
+    },
+    NotificationEventType.LEARNING_ACTIVITY_COMPLETED: {
+        "title": "Activity Completed",
+        "body_template": "You completed \"{activity_title}\" and earned {points} points",
+        "email_subject": "Activity Completed: {activity_title}",
+    },
+    # Forms
+    NotificationEventType.FORM_SUBMISSION_RECEIVED: {
+        "title": "New Form Submission",
+        "body_template": "New submission on \"{form_name}\" from {submitter_name}",
+        "email_subject": "New Submission: {form_name}",
+    },
+    NotificationEventType.FORM_SUBMISSION_FAILED: {
+        "title": "Form Submission Failed",
+        "body_template": "A submission on \"{form_name}\" failed to process",
+        "email_subject": "Failed Submission: {form_name}",
+    },
+    # Campaigns
+    NotificationEventType.CAMPAIGN_COMPLETED: {
+        "title": "Campaign Completed",
+        "body_template": "Campaign \"{campaign_name}\" has been sent to {total_recipients} recipients",
+        "email_subject": "Campaign Sent: {campaign_name}",
+    },
+    NotificationEventType.CAMPAIGN_SCHEDULED: {
+        "title": "Campaign Scheduled",
+        "body_template": "Campaign \"{campaign_name}\" is scheduled for {scheduled_at}",
+        "email_subject": "Campaign Scheduled: {campaign_name}",
+    },
+    # Automations
+    NotificationEventType.AUTOMATION_RUN_FAILED: {
+        "title": "Automation Failed",
+        "body_template": "Automation \"{automation_name}\" failed: {error}",
+        "email_subject": "Automation Failed: {automation_name}",
+    },
+    NotificationEventType.AUTOMATION_RUN_COMPLETED: {
+        "title": "Automation Completed",
+        "body_template": "Automation \"{automation_name}\" completed successfully",
+        "email_subject": "Automation Completed: {automation_name}",
+    },
+    # Hiring / Assessments
+    NotificationEventType.ASSESSMENT_INVITATION_SENT: {
+        "title": "Assessment Published",
+        "body_template": "Assessment \"{assessment_title}\" published with {invitation_count} invitations",
+        "email_subject": "Assessment Published: {assessment_title}",
+    },
+    NotificationEventType.ASSESSMENT_COMPLETED: {
+        "title": "Assessment Completed",
+        "body_template": "{candidate_name} completed the assessment \"{assessment_title}\"",
+        "email_subject": "Assessment Completed: {candidate_name}",
+    },
+    NotificationEventType.CANDIDATE_STAGE_CHANGED: {
+        "title": "Candidate Stage Changed",
+        "body_template": "{candidate_name} moved to {new_stage} stage",
+        "email_subject": "Candidate Update: {candidate_name} → {new_stage}",
+    },
+    # GTM
+    NotificationEventType.GTM_ALERT_TRIGGERED: {
+        "title": "GTM Alert",
+        "body_template": "Alert triggered: {event_type} — {summary}",
+        "email_subject": "GTM Alert: {event_type}",
+    },
+    # Documents
+    NotificationEventType.DOCUMENT_SHARED: {
+        "title": "Document Shared",
+        "body_template": "{sharer_name} shared \"{document_title}\" with you",
+        "email_subject": "{sharer_name} shared a document with you",
+    },
+    NotificationEventType.DOCUMENT_MENTIONED: {
+        "title": "Mentioned in Document",
+        "body_template": "{mentioner_name} mentioned you in \"{document_title}\"",
+        "email_subject": "You were mentioned in \"{document_title}\"",
+    },
+    NotificationEventType.DOCUMENT_COMMENTED: {
+        "title": "New Comment on Document",
+        "body_template": "{commenter_name} commented on \"{document_title}\"",
+        "email_subject": "New comment on \"{document_title}\"",
     },
 }

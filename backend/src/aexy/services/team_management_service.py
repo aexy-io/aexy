@@ -179,6 +179,29 @@ class TeamManagementService:
         self.db.add(member)
         await self.db.flush()
         await self.db.refresh(member)
+
+        # Notify the developer they were added to the team
+        try:
+            from aexy.services.notification_service import notify_team_added
+
+            team = await self.get_team(team_id)
+            team_name = team.name if team else "a team"
+            workspace_id = team.workspace_id if team else ""
+            # Fetch workspace name
+            from aexy.models.workspace import Workspace
+
+            ws = await self.db.get(Workspace, workspace_id) if workspace_id else None
+            ws_name = ws.name if ws else ""
+            await notify_team_added(
+                db=self.db,
+                developer_id=developer_id,
+                team_name=team_name,
+                workspace_name=ws_name,
+                workspace_id=str(workspace_id),
+            )
+        except Exception:
+            pass  # Non-critical
+
         return member
 
     async def get_team_member(

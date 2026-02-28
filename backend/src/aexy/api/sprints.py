@@ -61,6 +61,7 @@ def sprint_to_list_response(sprint, stats: dict | None = None) -> SprintListResp
         completed_count=stats.get("completed_tasks", 0),
         total_points=stats.get("total_points", 0),
         completed_points=stats.get("completed_points", 0),
+        settings=sprint.settings or {},
     )
 
 

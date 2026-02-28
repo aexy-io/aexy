@@ -266,6 +266,21 @@ class CampaignService:
         await self.db.commit()
         await self.db.refresh(campaign)
 
+        # Notify campaign creator
+        if campaign.created_by_id:
+            try:
+                from aexy.services.notification_service import notify_campaign_scheduled
+
+                await notify_campaign_scheduled(
+                    db=self.db,
+                    creator_id=campaign.created_by_id,
+                    campaign_name=campaign.name,
+                    scheduled_at=scheduled_at.isoformat(),
+                    workspace_id=workspace_id,
+                )
+            except Exception:
+                pass
+
         # Dispatch campaign.scheduled event for automations
         await dispatch_automation_event(
             db=self.db,
@@ -787,6 +802,21 @@ class CampaignService:
                 campaign.completed_at = datetime.now(timezone.utc)
                 await self.db.commit()
                 logger.info(f"Campaign {campaign_id} completed")
+
+                # Notify campaign creator
+                if campaign.created_by_id:
+                    try:
+                        from aexy.services.notification_service import notify_campaign_completed
+
+                        await notify_campaign_completed(
+                            db=self.db,
+                            creator_id=campaign.created_by_id,
+                            campaign_name=campaign.name,
+                            total_recipients=campaign.total_recipients or 0,
+                            workspace_id=str(campaign.workspace_id),
+                        )
+                    except Exception:
+                        pass
 
                 # Dispatch automation event
                 await dispatch_automation_event(

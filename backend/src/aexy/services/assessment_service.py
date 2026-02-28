@@ -1114,6 +1114,26 @@ class AssessmentService:
         )
 
         await self.db.refresh(assessment)
+
+        # Notify assessment creator
+        if assessment.created_by:
+            try:
+                from aexy.services.notification_service import notify_assessment_published
+
+                invitation_count = len([
+                    inv for inv in (await self.get_candidates(assessment_id))
+                    if inv.status == InvitationStatus.SENT.value
+                ]) if send_invitations else 0
+                await notify_assessment_published(
+                    db=self.db,
+                    creator_id=assessment.created_by,
+                    assessment_title=assessment.title,
+                    invitation_count=invitation_count,
+                    workspace_id=organization_id,
+                )
+            except Exception:
+                pass
+
         return assessment
 
     async def _send_invitation_email(
