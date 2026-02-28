@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutGrid,
@@ -1337,6 +1337,7 @@ export default function ProjectBoardPage({
 }) {
   const { projectId } = params;
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { currentWorkspaceId, currentWorkspaceLoading } = useWorkspace();
@@ -1458,6 +1459,18 @@ export default function ProjectBoardPage({
   }, [updateView]);
 
   const [selectedTask, setSelectedTask] = useState<SprintTask | null>(null);
+
+  // Auto-open task from URL query parameter (e.g. notification deep links)
+  const taskIdFromUrl = searchParams.get("task");
+  useEffect(() => {
+    if (taskIdFromUrl && filteredTasks.length > 0 && !selectedTask) {
+      const task = filteredTasks.find((t) => t.id === taskIdFromUrl);
+      if (task) {
+        setSelectedTask(task);
+      }
+    }
+  }, [taskIdFromUrl, filteredTasks, selectedTask]);
+
   const [activeId, setActiveId] = useState<string | null>(null);
   const [collapsedSprints, setCollapsedSprints] = useState<Set<string>>(new Set());
   const [showAddTask, setShowAddTask] = useState(false);
