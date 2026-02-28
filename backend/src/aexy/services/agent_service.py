@@ -126,6 +126,7 @@ class AgentService:
     async def update_agent(
         self,
         agent_id: str,
+        changed_by_id: str | None = None,
         **kwargs,
     ) -> CRMAgent | None:
         """Update an agent."""
@@ -138,33 +139,90 @@ class AgentService:
         if agent.is_system and any(k not in allowed_system_fields for k in kwargs.keys()):
             return None
 
+        # Compute field changes for audit
+        field_changes = {}
+        for key, value in kwargs.items():
+            if value is not None and hasattr(agent, key):
+                old_value = getattr(agent, key)
+                if old_value != value:
+                    field_changes[key] = {"old": old_value, "new": value}
+
         for key, value in kwargs.items():
             if value is not None and hasattr(agent, key):
                 setattr(agent, key, value)
 
         await self.db.flush()
         await self.db.refresh(agent)
+
+        # Record config audit
+        if field_changes and changed_by_id:
+            try:
+                from aexy.services.agent_policy_engine import AgentPolicyEngine
+                engine = AgentPolicyEngine(self.db)
+                await engine.record_config_change(
+                    agent_id=agent_id,
+                    changed_by_id=changed_by_id,
+                    change_type="update",
+                    field_changes=field_changes,
+                )
+            except Exception as e:
+                logger.warning(f"Failed to record config audit: {e}")
+
         return agent
 
-    async def delete_agent(self, agent_id: str) -> bool:
+    async def delete_agent(
+        self, agent_id: str, changed_by_id: str | None = None
+    ) -> bool:
         """Delete an agent."""
         agent = await self.get_agent(agent_id)
         if not agent or agent.is_system:
             return False
 
+        # Record config audit before deletion
+        if changed_by_id:
+            try:
+                from aexy.services.agent_policy_engine import AgentPolicyEngine
+                engine = AgentPolicyEngine(self.db)
+                await engine.record_config_change(
+                    agent_id=agent_id,
+                    changed_by_id=changed_by_id,
+                    change_type="delete",
+                    field_changes={"name": {"old": agent.name, "new": None}},
+                )
+            except Exception as e:
+                logger.warning(f"Failed to record config audit: {e}")
+
         await self.db.delete(agent)
         await self.db.flush()
         return True
 
-    async def toggle_agent(self, agent_id: str) -> CRMAgent | None:
+    async def toggle_agent(
+        self, agent_id: str, changed_by_id: str | None = None
+    ) -> CRMAgent | None:
         """Toggle agent active status."""
         agent = await self.get_agent(agent_id)
         if not agent:
             return None
 
+        old_value = agent.is_active
         agent.is_active = not agent.is_active
         await self.db.flush()
         await self.db.refresh(agent)
+
+        # Record config audit
+        if changed_by_id:
+            try:
+                from aexy.services.agent_policy_engine import AgentPolicyEngine
+                engine = AgentPolicyEngine(self.db)
+                await engine.record_config_change(
+                    agent_id=agent_id,
+                    changed_by_id=changed_by_id,
+                    change_type="toggle",
+                    field_changes={"is_active": {"old": old_value, "new": agent.is_active}},
+                )
+            except Exception as e:
+                logger.warning(f"Failed to record config audit: {e}")
+
         return agent
 
     async def check_handle_available(
@@ -336,6 +394,17 @@ class AgentService:
             timeout_seconds=agent.timeout_seconds,
         )
 
+        # Inject policy engine for governance
+        try:
+            from aexy.services.agent_policy_engine import AgentPolicyEngine
+            policy_engine = AgentPolicyEngine(self.db)
+            await policy_engine.load_policies(agent.workspace_id, agent.id)
+            agent_instance.policy_engine = policy_engine
+            agent_instance.agent_config = agent
+            agent_instance.execution_id = execution.id
+        except Exception as e:
+            logger.warning(f"Failed to load policy engine: {e}")
+
         try:
             result = await agent_instance.run(
                 record_id=record_id,
@@ -352,6 +421,34 @@ class AgentService:
             execution.duration_ms = int(
                 (execution.completed_at - execution.started_at).total_seconds() * 1000
             )
+
+            # Record token usage for billing
+            try:
+                from aexy.services.usage_service import UsageService
+                usage_service = UsageService(self.db)
+                total_input = sum(
+                    s.get("input_tokens", 0)
+                    for s in execution.steps
+                    if s.get("type") == "llm_call"
+                )
+                total_output = sum(
+                    s.get("output_tokens", 0)
+                    for s in execution.steps
+                    if s.get("type") == "llm_call"
+                )
+                if total_input > 0 or total_output > 0:
+                    billing_dev_id = user_id or str(agent.created_by_id)
+                    await usage_service.record_usage(
+                        developer_id=billing_dev_id,
+                        provider=agent.llm_provider,
+                        model=agent.model,
+                        input_tokens=total_input,
+                        output_tokens=total_output,
+                        analysis_type="agent_execution",
+                        request_id=execution.id,
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to record agent usage: {e}")
 
             # Update agent stats
             agent.total_executions += 1

@@ -70,6 +70,9 @@ const EVENT_TYPE_LABELS: Record<string, { label: string; description: string }> 
   app_access_rejected: { label: "Access rejected", description: "When your access request is declined" },
   // Agents
   agent_invoked: { label: "Agent working", description: "When an AI agent starts processing your request" },
+  agent_tool_blocked: { label: "Agent tool blocked", description: "When an agent's tool call is blocked by a policy" },
+  agent_approval_required: { label: "Agent action needs approval", description: "When an agent action requires admin approval before proceeding" },
+  agent_config_changed: { label: "Agent config changed", description: "When an agent's configuration is modified" },
   // Blocker escalation
   blocker_escalated: { label: "Blocker escalated", description: "When a blocker is escalated due to being active too long" },
   // Uptime
