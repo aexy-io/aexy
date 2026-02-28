@@ -133,6 +133,7 @@ class NotificationEventType(str, Enum):
 
     # Chat
     CHAT_MENTION = "chat_mention"
+    AI_CONVERSATION_SHARED = "ai_conversation_shared"
 
 
 class Notification(Base):
@@ -491,6 +492,7 @@ NOTIFICATION_CATEGORIES: dict[str, list[str]] = {
     ],
     "chat": [
         NotificationEventType.CHAT_MENTION.value,
+        NotificationEventType.AI_CONVERSATION_SHARED.value,
     ],
 }
 
@@ -583,4 +585,5 @@ DEFAULT_NOTIFICATION_PREFERENCES = {
     NotificationEventType.DOCUMENT_COMMENTED: {"in_app": True, "email": True, "slack": False, "web_push": False},
     # Chat
     NotificationEventType.CHAT_MENTION: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.AI_CONVERSATION_SHARED: {"in_app": True, "email": True, "slack": False, "web_push": False},
 }

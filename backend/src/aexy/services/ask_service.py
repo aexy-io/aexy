@@ -6,13 +6,18 @@ import time
 from collections.abc import AsyncGenerator
 from uuid import uuid4
 
+import hashlib
+import secrets
+
 import httpx
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from aexy.core.config import get_settings
-from aexy.models.ask import AskConversation, AskMessage
+from aexy.models.ask import AskConversation, AskConversationParticipant, AskMessage, AskShareLink
+from aexy.models.developer import Developer
+from aexy.services.ask_collaboration_service import get_ask_collaboration_service
 from aexy.services.ask_tools import TOOL_DEFINITIONS, execute_tool
 
 logger = logging.getLogger(__name__)
@@ -92,18 +97,32 @@ class AskService:
     # --- CRUD ---
 
     async def list_conversations(
-        self, workspace_id: str, developer_id: str, limit: int = 50
+        self, workspace_id: str, developer_id: str, limit: int = 50, search: str | None = None
     ) -> list[dict]:
-        """List conversations for a user, newest first."""
+        """List conversations for a user (owned + shared), newest first."""
+        # Subquery: conversation IDs where user is a participant
+        participant_conv_ids = (
+            select(AskConversationParticipant.conversation_id)
+            .where(AskConversationParticipant.developer_id == developer_id)
+            .scalar_subquery()
+        )
+
         stmt = (
             select(AskConversation)
             .where(
                 AskConversation.workspace_id == workspace_id,
-                AskConversation.developer_id == developer_id,
+                or_(
+                    AskConversation.developer_id == developer_id,
+                    AskConversation.id.in_(participant_conv_ids),
+                ),
             )
             .order_by(AskConversation.created_at.desc())
             .limit(limit)
         )
+
+        if search:
+            stmt = stmt.where(AskConversation.title.ilike(f"%{search}%"))
+
         result = await self.db.execute(stmt)
         conversations = result.scalars().all()
 
@@ -117,21 +136,31 @@ class AskService:
             count_result = await self.db.execute(count_stmt)
             msg_count = count_result.scalar() or 0
 
+            part_count_stmt = (
+                select(func.count())
+                .select_from(AskConversationParticipant)
+                .where(AskConversationParticipant.conversation_id == c.id)
+            )
+            part_count_result = await self.db.execute(part_count_stmt)
+            part_count = part_count_result.scalar() or 0
+
             out.append({
                 "id": str(c.id),
                 "workspace_id": str(c.workspace_id),
                 "developer_id": str(c.developer_id),
                 "title": c.title,
+                "is_collaborative": c.is_collaborative,
                 "created_at": c.created_at.isoformat() if c.created_at else None,
                 "updated_at": c.updated_at.isoformat() if c.updated_at else None,
                 "message_count": msg_count,
+                "participant_count": part_count,
             })
         return out
 
     async def create_conversation(
         self, workspace_id: str, developer_id: str, title: str | None = None
     ) -> AskConversation:
-        """Create a new conversation."""
+        """Create a new conversation and add creator as owner participant."""
         conv = AskConversation(
             id=str(uuid4()),
             workspace_id=workspace_id,
@@ -139,6 +168,16 @@ class AskService:
             title=title or "New conversation",
         )
         self.db.add(conv)
+        await self.db.flush()
+
+        # Add creator as owner participant
+        participant = AskConversationParticipant(
+            id=str(uuid4()),
+            conversation_id=conv.id,
+            developer_id=developer_id,
+            permission="owner",
+        )
+        self.db.add(participant)
         await self.db.flush()
         await self.db.refresh(conv)
         return conv
@@ -149,21 +188,31 @@ class AskService:
         """Get a conversation with its messages.
 
         Args:
-            developer_id: If provided, enforces ownership check.
+            developer_id: If provided, checks ownership OR participant access.
         """
-        conditions = [
-            AskConversation.id == conversation_id,
-            AskConversation.workspace_id == workspace_id,
-        ]
-        if developer_id:
-            conditions.append(AskConversation.developer_id == developer_id)
         stmt = (
             select(AskConversation)
-            .where(*conditions)
+            .where(
+                AskConversation.id == conversation_id,
+                AskConversation.workspace_id == workspace_id,
+            )
             .options(selectinload(AskConversation.messages))
         )
         result = await self.db.execute(stmt)
-        return result.scalar_one_or_none()
+        conv = result.scalar_one_or_none()
+        if not conv:
+            return None
+
+        if developer_id:
+            # Owner always has access
+            if str(conv.developer_id) == developer_id:
+                return conv
+            # Check participant access
+            access = await self.check_access(conversation_id, developer_id)
+            if access is None:
+                return None
+
+        return conv
 
     async def delete_conversation(
         self, conversation_id: str, workspace_id: str, developer_id: str | None = None
@@ -176,6 +225,238 @@ class AskService:
         await self.db.flush()
         return True
 
+    # --- Collaboration ---
+
+    async def check_access(
+        self, conversation_id: str, developer_id: str
+    ) -> str | None:
+        """Check a developer's access level to a conversation.
+
+        Returns "owner", "write", "read", or None.
+        """
+        stmt = (
+            select(AskConversationParticipant.permission)
+            .where(
+                AskConversationParticipant.conversation_id == conversation_id,
+                AskConversationParticipant.developer_id == developer_id,
+            )
+        )
+        result = await self.db.execute(stmt)
+        permission = result.scalar_one_or_none()
+        return permission
+
+    async def add_participant(
+        self,
+        conversation_id: str,
+        developer_id: str,
+        permission: str = "write",
+        added_by_id: str | None = None,
+    ) -> AskConversationParticipant:
+        """Add a participant to a conversation. Sets is_collaborative=True."""
+        participant = AskConversationParticipant(
+            id=str(uuid4()),
+            conversation_id=conversation_id,
+            developer_id=developer_id,
+            permission=permission,
+            added_by_id=added_by_id,
+        )
+        self.db.add(participant)
+
+        # Mark conversation as collaborative
+        stmt = select(AskConversation).where(AskConversation.id == conversation_id)
+        result = await self.db.execute(stmt)
+        conv = result.scalar_one_or_none()
+        if conv and not conv.is_collaborative:
+            conv.is_collaborative = True
+
+        await self.db.flush()
+        return participant
+
+    async def update_participant_permission(
+        self, conversation_id: str, developer_id: str, permission: str
+    ) -> bool:
+        """Update a participant's permission level."""
+        stmt = (
+            select(AskConversationParticipant)
+            .where(
+                AskConversationParticipant.conversation_id == conversation_id,
+                AskConversationParticipant.developer_id == developer_id,
+            )
+        )
+        result = await self.db.execute(stmt)
+        participant = result.scalar_one_or_none()
+        if not participant:
+            return False
+        if participant.permission == "owner":
+            return False  # Can't change owner permission
+        participant.permission = permission
+        await self.db.flush()
+        return True
+
+    async def remove_participant(self, conversation_id: str, developer_id: str) -> bool:
+        """Remove a participant from a conversation."""
+        stmt = (
+            select(AskConversationParticipant)
+            .where(
+                AskConversationParticipant.conversation_id == conversation_id,
+                AskConversationParticipant.developer_id == developer_id,
+            )
+        )
+        result = await self.db.execute(stmt)
+        participant = result.scalar_one_or_none()
+        if not participant:
+            return False
+        if participant.permission == "owner":
+            return False  # Can't remove owner
+        await self.db.delete(participant)
+        await self.db.flush()
+        return True
+
+    async def list_participants(self, conversation_id: str) -> list[dict]:
+        """List participants with developer info."""
+        stmt = (
+            select(
+                AskConversationParticipant,
+                Developer.name,
+                Developer.avatar_url,
+            )
+            .join(Developer, AskConversationParticipant.developer_id == Developer.id)
+            .where(AskConversationParticipant.conversation_id == conversation_id)
+            .order_by(AskConversationParticipant.joined_at)
+        )
+        result = await self.db.execute(stmt)
+        rows = result.all()
+        return [
+            {
+                "id": str(p.id),
+                "conversation_id": str(p.conversation_id),
+                "developer_id": str(p.developer_id),
+                "permission": p.permission,
+                "added_by_id": str(p.added_by_id) if p.added_by_id else None,
+                "joined_at": p.joined_at.isoformat() if p.joined_at else None,
+                "developer_name": name,
+                "developer_avatar_url": avatar_url,
+            }
+            for p, name, avatar_url in rows
+        ]
+
+    async def create_share_link(
+        self,
+        conversation_id: str,
+        created_by_id: str,
+        permission: str = "read",
+        password: str | None = None,
+        expires_at: str | None = None,
+        max_uses: int | None = None,
+    ) -> AskShareLink:
+        """Create a share link for a conversation."""
+        token = secrets.token_urlsafe(32)
+        password_hash = None
+        if password:
+            password_hash = hashlib.sha256(password.encode()).hexdigest()
+
+        link = AskShareLink(
+            id=str(uuid4()),
+            conversation_id=conversation_id,
+            token=token,
+            permission=permission,
+            password_hash=password_hash,
+            expires_at=expires_at,
+            max_uses=max_uses,
+            created_by_id=created_by_id,
+        )
+        self.db.add(link)
+        await self.db.flush()
+        return link
+
+    async def list_share_links(self, conversation_id: str) -> list[AskShareLink]:
+        """List active share links for a conversation."""
+        stmt = (
+            select(AskShareLink)
+            .where(
+                AskShareLink.conversation_id == conversation_id,
+                AskShareLink.is_active.is_(True),
+            )
+            .order_by(AskShareLink.created_at.desc())
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def revoke_share_link(self, link_id: str) -> bool:
+        """Revoke a share link."""
+        stmt = select(AskShareLink).where(AskShareLink.id == link_id)
+        result = await self.db.execute(stmt)
+        link = result.scalar_one_or_none()
+        if not link:
+            return False
+        link.is_active = False
+        await self.db.flush()
+        return True
+
+    async def join_via_share_link(
+        self, token: str, developer_id: str, password: str | None = None
+    ) -> AskConversation | None:
+        """Join a conversation via share link. Returns the conversation or None."""
+        from datetime import datetime, timezone
+
+        stmt = (
+            select(AskShareLink)
+            .where(AskShareLink.token == token, AskShareLink.is_active.is_(True))
+        )
+        result = await self.db.execute(stmt)
+        link = result.scalar_one_or_none()
+        if not link:
+            return None
+
+        # Check expiry
+        if link.expires_at:
+            if datetime.now(timezone.utc) > link.expires_at:
+                return None
+
+        # Check max uses
+        if link.max_uses is not None and link.use_count >= link.max_uses:
+            return None
+
+        # Check password
+        if link.password_hash:
+            if not password:
+                return None
+            if hashlib.sha256(password.encode()).hexdigest() != link.password_hash:
+                return None
+
+        # Check if already a participant
+        existing = await self.check_access(link.conversation_id, developer_id)
+        if existing is None:
+            # Add as participant
+            await self.add_participant(
+                link.conversation_id,
+                developer_id,
+                link.permission,
+                added_by_id=link.created_by_id,
+            )
+
+        # Increment use count
+        link.use_count += 1
+        await self.db.flush()
+
+        # Return conversation
+        stmt = (
+            select(AskConversation)
+            .where(AskConversation.id == link.conversation_id)
+            .options(selectinload(AskConversation.messages))
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_sender_info(self, developer_id: str) -> dict:
+        """Get developer name and avatar for sender attribution."""
+        stmt = select(Developer.name, Developer.avatar_url).where(Developer.id == developer_id)
+        result = await self.db.execute(stmt)
+        row = result.one_or_none()
+        if row:
+            return {"sender_name": row[0], "sender_avatar_url": row[1]}
+        return {"sender_name": None, "sender_avatar_url": None}
+
     # --- Streaming ---
 
     async def stream_response(
@@ -185,7 +466,7 @@ class AskService:
         developer_id: str,
         user_content: str,
     ) -> AsyncGenerator[str, None]:
-        """Stream an AI response with tool execution."""
+        """Stream an AI response with tool execution and collaboration support."""
         if self._provider == "none":
             yield self._sse({"type": "error", "message": "No LLM API key configured"})
             return
@@ -195,6 +476,44 @@ class AskService:
             yield self._sse({"type": "error", "message": "Conversation not found"})
             return
 
+        # Check write access for participants
+        if str(conv.developer_id) != developer_id:
+            access = await self.check_access(conversation_id, developer_id)
+            if access not in ("owner", "write"):
+                yield self._sse({"type": "error", "message": "You don't have write access"})
+                return
+
+        # Try to acquire AI lock for collaborative conversations
+        collab = get_ask_collaboration_service()
+        if conv.is_collaborative:
+            locked = await collab.acquire_ai_lock(conversation_id)
+            if not locked:
+                # Queue the message
+                msg_count = len(conv.messages)
+                user_msg = AskMessage(
+                    id=str(uuid4()),
+                    conversation_id=conversation_id,
+                    role="user",
+                    content=user_content,
+                    message_index=msg_count,
+                    sender_id=developer_id,
+                    status="pending",
+                )
+                self.db.add(user_msg)
+                await self.db.flush()
+
+                queue_pos = await collab.enqueue_message(conversation_id, str(user_msg.id))
+                await collab.publish_ai_event(workspace_id, conversation_id, "ai_queue_update", {
+                    "queue_length": queue_pos,
+                })
+
+                yield self._sse({
+                    "type": "queued",
+                    "message_id": str(user_msg.id),
+                    "queue_position": queue_pos,
+                })
+                return
+
         msg_count = len(conv.messages)
 
         user_msg = AskMessage(
@@ -203,9 +522,20 @@ class AskService:
             role="user",
             content=user_content,
             message_index=msg_count,
+            sender_id=developer_id,
+            status="sent",
         )
         self.db.add(user_msg)
         await self.db.flush()
+
+        # Publish new message event for other participants
+        if conv.is_collaborative:
+            await collab.publish_ai_event(workspace_id, conversation_id, "ai_new_message", {
+                "message_id": str(user_msg.id),
+                "role": "user",
+                "sender_id": developer_id,
+                "content": user_content,
+            })
 
         # Auto-title on first message
         if msg_count == 0:
@@ -215,22 +545,36 @@ class AskService:
             conv.title = title
             await self.db.flush()
 
-        # Route to provider
-        if self._provider == "openai":
-            async for chunk in self._stream_openai(
-                conv, user_content, workspace_id, developer_id, msg_count
-            ):
-                yield chunk
-        elif self._provider == "gemini":
-            async for chunk in self._stream_gemini(
-                conv, user_content, workspace_id, developer_id, msg_count
-            ):
-                yield chunk
-        else:
-            async for chunk in self._stream_anthropic(
-                conv, user_content, workspace_id, developer_id, msg_count
-            ):
-                yield chunk
+        try:
+            # Route to provider
+            if self._provider == "openai":
+                async for chunk in self._stream_openai(
+                    conv, user_content, workspace_id, developer_id, msg_count
+                ):
+                    yield chunk
+            elif self._provider == "gemini":
+                async for chunk in self._stream_gemini(
+                    conv, user_content, workspace_id, developer_id, msg_count
+                ):
+                    yield chunk
+            else:
+                async for chunk in self._stream_anthropic(
+                    conv, user_content, workspace_id, developer_id, msg_count
+                ):
+                    yield chunk
+        finally:
+            # Release lock and process queued messages
+            if conv.is_collaborative:
+                await collab.release_ai_lock(conversation_id)
+                await collab.publish_ai_event(workspace_id, conversation_id, "ai_streaming_done", {})
+
+                # Check queue for next message
+                queue_length = await collab.get_queue_length(conversation_id)
+                if queue_length > 0:
+                    await collab.publish_ai_event(workspace_id, conversation_id, "ai_queue_update", {
+                        "queue_length": queue_length,
+                        "has_pending": True,
+                    })
 
     # --- OpenAI Provider ---
 

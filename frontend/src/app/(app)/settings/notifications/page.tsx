@@ -103,6 +103,9 @@ const EVENT_TYPE_LABELS: Record<string, { label: string; description: string }> 
   document_shared: { label: "Document shared", description: "When someone shares a document with you" },
   document_mentioned: { label: "Mentioned in document", description: "When you're @mentioned in a document" },
   document_commented: { label: "Document comment", description: "When someone comments on your document" },
+  // Chat
+  chat_mention: { label: "Chat mention", description: "When you're @mentioned in a chat message" },
+  ai_conversation_shared: { label: "AI conversation shared", description: "When someone shares an AI conversation with you" },
 };
 
 const CATEGORY_LABELS: Record<string, { label: string; description: string }> = {
@@ -124,6 +127,7 @@ const CATEGORY_LABELS: Record<string, { label: string; description: string }> = 
   hiring: { label: "Hiring", description: "Assessments, invitations, and candidate updates" },
   gtm: { label: "GTM", description: "Go-to-market alerts and pipeline events" },
   documents: { label: "Documents", description: "Document sharing, mentions, and comments" },
+  chat: { label: "Chat", description: "Chat mentions and AI conversation sharing" },
 };
 
 type ChannelKey = "in_app_enabled" | "email_enabled" | "slack_enabled" | "web_push_enabled";

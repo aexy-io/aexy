@@ -20310,9 +20310,12 @@ export interface AskConversation {
   workspace_id: string;
   developer_id: string;
   title: string | null;
+  is_collaborative: boolean;
   created_at: string;
   updated_at: string | null;
   message_count: number;
+  participant_count: number;
+  participants: AskParticipant[];
 }
 
 export interface AskToolCallInfo {
@@ -20332,6 +20335,40 @@ export interface AskMessage {
   token_usage: { input_tokens: number; output_tokens: number } | null;
   message_index: number;
   created_at: string;
+  sender_id: string | null;
+  sender_name: string | null;
+  sender_avatar_url: string | null;
+  status: string;
+}
+
+export interface AskParticipant {
+  id: string;
+  conversation_id: string;
+  developer_id: string;
+  permission: string;
+  added_by_id: string | null;
+  joined_at: string;
+  developer_name: string | null;
+  developer_avatar_url: string | null;
+}
+
+export interface AskShareLink {
+  id: string;
+  conversation_id: string;
+  token: string;
+  permission: string;
+  has_password: boolean;
+  expires_at: string | null;
+  max_uses: number | null;
+  use_count: number;
+  is_active: boolean;
+  created_by_id: string | null;
+  created_at: string;
+}
+
+export interface AskQueueStatus {
+  queue_length: number;
+  is_ai_responding: boolean;
 }
 
 export interface AskConversationWithMessages extends AskConversation {
@@ -20341,8 +20378,9 @@ export interface AskConversationWithMessages extends AskConversation {
 // ── Ask AI API ───────────────────────────────────────────────────────
 
 export const askApi = {
-  listConversations: async (workspaceId: string): Promise<AskConversation[]> => {
-    const response = await api.get(`/workspaces/${workspaceId}/ask/conversations`);
+  listConversations: async (workspaceId: string, search?: string): Promise<AskConversation[]> => {
+    const params = search ? { search } : {};
+    const response = await api.get(`/workspaces/${workspaceId}/ask/conversations`, { params });
     return response.data;
   },
 
@@ -20358,6 +20396,51 @@ export const askApi = {
 
   deleteConversation: async (workspaceId: string, conversationId: string): Promise<void> => {
     await api.delete(`/workspaces/${workspaceId}/ask/conversations/${conversationId}`);
+  },
+
+  // Participants
+  listParticipants: async (workspaceId: string, conversationId: string): Promise<AskParticipant[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/ask/conversations/${conversationId}/participants`);
+    return response.data;
+  },
+
+  addParticipant: async (workspaceId: string, conversationId: string, developerId: string, permission: string = "write"): Promise<AskParticipant> => {
+    const response = await api.post(`/workspaces/${workspaceId}/ask/conversations/${conversationId}/participants`, { developer_id: developerId, permission });
+    return response.data;
+  },
+
+  updateParticipant: async (workspaceId: string, conversationId: string, developerId: string, permission: string): Promise<void> => {
+    await api.patch(`/workspaces/${workspaceId}/ask/conversations/${conversationId}/participants/${developerId}`, { permission });
+  },
+
+  removeParticipant: async (workspaceId: string, conversationId: string, developerId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/ask/conversations/${conversationId}/participants/${developerId}`);
+  },
+
+  // Share links
+  listShareLinks: async (workspaceId: string, conversationId: string): Promise<AskShareLink[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/ask/conversations/${conversationId}/share-links`);
+    return response.data;
+  },
+
+  createShareLink: async (workspaceId: string, conversationId: string, data: { permission?: string; password?: string; expires_at?: string; max_uses?: number }): Promise<AskShareLink> => {
+    const response = await api.post(`/workspaces/${workspaceId}/ask/conversations/${conversationId}/share-links`, data);
+    return response.data;
+  },
+
+  revokeShareLink: async (workspaceId: string, linkId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/ask/share-links/${linkId}`);
+  },
+
+  joinShareLink: async (token: string, password?: string): Promise<AskConversation> => {
+    const response = await api.post(`/ask/share/${token}/join`, { password });
+    return response.data;
+  },
+
+  // Queue
+  getQueueStatus: async (workspaceId: string, conversationId: string): Promise<AskQueueStatus> => {
+    const response = await api.get(`/workspaces/${workspaceId}/ask/conversations/${conversationId}/queue`);
+    return response.data;
   },
 };
 

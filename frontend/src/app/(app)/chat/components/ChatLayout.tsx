@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { useChatStore } from "@/stores/chatStore";
 import { useChannels, useTopics } from "@/hooks/useChat";
 import { useChatWebSocketContext } from "@/contexts/ChatWebSocketContext";
 import { useCreateAskConversation } from "@/hooks/useAsk";
+import { useAuth } from "@/hooks/useAuth";
 import { ChatChannel, ChatTopic, InboxTopic, AskConversation } from "@/lib/api";
 import { ChannelList } from "./ChannelList";
 import { TopicList } from "./TopicList";
@@ -23,15 +25,27 @@ interface ChatLayoutProps {
 }
 
 export function ChatLayout({ workspaceId, initialChannelSlug, initialTopicId }: ChatLayoutProps) {
+  const { user } = useAuth();
+  const currentDeveloperId = user?.id;
+  const searchParams = useSearchParams();
+  const aiConvParam = searchParams.get("ai_conv");
   const { isConnected, sendTyping, sendStopTyping } = useChatWebSocketContext();
   const { setActiveChannel, setActiveTopic, activeChannelId, activeTopicId, lastTopicName, lastChannelSlug } = useChatStore();
   const [selectedChannel, setSelectedChannel] = useState<ChatChannel | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<{ id: string; name: string; channelId: string } | null>(null);
 
-  // AI mode state
-  const [mode, setMode] = useState<Mode>(initialChannelSlug ? "channel" : "inbox");
-  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  // AI mode state — if ai_conv query param is present, start in AI mode
+  const [mode, setMode] = useState<Mode>(aiConvParam ? "ai" : initialChannelSlug ? "channel" : "inbox");
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(aiConvParam || null);
   const createConversation = useCreateAskConversation(workspaceId);
+
+  // Handle ai_conv query param changes (e.g., clicking a different notification)
+  useEffect(() => {
+    if (aiConvParam) {
+      setMode("ai");
+      setSelectedConversationId(aiConvParam);
+    }
+  }, [aiConvParam]);
 
   // If URL has params, use those; otherwise try restoring from store
   const effectiveSlug = initialChannelSlug || lastChannelSlug;
@@ -186,6 +200,7 @@ export function ChatLayout({ workspaceId, initialChannelSlug, initialTopicId }: 
             activeConversationId={selectedConversationId}
             onSelectConversation={handleSelectConversation}
             onNewConversation={handleNewConversation}
+            currentDeveloperId={currentDeveloperId}
           />
         ) : mode === "inbox" ? (
           <InboxView workspaceId={workspaceId} onSelectTopic={handleSelectInboxTopic} />
@@ -209,6 +224,7 @@ export function ChatLayout({ workspaceId, initialChannelSlug, initialTopicId }: 
           <AskAIChatPanel
             workspaceId={workspaceId}
             conversationId={selectedConversationId}
+            currentDeveloperId={currentDeveloperId}
           />
         ) : mode === "ai" ? (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
