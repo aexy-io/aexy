@@ -20110,3 +20110,195 @@ export const publicTablesApi = {
     return response.data;
   },
 };
+
+// ── Team Chat Types ──────────────────────────────────────────────────
+
+export interface ChatChannel {
+  id: string;
+  workspace_id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  visibility: "public" | "private";
+  created_by_id: string | null;
+  is_archived: boolean;
+  created_at: string;
+  updated_at: string;
+  member_count?: number;
+  is_member?: boolean;
+}
+
+export interface ChatChannelMember {
+  id: string;
+  channel_id: string;
+  developer_id: string;
+  role: string;
+  is_muted: boolean;
+  notification_level: string | null;
+  joined_at: string;
+  developer_name?: string;
+  developer_avatar?: string;
+}
+
+export interface ChatTopic {
+  id: string;
+  channel_id: string;
+  name: string;
+  message_count: number;
+  last_message_at: string | null;
+  created_by_id: string | null;
+  is_resolved: boolean;
+  created_at: string;
+  updated_at: string;
+  unread_count?: number;
+  creator_name?: string;
+}
+
+export interface ChatSender {
+  id: string;
+  name: string | null;
+  avatar_url?: string | null;
+}
+
+export interface ChatMessage {
+  id: string;
+  topic_id: string;
+  channel_id: string;
+  sender_id: string;
+  content: string;
+  reply_to_id: string | null;
+  is_edited: boolean;
+  edited_at: string | null;
+  is_deleted: boolean;
+  mentions: string[];
+  created_at: string;
+  sender?: ChatSender;
+}
+
+export interface InboxTopic {
+  id: string;
+  channel_id: string;
+  channel_name: string;
+  channel_slug: string;
+  name: string;
+  message_count: number;
+  last_message_at: string | null;
+  unread_count: number;
+  last_message_preview: string | null;
+  last_sender_name: string | null;
+}
+
+export interface ChatPresenceUser {
+  developer_id: string;
+  status: "online" | "away" | "offline";
+  last_active_at: string;
+  status_text: string | null;
+  status_emoji: string | null;
+  developer_name: string | null;
+}
+
+export interface ChatFileUpload {
+  url: string;
+  key: string;
+  filename: string;
+  content_type: string;
+  size: number;
+}
+
+// ── Team Chat API ────────────────────────────────────────────────────
+
+export const chatApi = {
+  // Setup / onboarding
+  setupChat: async (workspaceId: string): Promise<{ channel: { id: string; name: string; slug: string }; topic: { id: string; name: string } }> => {
+    const response = await api.post(`/workspaces/${workspaceId}/chat/setup`);
+    return response.data;
+  },
+
+  // Channels
+  listChannels: async (workspaceId: string): Promise<{ channels: ChatChannel[] }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/chat/channels`);
+    return response.data;
+  },
+  createChannel: async (workspaceId: string, data: { name: string; description?: string; visibility?: string }): Promise<ChatChannel> => {
+    const response = await api.post(`/workspaces/${workspaceId}/chat/channels`, data);
+    return response.data;
+  },
+  getChannel: async (workspaceId: string, channelId: string): Promise<ChatChannel> => {
+    const response = await api.get(`/workspaces/${workspaceId}/chat/channels/${channelId}`);
+    return response.data;
+  },
+  updateChannel: async (workspaceId: string, channelId: string, data: { name?: string; description?: string; is_archived?: boolean }): Promise<ChatChannel> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/chat/channels/${channelId}`, data);
+    return response.data;
+  },
+  joinChannel: async (workspaceId: string, channelId: string): Promise<void> => {
+    await api.post(`/workspaces/${workspaceId}/chat/channels/${channelId}/join`);
+  },
+  leaveChannel: async (workspaceId: string, channelId: string): Promise<void> => {
+    await api.post(`/workspaces/${workspaceId}/chat/channels/${channelId}/leave`);
+  },
+  listMembers: async (workspaceId: string, channelId: string): Promise<{ members: ChatChannelMember[] }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/chat/channels/${channelId}/members`);
+    return response.data;
+  },
+
+  // Topics
+  listTopics: async (workspaceId: string, channelId: string): Promise<{ topics: ChatTopic[] }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/chat/channels/${channelId}/topics`);
+    return response.data;
+  },
+  createTopic: async (workspaceId: string, channelId: string, data: { name: string; first_message: string }): Promise<ChatTopic> => {
+    const response = await api.post(`/workspaces/${workspaceId}/chat/channels/${channelId}/topics`, data);
+    return response.data;
+  },
+
+  // Messages
+  listMessages: async (workspaceId: string, topicId: string, params?: { before?: string; limit?: number }): Promise<{ messages: ChatMessage[]; has_more: boolean }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/chat/topics/${topicId}/messages`, { params });
+    return response.data;
+  },
+  sendMessage: async (workspaceId: string, topicId: string, data: { content: string; reply_to_id?: string }): Promise<ChatMessage> => {
+    const response = await api.post(`/workspaces/${workspaceId}/chat/topics/${topicId}/messages`, data);
+    return response.data;
+  },
+  editMessage: async (workspaceId: string, messageId: string, data: { content: string }): Promise<ChatMessage> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/chat/messages/${messageId}`, data);
+    return response.data;
+  },
+  deleteMessage: async (workspaceId: string, messageId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/chat/messages/${messageId}`);
+  },
+
+  // Inbox
+  getInbox: async (workspaceId: string): Promise<{ topics: InboxTopic[] }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/chat/inbox`);
+    return response.data;
+  },
+
+  // Read state
+  markTopicRead: async (workspaceId: string, topicId: string, messageId: string): Promise<void> => {
+    await api.post(`/workspaces/${workspaceId}/chat/topics/${topicId}/read`, { message_id: messageId });
+  },
+
+  // Presence
+  getPresence: async (workspaceId: string): Promise<{ users: ChatPresenceUser[] }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/chat/presence`);
+    return response.data;
+  },
+
+  // Meet link
+  createMeetLink: async (workspaceId: string): Promise<{ meet_link: string }> => {
+    const response = await api.post(`/workspaces/${workspaceId}/chat/meet-link`);
+    return response.data;
+  },
+
+  // File upload
+  uploadFile: async (workspaceId: string, file: File): Promise<ChatFileUpload> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await api.post(`/workspaces/${workspaceId}/chat/upload`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return response.data;
+  },
+};
