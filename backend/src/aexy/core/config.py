@@ -83,6 +83,18 @@ class LLMSettings(BaseSettings):
         validation_alias="OLLAMA_MODEL",
     )
 
+    # OpenAI settings
+    openai_api_key: str = Field(
+        default="",
+        description="OpenAI API key",
+        validation_alias="OPENAI_API_KEY",
+    )
+    openai_model: str = Field(
+        default="gpt-4o-mini",
+        description="OpenAI model name",
+        validation_alias="OPENAI_MODEL",
+    )
+
     # Gemini/Google settings
     gemini_api_key: str = Field(
         default="",

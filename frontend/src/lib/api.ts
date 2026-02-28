@@ -20110,3 +20110,436 @@ export const publicTablesApi = {
     return response.data;
   },
 };
+
+// ── Team Chat Types ──────────────────────────────────────────────────
+
+export interface ChatChannel {
+  id: string;
+  workspace_id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  visibility: "public" | "private";
+  created_by_id: string | null;
+  is_archived: boolean;
+  created_at: string;
+  updated_at: string;
+  member_count?: number;
+  is_member?: boolean;
+}
+
+export interface ChatChannelMember {
+  id: string;
+  channel_id: string;
+  developer_id: string;
+  role: string;
+  is_muted: boolean;
+  notification_level: string | null;
+  joined_at: string;
+  developer_name?: string;
+  developer_avatar?: string;
+}
+
+export interface ChatTopic {
+  id: string;
+  channel_id: string;
+  name: string;
+  message_count: number;
+  last_message_at: string | null;
+  created_by_id: string | null;
+  is_resolved: boolean;
+  created_at: string;
+  updated_at: string;
+  unread_count?: number;
+  creator_name?: string;
+}
+
+export interface ChatSender {
+  id: string;
+  name: string | null;
+  avatar_url?: string | null;
+}
+
+export interface ChatMessage {
+  id: string;
+  topic_id: string;
+  channel_id: string;
+  sender_id: string;
+  content: string;
+  reply_to_id: string | null;
+  is_edited: boolean;
+  edited_at: string | null;
+  is_deleted: boolean;
+  mentions: string[];
+  created_at: string;
+  sender?: ChatSender;
+}
+
+export interface InboxTopic {
+  id: string;
+  channel_id: string;
+  channel_name: string;
+  channel_slug: string;
+  name: string;
+  message_count: number;
+  last_message_at: string | null;
+  unread_count: number;
+  last_message_preview: string | null;
+  last_sender_name: string | null;
+}
+
+export interface ChatPresenceUser {
+  developer_id: string;
+  status: "online" | "away" | "offline";
+  last_active_at: string;
+  status_text: string | null;
+  status_emoji: string | null;
+  developer_name: string | null;
+}
+
+export interface ChatFileUpload {
+  url: string;
+  key: string;
+  filename: string;
+  content_type: string;
+  size: number;
+}
+
+// ── Team Chat API ────────────────────────────────────────────────────
+
+export const chatApi = {
+  // Setup / onboarding
+  setupChat: async (workspaceId: string): Promise<{ channel: { id: string; name: string; slug: string }; topic: { id: string; name: string } }> => {
+    const response = await api.post(`/workspaces/${workspaceId}/chat/setup`);
+    return response.data;
+  },
+
+  // Channels
+  listChannels: async (workspaceId: string): Promise<{ channels: ChatChannel[] }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/chat/channels`);
+    return response.data;
+  },
+  createChannel: async (workspaceId: string, data: { name: string; description?: string; visibility?: string }): Promise<ChatChannel> => {
+    const response = await api.post(`/workspaces/${workspaceId}/chat/channels`, data);
+    return response.data;
+  },
+  getChannel: async (workspaceId: string, channelId: string): Promise<ChatChannel> => {
+    const response = await api.get(`/workspaces/${workspaceId}/chat/channels/${channelId}`);
+    return response.data;
+  },
+  updateChannel: async (workspaceId: string, channelId: string, data: { name?: string; description?: string; is_archived?: boolean }): Promise<ChatChannel> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/chat/channels/${channelId}`, data);
+    return response.data;
+  },
+  joinChannel: async (workspaceId: string, channelId: string): Promise<void> => {
+    await api.post(`/workspaces/${workspaceId}/chat/channels/${channelId}/join`);
+  },
+  leaveChannel: async (workspaceId: string, channelId: string): Promise<void> => {
+    await api.post(`/workspaces/${workspaceId}/chat/channels/${channelId}/leave`);
+  },
+  listMembers: async (workspaceId: string, channelId: string): Promise<{ members: ChatChannelMember[] }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/chat/channels/${channelId}/members`);
+    return response.data;
+  },
+
+  // Topics
+  listTopics: async (workspaceId: string, channelId: string): Promise<{ topics: ChatTopic[] }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/chat/channels/${channelId}/topics`);
+    return response.data;
+  },
+  createTopic: async (workspaceId: string, channelId: string, data: { name: string; first_message: string }): Promise<ChatTopic> => {
+    const response = await api.post(`/workspaces/${workspaceId}/chat/channels/${channelId}/topics`, data);
+    return response.data;
+  },
+
+  // Messages
+  listMessages: async (workspaceId: string, topicId: string, params?: { before?: string; limit?: number }): Promise<{ messages: ChatMessage[]; has_more: boolean }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/chat/topics/${topicId}/messages`, { params });
+    return response.data;
+  },
+  sendMessage: async (workspaceId: string, topicId: string, data: { content: string; reply_to_id?: string }): Promise<ChatMessage> => {
+    const response = await api.post(`/workspaces/${workspaceId}/chat/topics/${topicId}/messages`, data);
+    return response.data;
+  },
+  editMessage: async (workspaceId: string, messageId: string, data: { content: string }): Promise<ChatMessage> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/chat/messages/${messageId}`, data);
+    return response.data;
+  },
+  deleteMessage: async (workspaceId: string, messageId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/chat/messages/${messageId}`);
+  },
+
+  // Inbox
+  getInbox: async (workspaceId: string): Promise<{ topics: InboxTopic[] }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/chat/inbox`);
+    return response.data;
+  },
+
+  // Read state
+  markTopicRead: async (workspaceId: string, topicId: string, messageId: string): Promise<void> => {
+    await api.post(`/workspaces/${workspaceId}/chat/topics/${topicId}/read`, { message_id: messageId });
+  },
+
+  // Presence
+  getPresence: async (workspaceId: string): Promise<{ users: ChatPresenceUser[] }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/chat/presence`);
+    return response.data;
+  },
+
+  // Meet link
+  createMeetLink: async (workspaceId: string): Promise<{ meet_link: string }> => {
+    const response = await api.post(`/workspaces/${workspaceId}/chat/meet-link`);
+    return response.data;
+  },
+
+  // File upload
+  uploadFile: async (workspaceId: string, file: File): Promise<ChatFileUpload> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await api.post(`/workspaces/${workspaceId}/chat/upload`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return response.data;
+  },
+};
+
+// ── Ask AI Types ─────────────────────────────────────────────────────
+
+export interface AskConversation {
+  id: string;
+  workspace_id: string;
+  developer_id: string;
+  title: string | null;
+  is_collaborative: boolean;
+  created_at: string;
+  updated_at: string | null;
+  message_count: number;
+  participant_count: number;
+  participants: AskParticipant[];
+}
+
+export interface AskToolCallInfo {
+  id: string;
+  tool_name: string;
+  tool_input: Record<string, unknown>;
+  tool_result?: unknown;
+  status: string;
+}
+
+export interface AskMessage {
+  id: string;
+  conversation_id: string;
+  role: "user" | "assistant";
+  content: string | null;
+  tool_calls: AskToolCallInfo[];
+  token_usage: { input_tokens: number; output_tokens: number } | null;
+  message_index: number;
+  created_at: string;
+  sender_id: string | null;
+  sender_name: string | null;
+  sender_avatar_url: string | null;
+  status: string;
+}
+
+export interface AskParticipant {
+  id: string;
+  conversation_id: string;
+  developer_id: string;
+  permission: string;
+  added_by_id: string | null;
+  joined_at: string;
+  developer_name: string | null;
+  developer_avatar_url: string | null;
+}
+
+export interface AskShareLink {
+  id: string;
+  conversation_id: string;
+  token: string;
+  permission: string;
+  has_password: boolean;
+  expires_at: string | null;
+  max_uses: number | null;
+  use_count: number;
+  is_active: boolean;
+  created_by_id: string | null;
+  created_at: string;
+}
+
+export interface AskQueueStatus {
+  queue_length: number;
+  is_ai_responding: boolean;
+}
+
+export interface AskConversationWithMessages extends AskConversation {
+  messages: AskMessage[];
+}
+
+// ── Ask AI API ───────────────────────────────────────────────────────
+
+export const askApi = {
+  listConversations: async (workspaceId: string, search?: string): Promise<AskConversation[]> => {
+    const params = search ? { search } : {};
+    const response = await api.get(`/workspaces/${workspaceId}/ask/conversations`, { params });
+    return response.data;
+  },
+
+  createConversation: async (workspaceId: string, title?: string): Promise<AskConversation> => {
+    const response = await api.post(`/workspaces/${workspaceId}/ask/conversations`, { title });
+    return response.data;
+  },
+
+  getConversation: async (workspaceId: string, conversationId: string): Promise<AskConversationWithMessages> => {
+    const response = await api.get(`/workspaces/${workspaceId}/ask/conversations/${conversationId}`);
+    return response.data;
+  },
+
+  deleteConversation: async (workspaceId: string, conversationId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/ask/conversations/${conversationId}`);
+  },
+
+  // Participants
+  listParticipants: async (workspaceId: string, conversationId: string): Promise<AskParticipant[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/ask/conversations/${conversationId}/participants`);
+    return response.data;
+  },
+
+  addParticipant: async (workspaceId: string, conversationId: string, developerId: string, permission: string = "write"): Promise<AskParticipant> => {
+    const response = await api.post(`/workspaces/${workspaceId}/ask/conversations/${conversationId}/participants`, { developer_id: developerId, permission });
+    return response.data;
+  },
+
+  updateParticipant: async (workspaceId: string, conversationId: string, developerId: string, permission: string): Promise<void> => {
+    await api.patch(`/workspaces/${workspaceId}/ask/conversations/${conversationId}/participants/${developerId}`, { permission });
+  },
+
+  removeParticipant: async (workspaceId: string, conversationId: string, developerId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/ask/conversations/${conversationId}/participants/${developerId}`);
+  },
+
+  // Share links
+  listShareLinks: async (workspaceId: string, conversationId: string): Promise<AskShareLink[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/ask/conversations/${conversationId}/share-links`);
+    return response.data;
+  },
+
+  createShareLink: async (workspaceId: string, conversationId: string, data: { permission?: string; password?: string; expires_at?: string; max_uses?: number }): Promise<AskShareLink> => {
+    const response = await api.post(`/workspaces/${workspaceId}/ask/conversations/${conversationId}/share-links`, data);
+    return response.data;
+  },
+
+  revokeShareLink: async (workspaceId: string, linkId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/ask/share-links/${linkId}`);
+  },
+
+  joinShareLink: async (token: string, password?: string): Promise<AskConversation> => {
+    const response = await api.post(`/ask/share/${token}/join`, { password });
+    return response.data;
+  },
+
+  // Queue
+  getQueueStatus: async (workspaceId: string, conversationId: string): Promise<AskQueueStatus> => {
+    const response = await api.get(`/workspaces/${workspaceId}/ask/conversations/${conversationId}/queue`);
+    return response.data;
+  },
+};
+
+// ── AI Feedback Types ────────────────────────────────────────────────
+
+export interface AIFeedbackCreate {
+  entity_type: "ask_message" | "agent_execution" | "automation_run";
+  entity_id: string;
+  rating: -1 | 1;
+  comment?: string | null;
+  tags?: string[] | null;
+}
+
+export interface AIFeedbackResponse {
+  id: string;
+  entity_type: string;
+  entity_id: string;
+  workspace_id: string;
+  developer_id: string;
+  rating: number;
+  comment: string | null;
+  tags: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface AIBenchmarkingResponse {
+  ask_ai: {
+    total_conversations: number;
+    total_messages: number;
+    avg_latency_ms: number | null;
+    p95_latency_ms: number | null;
+    total_input_tokens: number;
+    total_output_tokens: number;
+    token_usage_series: { date: string; input_tokens: number; output_tokens: number }[];
+    tool_usage: { tool_name: string; call_count: number; success_count: number; success_rate: number }[];
+  };
+  agents: {
+    total_executions: number;
+    completed: number;
+    failed: number;
+    success_rate: number | null;
+    avg_duration_ms: number | null;
+    top_agents: { name: string; executions: number; success_rate: number; avg_duration_ms: number | null }[];
+  };
+  automations: {
+    total_runs: number;
+    completed: number;
+    failed: number;
+    success_rate: number | null;
+    avg_duration_ms: number | null;
+    by_module: { module: string; runs: number; success_rate: number; avg_duration_ms: number | null }[];
+  };
+  feedback: {
+    total: number;
+    thumbs_up: number;
+    thumbs_down: number;
+    satisfaction_rate: number | null;
+    by_entity_type: { entity_type: string; total: number; thumbs_up: number; thumbs_down: number; satisfaction_rate: number }[];
+    recent_negative: { id: string; entity_type: string; entity_id: string; comment: string | null; tags: string | null; created_at: string | null }[];
+  };
+  volume_trend: { date: string; ask_messages: number; agent_executions: number; automation_runs: number }[];
+}
+
+export interface PaginatedAIFeedback {
+  items: AIFeedbackResponse[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+// ── AI Feedback API ──────────────────────────────────────────────────
+
+export const aiFeedbackApi = {
+  submit: async (workspaceId: string, data: AIFeedbackCreate): Promise<AIFeedbackResponse> => {
+    const response = await api.post(`/workspaces/${workspaceId}/ai-feedback/`, data);
+    return response.data;
+  },
+
+  get: async (workspaceId: string, entityType: string, entityId: string): Promise<AIFeedbackResponse | null> => {
+    const response = await api.get(`/workspaces/${workspaceId}/ai-feedback/${entityType}/${entityId}`);
+    return response.data;
+  },
+
+  delete: async (workspaceId: string, feedbackId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/ai-feedback/${feedbackId}`);
+  },
+};
+
+// ── AI Benchmarking Admin API ────────────────────────────────────────
+
+export const aiBenchmarkingApi = {
+  getBenchmarking: async (params?: { days?: number; group_by?: string }): Promise<AIBenchmarkingResponse> => {
+    const response = await api.get("/platform-admin/ai-benchmarking", { params });
+    return response.data;
+  },
+
+  listFeedback: async (params?: { entity_type?: string; page?: number; limit?: number }): Promise<PaginatedAIFeedback> => {
+    const response = await api.get("/platform-admin/ai-feedback", { params });
+    return response.data;
+  },
+};

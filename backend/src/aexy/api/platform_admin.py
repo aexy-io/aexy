@@ -507,7 +507,7 @@ async def resend_email(
         await db.rollback()
         return ResendEmailResponse(
             success=False,
-            message=f"Error resending email: {str(e)}",
+            message="Error resending email. Check server logs for details.",
         )
 
 
@@ -710,3 +710,60 @@ async def list_users(
         per_page=per_page,
         has_next=(page * per_page) < total,
     )
+
+
+# =============================================================================
+# AI BENCHMARKING & FEEDBACK REVIEW
+# =============================================================================
+
+
+@router.get("/ai-benchmarking")
+async def get_ai_benchmarking(
+    admin: Developer = Depends(get_platform_admin),
+    db: AsyncSession = Depends(get_db),
+    days: int = Query(30, ge=1, le=365),
+    group_by: str = Query("day", pattern="^(hour|day|week|month)$"),
+):
+    """Get AI benchmarking dashboard data (admin only)."""
+    from aexy.services.ai_feedback_service import AIFeedbackService
+
+    service = AIFeedbackService(db)
+    return await service.get_benchmarking(days=days, group_by=group_by)
+
+
+@router.get("/ai-feedback")
+async def list_ai_feedback(
+    admin: Developer = Depends(get_platform_admin),
+    db: AsyncSession = Depends(get_db),
+    entity_type: str | None = Query(None),
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, ge=1, le=100),
+):
+    """List all AI feedback for review (admin only)."""
+    from aexy.services.ai_feedback_service import AIFeedbackService
+
+    service = AIFeedbackService(db)
+    result = await service.list_feedback(
+        entity_type=entity_type,
+        page=page,
+        limit=limit,
+    )
+    return {
+        "items": [
+            {
+                "id": str(fb.id),
+                "entity_type": fb.entity_type,
+                "entity_id": str(fb.entity_id),
+                "workspace_id": str(fb.workspace_id),
+                "developer_id": str(fb.developer_id),
+                "rating": fb.rating,
+                "comment": fb.comment,
+                "tags": fb.tags,
+                "created_at": fb.created_at.isoformat() if fb.created_at else None,
+            }
+            for fb in result["items"]
+        ],
+        "total": result["total"],
+        "page": result["page"],
+        "limit": result["limit"],
+    }
