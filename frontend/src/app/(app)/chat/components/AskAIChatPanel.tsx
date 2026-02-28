@@ -6,6 +6,7 @@ import { useAskConversation, useStreamMessage } from "@/hooks/useAsk";
 import { useAskStore } from "@/stores/askStore";
 import { AskMessage } from "@/lib/api";
 import { AskToolCall } from "./AskToolCall";
+import { MessageFeedback } from "./MessageFeedback";
 import { cn } from "@/lib/utils";
 
 interface AskAIChatPanelProps {
@@ -106,7 +107,7 @@ export function AskAIChatPanel({ workspaceId, conversationId }: AskAIChatPanelPr
         )}
 
         {messages.map((msg) => (
-          <MessageBubble key={msg.id} message={msg} />
+          <MessageBubble key={msg.id} message={msg} workspaceId={workspaceId} />
         ))}
 
         {/* Streaming message */}
@@ -177,7 +178,7 @@ export function AskAIChatPanel({ workspaceId, conversationId }: AskAIChatPanelPr
   );
 }
 
-function MessageBubble({ message }: { message: AskMessage }) {
+function MessageBubble({ message, workspaceId }: { message: AskMessage; workspaceId: string }) {
   const isUser = message.role === "user";
 
   return (
@@ -227,6 +228,14 @@ function MessageBubble({ message }: { message: AskMessage }) {
             minute: "2-digit",
           })}
         </div>
+        {/* Feedback buttons for assistant messages */}
+        {!isUser && (
+          <MessageFeedback
+            workspaceId={workspaceId}
+            entityType="ask_message"
+            entityId={message.id}
+          />
+        )}
       </div>
     </div>
   );

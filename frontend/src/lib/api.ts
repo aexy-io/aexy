@@ -20360,3 +20360,103 @@ export const askApi = {
     await api.delete(`/workspaces/${workspaceId}/ask/conversations/${conversationId}`);
   },
 };
+
+// ── AI Feedback Types ────────────────────────────────────────────────
+
+export interface AIFeedbackCreate {
+  entity_type: "ask_message" | "agent_execution" | "automation_run";
+  entity_id: string;
+  rating: -1 | 1;
+  comment?: string | null;
+  tags?: string[] | null;
+}
+
+export interface AIFeedbackResponse {
+  id: string;
+  entity_type: string;
+  entity_id: string;
+  workspace_id: string;
+  developer_id: string;
+  rating: number;
+  comment: string | null;
+  tags: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface AIBenchmarkingResponse {
+  ask_ai: {
+    total_conversations: number;
+    total_messages: number;
+    avg_latency_ms: number | null;
+    p95_latency_ms: number | null;
+    total_input_tokens: number;
+    total_output_tokens: number;
+    token_usage_series: { date: string; input_tokens: number; output_tokens: number }[];
+    tool_usage: { tool_name: string; call_count: number; success_count: number; success_rate: number }[];
+  };
+  agents: {
+    total_executions: number;
+    completed: number;
+    failed: number;
+    success_rate: number | null;
+    avg_duration_ms: number | null;
+    top_agents: { name: string; executions: number; success_rate: number; avg_duration_ms: number | null }[];
+  };
+  automations: {
+    total_runs: number;
+    completed: number;
+    failed: number;
+    success_rate: number | null;
+    avg_duration_ms: number | null;
+    by_module: { module: string; runs: number; success_rate: number; avg_duration_ms: number | null }[];
+  };
+  feedback: {
+    total: number;
+    thumbs_up: number;
+    thumbs_down: number;
+    satisfaction_rate: number | null;
+    by_entity_type: { entity_type: string; total: number; thumbs_up: number; thumbs_down: number; satisfaction_rate: number }[];
+    recent_negative: { id: string; entity_type: string; entity_id: string; comment: string | null; tags: string | null; created_at: string | null }[];
+  };
+  volume_trend: { date: string; ask_messages: number; agent_executions: number; automation_runs: number }[];
+}
+
+export interface PaginatedAIFeedback {
+  items: AIFeedbackResponse[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+// ── AI Feedback API ──────────────────────────────────────────────────
+
+export const aiFeedbackApi = {
+  submit: async (workspaceId: string, data: AIFeedbackCreate): Promise<AIFeedbackResponse> => {
+    const response = await api.post(`/workspaces/${workspaceId}/ai-feedback/`, data);
+    return response.data;
+  },
+
+  get: async (workspaceId: string, entityType: string, entityId: string): Promise<AIFeedbackResponse | null> => {
+    const response = await api.get(`/workspaces/${workspaceId}/ai-feedback/${entityType}/${entityId}`);
+    return response.data;
+  },
+
+  delete: async (workspaceId: string, feedbackId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/ai-feedback/${feedbackId}`);
+  },
+};
+
+// ── AI Benchmarking Admin API ────────────────────────────────────────
+
+export const aiBenchmarkingApi = {
+  getBenchmarking: async (params?: { days?: number; group_by?: string }): Promise<AIBenchmarkingResponse> => {
+    const response = await api.get("/platform-admin/ai-benchmarking", { params });
+    return response.data;
+  },
+
+  listFeedback: async (params?: { entity_type?: string; page?: number; limit?: number }): Promise<PaginatedAIFeedback> => {
+    const response = await api.get("/platform-admin/ai-feedback", { params });
+    return response.data;
+  },
+};

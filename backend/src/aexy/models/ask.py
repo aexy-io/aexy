@@ -67,6 +67,7 @@ class AskMessage(Base):
     tool_calls: Mapped[list | None] = mapped_column(JSONB, default=list)
     token_usage: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     message_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[str] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
