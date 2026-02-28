@@ -37,6 +37,7 @@ class AgentPolicyEngine:
     def __init__(self, db: AsyncSession):
         self.db = db
         self._cached_policies: list[AgentPolicy] | None = None
+        self._allow_counts: dict[str, int] = {}
 
     # =========================================================================
     # POLICY LOADING & EVALUATION
@@ -197,9 +198,6 @@ class AgentPolicyEngine:
         Since decisions are recorded during evaluation, we count from
         the DB records that have already been flushed.
         """
-        # We track allow counts in memory since decisions are flushed as we go
-        if not hasattr(self, "_allow_counts"):
-            self._allow_counts: dict[str, int] = {}
         key = f"{execution_id}:{tool_name}"
         return self._allow_counts.get(key, 0)
 
@@ -242,7 +240,7 @@ class AgentPolicyEngine:
                         policy_id=policy.id,
                     )
         except Exception as e:
-            logger.warning(f"Error checking token budget: {e}")
+            logger.warning("Error checking token budget: %s", e)
 
         return None
 
@@ -274,8 +272,6 @@ class AgentPolicyEngine:
 
         # Track allow counts for rate limiting
         if decision == PolicyDecisionType.ALLOW.value:
-            if not hasattr(self, "_allow_counts"):
-                self._allow_counts: dict[str, int] = {}
             key = f"{execution_id}:{tool_name}"
             self._allow_counts[key] = self._allow_counts.get(key, 0) + 1
 
@@ -343,17 +339,27 @@ class AgentPolicyEngine:
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
+    # Fields that can be explicitly set to None (cleared)
+    _nullable_policy_fields = {"description", "agent_id"}
+
     async def update_policy(
         self, policy_id: str, **kwargs: Any
     ) -> AgentPolicy | None:
-        """Update a policy."""
+        """Update a policy.
+
+        Fields in _nullable_policy_fields can be explicitly set to None.
+        Other fields skip None values (unset in the update schema).
+        """
         policy = await self.get_policy(policy_id)
         if not policy:
             return None
 
         for key, value in kwargs.items():
-            if value is not None and hasattr(policy, key):
-                setattr(policy, key, value)
+            if not hasattr(policy, key):
+                continue
+            if value is None and key not in self._nullable_policy_fields:
+                continue
+            setattr(policy, key, value)
 
         await self.db.flush()
         await self.db.refresh(policy)
@@ -444,15 +450,18 @@ class AgentPolicyEngine:
     # NOTIFICATION HELPERS
     # =========================================================================
 
-    async def notify_tool_blocked(
+    async def _notify_policy_event(
         self,
         agent: Any,
         tool_name: str,
         reason: str,
         workspace_id: str,
         execution_id: str,
+        event_type_name: str,
+        title: str,
+        body: str,
     ) -> None:
-        """Send notifications when a tool call is blocked."""
+        """Send policy-related notifications to workspace admins/owners."""
         try:
             from aexy.services.notification_service import NotificationService
             from aexy.models.notification import NotificationEventType
@@ -461,18 +470,18 @@ class AgentPolicyEngine:
             workspace_service = WorkspaceService(self.db)
             notification_service = NotificationService(self.db)
 
-            # Notify workspace admins and owners
             admins = await workspace_service.get_members_by_role(workspace_id, "admin")
             owners = await workspace_service.get_members_by_role(workspace_id, "owner")
             recipients = {str(m.developer_id) for m in admins + owners}
 
+            event_type = NotificationEventType(event_type_name)
             agent_name = getattr(agent, "name", "Agent")
             for dev_id in recipients:
                 await notification_service.create_notification(
                     recipient_id=dev_id,
-                    event_type=NotificationEventType.AGENT_TOOL_BLOCKED,
-                    title=f"Agent tool blocked: {tool_name}",
-                    body=f"{agent_name} attempted to use '{tool_name}' but was blocked. {reason}",
+                    event_type=event_type,
+                    title=title,
+                    body=body,
                     context={
                         "agent_id": getattr(agent, "id", None),
                         "agent_name": agent_name,
@@ -483,7 +492,28 @@ class AgentPolicyEngine:
                     },
                 )
         except Exception as e:
-            logger.warning(f"Failed to send tool blocked notification: {e}")
+            logger.warning("Failed to send %s notification: %s", event_type_name, e)
+
+    async def notify_tool_blocked(
+        self,
+        agent: Any,
+        tool_name: str,
+        reason: str,
+        workspace_id: str,
+        execution_id: str,
+    ) -> None:
+        """Send notifications when a tool call is blocked."""
+        agent_name = getattr(agent, "name", "Agent")
+        await self._notify_policy_event(
+            agent=agent,
+            tool_name=tool_name,
+            reason=reason,
+            workspace_id=workspace_id,
+            execution_id=execution_id,
+            event_type_name="agent_tool_blocked",
+            title=f"Agent tool blocked: {tool_name}",
+            body=f"{agent_name} attempted to use '{tool_name}' but was blocked. {reason}",
+        )
 
     async def notify_approval_required(
         self,
@@ -494,36 +524,17 @@ class AgentPolicyEngine:
         execution_id: str,
     ) -> None:
         """Send notifications when a tool call requires approval."""
-        try:
-            from aexy.services.notification_service import NotificationService
-            from aexy.models.notification import NotificationEventType
-            from aexy.services.workspace_service import WorkspaceService
-
-            workspace_service = WorkspaceService(self.db)
-            notification_service = NotificationService(self.db)
-
-            admins = await workspace_service.get_members_by_role(workspace_id, "admin")
-            owners = await workspace_service.get_members_by_role(workspace_id, "owner")
-            recipients = {str(m.developer_id) for m in admins + owners}
-
-            agent_name = getattr(agent, "name", "Agent")
-            for dev_id in recipients:
-                await notification_service.create_notification(
-                    recipient_id=dev_id,
-                    event_type=NotificationEventType.AGENT_APPROVAL_REQUIRED,
-                    title=f"Agent action needs approval: {tool_name}",
-                    body=f"{agent_name} wants to use '{tool_name}'. {reason}",
-                    context={
-                        "agent_id": getattr(agent, "id", None),
-                        "agent_name": agent_name,
-                        "tool_name": tool_name,
-                        "execution_id": execution_id,
-                        "workspace_id": workspace_id,
-                        "action_url": f"/agents/{getattr(agent, 'id', '')}/executions/{execution_id}",
-                    },
-                )
-        except Exception as e:
-            logger.warning(f"Failed to send approval required notification: {e}")
+        agent_name = getattr(agent, "name", "Agent")
+        await self._notify_policy_event(
+            agent=agent,
+            tool_name=tool_name,
+            reason=reason,
+            workspace_id=workspace_id,
+            execution_id=execution_id,
+            event_type_name="agent_approval_required",
+            title=f"Agent action needs approval: {tool_name}",
+            body=f"{agent_name} wants to use '{tool_name}'. {reason}",
+        )
 
     async def notify_config_changed(
         self,
@@ -561,4 +572,4 @@ class AgentPolicyEngine:
                     },
                 )
         except Exception as e:
-            logger.warning(f"Failed to send config changed notification: {e}")
+            logger.warning("Failed to send config changed notification: %s", e)
