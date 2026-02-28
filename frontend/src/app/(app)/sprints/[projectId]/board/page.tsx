@@ -23,6 +23,12 @@ import {
   FileType,
   Keyboard,
   Command,
+  Dices,
+  Wand2,
+  Target,
+  BarChart3,
+  Users2,
+  Gauge,
 } from "lucide-react";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
@@ -57,8 +63,12 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { TaskDescriptionEditor, TaskDescriptionEditorRef, MentionUser } from "@/components/planning/TaskDescriptionEditor";
 import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { Badge, PremiumCard, Skeleton } from "@/components/ui/premium-card";
 import { X, Loader2, FileText, Zap } from "lucide-react";
+import { CycleTimeChart } from "@/components/planning/CycleTimeChart";
+import { CapacityPlanner } from "@/components/planning/CapacityPlanner";
+import { PlanningPoker } from "@/components/planning/PlanningPoker";
 import {
   SPRINT_STATUS_COLORS as SPRINT_STATUS_COLORS_BASE,
   TASK_STATUS_COLORS as TASK_STATUS_COLORS_BASE,
@@ -91,6 +101,7 @@ interface KanbanColumnProps {
   isOver?: boolean;
   onSelect?: (taskId: string) => void;
   isSelected?: (taskId: string) => boolean;
+  wipLimit?: number | null;
 }
 
 function KanbanColumn({
@@ -106,8 +117,11 @@ function KanbanColumn({
   isOver,
   onSelect,
   isSelected,
+  wipLimit,
 }: KanbanColumnProps) {
   const totalPoints = tasks.reduce((sum, t) => sum + (t.story_points || 0), 0);
+  const isAtWipLimit = wipLimit != null && wipLimit > 0 && tasks.length >= wipLimit;
+  const isOverWipLimit = wipLimit != null && wipLimit > 0 && tasks.length > wipLimit;
 
   // Make the column a droppable target
   const { setNodeRef, isOver: isDropOver } = useDroppable({
@@ -120,7 +134,9 @@ function KanbanColumn({
       className={cn(
         "flex-shrink-0 w-[300px] rounded-xl transition-all duration-200",
         bgColor,
-        (isOver || isDropOver) && "ring-2 ring-primary-500/50 bg-primary-900/20"
+        (isOver || isDropOver) && "ring-2 ring-primary-500/50 bg-primary-900/20",
+        isOverWipLimit && "ring-2 ring-red-500/50",
+        isAtWipLimit && !isOverWipLimit && "ring-2 ring-amber-500/30"
       )}
     >
       {/* Column header */}
@@ -128,7 +144,15 @@ function KanbanColumn({
         <div className="flex items-center gap-2">
           <h3 className={cn("font-medium text-sm", color)}>{title}</h3>
           <Badge variant="default" size="sm">
-            {tasks.length}
+            {wipLimit != null && wipLimit > 0 ? (
+              <span className={cn(
+                isOverWipLimit ? "text-red-500" : isAtWipLimit ? "text-amber-500" : ""
+              )}>
+                {tasks.length}/{wipLimit}
+              </span>
+            ) : (
+              tasks.length
+            )}
           </Badge>
         </div>
         {totalPoints > 0 && (
@@ -847,6 +871,7 @@ interface EditTaskModalProps {
       labels?: string[];
       epic_id?: string | null;
       assignee_id?: string | null;
+      contributes_to_goal?: boolean;
       mentioned_user_ids?: string[];
       mentioned_file_paths?: string[];
     };
@@ -893,6 +918,7 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
   const [epicId, setEpicId] = useState<string>(cachedState?.epicId ?? task.epic_id ?? "");
   const [sprintId, setSprintId] = useState<string>(cachedState?.sprintId ?? task.sprint_id ?? "");
   const [assigneeId, setAssigneeId] = useState<string>(cachedState?.assigneeId ?? task.assignee_id ?? "");
+  const [contributesToGoal, setContributesToGoal] = useState(cachedState?.contributesToGoal ?? task.contributes_to_goal ?? false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -992,6 +1018,7 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
           status,
           epic_id: epicId || null,
           assignee_id: assigneeId || null,
+          contributes_to_goal: contributesToGoal,
           mentioned_user_ids: mentionedUserIds.length > 0 ? mentionedUserIds : undefined,
           mentioned_file_paths: mentionedFilePaths.length > 0 ? mentionedFilePaths : undefined,
         },
@@ -1221,6 +1248,19 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
               </select>
             </div>
 
+            {/* Sprint Goal Checkbox */}
+            <div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={contributesToGoal}
+                  onChange={(e) => setContributesToGoal(e.target.checked)}
+                  className="rounded border-border text-primary-500 focus:ring-primary-500"
+                />
+                <span className="text-xs text-muted-foreground">Contributes to Sprint Goal</span>
+              </label>
+            </div>
+
             {/* Archive button */}
             <div className="pt-4 border-t border-border">
               {showDeleteConfirm ? (
@@ -1298,7 +1338,7 @@ export default function ProjectBoardPage({
   const { projectId } = params;
   const router = useRouter();
 
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { currentWorkspaceId, currentWorkspaceLoading } = useWorkspace();
 
   const {
@@ -1386,6 +1426,7 @@ export default function ProjectBoardPage({
       else if (attr === "labels") newFilters.labels = Array.isArray(val) ? val : [val];
       else if (attr === "epic_id" || attr === "epics") newFilters.epics = Array.isArray(val) ? val : [val];
       else if (attr === "sprint_id" || attr === "sprints") newFilters.sprints = Array.isArray(val) ? val : [val];
+      else if (attr === "story_points" || attr === "storyPoints") newFilters.storyPoints = Array.isArray(val) ? val.map(Number) : [Number(val)];
       else if (attr === "search") newFilters.search = val as string;
     }
     updateFilters(newFilters as Parameters<typeof updateFilters>[0]);
@@ -1401,6 +1442,7 @@ export default function ProjectBoardPage({
     if (filters.labels.length) filterList.push({ attribute: "labels", operator: "in", value: filters.labels });
     if (filters.epics.length) filterList.push({ attribute: "epics", operator: "in", value: filters.epics });
     if (filters.sprints.length) filterList.push({ attribute: "sprints", operator: "in", value: filters.sprints });
+    if (filters.storyPoints.length) filterList.push({ attribute: "storyPoints", operator: "in", value: filters.storyPoints });
     if (filters.search) filterList.push({ attribute: "search", operator: "equals", value: filters.search });
 
     await createView({
@@ -1428,6 +1470,17 @@ export default function ProjectBoardPage({
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+  const [showPlanningPoker, setShowPlanningPoker] = useState(false);
+  const [showWipSettings, setShowWipSettings] = useState(false);
+  const [showAnalyticsPanel, setShowAnalyticsPanel] = useState<"cycle-time" | "capacity" | null>(null);
+  const [showPlanningDropdown, setShowPlanningDropdown] = useState(false);
+  const [showAutoAssignConfirm, setShowAutoAssignConfirm] = useState(false);
+  const [isAutoAssigning, setIsAutoAssigning] = useState(false);
+
+  // WIP Limits
+  const activeSprint = sprints.find((s) => s.status === "active") || sprints.find((s) => s.status !== "completed");
+  const wipLimitsRaw = (activeSprint?.settings as Record<string, unknown> | undefined)?.wip_limits as Record<string, unknown> | undefined;
+  const wipLimits: Record<string, number | null> = ((wipLimitsRaw?.limits || wipLimitsRaw) as Record<string, number | null>) || {};
 
   const queryClient = useQueryClient();
 
@@ -1826,6 +1879,87 @@ export default function ProjectBoardPage({
                 Add Task
               </button>
 
+              {/* Planning Tools Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowPlanningDropdown(!showPlanningDropdown)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition",
+                    showAnalyticsPanel
+                      ? "bg-primary-500/20 text-primary-400"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                  )}
+                  title="Planning Tools"
+                >
+                  <Gauge className="h-4 w-4" />
+                  Planning
+                  <ChevronDown className="h-3 w-3" />
+                </button>
+                {showPlanningDropdown && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShowPlanningDropdown(false)}
+                    />
+                    <div className="absolute right-0 top-full mt-1 w-52 bg-muted border border-border rounded-lg shadow-xl py-1 z-20">
+                      <button
+                        onClick={() => {
+                          setShowPlanningPoker(true);
+                          setShowPlanningDropdown(false);
+                        }}
+                        className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2"
+                      >
+                        <Dices className="h-4 w-4 text-purple-400" />
+                        Planning Poker
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowPlanningDropdown(false);
+                          if (!activeSprint) return;
+                          setShowAutoAssignConfirm(true);
+                        }}
+                        disabled={!activeSprint}
+                        className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2 disabled:opacity-50"
+                      >
+                        <Wand2 className="h-4 w-4 text-amber-400" />
+                        Auto-Assign
+                      </button>
+                      <div className="border-t border-border my-1" />
+                      <button
+                        onClick={() => {
+                          setShowAnalyticsPanel(showAnalyticsPanel === "cycle-time" ? null : "cycle-time");
+                          setShowPlanningDropdown(false);
+                        }}
+                        className={cn(
+                          "w-full px-3 py-2 text-left text-sm flex items-center gap-2",
+                          showAnalyticsPanel === "cycle-time"
+                            ? "text-primary-400 bg-primary-500/10"
+                            : "text-foreground hover:bg-accent"
+                        )}
+                      >
+                        <BarChart3 className="h-4 w-4 text-blue-400" />
+                        Cycle Time Analytics
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowAnalyticsPanel(showAnalyticsPanel === "capacity" ? null : "capacity");
+                          setShowPlanningDropdown(false);
+                        }}
+                        className={cn(
+                          "w-full px-3 py-2 text-left text-sm flex items-center gap-2",
+                          showAnalyticsPanel === "capacity"
+                            ? "text-primary-400 bg-primary-500/10"
+                            : "text-foreground hover:bg-accent"
+                        )}
+                      >
+                        <Users2 className="h-4 w-4 text-emerald-400" />
+                        Capacity Planning
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+
               {/* Templates */}
               <Link
                 href={`/sprints/${projectId}/templates`}
@@ -1915,7 +2049,13 @@ export default function ProjectBoardPage({
               onFilterChange={updateFilters}
               onClearFilters={clearFilters}
               hasActiveFilters={hasActiveFilters}
-              filterOptions={filterOptions}
+              filterOptions={{
+                ...filterOptions,
+                epics: filterOptions.epics.map((e) => {
+                  const epic = epics?.find((ep: EpicListItem) => ep.id === e.id);
+                  return { id: e.id, name: epic?.title || e.name };
+                }),
+              }}
             />
           </div>
         </div>
@@ -2092,6 +2232,38 @@ export default function ProjectBoardPage({
         />
       )}
 
+      {/* Sprint Goal Banner */}
+      {activeSprint?.goal && (
+        <div className="px-4 py-2 border-b border-border bg-primary-500/5">
+          <div className="flex items-center gap-2">
+            <Target className="h-4 w-4 text-primary-500 flex-shrink-0" />
+            <span className="text-sm text-foreground font-medium">Sprint Goal:</span>
+            <span className="text-sm text-muted-foreground truncate">{activeSprint.goal}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Analytics Panel (collapsible) */}
+      <AnimatePresence>
+        {showAnalyticsPanel && activeSprint && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="border-b border-border overflow-hidden"
+          >
+            <div className="p-4 max-h-[400px] overflow-y-auto">
+              {showAnalyticsPanel === "cycle-time" && (
+                <CycleTimeChart sprintId={activeSprint.id} />
+              )}
+              {showAnalyticsPanel === "capacity" && (
+                <CapacityPlanner sprintId={activeSprint.id} />
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Board Content */}
       <main className="flex-1 overflow-hidden">
         {isLoading ? (
@@ -2178,6 +2350,7 @@ export default function ProjectBoardPage({
                     isOver={overId === status}
                     onSelect={toggleTask}
                     isSelected={isSelected}
+                    wipLimit={wipLimits[status] ?? null}
                   />
                 ))
               )}
@@ -2256,6 +2429,62 @@ export default function ProjectBoardPage({
       <AnimatePresence>
         {showKeyboardShortcuts && (
           <KeyboardShortcutsModal onClose={() => setShowKeyboardShortcuts(false)} />
+        )}
+      </AnimatePresence>
+
+      {/* Planning Poker Modal */}
+      <AnimatePresence>
+        {showPlanningPoker && currentWorkspaceId && (
+          <PlanningPoker
+            sprintId={activeSprint?.id || ""}
+            userId={user?.id || ""}
+            userName={user?.name || "Anonymous"}
+            onClose={() => {
+              setShowPlanningPoker(false);
+              queryClient.invalidateQueries({ queryKey: ["projectTasks"] });
+              queryClient.invalidateQueries({ queryKey: ["sprintTasks"] });
+            }}
+          />
+        )}
+        {showAutoAssignConfirm && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setShowAutoAssignConfirm(false)}>
+            <div className="bg-muted border border-border rounded-xl w-full max-w-sm p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-lg font-semibold text-foreground mb-2">Auto-Assign Tasks</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                This will use AI to assign unassigned tasks based on developer skills and capacity.
+              </p>
+              <div className="flex items-center gap-2 justify-end">
+                <button
+                  onClick={() => setShowAutoAssignConfirm(false)}
+                  className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!activeSprint) return;
+                    setIsAutoAssigning(true);
+                    try {
+                      const result = await sprintApi.autoAssign(activeSprint.id);
+                      toast.success(`Assigned ${result.total_assigned} tasks. Skipped ${result.total_skipped}.`);
+                      queryClient.invalidateQueries({ queryKey: ["projectTasks"] });
+                      queryClient.invalidateQueries({ queryKey: ["sprintTasks"] });
+                    } catch {
+                      toast.error("Auto-assign failed. Please try again.");
+                    } finally {
+                      setIsAutoAssigning(false);
+                      setShowAutoAssignConfirm(false);
+                    }
+                  }}
+                  disabled={isAutoAssigning}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium transition disabled:opacity-50"
+                >
+                  {isAutoAssigning && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  {isAutoAssigning ? "Assigning..." : "Auto-Assign"}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </AnimatePresence>
     </div>

@@ -5,6 +5,7 @@ import {
   NotificationListResponse,
   NotificationPreference,
   NotificationPreferencesResponse,
+  CategoryPreference,
 } from "@/lib/api";
 
 // ============ Notifications Hook ============
@@ -173,6 +174,8 @@ export function useNotifications(developerId: string | null | undefined) {
 export function useNotificationPreferences(developerId: string | null | undefined) {
   const [preferences, setPreferences] = useState<Record<string, NotificationPreference>>({});
   const [availableEventTypes, setAvailableEventTypes] = useState<string[]>([]);
+  const [categoryPreferences, setCategoryPreferences] = useState<Record<string, CategoryPreference>>({});
+  const [categoryMap, setCategoryMap] = useState<Record<string, string[]>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -184,6 +187,8 @@ export function useNotificationPreferences(developerId: string | null | undefine
       const data = await notificationsApi.getPreferences(developerId);
       setPreferences(data.preferences);
       setAvailableEventTypes(data.available_event_types);
+      setCategoryPreferences(data.categories || {});
+      setCategoryMap(data.category_map || {});
     } catch (err) {
       setError(err as Error);
       console.error("Failed to fetch notification preferences:", err);
@@ -198,6 +203,7 @@ export function useNotificationPreferences(developerId: string | null | undefine
       in_app_enabled?: boolean;
       email_enabled?: boolean;
       slack_enabled?: boolean;
+      web_push_enabled?: boolean;
     }
   ) => {
     if (!developerId) return;
@@ -213,6 +219,32 @@ export function useNotificationPreferences(developerId: string | null | undefine
     }
   }, [developerId]);
 
+  const updateCategoryPreference = useCallback(async (
+    category: string,
+    updates: {
+      in_app_enabled?: boolean;
+      email_enabled?: boolean;
+      slack_enabled?: boolean;
+      web_push_enabled?: boolean;
+      slack_channel_id?: string | null;
+      slack_channel_name?: string | null;
+    }
+  ) => {
+    if (!developerId) return;
+    try {
+      const updated = await notificationsApi.updateCategoryPreference(developerId, category, updates);
+      setCategoryPreferences(prev => ({
+        ...prev,
+        [category]: updated,
+      }));
+      // Re-fetch all preferences since category update propagates to child events
+      await fetchPreferences();
+    } catch (err) {
+      console.error("Failed to update category preference:", err);
+      throw err;
+    }
+  }, [developerId, fetchPreferences]);
+
   useEffect(() => {
     fetchPreferences();
   }, [fetchPreferences]);
@@ -220,10 +252,13 @@ export function useNotificationPreferences(developerId: string | null | undefine
   return {
     preferences,
     availableEventTypes,
+    categoryPreferences,
+    categoryMap,
     isLoading,
     error,
     refetch: fetchPreferences,
     updatePreference,
+    updateCategoryPreference,
   };
 }
 
@@ -254,6 +289,73 @@ export function getNotificationIcon(eventType: string): string {
       return "mail";
     case "team_added":
       return "users";
+    case "oncall_shift_starting":
+    case "oncall_shift_started":
+    case "oncall_shift_ending":
+      return "shield";
+    case "oncall_swap_requested":
+    case "oncall_swap_accepted":
+    case "oncall_swap_declined":
+      return "repeat";
+    case "agent_invoked":
+      return "bot";
+    case "blocker_escalated":
+      return "alert-octagon";
+    case "uptime_incident_created":
+      return "wifi-off";
+    case "uptime_incident_resolved":
+      return "wifi";
+    case "learning_approval_requested":
+    case "learning_approval_decided":
+      return "book-open";
+    case "learning_goal_assigned":
+    case "learning_goal_overdue":
+      return "target";
+    case "learning_activity_completed":
+      return "award";
+    case "form_submission_received":
+    case "form_submission_failed":
+      return "file-text";
+    case "campaign_completed":
+    case "campaign_scheduled":
+      return "send";
+    case "automation_run_failed":
+    case "automation_run_completed":
+      return "zap";
+    case "assessment_invitation_sent":
+    case "assessment_completed":
+    case "candidate_stage_changed":
+      return "clipboard-list";
+    case "gtm_alert_triggered":
+      return "trending-up";
+    case "document_shared":
+    case "document_mentioned":
+    case "document_commented":
+      return "file";
+    case "leave_request_submitted":
+    case "leave_request_approved":
+    case "leave_request_rejected":
+    case "leave_request_cancelled":
+      return "calendar";
+    case "reminder_due":
+    case "reminder_overdue":
+    case "reminder_escalated":
+    case "reminder_assigned":
+      return "alarm-clock";
+    case "reminder_acknowledged":
+    case "reminder_completed":
+      return "check-square";
+    case "usage_alert_80":
+    case "usage_alert_90":
+    case "usage_alert_100":
+      return "bar-chart";
+    case "insight_alert_warning":
+    case "insight_alert_critical":
+      return "activity";
+    case "app_access_requested":
+    case "app_access_approved":
+    case "app_access_rejected":
+      return "key";
     default:
       return "bell";
   }
@@ -285,6 +387,93 @@ export function getNotificationColor(eventType: string): string {
       return "text-blue-400";
     case "team_added":
       return "text-purple-400";
+    case "oncall_shift_starting":
+    case "oncall_shift_started":
+    case "oncall_shift_ending":
+      return "text-orange-400";
+    case "oncall_swap_requested":
+      return "text-blue-400";
+    case "oncall_swap_accepted":
+      return "text-green-400";
+    case "oncall_swap_declined":
+      return "text-red-400";
+    case "agent_invoked":
+      return "text-violet-400";
+    case "blocker_escalated":
+      return "text-red-500";
+    case "uptime_incident_created":
+      return "text-red-500";
+    case "uptime_incident_resolved":
+      return "text-green-400";
+    case "learning_approval_requested":
+      return "text-blue-400";
+    case "learning_approval_decided":
+      return "text-green-400";
+    case "learning_goal_assigned":
+      return "text-blue-400";
+    case "learning_goal_overdue":
+      return "text-red-400";
+    case "learning_activity_completed":
+      return "text-green-400";
+    case "form_submission_received":
+      return "text-blue-400";
+    case "form_submission_failed":
+      return "text-red-400";
+    case "campaign_completed":
+      return "text-green-400";
+    case "campaign_scheduled":
+      return "text-blue-400";
+    case "automation_run_failed":
+      return "text-red-400";
+    case "automation_run_completed":
+      return "text-green-400";
+    case "assessment_invitation_sent":
+      return "text-blue-400";
+    case "assessment_completed":
+      return "text-green-400";
+    case "candidate_stage_changed":
+      return "text-purple-400";
+    case "gtm_alert_triggered":
+      return "text-amber-400";
+    case "document_shared":
+      return "text-blue-400";
+    case "document_mentioned":
+      return "text-cyan-400";
+    case "document_commented":
+      return "text-purple-400";
+    case "leave_request_submitted":
+      return "text-blue-400";
+    case "leave_request_approved":
+      return "text-green-400";
+    case "leave_request_rejected":
+      return "text-red-400";
+    case "leave_request_cancelled":
+      return "text-amber-400";
+    case "reminder_due":
+    case "reminder_assigned":
+      return "text-blue-400";
+    case "reminder_overdue":
+    case "reminder_escalated":
+      return "text-red-400";
+    case "reminder_acknowledged":
+    case "reminder_completed":
+      return "text-green-400";
+    case "usage_alert_80":
+      return "text-amber-400";
+    case "usage_alert_90":
+      return "text-orange-400";
+    case "usage_alert_100":
+      return "text-red-500";
+    case "insight_alert_warning":
+      return "text-amber-400";
+    case "insight_alert_critical":
+      return "text-red-500";
+    case "app_access_requested":
+      return "text-blue-400";
+    case "app_access_approved":
+      return "text-green-400";
+    case "app_access_rejected":
+      return "text-red-400";
     default:
       return "text-muted-foreground";
   }

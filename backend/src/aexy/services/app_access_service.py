@@ -17,7 +17,13 @@ from sqlalchemy.orm import selectinload
 
 from aexy.models.workspace import WorkspaceMember, Workspace
 from aexy.models.role import CustomRole
-from aexy.models.app_access import AppAccessTemplate, AppAccessLog, AppAccessLogAction
+from aexy.models.app_access import (
+    AppAccessTemplate,
+    AppAccessLog,
+    AppAccessLogAction,
+    AppAccessRequest,
+    AppAccessRequestStatus,
+)
 from aexy.models.app_definitions import (
     APP_CATALOG,
     SYSTEM_APP_BUNDLES,
@@ -704,6 +710,277 @@ class AppAccessService:
             "has_custom_overrides": False,
             "is_admin": False,
         }
+
+    # =========================================================================
+    # Access Requests
+    # =========================================================================
+
+    async def create_access_request(
+        self,
+        workspace_id: str,
+        requester_id: str,
+        app_id: str,
+        reason: str | None = None,
+    ) -> AppAccessRequest:
+        """Create a new app access request and notify workspace admins."""
+        from datetime import datetime as dt
+
+        # Validate app exists
+        if app_id not in APP_CATALOG:
+            raise ValueError(f"Unknown app: {app_id}")
+
+        # Check for existing pending request
+        existing = await self.get_pending_request(workspace_id, requester_id, app_id)
+        if existing:
+            raise ValueError("A pending request already exists for this app")
+
+        request = AppAccessRequest(
+            workspace_id=workspace_id,
+            requester_id=requester_id,
+            app_id=app_id,
+            status=AppAccessRequestStatus.PENDING.value,
+            reason=reason,
+        )
+        self.db.add(request)
+        await self.db.commit()
+        await self.db.refresh(request)
+
+        # Notify workspace admins
+        await self._notify_admins_of_request(request)
+
+        return request
+
+    async def list_access_requests(
+        self,
+        workspace_id: str,
+        status_filter: str | None = None,
+    ) -> list[AppAccessRequest]:
+        """List access requests for a workspace (admin view)."""
+        conditions = [AppAccessRequest.workspace_id == workspace_id]
+        if status_filter:
+            conditions.append(AppAccessRequest.status == status_filter)
+
+        stmt = (
+            select(AppAccessRequest)
+            .where(and_(*conditions))
+            .order_by(AppAccessRequest.created_at.desc())
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_my_requests(
+        self,
+        workspace_id: str,
+        requester_id: str,
+    ) -> list[AppAccessRequest]:
+        """Get the current user's access requests."""
+        stmt = (
+            select(AppAccessRequest)
+            .where(
+                and_(
+                    AppAccessRequest.workspace_id == workspace_id,
+                    AppAccessRequest.requester_id == requester_id,
+                )
+            )
+            .order_by(AppAccessRequest.created_at.desc())
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_pending_request(
+        self,
+        workspace_id: str,
+        requester_id: str,
+        app_id: str,
+    ) -> AppAccessRequest | None:
+        """Check if a pending request exists for a given app."""
+        stmt = select(AppAccessRequest).where(
+            and_(
+                AppAccessRequest.workspace_id == workspace_id,
+                AppAccessRequest.requester_id == requester_id,
+                AppAccessRequest.app_id == app_id,
+                AppAccessRequest.status == AppAccessRequestStatus.PENDING.value,
+            )
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def review_request(
+        self,
+        request_id: str,
+        reviewer_id: str,
+        action: str,
+        notes: str | None = None,
+    ) -> AppAccessRequest:
+        """Approve or reject an access request."""
+        from datetime import datetime as dt
+
+        if action not in ("approve", "reject"):
+            raise ValueError("Action must be 'approve' or 'reject'")
+
+        stmt = select(AppAccessRequest).where(AppAccessRequest.id == request_id)
+        result = await self.db.execute(stmt)
+        request = result.scalar_one_or_none()
+
+        if not request:
+            raise ValueError("Request not found")
+
+        if request.status != AppAccessRequestStatus.PENDING.value:
+            raise ValueError("Only pending requests can be reviewed")
+
+        new_status = (
+            AppAccessRequestStatus.APPROVED.value
+            if action == "approve"
+            else AppAccessRequestStatus.REJECTED.value
+        )
+
+        request.status = new_status
+        request.reviewed_by_id = reviewer_id
+        request.reviewed_at = dt.utcnow()
+        request.review_notes = notes
+
+        # If approved, enable the app for the requester
+        if action == "approve":
+            await self._enable_app_for_member(
+                request.workspace_id, request.requester_id, request.app_id
+            )
+
+        await self.db.commit()
+        await self.db.refresh(request)
+
+        # Notify the requester
+        await self._notify_requester_of_review(request)
+
+        return request
+
+    async def withdraw_request(
+        self,
+        request_id: str,
+        requester_id: str,
+    ) -> AppAccessRequest:
+        """Withdraw a pending request (by the requester)."""
+        stmt = select(AppAccessRequest).where(AppAccessRequest.id == request_id)
+        result = await self.db.execute(stmt)
+        request = result.scalar_one_or_none()
+
+        if not request:
+            raise ValueError("Request not found")
+
+        if request.requester_id != requester_id:
+            raise ValueError("Only the requester can withdraw their request")
+
+        if request.status != AppAccessRequestStatus.PENDING.value:
+            raise ValueError("Only pending requests can be withdrawn")
+
+        request.status = AppAccessRequestStatus.WITHDRAWN.value
+        await self.db.commit()
+        await self.db.refresh(request)
+        return request
+
+    async def _enable_app_for_member(
+        self,
+        workspace_id: str,
+        developer_id: str,
+        app_id: str,
+    ) -> None:
+        """Enable a single app for a member by updating their app_permissions."""
+        member = await self._get_workspace_member(workspace_id, developer_id)
+        if not member:
+            return
+
+        current_perms = member.app_permissions or {}
+        apps = current_perms.get("apps", {})
+        app_config = apps.get(app_id, {})
+        app_config["enabled"] = True
+
+        # Enable all modules by default
+        app_def = APP_CATALOG.get(app_id, {})
+        modules = app_def.get("modules", {})
+        if modules:
+            mod_config = app_config.get("modules", {})
+            for mod_id in modules:
+                mod_config[mod_id] = True
+            app_config["modules"] = mod_config
+
+        apps[app_id] = app_config
+        current_perms["apps"] = apps
+        current_perms["custom_overrides"] = True
+        member.app_permissions = current_perms
+
+    async def _notify_admins_of_request(self, request: AppAccessRequest) -> None:
+        """Send notification to workspace admins about a new access request."""
+        try:
+            from aexy.services.notification_service import NotificationService
+            from aexy.models.notification import NotificationEventType
+            from aexy.services.workspace_service import WorkspaceService
+
+            workspace_service = WorkspaceService(self.db)
+            notification_service = NotificationService(self.db)
+
+            admins = await workspace_service.get_members_by_role(
+                request.workspace_id, "admin"
+            )
+            # Also include owners
+            owners = await workspace_service.get_members_by_role(
+                request.workspace_id, "owner"
+            )
+            admin_members = {str(m.developer_id): m for m in admins + owners}
+
+            requester_name = request.requester.name if request.requester else "A member"
+            app_name = APP_CATALOG.get(request.app_id, {}).get("name", request.app_id)
+
+            for dev_id in admin_members:
+                await notification_service.create_notification(
+                    recipient_id=dev_id,
+                    event_type=NotificationEventType.APP_ACCESS_REQUESTED,
+                    title="App Access Request",
+                    body=f"{requester_name} requested access to {app_name}",
+                    context={
+                        "request_id": str(request.id),
+                        "app_id": request.app_id,
+                        "workspace_id": request.workspace_id,
+                        "app_name": app_name,
+                        "requester_name": requester_name,
+                        "action_url": f"/settings/access?tab=requests",
+                    },
+                )
+        except Exception:
+            # Don't fail the request if notification fails
+            pass
+
+    async def _notify_requester_of_review(self, request: AppAccessRequest) -> None:
+        """Notify the requester when their request is approved or rejected."""
+        try:
+            from aexy.services.notification_service import NotificationService
+            from aexy.models.notification import NotificationEventType
+
+            notification_service = NotificationService(self.db)
+
+            app_name = APP_CATALOG.get(request.app_id, {}).get("name", request.app_id)
+            is_approved = request.status == AppAccessRequestStatus.APPROVED.value
+
+            event_type = (
+                NotificationEventType.APP_ACCESS_APPROVED
+                if is_approved
+                else NotificationEventType.APP_ACCESS_REJECTED
+            )
+            action_word = "approved" if is_approved else "rejected"
+
+            await notification_service.create_notification(
+                recipient_id=request.requester_id,
+                event_type=event_type,
+                title=f"Access Request {action_word.title()}",
+                body=f"Your request for access to {app_name} was {action_word}",
+                context={
+                    "request_id": str(request.id),
+                    "app_id": request.app_id,
+                    "workspace_id": request.workspace_id,
+                    "app_name": app_name,
+                    "action_url": f"/{APP_CATALOG.get(request.app_id, {}).get('base_route', 'dashboard')}",
+                },
+            )
+        except Exception:
+            pass
 
     # =========================================================================
     # Access Logging (Enterprise Feature)

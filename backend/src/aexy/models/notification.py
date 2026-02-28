@@ -71,6 +71,11 @@ class NotificationEventType(str, Enum):
     LEAVE_REQUEST_REJECTED = "leave_request_rejected"
     LEAVE_REQUEST_CANCELLED = "leave_request_cancelled"
 
+    # App access requests
+    APP_ACCESS_REQUESTED = "app_access_requested"
+    APP_ACCESS_APPROVED = "app_access_approved"
+    APP_ACCESS_REJECTED = "app_access_rejected"
+
     # Reminder related
     REMINDER_DUE = "reminder_due"  # Reminder is due
     REMINDER_ACKNOWLEDGED = "reminder_acknowledged"  # Reminder was acknowledged
@@ -78,6 +83,53 @@ class NotificationEventType(str, Enum):
     REMINDER_ESCALATED = "reminder_escalated"  # Reminder was escalated
     REMINDER_OVERDUE = "reminder_overdue"  # Reminder is overdue
     REMINDER_ASSIGNED = "reminder_assigned"  # Reminder was assigned
+
+    # Agent mentions
+    AGENT_INVOKED = "agent_invoked"
+
+    # Agent policy events
+    AGENT_TOOL_BLOCKED = "agent_tool_blocked"
+    AGENT_APPROVAL_REQUIRED = "agent_approval_required"
+    AGENT_CONFIG_CHANGED = "agent_config_changed"
+
+    # Blocker escalation
+    BLOCKER_ESCALATED = "blocker_escalated"
+
+    # Uptime
+    UPTIME_INCIDENT_CREATED = "uptime_incident_created"
+    UPTIME_INCIDENT_RESOLVED = "uptime_incident_resolved"
+
+    # Learning
+    LEARNING_APPROVAL_REQUESTED = "learning_approval_requested"
+    LEARNING_APPROVAL_DECIDED = "learning_approval_decided"
+    LEARNING_GOAL_ASSIGNED = "learning_goal_assigned"
+    LEARNING_GOAL_OVERDUE = "learning_goal_overdue"
+    LEARNING_ACTIVITY_COMPLETED = "learning_activity_completed"
+
+    # Forms
+    FORM_SUBMISSION_RECEIVED = "form_submission_received"
+    FORM_SUBMISSION_FAILED = "form_submission_failed"
+
+    # Campaigns
+    CAMPAIGN_COMPLETED = "campaign_completed"
+    CAMPAIGN_SCHEDULED = "campaign_scheduled"
+
+    # Automations
+    AUTOMATION_RUN_FAILED = "automation_run_failed"
+    AUTOMATION_RUN_COMPLETED = "automation_run_completed"
+
+    # Hiring / Assessments
+    ASSESSMENT_INVITATION_SENT = "assessment_invitation_sent"
+    ASSESSMENT_COMPLETED = "assessment_completed"
+    CANDIDATE_STAGE_CHANGED = "candidate_stage_changed"
+
+    # GTM
+    GTM_ALERT_TRIGGERED = "gtm_alert_triggered"
+
+    # Documents
+    DOCUMENT_SHARED = "document_shared"
+    DOCUMENT_MENTIONED = "document_mentioned"
+    DOCUMENT_COMMENTED = "document_commented"
 
 
 class Notification(Base):
@@ -134,6 +186,11 @@ class Notification(Base):
         DateTime(timezone=True),
         nullable=True,
     )
+    slack_sent: Mapped[bool] = mapped_column(Boolean, default=False)
+    slack_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -176,6 +233,7 @@ class NotificationPreference(Base):
     in_app_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     email_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     slack_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    web_push_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -243,43 +301,278 @@ class EmailNotificationLog(Base):
     )
 
 
+class WebPushSubscription(Base):
+    """Browser push notification subscription.
+
+    Stores Web Push API subscription info per device/browser for a developer.
+    Uses VAPID for authentication with the push service.
+    """
+
+    __tablename__ = "web_push_subscriptions"
+    __table_args__ = (
+        UniqueConstraint("developer_id", "endpoint", name="uq_web_push_sub_developer_endpoint"),
+    )
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    developer_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="CASCADE"),
+        index=True,
+    )
+    endpoint: Mapped[str] = mapped_column(Text)
+    p256dh_key: Mapped[str] = mapped_column(Text)
+    auth_key: Mapped[str] = mapped_column(Text)
+    user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
+class NotificationCategoryPreference(Base):
+    """Category-level notification preferences with optional Slack channel routing.
+
+    Provides master toggles for entire notification categories and allows
+    routing Slack notifications to a specific channel per category.
+    """
+
+    __tablename__ = "notification_category_preferences"
+    __table_args__ = (
+        UniqueConstraint("developer_id", "category", name="uq_notif_cat_pref_developer_category"),
+    )
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    developer_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="CASCADE"),
+        index=True,
+    )
+    category: Mapped[str] = mapped_column(String(100))
+
+    # Channel master toggles
+    in_app_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    email_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    slack_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    web_push_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Slack channel routing (optional - if set, notifications go to this channel instead of DM)
+    slack_channel_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    slack_channel_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
+# Category mapping for notification event types
+NOTIFICATION_CATEGORIES: dict[str, list[str]] = {
+    "reviews_and_goals": [
+        NotificationEventType.PEER_REVIEW_REQUESTED.value,
+        NotificationEventType.PEER_REVIEW_RECEIVED.value,
+        NotificationEventType.REVIEW_CYCLE_PHASE_CHANGED.value,
+        NotificationEventType.MANAGER_REVIEW_COMPLETED.value,
+        NotificationEventType.REVIEW_ACKNOWLEDGED.value,
+        NotificationEventType.GOAL_AUTO_LINKED.value,
+        NotificationEventType.GOAL_AT_RISK.value,
+        NotificationEventType.GOAL_COMPLETED.value,
+    ],
+    "reminders": [
+        NotificationEventType.DEADLINE_REMINDER_1_DAY.value,
+        NotificationEventType.DEADLINE_REMINDER_DAY_OF.value,
+        NotificationEventType.REMINDER_DUE.value,
+        NotificationEventType.REMINDER_ACKNOWLEDGED.value,
+        NotificationEventType.REMINDER_COMPLETED.value,
+        NotificationEventType.REMINDER_ESCALATED.value,
+        NotificationEventType.REMINDER_OVERDUE.value,
+        NotificationEventType.REMINDER_ASSIGNED.value,
+    ],
+    "on_call": [
+        NotificationEventType.ONCALL_SHIFT_STARTING.value,
+        NotificationEventType.ONCALL_SHIFT_STARTED.value,
+        NotificationEventType.ONCALL_SHIFT_ENDING.value,
+        NotificationEventType.ONCALL_SWAP_REQUESTED.value,
+        NotificationEventType.ONCALL_SWAP_ACCEPTED.value,
+        NotificationEventType.ONCALL_SWAP_DECLINED.value,
+    ],
+    "workspace": [
+        NotificationEventType.WORKSPACE_INVITE.value,
+        NotificationEventType.TEAM_ADDED.value,
+    ],
+    "mentions": [
+        NotificationEventType.TASK_MENTIONED.value,
+        NotificationEventType.MENTION.value,
+    ],
+    "billing_and_usage": [
+        NotificationEventType.USAGE_ALERT_80.value,
+        NotificationEventType.USAGE_ALERT_90.value,
+        NotificationEventType.USAGE_ALERT_100.value,
+    ],
+    "insights": [
+        NotificationEventType.INSIGHT_ALERT_WARNING.value,
+        NotificationEventType.INSIGHT_ALERT_CRITICAL.value,
+        NotificationEventType.BLOCKER_ESCALATED.value,
+    ],
+    "leave": [
+        NotificationEventType.LEAVE_REQUEST_SUBMITTED.value,
+        NotificationEventType.LEAVE_REQUEST_APPROVED.value,
+        NotificationEventType.LEAVE_REQUEST_REJECTED.value,
+        NotificationEventType.LEAVE_REQUEST_CANCELLED.value,
+    ],
+    "app_access": [
+        NotificationEventType.APP_ACCESS_REQUESTED.value,
+        NotificationEventType.APP_ACCESS_APPROVED.value,
+        NotificationEventType.APP_ACCESS_REJECTED.value,
+    ],
+    "agents": [
+        NotificationEventType.AGENT_INVOKED.value,
+        NotificationEventType.AGENT_TOOL_BLOCKED.value,
+        NotificationEventType.AGENT_APPROVAL_REQUIRED.value,
+        NotificationEventType.AGENT_CONFIG_CHANGED.value,
+    ],
+    "uptime": [
+        NotificationEventType.UPTIME_INCIDENT_CREATED.value,
+        NotificationEventType.UPTIME_INCIDENT_RESOLVED.value,
+    ],
+    "learning": [
+        NotificationEventType.LEARNING_APPROVAL_REQUESTED.value,
+        NotificationEventType.LEARNING_APPROVAL_DECIDED.value,
+        NotificationEventType.LEARNING_GOAL_ASSIGNED.value,
+        NotificationEventType.LEARNING_GOAL_OVERDUE.value,
+        NotificationEventType.LEARNING_ACTIVITY_COMPLETED.value,
+    ],
+    "forms": [
+        NotificationEventType.FORM_SUBMISSION_RECEIVED.value,
+        NotificationEventType.FORM_SUBMISSION_FAILED.value,
+    ],
+    "campaigns": [
+        NotificationEventType.CAMPAIGN_COMPLETED.value,
+        NotificationEventType.CAMPAIGN_SCHEDULED.value,
+    ],
+    "automations": [
+        NotificationEventType.AUTOMATION_RUN_FAILED.value,
+        NotificationEventType.AUTOMATION_RUN_COMPLETED.value,
+    ],
+    "hiring": [
+        NotificationEventType.ASSESSMENT_INVITATION_SENT.value,
+        NotificationEventType.ASSESSMENT_COMPLETED.value,
+        NotificationEventType.CANDIDATE_STAGE_CHANGED.value,
+    ],
+    "gtm": [
+        NotificationEventType.GTM_ALERT_TRIGGERED.value,
+    ],
+    "documents": [
+        NotificationEventType.DOCUMENT_SHARED.value,
+        NotificationEventType.DOCUMENT_MENTIONED.value,
+        NotificationEventType.DOCUMENT_COMMENTED.value,
+    ],
+}
+
+# Reverse mapping: event_type -> category
+EVENT_TYPE_TO_CATEGORY: dict[str, str] = {
+    event_type: category
+    for category, event_types in NOTIFICATION_CATEGORIES.items()
+    for event_type in event_types
+}
+
+
 # Default preferences for new users
 DEFAULT_NOTIFICATION_PREFERENCES = {
-    NotificationEventType.PEER_REVIEW_REQUESTED: {"in_app": True, "email": True, "slack": False},
-    NotificationEventType.PEER_REVIEW_RECEIVED: {"in_app": True, "email": True, "slack": False},
-    NotificationEventType.REVIEW_CYCLE_PHASE_CHANGED: {"in_app": True, "email": True, "slack": False},
-    NotificationEventType.MANAGER_REVIEW_COMPLETED: {"in_app": True, "email": True, "slack": False},
-    NotificationEventType.REVIEW_ACKNOWLEDGED: {"in_app": True, "email": False, "slack": False},
-    NotificationEventType.DEADLINE_REMINDER_1_DAY: {"in_app": True, "email": True, "slack": False},
-    NotificationEventType.DEADLINE_REMINDER_DAY_OF: {"in_app": True, "email": True, "slack": False},
-    NotificationEventType.GOAL_AUTO_LINKED: {"in_app": True, "email": False, "slack": False},
-    NotificationEventType.GOAL_AT_RISK: {"in_app": True, "email": True, "slack": False},
-    NotificationEventType.GOAL_COMPLETED: {"in_app": True, "email": False, "slack": False},
-    NotificationEventType.WORKSPACE_INVITE: {"in_app": True, "email": True, "slack": False},
-    NotificationEventType.TEAM_ADDED: {"in_app": True, "email": False, "slack": False},
-    # On-call notifications
-    NotificationEventType.ONCALL_SHIFT_STARTING: {"in_app": True, "email": True, "slack": True},
-    NotificationEventType.ONCALL_SHIFT_STARTED: {"in_app": True, "email": False, "slack": True},
-    NotificationEventType.ONCALL_SHIFT_ENDING: {"in_app": True, "email": False, "slack": False},
-    NotificationEventType.ONCALL_SWAP_REQUESTED: {"in_app": True, "email": True, "slack": True},
-    NotificationEventType.ONCALL_SWAP_ACCEPTED: {"in_app": True, "email": True, "slack": False},
-    NotificationEventType.ONCALL_SWAP_DECLINED: {"in_app": True, "email": True, "slack": False},
+    NotificationEventType.PEER_REVIEW_REQUESTED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.PEER_REVIEW_RECEIVED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.REVIEW_CYCLE_PHASE_CHANGED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.MANAGER_REVIEW_COMPLETED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.REVIEW_ACKNOWLEDGED: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    NotificationEventType.DEADLINE_REMINDER_1_DAY: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.DEADLINE_REMINDER_DAY_OF: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.GOAL_AUTO_LINKED: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    NotificationEventType.GOAL_AT_RISK: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.GOAL_COMPLETED: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    NotificationEventType.WORKSPACE_INVITE: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.TEAM_ADDED: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    # On-call notifications (web_push enabled by default for critical alerts)
+    NotificationEventType.ONCALL_SHIFT_STARTING: {"in_app": True, "email": True, "slack": True, "web_push": True},
+    NotificationEventType.ONCALL_SHIFT_STARTED: {"in_app": True, "email": False, "slack": True, "web_push": True},
+    NotificationEventType.ONCALL_SHIFT_ENDING: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    NotificationEventType.ONCALL_SWAP_REQUESTED: {"in_app": True, "email": True, "slack": True, "web_push": True},
+    NotificationEventType.ONCALL_SWAP_ACCEPTED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.ONCALL_SWAP_DECLINED: {"in_app": True, "email": True, "slack": False, "web_push": False},
     # Task mentions
-    NotificationEventType.TASK_MENTIONED: {"in_app": True, "email": True, "slack": False},
-    NotificationEventType.MENTION: {"in_app": True, "email": True, "slack": False},
+    NotificationEventType.TASK_MENTIONED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.MENTION: {"in_app": True, "email": True, "slack": False, "web_push": False},
     # Insights alerts
-    NotificationEventType.INSIGHT_ALERT_WARNING: {"in_app": True, "email": False, "slack": False},
-    NotificationEventType.INSIGHT_ALERT_CRITICAL: {"in_app": True, "email": True, "slack": False},
-    # Reminders
+    NotificationEventType.INSIGHT_ALERT_WARNING: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    NotificationEventType.INSIGHT_ALERT_CRITICAL: {"in_app": True, "email": True, "slack": False, "web_push": True},
     # Leave notifications
-    NotificationEventType.LEAVE_REQUEST_SUBMITTED: {"in_app": True, "email": True, "slack": False},
-    NotificationEventType.LEAVE_REQUEST_APPROVED: {"in_app": True, "email": True, "slack": False},
-    NotificationEventType.LEAVE_REQUEST_REJECTED: {"in_app": True, "email": True, "slack": False},
-    NotificationEventType.LEAVE_REQUEST_CANCELLED: {"in_app": True, "email": False, "slack": False},
-    NotificationEventType.REMINDER_DUE: {"in_app": True, "email": True, "slack": False},
-    NotificationEventType.REMINDER_ACKNOWLEDGED: {"in_app": True, "email": False, "slack": False},
-    NotificationEventType.REMINDER_COMPLETED: {"in_app": True, "email": False, "slack": False},
-    NotificationEventType.REMINDER_ESCALATED: {"in_app": True, "email": True, "slack": True},
-    NotificationEventType.REMINDER_OVERDUE: {"in_app": True, "email": True, "slack": True},
-    NotificationEventType.REMINDER_ASSIGNED: {"in_app": True, "email": True, "slack": False},
+    NotificationEventType.LEAVE_REQUEST_SUBMITTED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.LEAVE_REQUEST_APPROVED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.LEAVE_REQUEST_REJECTED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.LEAVE_REQUEST_CANCELLED: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    # App access requests
+    NotificationEventType.APP_ACCESS_REQUESTED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.APP_ACCESS_APPROVED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.APP_ACCESS_REJECTED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    # Reminders
+    NotificationEventType.REMINDER_DUE: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.REMINDER_ACKNOWLEDGED: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    NotificationEventType.REMINDER_COMPLETED: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    NotificationEventType.REMINDER_ESCALATED: {"in_app": True, "email": True, "slack": True, "web_push": True},
+    NotificationEventType.REMINDER_OVERDUE: {"in_app": True, "email": True, "slack": True, "web_push": True},
+    NotificationEventType.REMINDER_ASSIGNED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    # Agent mentions
+    NotificationEventType.AGENT_INVOKED: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    # Agent policy events
+    NotificationEventType.AGENT_TOOL_BLOCKED: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    NotificationEventType.AGENT_APPROVAL_REQUIRED: {"in_app": True, "email": True, "slack": True, "web_push": True},
+    NotificationEventType.AGENT_CONFIG_CHANGED: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    # Blocker escalation
+    NotificationEventType.BLOCKER_ESCALATED: {"in_app": True, "email": True, "slack": True, "web_push": True},
+    # Uptime
+    NotificationEventType.UPTIME_INCIDENT_CREATED: {"in_app": True, "email": True, "slack": True, "web_push": True},
+    NotificationEventType.UPTIME_INCIDENT_RESOLVED: {"in_app": True, "email": True, "slack": True, "web_push": False},
+    # Learning
+    NotificationEventType.LEARNING_APPROVAL_REQUESTED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.LEARNING_APPROVAL_DECIDED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.LEARNING_GOAL_ASSIGNED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.LEARNING_GOAL_OVERDUE: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.LEARNING_ACTIVITY_COMPLETED: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    # Forms
+    NotificationEventType.FORM_SUBMISSION_RECEIVED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.FORM_SUBMISSION_FAILED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    # Campaigns
+    NotificationEventType.CAMPAIGN_COMPLETED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.CAMPAIGN_SCHEDULED: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    # Automations
+    NotificationEventType.AUTOMATION_RUN_FAILED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.AUTOMATION_RUN_COMPLETED: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    # Hiring / Assessments
+    NotificationEventType.ASSESSMENT_INVITATION_SENT: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    NotificationEventType.ASSESSMENT_COMPLETED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.CANDIDATE_STAGE_CHANGED: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    # GTM
+    NotificationEventType.GTM_ALERT_TRIGGERED: {"in_app": True, "email": True, "slack": True, "web_push": False},
+    # Documents
+    NotificationEventType.DOCUMENT_SHARED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.DOCUMENT_MENTIONED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.DOCUMENT_COMMENTED: {"in_app": True, "email": True, "slack": False, "web_push": False},
 }

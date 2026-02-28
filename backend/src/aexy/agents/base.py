@@ -3,6 +3,7 @@
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from typing import Any, Annotated, TypedDict, Sequence
+import logging
 import operator
 
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, ToolMessage
@@ -14,6 +15,8 @@ from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 
 from aexy.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class AgentState(TypedDict):
@@ -40,6 +43,9 @@ class BaseAgent(ABC):
         llm_provider: str = "claude",
         max_iterations: int = 10,
         timeout_seconds: int = 300,
+        policy_engine: Any | None = None,
+        agent_config: Any | None = None,
+        execution_id: str | None = None,
     ):
         self.model_name = model or self.default_model
         self.llm_provider = llm_provider
@@ -48,6 +54,9 @@ class BaseAgent(ABC):
         self._llm: BaseChatModel | None = None
         self._tools: list[BaseTool] = []
         self._graph: StateGraph | None = None
+        self.policy_engine = policy_engine
+        self.agent_config = agent_config
+        self.execution_id = execution_id
 
     @property
     def llm(self) -> BaseChatModel:
@@ -119,12 +128,19 @@ class BaseAgent(ABC):
         try:
             response = llm.invoke(messages)
 
+            # Extract token usage
+            usage = getattr(response, "usage_metadata", None) or {}
+            input_tokens = usage.get("input_tokens", 0)
+            output_tokens = usage.get("output_tokens", 0)
+
             # Record step
             step = {
                 "type": "llm_call",
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "input_messages": len(messages),
                 "has_tool_calls": bool(getattr(response, "tool_calls", None)),
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
             }
 
             return {
@@ -142,36 +158,105 @@ class BaseAgent(ABC):
             }
 
     async def _process_tools(self, state: AgentState) -> dict:
-        """Process tool calls asynchronously."""
+        """Process tool calls with policy enforcement."""
         messages = state["messages"]
         last_message = messages[-1]
 
         if not hasattr(last_message, "tool_calls") or not last_message.tool_calls:
             return {"messages": []}
 
-        tool_node = ToolNode(self.tools)
-        try:
-            # Use ainvoke for async tool execution
-            result = await tool_node.ainvoke({"messages": [last_message]})
-            result_messages = result.get("messages", [])
+        result_messages = []
+        steps = []
 
-            # Record tool steps with outputs
-            steps = []
-            for i, tool_call in enumerate(last_message.tool_calls):
-                tool_name = tool_call.get("name", "unknown")
-                tool_args = tool_call.get("args", {})
-                tool_call_id = tool_call.get("id", "")
+        # Build a tool lookup for creating per-call ToolNodes
+        tool_map = {t.name: t for t in self.tools}
 
-                # Find the corresponding tool output message
+        for tool_call in last_message.tool_calls:
+            tool_name = tool_call.get("name", "unknown")
+            tool_args = tool_call.get("args", {})
+            tool_call_id = tool_call.get("id", "")
+
+            # Policy gate: evaluate before execution
+            if self.policy_engine and self.execution_id:
+                try:
+                    eval_result = await self.policy_engine.evaluate_tool_call(
+                        execution_id=self.execution_id,
+                        tool_name=tool_name,
+                        tool_args=tool_args,
+                        agent=self.agent_config,
+                    )
+
+                    if eval_result.decision != "allow":
+                        # Tool call blocked by policy
+                        reason = eval_result.reason
+                        result_messages.append(ToolMessage(
+                            content=f"[BLOCKED] {reason}",
+                            tool_call_id=tool_call_id,
+                        ))
+                        steps.append({
+                            "type": "tool_blocked",
+                            "id": tool_call_id,
+                            "tool": tool_name,
+                            "input": tool_args,
+                            "decision": eval_result.decision,
+                            "reason": reason,
+                            "policy_id": eval_result.policy_id,
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                        })
+
+                        # Send notifications
+                        if eval_result.decision == "require_approval":
+                            await self.policy_engine.notify_approval_required(
+                                agent=self.agent_config,
+                                tool_name=tool_name,
+                                reason=reason,
+                                workspace_id=getattr(self.agent_config, "workspace_id", ""),
+                                execution_id=self.execution_id,
+                            )
+                        else:
+                            await self.policy_engine.notify_tool_blocked(
+                                agent=self.agent_config,
+                                tool_name=tool_name,
+                                reason=reason,
+                                workspace_id=getattr(self.agent_config, "workspace_id", ""),
+                                execution_id=self.execution_id,
+                            )
+                        continue
+                except Exception as e:
+                    # Policy evaluation failed — allow the call (fail open)
+                    logger.warning("Policy evaluation failed for %s: %s", tool_name, e)
+
+            # Execute the tool call
+            matching_tool = tool_map.get(tool_name)
+            if not matching_tool:
+                result_messages.append(ToolMessage(
+                    content=f"Error: tool '{tool_name}' not found",
+                    tool_call_id=tool_call_id,
+                ))
+                steps.append({
+                    "type": "error",
+                    "id": tool_call_id,
+                    "tool": tool_name,
+                    "error": f"Tool '{tool_name}' not found",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                })
+                continue
+
+            try:
+                # Create a single-tool ToolNode and invoke
+                single_tool_node = ToolNode([matching_tool])
+                # Build a temporary AI message with just this tool call
+                single_call_msg = AIMessage(
+                    content="",
+                    tool_calls=[tool_call],
+                )
+                result = await single_tool_node.ainvoke({"messages": [single_call_msg]})
+                call_messages = result.get("messages", [])
+
                 tool_output = None
-                for msg in result_messages:
-                    if hasattr(msg, "tool_call_id") and msg.tool_call_id == tool_call_id:
-                        tool_output = msg.content
-                        break
-
-                # If no matching output found, try by index
-                if tool_output is None and i < len(result_messages):
-                    tool_output = result_messages[i].content if hasattr(result_messages[i], "content") else str(result_messages[i])
+                if call_messages:
+                    tool_output = call_messages[0].content if hasattr(call_messages[0], "content") else str(call_messages[0])
+                    result_messages.extend(call_messages)
 
                 steps.append({
                     "type": "tool_call",
@@ -181,23 +266,24 @@ class BaseAgent(ABC):
                     "output": tool_output,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 })
-
-            return {
-                "messages": result_messages,
-                "steps": steps,
-            }
-        except Exception as e:
-            return {
-                "messages": [ToolMessage(
-                    content=f"Error executing tools: {str(e)}",
-                    tool_call_id=last_message.tool_calls[0].get("id", ""),
-                )],
-                "steps": [{
+            except Exception as e:
+                result_messages.append(ToolMessage(
+                    content=f"Error executing tool '{tool_name}': {str(e)}",
+                    tool_call_id=tool_call_id,
+                ))
+                steps.append({
                     "type": "error",
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "id": tool_call_id,
+                    "tool": tool_name,
+                    "input": tool_args,
                     "error": str(e),
-                }],
-            }
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                })
+
+        return {
+            "messages": result_messages,
+            "steps": steps,
+        }
 
     def _build_graph(self) -> StateGraph:
         """Build the LangGraph state graph."""

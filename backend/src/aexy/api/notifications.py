@@ -8,8 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.core.database import get_db
 from aexy.models.notification import NotificationEventType
+from aexy.models.notification import NOTIFICATION_CATEGORIES
 from aexy.schemas.notification import (
     BulkPreferenceUpdate,
+    CategoryPreferenceResponse,
+    CategoryPreferenceUpdate,
     MarkReadRequest,
     NotificationListResponse,
     NotificationPreferenceResponse,
@@ -18,6 +21,8 @@ from aexy.schemas.notification import (
     NotificationResponse,
     PollResponse,
     UnreadCountResponse,
+    WebPushSubscriptionCreate,
+    WebPushSubscriptionResponse,
 )
 from aexy.services.notification_service import NotificationService
 
@@ -91,38 +96,6 @@ async def poll_notifications(
     )
 
 
-@router.get("/{notification_id}", response_model=NotificationResponse)
-async def get_notification(
-    notification_id: str,
-    developer_id: str = Query(..., description="Developer ID for authorization"),
-    db: AsyncSession = Depends(get_db),
-):
-    """Get a single notification."""
-    service = NotificationService(db)
-    notification = await service.get_notification(notification_id, developer_id)
-
-    if not notification:
-        raise HTTPException(status_code=404, detail="Notification not found")
-
-    return NotificationResponse.model_validate(notification)
-
-
-@router.post("/{notification_id}/read", response_model=NotificationResponse)
-async def mark_notification_read(
-    notification_id: str,
-    developer_id: str = Query(..., description="Developer ID for authorization"),
-    db: AsyncSession = Depends(get_db),
-):
-    """Mark a notification as read."""
-    service = NotificationService(db)
-    notification = await service.mark_as_read(notification_id, developer_id)
-
-    if not notification:
-        raise HTTPException(status_code=404, detail="Notification not found")
-
-    return NotificationResponse.model_validate(notification)
-
-
 @router.post("/read-all", response_model=dict)
 async def mark_all_notifications_read(
     developer_id: str = Query(..., description="Developer ID"),
@@ -132,20 +105,6 @@ async def mark_all_notifications_read(
     service = NotificationService(db)
     count = await service.mark_all_as_read(developer_id)
     return {"marked_read": count}
-
-
-@router.delete("/{notification_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_notification(
-    notification_id: str,
-    developer_id: str = Query(..., description="Developer ID for authorization"),
-    db: AsyncSession = Depends(get_db),
-):
-    """Delete a notification."""
-    service = NotificationService(db)
-    deleted = await service.delete_notification(notification_id, developer_id)
-
-    if not deleted:
-        raise HTTPException(status_code=404, detail="Notification not found")
 
 
 # ============ Preference Endpoints ============
@@ -163,6 +122,7 @@ async def get_notification_preferences(
     """
     service = NotificationService(db)
     preferences = await service.get_preferences(developer_id)
+    category_prefs = await service.get_category_preferences(developer_id)
 
     return NotificationPreferencesResponse(
         preferences={
@@ -170,6 +130,11 @@ async def get_notification_preferences(
             for event_type, pref in preferences.items()
         },
         available_event_types=[e.value for e in NotificationEventType],
+        categories={
+            cat: CategoryPreferenceResponse.model_validate(pref)
+            for cat, pref in category_prefs.items()
+        },
+        category_map=NOTIFICATION_CATEGORIES,
     )
 
 
@@ -219,6 +184,7 @@ async def update_notification_preference(
         in_app_enabled=data.in_app_enabled,
         email_enabled=data.email_enabled,
         slack_enabled=data.slack_enabled,
+        web_push_enabled=data.web_push_enabled,
     )
 
     return NotificationPreferenceResponse.model_validate(pref)
@@ -241,10 +207,122 @@ async def bulk_update_preferences(
             in_app_enabled=update.in_app_enabled,
             email_enabled=update.email_enabled,
             slack_enabled=update.slack_enabled,
+            web_push_enabled=update.web_push_enabled,
         )
         results.append(NotificationPreferenceResponse.model_validate(pref))
 
     return results
+
+
+# ============ Web Push Subscription Endpoints ============
+
+
+@router.post("/push-subscription", response_model=WebPushSubscriptionResponse, status_code=201)
+async def subscribe_push(
+    data: WebPushSubscriptionCreate,
+    developer_id: str = Query(..., description="Developer ID"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Subscribe a browser for web push notifications."""
+    from aexy.services.web_push_service import WebPushService
+
+    service = WebPushService(db)
+    sub = await service.subscribe(
+        developer_id=developer_id,
+        endpoint=data.endpoint,
+        p256dh_key=data.p256dh_key,
+        auth_key=data.auth_key,
+        user_agent=data.user_agent,
+    )
+    return WebPushSubscriptionResponse.model_validate(sub)
+
+
+@router.delete("/push-subscription", status_code=status.HTTP_204_NO_CONTENT)
+async def unsubscribe_push(
+    endpoint: str = Query(..., description="Push subscription endpoint URL"),
+    developer_id: str = Query(..., description="Developer ID"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Unsubscribe a browser from web push notifications."""
+    from aexy.services.web_push_service import WebPushService
+
+    service = WebPushService(db)
+    deleted = await service.unsubscribe(developer_id, endpoint)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+
+
+@router.get("/push-subscription", response_model=list[WebPushSubscriptionResponse])
+async def list_push_subscriptions(
+    developer_id: str = Query(..., description="Developer ID"),
+    db: AsyncSession = Depends(get_db),
+):
+    """List active web push subscriptions for a developer."""
+    from aexy.services.web_push_service import WebPushService
+
+    service = WebPushService(db)
+    subs = await service.get_subscriptions(developer_id)
+    return [WebPushSubscriptionResponse.model_validate(s) for s in subs]
+
+
+@router.get("/push-vapid-key")
+async def get_vapid_public_key():
+    """Get the VAPID public key for web push subscription setup."""
+    from aexy.core.config import get_settings
+
+    settings = get_settings()
+    if not settings.vapid_public_key:
+        raise HTTPException(status_code=404, detail="Web push not configured")
+
+    return {"public_key": settings.vapid_public_key}
+
+
+# ============ Category Preference Endpoints ============
+
+
+@router.get("/category-preferences", response_model=dict[str, CategoryPreferenceResponse])
+async def get_category_preferences(
+    developer_id: str = Query(..., description="Developer ID"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get all category-level notification preferences."""
+    service = NotificationService(db)
+    cat_prefs = await service.get_category_preferences(developer_id)
+    return {
+        cat: CategoryPreferenceResponse.model_validate(pref)
+        for cat, pref in cat_prefs.items()
+    }
+
+
+@router.put("/category-preferences/{category}", response_model=CategoryPreferenceResponse)
+async def update_category_preference(
+    category: str,
+    data: CategoryPreferenceUpdate,
+    developer_id: str = Query(..., description="Developer ID"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update category-level preference (master toggle + Slack channel routing).
+
+    Propagates channel toggle changes to all child event preferences in this category.
+    """
+    if category not in NOTIFICATION_CATEGORIES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid category. Valid categories: {list(NOTIFICATION_CATEGORIES.keys())}",
+        )
+
+    service = NotificationService(db)
+    cat_pref = await service.update_category_preference(
+        developer_id=developer_id,
+        category=category,
+        in_app_enabled=data.in_app_enabled,
+        email_enabled=data.email_enabled,
+        slack_enabled=data.slack_enabled,
+        web_push_enabled=data.web_push_enabled,
+        slack_channel_id=data.slack_channel_id,
+        slack_channel_name=data.slack_channel_name,
+    )
+    return CategoryPreferenceResponse.model_validate(cat_pref)
 
 
 # ============ Workspace Email Delivery Endpoints (Enterprise Only) ============
@@ -606,3 +684,53 @@ async def send_test_notification(
         )
 
     return NotificationResponse.model_validate(notification)
+
+
+# ============ Single Notification Endpoints (path params - must be LAST) ============
+# These use /{notification_id} which would catch other routes if placed earlier.
+
+
+@router.get("/{notification_id}", response_model=NotificationResponse)
+async def get_notification(
+    notification_id: str,
+    developer_id: str = Query(..., description="Developer ID for authorization"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a single notification."""
+    service = NotificationService(db)
+    notification = await service.get_notification(notification_id, developer_id)
+
+    if not notification:
+        raise HTTPException(status_code=404, detail="Notification not found")
+
+    return NotificationResponse.model_validate(notification)
+
+
+@router.post("/{notification_id}/read", response_model=NotificationResponse)
+async def mark_notification_read(
+    notification_id: str,
+    developer_id: str = Query(..., description="Developer ID for authorization"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Mark a notification as read."""
+    service = NotificationService(db)
+    notification = await service.mark_as_read(notification_id, developer_id)
+
+    if not notification:
+        raise HTTPException(status_code=404, detail="Notification not found")
+
+    return NotificationResponse.model_validate(notification)
+
+
+@router.delete("/{notification_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_notification(
+    notification_id: str,
+    developer_id: str = Query(..., description="Developer ID for authorization"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a notification."""
+    service = NotificationService(db)
+    deleted = await service.delete_notification(notification_id, developer_id)
+
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Notification not found")

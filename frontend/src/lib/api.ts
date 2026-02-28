@@ -2295,6 +2295,7 @@ export interface SprintListItem {
   completed_count: number;
   total_points: number;
   completed_points: number;
+  settings?: Record<string, unknown>;
 }
 
 export interface SprintTask {
@@ -2321,6 +2322,10 @@ export interface SprintTask {
   custom_fields: Record<string, unknown>;
   started_at: string | null;
   completed_at: string | null;
+  work_started_at: string | null;
+  cycle_time_hours: number | null;
+  lead_time_hours: number | null;
+  contributes_to_goal: boolean;
   carried_over_from_sprint_id: string | null;
   // Epic reference
   epic_id: string | null;
@@ -2440,6 +2445,10 @@ export interface CapacityAnalysis {
     committed_hours: number;
     capacity_hours: number;
     utilization: number;
+    leave_days?: number;
+    oncall_days?: number;
+    holiday_days?: number;
+    available_days?: number;
   }[];
   recommendations: string[];
 }
@@ -3192,6 +3201,100 @@ export const sprintApi = {
       `/workspaces/${workspaceId}/teams/${teamId}/sprints/${fromSprintId}/carry-over/${toSprintId}`,
       { task_ids: taskIds }
     );
+    return response.data;
+  },
+
+  // WIP Limits
+  getWipLimits: async (sprintId: string): Promise<{
+    limits: Record<string, number | null>;
+    counts: Record<string, number>;
+    violations: { status: string; limit: number; count: number; over_by: number }[];
+  }> => {
+    const response = await api.get(`/sprints/${sprintId}/tasks/wip-limits`);
+    return response.data;
+  },
+
+  updateWipLimits: async (sprintId: string, limits: Record<string, number | null>): Promise<{
+    wip_limits: Record<string, number | null>;
+  }> => {
+    const response = await api.put(`/sprints/${sprintId}/tasks/wip-limits`, limits);
+    return response.data;
+  },
+
+  // Sprint Goal
+  getGoalProgress: async (sprintId: string): Promise<{
+    goal: string | null;
+    total_goal_tasks: number;
+    completed_goal_tasks: number;
+    percentage: number;
+    goal_task_ids: string[];
+  }> => {
+    const response = await api.get(`/sprints/${sprintId}/tasks/goal-progress`);
+    return response.data;
+  },
+
+  // Auto-Assign
+  autoAssign: async (sprintId: string): Promise<{
+    assigned: { task_id: string; task_title: string; developer_id: string; developer_name: string; confidence: number; reasoning: string }[];
+    skipped: { task_id: string; task_title: string; reason: string; suggested_developer: string }[];
+    total_assigned: number;
+    total_skipped: number;
+  }> => {
+    const response = await api.post(`/sprints/${sprintId}/tasks/auto-assign`);
+    return response.data;
+  },
+
+  // Cycle Time Analytics
+  getCycleTimeAnalytics: async (sprintId: string): Promise<{
+    cycle_time: { avg: number; median: number; p90: number };
+    lead_time: { avg: number; median: number; p90: number };
+    throughput: { tasks_per_week: number; points_per_week: number };
+    completed_count: number;
+    by_priority: Record<string, { count: number; avg_cycle_time: number }>;
+    by_assignee: Record<string, { developer_name: string; tasks_completed: number; avg_cycle_time: number }>;
+  }> => {
+    const response = await api.get(`/sprints/${sprintId}/analytics/cycle-time`);
+    return response.data;
+  },
+
+  // Planning Poker
+  startPokerSession: async (sprintId: string): Promise<{
+    session_id: string;
+    sprint_id: string;
+    tasks: { id: string; title: string; description: string | null }[];
+    total_tasks: number;
+  }> => {
+    const response = await api.post(`/sprints/${sprintId}/planning-poker/start`);
+    return response.data;
+  },
+
+  getPokerSessionState: async (sprintId: string, sessionId: string): Promise<Record<string, unknown>> => {
+    const response = await api.get(`/sprints/${sprintId}/planning-poker/${sessionId}`);
+    return response.data;
+  },
+
+  finalizePokerSession: async (sprintId: string, sessionId: string): Promise<{
+    finalized: boolean;
+    updated_tasks: { task_id: string; title: string; story_points: number }[];
+    total_estimated: number;
+  }> => {
+    const response = await api.post(`/sprints/${sprintId}/planning-poker/${sessionId}/finalize`);
+    return response.data;
+  },
+
+  getAvailableTasks: async (sprintId: string, sessionId: string): Promise<{
+    tasks: { id: string; title: string; description: string | null; status: string; story_points: number | null; sprint_id: string | null }[];
+    total: number;
+  }> => {
+    const response = await api.get(`/sprints/${sprintId}/planning-poker/${sessionId}/available-tasks`);
+    return response.data;
+  },
+
+  addTasksToSession: async (sprintId: string, sessionId: string, taskIds: string[]): Promise<{
+    added: { id: string; title: string; description: string | null }[];
+    total_tasks: number;
+  }> => {
+    const response = await api.post(`/sprints/${sprintId}/planning-poker/${sessionId}/add-tasks`, { task_ids: taskIds });
     return response.data;
   },
 };
@@ -4697,7 +4800,55 @@ export type NotificationEventType =
   | "goal_at_risk"
   | "goal_completed"
   | "workspace_invite"
-  | "team_added";
+  | "team_added"
+  | "oncall_shift_starting"
+  | "oncall_shift_started"
+  | "oncall_shift_ending"
+  | "oncall_swap_requested"
+  | "oncall_swap_accepted"
+  | "oncall_swap_declined"
+  | "task_mentioned"
+  | "mention"
+  | "usage_alert_80"
+  | "usage_alert_90"
+  | "usage_alert_100"
+  | "insight_alert_warning"
+  | "insight_alert_critical"
+  | "leave_request_submitted"
+  | "leave_request_approved"
+  | "leave_request_rejected"
+  | "leave_request_cancelled"
+  | "app_access_requested"
+  | "app_access_approved"
+  | "app_access_rejected"
+  | "reminder_due"
+  | "reminder_acknowledged"
+  | "reminder_completed"
+  | "reminder_escalated"
+  | "reminder_overdue"
+  | "reminder_assigned"
+  | "agent_invoked"
+  | "blocker_escalated"
+  | "uptime_incident_created"
+  | "uptime_incident_resolved"
+  | "learning_approval_requested"
+  | "learning_approval_decided"
+  | "learning_goal_assigned"
+  | "learning_goal_overdue"
+  | "learning_activity_completed"
+  | "form_submission_received"
+  | "form_submission_failed"
+  | "campaign_completed"
+  | "campaign_scheduled"
+  | "automation_run_failed"
+  | "automation_run_completed"
+  | "assessment_invitation_sent"
+  | "assessment_completed"
+  | "candidate_stage_changed"
+  | "gtm_alert_triggered"
+  | "document_shared"
+  | "document_mentioned"
+  | "document_commented";
 
 export interface Notification {
   id: string;
@@ -4741,13 +4892,35 @@ export interface NotificationPreference {
   in_app_enabled: boolean;
   email_enabled: boolean;
   slack_enabled: boolean;
+  web_push_enabled: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface CategoryPreference {
+  id: string;
+  category: string;
+  in_app_enabled: boolean;
+  email_enabled: boolean;
+  slack_enabled: boolean;
+  web_push_enabled: boolean;
+  slack_channel_id: string | null;
+  slack_channel_name: string | null;
+}
+
+export interface WebPushSubscriptionResponse {
+  id: string;
+  developer_id: string;
+  endpoint: string;
+  is_active: boolean;
+  created_at: string;
 }
 
 export interface NotificationPreferencesResponse {
   preferences: Record<string, NotificationPreference>;
   available_event_types: string[];
+  categories: Record<string, CategoryPreference>;
+  category_map: Record<string, string[]>;
 }
 
 // ============ Notification API ============
@@ -4829,9 +5002,60 @@ export const notificationsApi = {
       in_app_enabled?: boolean;
       email_enabled?: boolean;
       slack_enabled?: boolean;
+      web_push_enabled?: boolean;
     }
   ): Promise<NotificationPreference> => {
     const response = await api.put(`/notifications/preferences/${eventType}`, data, {
+      params: { developer_id: developerId },
+    });
+    return response.data;
+  },
+
+  // Web Push
+  subscribePush: async (
+    developerId: string,
+    subscription: { endpoint: string; p256dh_key: string; auth_key: string; user_agent?: string }
+  ): Promise<WebPushSubscriptionResponse> => {
+    const response = await api.post("/notifications/push-subscription", subscription, {
+      params: { developer_id: developerId },
+    });
+    return response.data;
+  },
+
+  unsubscribePush: async (developerId: string, endpoint: string): Promise<void> => {
+    await api.delete("/notifications/push-subscription", {
+      params: { developer_id: developerId, endpoint },
+    });
+  },
+
+  getVapidKey: async (): Promise<{ public_key: string }> => {
+    const response = await api.get("/notifications/push-vapid-key");
+    return response.data;
+  },
+
+  // Category Preferences
+  getCategoryPreferences: async (
+    developerId: string
+  ): Promise<Record<string, CategoryPreference>> => {
+    const response = await api.get("/notifications/category-preferences", {
+      params: { developer_id: developerId },
+    });
+    return response.data;
+  },
+
+  updateCategoryPreference: async (
+    developerId: string,
+    category: string,
+    data: {
+      in_app_enabled?: boolean;
+      email_enabled?: boolean;
+      slack_enabled?: boolean;
+      web_push_enabled?: boolean;
+      slack_channel_id?: string | null;
+      slack_channel_name?: string | null;
+    }
+  ): Promise<CategoryPreference> => {
+    const response = await api.put(`/notifications/category-preferences/${category}`, data, {
       params: { developer_id: developerId },
     });
     return response.data;
@@ -15078,6 +15302,23 @@ export interface AccessCheckResponse {
   reason: string | null;
 }
 
+export interface AppAccessRequest {
+  id: string;
+  workspace_id: string;
+  requester_id: string;
+  requester_name: string | null;
+  app_id: string;
+  app_name: string | null;
+  status: "pending" | "approved" | "rejected" | "withdrawn";
+  reason: string | null;
+  reviewed_by_id: string | null;
+  reviewer_name: string | null;
+  reviewed_at: string | null;
+  review_notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export const appAccessApi = {
   // App catalog
   getCatalog: async (workspaceId: string): Promise<{ apps: AppInfo[] }> => {
@@ -15255,6 +15496,62 @@ export const appAccessApi = {
       params: { days },
     });
     return response.data;
+  },
+
+  // Access requests
+  createAccessRequest: async (
+    workspaceId: string,
+    appId: string,
+    reason?: string
+  ): Promise<AppAccessRequest> => {
+    const response = await api.post(`/workspaces/${workspaceId}/app-access/requests`, {
+      app_id: appId,
+      reason,
+    });
+    return response.data;
+  },
+
+  getMyRequests: async (workspaceId: string): Promise<{ requests: AppAccessRequest[] }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/app-access/requests/mine`);
+    return response.data;
+  },
+
+  listRequests: async (
+    workspaceId: string,
+    status?: string
+  ): Promise<{ requests: AppAccessRequest[] }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/app-access/requests`, {
+      params: status ? { status } : undefined,
+    });
+    return response.data;
+  },
+
+  approveRequest: async (
+    workspaceId: string,
+    requestId: string,
+    notes?: string
+  ): Promise<AppAccessRequest> => {
+    const response = await api.patch(
+      `/workspaces/${workspaceId}/app-access/requests/${requestId}/approve`,
+      notes ? { notes } : {}
+    );
+    return response.data;
+  },
+
+  rejectRequest: async (
+    workspaceId: string,
+    requestId: string,
+    notes?: string
+  ): Promise<AppAccessRequest> => {
+    const response = await api.patch(
+      `/workspaces/${workspaceId}/app-access/requests/${requestId}/reject`,
+      notes ? { notes } : {}
+    );
+    return response.data;
+  },
+
+  withdrawRequest: async (workspaceId: string, requestId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/app-access/requests/${requestId}`);
   },
 };
 
@@ -15869,7 +16166,7 @@ export interface TeamInsightsResponse {
   computed_at?: string;
 }
 
-export interface LeaderboardEntry {
+export interface GitLeaderboardEntry {
   developer_id: string;
   developer_name?: string | null;
   value: number;
@@ -15881,7 +16178,7 @@ export interface LeaderboardResponse {
   period_type: string;
   period_start: string;
   period_end: string;
-  entries: LeaderboardEntry[];
+  entries: GitLeaderboardEntry[];
 }
 
 export interface SnapshotGenerateResponse {

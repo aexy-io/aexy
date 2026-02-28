@@ -80,37 +80,42 @@ const integrationConfig = {
   github: {
     name: "GitHub",
     description: "Track commits, PRs, code reviews, and engineering metrics",
+    unlocks: "Unlocks: Repo sync, PR analytics, commit metrics, developer insights",
     icon: GitHubIcon,
     color: "from-slate-600 to-slate-700",
-    recommendedFor: ["developer", "full-team"],
+    recommendedFor: ["engineering"],
   },
   google: {
     name: "Google",
     description: "Sync Gmail, Calendar, and contacts for CRM",
+    unlocks: "Unlocks: Gmail sync, CRM contacts, calendar booking, email marketing",
     icon: GoogleIcon,
     color: "from-white to-slate-100",
-    recommendedFor: ["sales", "customer-success", "full-team"],
+    recommendedFor: ["sales", "gtm", "people"],
   },
   slack: {
     name: "Slack",
     description: "Team communication and notifications",
+    unlocks: "Unlocks: Standup collection, agent notifications, blocker alerts",
     icon: SlackIcon,
     color: "from-purple-600 to-purple-700",
-    recommendedFor: ["customer-success", "full-team"],
+    recommendedFor: ["engineering", "ai"],
   },
   jira: {
     name: "Jira",
     description: "Issue tracking and project management",
+    unlocks: "Unlocks: Issue import, sprint sync, two-way status updates",
     icon: JiraIcon,
     color: "from-blue-600 to-blue-700",
-    recommendedFor: ["developer", "full-team"],
+    recommendedFor: ["engineering"],
   },
   linear: {
     name: "Linear",
     description: "Modern issue tracking for fast-moving teams",
+    unlocks: "Unlocks: Issue sync, sprint planning, cycle tracking",
     icon: LinearIcon,
     color: "from-indigo-600 to-indigo-700",
-    recommendedFor: ["developer", "full-team"],
+    recommendedFor: ["engineering"],
   },
 } as const;
 
@@ -211,7 +216,7 @@ function JiraModal({
               href="https://id.atlassian.com/manage-profile/security/api-tokens"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 mt-1.5 text-xs text-primary-400 hover:text-primary-300"
+              className="inline-flex items-center gap-1 mt-1.5 text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
             >
               Get your API token
               <ExternalLink className="w-3 h-3" />
@@ -219,7 +224,7 @@ function JiraModal({
           </div>
 
           {error && (
-            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center gap-2 text-sm text-red-400">
+            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
               {error}
             </div>
@@ -311,7 +316,7 @@ function LinearModal({
               href="https://linear.app/settings/api"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 mt-1.5 text-xs text-primary-400 hover:text-primary-300"
+              className="inline-flex items-center gap-1 mt-1.5 text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
             >
               Get your API key from Linear settings
               <ExternalLink className="w-3 h-3" />
@@ -319,7 +324,7 @@ function LinearModal({
           </div>
 
           {error && (
-            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center gap-2 text-sm text-red-400">
+            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
               {error}
             </div>
@@ -589,7 +594,7 @@ export default function ConnectIntegrations() {
               >
                 {/* Recommended badge */}
                 {recommended && !isConnected && (
-                  <div className="absolute -top-2 -right-2 px-2 py-0.5 rounded-full bg-primary-500/20 border border-primary-500/30 text-primary-400 text-xs flex items-center gap-1">
+                  <div className="absolute -top-2 -right-2 px-2 py-0.5 rounded-full bg-primary-500/20 border border-primary-500/30 text-primary-600 dark:text-primary-400 text-xs flex items-center gap-1">
                     <Sparkles className="w-3 h-3" />
                     Recommended
                   </div>
@@ -598,7 +603,7 @@ export default function ConnectIntegrations() {
                 {/* Connected badge */}
                 {isConnected && (
                   <div className="absolute top-3 right-3">
-                    <CheckCircle2 className="w-5 h-5 text-green-400" />
+                    <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
                   </div>
                 )}
 
@@ -607,10 +612,11 @@ export default function ConnectIntegrations() {
                 </div>
 
                 <h3 className="font-semibold text-foreground mb-1">{integration.name}</h3>
-                <p className="text-sm text-muted-foreground mb-4">{integration.description}</p>
+                <p className="text-sm text-muted-foreground mb-1">{integration.description}</p>
+                <p className="text-xs text-primary-600/70 dark:text-primary-400/70 mb-4">{integration.unlocks}</p>
 
                 {isConnected ? (
-                  <div className="text-sm text-green-400 flex items-center gap-2">
+                  <div className="text-sm text-green-600 dark:text-green-400 flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4" />
                     Connected
                   </div>

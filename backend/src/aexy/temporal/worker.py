@@ -91,6 +91,11 @@ def get_all_activities() -> list:
         sync_calendar,
         sync_gmail,
     )
+    from aexy.temporal.activities.notifications import (
+        send_notification_email,
+        send_notification_slack,
+        send_notification_web_push,
+    )
     from aexy.temporal.activities.integrations import (
         deliver_webhook,
         execute_agent,
@@ -267,6 +272,10 @@ def get_all_activities() -> list:
         send_uptime_notification,
         cleanup_old_checks,
         run_test_check,
+        # Notifications
+        send_notification_email,
+        send_notification_slack,
+        send_notification_web_push,
         # Integrations
         send_sms,
         send_slack_message,

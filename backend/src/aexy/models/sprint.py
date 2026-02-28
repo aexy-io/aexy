@@ -362,6 +362,11 @@ class SprintTask(Base):
         Float, nullable=True
     )  # Calculated on completion (created_at to completed_at)
 
+    # Sprint goal contribution
+    contributes_to_goal: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+
     # External sync tracking
     last_synced_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
