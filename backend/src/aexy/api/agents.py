@@ -10,6 +10,7 @@ from aexy.services.workspace_service import WorkspaceService
 from aexy.services.agent_service import AgentService
 from aexy.services.writing_style_service import WritingStyleService
 from aexy.services.agent_email_service import AgentEmailService
+from aexy.services.activity_logger import log_activity
 from aexy.schemas.agent import (
     AgentCreate,
     AgentUpdate,
@@ -147,6 +148,15 @@ async def create_agent(
         escalation_slack_channel=data.escalation_slack_channel,
         created_by_id=current_developer.id,
     )
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="agent",
+        entity_id=str(agent.id),
+        activity_type="created",
+        actor_id=str(current_developer.id),
+        title=f"Created agent '{data.name}'",
+    )
     await db.commit()
     return agent
 
@@ -223,6 +233,15 @@ async def update_agent(
     if not agent:
         raise HTTPException(status_code=400, detail="Cannot modify system agent")
 
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="agent",
+        entity_id=agent_id,
+        activity_type="updated",
+        actor_id=str(current_developer.id),
+        title=f"Updated agent '{agent.name}'",
+    )
     await db.commit()
     return agent
 
@@ -241,10 +260,20 @@ async def delete_agent(
     if not agent or agent.workspace_id != workspace_id:
         raise HTTPException(status_code=404, detail="Agent not found")
 
+    agent_name = agent.name
     success = await service.delete_agent(agent_id, changed_by_id=str(current_developer.id))
     if not success:
         raise HTTPException(status_code=400, detail="Cannot delete system agent")
 
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="agent",
+        entity_id=agent_id,
+        activity_type="deleted",
+        actor_id=str(current_developer.id),
+        title=f"Deleted agent '{agent_name}'",
+    )
     await db.commit()
     return {"message": "Agent deleted"}
 
@@ -264,6 +293,15 @@ async def toggle_agent(
         raise HTTPException(status_code=404, detail="Agent not found")
 
     agent = await service.toggle_agent(agent_id, changed_by_id=str(current_developer.id))
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="agent",
+        entity_id=agent_id,
+        activity_type="toggled",
+        actor_id=str(current_developer.id),
+        title=f"{'Enabled' if agent.is_active else 'Disabled'} agent '{agent.name}'",
+    )
     await db.commit()
     return agent
 

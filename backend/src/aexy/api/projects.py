@@ -38,6 +38,7 @@ from aexy.schemas.role import RoleSummary
 from aexy.services.project_service import ProjectService
 from aexy.services.permission_service import PermissionService
 from aexy.services.role_service import RoleService
+from aexy.services.activity_logger import log_activity
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/projects", tags=["Projects"])
 
@@ -65,6 +66,15 @@ async def create_project(
         icon=data.icon,
         settings=data.settings,
         created_by_id=str(current_user.id),
+    )
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="project",
+        entity_id=str(project.id),
+        activity_type="created",
+        actor_id=str(current_user.id),
+        title=f"Created project '{data.name}'",
     )
     await db.commit()
     await db.refresh(project)
@@ -157,6 +167,15 @@ async def update_project(
     project = await project_service.update_project(
         project_id, **data.model_dump(exclude_unset=True)
     )
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="project",
+        entity_id=str(project.id),
+        activity_type="updated",
+        actor_id=str(current_user.id),
+        title=f"Updated project '{project.name}'",
+    )
     await db.commit()
     await db.refresh(project)
     return project
@@ -182,7 +201,17 @@ async def delete_project(
     if not project or project.workspace_id != workspace_id:
         raise HTTPException(status_code=404, detail="Project not found")
 
+    project_name = project.name
     await project_service.delete_project(project_id)
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="project",
+        entity_id=project_id,
+        activity_type="deleted",
+        actor_id=str(current_user.id),
+        title=f"Deleted project '{project_name}'",
+    )
     await db.commit()
 
 
@@ -367,6 +396,15 @@ async def add_project_member(
         permission_overrides=data.permission_overrides,
         invited_by_id=str(current_user.id),
     )
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="project",
+        entity_id=project_id,
+        activity_type="linked",
+        actor_id=str(current_user.id),
+        title="Added member to project",
+    )
     await db.commit()
     await db.refresh(member)
 
@@ -448,6 +486,16 @@ async def invite_to_project(
         elif status == "user_not_found":
             failed.append({"email": email, "reason": "User not found. They need to sign up first."})
 
+    if invited:
+        await log_activity(
+            db,
+            workspace_id=workspace_id,
+            entity_type="project",
+            entity_id=project_id,
+            activity_type="linked",
+            actor_id=str(current_user.id),
+            title="Added member to project",
+        )
     await db.commit()
 
     return ProjectInviteResult(
@@ -556,6 +604,15 @@ async def remove_project_member(
     if not success:
         raise HTTPException(status_code=404, detail="Member not found")
 
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="project",
+        entity_id=project_id,
+        activity_type="unlinked",
+        actor_id=str(current_user.id),
+        title="Removed member from project",
+    )
     await db.commit()
 
 
@@ -619,6 +676,15 @@ async def add_team_to_project(
         raise HTTPException(status_code=404, detail="Project not found")
 
     project_team = await project_service.add_team(project_id, data.team_id)
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="project",
+        entity_id=project_id,
+        activity_type="linked",
+        actor_id=str(current_user.id),
+        title="Added team to project",
+    )
     await db.commit()
     await db.refresh(project_team)
 
@@ -657,6 +723,15 @@ async def remove_team_from_project(
     if not success:
         raise HTTPException(status_code=404, detail="Team not found in project")
 
+    await log_activity(
+        db,
+        workspace_id=workspace_id,
+        entity_type="project",
+        entity_id=project_id,
+        activity_type="unlinked",
+        actor_id=str(current_user.id),
+        title="Removed team from project",
+    )
     await db.commit()
 
 

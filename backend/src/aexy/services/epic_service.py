@@ -19,6 +19,7 @@ from aexy.models.epic import Epic
 from aexy.models.sprint import SprintTask, Sprint
 from aexy.models.developer import Developer
 from aexy.services.automation_service import dispatch_automation_event
+from aexy.services.activity_logger import log_activity
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +77,17 @@ class EpicService:
         )
         self.db.add(epic)
         await self.db.flush()
+
+        await log_activity(
+            self.db,
+            workspace_id=workspace_id,
+            entity_type="epic",
+            entity_id=str(epic.id),
+            activity_type="created",
+            actor_id=owner_id,
+            title=f"Created epic '{title}'",
+            metadata={"key": key},
+        )
 
         logger.info(f"Created epic {key}: {title}")
         return epic
@@ -182,6 +194,20 @@ class EpicService:
         epic.updated_at = datetime.now()
         await self.db.flush()
 
+        activity_type = "updated"
+        if "status" in kwargs:
+            activity_type = "status_changed"
+
+        await log_activity(
+            self.db,
+            workspace_id=str(epic.workspace_id),
+            entity_type="epic",
+            entity_id=str(epic.id),
+            activity_type=activity_type,
+            title=f"Updated epic '{epic.title}'",
+            changes={k: str(v) for k, v in kwargs.items() if v is not None},
+        )
+
         logger.info(f"Updated epic {epic.key}")
         return epic
 
@@ -195,8 +221,20 @@ class EpicService:
         for task in epic.tasks:
             task.epic_id = None
 
+        workspace_id = str(epic.workspace_id)
+        epic_title = epic.title
+
         await self.db.delete(epic)
         await self.db.flush()
+
+        await log_activity(
+            self.db,
+            workspace_id=workspace_id,
+            entity_type="epic",
+            entity_id=epic_id,
+            activity_type="deleted",
+            title=f"Deleted epic '{epic_title}'",
+        )
 
         logger.info(f"Deleted epic {epic.key}")
         return True
@@ -237,6 +275,17 @@ class EpicService:
 
         await self.db.flush()
 
+        if added > 0:
+            await log_activity(
+                self.db,
+                workspace_id=str(epic.workspace_id),
+                entity_type="epic",
+                entity_id=str(epic.id),
+                activity_type="linked",
+                title=f"Added {added} task(s) to epic '{epic.title}'",
+                metadata={"task_ids": task_ids, "added_count": added},
+            )
+
         # Recalculate metrics
         await self.recalculate_epic_metrics(epic_id)
 
@@ -258,6 +307,18 @@ class EpicService:
 
         task.epic_id = None
         await self.db.flush()
+
+        epic = await self.get_epic(epic_id)
+        if epic:
+            await log_activity(
+                self.db,
+                workspace_id=str(epic.workspace_id),
+                entity_type="epic",
+                entity_id=str(epic.id),
+                activity_type="unlinked",
+                title=f"Removed task from epic '{epic.title}'",
+                metadata={"task_id": task_id},
+            )
 
         # Recalculate metrics
         await self.recalculate_epic_metrics(epic_id)
