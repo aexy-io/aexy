@@ -146,6 +146,7 @@ const uptimeItems: SidebarItemConfig[] = [
 const aiAgentsItems: SidebarItemConfig[] = [
     { href: "/agents", label: "All Agents", icon: Bot },
     { href: "/agents/new", label: "Create Agent", icon: UserPlus },
+    { href: "/mcp", label: "MCP", icon: Plug },
 ];
 
 const automationsItems: SidebarItemConfig[] = [
@@ -232,7 +233,6 @@ export const GROUPED_LAYOUT: SidebarLayoutConfig = {
                     items: automationsItems,
                 },
                 { href: "/templates", label: "Templates", icon: LayoutTemplate },
-                { href: "/mcp", label: "MCP", icon: Plug },
             ],
         },
         {
@@ -453,7 +453,6 @@ export const FLAT_LAYOUT: SidebarLayoutConfig = {
                     items: automationsItems,
                 },
                 { href: "/templates", label: "Templates", icon: LayoutTemplate },
-                { href: "/mcp", label: "MCP", icon: Plug },
                 {
                     href: "/insights",
                     label: "Insights",
