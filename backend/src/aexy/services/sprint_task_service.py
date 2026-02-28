@@ -242,6 +242,7 @@ class SprintTaskService:
         labels: list[str] | None = None,
         epic_id: str | None = ...,  # Use sentinel to distinguish from None
         assignee_id: str | None = ...,  # Use sentinel to distinguish from None
+        contributes_to_goal: bool | None = None,
     ) -> SprintTask | None:
         """Update task details."""
         task = await self.get_task(task_id)
@@ -259,17 +260,25 @@ class SprintTaskService:
         if status is not None:
             old_status = task.status
             task.status = status
+            now = datetime.now(timezone.utc)
             # Track status change timestamps
             if status == "in_progress" and old_status != "in_progress" and not task.started_at:
-                task.started_at = datetime.now(timezone.utc)
+                task.started_at = now
+                if not task.work_started_at:
+                    task.work_started_at = now
             elif status == "done" and old_status != "done":
-                task.completed_at = datetime.now(timezone.utc)
+                task.completed_at = now
+                if task.work_started_at:
+                    task.cycle_time_hours = (now - task.work_started_at).total_seconds() / 3600
+                task.lead_time_hours = (now - task.created_at).total_seconds() / 3600
         if labels is not None:
             task.labels = labels
         if epic_id is not ...:  # Only update if explicitly passed (including None)
             task.epic_id = epic_id
         if assignee_id is not ...:  # Only update if explicitly passed (including None)
             task.assignee_id = assignee_id
+        if contributes_to_goal is not None:
+            task.contributes_to_goal = contributes_to_goal
 
         await self.db.flush()
 
@@ -508,10 +517,17 @@ class SprintTaskService:
 
         # Track timing
         now = datetime.now(timezone.utc)
-        if new_status == "in_progress" and old_status == "todo":
+        if new_status == "in_progress" and old_status in ("backlog", "todo"):
             task.started_at = now
+            if not task.work_started_at:
+                task.work_started_at = now
         elif new_status == "done":
             task.completed_at = now
+            # Calculate cycle time (work_started_at → completed)
+            if task.work_started_at:
+                task.cycle_time_hours = (now - task.work_started_at).total_seconds() / 3600
+            # Calculate lead time (created_at → completed)
+            task.lead_time_hours = (now - task.created_at).total_seconds() / 3600
 
         await self.db.flush()
 

@@ -21,6 +21,7 @@ from aexy.schemas.sprint import (
     TaskActivityCreate,
     TaskActivityResponse,
     TaskActivityListResponse,
+    WipLimitsConfig,
 )
 from aexy.services.sprint_service import SprintService
 from aexy.services.sprint_task_service import SprintTaskService
@@ -60,6 +61,10 @@ def task_to_response(task) -> SprintTaskResponse:
         subtasks_count=subtasks_count,
         started_at=task.started_at,
         completed_at=task.completed_at,
+        work_started_at=task.work_started_at,
+        cycle_time_hours=task.cycle_time_hours,
+        lead_time_hours=task.lead_time_hours,
+        contributes_to_goal=task.contributes_to_goal,
         carried_over_from_sprint_id=str(task.carried_over_from_sprint_id) if task.carried_over_from_sprint_id else None,
         mentioned_user_ids=task.mentioned_user_ids or [],
         mentioned_file_paths=task.mentioned_file_paths or [],
@@ -379,6 +384,175 @@ async def predict_completion(
     }
 
 
+# ============================================================================
+# WIP Limits Endpoints (must be before /{task_id} routes)
+# ============================================================================
+
+
+@router.get("/wip-limits")
+async def get_wip_limits(
+    sprint_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get WIP limits and current column counts for a sprint."""
+    sprint = await get_sprint_and_check_permission(sprint_id, current_user, db, "viewer")
+    task_service = SprintTaskService(db)
+    tasks = await task_service.get_sprint_tasks(sprint_id)
+
+    # Get limits from sprint settings
+    settings = sprint.settings or {}
+    wip_limits = settings.get("wip_limits", {})
+
+    # Count tasks per status
+    counts: dict[str, int] = {}
+    for status_val in ("backlog", "todo", "in_progress", "review", "done"):
+        counts[status_val] = len([t for t in tasks if t.status == status_val])
+
+    # Detect violations
+    violations = []
+    for status_val, limit in wip_limits.items():
+        if limit is not None and limit > 0 and counts.get(status_val, 0) > limit:
+            violations.append({
+                "status": status_val,
+                "limit": limit,
+                "count": counts[status_val],
+                "over_by": counts[status_val] - limit,
+            })
+
+    return {
+        "limits": wip_limits,
+        "counts": counts,
+        "violations": violations,
+    }
+
+
+@router.put("/wip-limits")
+async def update_wip_limits(
+    sprint_id: str,
+    config: WipLimitsConfig,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Set WIP limits for a sprint. Stored in sprint settings JSONB."""
+    sprint = await get_sprint_and_check_permission(sprint_id, current_user, db, "admin")
+
+    settings = dict(sprint.settings or {})
+    settings["wip_limits"] = config.model_dump(exclude_none=True)
+    sprint.settings = settings
+
+    await db.flush()
+    await db.commit()
+    await db.refresh(sprint)
+
+    return {"wip_limits": sprint.settings.get("wip_limits", {})}
+
+
+# ============================================================================
+# Sprint Goal Endpoints (must be before /{task_id} routes)
+# ============================================================================
+
+
+@router.get("/goal-progress")
+async def get_goal_progress(
+    sprint_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get sprint goal progress based on tasks marked as contributing to goal."""
+    sprint = await get_sprint_and_check_permission(sprint_id, current_user, db, "viewer")
+    task_service = SprintTaskService(db)
+    tasks = await task_service.get_sprint_tasks(sprint_id)
+
+    goal_tasks = [t for t in tasks if getattr(t, 'contributes_to_goal', False)]
+    completed_goal_tasks = [t for t in goal_tasks if t.status == "done"]
+
+    return {
+        "goal": sprint.goal,
+        "total_goal_tasks": len(goal_tasks),
+        "completed_goal_tasks": len(completed_goal_tasks),
+        "percentage": round(len(completed_goal_tasks) / len(goal_tasks) * 100, 1) if goal_tasks else 0,
+        "goal_task_ids": [str(t.id) for t in goal_tasks],
+    }
+
+
+# ============================================================================
+# Auto-Assign Endpoint (must be before /{task_id} routes)
+# ============================================================================
+
+
+@router.post("/auto-assign")
+async def auto_assign_sprint(
+    sprint_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Auto-assign unassigned tasks based on AI suggestions weighted by capacity."""
+    sprint = await get_sprint_and_check_permission(sprint_id, current_user, db, "admin")
+
+    from aexy.services.sprint_planning_service import SprintPlanningService
+    planning_service = SprintPlanningService(db)
+
+    # Get capacity-aware suggestions
+    suggestions = await planning_service.suggest_assignments(sprint_id)
+    capacity = await planning_service.analyze_capacity(sprint_id)
+
+    # Build utilization map
+    utilization_map = {
+        pm["developer_id"]: pm["utilization"]
+        for pm in capacity.per_member_capacity
+    }
+
+    task_service = SprintTaskService(db)
+    assigned = []
+    skipped = []
+
+    for suggestion in suggestions:
+        dev_util = utilization_map.get(suggestion.suggested_developer_id, 0)
+        if dev_util > 0.9:
+            skipped.append({
+                "task_id": suggestion.task_id,
+                "task_title": suggestion.task_title,
+                "reason": f"Developer {suggestion.suggested_developer_name} is at {int(dev_util * 100)}% capacity",
+                "suggested_developer": suggestion.suggested_developer_name,
+            })
+            continue
+
+        if suggestion.confidence < 0.3:
+            skipped.append({
+                "task_id": suggestion.task_id,
+                "task_title": suggestion.task_title,
+                "reason": f"Low confidence ({int(suggestion.confidence * 100)}%)",
+                "suggested_developer": suggestion.suggested_developer_name,
+            })
+            continue
+
+        # Apply assignment
+        await task_service.assign_task(
+            task_id=suggestion.task_id,
+            developer_id=suggestion.suggested_developer_id,
+            reason=suggestion.reasoning,
+            confidence=suggestion.confidence,
+        )
+        assigned.append({
+            "task_id": suggestion.task_id,
+            "task_title": suggestion.task_title,
+            "developer_id": suggestion.suggested_developer_id,
+            "developer_name": suggestion.suggested_developer_name,
+            "confidence": suggestion.confidence,
+            "reasoning": suggestion.reasoning,
+        })
+
+    await db.commit()
+
+    return {
+        "assigned": assigned,
+        "skipped": skipped,
+        "total_assigned": len(assigned),
+        "total_skipped": len(skipped),
+    }
+
+
 # Task CRUD with path parameters (must come after specific routes)
 @router.get("/{task_id}", response_model=SprintTaskResponse)
 async def get_task(
@@ -431,6 +605,9 @@ async def update_task(
     # Only pass assignee_id if it was explicitly provided in the request
     if data.assignee_id is not None or "assignee_id" in data.model_fields_set:
         update_kwargs["assignee_id"] = data.assignee_id
+    # Only pass contributes_to_goal if it was explicitly provided
+    if data.contributes_to_goal is not None:
+        update_kwargs["contributes_to_goal"] = data.contributes_to_goal
 
     task = await task_service.update_task(**update_kwargs)
 

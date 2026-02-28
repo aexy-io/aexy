@@ -15,7 +15,8 @@ from zoneinfo import ZoneInfo
 
 from aexy.models.activity import Commit, PullRequest, CodeReview
 from aexy.models.developer import Developer
-from aexy.models.notification import Notification, NotificationEventType
+from aexy.models.notification import NotificationEventType
+from aexy.services.notification_service import NotificationService
 from aexy.models.repository import DeveloperRepository, Repository
 from aexy.models.developer_insights import (
     DeveloperMetricsSnapshot,
@@ -1809,21 +1810,23 @@ class DeveloperInsightsService:
                             if severity_str == "critical"
                             else NotificationEventType.INSIGHT_ALERT_WARNING
                         )
-                        notification = Notification(
-                            id=str(uuid4()),
-                            recipient_id=dev_id,
-                            event_type=event_type.value,
-                            title=f"Insight Alert: {rule.name}",
-                            body=message,
-                            context={
-                                "workspace_id": workspace_id,
-                                "rule_id": rule.id,
-                                "metric_category": rule.metric_category,
-                                "metric_name": rule.metric_name,
-                                "action_url": "/insights/alerts",
-                            },
-                        )
-                        self.db.add(notification)
+                        try:
+                            notif_service = NotificationService(self.db)
+                            await notif_service.create_notification(
+                                recipient_id=dev_id,
+                                event_type=event_type,
+                                title=f"Insight Alert: {rule.name}",
+                                body=message,
+                                context={
+                                    "workspace_id": workspace_id,
+                                    "rule_id": rule.id,
+                                    "metric_category": rule.metric_category,
+                                    "metric_name": rule.metric_name,
+                                    "action_url": "/insights/alerts",
+                                },
+                            )
+                        except Exception as notif_exc:
+                            logger.warning("Failed to send insight notification: %s", notif_exc)
 
                         triggered.append({
                             "rule_id": rule.id,

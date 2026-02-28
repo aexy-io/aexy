@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Zap } from "lucide-react";
 import { OnboardingProvider } from "./OnboardingContext";
 import { repositoriesApi } from "@/lib/api";
 
@@ -36,7 +35,7 @@ function OnboardingGuard({ children }: { children: React.ReactNode }) {
 
   if (isChecking) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-500"></div>
       </div>
     );
@@ -53,22 +52,7 @@ export default function OnboardingLayoutClient({
   return (
     <OnboardingProvider>
       <OnboardingGuard>
-        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-          {/* Header */}
-          <header className="border-b border-border/50 bg-background/50 backdrop-blur-xl">
-            <div className="max-w-7xl mx-auto px-6 py-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center">
-                  <Zap className="w-5 h-5 text-foreground" />
-                </div>
-                <div>
-                  <h1 className="text-lg font-semibold text-foreground">Aexy</h1>
-                  <p className="text-xs text-muted-foreground">Setup your workspace</p>
-                </div>
-              </div>
-            </div>
-          </header>
-
+        <div className="min-h-screen bg-background">
           {/* Main Content */}
           <main className="flex-1">
             {children}

@@ -97,6 +97,18 @@ from aexy.models.notification import (
     EmailNotificationLog,
     NotificationEventType,
     DEFAULT_NOTIFICATION_PREFERENCES,
+    WebPushSubscription,
+    NotificationCategoryPreference,
+    NOTIFICATION_CATEGORIES,
+    EVENT_TYPE_TO_CATEGORY,
+)
+from aexy.models.agent_policy import (
+    AgentPolicy,
+    AgentPolicyDecision,
+    AgentConfigAudit,
+    PolicyType,
+    PolicyDecisionType,
+    ConfigChangeType,
 )
 from aexy.models.oncall import (
     OnCallConfig,
@@ -239,7 +251,7 @@ from aexy.models.app_definitions import (
     get_default_app_access_for_role,
     validate_app_access_config,
 )
-from aexy.models.app_access import AppAccessTemplate, AppAccessLog, AppAccessLogAction
+from aexy.models.app_access import AppAccessTemplate, AppAccessLog, AppAccessLogAction, AppAccessRequest, AppAccessRequestStatus
 from aexy.models.email_marketing import (
     EmailTemplate,
     EmailCampaign,
@@ -593,6 +605,17 @@ __all__ = [
     "EmailNotificationLog",
     "NotificationEventType",
     "DEFAULT_NOTIFICATION_PREFERENCES",
+    "WebPushSubscription",
+    "NotificationCategoryPreference",
+    "NOTIFICATION_CATEGORIES",
+    "EVENT_TYPE_TO_CATEGORY",
+    # Agent Policies
+    "AgentPolicy",
+    "AgentPolicyDecision",
+    "AgentConfigAudit",
+    "PolicyType",
+    "PolicyDecisionType",
+    "ConfigChangeType",
     # On-Call
     "OnCallConfig",
     "OnCallSchedule",
@@ -720,6 +743,8 @@ __all__ = [
     "AppAccessTemplate",
     "AppAccessLog",
     "AppAccessLogAction",
+    "AppAccessRequest",
+    "AppAccessRequestStatus",
     "APP_CATALOG",
     "SYSTEM_APP_BUNDLES",
     "ROLE_DEFAULT_APP_ACCESS",
