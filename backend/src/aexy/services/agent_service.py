@@ -166,7 +166,7 @@ class AgentService:
                     field_changes=field_changes,
                 )
             except Exception as e:
-                logger.warning(f"Failed to record config audit: {e}")
+                logger.warning("Failed to record config audit: %s", e)
 
         return agent
 
@@ -190,7 +190,7 @@ class AgentService:
                     field_changes={"name": {"old": agent.name, "new": None}},
                 )
             except Exception as e:
-                logger.warning(f"Failed to record config audit: {e}")
+                logger.warning("Failed to record config audit: %s", e)
 
         await self.db.delete(agent)
         await self.db.flush()
@@ -221,7 +221,7 @@ class AgentService:
                     field_changes={"is_active": {"old": old_value, "new": agent.is_active}},
                 )
             except Exception as e:
-                logger.warning(f"Failed to record config audit: {e}")
+                logger.warning("Failed to record config audit: %s", e)
 
         return agent
 
@@ -403,7 +403,7 @@ class AgentService:
             agent_instance.agent_config = agent
             agent_instance.execution_id = execution.id
         except Exception as e:
-            logger.warning(f"Failed to load policy engine: {e}")
+            logger.warning("Failed to load policy engine: %s", e)
 
         try:
             result = await agent_instance.run(
@@ -448,7 +448,7 @@ class AgentService:
                         request_id=execution.id,
                     )
             except Exception as e:
-                logger.warning(f"Failed to record agent usage: {e}")
+                logger.warning("Failed to record agent usage: %s", e)
 
             # Update agent stats
             agent.total_executions += 1

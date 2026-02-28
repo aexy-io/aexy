@@ -3,6 +3,7 @@
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from typing import Any, Annotated, TypedDict, Sequence
+import logging
 import operator
 
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, ToolMessage
@@ -14,6 +15,8 @@ from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 
 from aexy.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class AgentState(TypedDict):
@@ -221,10 +224,7 @@ class BaseAgent(ABC):
                         continue
                 except Exception as e:
                     # Policy evaluation failed — allow the call (fail open)
-                    import logging
-                    logging.getLogger(__name__).warning(
-                        f"Policy evaluation failed for {tool_name}: {e}"
-                    )
+                    logger.warning("Policy evaluation failed for %s: %s", tool_name, e)
 
             # Execute the tool call
             matching_tool = tool_map.get(tool_name)
