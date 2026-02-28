@@ -211,6 +211,14 @@ export const settingsNavigation: SettingsNavCategory[] = [
         enterpriseBadge: true,
         keywords: ["sso", "saml", "oidc", "authentication", "identity", "okta", "azure"],
       },
+      {
+        id: "api-tokens",
+        label: "API Tokens",
+        href: "/settings/api-tokens",
+        icon: KeyRound,
+        description: "Create and manage API tokens for MCP and external integrations",
+        keywords: ["api", "token", "key", "mcp", "integration", "authentication"],
+      },
     ],
   },
   {
