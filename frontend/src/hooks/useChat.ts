@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { chatApi, ChatChannel, ChatTopic, ChatMessage, ChatFileUpload } from "@/lib/api";
 import { useChatStore } from "@/stores/chatStore";
+import { useAskStore } from "@/stores/askStore";
 
 // ── React Query hooks ────────────────────────────────────────────────
 
@@ -148,6 +149,7 @@ export function useChatWebSocket(workspaceId: string | undefined) {
       const payload = data.data || data;
       // Use getState() to avoid subscribing to store changes
       const store = useChatStore.getState();
+      const askStore = useAskStore.getState();
 
       switch (type) {
         case "new_message":
@@ -191,6 +193,40 @@ export function useChatWebSocket(workspaceId: string | undefined) {
 
         case "presence_update":
           store.updatePresence(payload.developer_id, payload.status, payload.name);
+          break;
+
+        // AI conversation events
+        case "ai_new_message":
+          queryClient.invalidateQueries({ queryKey: ["askConversation", workspaceId, payload.conversation_id] });
+          queryClient.invalidateQueries({ queryKey: ["askConversations", workspaceId] });
+          break;
+
+        case "ai_typing":
+          askStore.addAiTypingUser({
+            developer_id: payload.developer_id,
+            developer_name: payload.developer_name,
+            conversation_id: payload.conversation_id,
+            timestamp: Date.now(),
+          });
+          break;
+
+        case "ai_stop_typing":
+          askStore.removeAiTypingUser(payload.developer_id, payload.conversation_id);
+          break;
+
+        case "ai_streaming_done":
+          queryClient.invalidateQueries({ queryKey: ["askConversation", workspaceId, payload.conversation_id] });
+          queryClient.invalidateQueries({ queryKey: ["askConversations", workspaceId] });
+          break;
+
+        case "ai_queue_update":
+          askStore.setQueueState(payload.queue_length ?? 0, null);
+          break;
+
+        case "ai_participant_joined":
+        case "ai_participant_left":
+          queryClient.invalidateQueries({ queryKey: ["askConversation", workspaceId, payload.conversation_id] });
+          queryClient.invalidateQueries({ queryKey: ["askParticipants", workspaceId, payload.conversation_id] });
           break;
 
         case "pong":
@@ -288,5 +324,32 @@ export function useChatWebSocket(workspaceId: string | undefined) {
     []
   );
 
-  return { isConnected, sendTyping, sendStopTyping, markRead, subscribeChannels };
+  const subscribeAiConversations = useCallback(
+    (conversationIds: string[]) => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: "subscribe_ai_conversations", conversation_ids: conversationIds }));
+      }
+    },
+    []
+  );
+
+  const sendAiTyping = useCallback(
+    (conversationId: string) => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: "ai_typing", conversation_id: conversationId }));
+      }
+    },
+    []
+  );
+
+  const sendAiStopTyping = useCallback(
+    (conversationId: string) => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: "ai_stop_typing", conversation_id: conversationId }));
+      }
+    },
+    []
+  );
+
+  return { isConnected, sendTyping, sendStopTyping, markRead, subscribeChannels, subscribeAiConversations, sendAiTyping, sendAiStopTyping };
 }

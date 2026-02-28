@@ -161,7 +161,7 @@ from aexy.api.saved_views import router as saved_views_router
 # API Tokens (MCP & integrations)
 from aexy.api.api_tokens import router as api_tokens_router
 # Ask AI
-from aexy.api.ask import router as ask_router
+from aexy.api.ask import router as ask_router, share_router as ask_share_router
 # AI Feedback
 from aexy.api.ai_feedback import router as ai_feedback_router
 # Team Chat
@@ -336,6 +336,7 @@ api_router.include_router(saved_views_router, tags=["saved-views"])
 api_router.include_router(api_tokens_router, tags=["api-tokens"])
 # Ask AI
 api_router.include_router(ask_router, tags=["ask"])
+api_router.include_router(ask_share_router, tags=["ask"])
 # AI Feedback
 api_router.include_router(ai_feedback_router, tags=["ai-feedback"])
 # Team Chat

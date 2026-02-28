@@ -2,15 +2,15 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useRef } from "react";
-import { askApi, AskConversation, AskConversationWithMessages } from "@/lib/api";
+import { askApi, AskConversation, AskConversationWithMessages, AskParticipant, AskShareLink, AskQueueStatus } from "@/lib/api";
 import { useAskStore } from "@/stores/askStore";
 
 // --- CRUD Hooks ---
 
-export function useAskConversations(workspaceId: string | null | undefined) {
+export function useAskConversations(workspaceId: string | null | undefined, search?: string) {
   return useQuery<AskConversation[]>({
-    queryKey: ["askConversations", workspaceId],
-    queryFn: () => askApi.listConversations(workspaceId!),
+    queryKey: ["askConversations", workspaceId, search],
+    queryFn: () => askApi.listConversations(workspaceId!, search),
     enabled: !!workspaceId,
   });
 }
@@ -41,6 +41,105 @@ export function useDeleteAskConversation(workspaceId: string | null | undefined)
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["askConversations", workspaceId] });
     },
+  });
+}
+
+// --- Participant Hooks ---
+
+export function useAskParticipants(workspaceId: string | null | undefined, conversationId: string | null | undefined) {
+  return useQuery<AskParticipant[]>({
+    queryKey: ["askParticipants", workspaceId, conversationId],
+    queryFn: () => askApi.listParticipants(workspaceId!, conversationId!),
+    enabled: !!workspaceId && !!conversationId,
+  });
+}
+
+export function useAddAskParticipant(workspaceId: string | null | undefined, conversationId: string | null | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { developerId: string; permission?: string }) =>
+      askApi.addParticipant(workspaceId!, conversationId!, data.developerId, data.permission),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["askParticipants", workspaceId, conversationId] });
+      queryClient.invalidateQueries({ queryKey: ["askConversation", workspaceId, conversationId] });
+    },
+  });
+}
+
+export function useUpdateAskParticipant(workspaceId: string | null | undefined, conversationId: string | null | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { developerId: string; permission: string }) =>
+      askApi.updateParticipant(workspaceId!, conversationId!, data.developerId, data.permission),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["askParticipants", workspaceId, conversationId] });
+    },
+  });
+}
+
+export function useRemoveAskParticipant(workspaceId: string | null | undefined, conversationId: string | null | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (developerId: string) =>
+      askApi.removeParticipant(workspaceId!, conversationId!, developerId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["askParticipants", workspaceId, conversationId] });
+      queryClient.invalidateQueries({ queryKey: ["askConversation", workspaceId, conversationId] });
+    },
+  });
+}
+
+// --- Share Link Hooks ---
+
+export function useAskShareLinks(workspaceId: string | null | undefined, conversationId: string | null | undefined) {
+  return useQuery<AskShareLink[]>({
+    queryKey: ["askShareLinks", workspaceId, conversationId],
+    queryFn: () => askApi.listShareLinks(workspaceId!, conversationId!),
+    enabled: !!workspaceId && !!conversationId,
+  });
+}
+
+export function useCreateAskShareLink(workspaceId: string | null | undefined, conversationId: string | null | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { permission?: string; password?: string; expires_at?: string; max_uses?: number }) =>
+      askApi.createShareLink(workspaceId!, conversationId!, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["askShareLinks", workspaceId, conversationId] });
+    },
+  });
+}
+
+export function useRevokeAskShareLink(workspaceId: string | null | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (linkId: string) =>
+      askApi.revokeShareLink(workspaceId!, linkId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["askShareLinks"] });
+    },
+  });
+}
+
+export function useJoinAskShareLink() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { token: string; password?: string }) =>
+      askApi.joinShareLink(data.token, data.password),
+    onSuccess: (conv) => {
+      queryClient.invalidateQueries({ queryKey: ["askConversations", conv.workspace_id] });
+    },
+  });
+}
+
+// --- Queue Status Hook ---
+
+export function useAskQueueStatus(workspaceId: string | null | undefined, conversationId: string | null | undefined) {
+  return useQuery<AskQueueStatus>({
+    queryKey: ["askQueueStatus", workspaceId, conversationId],
+    queryFn: () => askApi.getQueueStatus(workspaceId!, conversationId!),
+    enabled: !!workspaceId && !!conversationId,
+    refetchInterval: 5000,
   });
 }
 
@@ -123,6 +222,11 @@ export function useStreamMessage(workspaceId: string | null | undefined, convers
                   );
                   break;
 
+                case "queued":
+                  // Message was queued because AI is busy
+                  store.setQueued(true, event.queue_position);
+                  break;
+
                 case "done":
                   // Refresh conversation data from server
                   queryClient.invalidateQueries({
@@ -163,5 +267,7 @@ export function useStreamMessage(workspaceId: string | null | undefined, convers
     streamMessage,
     cancelStream,
     isStreaming: store.isStreaming,
+    isQueued: store.isQueued,
+    queuePosition: store.queuePosition,
   };
 }

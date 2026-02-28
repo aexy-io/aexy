@@ -583,67 +583,83 @@ async def create_meet_link(
 # WebSocket handler
 # ═══════════════════════════════════════════════════════════════════════
 
+class _ConnectionEntry:
+    """A single WebSocket connection's state."""
+
+    __slots__ = ("ws", "user_info", "subscribed_channels", "subscribed_ai_conversations")
+
+    def __init__(self, ws: WebSocket, user_info: dict):
+        self.ws = ws
+        self.user_info = user_info
+        self.subscribed_channels: set[str] = set()
+        self.subscribed_ai_conversations: set[str] = set()
+
+
 class ChatConnectionManager:
     """Manages WebSocket connections for chat, one connection per user per workspace."""
 
     def __init__(self):
-        # workspace_id -> list of (websocket, user_info, subscribed_channel_ids)
-        self.connections: dict[str, list[tuple[WebSocket, dict, set[str]]]] = {}
+        self.connections: dict[str, list[_ConnectionEntry]] = {}
         self._lock = asyncio.Lock()
 
-    async def connect(self, ws: WebSocket, workspace_id: str, user_info: dict) -> set[str]:
+    async def connect(self, ws: WebSocket, workspace_id: str, user_info: dict) -> _ConnectionEntry:
         await ws.accept()
-        subs: set[str] = set()
+        entry = _ConnectionEntry(ws, user_info)
         async with self._lock:
             if workspace_id not in self.connections:
                 self.connections[workspace_id] = []
-            self.connections[workspace_id].append((ws, user_info, subs))
-        return subs
+            self.connections[workspace_id].append(entry)
+        return entry
 
     async def disconnect(self, ws: WebSocket, workspace_id: str) -> dict | None:
         async with self._lock:
             conns = self.connections.get(workspace_id, [])
-            for i, (w, info, _) in enumerate(conns):
-                if w is ws:
+            for i, entry in enumerate(conns):
+                if entry.ws is ws:
                     conns.pop(i)
                     if not conns:
                         self.connections.pop(workspace_id, None)
-                    return info
+                    return entry.user_info
         return None
 
     async def subscribe_channels(self, ws: WebSocket, workspace_id: str, channel_ids: list[str]) -> None:
         async with self._lock:
-            for w, info, subs in self.connections.get(workspace_id, []):
-                if w is ws:
-                    subs.update(channel_ids)
+            for entry in self.connections.get(workspace_id, []):
+                if entry.ws is ws:
+                    entry.subscribed_channels.update(channel_ids)
+                    break
+
+    async def subscribe_ai_conversations(self, ws: WebSocket, workspace_id: str, conv_ids: list[str]) -> None:
+        """Subscribe a connection to AI conversation events."""
+        async with self._lock:
+            for entry in self.connections.get(workspace_id, []):
+                if entry.ws is ws:
+                    entry.subscribed_ai_conversations.update(conv_ids)
                     break
 
     async def broadcast_to_workspace(self, workspace_id: str, event: dict) -> None:
         """Send event to all connections in a workspace."""
-        conns = self.connections.get(workspace_id, [])
-        for ws, info, subs in conns:
+        for entry in self.connections.get(workspace_id, []):
             try:
-                await ws.send_json(event)
+                await entry.ws.send_json(event)
             except Exception:
                 pass
 
     async def broadcast_to_channel(self, workspace_id: str, channel_id: str, event: dict) -> None:
         """Send event only to users subscribed to a specific channel."""
-        conns = self.connections.get(workspace_id, [])
-        for ws, info, subs in conns:
-            if channel_id in subs:
+        for entry in self.connections.get(workspace_id, []):
+            if channel_id in entry.subscribed_channels:
                 try:
-                    await ws.send_json(event)
+                    await entry.ws.send_json(event)
                 except Exception:
                     pass
 
     async def send_to_user(self, workspace_id: str, developer_id: str, event: dict) -> None:
         """Send event to a specific user."""
-        conns = self.connections.get(workspace_id, [])
-        for ws, info, subs in conns:
-            if info.get("id") == developer_id:
+        for entry in self.connections.get(workspace_id, []):
+            if entry.user_info.get("id") == developer_id:
                 try:
-                    await ws.send_json(event)
+                    await entry.ws.send_json(event)
                 except Exception:
                     pass
 
@@ -675,7 +691,7 @@ async def chat_websocket(
         "avatar_url": getattr(developer, "avatar_url", None),
     }
 
-    subs = await chat_manager.connect(websocket, workspace_id, user_info)
+    conn_entry = await chat_manager.connect(websocket, workspace_id, user_info)
 
     # Auto-subscribe to user's channels
     async with async_session_maker() as db:
@@ -693,7 +709,7 @@ async def chat_websocket(
 
     # Start Redis subscriber task to relay events to this connection
     redis_task = asyncio.create_task(
-        _relay_redis_events(websocket, workspace_id, user_info, subs)
+        _relay_redis_events(websocket, workspace_id, user_info, conn_entry)
     )
 
     try:
@@ -713,6 +729,10 @@ async def chat_websocket(
                 ch_ids = msg.get("channel_ids", [])
                 await chat_manager.subscribe_channels(websocket, workspace_id, ch_ids)
 
+            elif msg_type == "subscribe_ai_conversations":
+                conv_ids = msg.get("conversation_ids", [])
+                await chat_manager.subscribe_ai_conversations(websocket, workspace_id, conv_ids)
+
             elif msg_type == "typing":
                 await pubsub.publish(workspace_id, "typing", {
                     "developer_id": developer_id,
@@ -727,6 +747,23 @@ async def chat_websocket(
                     "topic_id": msg.get("topic_id"),
                     "channel_id": msg.get("channel_id"),
                 })
+
+            elif msg_type == "ai_typing":
+                conv_id = msg.get("conversation_id")
+                if conv_id:
+                    await pubsub.publish(workspace_id, "ai_typing", {
+                        "developer_id": developer_id,
+                        "developer_name": developer.name,
+                        "conversation_id": conv_id,
+                    })
+
+            elif msg_type == "ai_stop_typing":
+                conv_id = msg.get("conversation_id")
+                if conv_id:
+                    await pubsub.publish(workspace_id, "ai_stop_typing", {
+                        "developer_id": developer_id,
+                        "conversation_id": conv_id,
+                    })
 
             elif msg_type == "mark_read":
                 topic_id = msg.get("topic_id")
@@ -762,13 +799,19 @@ async def chat_websocket(
 
 
 async def _relay_redis_events(
-    ws: WebSocket, workspace_id: str, user_info: dict, subscribed_channels: set[str],
+    ws: WebSocket, workspace_id: str, user_info: dict, conn_entry: _ConnectionEntry,
 ) -> None:
     """Background task: subscribe to Redis pub/sub and forward events to the WS client."""
     # Channel-scoped event types that should only be sent to subscribed users
     CHANNEL_SCOPED_EVENTS = {
         "new_message", "new_topic", "topic_updated",
         "message_updated", "message_deleted",
+    }
+    # AI conversation-scoped events
+    AI_SCOPED_EVENTS = {
+        "ai_new_message", "ai_typing", "ai_stop_typing",
+        "ai_streaming_delta", "ai_streaming_done",
+        "ai_queue_update", "ai_participant_joined", "ai_participant_left",
     }
     pubsub = get_chat_pubsub()
     try:
@@ -777,14 +820,20 @@ async def _relay_redis_events(
             event_type = event.get("type")
 
             # Don't echo typing events back to the sender
-            if event_type in ("typing", "stop_typing"):
+            if event_type in ("typing", "stop_typing", "ai_typing", "ai_stop_typing"):
                 if event_data.get("developer_id") == user_info.get("id"):
                     continue
 
             # Filter channel-scoped events to subscribed channels only
             channel_id = event_data.get("channel_id")
             if channel_id and event_type in CHANNEL_SCOPED_EVENTS:
-                if channel_id not in subscribed_channels:
+                if channel_id not in conn_entry.subscribed_channels:
+                    continue
+
+            # Filter AI-scoped events to subscribed AI conversations only
+            conv_id = event_data.get("conversation_id")
+            if conv_id and event_type in AI_SCOPED_EVENTS:
+                if conv_id not in conn_entry.subscribed_ai_conversations:
                     continue
 
             try:
