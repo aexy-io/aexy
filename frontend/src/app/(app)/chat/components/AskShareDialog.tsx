@@ -108,7 +108,10 @@ function PeopleTab({ workspaceId, conversationId, isOwner }: { workspaceId: stri
   const [selectedPermission, setSelectedPermission] = useState("write");
 
   const members = workspaceMembers || [];
-  const participantIds = new Set((participants || []).map((p: AskParticipant) => p.developer_id));
+  const participantIds = useMemo(
+    () => new Set((participants || []).map((p: AskParticipant) => p.developer_id)),
+    [participants]
+  );
 
   const availableMembers = useMemo(
     () => (Array.isArray(members) ? members : []).filter(
@@ -254,12 +257,16 @@ function LinksTab({ workspaceId, conversationId, isOwner }: { workspaceId: strin
     }
   };
 
-  const handleCopy = (token: string, linkId: string) => {
+  const handleCopy = async (token: string, linkId: string) => {
     const url = `${window.location.origin}/chat/join/${token}`;
-    navigator.clipboard.writeText(url);
-    setCopiedId(linkId);
-    toast.success("Link copied to clipboard");
-    setTimeout(() => setCopiedId(null), 2000);
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedId(linkId);
+      toast.success("Link copied to clipboard");
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      toast.error("Failed to copy to clipboard");
+    }
   };
 
   return (

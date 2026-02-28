@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ThumbsUp, ThumbsDown, Loader2, X, Check } from "lucide-react";
 import { toast } from "sonner";
 import { useAIFeedback, useSubmitFeedback } from "@/hooks/useAIFeedback";
@@ -18,12 +18,20 @@ export function MessageFeedback({ workspaceId, entityType, entityId }: MessageFe
   const [showComment, setShowComment] = useState(false);
   const [comment, setComment] = useState("");
   const [justSubmitted, setJustSubmitted] = useState<1 | -1 | null>(null);
+  const flashTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    return () => {
+      if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
+    };
+  }, []);
 
   const currentRating = existing?.rating ?? null;
 
   const flashSuccess = (rating: 1 | -1) => {
     setJustSubmitted(rating);
-    setTimeout(() => setJustSubmitted(null), 1500);
+    if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
+    flashTimeoutRef.current = setTimeout(() => setJustSubmitted(null), 1500);
   };
 
   const handleRate = (rating: -1 | 1) => {

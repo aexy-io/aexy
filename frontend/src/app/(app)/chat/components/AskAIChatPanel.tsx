@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Bot, User, Send, Loader2, Share2, Users, Clock } from "lucide-react";
 import { useAskConversation, useStreamMessage } from "@/hooks/useAsk";
 import { useAskStore } from "@/stores/askStore";
-import { useChatWebSocket } from "@/hooks/useChat";
+import { useChatWebSocketContext } from "@/contexts/ChatWebSocketContext";
 import { AskMessage } from "@/lib/api";
 import { AskToolCall } from "./AskToolCall";
 import { MessageFeedback } from "./MessageFeedback";
@@ -21,7 +21,7 @@ export function AskAIChatPanel({ workspaceId, conversationId, currentDeveloperId
   const { data: conversation, isLoading } = useAskConversation(workspaceId, conversationId);
   const { streamMessage, isStreaming, isQueued, queuePosition } = useStreamMessage(workspaceId, conversationId);
   const { streamingText, streamingToolCalls, aiTypingUsers } = useAskStore();
-  const { subscribeAiConversations, sendAiTyping, sendAiStopTyping } = useChatWebSocket(workspaceId);
+  const { subscribeAiConversations, sendAiTyping, sendAiStopTyping } = useChatWebSocketContext();
 
   const [input, setInput] = useState("");
   const [showShareDialog, setShowShareDialog] = useState(false);
@@ -54,6 +54,13 @@ export function AskAIChatPanel({ workspaceId, conversationId, currentDeveloperId
       sendAiStopTyping(conversationId);
     }
   }, [isCollaborative, conversationId, sendAiTyping, sendAiStopTyping]);
+
+  // Cleanup typing timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    };
+  }, []);
 
   // Filter typing users for this conversation (exclude self)
   const typingUsersHere = aiTypingUsers.filter(

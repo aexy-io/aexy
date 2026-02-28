@@ -507,7 +507,7 @@ async def resend_email(
         await db.rollback()
         return ResendEmailResponse(
             success=False,
-            message=f"Error resending email: {str(e)}",
+            message="Error resending email. Check server logs for details.",
         )
 
 

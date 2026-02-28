@@ -133,7 +133,7 @@ class ChatService:
             role="owner",
         )
         self.db.add(member)
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(channel)
         return channel
 
@@ -161,7 +161,7 @@ class ChatService:
         for k, v in kwargs.items():
             if k in self.ALLOWED_UPDATE_FIELDS and v is not None:
                 setattr(channel, k, v)
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(channel)
         return channel
 
@@ -195,7 +195,7 @@ class ChatService:
         )
         self.db.add(member)
         try:
-            await self.db.commit()
+            await self.db.flush()
             await self.db.refresh(member)
         except IntegrityError:
             await self.db.rollback()
@@ -219,7 +219,7 @@ class ChatService:
         if not member:
             return False
         await self.db.delete(member)
-        await self.db.commit()
+        await self.db.flush()
         return True
 
     async def list_members(self, channel_id: str) -> list[dict]:
@@ -266,11 +266,12 @@ class ChatService:
 
     # ── Topics ────────────────────────────────────────────────────
 
-    async def list_topics(self, channel_id: str, developer_id: str | None = None) -> list[dict]:
+    async def list_topics(self, channel_id: str, developer_id: str | None = None, limit: int = 200) -> list[dict]:
         q = (
             select(ChatTopic)
             .where(ChatTopic.channel_id == channel_id)
             .order_by(ChatTopic.last_message_at.desc().nullslast())
+            .limit(limit)
         )
         result = await self.db.execute(q)
         topics = result.scalars().all()
@@ -348,7 +349,7 @@ class ChatService:
             mentions=mentions,
         )
         self.db.add(message)
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(topic)
         await self.db.refresh(message)
         return topic, message
@@ -443,7 +444,7 @@ class ChatService:
             )
         )
 
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(message)
 
         # Fetch sender info
@@ -483,7 +484,7 @@ class ChatService:
         message.is_edited = True
         message.edited_at = datetime.now(timezone.utc)
         message.mentions = _extract_mentions(content)
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(message)
 
         sender_result = await self.db.execute(
@@ -521,7 +522,7 @@ class ChatService:
         message.is_deleted = True
         message.deleted_at = datetime.now(timezone.utc)
         message.content = ""
-        await self.db.commit()
+        await self.db.flush()
         return True
 
     # ── Inbox ─────────────────────────────────────────────────────
@@ -596,7 +597,7 @@ class ChatService:
         if state:
             state.last_read_message_id = message_id
             state.last_read_at = now
-            await self.db.commit()
+            await self.db.flush()
         else:
             state = ChatTopicReadState(
                 id=str(uuid4()),
@@ -607,7 +608,7 @@ class ChatService:
             )
             self.db.add(state)
             try:
-                await self.db.commit()
+                await self.db.flush()
             except IntegrityError:
                 await self.db.rollback()
                 result = await self.db.execute(
@@ -619,7 +620,7 @@ class ChatService:
                 state = result.scalar_one()
                 state.last_read_message_id = message_id
                 state.last_read_at = now
-                await self.db.commit()
+                await self.db.flush()
 
     async def _get_unread_counts_batch(self, topic_ids: list[str], developer_id: str) -> dict[str, int]:
         """Batch compute unread counts for multiple topics in a single query."""
@@ -715,7 +716,7 @@ class ChatService:
         if presence:
             presence.status = status
             presence.last_active_at = now
-            await self.db.commit()
+            await self.db.flush()
         else:
             presence = ChatUserPresence(
                 id=str(uuid4()),
@@ -726,7 +727,7 @@ class ChatService:
             )
             self.db.add(presence)
             try:
-                await self.db.commit()
+                await self.db.flush()
             except IntegrityError:
                 await self.db.rollback()
                 result = await self.db.execute(
@@ -738,7 +739,7 @@ class ChatService:
                 presence = result.scalar_one()
                 presence.status = status
                 presence.last_active_at = now
-                await self.db.commit()
+                await self.db.flush()
 
     # ── Onboarding ─────────────────────────────────────────────────
 

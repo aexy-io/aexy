@@ -6,8 +6,9 @@ import time
 from collections.abc import AsyncGenerator
 from uuid import uuid4
 
-import hashlib
 import secrets
+
+import bcrypt
 
 import httpx
 from sqlalchemy import func, or_, select
@@ -107,8 +108,26 @@ class AskService:
             .scalar_subquery()
         )
 
+        # Correlated subqueries for counts (avoids N+1)
+        msg_count_sq = (
+            select(func.count())
+            .where(AskMessage.conversation_id == AskConversation.id)
+            .correlate(AskConversation)
+            .scalar_subquery()
+        )
+        part_count_sq = (
+            select(func.count())
+            .where(AskConversationParticipant.conversation_id == AskConversation.id)
+            .correlate(AskConversation)
+            .scalar_subquery()
+        )
+
         stmt = (
-            select(AskConversation)
+            select(
+                AskConversation,
+                msg_count_sq.label("message_count"),
+                part_count_sq.label("participant_count"),
+            )
             .where(
                 AskConversation.workspace_id == workspace_id,
                 or_(
@@ -117,34 +136,18 @@ class AskService:
                 ),
             )
             .order_by(AskConversation.created_at.desc())
-            .limit(limit)
         )
 
         if search:
             stmt = stmt.where(AskConversation.title.ilike(f"%{search}%"))
 
+        stmt = stmt.limit(limit)
+
         result = await self.db.execute(stmt)
-        conversations = result.scalars().all()
+        rows = result.all()
 
-        out = []
-        for c in conversations:
-            count_stmt = (
-                select(func.count())
-                .select_from(AskMessage)
-                .where(AskMessage.conversation_id == c.id)
-            )
-            count_result = await self.db.execute(count_stmt)
-            msg_count = count_result.scalar() or 0
-
-            part_count_stmt = (
-                select(func.count())
-                .select_from(AskConversationParticipant)
-                .where(AskConversationParticipant.conversation_id == c.id)
-            )
-            part_count_result = await self.db.execute(part_count_stmt)
-            part_count = part_count_result.scalar() or 0
-
-            out.append({
+        return [
+            {
                 "id": str(c.id),
                 "workspace_id": str(c.workspace_id),
                 "developer_id": str(c.developer_id),
@@ -152,10 +155,11 @@ class AskService:
                 "is_collaborative": c.is_collaborative,
                 "created_at": c.created_at.isoformat() if c.created_at else None,
                 "updated_at": c.updated_at.isoformat() if c.updated_at else None,
-                "message_count": msg_count,
-                "participant_count": part_count,
-            })
-        return out
+                "message_count": msg_count or 0,
+                "participant_count": part_count or 0,
+            }
+            for c, msg_count, part_count in rows
+        ]
 
     async def create_conversation(
         self, workspace_id: str, developer_id: str, title: str | None = None
@@ -353,7 +357,7 @@ class AskService:
         token = secrets.token_urlsafe(32)
         password_hash = None
         if password:
-            password_hash = hashlib.sha256(password.encode()).hexdigest()
+            password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
         link = AskShareLink(
             id=str(uuid4()),
@@ -381,6 +385,12 @@ class AskService:
         )
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
+
+    async def get_share_link(self, link_id: str) -> AskShareLink | None:
+        """Get a share link by ID."""
+        stmt = select(AskShareLink).where(AskShareLink.id == link_id)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
 
     async def revoke_share_link(self, link_id: str) -> bool:
         """Revoke a share link."""
@@ -421,7 +431,7 @@ class AskService:
         if link.password_hash:
             if not password:
                 return None
-            if hashlib.sha256(password.encode()).hexdigest() != link.password_hash:
+            if not bcrypt.checkpw(password.encode(), link.password_hash.encode()):
                 return None
 
         # Check if already a participant

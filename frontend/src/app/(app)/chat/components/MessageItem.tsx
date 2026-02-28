@@ -11,6 +11,15 @@ interface MessageItemProps {
   compact?: boolean;
 }
 
+function isSafeUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url, window.location.origin);
+    return ["http:", "https:"].includes(parsed.protocol);
+  } catch {
+    return false;
+  }
+}
+
 // Parse markdown-style images ![alt](url) and links [text](url) from content
 function renderContent(content: string) {
   const parts: React.ReactNode[] = [];
@@ -26,6 +35,13 @@ function renderContent(content: string) {
 
     const [fullMatch, , alt, url] = match;
     const isImage = fullMatch.startsWith("!");
+
+    // Skip rendering unsafe URLs (javascript:, data:, etc.)
+    if (!isSafeUrl(url)) {
+      parts.push(fullMatch);
+      lastIndex = match.index + fullMatch.length;
+      continue;
+    }
 
     if (isImage) {
       // Render inline image

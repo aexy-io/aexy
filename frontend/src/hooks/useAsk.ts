@@ -147,15 +147,15 @@ export function useAskQueueStatus(workspaceId: string | null | undefined, conver
 
 export function useStreamMessage(workspaceId: string | null | undefined, conversationId: string | null | undefined) {
   const queryClient = useQueryClient();
-  const store = useAskStore();
   const abortRef = useRef<AbortController | null>(null);
 
   const streamMessage = useCallback(
-    async (content: string) => {
-      if (!workspaceId || !conversationId) return;
+    async (content: string, overrideConversationId?: string) => {
+      const convId = overrideConversationId || conversationId;
+      if (!workspaceId || !convId) return;
 
       // Reset streaming state
-      store.resetStreaming();
+      useAskStore.getState().resetStreaming();
 
       const controller = new AbortController();
       abortRef.current = controller;
@@ -163,7 +163,7 @@ export function useStreamMessage(workspaceId: string | null | undefined, convers
       try {
         const token = localStorage.getItem("token");
         const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
-        const url = `${baseUrl}/workspaces/${workspaceId}/ask/conversations/${conversationId}/messages`;
+        const url = `${baseUrl}/workspaces/${workspaceId}/ask/conversations/${convId}/messages`;
 
         const response = await fetch(url, {
           method: "POST",
@@ -203,11 +203,11 @@ export function useStreamMessage(workspaceId: string | null | undefined, convers
 
               switch (event.type) {
                 case "text_delta":
-                  store.appendText(event.text);
+                  useAskStore.getState().appendText(event.text);
                   break;
 
                 case "tool_use_start":
-                  store.addToolCall({
+                  useAskStore.getState().addToolCall({
                     id: event.id,
                     name: event.name,
                     input: event.input || {},
@@ -215,7 +215,7 @@ export function useStreamMessage(workspaceId: string | null | undefined, convers
                   break;
 
                 case "tool_result":
-                  store.setToolResult(
+                  useAskStore.getState().setToolResult(
                     event.id,
                     event.result,
                     event.status || "success"
@@ -224,23 +224,23 @@ export function useStreamMessage(workspaceId: string | null | undefined, convers
 
                 case "queued":
                   // Message was queued because AI is busy
-                  store.setQueued(true, event.queue_position);
+                  useAskStore.getState().setQueued(true, event.queue_position);
                   break;
 
                 case "done":
                   // Refresh conversation data from server
                   queryClient.invalidateQueries({
-                    queryKey: ["askConversation", workspaceId, conversationId],
+                    queryKey: ["askConversation", workspaceId, convId],
                   });
                   queryClient.invalidateQueries({
                     queryKey: ["askConversations", workspaceId],
                   });
-                  store.resetStreaming();
+                  useAskStore.getState().resetStreaming();
                   break;
 
                 case "error":
                   console.error("Stream error:", event.message);
-                  store.resetStreaming();
+                  useAskStore.getState().resetStreaming();
                   break;
               }
             } catch {
@@ -252,22 +252,24 @@ export function useStreamMessage(workspaceId: string | null | undefined, convers
         if (err instanceof Error && err.name !== "AbortError") {
           console.error("Stream failed:", err);
         }
-        store.resetStreaming();
+        useAskStore.getState().resetStreaming();
       }
     },
-    [workspaceId, conversationId, queryClient, store]
+    [workspaceId, conversationId, queryClient]
   );
 
   const cancelStream = useCallback(() => {
     abortRef.current?.abort();
-    store.resetStreaming();
-  }, [store]);
+    useAskStore.getState().resetStreaming();
+  }, []);
+
+  const { isStreaming, isQueued, queuePosition } = useAskStore();
 
   return {
     streamMessage,
     cancelStream,
-    isStreaming: store.isStreaming,
-    isQueued: store.isQueued,
-    queuePosition: store.queuePosition,
+    isStreaming,
+    isQueued,
+    queuePosition,
   };
 }
