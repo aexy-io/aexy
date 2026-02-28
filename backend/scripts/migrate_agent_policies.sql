@@ -31,6 +31,21 @@ CREATE TABLE IF NOT EXISTS agent_policies (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Auto-update updated_at on row modification
+CREATE OR REPLACE FUNCTION update_agent_policies_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_agent_policies_updated_at ON agent_policies;
+CREATE TRIGGER trg_agent_policies_updated_at
+    BEFORE UPDATE ON agent_policies
+    FOR EACH ROW
+    EXECUTE FUNCTION update_agent_policies_updated_at();
+
 CREATE INDEX IF NOT EXISTS idx_agent_policies_workspace_active
     ON agent_policies (workspace_id) WHERE is_active = TRUE;
 CREATE INDEX IF NOT EXISTS idx_agent_policies_agent_id
