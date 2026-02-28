@@ -22,7 +22,7 @@ Aexy is an Engineering OS platform — a full-stack application with developer a
 ```bash
 docker-compose up -d
 ```
-Services: Backend :8000, Frontend :3000, Temporal UI :8080, PostgreSQL :5432, Redis :6379, RustFS :9000
+Services: Backend :8000, Frontend :3000, Mailagent :8001, Temporal UI :8080, PostgreSQL :5432, Redis :6379, RustFS :9000
 
 ### Backend
 
@@ -54,10 +54,22 @@ cd backend && mypy src/
 ```bash
 cd frontend && npm run dev        # Dev server on :3000
 cd frontend && npm run build      # Production build
+cd frontend && npm start          # Production server
 cd frontend && npm run lint       # ESLint
 cd frontend && npm run test       # Vitest unit tests
+cd frontend && npm run test:coverage  # Vitest with coverage
 cd frontend && npm run test:e2e   # Playwright E2E tests
 cd frontend && npm run test:e2e:ui  # Playwright with UI
+```
+
+### Mailagent (Email Infrastructure Microservice)
+
+Separate FastAPI service for email domain management, SPF/DKIM/DMARC verification, domain warming, and inbox administration. Runs on port `:8001`.
+
+```bash
+cd mailagent && uv pip install -e ".[dev]"
+cd mailagent && uvicorn mailagent.main:app --reload --port 8001
+cd mailagent && pytest
 ```
 
 ### Database Migrations
@@ -100,6 +112,19 @@ The backend follows a layered architecture: **API → Service → Model**
 - `llm/` — Multi-provider LLM abstraction with rate limiting
 - `agents/` — LangGraph-based AI agent implementations
 
+### Adding a New Feature (Checklist)
+
+When adding a new backend feature:
+1. **Model**: Create in `models/`, then add explicit import + `__all__` entry in `models/__init__.py` (models are NOT auto-discovered)
+2. **Migration**: Write SQL file in `backend/scripts/migrate_*.sql`
+3. **Schema**: Create Pydantic schemas in `schemas/`
+4. **Service**: Create service in `services/`
+5. **API**: Create router in `api/`, then import and mount in `api/__init__.py`
+
+When adding a new app/module visible in the UI:
+- Update **both** `frontend/src/config/appDefinitions.ts` AND `backend/src/aexy/models/app_definitions.py` — these must stay in sync
+- Update `frontend/src/config/sidebarLayouts.ts` for navigation entries
+
 ### API Pattern
 
 Every endpoint follows this pattern:
@@ -134,6 +159,8 @@ Temporal replaced Celery. Key concepts:
 - `temporal/schedules.py` — Periodic schedules (replaces Celery Beat)
 - Worker: `python -m aexy.temporal.worker` (supports `--queues` parameter)
 
+New activities must be added to `ACTIVITY_CONFIG` in `dispatch.py` to get proper retry/timeout behavior. Three retry policies: `STANDARD_RETRY` (4 attempts, 60s backoff), `LLM_RETRY` (6 attempts, non-retryable on `ValueError`/`KeyError`), `WEBHOOK_RETRY` (6 attempts, up to 1hr backoff). Pass a stable `workflow_id` for idempotency.
+
 ### Frontend Structure (`frontend/src/`)
 
 - `app/` — Next.js App Router. Route groups: `(app)` (protected), `(admin)`, `auth/`, `public/`, `embed/`
@@ -160,12 +187,16 @@ Auth token stored in localStorage under key `token`. Data fetching via React Que
 
 ## Important Gotchas
 
+- **`expire_on_commit=False`** on the async session maker — ORM objects remain usable after commit without re-fetching.
 - **`db.no_autoflush`** is a sync context manager even on async sessions. Use `with db.no_autoflush:` NOT `async with`.
 - **Pydantic v2**: Cannot use both `model_config = ConfigDict(...)` and `class Config:` on the same model. Use only `model_config`.
 - **Ghost developers** (external contributors synced from GitHub): have nullable `email`. PR/review authors deduplicate by `name == github_login AND email IS NULL`. Commit authors deduplicate by `email == author_email`.
 - **Tests use SQLite in-memory** — some PostgreSQL-specific features won't work in tests.
 - **Frontend build** ignores TypeScript errors and ESLint warnings (`next.config.js` has `ignoreBuildErrors: true`).
 - **`lib/api.ts`** is generated — don't hand-edit it.
+- **Alembic** is installed as a dependency but NOT used — the project uses a custom SQL migration system. Don't create Alembic migrations.
+- **Next.js `output: 'standalone'`** — builds a self-contained output for Docker deployment. URL rewrite: `/book/:path*` → `/public/book/:path*`.
+- **Frontend image hosts** must be allowlisted in `next.config.js` (`images.remotePatterns`).
 
 ## Configuration
 
