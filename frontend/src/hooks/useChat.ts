@@ -199,6 +199,9 @@ export function useChatWebSocket(workspaceId: string | undefined) {
     };
 
     ws.onclose = (event) => {
+      // Don't reconnect if this WS has been superseded by a new connection
+      if (wsRef.current !== ws) return;
+
       setIsConnected(false);
       wsRef.current = null;
 
@@ -222,9 +225,11 @@ export function useChatWebSocket(workspaceId: string | undefined) {
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
+      // Mark this WS as superseded before closing so onclose won't reconnect
+      const ws = wsRef.current;
+      wsRef.current = null;
+      if (ws) {
+        ws.close();
       }
     };
   }, [connect]);

@@ -32,19 +32,38 @@ export function MessageThread({
   const sendMessage = useSendMessage(workspaceId, topicId);
   const uploadFile = useUploadFile(workspaceId);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isAtBottomRef = useRef(true);
+  const prevMessageCountRef = useRef(0);
+  const lastMarkReadRef = useRef("");
   const [sendError, setSendError] = useState<string | null>(null);
   const [messageQueue, setMessageQueue] = useState<string[]>([]);
 
-  // Scroll to bottom on new messages
+  // Track scroll position to only auto-scroll when user is at bottom
+  const handleScroll = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    isAtBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 50;
+  }, []);
+
+  // Scroll to bottom on new messages (only if user was already at bottom)
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const count = messages?.length ?? 0;
+    if (count > prevMessageCountRef.current && isAtBottomRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+    prevMessageCountRef.current = count;
   }, [messages]);
 
-  // Mark topic as read when viewing
+  // Mark topic as read when viewing (deduplicated by topic+message ID)
   useEffect(() => {
     if (messages && messages.length > 0) {
       const lastMsg = messages[messages.length - 1];
-      chatApi.markTopicRead(workspaceId, topicId, lastMsg.id).catch(() => {});
+      const key = `${topicId}:${lastMsg.id}`;
+      if (key !== lastMarkReadRef.current) {
+        lastMarkReadRef.current = key;
+        chatApi.markTopicRead(workspaceId, topicId, lastMsg.id).catch(() => {});
+      }
     }
   }, [workspaceId, topicId, messages]);
 
@@ -113,7 +132,7 @@ export function MessageThread({
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto" ref={containerRef} onScroll={handleScroll}>
         {isLoading ? (
           <div className="flex items-center justify-center h-32">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />

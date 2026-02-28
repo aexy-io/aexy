@@ -5,9 +5,10 @@ import re
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, or_, select, update as sql_update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import aliased, joinedload
 
 from aexy.models.chat import (
     ChatChannel,
@@ -151,16 +152,28 @@ class ChatService:
         )
         return result.scalar_one_or_none()
 
+    ALLOWED_UPDATE_FIELDS = {"name", "description", "is_archived"}
+
     async def update_channel(self, channel_id: str, **kwargs) -> ChatChannel | None:
         channel = await self.get_channel(channel_id)
         if not channel:
             return None
         for k, v in kwargs.items():
-            if v is not None and hasattr(channel, k):
+            if k in self.ALLOWED_UPDATE_FIELDS and v is not None:
                 setattr(channel, k, v)
         await self.db.commit()
         await self.db.refresh(channel)
         return channel
+
+    async def is_channel_owner(self, channel_id: str, developer_id: str) -> bool:
+        result = await self.db.execute(
+            select(ChatChannelMember.role).where(
+                ChatChannelMember.channel_id == channel_id,
+                ChatChannelMember.developer_id == developer_id,
+            )
+        )
+        role = result.scalar_one_or_none()
+        return role == "owner"
 
     async def join_channel(self, channel_id: str, developer_id: str) -> ChatChannelMember:
         # Check if already a member
@@ -181,8 +194,18 @@ class ChatService:
             role="member",
         )
         self.db.add(member)
-        await self.db.commit()
-        await self.db.refresh(member)
+        try:
+            await self.db.commit()
+            await self.db.refresh(member)
+        except IntegrityError:
+            await self.db.rollback()
+            result = await self.db.execute(
+                select(ChatChannelMember).where(
+                    ChatChannelMember.channel_id == channel_id,
+                    ChatChannelMember.developer_id == developer_id,
+                )
+            )
+            member = result.scalar_one()
         return member
 
     async def leave_channel(self, channel_id: str, developer_id: str) -> bool:
@@ -252,13 +275,14 @@ class ChatService:
         result = await self.db.execute(q)
         topics = result.scalars().all()
 
-        # Get unread counts if developer_id provided
+        # Batch unread counts (single query instead of N+1)
         unread_map: dict[str, int] = {}
-        if developer_id:
-            for topic in topics:
-                unread_map[topic.id] = await self._get_unread_count(topic.id, developer_id)
+        if developer_id and topics:
+            unread_map = await self._get_unread_counts_batch(
+                [t.id for t in topics], developer_id
+            )
 
-        # Get creator names
+        # Get creator names in batch
         creator_ids = {t.created_by_id for t in topics if t.created_by_id}
         creator_names: dict[str, str] = {}
         if creator_ids:
@@ -408,12 +432,16 @@ class ChatService:
         )
         self.db.add(message)
 
-        # Update topic counters
-        topic = await self.get_topic(topic_id)
-        if topic:
-            topic.message_count = (topic.message_count or 0) + 1
-            topic.last_message_at = now
-            topic.last_message_id = message_id
+        # Atomic update of topic counters (avoids read-modify-write race)
+        await self.db.execute(
+            sql_update(ChatTopic)
+            .where(ChatTopic.id == topic_id)
+            .values(
+                message_count=func.coalesce(ChatTopic.message_count, 0) + 1,
+                last_message_at=now,
+                last_message_id=message_id,
+            )
+        )
 
         await self.db.commit()
         await self.db.refresh(message)
@@ -518,26 +546,26 @@ class ChatService:
         result = await self.db.execute(q)
         rows = result.all()
 
+        if not rows:
+            return []
+
+        topic_ids = [topic.id for topic, _ in rows]
+
+        # Batch: compute unread counts in a single query
+        unread_map = await self._get_unread_counts_batch(topic_ids, developer_id)
+
+        # Filter to only unread topics
+        unread_rows = [(t, ch) for t, ch in rows if unread_map.get(t.id, 0) > 0]
+        if not unread_rows:
+            return []
+
+        # Batch: get last message preview for unread topics
+        unread_topic_ids = [t.id for t, _ in unread_rows]
+        last_messages = await self._get_last_messages_batch(unread_topic_ids)
+
         inbox = []
-        for topic, channel in rows:
-            unread = await self._get_unread_count(topic.id, developer_id)
-            if unread == 0:
-                continue
-
-            # Get last message preview
-            last_msg_q = (
-                select(ChatMessage, Developer)
-                .join(Developer, ChatMessage.sender_id == Developer.id)
-                .where(
-                    ChatMessage.topic_id == topic.id,
-                    ChatMessage.is_deleted.is_(False),
-                )
-                .order_by(ChatMessage.created_at.desc())
-                .limit(1)
-            )
-            last_msg_result = await self.db.execute(last_msg_q)
-            last_row = last_msg_result.first()
-
+        for topic, channel in unread_rows:
+            last_msg = last_messages.get(topic.id)
             inbox.append({
                 "id": topic.id,
                 "channel_id": channel.id,
@@ -546,9 +574,9 @@ class ChatService:
                 "name": topic.name,
                 "message_count": topic.message_count,
                 "last_message_at": topic.last_message_at,
-                "unread_count": unread,
-                "last_message_preview": last_row[0].content[:100] if last_row else None,
-                "last_sender_name": last_row[1].name if last_row else None,
+                "unread_count": unread_map.get(topic.id, 0),
+                "last_message_preview": last_msg["content"][:100] if last_msg else None,
+                "last_sender_name": last_msg["sender_name"] if last_msg else None,
             })
 
         return inbox
@@ -568,6 +596,7 @@ class ChatService:
         if state:
             state.last_read_message_id = message_id
             state.last_read_at = now
+            await self.db.commit()
         else:
             state = ChatTopicReadState(
                 id=str(uuid4()),
@@ -577,36 +606,97 @@ class ChatService:
                 last_read_at=now,
             )
             self.db.add(state)
-        await self.db.commit()
+            try:
+                await self.db.commit()
+            except IntegrityError:
+                await self.db.rollback()
+                result = await self.db.execute(
+                    select(ChatTopicReadState).where(
+                        ChatTopicReadState.topic_id == topic_id,
+                        ChatTopicReadState.developer_id == developer_id,
+                    )
+                )
+                state = result.scalar_one()
+                state.last_read_message_id = message_id
+                state.last_read_at = now
+                await self.db.commit()
 
-    async def _get_unread_count(self, topic_id: str, developer_id: str) -> int:
-        """Count messages in topic after user's last-read message."""
-        read_q = await self.db.execute(
-            select(ChatTopicReadState.last_read_message_id).where(
-                ChatTopicReadState.topic_id == topic_id,
-                ChatTopicReadState.developer_id == developer_id,
+    async def _get_unread_counts_batch(self, topic_ids: list[str], developer_id: str) -> dict[str, int]:
+        """Batch compute unread counts for multiple topics in a single query."""
+        if not topic_ids:
+            return {}
+
+        # Subquery: get the last-read message timestamp per topic for this developer
+        ReadMsg = aliased(ChatMessage)
+        read_info = (
+            select(
+                ChatTopicReadState.topic_id,
+                ReadMsg.created_at.label("last_read_at"),
             )
+            .join(ReadMsg, ReadMsg.id == ChatTopicReadState.last_read_message_id)
+            .where(ChatTopicReadState.developer_id == developer_id)
+            .subquery()
         )
-        last_read_id = read_q.scalar_one_or_none()
 
-        q = select(func.count(ChatMessage.id)).where(
-            ChatMessage.topic_id == topic_id,
-            ChatMessage.is_deleted.is_(False),
-        )
-        if last_read_id:
-            # Get the created_at of the last read message
-            ts_q = await self.db.execute(
-                select(ChatMessage.created_at).where(ChatMessage.id == last_read_id)
+        # Count messages after the last-read timestamp (or all if no read state)
+        q = (
+            select(
+                ChatMessage.topic_id,
+                func.count(ChatMessage.id).label("unread_count"),
             )
-            last_read_ts = ts_q.scalar_one_or_none()
-            if last_read_ts:
-                q = q.where(ChatMessage.created_at > last_read_ts)
-            else:
-                # Message was deleted, count all
-                pass
-
+            .outerjoin(read_info, read_info.c.topic_id == ChatMessage.topic_id)
+            .where(
+                ChatMessage.topic_id.in_(topic_ids),
+                ChatMessage.is_deleted.is_(False),
+                or_(
+                    read_info.c.last_read_at.is_(None),
+                    ChatMessage.created_at > read_info.c.last_read_at,
+                ),
+            )
+            .group_by(ChatMessage.topic_id)
+        )
         result = await self.db.execute(q)
-        return result.scalar() or 0
+        return {row[0]: row[1] for row in result.all()}
+
+    async def _get_last_messages_batch(self, topic_ids: list[str]) -> dict[str, dict]:
+        """Get the last message + sender name for multiple topics in one query."""
+        if not topic_ids:
+            return {}
+
+        # Use row_number window function to get the latest message per topic
+        rn = func.row_number().over(
+            partition_by=ChatMessage.topic_id,
+            order_by=ChatMessage.created_at.desc(),
+        ).label("rn")
+
+        subq = (
+            select(
+                ChatMessage.topic_id,
+                ChatMessage.content,
+                ChatMessage.sender_id,
+                rn,
+            )
+            .where(
+                ChatMessage.topic_id.in_(topic_ids),
+                ChatMessage.is_deleted.is_(False),
+            )
+            .subquery()
+        )
+
+        q = (
+            select(
+                subq.c.topic_id,
+                subq.c.content,
+                Developer.name.label("sender_name"),
+            )
+            .join(Developer, Developer.id == subq.c.sender_id)
+            .where(subq.c.rn == 1)
+        )
+        result = await self.db.execute(q)
+        return {
+            row[0]: {"content": row[1], "sender_name": row[2]}
+            for row in result.all()
+        }
 
     # ── Presence ──────────────────────────────────────────────────
 
@@ -625,6 +715,7 @@ class ChatService:
         if presence:
             presence.status = status
             presence.last_active_at = now
+            await self.db.commit()
         else:
             presence = ChatUserPresence(
                 id=str(uuid4()),
@@ -634,7 +725,20 @@ class ChatService:
                 last_active_at=now,
             )
             self.db.add(presence)
-        await self.db.commit()
+            try:
+                await self.db.commit()
+            except IntegrityError:
+                await self.db.rollback()
+                result = await self.db.execute(
+                    select(ChatUserPresence).where(
+                        ChatUserPresence.workspace_id == workspace_id,
+                        ChatUserPresence.developer_id == developer_id,
+                    )
+                )
+                presence = result.scalar_one()
+                presence.status = status
+                presence.last_active_at = now
+                await self.db.commit()
 
     # ── Onboarding ─────────────────────────────────────────────────
 

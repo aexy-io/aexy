@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, ReactNode } from "react";
+import { createContext, useContext, useMemo, ReactNode } from "react";
 import { useChatWebSocket } from "@/hooks/useChat";
 import { useWorkspace } from "@/hooks/useWorkspace";
 
@@ -19,13 +19,20 @@ export function ChatWebSocketProvider({ children }: { children: ReactNode }) {
   const { currentWorkspaceId } = useWorkspace();
   const ws = useChatWebSocket(currentWorkspaceId ?? undefined);
 
+  const value = useMemo<ChatWebSocketContextValue>(
+    () => ({
+      isConnected: ws.isConnected,
+      sendTyping: ws.sendTyping,
+      sendStopTyping: ws.sendStopTyping,
+      markRead: ws.markRead,
+      subscribeChannels: ws.subscribeChannels,
+      workspaceId: currentWorkspaceId ?? undefined,
+    }),
+    [ws.isConnected, ws.sendTyping, ws.sendStopTyping, ws.markRead, ws.subscribeChannels, currentWorkspaceId]
+  );
+
   return (
-    <ChatWebSocketContext.Provider
-      value={{
-        ...ws,
-        workspaceId: currentWorkspaceId ?? undefined,
-      }}
-    >
+    <ChatWebSocketContext.Provider value={value}>
       {children}
     </ChatWebSocketContext.Provider>
   );
