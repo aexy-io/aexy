@@ -495,6 +495,7 @@ from aexy.models.gtm_seo import SEOAudit, SEOAuditPage
 from aexy.models.gtm_content import ContentAnalysis
 from aexy.models.gtm_abm import ABMTargetList, ABMAccount
 from aexy.models.gtm_webhook import GTMWebhook, GTMWebhookDelivery, GTMProviderHealthMetric
+from aexy.models.api_token import ApiToken
 
 __all__ = [
     # Plan
@@ -998,4 +999,6 @@ __all__ = [
     "GTMWebhook",
     "GTMWebhookDelivery",
     "GTMProviderHealthMetric",
+    # API Tokens
+    "ApiToken",
 ]
