@@ -17,7 +17,7 @@ ALTER TABLE ask_messages ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DE
 ALTER TABLE ask_conversations ADD COLUMN IF NOT EXISTS is_collaborative BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- 4. Participant join table
-CREATE TABLE ask_conversation_participants (
+CREATE TABLE IF NOT EXISTS ask_conversation_participants (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   conversation_id UUID NOT NULL REFERENCES ask_conversations(id) ON DELETE CASCADE,
   developer_id UUID NOT NULL REFERENCES developers(id) ON DELETE CASCADE,
@@ -26,8 +26,8 @@ CREATE TABLE ask_conversation_participants (
   joined_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT uq_ask_participant UNIQUE (conversation_id, developer_id)
 );
-CREATE INDEX ix_ask_part_conv ON ask_conversation_participants(conversation_id);
-CREATE INDEX ix_ask_part_dev ON ask_conversation_participants(developer_id);
+CREATE INDEX IF NOT EXISTS ix_ask_part_conv ON ask_conversation_participants(conversation_id);
+CREATE INDEX IF NOT EXISTS ix_ask_part_dev ON ask_conversation_participants(developer_id);
 
 -- Backfill: existing owners become 'owner' participants
 INSERT INTO ask_conversation_participants (id, conversation_id, developer_id, permission)
@@ -35,7 +35,7 @@ SELECT gen_random_uuid(), id, developer_id, 'owner' FROM ask_conversations
 ON CONFLICT DO NOTHING;
 
 -- 5. Share link table
-CREATE TABLE ask_share_links (
+CREATE TABLE IF NOT EXISTS ask_share_links (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   conversation_id UUID NOT NULL REFERENCES ask_conversations(id) ON DELETE CASCADE,
   token VARCHAR(64) NOT NULL UNIQUE,
