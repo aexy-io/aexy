@@ -2,8 +2,8 @@
 -- Adds sender attribution, message queuing, participants, and share links
 
 -- 1. Sender attribution on ask_messages
-ALTER TABLE ask_messages ADD COLUMN sender_id UUID REFERENCES developers(id) ON DELETE SET NULL;
-CREATE INDEX ix_ask_messages_sender ON ask_messages(sender_id);
+ALTER TABLE ask_messages ADD COLUMN IF NOT EXISTS sender_id UUID REFERENCES developers(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS ix_ask_messages_sender ON ask_messages(sender_id);
 
 -- Backfill existing user messages
 UPDATE ask_messages am SET sender_id = ac.developer_id
@@ -11,10 +11,10 @@ FROM ask_conversations ac
 WHERE am.conversation_id = ac.id AND am.role = 'user' AND am.sender_id IS NULL;
 
 -- 2. Message status for queuing
-ALTER TABLE ask_messages ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'sent';
+ALTER TABLE ask_messages ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'sent';
 
 -- 3. Collaborative flag on conversations
-ALTER TABLE ask_conversations ADD COLUMN is_collaborative BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE ask_conversations ADD COLUMN IF NOT EXISTS is_collaborative BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- 4. Participant join table
 CREATE TABLE ask_conversation_participants (
@@ -50,4 +50,4 @@ CREATE TABLE ask_share_links (
 );
 
 -- 6. Agent messages sender attribution
-ALTER TABLE crm_agent_messages ADD COLUMN sender_id UUID REFERENCES developers(id) ON DELETE SET NULL;
+ALTER TABLE crm_agent_messages ADD COLUMN IF NOT EXISTS sender_id UUID REFERENCES developers(id) ON DELETE SET NULL;
