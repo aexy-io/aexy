@@ -108,10 +108,10 @@ export function usePlanningPoker(sprintId: string) {
 
   const connectWebSocket = useCallback(
     (sessionId: string, userId: string, userName: string) => {
-      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const host = process.env.NEXT_PUBLIC_WS_URL || `${protocol}//localhost:8000`;
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+      const wsBase = apiUrl.replace(/^http/, "ws");
       const authToken = typeof window !== "undefined" ? localStorage.getItem("token") || "" : "";
-      const wsUrl = `${host}/api/v1/sprints/${sprintId}/planning-poker/${sessionId}/ws?token=${encodeURIComponent(authToken)}`;
+      const wsUrl = `${wsBase}/sprints/${sprintId}/planning-poker/${sessionId}/ws?token=${encodeURIComponent(authToken)}`;
 
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;

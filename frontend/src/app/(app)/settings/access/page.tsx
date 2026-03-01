@@ -20,6 +20,7 @@ import {
   XCircle,
   Send,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -95,8 +96,10 @@ export default function AccessControlPage() {
       });
       setSelectedMembers([]);
       setSelectedTemplateId("");
+      toast.success("Template applied to selected members");
     } catch (error) {
       console.error("Bulk apply failed:", error);
+      toast.error("Failed to apply template");
     }
   };
 
@@ -108,8 +111,10 @@ export default function AccessControlPage() {
       });
       setReviewingRequest(null);
       setReviewNotes("");
+      toast.success("Request approved");
     } catch (error) {
       console.error("Approve failed:", error);
+      toast.error("Failed to approve request");
     }
   };
 
@@ -121,8 +126,10 @@ export default function AccessControlPage() {
       });
       setReviewingRequest(null);
       setReviewNotes("");
+      toast.success("Request rejected");
     } catch (error) {
       console.error("Reject failed:", error);
+      toast.error("Failed to reject request");
     }
   };
 

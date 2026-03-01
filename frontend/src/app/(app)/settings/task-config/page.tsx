@@ -21,6 +21,7 @@ import {
   ListChecks,
   AlertCircle,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import { useTaskStatuses, useCustomFields } from "@/hooks/useTaskConfig";
 import { useAuth } from "@/hooks/useAuth";
@@ -731,8 +732,10 @@ export default function TaskConfigPage() {
     if (confirm("Are you sure you want to delete this status? Tasks with this status will be moved to the default status.")) {
       try {
         await deleteStatus(statusId);
+        toast.success("Status deleted");
       } catch (error) {
         console.error("Failed to delete status:", error);
+        toast.error("Failed to delete status");
       }
     }
   };
@@ -741,8 +744,10 @@ export default function TaskConfigPage() {
     if (confirm("Are you sure you want to delete this field? Field data will be removed from all tasks.")) {
       try {
         await deleteField(fieldId);
+        toast.success("Field deleted");
       } catch (error) {
         console.error("Failed to delete field:", error);
+        toast.error("Failed to delete field");
       }
     }
   };
