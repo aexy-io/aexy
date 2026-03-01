@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { DocumentTreeItem } from "@/lib/api";
 import { useDocuments } from "@/hooks/useDocuments";
 
@@ -68,6 +69,7 @@ export function DocumentSidebar({
         }
       } catch (error) {
         console.error("Failed to create document:", error);
+        toast.error("Failed to create document");
       }
     },
     [createDocument, onSelectDocument]
@@ -79,8 +81,10 @@ export function DocumentSidebar({
       if (!confirm("Are you sure you want to delete this document?")) return;
       try {
         await deleteDocument.mutateAsync(documentId);
+        toast.success("Document deleted");
       } catch (error) {
         console.error("Failed to delete document:", error);
+        toast.error("Failed to delete document");
       }
     },
     [deleteDocument]
@@ -97,6 +101,7 @@ export function DocumentSidebar({
         onSelectDocument(result.id);
       } catch (error) {
         console.error("Failed to duplicate document:", error);
+        toast.error("Failed to duplicate document");
       }
     },
     [duplicateDocument, onSelectDocument]

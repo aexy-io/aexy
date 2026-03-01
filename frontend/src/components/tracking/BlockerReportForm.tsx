@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AlertTriangle, Send, CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
 import { BlockerCreate } from "@/lib/api";
 
 interface BlockerReportFormProps {
@@ -61,6 +62,7 @@ export function BlockerReportForm({
       setTimeout(() => setShowSuccess(false), 3000);
     } catch (error) {
       console.error("Failed to report blocker:", error);
+      toast.error("Failed to report blocker");
     }
   };
 

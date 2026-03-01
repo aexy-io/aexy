@@ -16,6 +16,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 interface WorkflowVersion {
   id: string;
@@ -162,9 +163,11 @@ export function VersionHistory({
         onRestore(selectedVersion);
       }
       onClose();
+      toast.success("Version restored successfully");
     } catch (err) {
       console.error("Failed to restore version:", err);
       setError("Failed to restore version");
+      toast.error("Failed to restore version");
     } finally {
       setIsRestoring(false);
     }

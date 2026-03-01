@@ -22,6 +22,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { toast } from "sonner";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAppAccessTemplates } from "@/hooks/useAppAccess";
 import { getAllApps, SYSTEM_BUNDLES, AppAccessConfig } from "@/config/appDefinitions";
@@ -82,8 +83,10 @@ export default function AccessTemplatesPage() {
       });
       setShowCreateModal(false);
       resetForm();
+      toast.success("Template created");
     } catch (error) {
       console.error("Failed to create template:", error);
+      toast.error("Failed to create template");
     }
   };
 
@@ -102,8 +105,10 @@ export default function AccessTemplatesPage() {
       });
       setEditingTemplate(null);
       resetForm();
+      toast.success("Template updated");
     } catch (error) {
       console.error("Failed to update template:", error);
+      toast.error("Failed to update template");
     }
   };
 
@@ -112,8 +117,10 @@ export default function AccessTemplatesPage() {
     try {
       await deleteTemplate(deletingTemplate);
       setDeletingTemplate(null);
+      toast.success("Template deleted");
     } catch (error) {
       console.error("Failed to delete template:", error);
+      toast.error("Failed to delete template");
     }
   };
 

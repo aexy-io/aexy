@@ -19,6 +19,7 @@ import {
   User,
   Zap,
 } from "lucide-react";
+import { toast } from "sonner";
 import {
   repositoriesApi,
   authApi,
@@ -299,6 +300,7 @@ export default function RepositorySettingsPage() {
       );
     } catch (error) {
       console.error("Failed to toggle org:", error);
+      toast.error("Failed to update organization");
     }
   };
 
@@ -317,6 +319,7 @@ export default function RepositorySettingsPage() {
       );
     } catch (error) {
       console.error("Failed to toggle repo:", error);
+      toast.error("Failed to update repository");
     }
   };
 
@@ -330,6 +333,7 @@ export default function RepositorySettingsPage() {
       );
     } catch (error) {
       console.error("Failed to start sync:", error);
+      toast.error("Failed to start sync");
     }
   };
 
@@ -350,6 +354,7 @@ export default function RepositorySettingsPage() {
     } catch (error) {
       console.error("Failed to update auto-sync:", error);
       setAutoSyncEnabled(!enabled);
+      toast.error("Failed to update auto-sync");
     }
   };
 
@@ -361,6 +366,7 @@ export default function RepositorySettingsPage() {
     } catch (error) {
       console.error("Failed to update sync frequency:", error);
       setAutoSyncFrequency(prev);
+      toast.error("Failed to update sync frequency");
     }
   };
 

@@ -21,6 +21,7 @@ import {
   ChevronRight,
   Zap,
 } from "lucide-react";
+import { toast } from "sonner";
 import { workflowTemplatesApi, WorkflowTemplateListItem, WorkflowTemplateCategory } from "@/lib/api";
 
 interface TemplateSelectorProps {
@@ -107,8 +108,10 @@ export function TemplateSelector({
     try {
       await onSelectTemplate(templateId);
       onClose();
+      toast.success("Template applied successfully");
     } catch (error) {
       console.error("Failed to apply template:", error);
+      toast.error("Failed to apply template");
     } finally {
       setIsApplying(false);
       setSelectedTemplateId(null);
