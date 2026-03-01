@@ -39,7 +39,7 @@ export function TeamOverviewWidget() {
           <h3 className="text-sm font-semibold text-foreground truncate">Team Overview</h3>
         </div>
         <Link
-          href="/teams"
+          href="/settings/organization"
           className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-0.5 transition whitespace-nowrap shrink-0"
         >
           View All <ChevronRight className="w-4 h-4" />
@@ -84,7 +84,7 @@ export function TeamOverviewWidget() {
                 {teams.slice(0, 4).map((team) => (
                   <Link
                     key={team.id}
-                    href={`/teams/${team.id}`}
+                    href={`/tracking/team/${team.id}`}
                     className="flex items-center justify-between p-2 bg-muted/30 rounded-lg hover:bg-muted/50 transition"
                   >
                     <div className="flex items-center gap-2">
@@ -101,7 +101,7 @@ export function TeamOverviewWidget() {
               <div className="text-center py-4">
                 <p className="text-muted-foreground text-sm">No teams yet.</p>
                 <Link
-                  href="/teams"
+                  href="/settings/organization"
                   className="inline-flex items-center gap-1 mt-2 text-blue-400 hover:text-blue-300 text-sm transition"
                 >
                   <UserPlus className="h-3 w-3" />

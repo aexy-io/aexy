@@ -82,7 +82,7 @@ export function TeamActivityWidget() {
           </div>
         </div>
         <Link
-          href="/teams"
+          href="/tracking/team"
           className="text-green-400 hover:text-green-300 text-xs flex items-center gap-0.5 transition whitespace-nowrap shrink-0"
         >
           View Teams <ChevronRight className="w-4 h-4" />
