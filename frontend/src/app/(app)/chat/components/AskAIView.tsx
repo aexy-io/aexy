@@ -67,11 +67,14 @@ export function AskAIView({
   };
 
   const renderConversation = (conv: AskConversation, showDelete: boolean) => (
-    <button
+    <div
       key={conv.id}
+      role="button"
+      tabIndex={0}
       onClick={() => onSelectConversation(conv)}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onSelectConversation(conv); }}
       className={cn(
-        "w-full px-3 py-2 text-left hover:bg-accent/50 transition-colors group flex items-center gap-2",
+        "w-full px-3 py-2 text-left hover:bg-accent/50 transition-colors group flex items-center gap-2 cursor-pointer",
         activeConversationId === conv.id && "bg-accent"
       )}
     >
@@ -102,7 +105,7 @@ export function AskAIView({
           <Trash2 className="h-3 w-3" />
         </button>
       )}
-    </button>
+    </div>
   );
 
   const renderGroup = (label: string, convs: AskConversation[], showDelete: boolean) => (

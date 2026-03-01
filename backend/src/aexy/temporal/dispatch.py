@@ -87,6 +87,7 @@ ACTIVITY_CONFIG: dict[str, dict[str, Any]] = {
     # Medium activities
     "send_campaign": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=30)},
     "execute_agent": {"retry": LLM_RETRY, "timeout": timedelta(minutes=10)},
+    "process_agent_chat_mention": {"retry": LLM_RETRY, "timeout": timedelta(minutes=10)},
     "execute_workflow_action": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)},
 
     # Reminders (on-demand)

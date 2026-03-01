@@ -22,8 +22,10 @@ from aexy.models.developer import Developer
 
 logger = logging.getLogger(__name__)
 
-# Regex to extract @mention UUIDs from markdown content
-MENTION_RE = re.compile(r"@\[([^\]]+)\]\(mention:user:([0-9a-f-]+)\)")
+# Regex to extract @mention syntax: user, agent, or all
+MENTION_RE = re.compile(
+    r"@\[([^\]]+)\]\(mention:(user|agent|all):?([0-9a-f-]*)\)"
+)
 
 
 def _slugify(name: str) -> str:
@@ -33,9 +35,22 @@ def _slugify(name: str) -> str:
     return slug or "channel"
 
 
-def _extract_mentions(content: str) -> list[str]:
-    """Extract developer IDs from @mention syntax in message content."""
-    return [match.group(2) for match in MENTION_RE.finditer(content)]
+def _extract_mentions(content: str) -> list[dict]:
+    """Extract structured mentions from @mention syntax in message content.
+
+    Returns list of dicts like:
+      {"type": "user", "id": "uuid", "name": "Alice"}
+      {"type": "agent", "id": "uuid", "name": "Bot"}
+      {"type": "all", "name": "all"}
+    """
+    mentions: list[dict] = []
+    for match in MENTION_RE.finditer(content):
+        name, mention_type, mention_id = match.group(1), match.group(2), match.group(3)
+        entry: dict = {"type": mention_type, "name": name}
+        if mention_id:
+            entry["id"] = mention_id
+        mentions.append(entry)
+    return mentions
 
 
 class ChatService:
@@ -391,8 +406,29 @@ class ChatService:
         rows = rows[:limit]
         rows.reverse()  # Return in ascending order
 
-        return [
-            {
+        out = []
+        for m, d in rows:
+            # Check if message was sent by an agent (agent_sender marker in mentions)
+            agent_sender = None
+            for mention in (m.mentions or []):
+                if mention.get("type") == "agent_sender":
+                    agent_sender = mention
+                    break
+            sender = (
+                {
+                    "id": agent_sender["id"],
+                    "name": agent_sender["name"],
+                    "avatar_url": None,
+                    "is_agent": True,
+                }
+                if agent_sender
+                else {
+                    "id": d.id,
+                    "name": d.name,
+                    "avatar_url": getattr(d, "avatar_url", None),
+                }
+            )
+            out.append({
                 "id": m.id,
                 "topic_id": m.topic_id,
                 "channel_id": m.channel_id,
@@ -404,14 +440,9 @@ class ChatService:
                 "is_deleted": m.is_deleted,
                 "mentions": m.mentions or [],
                 "created_at": m.created_at,
-                "sender": {
-                    "id": d.id,
-                    "name": d.name,
-                    "avatar_url": getattr(d, "avatar_url", None),
-                },
-            }
-            for m, d in rows
-        ], has_more
+                "sender": sender,
+            })
+        return out, has_more
 
     async def create_message(
         self, topic_id: str, channel_id: str, sender_id: str, content: str,
@@ -470,6 +501,69 @@ class ChatService:
                 "name": sender.name,
                 "avatar_url": getattr(sender, "avatar_url", None),
             } if sender else None,
+        }
+
+    async def create_agent_message(
+        self, topic_id: str, channel_id: str, sender_id: str, content: str,
+        agent_name: str, agent_id: str,
+    ) -> dict:
+        """Create a message sent by an AI agent.
+
+        Uses sender_id for the DB foreign key (must be a valid developer, e.g.
+        the user who triggered the agent) but stores agent identity in the
+        mentions JSONB so it persists across page refreshes.
+        """
+        now = datetime.now(timezone.utc)
+        mentions = _extract_mentions(content)
+        # Store agent sender identity as a special entry in mentions
+        mentions.append({
+            "type": "agent_sender",
+            "id": agent_id,
+            "name": agent_name,
+        })
+        message_id = str(uuid4())
+
+        message = ChatMessage(
+            id=message_id,
+            topic_id=topic_id,
+            channel_id=channel_id,
+            sender_id=sender_id,
+            content=content,
+            mentions=mentions,
+        )
+        self.db.add(message)
+
+        await self.db.execute(
+            sql_update(ChatTopic)
+            .where(ChatTopic.id == topic_id)
+            .values(
+                message_count=func.coalesce(ChatTopic.message_count, 0) + 1,
+                last_message_at=now,
+                last_message_id=message_id,
+            )
+        )
+
+        await self.db.flush()
+        await self.db.refresh(message)
+
+        return {
+            "id": message.id,
+            "topic_id": message.topic_id,
+            "channel_id": message.channel_id,
+            "sender_id": message.sender_id,
+            "content": message.content,
+            "reply_to_id": message.reply_to_id,
+            "is_edited": message.is_edited,
+            "edited_at": message.edited_at,
+            "is_deleted": message.is_deleted,
+            "mentions": message.mentions or [],
+            "created_at": message.created_at,
+            "sender": {
+                "id": agent_id,
+                "name": agent_name,
+                "avatar_url": None,
+                "is_agent": True,
+            },
         }
 
     async def update_message(self, message_id: str, sender_id: str, content: str) -> dict | None:
@@ -791,6 +885,99 @@ class ChatService:
             first_message="Welcome to the team chat! This is the General channel where everyone can connect.",
         )
         return channel, topic, message
+
+    async def get_channel_member_ids(self, channel_id: str) -> list[str]:
+        """Return all developer IDs in a channel."""
+        result = await self.db.execute(
+            select(ChatChannelMember.developer_id).where(
+                ChatChannelMember.channel_id == channel_id
+            )
+        )
+        return [row[0] for row in result.all()]
+
+    async def process_mentions(
+        self,
+        mentions: list[dict],
+        sender_id: str,
+        sender_name: str,
+        channel_id: str,
+        channel_slug: str,
+        topic_id: str,
+        workspace_id: str,
+        message_content: str,
+    ) -> None:
+        """Process mention notifications after a message is created.
+
+        - user mentions → CHAT_MENTION notification per user
+        - @all → CHAT_MENTION notification for all channel members (except sender)
+        - agent mentions → fire-and-forget agent invocation via Temporal
+        """
+        from aexy.services.notification_service import notify_mention
+
+        if not mentions:
+            return
+
+        snippet = message_content[:100]
+        action_url = f"/chat/{channel_slug}/{topic_id}"
+        notified_ids: set[str] = set()
+
+        for m in mentions:
+            mtype = m.get("type")
+            mid = m.get("id")
+
+            if mtype == "user" and mid and mid != sender_id:
+                if mid not in notified_ids:
+                    notified_ids.add(mid)
+                    try:
+                        await notify_mention(
+                            db=self.db,
+                            mentioned_user_id=mid,
+                            mentioner_name=sender_name,
+                            entity_type="chat_message",
+                            entity_id=topic_id,
+                            action_url=action_url,
+                            snippet=snippet,
+                        )
+                    except Exception:
+                        logger.exception("Failed to send mention notification to %s", mid)
+
+            elif mtype == "all":
+                member_ids = await self.get_channel_member_ids(channel_id)
+                for uid in member_ids:
+                    if uid != sender_id and uid not in notified_ids:
+                        notified_ids.add(uid)
+                        try:
+                            await notify_mention(
+                                db=self.db,
+                                mentioned_user_id=uid,
+                                mentioner_name=sender_name,
+                                entity_type="chat_message",
+                                entity_id=topic_id,
+                                action_url=action_url,
+                                snippet=snippet,
+                            )
+                        except Exception:
+                            logger.exception("Failed to send @all notification to %s", uid)
+
+            elif mtype == "agent" and mid:
+                try:
+                    from aexy.temporal.dispatch import dispatch
+                    from aexy.temporal.task_queues import TaskQueue
+                    await dispatch(
+                        "process_agent_chat_mention",
+                        {
+                            "workspace_id": workspace_id,
+                            "agent_id": mid,
+                            "sender_id": sender_id,
+                            "sender_name": sender_name,
+                            "channel_id": channel_id,
+                            "topic_id": topic_id,
+                            "message_content": message_content,
+                        },
+                        task_queue=TaskQueue.ANALYSIS,
+                    )
+                except Exception:
+                    logger.exception("Failed to dispatch agent mention for %s", mid)
 
     async def get_online_users(self, workspace_id: str) -> list[dict]:
         q = (

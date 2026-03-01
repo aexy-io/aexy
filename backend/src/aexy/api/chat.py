@@ -83,6 +83,63 @@ async def _resolve_developer(developer_id: str) -> Developer | None:
         return result.scalar_one_or_none()
 
 
+# ── Mentionables ─────────────────────────────────────────────────────
+
+@router.get("/mentionables")
+async def list_mentionables(
+    workspace_id: str,
+    q: str = Query("", max_length=100),
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return users, agents, and special entries for @mention autocomplete."""
+    await _check_workspace(db, workspace_id, str(current_user.id))
+    query = q.lower().strip()
+
+    # Users: workspace members
+    ws_service = WorkspaceService(db)
+    members = await ws_service.get_members(workspace_id)
+    users = []
+    for m in members:
+        dev = m.developer
+        if not dev:
+            continue
+        name = dev.name or ""
+        if query and query not in name.lower():
+            continue
+        users.append({
+            "id": str(dev.id),
+            "name": name,
+            "avatar_url": getattr(dev, "avatar_url", None),
+        })
+
+    # Agents: active agents in workspace
+    from aexy.services.agent_service import AgentService
+    agent_service = AgentService(db)
+    try:
+        all_agents = await agent_service.list_agents(workspace_id, is_active=True)
+    except Exception:
+        all_agents = []
+    agents = []
+    for a in all_agents:
+        name = a.name or ""
+        handle = a.mention_handle or name.lower().replace(" ", "-")
+        if query and query not in name.lower() and query not in handle.lower():
+            continue
+        agents.append({
+            "id": str(a.id),
+            "name": name,
+            "mention_handle": handle,
+        })
+
+    # Special: @all
+    special = []
+    if not query or "all".startswith(query):
+        special.append({"id": "all", "name": "all", "description": "Notify everyone in channel"})
+
+    return {"users": users, "agents": agents, "special": special}
+
+
 # ── Setup / onboarding ───────────────────────────────────────────────
 
 @router.post("/setup", status_code=201)
@@ -308,6 +365,26 @@ async def create_topic(
         "content": message.content, "created_at": str(message.created_at),
         "sender": {"id": str(current_user.id), "name": current_user.name},
     })
+
+    # Process @mentions in the first message
+    mentions = message.mentions or []
+    if mentions:
+        channel = await service.get_channel(channel_id)
+        try:
+            await service.process_mentions(
+                mentions=mentions,
+                sender_id=str(current_user.id),
+                sender_name=current_user.name or "Someone",
+                channel_id=channel_id,
+                channel_slug=channel.slug if channel else channel_id,
+                topic_id=topic.id,
+                workspace_id=workspace_id,
+                message_content=data.first_message,
+            )
+            await db.commit()
+        except Exception:
+            logger.exception("Failed to process mentions for topic %s", topic.id)
+
     return TopicResponse(
         id=topic.id, channel_id=topic.channel_id, name=topic.name,
         message_count=topic.message_count, last_message_at=topic.last_message_at,
@@ -376,6 +453,24 @@ async def send_message(
     await db.commit()
     pubsub = get_chat_pubsub()
     await pubsub.publish(workspace_id, "new_message", msg)
+
+    # Process @mentions (notifications + agent invocations)
+    mentions = msg.get("mentions") or []
+    if mentions:
+        try:
+            await service.process_mentions(
+                mentions=mentions,
+                sender_id=str(current_user.id),
+                sender_name=current_user.name or "Someone",
+                channel_id=topic.channel_id,
+                channel_slug=channel.slug,
+                topic_id=topic_id,
+                workspace_id=workspace_id,
+                message_content=data.content,
+            )
+            await db.commit()
+        except Exception:
+            logger.exception("Failed to process mentions for message %s", msg.get("id"))
 
     return MessageResponse(**msg)
 
