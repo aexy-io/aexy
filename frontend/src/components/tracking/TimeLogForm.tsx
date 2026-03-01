@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Clock, Save, CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
 import { TimeEntryCreate } from "@/lib/api";
 
 interface TimeLogFormProps {
@@ -48,6 +49,7 @@ export function TimeLogForm({
       setTimeout(() => setShowSuccess(false), 3000);
     } catch (error) {
       console.error("Failed to log time:", error);
+      toast.error("Failed to log time");
     }
   };
 

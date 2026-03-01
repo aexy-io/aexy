@@ -124,10 +124,10 @@ export function useChatWebSocket(workspaceId: string | undefined) {
   const connect = useCallback(() => {
     if (!workspaceId) return;
 
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const host = process.env.NEXT_PUBLIC_WS_URL || `${protocol}//localhost:8000`;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+    const wsBase = apiUrl.replace(/^http/, "ws");
     const authToken = localStorage.getItem("token") || "";
-    const wsUrl = `${host}/api/v1/workspaces/${workspaceId}/chat/ws?token=${encodeURIComponent(authToken)}`;
+    const wsUrl = `${wsBase}/workspaces/${workspaceId}/chat/ws?token=${encodeURIComponent(authToken)}`;
 
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;

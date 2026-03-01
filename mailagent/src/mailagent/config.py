@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     api_prefix: str = "/api/v1"
 
     # Integration with Aexy backend
-    aexy_backend_url: str = "http://localhost:8000"
+    backend_url: str = "http://localhost:8000"
 
 
 @lru_cache

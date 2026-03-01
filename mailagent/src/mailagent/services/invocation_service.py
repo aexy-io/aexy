@@ -523,7 +523,7 @@ Guidelines:
         # Get Aexy backend URL from config
         from mailagent.config import get_settings
         settings = get_settings()
-        aexy_url = getattr(settings, 'aexy_backend_url', 'http://localhost:8000')
+        aexy_url = settings.backend_url
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             headers = {
