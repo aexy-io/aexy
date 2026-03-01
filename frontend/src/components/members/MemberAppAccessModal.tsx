@@ -19,6 +19,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import {
   useMemberAppAccess,
   useAppAccessTemplates,
@@ -176,8 +177,10 @@ export function MemberAppAccessModal({
         setAccessConfig(config);
         setSelectedTemplateId(templateId);
         setHasChanges(false);
+        toast.success("Template applied successfully");
       } catch (error) {
         console.error("Failed to apply template:", error);
+        toast.error("Failed to apply template");
       }
     },
     [applyTemplateToMember, developerId, getMemberAccess]
@@ -199,8 +202,10 @@ export function MemberAppAccessModal({
       setAccessConfig(config);
       setSelectedTemplateId(null);
       setHasChanges(false);
+      toast.success("Access reset to defaults");
     } catch (error) {
       console.error("Failed to reset:", error);
+      toast.error("Failed to reset access");
     }
   }, [resetMemberToDefaults, developerId, getMemberAccess]);
 
@@ -214,8 +219,10 @@ export function MemberAppAccessModal({
       setHasChanges(false);
       onSuccess?.();
       onOpenChange(false);
+      toast.success("App access updated successfully");
     } catch (error) {
       console.error("Failed to save:", error);
+      toast.error("Failed to update app access");
     }
   }, [
     updateMemberAccess,

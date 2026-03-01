@@ -39,6 +39,7 @@ import { TestResultsPanel } from "./TestResultsPanel";
 import { VersionHistory } from "./VersionHistory";
 import { useWorkflowValidation } from "@/hooks/useWorkflowValidation";
 import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 interface NodeResult {
   node_id: string;
@@ -251,6 +252,7 @@ function WorkflowCanvasInner({
       }
     } catch (error) {
       console.error("Test execution failed:", error);
+      toast.error("Test execution failed");
     } finally {
       setIsTestRunning(false);
     }
@@ -430,6 +432,7 @@ function WorkflowCanvasInner({
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Failed to export workflow:", error);
+      toast.error("Failed to export workflow");
       throw error;
     }
   }, [workspaceId, automationId]);
@@ -464,6 +467,7 @@ function WorkflowCanvasInner({
       }
     } catch (error) {
       console.error("Failed to import workflow:", error);
+      toast.error("Failed to import workflow");
       throw error;
     }
   }, [workspaceId, automationId, setViewport]);

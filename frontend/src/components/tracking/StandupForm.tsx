@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Send, MessageSquare, AlertTriangle, CheckCircle2, Edit3, Zap } from "lucide-react";
+import { toast } from "sonner";
 import { StandupCreate, Standup } from "@/lib/api";
 
 interface StandupFormProps {
@@ -68,6 +69,7 @@ export function StandupForm({
       setTimeout(() => setShowSuccess(false), 3000);
     } catch (error) {
       console.error("Failed to submit standup:", error);
+      toast.error("Failed to submit standup");
     }
   };
 
