@@ -89,7 +89,7 @@ const SHARED_ITEMS: Record<string, ChecklistItemDef> = {
     label: "Submit first standup",
     description: "Share what you're working on today",
     icon: MessageSquare,
-    href: "/standups",
+    href: "/tracking/standups",
   },
   "set-learning-goal": {
     id: "set-learning-goal",
@@ -110,7 +110,7 @@ const SHARED_ITEMS: Record<string, ChecklistItemDef> = {
     label: "Set up standups",
     description: "Configure daily standup check-ins",
     icon: MessageSquare,
-    href: "/standups/settings",
+    href: "/tracking/standups",
   },
   "setup-backlog": {
     id: "setup-backlog",
