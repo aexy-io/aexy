@@ -74,6 +74,9 @@ export function useGTMProviders(workspaceId: string | null) {
   const testCredentialsMutation = useMutation({
     mutationFn: ({ slot, providerName, credentials }: { slot: string; providerName: string; credentials: Record<string, string> }) =>
       gtmApi.providers.testCredentials(workspaceId!, slot, providerName, credentials),
+    onSuccess: () => {
+      toast.success("Credentials verified");
+    },
     onError: () => {
       toast.error("Failed to test credentials");
     },
