@@ -111,7 +111,7 @@ class GitHubService:
 
     async def refresh_access_token(self, refresh_token: str) -> GitHubAuthResponse:
         """Refresh an expired GitHub access token using a refresh token."""
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(
                 f"{self.settings.github_oauth_url}/access_token",
                 data={
