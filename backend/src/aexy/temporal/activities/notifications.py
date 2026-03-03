@@ -143,6 +143,10 @@ async def send_notification_slack(input: SendNotificationSlackInput) -> dict[str
         ]
 
         if action_url:
+            from aexy.core.config import settings
+            if action_url.startswith("/"):
+                action_url = f"{settings.frontend_url}{action_url}"
+                
             blocks.append(SlackBlock(
                 type="actions",
                 elements=[
