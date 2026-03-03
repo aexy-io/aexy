@@ -183,7 +183,11 @@ async def batch_report_usage(input: BatchReportUsageInput) -> dict[str, Any]:
     """Report LLM usage to Stripe for all workspaces."""
     logger.info("Batch reporting usage to Stripe")
 
-    from aexy.services.usage_reporting_service import UsageReportingService
+    try:
+        from aexy.services.usage_reporting_service import UsageReportingService
+    except ImportError:
+        logger.info("UsageReportingService not implemented yet, skipping")
+        return {"status": "skipped", "reason": "not_implemented"}
 
     async with async_session_maker() as db:
         service = UsageReportingService(db)
