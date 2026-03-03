@@ -595,6 +595,9 @@ export function usePreviewTemplate(workspaceId: string | null) {
   return useMutation({
     mutationFn: ({ templateId, data }: { templateId: string; data: Record<string, string> }) =>
       emailMarketingApi.templates.preview(workspaceId!, templateId, data),
+    onError: () => {
+      toast.error("Failed to preview template");
+    },
   });
 }
 
@@ -714,5 +717,11 @@ export function useImportSubscribers(workspaceId: string | null) {
 export function useExportSubscribers(workspaceId: string | null) {
   return useMutation({
     mutationFn: (params?: { status?: SubscriberStatus }) => emailMarketingApi.subscribers.export(workspaceId!, params),
+    onSuccess: () => {
+      toast.success("Subscribers exported");
+    },
+    onError: () => {
+      toast.error("Failed to export subscribers");
+    },
   });
 }
