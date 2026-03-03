@@ -241,7 +241,9 @@ class SyncService:
             logger.error(f"Repository not accessible: {repo.full_name} (@{github_username}): {e}")
             dev_repo.sync_status = "failed"
             dev_repo.sync_error = sync_error
+            dev_repo.is_enabled = False
             dev_repo.updated_at = datetime.now(timezone.utc)
+            logger.warning(f"Disabled auto-sync for inaccessible repo {repo.full_name}")
             await self.db.flush()
             raise
         except Exception as e:
