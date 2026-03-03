@@ -5,6 +5,7 @@ import logging
 import secrets
 from typing import Annotated
 
+import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
@@ -31,8 +32,33 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/slack", tags=["slack"])
 
-# In-memory state store for OAuth (use Redis in production)
-oauth_states: dict[str, dict] = {}
+OAUTH_STATE_PREFIX = "slack:oauth_state:"
+OAUTH_STATE_TTL = 600  # 10 minutes
+
+
+async def _get_redis() -> aioredis.Redis:
+    return aioredis.from_url(settings.redis_url)
+
+
+async def _store_oauth_state(state: str, data: dict) -> None:
+    r = await _get_redis()
+    try:
+        await r.set(f"{OAUTH_STATE_PREFIX}{state}", json.dumps(data), ex=OAUTH_STATE_TTL)
+    finally:
+        await r.aclose()
+
+
+async def _pop_oauth_state(state: str) -> dict | None:
+    r = await _get_redis()
+    try:
+        key = f"{OAUTH_STATE_PREFIX}{state}"
+        raw = await r.get(key)
+        if raw:
+            await r.delete(key)
+            return json.loads(raw)
+        return None
+    finally:
+        await r.aclose()
 
 
 def get_slack_service() -> SlackIntegrationService:
@@ -56,11 +82,11 @@ async def start_oauth_install(
         )
 
     state = secrets.token_urlsafe(32)
-    oauth_states[state] = {
+    await _store_oauth_state(state, {
         "organization_id": organization_id,
         "installer_id": installer_id,
         "redirect_url": redirect_url or f"{settings.frontend_url}/settings/integrations",
-    }
+    })
 
     install_url = service.get_install_url(state)
     return RedirectResponse(url=install_url)
@@ -85,12 +111,12 @@ async def start_developer_oauth(
         )
 
     state = secrets.token_urlsafe(32)
-    oauth_states[state] = {
+    await _store_oauth_state(state, {
         "organization_id": None,  # Will be set later when workspace is created
         "installer_id": None,  # Will be set from callback token
         "redirect_url": redirect_url or f"{settings.frontend_url}/onboarding/connect?slack=connected",
         "is_onboarding": True,
-    }
+    })
 
     install_url = service.get_install_url(state)
     return RedirectResponse(url=install_url)
@@ -104,7 +130,7 @@ async def oauth_callback(
     service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
 ):
     """Handle Slack OAuth callback."""
-    state_data = oauth_states.pop(state, None)
+    state_data = await _pop_oauth_state(state)
     if not state_data:
         raise HTTPException(status_code=400, detail="Invalid or expired OAuth state")
 
