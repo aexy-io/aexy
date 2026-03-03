@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { chatApi, ChatChannel, ChatTopic, ChatMessage, ChatFileUpload } from "@/lib/api";
 import { useChatStore } from "@/stores/chatStore";
 import { useAskStore } from "@/stores/askStore";
@@ -81,12 +82,18 @@ export function useSendMessage(workspaceId: string, topicId: string) {
 export function useUploadFile(workspaceId: string) {
   return useMutation({
     mutationFn: (file: File) => chatApi.uploadFile(workspaceId, file),
+    onError: () => {
+      toast.error("Failed to upload file");
+    },
   });
 }
 
 export function useCreateMeetLink(workspaceId: string) {
   return useMutation({
     mutationFn: () => chatApi.createMeetLink(workspaceId),
+    onError: () => {
+      toast.error("Failed to create meeting link");
+    },
   });
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { useState, useMemo, useCallback } from "react";
 import {
   sprintApi,
@@ -132,6 +133,9 @@ export function useProjectBoard(
       queryClient.invalidateQueries({ queryKey: ["sprintTasks"] });
       queryClient.invalidateQueries({ queryKey: ["sprintStats"] });
     },
+    onError: () => {
+      toast.error("Failed to move task");
+    },
   });
 
   // Update task status (works for both sprint tasks and project-level tasks)
@@ -149,6 +153,9 @@ export function useProjectBoard(
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projectTasks", workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ["sprintTasks"] });
+    },
+    onError: () => {
+      toast.error("Failed to update task status");
     },
   });
 
@@ -181,6 +188,9 @@ export function useProjectBoard(
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projectTasks", workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ["sprintTasks"] });
+    },
+    onError: () => {
+      toast.error("Failed to update task");
     },
   });
 
@@ -231,6 +241,9 @@ export function useProjectBoard(
       queryClient.invalidateQueries({ queryKey: ["sprintTasks"] });
       queryClient.invalidateQueries({ queryKey: ["sprintStats"] });
     },
+    onError: () => {
+      toast.error("Failed to create task");
+    },
   });
 
   // Archive task (works for both sprint and project-level tasks)
@@ -250,6 +263,9 @@ export function useProjectBoard(
       queryClient.invalidateQueries({ queryKey: ["sprintTasks"] });
       queryClient.invalidateQueries({ queryKey: ["sprintStats"] });
     },
+    onError: () => {
+      toast.error("Failed to delete task");
+    },
   });
 
   // Unarchive task (restore from soft delete)
@@ -267,6 +283,9 @@ export function useProjectBoard(
       queryClient.invalidateQueries({ queryKey: ["projectTasks", workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ["sprintTasks"] });
       queryClient.invalidateQueries({ queryKey: ["sprintStats"] });
+    },
+    onError: () => {
+      toast.error("Failed to restore task");
     },
   });
 

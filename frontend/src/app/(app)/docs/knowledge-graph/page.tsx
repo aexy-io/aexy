@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Network, Sparkles, RefreshCw, Lock, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
@@ -101,6 +102,9 @@ export default function KnowledgeGraphPage() {
   const searchEntities = useMutation({
     mutationFn: (query: string) =>
       knowledgeGraphApi.searchEntities(currentWorkspace!.id, query),
+    onError: () => {
+      toast.error("Search failed");
+    },
   });
 
   const handleNodeSelect = (nodeId: string, nodeType: string) => {

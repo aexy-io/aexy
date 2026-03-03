@@ -967,7 +967,7 @@ function IntegrationsPageContent() {
                       </p>
                       <a
                         href={getSlackInstallUrl(user.id) || "#"}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#4A154B] hover:bg-[#611f64] text-foreground rounded-lg transition font-medium"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#4A154B] hover:bg-[#611f64] text-[#E01E5A] rounded-lg transition font-medium"
                       >
                         <Slack className="h-5 w-5" />
                         Add to Slack

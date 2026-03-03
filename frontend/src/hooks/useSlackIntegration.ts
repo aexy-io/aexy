@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { slackApi, slackSyncApi, SlackIntegration, SlackChannel, SlackConfiguredChannel } from "@/lib/api";
 
 export function useSlackIntegration(organizationId: string | undefined) {
@@ -110,14 +111,32 @@ export function useSlackSync(integrationId: string | undefined) {
       team_id?: string;
       sprint_id?: string;
     }) => slackSyncApi.importHistory(integrationId!, options),
+    onSuccess: (data) => {
+      toast.success(data?.message || "Slack history import started");
+    },
+    onError: () => {
+      toast.error("Failed to import Slack history");
+    },
   });
 
   const syncMutation = useMutation({
     mutationFn: () => slackSyncApi.syncChannels(integrationId!),
+    onSuccess: () => {
+      toast.success("Slack channels synced");
+    },
+    onError: () => {
+      toast.error("Failed to sync Slack channels");
+    },
   });
 
   const autoMapMutation = useMutation({
     mutationFn: () => slackSyncApi.autoMapUsers(integrationId!),
+    onSuccess: (data) => {
+      toast.success(`Mapped ${data?.newly_mapped || 0} new users`);
+    },
+    onError: () => {
+      toast.error("Failed to map Slack users");
+    },
   });
 
   return {
