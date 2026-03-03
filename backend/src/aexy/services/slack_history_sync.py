@@ -206,6 +206,8 @@ class SlackHistorySyncService:
             await asyncio.sleep(retry_after)
             return False
         data = response.json()
+        if not data.get("ok"):
+            logger.warning(f"Could not join channel {channel_id}: {data.get('error', 'unknown')}")
         return data.get("ok", False)
 
     async def import_channel_history(
