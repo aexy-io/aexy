@@ -51,14 +51,17 @@ class SlackIntegrationService:
     def get_install_url(self, state: str) -> str:
         """Generate Slack OAuth installation URL."""
         scopes = [
+            "channels:history",
+            "channels:join",
+            "channels:read",
             "chat:write",
             "chat:write.public",
             "commands",
-            "users:read",
-            "channels:read",
             "groups:read",
             "im:read",
             "mpim:read",
+            "users:read",
+            "users:read.email",
         ]
 
         params = {
