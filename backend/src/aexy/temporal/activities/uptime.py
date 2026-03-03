@@ -222,6 +222,7 @@ async def send_uptime_notification(input: SendUptimeNotificationInput) -> dict[s
 
             # Send in-app notification to workspace members
             try:
+                from sqlalchemy import select
                 from aexy.models.notification import NotificationEventType
                 from aexy.services.notification_service import NotificationService
                 from aexy.models.workspace import WorkspaceMember

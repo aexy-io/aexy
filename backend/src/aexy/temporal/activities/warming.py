@@ -44,6 +44,9 @@ async def process_warming_day(input: ProcessWarmingDayInput) -> dict[str, Any]:
 
     async with async_session_maker() as db:
         service = WarmingService(db)
+        if not hasattr(service, "process_warming_day"):
+            logger.info("WarmingService.process_warming_day not implemented yet, skipping")
+            return {"status": "skipped", "reason": "not_implemented"}
         result = await service.process_warming_day()
         await db.commit()
         return result
@@ -58,6 +61,9 @@ async def check_warming_thresholds(input: CheckWarmingThresholdsInput) -> dict[s
 
     async with async_session_maker() as db:
         service = WarmingService(db)
+        if not hasattr(service, "check_warming_thresholds"):
+            logger.info("WarmingService.check_warming_thresholds not implemented yet, skipping")
+            return {"status": "skipped", "reason": "not_implemented"}
         result = await service.check_warming_thresholds()
         await db.commit()
         return result
@@ -72,6 +78,9 @@ async def reset_daily_volumes(input: ResetDailyVolumesInput) -> dict[str, Any]:
 
     async with async_session_maker() as db:
         service = WarmingService(db)
+        if not hasattr(service, "reset_daily_volumes"):
+            logger.info("WarmingService.reset_daily_volumes not implemented yet, skipping")
+            return {"status": "skipped", "reason": "not_implemented"}
         result = await service.reset_daily_volumes()
         await db.commit()
         return result
