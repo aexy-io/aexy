@@ -1,5 +1,6 @@
 """Slack history import and continuous sync service."""
 
+import asyncio
 import logging
 from datetime import datetime, timedelta
 from typing import Any
@@ -135,6 +136,7 @@ class SlackHistorySyncService:
         messages = []
         cursor = None
         fetched = 0
+        join_attempted = False
 
         async with httpx.AsyncClient() as client:
             while True:
@@ -158,11 +160,20 @@ class SlackHistorySyncService:
 
                 if not data.get("ok"):
                     error = data.get("error")
-                    if error == "not_in_channel":
-                        # Try to join the channel
-                        await self._join_channel(integration, channel_id, client)
+                    if error == "not_in_channel" and not join_attempted:
+                        # Try to join the channel once
+                        join_attempted = True
+                        joined = await self._join_channel(integration, channel_id, client)
+                        if joined:
+                            continue
+                        logger.error(f"Failed to join channel {channel_id}")
+                        break
+                    if error == "ratelimited":
+                        retry_after = int(response.headers.get("Retry-After", 5))
+                        logger.warning(f"Rate limited on channel {channel_id}, waiting {retry_after}s")
+                        await asyncio.sleep(retry_after)
                         continue
-                    logger.error(f"Failed to fetch history: {error}")
+                    logger.error(f"Failed to fetch history for {channel_id}: {error}")
                     break
 
                 batch = data.get("messages", [])
@@ -190,6 +201,10 @@ class SlackHistorySyncService:
             headers={"Authorization": f"Bearer {integration.bot_token}"},
             json={"channel": channel_id},
         )
+        if response.status_code == 429:
+            retry_after = int(response.headers.get("Retry-After", 5))
+            await asyncio.sleep(retry_after)
+            return False
         data = response.json()
         return data.get("ok", False)
 
