@@ -84,11 +84,11 @@ async def send_notification_email(input: SendNotificationEmailInput) -> dict[str
 
 @activity.defn
 async def send_notification_slack(input: SendNotificationSlackInput) -> dict[str, Any]:
-    """Send a Slack DM for a notification."""
-    logger.info(f"Sending notification Slack DM: notification={input.notification_id}")
+    """Send a Slack notification via channel routing or DM fallback."""
+    logger.info(f"Sending notification Slack: notification={input.notification_id}")
 
     from sqlalchemy import select
-    from aexy.models.notification import Notification
+    from aexy.models.notification import Notification, NotificationCategoryPreference, EVENT_TYPE_TO_CATEGORY
     from aexy.services.slack_integration import SlackIntegrationService
     from aexy.schemas.integrations import SlackBlock, SlackMessage, SlackNotificationType
 
@@ -116,17 +116,45 @@ async def send_notification_slack(input: SendNotificationSlackInput) -> dict[str
             logger.info(f"No Slack integration for workspace {input.workspace_id}")
             return {"success": False, "error": "No Slack integration"}
 
-        # Resolve developer_id -> slack_user_id
-        user_mappings = integration.user_mappings or {}
-        slack_user_id = None
-        for slack_id, dev_id in user_mappings.items():
-            if dev_id == input.recipient_id:
-                slack_user_id = slack_id
-                break
+        # Determine target channel via routing priority:
+        # 1. Per-category slack_channel_id
+        # 2. Integration default_channel_id
+        # 3. DM to mapped Slack user
+        target_channel_id = None
+        route_type = "dm"
 
-        if not slack_user_id:
-            logger.info(f"No Slack user mapping for developer {input.recipient_id}")
-            return {"success": False, "error": "No Slack user mapping"}
+        # Check per-category preference
+        category = EVENT_TYPE_TO_CATEGORY.get(notification.event_type)
+        if category:
+            cat_result = await db.execute(
+                select(NotificationCategoryPreference).where(
+                    NotificationCategoryPreference.developer_id == input.recipient_id,
+                    NotificationCategoryPreference.category == category,
+                )
+            )
+            cat_pref = cat_result.scalar_one_or_none()
+            if cat_pref and cat_pref.slack_channel_id:
+                target_channel_id = cat_pref.slack_channel_id
+                route_type = "category_channel"
+                logger.info(f"Routing to category channel {target_channel_id} for {category}")
+
+        # Fallback to integration default channel
+        if not target_channel_id and getattr(integration, "default_channel_id", None):
+            target_channel_id = integration.default_channel_id
+            route_type = "default_channel"
+            logger.info(f"Routing to default channel {target_channel_id}")
+
+        # Fallback to DM
+        if not target_channel_id:
+            user_mappings = integration.user_mappings or {}
+            for slack_id, dev_id in user_mappings.items():
+                if dev_id == input.recipient_id:
+                    target_channel_id = slack_id
+                    break
+
+            if not target_channel_id:
+                logger.info(f"No Slack user mapping for developer {input.recipient_id}")
+                return {"success": False, "error": "No Slack user mapping"}
 
         # Build message blocks
         context = notification.context or {}
@@ -166,7 +194,7 @@ async def send_notification_slack(input: SendNotificationSlackInput) -> dict[str
 
         response = await slack_service.send_message(
             integration=integration,
-            channel_id=slack_user_id,
+            channel_id=target_channel_id,
             message=slack_message,
             notification_type=SlackNotificationType.AUTOMATION,
             db=db,
@@ -180,7 +208,8 @@ async def send_notification_slack(input: SendNotificationSlackInput) -> dict[str
 
         return {
             "success": response.success,
-            "sent_to": slack_user_id,
+            "sent_to": target_channel_id,
+            "route_type": route_type,
             "error": response.error,
         }
 

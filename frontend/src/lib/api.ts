@@ -6611,6 +6611,8 @@ export interface SlackIntegration {
   installed_at: string;
   installed_by_id: string;
   user_mappings: Record<string, string>;
+  default_channel_id: string | null;
+  notification_settings: Record<string, string>;
 }
 
 export const slackApi = {
@@ -6642,7 +6644,8 @@ export const slackApi = {
   // Update integration
   updateIntegration: async (integrationId: string, data: {
     is_active?: boolean;
-    notification_preferences?: Record<string, boolean>;
+    notification_settings?: Record<string, string>;
+    default_channel_id?: string | null;
   }): Promise<SlackIntegration> => {
     const response = await api.put(`/slack/integration/${integrationId}`, data);
     return response.data;
