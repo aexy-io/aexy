@@ -1,0 +1,70 @@
+{
+  "_metadata": {
+    "major_version": 2,
+    "minor_version": 1
+  },
+  "display_information": {
+    "name": "Aexy",
+    "description": "Engineering OS — developer analytics, sprint tracking, and team insights",
+    "background_color": "#1a1a2e",
+    "long_description": "Aexy connects to your Slack workspace to monitor standups, track blockers, parse task references, and deliver real-time notifications for engineering teams. Use /aexy commands to check developer profiles, submit standups, log time, and get team insights — all from Slack."
+  },
+  "features": {
+    "app_home": {
+      "home_tab_enabled": false,
+      "messages_tab_enabled": true,
+      "messages_tab_read_only_enabled": false
+    },
+    "bot_user": {
+      "display_name": "Aexy",
+      "always_online": true
+    },
+    "slash_commands": [
+      {
+        "command": "/aexy",
+        "url": "https://api.aexy.io/api/v1/slack/commands",
+        "description": "Aexy Engineering OS commands",
+        "usage_hint": "[profile|team|standup|update|blocker|timelog|log|status|mytasks|match|insights|report|help]",
+        "should_escape": false
+      }
+    ]
+  },
+  "oauth_config": {
+    "redirect_urls": [
+      "https://api.aexy.io/api/v1/slack/callback"
+    ],
+    "scopes": {
+      "bot": [
+        "channels:history",
+        "channels:join",
+        "channels:read",
+        "chat:write",
+        "chat:write.public",
+        "commands",
+        "groups:read",
+        "im:read",
+        "mpim:read",
+        "users:read",
+        "users:read.email"
+      ]
+    }
+  },
+  "settings": {
+    "event_subscriptions": {
+      "request_url": "https://api.aexy.io/api/v1/slack/events",
+      "bot_events": [
+        "app_mention",
+        "message.channels",
+        "message.groups",
+        "message.im"
+      ]
+    },
+    "interactivity": {
+      "is_enabled": true,
+      "request_url": "https://api.aexy.io/api/v1/slack/interactions"
+    },
+    "org_deploy_enabled": false,
+    "socket_mode_enabled": false,
+    "token_rotation_enabled": false
+  }
+}

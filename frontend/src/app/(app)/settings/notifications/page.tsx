@@ -17,6 +17,8 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useNotificationPreferences } from "@/hooks/useNotifications";
 import { useWebPush } from "@/hooks/useWebPush";
+import { useSlackIntegration, useSlackChannels } from "@/hooks/useSlackIntegration";
+import { useWorkspace } from "@/hooks/useWorkspace";
 import { toast } from "sonner";
 
 // Complete event type labels covering all 37+ event types
@@ -181,6 +183,9 @@ function CategorySection({
   updating,
   onToggleEvent,
   onToggleCategory,
+  onChangeSlackChannel,
+  slackChannels,
+  slackConnected,
 }: {
   category: string;
   eventTypes: string[];
@@ -189,6 +194,9 @@ function CategorySection({
   updating: string | null;
   onToggleEvent: (eventType: string, channel: ChannelKey) => void;
   onToggleCategory: (category: string, channel: ChannelKey) => void;
+  onChangeSlackChannel?: (category: string, channelId: string | null, channelName: string | null) => void;
+  slackChannels?: { id: string; name: string }[];
+  slackConnected?: boolean;
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
   const meta = CATEGORY_LABELS[category];
@@ -242,10 +250,27 @@ function CategorySection({
           </div>
 
           {/* Slack Channel Routing */}
-          {categoryPref?.slack_channel_name && (
+          {categoryPref?.slack_enabled && slackConnected && slackChannels && slackChannels.length > 0 && (
             <div className="flex items-center gap-2 px-5 py-2 bg-accent/20 text-xs text-muted-foreground">
               <Hash className="h-3 w-3" />
-              <span>Slack channel: <span className="font-medium text-foreground">{categoryPref.slack_channel_name}</span></span>
+              <span>Slack channel:</span>
+              <select
+                value={categoryPref.slack_channel_id || ""}
+                onChange={(e) => {
+                  const channelId = e.target.value || null;
+                  const channel = slackChannels.find((c) => c.id === channelId);
+                  onChangeSlackChannel?.(category, channelId, channel?.name || null);
+                }}
+                disabled={updating?.startsWith(`cat:${category}:`)}
+                className="px-2 py-0.5 bg-muted border border-border rounded text-xs text-foreground focus:outline-none focus:border-primary-500"
+              >
+                <option value="">DM (default)</option>
+                {slackChannels.map((channel) => (
+                  <option key={channel.id} value={channel.id}>
+                    #{channel.name}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
 
@@ -293,6 +318,9 @@ function CategorySection({
 export default function NotificationSettingsPage() {
   const { user } = useAuth();
   const developerId = user?.id;
+  const { currentWorkspaceId } = useWorkspace();
+  const { integration: slackIntegration, isConnected: slackConnected } = useSlackIntegration(currentWorkspaceId || undefined);
+  const { data: slackChannelsData } = useSlackChannels(slackIntegration?.id);
   const {
     preferences,
     categoryPreferences,
@@ -338,6 +366,18 @@ export default function NotificationSettingsPage() {
       toast.success("Category preference updated");
     } catch {
       toast.error("Failed to update category preference");
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  const handleSlackChannelChange = async (category: string, channelId: string | null, channelName: string | null) => {
+    setUpdating(`cat:${category}:slack_channel`);
+    try {
+      await updateCategoryPreference(category, { slack_channel_id: channelId, slack_channel_name: channelName });
+      toast.success(channelId ? `Slack routed to #${channelName}` : "Reset to DM");
+    } catch {
+      toast.error("Failed to update Slack channel");
     } finally {
       setUpdating(null);
     }
@@ -487,6 +527,9 @@ export default function NotificationSettingsPage() {
           updating={updating}
           onToggleEvent={handleToggleEvent}
           onToggleCategory={handleToggleCategory}
+          onChangeSlackChannel={handleSlackChannelChange}
+          slackChannels={slackChannelsData?.channels}
+          slackConnected={slackConnected}
         />
       ))}
 
