@@ -28,7 +28,7 @@ export function useSlackIntegration(organizationId: string | undefined) {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: { is_active?: boolean; notification_preferences?: Record<string, boolean> }) => {
+    mutationFn: (data: { is_active?: boolean; notification_settings?: Record<string, string>; default_channel_id?: string | null }) => {
       if (!integration?.id) throw new Error("No integration");
       return slackApi.updateIntegration(integration.id, data);
     },

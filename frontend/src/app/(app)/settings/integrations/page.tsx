@@ -34,6 +34,7 @@ import { useSlackIntegration, useSlackSync, useSlackChannels, useSlackConfigured
 import { useTaskStatuses } from "@/hooks/useTaskConfig";
 import { useAuth } from "@/hooks/useAuth";
 import { StatusMapping, slackApi, authApi } from "@/lib/api";
+import { toast } from "sonner";
 
 type TabType = "github" | "jira" | "linear" | "slack";
 
@@ -596,7 +597,9 @@ function IntegrationsPageContent() {
     isConnected: slackConnected,
     getInstallUrl: getSlackInstallUrl,
     disconnect: disconnectSlack,
+    update: updateSlack,
     isDisconnecting: isDisconnectingSlack,
+    isUpdating: isUpdatingSlack,
   } = useSlackIntegration(currentWorkspaceId || undefined);
 
   const {
@@ -622,6 +625,14 @@ function IntegrationsPageContent() {
   const [showSlackChannelModal, setShowSlackChannelModal] = useState(false);
   const [selectedSlackChannel, setSelectedSlackChannel] = useState("");
   const [slackImportDays, setSlackImportDays] = useState(30);
+  const [defaultChannelId, setDefaultChannelId] = useState<string | null>(null);
+
+  // Initialize default channel from integration data
+  useEffect(() => {
+    if (slackIntegration?.default_channel_id !== undefined) {
+      setDefaultChannelId(slackIntegration.default_channel_id);
+    }
+  }, [slackIntegration?.default_channel_id]);
 
   // Auto-switch to Slack tab when redirected from OAuth
   useEffect(() => {
@@ -1047,6 +1058,42 @@ function IntegrationsPageContent() {
                     </p>
                   )}
                 </div>
+
+                {/* Default Notification Channel */}
+                {slackConnected && slackIntegration && isAdmin && (
+                  <div className="bg-card rounded-xl p-6">
+                    <h3 className="text-foreground font-medium mb-1">Default Notification Channel</h3>
+                    <p className="text-muted-foreground text-sm mb-4">
+                      Choose where Slack notifications are sent by default. Per-category overrides can be set in notification settings.
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <select
+                        value={defaultChannelId || ""}
+                        onChange={async (e) => {
+                          const value = e.target.value || null;
+                          setDefaultChannelId(value);
+                          try {
+                            await updateSlack({ default_channel_id: value });
+                            toast.success(value ? "Default channel updated" : "Reset to direct messages");
+                          } catch {
+                            setDefaultChannelId(slackIntegration.default_channel_id);
+                            toast.error("Failed to update default channel");
+                          }
+                        }}
+                        disabled={isUpdatingSlack || isLoadingSlackChannels}
+                        className="flex-1 max-w-sm px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-primary-500"
+                      >
+                        <option value="">Direct message (default)</option>
+                        {slackChannelsData?.channels?.map((channel) => (
+                          <option key={channel.id} value={channel.id}>
+                            #{channel.name}
+                          </option>
+                        ))}
+                      </select>
+                      {isUpdatingSlack && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                    </div>
+                  </div>
+                )}
 
                 {/* Channel Configuration */}
                 {slackConnected && slackIntegration && isAdmin && (
