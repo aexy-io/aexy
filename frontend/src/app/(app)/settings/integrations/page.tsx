@@ -1,8 +1,8 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
   AlertCircle,
   ArrowRight,
@@ -621,7 +621,19 @@ function IntegrationsPageContent() {
   } = useSlackConfiguredChannels(slackIntegration?.id);
 
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState<TabType>("jira");
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const VALID_TABS: TabType[] = ["github", "jira", "linear", "slack"];
+  const tabParam = searchParams.get("tab") as TabType | null;
+  const activeTab = tabParam && VALID_TABS.includes(tabParam) ? tabParam : "github";
+
+  const setActiveTab = useCallback((tab: TabType) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", tab);
+    router.replace(`${pathname}?${params.toString()}`);
+  }, [searchParams, router, pathname]);
+
   const [showSlackChannelModal, setShowSlackChannelModal] = useState(false);
   const [selectedSlackChannel, setSelectedSlackChannel] = useState("");
   const [slackImportDays, setSlackImportDays] = useState(30);
@@ -639,7 +651,7 @@ function IntegrationsPageContent() {
     if (searchParams.get("slack_installed") === "true") {
       setActiveTab("slack");
     }
-  }, [searchParams]);
+  }, [searchParams, setActiveTab]);
 
   const currentMember = workspaceMembers.find((m) => m.developer_id === user?.id);
   const isAdmin = currentMember?.role === "owner" || currentMember?.role === "admin";
@@ -1064,7 +1076,8 @@ function IntegrationsPageContent() {
                   <div className="bg-card rounded-xl p-6">
                     <h3 className="text-foreground font-medium mb-1">Default Notification Channel</h3>
                     <p className="text-muted-foreground text-sm mb-4">
-                      Choose where Slack notifications are sent by default. Per-category overrides can be set in notification settings.
+                      Choose where Slack notifications are sent by default. Per-category overrides can be set in{" "}
+                      <Link href="/settings/notifications" className="text-primary hover:underline">notification settings</Link>.
                     </p>
                     <div className="flex items-center gap-3">
                       <select
