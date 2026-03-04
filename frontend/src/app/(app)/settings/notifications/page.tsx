@@ -250,12 +250,12 @@ function CategorySection({
           </div>
 
           {/* Slack Channel Routing */}
-          {categoryPref?.slack_enabled && slackConnected && slackChannels && slackChannels.length > 0 && (
+          {slackConnected && slackChannels && slackChannels.length > 0 && (
             <div className="flex items-center gap-2 px-5 py-2 bg-accent/20 text-xs text-muted-foreground">
               <Hash className="h-3 w-3" />
               <span>Slack channel:</span>
               <select
-                value={categoryPref.slack_channel_id || ""}
+                value={categoryPref?.slack_channel_id || ""}
                 onChange={(e) => {
                   const channelId = e.target.value || null;
                   const channel = slackChannels.find((c) => c.id === channelId);
