@@ -20,10 +20,11 @@ function isSafeUrl(url: string): boolean {
   }
 }
 
-// Parse markdown-style images ![alt](url) and links [text](url) from content
+// Parse markdown-style images ![alt](url), links [text](url), and @mentions from content
 function renderContent(content: string) {
   const parts: React.ReactNode[] = [];
-  const regex = /(!?\[([^\]]*)\]\(([^)]+)\))/g;
+  // Match images, mentions, and links — mentions: @[Name](mention:user:uuid) or @[Name](mention:agent:uuid)
+  const regex = /(@\[([^\]]+)\]\(mention:(user|agent):([0-9a-f-]+)\)|!?\[([^\]]*)\]\(([^)]+)\))/g;
   let lastIndex = 0;
   let match;
 
@@ -33,7 +34,32 @@ function renderContent(content: string) {
       parts.push(content.slice(lastIndex, match.index));
     }
 
-    const [fullMatch, , alt, url] = match;
+    const fullMatch = match[0];
+
+    // Check if this is a mention
+    if (fullMatch.startsWith("@[")) {
+      const name = match[2];
+      const mentionType = match[3]; // "user" or "agent"
+      if (mentionType === "agent") {
+        parts.push(
+          <span key={match.index} className="bg-purple-500/10 text-purple-500 font-medium rounded px-0.5">
+            @{name}
+          </span>
+        );
+      } else {
+        parts.push(
+          <span key={match.index} className="bg-primary/10 text-primary font-medium rounded px-0.5">
+            @{name}
+          </span>
+        );
+      }
+      lastIndex = match.index + fullMatch.length;
+      continue;
+    }
+
+    // Image or link
+    const alt = match[5];
+    const url = match[6];
     const isImage = fullMatch.startsWith("!");
 
     // Skip rendering unsafe URLs (javascript:, data:, etc.)
