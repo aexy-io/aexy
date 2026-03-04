@@ -1,8 +1,12 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { Send, Smile, Paperclip, X, Image, FileText, AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useMention, MentionItem } from "@/hooks/useMention";
+import { useWorkspaceMembers } from "@/hooks/useWorkspace";
+import { useAgents } from "@/hooks/useAgents";
+import { MentionDropdown } from "./MentionDropdown";
 
 // Common emoji categories
 const EMOJI_GROUPS = [
@@ -29,6 +33,7 @@ interface MessageComposerProps {
   sendError?: string | null;
   meetButton?: React.ReactNode;
   compact?: boolean;
+  workspaceId?: string;
 }
 
 export function MessageComposer({
@@ -43,6 +48,7 @@ export function MessageComposer({
   sendError,
   meetButton,
   compact,
+  workspaceId,
 }: MessageComposerProps) {
   const [content, setContent] = useState("");
   const [showEmoji, setShowEmoji] = useState(false);
@@ -54,6 +60,43 @@ export function MessageComposer({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const emojiRef = useRef<HTMLDivElement>(null);
+
+  // Mention support
+  const mention = useMention();
+  const { members: membersData } = useWorkspaceMembers(workspaceId ?? null);
+  const { agents: agentsData } = useAgents(workspaceId ?? null, { isActive: true });
+
+  const mentionItems = useMemo(() => {
+    const query = mention.mentionQuery.toLowerCase();
+    const people: MentionItem[] = (membersData ?? [])
+      .filter((m) => m.status === "active" && m.developer_name)
+      .filter((m) => !query || m.developer_name!.toLowerCase().includes(query))
+      .slice(0, 6)
+      .map((m) => ({
+        id: m.developer_id,
+        name: m.developer_name!,
+        type: "user" as const,
+        avatarUrl: m.developer_avatar_url,
+      }));
+
+    const agentItems: MentionItem[] = (agentsData ?? [])
+      .filter((a) => {
+        if (!query) return true;
+        return (
+          a.name.toLowerCase().includes(query) ||
+          (a.mention_handle && a.mention_handle.toLowerCase().includes(query))
+        );
+      })
+      .slice(0, 4)
+      .map((a) => ({
+        id: a.id,
+        name: a.name,
+        type: "agent" as const,
+        handle: a.mention_handle,
+      }));
+
+    return [...people, ...agentItems];
+  }, [membersData, agentsData, mention.mentionQuery]);
 
   // Close emoji picker on click outside
   useEffect(() => {
@@ -147,6 +190,17 @@ export function MessageComposer({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Let mention handle keys first (arrows, enter, tab, escape)
+    if (mention.mentionActive) {
+      const consumed = mention.handleKeyDown(e, mentionItems.length);
+      if (consumed) {
+        // If Enter/Tab was pressed, select the current mention item
+        if ((e.key === "Enter" || e.key === "Tab") && mentionItems[mention.mentionIndex]) {
+          mention.selectMention(mentionItems[mention.mentionIndex], textareaRef, content, setContent);
+        }
+        return;
+      }
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -309,7 +363,16 @@ export function MessageComposer({
             className="hidden"
           />
 
-          {/* Textarea */}
+          {/* Textarea + Mention dropdown */}
+          <div className="relative flex-1">
+            {mention.mentionActive && mentionItems.length > 0 && (
+              <MentionDropdown
+                items={mentionItems}
+                activeIndex={mention.mentionIndex}
+                onSelect={(item) => mention.selectMention(item, textareaRef, content, setContent)}
+                onDismiss={mention.dismiss}
+              />
+            )}
           <textarea
             ref={textareaRef}
             value={content}
@@ -317,6 +380,9 @@ export function MessageComposer({
               const val = e.target.value;
               setContent(val);
               handleTyping();
+              // Track mention trigger
+              const cursorPos = e.target.selectionStart;
+              mention.handleChange(cursorPos, val);
               if (compact) {
                 const lines = val.split("\n").length;
                 // Expand for long wrapped text or multiple newlines; use hysteresis to prevent oscillation
@@ -331,7 +397,7 @@ export function MessageComposer({
             placeholder={placeholder}
             disabled={disabled}
             rows={1}
-            className="flex-1 resize-none bg-accent/50 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary/50 min-h-[38px] max-h-[120px]"
+            className="w-full resize-none bg-accent/50 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary/50 min-h-[38px] max-h-[120px]"
             style={{ height: "auto" }}
             onInput={(e) => {
               const target = e.target as HTMLTextAreaElement;
@@ -339,6 +405,7 @@ export function MessageComposer({
               target.style.height = Math.min(target.scrollHeight, 120) + "px";
             }}
           />
+          </div>
 
           {/* Send button */}
           <button

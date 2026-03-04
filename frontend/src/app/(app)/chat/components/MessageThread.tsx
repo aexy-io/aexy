@@ -166,6 +166,7 @@ export function MessageThread({
         isConnected={isConnected}
         isSending={sendMessage.isPending}
         sendError={sendError}
+        workspaceId={workspaceId}
         meetButton={
           <MeetLinkButton workspaceId={workspaceId} onMeetLink={handleMeetLink} />
         }

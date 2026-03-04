@@ -22,8 +22,8 @@ from aexy.models.developer import Developer
 
 logger = logging.getLogger(__name__)
 
-# Regex to extract @mention UUIDs from markdown content
-MENTION_RE = re.compile(r"@\[([^\]]+)\]\(mention:user:([0-9a-f-]+)\)")
+# Regex to extract @mention UUIDs from markdown content (user and agent)
+MENTION_RE = re.compile(r"@\[([^\]]+)\]\(mention:(user|agent):([0-9a-f-]+)\)")
 
 
 def _slugify(name: str) -> str:
@@ -34,8 +34,13 @@ def _slugify(name: str) -> str:
 
 
 def _extract_mentions(content: str) -> list[str]:
-    """Extract developer IDs from @mention syntax in message content."""
-    return [match.group(2) for match in MENTION_RE.finditer(content)]
+    """Extract developer IDs from @mention syntax in message content (user mentions only)."""
+    return [m.group(3) for m in MENTION_RE.finditer(content) if m.group(2) == "user"]
+
+
+def _extract_agent_mentions(content: str) -> list[str]:
+    """Extract agent IDs from @mention syntax in message content."""
+    return [m.group(3) for m in MENTION_RE.finditer(content) if m.group(2) == "agent"]
 
 
 class ChatService:
@@ -420,6 +425,7 @@ class ChatService:
         """Create a message and update topic counters."""
         now = datetime.now(timezone.utc)
         mentions = _extract_mentions(content)
+        agent_mentions = _extract_agent_mentions(content)
         message_id = str(uuid4())
 
         message = ChatMessage(
@@ -453,6 +459,30 @@ class ChatService:
         )
         sender = sender_result.scalar_one_or_none()
 
+        # Process agent mentions asynchronously (fire-and-forget)
+        if agent_mentions:
+            try:
+                from aexy.services.agent_mention_service import AgentMentionService
+                agent_service = AgentMentionService(self.db)
+                # Get channel to find workspace_id
+                channel = await self.get_channel(channel_id)
+                if channel:
+                    for agent_id in agent_mentions:
+                        try:
+                            await agent_service.process_comment_for_mentions(
+                                workspace_id=channel.workspace_id,
+                                entity_type="chat_message",
+                                entity_id=message_id,
+                                activity_id=message_id,
+                                comment_content=content,
+                                author_id=sender_id,
+                                author_name=sender.name if sender else None,
+                            )
+                        except Exception:
+                            logger.warning("Failed to process agent mention %s in chat", agent_id)
+            except Exception:
+                logger.warning("Failed to process agent mentions in chat message %s", message_id)
+
         return {
             "id": message.id,
             "topic_id": message.topic_id,
@@ -464,6 +494,7 @@ class ChatService:
             "edited_at": message.edited_at,
             "is_deleted": message.is_deleted,
             "mentions": message.mentions or [],
+            "agent_mentions": agent_mentions,
             "created_at": message.created_at,
             "sender": {
                 "id": sender.id,
