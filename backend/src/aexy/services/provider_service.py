@@ -1,6 +1,7 @@
 """Email provider service for multi-provider sending (SES, SendGrid, Mailgun, Postmark, SMTP)."""
 
 import logging
+import time
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from email.mime.multipart import MIMEMultipart
@@ -85,12 +86,17 @@ class EmailProviderClient(ABC):
 class SESClient(EmailProviderClient):
     """AWS SES email client."""
 
+    # In-memory cache for suppression list checks: email -> (is_suppressed, timestamp)
+    _suppression_cache: dict[str, tuple[bool, float]] = {}
+    _SUPPRESSION_CACHE_TTL = 3600  # 1 hour
+
     def __init__(self, credentials: dict):
         self.region = credentials.get("region", "us-east-1")
         self.access_key_id = credentials.get("access_key_id")
         self.secret_access_key = credentials.get("secret_access_key")
         self.configuration_set = credentials.get("configuration_set")
         self._client = None
+        self._sesv2_client = None
 
     @property
     def client(self):
@@ -103,6 +109,42 @@ class SESClient(EmailProviderClient):
                 aws_secret_access_key=self.secret_access_key,
             )
         return self._client
+
+    @property
+    def sesv2_client(self):
+        """Lazy-load SESv2 client for suppression list checks."""
+        if self._sesv2_client is None:
+            self._sesv2_client = boto3.client(
+                "sesv2",
+                region_name=self.region,
+                aws_access_key_id=self.access_key_id,
+                aws_secret_access_key=self.secret_access_key,
+            )
+        return self._sesv2_client
+
+    def is_suppressed(self, email: str) -> bool:
+        """Check if an email is on the SES account-level suppression list.
+
+        Uses an in-memory TTL cache to avoid excessive API calls.
+        """
+        now = time.monotonic()
+        cached = self._suppression_cache.get(email)
+        if cached and (now - cached[1]) < self._SUPPRESSION_CACHE_TTL:
+            return cached[0]
+
+        try:
+            self.sesv2_client.get_suppressed_destination(EmailAddress=email)
+            # If call succeeds, the address IS suppressed
+            self._suppression_cache[email] = (True, now)
+            return True
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code", "")
+            if error_code == "NotFoundException":
+                # Not on suppression list
+                self._suppression_cache[email] = (False, now)
+                return False
+            logger.warning(f"SES suppression check failed for {email}: {e}")
+            return False
 
     async def send_email(
         self,
@@ -881,6 +923,16 @@ class ProviderService:
 
         try:
             client = get_provider_client(provider)
+
+            # SES-specific: check account-level suppression list
+            if isinstance(client, SESClient) and client.is_suppressed(to_email):
+                logger.info(f"Skipping send to {to_email}: on SES suppression list")
+                return {
+                    "success": False,
+                    "error": "Recipient is on SES account suppression list",
+                    "provider": provider.provider_type,
+                    "suppressed": True,
+                }
 
             result = await client.send_email(
                 from_email=from_email,

@@ -567,7 +567,20 @@ class CampaignService:
         email: str,
         record_id: str | None = None,
     ) -> EmailSubscriber | None:
-        """Get or create an email subscriber."""
+        """Get or create an email subscriber.
+
+        Validates email before creating a new subscriber. Returns None
+        for invalid emails (disposable domains, no MX records, bad syntax).
+        """
+        from aexy.utils.email_validation import validate_email
+
+        validation = validate_email(email, check_mx=True)
+        if not validation.is_valid:
+            logger.warning(
+                f"Invalid subscriber email '{email}': {validation.errors}"
+            )
+            return None
+
         email_hash = hashlib.sha256(email.lower().encode()).hexdigest()
 
         result = await self.db.execute(

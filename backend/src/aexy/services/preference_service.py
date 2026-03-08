@@ -162,6 +162,8 @@ class PreferenceService:
         """
         Get existing subscriber or create new one.
 
+        Validates email before creating. Raises ValueError for invalid emails.
+
         Returns:
             Tuple of (subscriber, created)
         """
@@ -182,6 +184,15 @@ class PreferenceService:
                 subscriber.record_id = record_id
                 await self.db.commit()
             return subscriber, False
+
+        # Validate email before creating new subscriber
+        from aexy.utils.email_validation import validate_email
+
+        validation = validate_email(email, check_mx=True)
+        if not validation.is_valid:
+            raise ValueError(
+                f"Invalid email address: {'; '.join(validation.errors)}"
+            )
 
         # Create new subscriber
         subscriber = EmailSubscriber(

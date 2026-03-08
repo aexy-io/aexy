@@ -461,6 +461,49 @@ class DomainService:
         logger.info(f"Resumed sending domain: {domain.id}")
         return domain
 
+    async def check_domain_readiness(
+        self,
+        domain_id: str,
+        workspace_id: str,
+    ) -> tuple[bool, list[str]]:
+        """Check if a domain has DKIM, SPF, and DMARC properly configured.
+
+        Returns:
+            Tuple of (is_ready, list_of_issues)
+        """
+        domain = await self.get_domain(domain_id, workspace_id)
+        if not domain:
+            return False, ["Domain not found"]
+
+        issues: list[str] = []
+        dns_records = domain.dns_records or {}
+
+        # Check SPF
+        spf = dns_records.get("spf", {})
+        if not spf.get("verified"):
+            full_domain = f"{domain.subdomain}.{domain.domain}" if domain.subdomain else domain.domain
+            spf_ok = await self._check_spf_record(full_domain)
+            if not spf_ok:
+                issues.append("SPF record not configured or not verified")
+
+        # Check DKIM
+        dkim = dns_records.get("dkim", [])
+        if isinstance(dkim, list) and not dkim:
+            issues.append("DKIM records not configured (check provider setup)")
+        elif isinstance(dkim, list):
+            unverified = [d for d in dkim if not d.get("verified")]
+            if unverified:
+                issues.append(f"{len(unverified)} DKIM record(s) not verified")
+
+        # Check DMARC
+        dmarc = dns_records.get("dmarc", {})
+        if not dmarc.get("verified"):
+            dmarc_ok = await self._check_dmarc_record(domain.domain)
+            if not dmarc_ok:
+                issues.append("DMARC record not configured or not verified")
+
+        return len(issues) == 0, issues
+
     async def can_send(
         self,
         domain_id: str,
@@ -483,6 +526,15 @@ class DomainService:
             DomainStatus.ACTIVE.value,
         ]:
             return False, f"Domain status is {domain.status}"
+
+        # Check DNS readiness (SPF/DKIM/DMARC)
+        is_ready, issues = await self.check_domain_readiness(domain_id, workspace_id)
+        if not is_ready:
+            logger.warning(f"Domain {domain.domain} DNS issues: {issues}")
+            # Only block on SPF — DKIM/DMARC are warnings during warming
+            spf_issues = [i for i in issues if "SPF" in i]
+            if spf_issues and domain.status != DomainStatus.WARMING.value:
+                return False, f"DNS not ready: {'; '.join(spf_issues)}"
 
         # Check daily limit
         if domain.daily_sent >= domain.daily_limit:

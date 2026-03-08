@@ -185,6 +185,41 @@ class EmailCampaignService:
                 await self.db.commit()
                 return {"status": "skipped", "message": "Subscriber unsubscribed"}
 
+            # Engagement-based suppression: skip subscribers with no opens in 90+ days
+            if subscriber and campaign.campaign_type != "transactional":
+                engagement_window = timedelta(days=90)
+                cutoff = datetime.now(timezone.utc) - engagement_window
+
+                # Check if subscriber has opened any campaign email recently
+                has_recent_engagement = (await self.db.execute(
+                    select(func.count(CampaignRecipient.id))
+                    .where(CampaignRecipient.subscriber_id == subscriber.id)
+                    .where(CampaignRecipient.first_opened_at.isnot(None))
+                    .where(CampaignRecipient.first_opened_at >= cutoff)
+                )).scalar() or 0
+
+                # Only suppress if subscriber has received emails before but never engaged
+                total_sent = (await self.db.execute(
+                    select(func.count(CampaignRecipient.id))
+                    .where(CampaignRecipient.subscriber_id == subscriber.id)
+                    .where(CampaignRecipient.status.in_([
+                        RecipientStatus.SENT.value,
+                        RecipientStatus.DELIVERED.value,
+                        RecipientStatus.OPENED.value,
+                        RecipientStatus.CLICKED.value,
+                    ]))
+                )).scalar() or 0
+
+                if total_sent >= 5 and has_recent_engagement == 0:
+                    logger.info(
+                        f"Skipping unengaged subscriber {subscriber.id} "
+                        f"(no opens in 90 days, {total_sent} emails sent)"
+                    )
+                    recipient.status = RecipientStatus.FAILED.value
+                    recipient.error_message = "Suppressed: no engagement in 90 days"
+                    await self.db.commit()
+                    return {"status": "skipped", "message": "Subscriber unengaged (90-day suppression)"}
+
         # Build context for template rendering
         context = {
             **campaign.template_context,
