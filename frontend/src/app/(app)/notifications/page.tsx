@@ -11,6 +11,7 @@ import {
   Loader2,
   Settings,
   Inbox,
+  Activity,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -100,6 +101,13 @@ export default function NotificationsPage() {
               Mark all read
             </button>
           )}
+          <Link
+            href="/notifications/delivery"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground bg-card hover:bg-accent border border-border rounded-lg transition"
+          >
+            <Activity className="h-4 w-4" />
+            Delivery Status
+          </Link>
           <Link
             href="/settings/notifications"
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground bg-card hover:bg-accent border border-border rounded-lg transition"

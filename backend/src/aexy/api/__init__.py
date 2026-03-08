@@ -62,6 +62,7 @@ from aexy.api.dependencies import router as dependencies_router
 from aexy.api.reviews import router as reviews_router
 # Notifications
 from aexy.api.notifications import router as notifications_router
+from aexy.api.notification_delivery import router as notification_delivery_router
 # On-Call Scheduling
 from aexy.api.oncall import router as oncall_router
 from aexy.api.google_calendar import router as google_calendar_router
@@ -234,6 +235,7 @@ api_router.include_router(dependencies_router, tags=["dependencies"])
 api_router.include_router(reviews_router, tags=["reviews"])
 # Notifications
 api_router.include_router(notifications_router, tags=["notifications"])
+api_router.include_router(notification_delivery_router, tags=["notification-delivery"])
 # On-Call Scheduling
 api_router.include_router(oncall_router, tags=["oncall"])
 api_router.include_router(google_calendar_router, tags=["google-calendar"])

@@ -166,6 +166,9 @@ def process_ses_event(message: dict, event_type: str):
                 # Update campaign recipient if exists
                 _update_campaign_recipient(db, message_id, recipient, mapped_type, bounce_type)
 
+            # Correlate to notification delivery events
+            _correlate_notification_delivery(db, message_id, mapped_type, bounce_type)
+
             db.commit()
             logger.info(f"Processed SES {event_type} for message {message_id}")
 
@@ -456,6 +459,71 @@ def process_postmark_event(event: dict):
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
+
+def _correlate_notification_delivery(
+    db,
+    message_id: str,
+    event_type: str,
+    bounce_type: str | None = None,
+):
+    """Correlate a provider webhook event to the notification delivery ledger."""
+    if not message_id:
+        return
+
+    try:
+        from aexy.models.notification import EmailNotificationLog, Notification
+        from aexy.models.notification_delivery import (
+            NotificationDeliveryEvent,
+            DeliveryChannel,
+            DeliveryStatus,
+        )
+        from uuid import uuid4
+
+        # Map webhook event types to delivery statuses
+        status_map = {
+            "delivery": DeliveryStatus.DELIVERED.value,
+            "send": DeliveryStatus.SENT.value,
+            "open": DeliveryStatus.OPENED.value,
+            "click": DeliveryStatus.CLICKED.value,
+            "bounce": DeliveryStatus.BOUNCED.value,
+            "complaint": DeliveryStatus.FAILED.value,
+        }
+
+        delivery_status = status_map.get(event_type)
+        if not delivery_status:
+            return
+
+        # Find notification via EmailNotificationLog
+        log_result = db.execute(
+            select(EmailNotificationLog)
+            .where(EmailNotificationLog.ses_message_id == message_id)
+        )
+        email_log = log_result.scalar_one_or_none()
+        if not email_log or not email_log.notification_id:
+            return
+
+        notif_result = db.execute(
+            select(Notification).where(Notification.id == email_log.notification_id)
+        )
+        notification = notif_result.scalar_one_or_none()
+        if not notification:
+            return
+
+        event = NotificationDeliveryEvent(
+            id=str(uuid4()),
+            notification_id=notification.id,
+            developer_id=notification.recipient_id,
+            channel=DeliveryChannel.EMAIL.value,
+            status=delivery_status,
+            provider="ses",
+            provider_message_id=message_id,
+            event_metadata={"bounce_type": bounce_type} if bounce_type else {},
+            event_timestamp=datetime.now(timezone.utc),
+        )
+        db.add(event)
+    except Exception as e:
+        logger.debug(f"Failed to correlate notification delivery for {message_id}: {e}")
+
 
 def _find_workspace_from_message_id(db, message_id: str) -> tuple[str | None, str | None]:
     """Find workspace and domain from a message ID."""

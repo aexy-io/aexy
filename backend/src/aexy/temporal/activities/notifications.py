@@ -73,6 +73,31 @@ async def send_notification_email(input: SendNotificationEmailInput) -> dict[str
         log = await email_service.send_notification_email(
             db=db, notification=notification, recipient_email=developer.email
         )
+
+        # Record delivery event
+        from aexy.services.notification_delivery_service import NotificationDeliveryService
+        from aexy.models.notification_delivery import DeliveryChannel, DeliveryStatus
+
+        delivery_service = NotificationDeliveryService(db)
+        if log.status == "sent":
+            await delivery_service.record_event(
+                notification_id=input.notification_id,
+                developer_id=input.recipient_id,
+                channel=DeliveryChannel.EMAIL.value,
+                status=DeliveryStatus.SENT.value,
+                provider="ses",
+                provider_message_id=log.ses_message_id,
+            )
+        else:
+            await delivery_service.record_event(
+                notification_id=input.notification_id,
+                developer_id=input.recipient_id,
+                channel=DeliveryChannel.EMAIL.value,
+                status=DeliveryStatus.FAILED.value,
+                provider="ses",
+                event_metadata={"error": log.error_message},
+            )
+
         await db.commit()
 
         return {
@@ -204,7 +229,32 @@ async def send_notification_slack(input: SendNotificationSlackInput) -> dict[str
         if response.success and hasattr(notification, "slack_sent"):
             notification.slack_sent = True
             notification.slack_sent_at = datetime.now(timezone.utc)
-            await db.commit()
+
+        # Record delivery event
+        from aexy.services.notification_delivery_service import NotificationDeliveryService
+        from aexy.models.notification_delivery import DeliveryChannel, DeliveryStatus
+
+        delivery_service = NotificationDeliveryService(db)
+        if response.success:
+            await delivery_service.record_event(
+                notification_id=input.notification_id,
+                developer_id=input.recipient_id,
+                channel=DeliveryChannel.SLACK.value,
+                status=DeliveryStatus.SENT.value,
+                provider="slack",
+                event_metadata={"channel_id": target_channel_id, "route_type": route_type},
+            )
+        else:
+            await delivery_service.record_event(
+                notification_id=input.notification_id,
+                developer_id=input.recipient_id,
+                channel=DeliveryChannel.SLACK.value,
+                status=DeliveryStatus.FAILED.value,
+                provider="slack",
+                event_metadata={"error": response.error, "route_type": route_type},
+            )
+
+        await db.commit()
 
         return {
             "success": response.success,
@@ -245,6 +295,33 @@ async def send_notification_web_push(input: SendNotificationWebPushInput) -> dic
         )
 
         any_success = any(r.get("success") for r in results)
+
+        # Record delivery event
+        from aexy.services.notification_delivery_service import NotificationDeliveryService
+        from aexy.models.notification_delivery import DeliveryChannel, DeliveryStatus
+
+        delivery_service = NotificationDeliveryService(db)
+        if any_success:
+            await delivery_service.record_event(
+                notification_id=input.notification_id,
+                developer_id=input.recipient_id,
+                channel=DeliveryChannel.WEB_PUSH.value,
+                status=DeliveryStatus.SENT.value,
+                provider="web_push",
+                event_metadata={"subscriptions_sent": sum(1 for r in results if r.get("success"))},
+            )
+        else:
+            await delivery_service.record_event(
+                notification_id=input.notification_id,
+                developer_id=input.recipient_id,
+                channel=DeliveryChannel.WEB_PUSH.value,
+                status=DeliveryStatus.FAILED.value,
+                provider="web_push",
+                event_metadata={"results": results},
+            )
+
+        await db.commit()
+
         return {
             "success": any_success,
             "results": results,
