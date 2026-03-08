@@ -108,8 +108,35 @@ class NotificationService:
         await self.db.commit()
         await self.db.refresh(notification)
 
+        # Record delivery events for each channel
+        from aexy.services.notification_delivery_service import NotificationDeliveryService
+        from aexy.models.notification_delivery import DeliveryChannel, DeliveryStatus
+
+        delivery_service = NotificationDeliveryService(self.db)
+
+        # In-app is always immediately delivered
+        try:
+            await delivery_service.record_event(
+                notification_id=notification.id,
+                developer_id=recipient_id,
+                channel=DeliveryChannel.IN_APP.value,
+                status=DeliveryStatus.DELIVERED.value,
+            )
+        except Exception:
+            logger.debug(f"Failed to record in-app delivery event for {notification.id}")
+
         # Dispatch email via Temporal if enabled
         if send_email and pref and pref.email_enabled:
+            try:
+                await delivery_service.record_event(
+                    notification_id=notification.id,
+                    developer_id=recipient_id,
+                    channel=DeliveryChannel.EMAIL.value,
+                    status=DeliveryStatus.QUEUED.value,
+                )
+            except Exception:
+                logger.debug(f"Failed to record email queued event for {notification.id}")
+
             try:
                 from aexy.temporal.dispatch import dispatch
                 from aexy.temporal.task_queues import TaskQueue
@@ -129,6 +156,16 @@ class NotificationService:
 
         # Dispatch Slack via Temporal if enabled and workspace_id available
         if pref and pref.slack_enabled and context and context.get("workspace_id"):
+            try:
+                await delivery_service.record_event(
+                    notification_id=notification.id,
+                    developer_id=recipient_id,
+                    channel=DeliveryChannel.SLACK.value,
+                    status=DeliveryStatus.QUEUED.value,
+                )
+            except Exception:
+                logger.debug(f"Failed to record slack queued event for {notification.id}")
+
             try:
                 from aexy.temporal.dispatch import dispatch
                 from aexy.temporal.task_queues import TaskQueue
@@ -150,6 +187,16 @@ class NotificationService:
         # Dispatch Web Push via Temporal if enabled
         if pref and pref.web_push_enabled:
             try:
+                await delivery_service.record_event(
+                    notification_id=notification.id,
+                    developer_id=recipient_id,
+                    channel=DeliveryChannel.WEB_PUSH.value,
+                    status=DeliveryStatus.QUEUED.value,
+                )
+            except Exception:
+                logger.debug(f"Failed to record web_push queued event for {notification.id}")
+
+            try:
                 from aexy.temporal.dispatch import dispatch
                 from aexy.temporal.task_queues import TaskQueue
                 from aexy.temporal.activities.notifications import SendNotificationWebPushInput
@@ -166,6 +213,7 @@ class NotificationService:
             except Exception:
                 logger.exception(f"Failed to dispatch web push for notification {notification.id}")
 
+        await self.db.commit()
         logger.info(f"Created notification {notification.id} for {recipient_id}: {event_type_str}")
         return notification
 
@@ -340,6 +388,22 @@ class NotificationService:
         if not notification.is_read:
             notification.is_read = True
             notification.read_at = datetime.utcnow()
+
+            # Record in-app "opened" delivery event
+            try:
+                from aexy.services.notification_delivery_service import NotificationDeliveryService
+                from aexy.models.notification_delivery import DeliveryChannel, DeliveryStatus
+
+                delivery_service = NotificationDeliveryService(self.db)
+                await delivery_service.record_event(
+                    notification_id=notification.id,
+                    developer_id=developer_id,
+                    channel=DeliveryChannel.IN_APP.value,
+                    status=DeliveryStatus.OPENED.value,
+                )
+            except Exception:
+                logger.debug(f"Failed to record in-app opened event for {notification_id}")
+
             await self.db.commit()
             await self.db.refresh(notification)
 

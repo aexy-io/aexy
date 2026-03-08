@@ -106,6 +106,11 @@ from aexy.models.notification import (
     NOTIFICATION_CATEGORIES,
     EVENT_TYPE_TO_CATEGORY,
 )
+from aexy.models.notification_delivery import (
+    NotificationDeliveryEvent,
+    DeliveryChannel,
+    DeliveryStatus,
+)
 from aexy.models.agent_policy import (
     AgentPolicy,
     AgentPolicyDecision,
@@ -652,6 +657,10 @@ __all__ = [
     "NotificationCategoryPreference",
     "NOTIFICATION_CATEGORIES",
     "EVENT_TYPE_TO_CATEGORY",
+    # Notification Delivery
+    "NotificationDeliveryEvent",
+    "DeliveryChannel",
+    "DeliveryStatus",
     # Agent Policies
     "AgentPolicy",
     "AgentPolicyDecision",
