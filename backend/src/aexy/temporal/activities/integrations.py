@@ -392,7 +392,7 @@ async def process_agent_chat_mention(input: dict[str, Any]) -> dict[str, Any]:
     channel_id = input["channel_id"]
     message_content = input["message_content"]
 
-    logger.info(f"Processing agent chat mention: agent={agent_id} topic={topic_id}")
+    logger.info("Processing agent chat mention: agent=%s topic=%s", agent_id, topic_id)
 
     from sqlalchemy import select
     import aexy.models.agent_inbox  # noqa: F401 — register AgentInboxMessage before CRMAgent mapper init
@@ -454,3 +454,43 @@ async def process_agent_chat_mention(input: dict[str, Any]) -> dict[str, Any]:
         await pubsub.publish(workspace_id, "new_message", msg)
 
         return {"status": "ok", "message_id": msg["id"]}
+
+
+@activity.defn
+async def process_chat_all_mention(input: dict[str, Any]) -> dict[str, Any]:
+    """Send @all mention notifications to all channel members (except sender)."""
+    channel_id = input["channel_id"]
+    sender_id = input["sender_id"]
+    sender_name = input["sender_name"]
+    topic_id = input["topic_id"]
+    action_url = input["action_url"]
+    snippet = input["snippet"]
+
+    logger.info("Processing @all mention: channel=%s topic=%s", channel_id, topic_id)
+
+    from aexy.services.chat_service import ChatService
+    from aexy.services.notification_service import notify_mention
+
+    async with async_session_maker() as db:
+        service = ChatService(db)
+        member_ids = await service.get_channel_member_ids(channel_id)
+        notified = 0
+        for uid in member_ids:
+            if uid == sender_id:
+                continue
+            try:
+                await notify_mention(
+                    db=db,
+                    mentioned_user_id=uid,
+                    mentioner_name=sender_name,
+                    entity_type="chat_message",
+                    entity_id=topic_id,
+                    action_url=action_url,
+                    snippet=snippet,
+                )
+                notified += 1
+            except Exception:
+                logger.exception("Failed to send @all notification to %s", uid)
+        await db.commit()
+
+    return {"status": "ok", "notified": notified}

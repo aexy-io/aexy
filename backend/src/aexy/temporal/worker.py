@@ -100,6 +100,7 @@ def get_all_activities() -> list:
         deliver_webhook,
         execute_agent,
         process_agent_chat_mention,
+        process_chat_all_mention,
         retry_webhook_delivery,
         send_crm_email,
         send_slack_dm,
@@ -287,6 +288,7 @@ def get_all_activities() -> list:
         retry_webhook_delivery,
         execute_agent,
         process_agent_chat_mention,
+        process_chat_all_mention,
         send_crm_email,
         # Google Sync
         sync_gmail,

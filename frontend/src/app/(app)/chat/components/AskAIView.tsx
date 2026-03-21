@@ -67,12 +67,9 @@ export function AskAIView({
   };
 
   const renderConversation = (conv: AskConversation, showDelete: boolean) => (
-    <div
+    <button
       key={conv.id}
-      role="button"
-      tabIndex={0}
       onClick={() => onSelectConversation(conv)}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onSelectConversation(conv); }}
       className={cn(
         "w-full px-3 py-2 text-left hover:bg-accent/50 transition-colors group flex items-center gap-2 cursor-pointer",
         activeConversationId === conv.id && "bg-accent"
@@ -97,15 +94,18 @@ export function AskAIView({
         </div>
       </div>
       {showDelete && (
-        <button
+        <span
+          role="button"
+          tabIndex={0}
           onClick={(e) => handleDelete(e, conv.id)}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleDelete(e as unknown as React.MouseEvent, conv.id); }}
           className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-opacity"
           title="Delete"
         >
           <Trash2 className="h-3 w-3" />
-        </button>
+        </span>
       )}
-    </div>
+    </button>
   );
 
   const renderGroup = (label: string, convs: AskConversation[], showDelete: boolean) => (

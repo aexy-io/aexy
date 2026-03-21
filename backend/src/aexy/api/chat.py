@@ -89,6 +89,7 @@ async def _resolve_developer(developer_id: str) -> Developer | None:
 async def list_mentionables(
     workspace_id: str,
     q: str = Query("", max_length=100),
+    limit: int = Query(20, ge=1, le=50),
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
@@ -112,6 +113,8 @@ async def list_mentionables(
             "name": name,
             "avatar_url": getattr(dev, "avatar_url", None),
         })
+        if len(users) >= limit:
+            break
 
     # Agents: active agents in workspace
     from aexy.services.agent_service import AgentService
@@ -131,6 +134,8 @@ async def list_mentionables(
             "name": name,
             "mention_handle": handle,
         })
+        if len(agents) >= limit:
+            break
 
     # Special: @all
     special = []
@@ -366,7 +371,7 @@ async def create_topic(
         "sender": {"id": str(current_user.id), "name": current_user.name},
     })
 
-    # Process @mentions in the first message
+    # Process @mentions in the first message (notifications + agent invocations)
     mentions = message.mentions or []
     if mentions:
         channel = await service.get_channel(channel_id)
@@ -381,7 +386,6 @@ async def create_topic(
                 workspace_id=workspace_id,
                 message_content=data.first_message,
             )
-            await db.commit()
         except Exception:
             logger.exception("Failed to process mentions for topic %s", topic.id)
 
@@ -468,7 +472,6 @@ async def send_message(
                 workspace_id=workspace_id,
                 message_content=data.content,
             )
-            await db.commit()
         except Exception:
             logger.exception("Failed to process mentions for message %s", msg.get("id"))
 

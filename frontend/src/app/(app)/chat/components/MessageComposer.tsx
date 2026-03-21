@@ -93,8 +93,9 @@ export function MessageComposer({
   const [mentionLoading, setMentionLoading] = useState(false);
   const mentionRef = useRef<HTMLDivElement>(null);
   const mentionFetchRef = useRef<ReturnType<typeof setTimeout>>();
-  // Track inserted mentions: displayText -> full markdown
-  const mentionsMapRef = useRef<Map<string, string>>(new Map());
+  // Track inserted mentions: unique placeholder token -> { displayText, markdown }
+  const mentionCounterRef = useRef(0);
+  const mentionsMapRef = useRef<Map<string, { display: string; markdown: string }>>(new Map());
 
   // Close emoji picker on click outside
   useEffect(() => {
@@ -202,10 +203,10 @@ export function MessageComposer({
       if (i === 0 || text[i - 1] === " " || text[i - 1] === "\n") {
         const query = text.slice(i + 1, cursorPos);
 
-        // Don't re-trigger if cursor is right after a completed mention display text
-        // (e.g. "@Test User " — the space after means mention is complete)
-        const textFromAt = text.slice(i, cursorPos);
-        if (mentionsMapRef.current.has(textFromAt)) {
+        // Don't re-trigger if cursor is inside or right after a completed mention
+        // (check if the text from @ contains a mention placeholder token)
+        const textFromAt = text.slice(i, cursorPos + 20);
+        if (/\u200B<<mention:\d+>>\u200B/.test(textFromAt)) {
           setShowMentions(false);
           return;
         }
@@ -224,7 +225,8 @@ export function MessageComposer({
     const textarea = textareaRef.current;
     if (!textarea || mentionStartPos < 0) return;
 
-    // Display text shown in textarea (clean, no UUID)
+    // Generate a unique placeholder token that won't appear in normal text
+    const token = `\u200B<<mention:${mentionCounterRef.current++}>>\u200B`;
     const displayText = `@${item.name}`;
     // Full markdown sent to backend
     let mentionMarkdown: string;
@@ -236,11 +238,12 @@ export function MessageComposer({
       mentionMarkdown = `@[${item.name}](mention:user:${item.id})`;
     }
 
-    // Track the mapping for reconstruction on send
-    mentionsMapRef.current.set(displayText, mentionMarkdown);
+    // Track: placeholder token -> { displayText, markdown }
+    mentionsMapRef.current.set(token, { display: displayText, markdown: mentionMarkdown });
 
     const cursorPos = textarea.selectionStart;
-    const insertText = displayText + " ";
+    // Insert the display text + hidden token suffix so we can find it on send
+    const insertText = displayText + token + " ";
     const newContent = content.slice(0, mentionStartPos) + insertText + content.slice(cursorPos);
     setContent(newContent);
     setShowMentions(false);
@@ -291,13 +294,14 @@ export function MessageComposer({
 
     if (!finalContent) return;
 
-    // Reconstruct mention markdown from display text before sending
+    // Reconstruct mention markdown: replace "displayText + token" with markdown
     if (mentionsMapRef.current.size > 0) {
-      // Sort by length descending so longer names are replaced first (e.g. "@Test User 2" before "@Test User")
-      const entries = [...mentionsMapRef.current.entries()].sort((a, b) => b[0].length - a[0].length);
-      for (const [displayText, markdown] of entries) {
-        finalContent = finalContent.split(displayText).join(markdown);
+      for (const [token, { display, markdown }] of mentionsMapRef.current.entries()) {
+        // The textarea contains "displayText + token", replace with the markdown form
+        finalContent = finalContent.split(display + token).join(markdown);
       }
+      // Clean up any orphaned zero-width tokens that might remain
+      finalContent = finalContent.replace(/\u200B<<mention:\d+>>\u200B/g, "");
     }
 
     onSend(finalContent, attachments);

@@ -428,6 +428,11 @@ class ChatService:
                     "avatar_url": getattr(d, "avatar_url", None),
                 }
             )
+            # Filter out internal agent_sender markers from mentions
+            visible_mentions = [
+                mention for mention in (m.mentions or [])
+                if mention.get("type") != "agent_sender"
+            ]
             out.append({
                 "id": m.id,
                 "topic_id": m.topic_id,
@@ -438,7 +443,7 @@ class ChatService:
                 "is_edited": m.is_edited,
                 "edited_at": m.edited_at,
                 "is_deleted": m.is_deleted,
-                "mentions": m.mentions or [],
+                "mentions": visible_mentions,
                 "created_at": m.created_at,
                 "sender": sender,
             })
@@ -942,22 +947,23 @@ class ChatService:
                         logger.exception("Failed to send mention notification to %s", mid)
 
             elif mtype == "all":
-                member_ids = await self.get_channel_member_ids(channel_id)
-                for uid in member_ids:
-                    if uid != sender_id and uid not in notified_ids:
-                        notified_ids.add(uid)
-                        try:
-                            await notify_mention(
-                                db=self.db,
-                                mentioned_user_id=uid,
-                                mentioner_name=sender_name,
-                                entity_type="chat_message",
-                                entity_id=topic_id,
-                                action_url=action_url,
-                                snippet=snippet,
-                            )
-                        except Exception:
-                            logger.exception("Failed to send @all notification to %s", uid)
+                try:
+                    from aexy.temporal.dispatch import dispatch
+                    from aexy.temporal.task_queues import TaskQueue
+                    await dispatch(
+                        "process_chat_all_mention",
+                        {
+                            "channel_id": channel_id,
+                            "sender_id": sender_id,
+                            "sender_name": sender_name,
+                            "topic_id": topic_id,
+                            "action_url": action_url,
+                            "snippet": snippet,
+                        },
+                        task_queue=TaskQueue.ANALYSIS,
+                    )
+                except Exception:
+                    logger.exception("Failed to dispatch @all mention for channel %s", channel_id)
 
             elif mtype == "agent" and mid:
                 try:
