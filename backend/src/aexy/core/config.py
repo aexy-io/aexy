@@ -397,10 +397,15 @@ class Settings(BaseSettings):
         description="Postmark sender display name (falls back to ses_sender_name if not set)",
         validation_alias="POSTMARK_SENDER_NAME",
     )
-    postmark_message_stream: str = Field(
+    postmark_transactional_stream: str = Field(
         default="outbound",
-        description="Postmark message stream ID (e.g. 'outbound' for transactional)",
-        validation_alias="POSTMARK_MESSAGE_STREAM",
+        description="Postmark message stream for transactional emails (notifications, password resets)",
+        validation_alias="POSTMARK_TRANSACTIONAL_STREAM",
+    )
+    postmark_broadcast_stream: str = Field(
+        default="broadcast",
+        description="Postmark message stream for broadcast emails (campaigns, newsletters)",
+        validation_alias="POSTMARK_BROADCAST_STREAM",
     )
 
     # SMTP Settings (used when email_provider='smtp')

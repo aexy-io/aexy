@@ -321,7 +321,7 @@ class EmailService:
             "From": from_address,
             "To": recipient_email,
             "Subject": subject,
-            "MessageStream": settings.postmark_message_stream,
+            "MessageStream": settings.postmark_transactional_stream,
         }
 
         if body_html:
