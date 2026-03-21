@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     aws_secret_access_key: str | None = None
     aws_region: str = "us-east-1"
 
+    # Postmark (optional)
+    postmark_server_token: str | None = None
+
     # SMTP fallback
     smtp_host: str | None = None
     smtp_port: int = 587

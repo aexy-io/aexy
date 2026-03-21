@@ -5,15 +5,13 @@ from typing import Optional
 from mailagent.providers.base import EmailProvider, ProviderConfig, ProviderType
 from mailagent.providers.ses import SESProvider
 from mailagent.providers.sendgrid import SendGridProvider
+from mailagent.providers.postmark import PostmarkProvider
 
 
 PROVIDER_CLASSES = {
     ProviderType.SES: SESProvider,
     ProviderType.SENDGRID: SendGridProvider,
-    # Add more as implemented:
-    # ProviderType.MAILGUN: MailgunProvider,
-    # ProviderType.POSTMARK: PostmarkProvider,
-    # ProviderType.SMTP: SMTPProvider,
+    ProviderType.POSTMARK: PostmarkProvider,
 }
 
 

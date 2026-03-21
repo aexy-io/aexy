@@ -372,8 +372,35 @@ class Settings(BaseSettings):
     )
     email_provider: str = Field(
         default="ses",
-        description="Email provider to use: 'ses' for AWS SES or 'smtp' for SMTP",
+        description="Email provider to use: 'ses', 'smtp', or 'postmark'",
         validation_alias="EMAIL_PROVIDER",
+    )
+
+    # Postmark Settings
+    postmark_server_token: str = Field(
+        default="",
+        description="Postmark Server API token (for sending emails)",
+        validation_alias="POSTMARK_SERVER_TOKEN",
+    )
+    postmark_account_token: str = Field(
+        default="",
+        description="Postmark Account API token (for domain/signature management)",
+        validation_alias="POSTMARK_ACCOUNT_TOKEN",
+    )
+    postmark_sender_email: str = Field(
+        default="",
+        description="Postmark sender email (falls back to ses_sender_email if not set)",
+        validation_alias="POSTMARK_SENDER_EMAIL",
+    )
+    postmark_sender_name: str = Field(
+        default="",
+        description="Postmark sender display name (falls back to ses_sender_name if not set)",
+        validation_alias="POSTMARK_SENDER_NAME",
+    )
+    postmark_message_stream: str = Field(
+        default="outbound",
+        description="Postmark message stream ID (e.g. 'outbound' for transactional)",
+        validation_alias="POSTMARK_MESSAGE_STREAM",
     )
 
     # SMTP Settings (used when email_provider='smtp')
