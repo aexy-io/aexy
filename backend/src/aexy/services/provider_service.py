@@ -403,6 +403,7 @@ class PostmarkClient(EmailProviderClient):
 
     def __init__(self, credentials: dict):
         self.server_token = credentials.get("server_token")
+        self.message_stream = credentials.get("message_stream", "broadcast")
 
     async def send_email(
         self,
@@ -421,6 +422,7 @@ class PostmarkClient(EmailProviderClient):
             "From": from_address,
             "To": to_email,
             "Subject": subject,
+            "MessageStream": self.message_stream,
         }
 
         if body_html:

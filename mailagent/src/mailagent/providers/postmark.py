@@ -19,6 +19,7 @@ class PostmarkProvider(EmailProvider):
     def __init__(self, config: ProviderConfig):
         super().__init__(config)
         self._server_token = self._get_credential('server_token')
+        self._default_stream = self._get_credential('message_stream', required=False) or 'outbound'
 
     @property
     def provider_type(self) -> ProviderType:
@@ -187,6 +188,9 @@ class PostmarkProvider(EmailProvider):
         payload["TrackOpens"] = message.track_opens
         if message.track_clicks:
             payload["TrackLinks"] = "HtmlAndText"
+
+        # Message stream (transactional vs broadcast)
+        payload["MessageStream"] = message.metadata.get("message_stream", self._default_stream)
 
         # Tags (Postmark supports a single Tag string)
         if message.tags:

@@ -16,7 +16,8 @@ Postmark is now available as an email provider across all three sending paths â€
 - **Mailagent PostmarkProvider**: Full `EmailProvider` implementation with `send()`, `verify_credentials()`, and native `send_batch()` (up to 500 per call via `/email/batch`)
 - **PostmarkAccountService**: Account API client for managing sender signatures (`create`, `delete`, `list`) and domains (`verify`, `get`) using the Account API token
 - **Agent email integration**: Automatic Postmark sender signature creation when allocating agent email addresses, and cleanup on disable
-- **Configuration**: `POSTMARK_SERVER_TOKEN`, `POSTMARK_ACCOUNT_TOKEN`, `POSTMARK_SENDER_EMAIL`, `POSTMARK_SENDER_NAME`, `POSTMARK_MESSAGE_STREAM` env vars in backend; `POSTMARK_SERVER_TOKEN` in mailagent
+- **Message streams**: Separate transactional (`POSTMARK_TRANSACTIONAL_STREAM`, default `outbound`) and broadcast (`POSTMARK_BROADCAST_STREAM`, default `broadcast`) stream support â€” notification emails use transactional, campaigns use broadcast
+- **Configuration**: `POSTMARK_SERVER_TOKEN`, `POSTMARK_ACCOUNT_TOKEN`, `POSTMARK_SENDER_EMAIL`, `POSTMARK_SENDER_NAME`, `POSTMARK_TRANSACTIONAL_STREAM`, `POSTMARK_BROADCAST_STREAM` env vars in backend; `POSTMARK_SERVER_TOKEN` in mailagent
 
 ## [0.6.7] - 2026-03-01
 
