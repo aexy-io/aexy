@@ -1,4 +1,4 @@
-"""Email service for sending notifications via AWS SES or SMTP."""
+"""Email service for sending notifications via AWS SES, SMTP, or Postmark."""
 
 import html
 import logging
@@ -9,6 +9,7 @@ from typing import Any
 
 import aiosmtplib
 import boto3
+import httpx
 from botocore.exceptions import ClientError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 class EmailService:
-    """Service for sending emails via AWS SES or SMTP."""
+    """Service for sending emails via AWS SES, SMTP, or Postmark."""
 
     def __init__(self):
         """Initialize the email service."""
@@ -62,6 +63,14 @@ class EmailService:
         )
 
     @property
+    def is_postmark_configured(self) -> bool:
+        """Check if Postmark is properly configured."""
+        return bool(
+            settings.postmark_server_token
+            and (settings.postmark_sender_email or settings.ses_sender_email)
+        )
+
+    @property
     def is_configured(self) -> bool:
         """Check if email service is properly configured for the selected provider."""
         logger.info(
@@ -75,17 +84,23 @@ class EmailService:
 
         if self.provider == "smtp":
             return self.is_smtp_configured
+        elif self.provider == "postmark":
+            return self.is_postmark_configured
         else:  # default to SES
             return self.is_ses_configured
 
     def _get_sender_email(self) -> str:
         """Get the sender email address based on provider."""
+        if self.provider == "postmark" and settings.postmark_sender_email:
+            return settings.postmark_sender_email
         if self.provider == "smtp" and settings.smtp_sender_email:
             return settings.smtp_sender_email
         return settings.ses_sender_email
 
     def _get_sender_name(self) -> str:
         """Get the sender display name based on provider."""
+        if self.provider == "postmark" and settings.postmark_sender_name:
+            return settings.postmark_sender_name
         if self.provider == "smtp" and settings.smtp_sender_name:
             return settings.smtp_sender_name
         return settings.ses_sender_name
@@ -292,6 +307,51 @@ class EmailService:
 
         return {"message_id": message_id or "smtp-sent", "provider": "smtp"}
 
+    async def _send_via_postmark(
+        self,
+        recipient_email: str,
+        subject: str,
+        body_text: str,
+        body_html: str | None = None,
+    ) -> dict[str, Any]:
+        """Send email via Postmark Server API."""
+        from_address = self._get_sender_address()
+
+        payload: dict[str, Any] = {
+            "From": from_address,
+            "To": recipient_email,
+            "Subject": subject,
+            "MessageStream": settings.postmark_message_stream,
+        }
+
+        if body_html:
+            payload["HtmlBody"] = body_html
+        if body_text:
+            payload["TextBody"] = body_text
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.postmarkapp.com/email",
+                json=payload,
+                headers={
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                    "X-Postmark-Server-Token": settings.postmark_server_token,
+                },
+                timeout=30.0,
+            )
+
+            result = response.json()
+
+            if response.status_code == 200:
+                return {
+                    "message_id": result.get("MessageID"),
+                    "provider": "postmark",
+                }
+            else:
+                error_msg = result.get("Message", response.text)
+                raise Exception(f"Postmark API error ({response.status_code}): {error_msg}")
+
     async def _send_email(
         self,
         recipient_email: str,
@@ -301,7 +361,10 @@ class EmailService:
     ) -> dict[str, Any]:
         """Send email using the configured provider."""
         logger.info(f"_send_email called with provider={self.provider}, smtp_configured={self.is_smtp_configured}, ses_configured={self.is_ses_configured}")
-        if self.provider == "smtp":
+        if self.provider == "postmark":
+            logger.info(f"Using Postmark to send email to {recipient_email}")
+            return await self._send_via_postmark(recipient_email, subject, body_text, body_html)
+        elif self.provider == "smtp":
             logger.info(f"Using SMTP to send email to {recipient_email}")
             return await self._send_via_smtp(recipient_email, subject, body_text, body_html)
         else:
@@ -370,6 +433,11 @@ class EmailService:
             log.error_message = f"SMTP Error: {str(e)}"
             logger.error(f"Failed to send email via SMTP to {recipient_email}: {e}")
 
+        except httpx.HTTPError as e:
+            log.status = "failed"
+            log.error_message = f"HTTP Error: {str(e)}"
+            logger.error(f"Failed to send email via HTTP to {recipient_email}: {e}")
+
         except Exception as e:
             log.status = "failed"
             log.error_message = str(e)
@@ -422,6 +490,11 @@ class EmailService:
             log.status = "failed"
             log.error_message = f"SMTP Error: {str(e)}"
             logger.error(f"Failed to send templated email via SMTP: {e}")
+
+        except httpx.HTTPError as e:
+            log.status = "failed"
+            log.error_message = f"HTTP Error: {str(e)}"
+            logger.error(f"Failed to send templated email via HTTP: {e}")
 
         except Exception as e:
             log.status = "failed"

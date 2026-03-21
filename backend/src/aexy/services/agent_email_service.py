@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from aexy.models.agent import CRMAgent
 from aexy.models.agent_inbox import AgentInboxMessage, AgentEmailRoutingRule
 from aexy.models.workspace import Workspace
+from aexy.services.postmark_account_service import PostmarkAccountService
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +73,17 @@ class AgentEmailService:
         await self.db.flush()
         await self.db.refresh(agent)
 
+        # Register sender signature with Postmark if configured
+        postmark = PostmarkAccountService()
+        if postmark.is_configured:
+            try:
+                await postmark.create_sender_signature(
+                    from_email=email,
+                    from_name=agent.name,
+                )
+            except Exception as e:
+                logger.warning(f"Failed to create Postmark sender signature for {email}: {e}")
+
         logger.info(f"Allocated email {email} for agent {agent_id}")
         return email
 
@@ -80,6 +92,19 @@ class AgentEmailService:
         agent = await self._get_agent(agent_id)
         if not agent:
             raise ValueError(f"Agent {agent_id} not found")
+
+        # Remove sender signature from Postmark if configured
+        if agent.email_address:
+            postmark = PostmarkAccountService()
+            if postmark.is_configured:
+                try:
+                    sigs = await postmark.list_sender_signatures()
+                    for sig in sigs.get("SenderSignatures", []):
+                        if sig.get("EmailAddress") == agent.email_address:
+                            await postmark.delete_sender_signature(sig["ID"])
+                            break
+                except Exception as e:
+                    logger.warning(f"Failed to delete Postmark sender signature for {agent.email_address}: {e}")
 
         agent.email_enabled = False
         await self.db.flush()
