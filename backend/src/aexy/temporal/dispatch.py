@@ -152,6 +152,9 @@ ACTIVITY_CONFIG: dict[str, dict[str, Any]] = {
     # GTM ABM
     "recalculate_abm_engagement": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=30), "heartbeat": timedelta(minutes=5)},
     "refresh_dynamic_abm_lists": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=10)},
+
+    # Platform signup
+    "handle_new_signup": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)},
 }
 
 DEFAULT_CONFIG = {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)}

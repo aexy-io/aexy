@@ -97,6 +97,7 @@ services:
       - S3_BUCKET_NAME=aexy-storage
       - S3_REGION=us-east-1
       - S3_PUBLIC_ENDPOINT_URL=http://localhost:9000
+      - PLATFORM_ORG_ID=${PLATFORM_ORG_ID:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -129,6 +130,7 @@ services:
       - S3_BUCKET_NAME=aexy-storage
       - S3_REGION=us-east-1
       - S3_PUBLIC_ENDPOINT_URL=http://localhost:9000
+      - PLATFORM_ORG_ID=${PLATFORM_ORG_ID:-}
     depends_on:
       postgres:
         condition: service_healthy

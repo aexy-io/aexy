@@ -538,6 +538,13 @@ class Settings(BaseSettings):
         description="Anthropic API key for Claude (used by AI agents)",
     )
 
+    # Platform Organization
+    platform_org_id: str = Field(
+        default="",
+        description="Workspace ID of the platform organization (for auto-CRM contact and onboarding emails on signup)",
+        validation_alias="PLATFORM_ORG_ID",
+    )
+
     # Platform Admin Configuration
     admin_emails: str = Field(
         default="",

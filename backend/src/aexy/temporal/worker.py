@@ -182,6 +182,7 @@ def get_all_activities() -> list:
         cleanup_old_executions,
         execute_workflow_action,
     )
+    from aexy.temporal.activities.platform import handle_new_signup
     from aexy.temporal.activities.gtm import (
         identify_visitor_session,
         process_visitor_events,
@@ -374,6 +375,8 @@ def get_all_activities() -> list:
         check_expiring_certifications,
         check_expired_certifications,
         check_bulk_compliance_rates,
+        # Platform
+        handle_new_signup,
     ]
 
 
