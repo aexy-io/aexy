@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.8] - 2026-03-21
+
+### Added
+
+#### Postmark Email Provider
+Postmark is now available as an email provider across all three sending paths — notification emails, campaign/workflow emails, and mailagent domain-aware sending.
+
+- **Backend EmailService**: Added `_send_via_postmark()` method, `is_postmark_configured` property, and Postmark routing in `_send_email()` — set `EMAIL_PROVIDER=postmark` to use for all notification emails
+- **Mailagent PostmarkProvider**: Full `EmailProvider` implementation with `send()`, `verify_credentials()`, and native `send_batch()` (up to 500 per call via `/email/batch`)
+- **PostmarkAccountService**: Account API client for managing sender signatures (`create`, `delete`, `list`) and domains (`verify`, `get`) using the Account API token
+- **Agent email integration**: Automatic Postmark sender signature creation when allocating agent email addresses, and cleanup on disable
+- **Configuration**: `POSTMARK_SERVER_TOKEN`, `POSTMARK_ACCOUNT_TOKEN`, `POSTMARK_SENDER_EMAIL`, `POSTMARK_SENDER_NAME`, `POSTMARK_MESSAGE_STREAM` env vars in backend; `POSTMARK_SERVER_TOKEN` in mailagent
+
 ## [0.6.7] - 2026-03-01
 
 ### Added
