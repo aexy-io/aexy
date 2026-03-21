@@ -379,3 +379,118 @@ async def send_crm_email(input: SendCRMEmailInput) -> dict[str, Any]:
             await db.commit()
 
         return result
+
+
+@activity.defn
+async def process_agent_chat_mention(input: dict[str, Any]) -> dict[str, Any]:
+    """Invoke an AI agent mentioned in chat and post its response back."""
+    agent_id = input["agent_id"]
+    topic_id = input["topic_id"]
+    workspace_id = input["workspace_id"]
+    sender_id = input["sender_id"]
+    sender_name = input["sender_name"]
+    channel_id = input["channel_id"]
+    message_content = input["message_content"]
+
+    logger.info("Processing agent chat mention: agent=%s topic=%s", agent_id, topic_id)
+
+    from sqlalchemy import select
+    import aexy.models.agent_inbox  # noqa: F401 — register AgentInboxMessage before CRMAgent mapper init
+    from aexy.models.agent import CRMAgent
+    from aexy.services.chat_service import ChatService
+    from aexy.services.chat_pubsub import get_chat_pubsub
+    from aexy.llm.gateway import get_llm_gateway
+
+    async with async_session_maker() as db:
+        # 1. Load the agent
+        result = await db.execute(
+            select(CRMAgent).where(CRMAgent.id == agent_id)
+        )
+        agent = result.scalar_one_or_none()
+        if not agent:
+            logger.warning("Agent %s not found", agent_id)
+            return {"error": "Agent not found"}
+
+        # 2. Build prompts
+        system_prompt = agent.system_prompt or (
+            f"You are {agent.name}, an AI assistant. "
+            f"{agent.description or ''} "
+            "Respond helpfully and concisely to the user's message."
+        )
+        user_prompt = (
+            f"{sender_name} mentioned you in a team chat and said:\n\n"
+            f"{message_content}\n\n"
+            "Respond directly and helpfully."
+        )
+
+        # 3. Call LLM
+        gateway = get_llm_gateway()
+        response_text, _total, _inp, _out = await gateway.call_llm(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            tokens_estimate=2000,
+            workspace_id=workspace_id,
+            developer_id=sender_id,
+        )
+
+        if not response_text or not response_text.strip():
+            logger.warning("Empty LLM response for agent %s", agent_id)
+            return {"error": "Empty response from agent"}
+
+        # 4. Post agent response as a chat message
+        service = ChatService(db)
+        msg = await service.create_agent_message(
+            topic_id=topic_id,
+            channel_id=channel_id,
+            sender_id=sender_id,
+            content=response_text.strip(),
+            agent_name=agent.name,
+            agent_id=str(agent.id),
+        )
+        await db.commit()
+
+        # 5. Broadcast via WebSocket so the UI updates in real time
+        pubsub = get_chat_pubsub()
+        await pubsub.publish(workspace_id, "new_message", msg)
+
+        return {"status": "ok", "message_id": msg["id"]}
+
+
+@activity.defn
+async def process_chat_all_mention(input: dict[str, Any]) -> dict[str, Any]:
+    """Send @all mention notifications to all channel members (except sender)."""
+    channel_id = input["channel_id"]
+    sender_id = input["sender_id"]
+    sender_name = input["sender_name"]
+    topic_id = input["topic_id"]
+    action_url = input["action_url"]
+    snippet = input["snippet"]
+
+    logger.info("Processing @all mention: channel=%s topic=%s", channel_id, topic_id)
+
+    from aexy.services.chat_service import ChatService
+    from aexy.services.notification_service import notify_mention
+
+    async with async_session_maker() as db:
+        service = ChatService(db)
+        member_ids = await service.get_channel_member_ids(channel_id)
+        notified = 0
+        for uid in member_ids:
+            if uid == sender_id:
+                continue
+            try:
+                await notify_mention(
+                    db=db,
+                    mentioned_user_id=uid,
+                    mentioner_name=sender_name,
+                    entity_type="chat_message",
+                    entity_id=topic_id,
+                    action_url=action_url,
+                    snippet=snippet,
+                )
+                notified += 1
+            except Exception:
+                logger.exception("Failed to send @all notification to %s", uid)
+        await db.commit()
+
+    return {"status": "ok", "notified": notified}

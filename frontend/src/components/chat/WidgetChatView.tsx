@@ -247,6 +247,7 @@ function CompactMessageThread({
         isConnected={isConnected}
         isSending={sendMessage.isPending}
         compact
+        workspaceId={workspaceId}
         meetButton={
           <MeetLinkButton workspaceId={workspaceId} onMeetLink={handleMeetLink} />
         }
