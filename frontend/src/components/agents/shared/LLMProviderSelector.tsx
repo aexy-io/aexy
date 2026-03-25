@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, Check, Sparkles, Cpu, Server } from "lucide-react";
+import { ChevronDown, Check, Sparkles, Cpu, Server, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { HelpTooltip } from "@/components/ui/tooltip";
 
-type LLMProvider = "claude" | "gemini" | "ollama";
+type LLMProvider = "claude" | "gemini" | "ollama" | "openrouter";
 
 interface LLMConfig {
   provider: LLMProvider;
@@ -84,6 +84,38 @@ const PROVIDERS: Record<
         id: "mistral",
         name: "Mistral",
         description: "Fast and capable",
+      },
+    ],
+  },
+  openrouter: {
+    name: "OpenRouter",
+    icon: Globe,
+    color: "#6366F1",
+    models: [
+      {
+        id: "anthropic/claude-sonnet-4",
+        name: "Claude Sonnet 4",
+        description: "Balanced performance and speed",
+      },
+      {
+        id: "openai/gpt-4o",
+        name: "GPT-4o",
+        description: "OpenAI flagship model",
+      },
+      {
+        id: "meta-llama/llama-3.1-70b-instruct",
+        name: "Llama 3.1 70B",
+        description: "Open source, fast and capable",
+      },
+      {
+        id: "google/gemini-2.0-flash",
+        name: "Gemini 2.0 Flash",
+        description: "Fast and cost-effective",
+      },
+      {
+        id: "deepseek/deepseek-chat-v3",
+        name: "DeepSeek V3",
+        description: "Strong reasoning at low cost",
       },
     ],
   },

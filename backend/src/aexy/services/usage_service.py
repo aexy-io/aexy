@@ -38,6 +38,10 @@ PROVIDER_PRICING = {
         "input": 0.0,
         "output": 0.0,
     },
+    "openrouter": {
+        "input": settings.openrouter_input_price_per_million,
+        "output": settings.openrouter_output_price_per_million,
+    },
 }
 
 
