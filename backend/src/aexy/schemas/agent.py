@@ -36,7 +36,7 @@ class AgentCreate(BaseModel):
     tools: list[str] = Field(default_factory=list)
 
     # LLM configuration
-    llm_provider: Literal["claude", "gemini", "ollama"] = "claude"
+    llm_provider: Literal["claude", "gemini", "ollama", "openrouter"] = "claude"
     model: str = Field(default="claude-3-sonnet-20240229")
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     max_tokens: int = Field(default=4096, ge=1, le=100000)
@@ -71,7 +71,7 @@ class AgentUpdate(BaseModel):
     tools: list[str] | None = None
 
     # LLM configuration
-    llm_provider: Literal["claude", "gemini", "ollama"] | None = None
+    llm_provider: Literal["claude", "gemini", "ollama", "openrouter"] | None = None
     model: str | None = None
     temperature: float | None = Field(default=None, ge=0.0, le=2.0)
     max_tokens: int | None = Field(default=None, ge=1, le=100000)

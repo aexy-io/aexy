@@ -32,6 +32,18 @@ async def lifespan(app: FastAPI):
         import logging
         logging.getLogger(__name__).warning(f"Storage bucket bootstrap failed: {e}")
 
+    # Seed platform org (CRM objects, email templates, onboarding flow)
+    if settings.platform_org_id:
+        try:
+            import logging
+            from aexy.core.database import async_session_maker
+            from aexy.services.platform_service import PlatformService
+            async with async_session_maker() as db:
+                await PlatformService(db).ensure_platform_setup()
+                await db.commit()
+        except Exception as e:
+            logging.getLogger(__name__).warning(f"Platform org setup failed: {e}")
+
     yield
 
     # Cleanup on shutdown

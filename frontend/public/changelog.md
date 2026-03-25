@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-03-25
+
+### Added
+
+#### OpenRouter AI Provider
+OpenRouter is now available as a first-class LLM provider, giving access to 100+ models (Claude, GPT-4o, Llama, Gemini, DeepSeek, etc.) through a single API key.
+
+- **OpenRouterProvider**: Full `LLMProvider` implementation using the OpenAI-compatible chat completions API (`POST /chat/completions`) with Bearer auth, rate limit handling (429 with `retry-after`), and health checks via `/models`
+- **Automatic model fallback**: When the primary model is rate-limited or unavailable (429/503), automatically tries the next model in a configurable fallback list — set `OPENROUTER_FALLBACK_MODELS` (comma-separated) to customize the fallback order
+- **Configuration**: `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` (default: `anthropic/claude-sonnet-4`), `OPENROUTER_FALLBACK_MODELS` (default: `google/gemini-2.0-flash,openai/gpt-4o,deepseek/deepseek-chat-v3,meta-llama/llama-3.1-70b-instruct`) env vars
+- **Rate limiting**: Per-provider Redis-backed rate limits (`OPENROUTER_REQUESTS_PER_MINUTE`, `OPENROUTER_REQUESTS_PER_DAY`, `OPENROUTER_TOKENS_PER_MINUTE`)
+- **Usage billing**: Configurable token pricing (`OPENROUTER_INPUT_PRICE_PER_MILLION`, `OPENROUTER_OUTPUT_PRICE_PER_MILLION`)
+- **Frontend**: OpenRouter added to provider selector with Globe icon, indigo theme, and 5 default models; usage page shows OpenRouter breakdown
+- **Docker**: `OPENROUTER_API_KEY` passed through in both `docker-compose.yml` and `docker-compose.prod.yml`
+
+#### Platform Organization
+Auto-CRM contact creation and onboarding drip email sequences triggered on user signup.
+
+- **PlatformService**: Creates CRM contacts and enrolls new signups into onboarding drip email workflows when `PLATFORM_ORG_ID` is configured
+- **Temporal activity**: `platform_on_signup` activity dispatched from the signup flow for async processing
+- **Configuration**: `PLATFORM_ORG_ID` env var — set to a workspace UUID to enable
+
 ## [0.6.8] - 2026-03-21
 
 ### Added

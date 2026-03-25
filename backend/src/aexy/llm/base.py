@@ -70,13 +70,14 @@ class AnalysisType(str, Enum):
 class LLMConfig(BaseModel):
     """Configuration for an LLM provider."""
 
-    provider: str = Field(description="Provider name: claude, ollama, openai")
+    provider: str = Field(description="Provider name: claude, gemini, ollama, openai, openrouter")
     model: str = Field(description="Model identifier")
     api_key: str | None = Field(default=None, description="API key for cloud providers")
     base_url: str | None = Field(default=None, description="Base URL for self-hosted providers")
     max_tokens: int = Field(default=4096, description="Maximum tokens per request")
     temperature: float = Field(default=0.0, description="Sampling temperature")
     timeout: int = Field(default=60, description="Request timeout in seconds")
+    fallback_models: list[str] = Field(default_factory=list, description="Fallback models to try when primary is unavailable")
 
 
 class LanguageAnalysis(BaseModel):

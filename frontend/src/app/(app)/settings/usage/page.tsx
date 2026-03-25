@@ -48,12 +48,14 @@ function ProviderBreakdown() {
     claude: "bg-orange-500",
     gemini: "bg-blue-500",
     ollama: "bg-green-500",
+    openrouter: "bg-indigo-500",
   };
 
   const providerLabels: Record<string, string> = {
     claude: "Claude (Anthropic)",
     gemini: "Gemini (Google)",
     ollama: "Ollama (Self-hosted)",
+    openrouter: "OpenRouter (Multi-model)",
   };
 
   if (providerEntries.length === 0) {
