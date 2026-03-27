@@ -22,16 +22,33 @@ export function useSubscription(workspaceId?: string | null) {
   const tier = plan?.tier || "free";
   const hasSubscription = subscriptionStatus?.subscription != null;
 
-  // Feature access checks
-  const canUseTeamFeatures = plan?.enable_team_features ?? false;
-  const canUseAdvancedAnalytics = plan?.enable_advanced_analytics ?? false;
-  const canUseExports = plan?.enable_exports ?? false;
-  const canUseWebhooks = plan?.enable_webhooks ?? false;
-  const canUseRealTimeSync = plan?.enable_real_time_sync ?? false;
+  // Billing model
+  const billingModel = subscriptionStatus?.billing_model || plan?.billing_model || "free";
+  const isPerSeat = billingModel === "per_seat";
+  const isFlatPlusUsage = billingModel === "flat_plus_usage";
+  const isPostpaid = billingModel === "postpaid";
+
+  // Feature access checks — all modules are now available on free tier
+  const canUseTeamFeatures = plan?.enable_team_features ?? true;
+  const canUseAdvancedAnalytics = plan?.enable_advanced_analytics ?? true;
+  const canUseExports = plan?.enable_exports ?? true;
+  const canUseWebhooks = plan?.enable_webhooks ?? true;
+  const canUseRealTimeSync = plan?.enable_real_time_sync ?? true;
+
+  // AI access — limited on free tier
+  const freeTokensPerMonth = plan?.free_llm_tokens_per_month ?? 50000;
+  const canUseAI = (plan?.llm_requests_per_day ?? 50) > 0;
+  const aiProviders = plan?.llm_provider_access ?? ["ollama"];
 
   // Premium feature checks (Pro or Enterprise)
   const isPremium = tier === "pro" || tier === "enterprise";
   const isEnterprise = tier === "enterprise";
+
+  // Seat info (for per-seat plans)
+  const seatSummary = subscriptionStatus?.seat_summary ?? null;
+
+  // Postpaid info
+  const postpaidSummary = subscriptionStatus?.postpaid_summary ?? null;
 
   return {
     // Raw data
@@ -45,12 +62,23 @@ export function useSubscription(workspaceId?: string | null) {
     error,
     refetch,
 
-    // Feature access
+    // Billing model
+    billingModel,
+    isPerSeat,
+    isFlatPlusUsage,
+    isPostpaid,
+
+    // Feature access (all modules available on all tiers)
     canUseTeamFeatures,
     canUseAdvancedAnalytics,
     canUseExports,
     canUseWebhooks,
     canUseRealTimeSync,
+
+    // AI access (limited on free tier)
+    canUseAI,
+    aiProviders,
+    freeTokensPerMonth,
 
     // Tier checks
     isPremium,
@@ -58,10 +86,16 @@ export function useSubscription(workspaceId?: string | null) {
     isFree: tier === "free",
 
     // Limits
-    maxRepos: plan?.max_repos ?? 3,
+    maxRepos: plan?.max_repos ?? 10,
     maxCommitsPerRepo: plan?.max_commits_per_repo ?? 1000,
-    maxPrsPerRepo: plan?.max_prs_per_repo ?? 100,
-    llmRequestsPerDay: plan?.llm_requests_per_day ?? 10,
+    maxPrsPerRepo: plan?.max_prs_per_repo ?? 200,
+    llmRequestsPerDay: plan?.llm_requests_per_day ?? 50,
+
+    // Seat info (per-seat plans)
+    seatSummary,
+
+    // Postpaid info
+    postpaidSummary,
   };
 }
 
@@ -109,12 +143,24 @@ export function useChangePlan(workspaceId?: string | null) {
 // Hook for creating a Stripe Checkout session (for users without a subscription, e.g. Free -> Pro)
 export function useCheckout() {
   return useMutation({
-    mutationFn: ({ planTier, workspaceId }: { planTier: string; workspaceId?: string }) =>
+    mutationFn: ({
+      planTier,
+      workspaceId,
+      billingModel,
+      seatCount,
+    }: {
+      planTier: string;
+      workspaceId?: string;
+      billingModel?: string;
+      seatCount?: number;
+    }) =>
       billingApi.createCheckoutSession({
         plan_tier: planTier,
+        billing_model: billingModel,
         success_url: `${window.location.origin}/settings/plans?checkout=success`,
         cancel_url: `${window.location.origin}/settings/plans?checkout=cancelled`,
         workspace_id: workspaceId,
+        seat_count: seatCount,
       }),
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : "Failed to start checkout");

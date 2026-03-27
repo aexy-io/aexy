@@ -60,6 +60,7 @@ class StripeWebhookHandler:
             "invoice.paid": self._handle_invoice_paid,
             "invoice.payment_failed": self._handle_invoice_payment_failed,
             "invoice.finalized": self._handle_invoice_finalized,
+            "invoice.upcoming": self._handle_invoice_upcoming,
             "customer.updated": self._handle_customer_updated,
             "payment_method.attached": self._handle_payment_method_attached,
             "checkout.session.completed": self._handle_checkout_completed,
@@ -106,12 +107,25 @@ class StripeWebhookHandler:
             logger.debug(f"Subscription {stripe_subscription_id} already exists")
             return {"action": "already_exists"}
 
-        # Get subscription item ID, price ID, and product ID
+        # Get subscription item IDs, price ID, and product ID
+        # For multi-item subscriptions (flat_plus_usage), there may be multiple items
         subscription_item_id = None
+        usage_subscription_item_id = None
         stripe_price_id = ""
         stripe_product_id = None
-        if data.get("items", {}).get("data"):
-            item = data["items"]["data"][0]
+        items_data = data.get("items", {}).get("data", [])
+        for item in items_data:
+            price = item.get("price", {})
+            price_usage_type = price.get("recurring", {}).get("usage_type")
+            if price_usage_type == "metered":
+                usage_subscription_item_id = item["id"]
+            elif subscription_item_id is None:
+                subscription_item_id = item["id"]
+                stripe_price_id = price.get("id", "")
+                stripe_product_id = price.get("product")
+        # Fallback: if only one item, use it as the subscription item
+        if not subscription_item_id and items_data:
+            item = items_data[0]
             subscription_item_id = item["id"]
             stripe_price_id = item["price"]["id"]
             stripe_product_id = item["price"].get("product")
@@ -172,8 +186,9 @@ class StripeWebhookHandler:
 
         # Update workspace plan if workspace_id is in metadata (owner upgraded for the team)
         workspace_id = metadata.get("workspace_id")
+        billing_model = metadata.get("billing_model")
         if plan_id and workspace_id:
-            from aexy.models.workspace import Workspace
+            from aexy.models.workspace import Workspace, WorkspaceSubscription
             stmt = select(Workspace).where(Workspace.id == workspace_id)
             result = await self.db.execute(stmt)
             workspace = result.scalar_one_or_none()
@@ -182,6 +197,21 @@ class StripeWebhookHandler:
                 logger.info(
                     f"Updated workspace {workspace_id} plan to {plan_tier or plan_id}"
                 )
+
+            # Update or create workspace subscription with billing model info
+            if billing_model:
+                ws_sub_stmt = select(WorkspaceSubscription).where(
+                    WorkspaceSubscription.workspace_id == workspace_id
+                )
+                ws_sub_result = await self.db.execute(ws_sub_stmt)
+                ws_sub = ws_sub_result.scalar_one_or_none()
+                if ws_sub:
+                    ws_sub.billing_model = billing_model
+                    ws_sub.stripe_subscription_id = stripe_subscription_id
+                    if usage_subscription_item_id:
+                        ws_sub.usage_subscription_item_id = usage_subscription_item_id
+                    if billing_model == "postpaid":
+                        ws_sub.payment_timing = "postpaid"
 
         await self.db.commit()
 
@@ -444,6 +474,57 @@ class StripeWebhookHandler:
                 await self.db.commit()
 
         return {"action": "invoice_finalized", "invoice_id": stripe_invoice_id}
+
+    async def _handle_invoice_upcoming(
+        self,
+        data: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Handle invoice.upcoming — report metered usage before Stripe finalizes.
+
+        Critical for flat_plus_usage and postpaid billing where usage needs to be
+        reported to Stripe before the invoice is created.
+        """
+        stripe_subscription_id = data.get("subscription")
+        if not stripe_subscription_id:
+            return {"action": "no_subscription"}
+
+        # Find workspace subscription with metered billing
+        from aexy.models.workspace import WorkspaceSubscription
+        stmt = select(WorkspaceSubscription).where(
+            WorkspaceSubscription.stripe_subscription_id == stripe_subscription_id,
+            WorkspaceSubscription.billing_model.in_(["flat_plus_usage", "postpaid"]),
+        )
+        result = await self.db.execute(stmt)
+        ws_sub = result.scalar_one_or_none()
+
+        if not ws_sub or not ws_sub.usage_subscription_item_id:
+            return {"action": "no_metered_subscription"}
+
+        # Report accrued usage for postpaid plans
+        if ws_sub.billing_model == "postpaid":
+            from aexy.services.postpaid_billing_service import PostpaidBillingService
+            postpaid_service = PostpaidBillingService(self.db)
+            result_data = await postpaid_service.finalize_period(ws_sub.workspace_id)
+            logger.info(
+                f"Reported postpaid usage for workspace {ws_sub.workspace_id}: "
+                f"{result_data}"
+            )
+            return {"action": "postpaid_usage_reported", **result_data}
+
+        # For flat_plus_usage, report unreported usage to Stripe
+        if ws_sub.billing_model == "flat_plus_usage":
+            from aexy.services.usage_service import UsageService
+            usage_service = UsageService(self.db)
+            report_result = await usage_service.report_workspace_usage_to_stripe(
+                ws_sub.workspace_id
+            )
+            logger.info(
+                f"Reported flat+usage for workspace {ws_sub.workspace_id}: "
+                f"{report_result}"
+            )
+            return {"action": "usage_reported", **report_result}
+
+        return {"action": "no_action_needed"}
 
     async def _handle_customer_updated(
         self,

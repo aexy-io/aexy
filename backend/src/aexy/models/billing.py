@@ -247,6 +247,14 @@ class UsageRecord(Base):
         index=True,
     )
 
+    # Workspace attribution (nullable for backwards compat)
+    workspace_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("workspaces.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     # Usage details
     usage_type: Mapped[str] = mapped_column(String(50))  # UsageType value
     provider: Mapped[str] = mapped_column(String(50))  # claude, gemini, ollama
@@ -313,6 +321,14 @@ class UsageAggregate(Base):
     customer_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False),
         ForeignKey("customer_billing.id", ondelete="CASCADE"),
+        index=True,
+    )
+
+    # Workspace attribution (nullable for backwards compat)
+    workspace_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("workspaces.id", ondelete="SET NULL"),
+        nullable=True,
         index=True,
     )
 

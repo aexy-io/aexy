@@ -1,6 +1,6 @@
 """Database models for Aexy."""
 
-from aexy.models.plan import Plan, PlanTier, DEFAULT_PLANS
+from aexy.models.plan import Plan, PlanTier, BillingModel, DEFAULT_PLANS
 from aexy.models.developer import Developer, GitHubConnection, GitHubInstallation, GoogleConnection
 from aexy.models.billing import (
     CustomerBilling,
@@ -42,6 +42,7 @@ from aexy.models.workspace import (
     Workspace,
     WorkspaceMember,
     WorkspaceSubscription,
+    WorkspacePlanOverride,
 )
 from aexy.models.team import (
     Team,
@@ -514,6 +515,7 @@ __all__ = [
     # Plan
     "Plan",
     "PlanTier",
+    "BillingModel",
     "DEFAULT_PLANS",
     # Billing
     "CustomerBilling",
@@ -558,6 +560,7 @@ __all__ = [
     "Workspace",
     "WorkspaceMember",
     "WorkspaceSubscription",
+    "WorkspacePlanOverride",
     # Team
     "Team",
     "TeamMember",

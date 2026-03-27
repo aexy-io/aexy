@@ -13,6 +13,7 @@ class PlanResponse(BaseModel):
     name: str
     tier: str
     description: str | None = None
+    billing_model: str = "free"
     price_monthly_cents: int
     max_repos: int
     max_commits_per_repo: int
@@ -31,6 +32,13 @@ class PlanResponse(BaseModel):
     enable_exports: bool
     enable_webhooks: bool = False
     enable_team_features: bool = False
+    # Billing model pricing
+    base_fee_monthly_cents: int = 0
+    per_seat_price_monthly_cents: int = 0
+    min_seats: int = 1
+    included_seats: int = 0
+    requires_payment_method: bool = False
+    payment_timing: str = "prepaid"
 
     class Config:
         from_attributes = True
@@ -134,9 +142,11 @@ class CreateCheckoutSessionRequest(BaseModel):
     """Request to create a checkout session."""
 
     plan_tier: str = Field(..., description="Plan tier: free, pro, or enterprise")
+    billing_model: str | None = Field(default=None, description="Billing model: per_seat, flat_plus_usage, postpaid")
     success_url: str = Field(..., description="URL to redirect to on success")
     cancel_url: str = Field(..., description="URL to redirect to on cancel")
     workspace_id: str | None = Field(default=None, description="Workspace to upgrade (if applicable)")
+    seat_count: int | None = Field(default=None, description="Number of seats for per-seat plans")
 
 
 class CreateCheckoutSessionResponse(BaseModel):
@@ -170,15 +180,38 @@ class ChangePlanRequest(BaseModel):
     workspace_id: str | None = Field(default=None, description="Workspace to change plan for (if applicable)")
 
 
+class SeatSummaryResponse(BaseModel):
+    """Seat information for per-seat plans."""
+
+    total_seats: int
+    base_seats: int
+    additional_seats: int
+    per_seat_price_cents: int
+    included_seats: int
+
+
+class PostpaidSummaryResponse(BaseModel):
+    """Postpaid billing summary."""
+
+    accrued_cents: int
+    estimated_total_cents: int
+    last_settled_at: datetime | None = None
+    billing_period_start: datetime | None = None
+    billing_period_end: datetime | None = None
+
+
 class SubscriptionStatusResponse(BaseModel):
     """Complete subscription status."""
 
     has_subscription: bool
+    billing_model: str = "free"
     subscription: SubscriptionResponse | None = None
     plan: PlanResponse | None = None
     customer: CustomerBillingResponse | None = None
     usage_summary: UsageSummaryResponse | None = None
     usage_estimate: UsageEstimateResponse | None = None
+    seat_summary: SeatSummaryResponse | None = None
+    postpaid_summary: PostpaidSummaryResponse | None = None
 
 
 class WebhookResponse(BaseModel):
@@ -195,6 +228,7 @@ class LimitsUsagePlan(BaseModel):
     id: str
     name: str
     tier: str
+    billing_model: str = "free"
 
 
 class LimitsUsageRepos(BaseModel):
@@ -250,3 +284,130 @@ class LimitsUsageResponse(BaseModel):
     llm: LimitsUsageLLM
     tokens: LimitsUsageTokens
     features: LimitsUsageFeatures
+
+
+# --- Effective Plan (with overrides applied) ---
+
+
+class EffectivePlanResponse(BaseModel):
+    """Plan with workspace overrides applied."""
+
+    plan_id: str
+    plan_name: str
+    tier: str
+    billing_model: str
+    has_overrides: bool = False
+    discount_percent: int = 0
+    # Limits
+    max_repos: int
+    max_commits_per_repo: int
+    max_prs_per_repo: int
+    sync_history_days: int
+    llm_requests_per_day: int
+    llm_requests_per_minute: int
+    llm_tokens_per_minute: int
+    llm_provider_access: list[str]
+    free_llm_tokens_per_month: int
+    llm_input_cost_per_1k_cents: int
+    llm_output_cost_per_1k_cents: int
+    enable_overage_billing: bool
+    # Features
+    enable_real_time_sync: bool
+    enable_advanced_analytics: bool
+    enable_exports: bool
+    enable_webhooks: bool
+    enable_team_features: bool
+    # Pricing
+    price_monthly_cents: int
+    base_fee_monthly_cents: int
+    per_seat_price_monthly_cents: int
+    min_seats: int
+    included_seats: int
+    payment_timing: str
+    requires_payment_method: bool
+
+
+# --- Workspace Plan Override ---
+
+
+class WorkspacePlanOverrideCreate(BaseModel):
+    """Request to create/update a workspace plan override. All fields optional."""
+
+    billing_model: str | None = None
+    price_monthly_cents: int | None = None
+    base_fee_monthly_cents: int | None = None
+    per_seat_price_monthly_cents: int | None = None
+    min_seats: int | None = None
+    included_seats: int | None = None
+    max_repos: int | None = None
+    max_commits_per_repo: int | None = None
+    max_prs_per_repo: int | None = None
+    sync_history_days: int | None = None
+    llm_requests_per_day: int | None = None
+    llm_requests_per_minute: int | None = None
+    llm_tokens_per_minute: int | None = None
+    llm_provider_access: list[str] | None = None
+    free_llm_tokens_per_month: int | None = None
+    llm_input_cost_per_1k_cents: int | None = None
+    llm_output_cost_per_1k_cents: int | None = None
+    enable_overage_billing: bool | None = None
+    enable_real_time_sync: bool | None = None
+    enable_advanced_analytics: bool | None = None
+    enable_exports: bool | None = None
+    enable_webhooks: bool | None = None
+    enable_team_features: bool | None = None
+    payment_timing: str | None = None
+    requires_payment_method: bool | None = None
+    stripe_product_id: str | None = None
+    stripe_price_id: str | None = None
+    discount_percent: int | None = None
+    discount_description: str | None = None
+    notes: str | None = None
+
+
+class WorkspacePlanOverrideResponse(BaseModel):
+    """Workspace plan override details."""
+
+    id: str
+    workspace_id: str
+    billing_model: str | None = None
+    price_monthly_cents: int | None = None
+    base_fee_monthly_cents: int | None = None
+    per_seat_price_monthly_cents: int | None = None
+    min_seats: int | None = None
+    included_seats: int | None = None
+    max_repos: int | None = None
+    max_commits_per_repo: int | None = None
+    max_prs_per_repo: int | None = None
+    sync_history_days: int | None = None
+    llm_requests_per_day: int | None = None
+    llm_requests_per_minute: int | None = None
+    llm_tokens_per_minute: int | None = None
+    llm_provider_access: list[str] | None = None
+    free_llm_tokens_per_month: int | None = None
+    llm_input_cost_per_1k_cents: int | None = None
+    llm_output_cost_per_1k_cents: int | None = None
+    enable_overage_billing: bool | None = None
+    enable_real_time_sync: bool | None = None
+    enable_advanced_analytics: bool | None = None
+    enable_exports: bool | None = None
+    enable_webhooks: bool | None = None
+    enable_team_features: bool | None = None
+    payment_timing: str | None = None
+    requires_payment_method: bool | None = None
+    discount_percent: int | None = None
+    discount_description: str | None = None
+    notes: str | None = None
+    configured_by: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class UpdateSeatsRequest(BaseModel):
+    """Request to update seat count."""
+
+    seat_count: int = Field(..., ge=1, description="New total seat count")
+    workspace_id: str = Field(..., description="Workspace ID")

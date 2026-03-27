@@ -86,6 +86,7 @@ class UsageService:
         output_tokens: int,
         analysis_type: str | None = None,
         request_id: str | None = None,
+        workspace_id: str | None = None,
     ) -> UsageRecord | None:
         """Record LLM usage for a developer."""
         # Get customer billing
@@ -128,6 +129,7 @@ class UsageService:
         # Create usage record
         usage_record = UsageRecord(
             customer_id=customer_billing.id,
+            workspace_id=workspace_id,
             usage_type=UsageType.LLM_INPUT_TOKENS.value,
             provider=provider.lower(),
             model=model,
@@ -689,3 +691,151 @@ class UsageService:
         except stripe.error.StripeError as e:
             logger.error(f"Failed to fetch invoices from Stripe: {e}")
             return []
+
+    async def aggregate_workspace_usage(
+        self,
+        workspace_id: str,
+        period_start: datetime,
+        period_end: datetime,
+    ) -> dict[str, Any]:
+        """Aggregate all usage across workspace members for a billing period."""
+        # Query usage records for the workspace within the billing period
+        stmt = select(
+            func.sum(UsageRecord.input_tokens).label("total_input"),
+            func.sum(UsageRecord.output_tokens).label("total_output"),
+            func.sum(UsageRecord.total_tokens).label("total_tokens"),
+            func.sum(UsageRecord.base_cost_cents).label("total_base_cost"),
+            func.sum(UsageRecord.total_cost_cents).label("total_cost"),
+            func.count().label("total_requests"),
+        ).where(
+            UsageRecord.workspace_id == workspace_id,
+            UsageRecord.created_at >= period_start,
+            UsageRecord.created_at < period_end,
+        )
+        result = await self.db.execute(stmt)
+        row = result.one()
+
+        # Get usage breakdown by provider
+        stmt = select(
+            UsageRecord.provider,
+            func.sum(UsageRecord.input_tokens).label("input_tokens"),
+            func.sum(UsageRecord.output_tokens).label("output_tokens"),
+            func.sum(UsageRecord.total_cost_cents).label("cost"),
+            func.count().label("request_count"),
+        ).where(
+            UsageRecord.workspace_id == workspace_id,
+            UsageRecord.created_at >= period_start,
+            UsageRecord.created_at < period_end,
+        ).group_by(UsageRecord.provider)
+        result = await self.db.execute(stmt)
+        by_provider = {
+            r.provider: {
+                "input_tokens": r.input_tokens or 0,
+                "output_tokens": r.output_tokens or 0,
+                "cost_cents": r.cost or 0.0,
+                "request_count": r.request_count or 0,
+            }
+            for r in result.all()
+        }
+
+        return {
+            "workspace_id": workspace_id,
+            "period_start": period_start,
+            "period_end": period_end,
+            "total_input_tokens": row.total_input or 0,
+            "total_output_tokens": row.total_output or 0,
+            "total_tokens": row.total_tokens or 0,
+            "total_base_cost_cents": row.total_base_cost or 0.0,
+            "total_cost_cents": row.total_cost or 0.0,
+            "total_requests": row.total_requests or 0,
+            "by_provider": by_provider,
+        }
+
+    async def report_workspace_usage_to_stripe(
+        self,
+        workspace_id: str,
+    ) -> dict[str, Any]:
+        """Report workspace-level metered usage to Stripe for flat_plus_usage and postpaid billing.
+
+        Finds the WorkspaceSubscription's usage_subscription_item_id and reports
+        unreported usage records for this workspace.
+        """
+        from aexy.models.workspace import WorkspaceSubscription
+
+        # Get workspace subscription with usage item
+        stmt = select(WorkspaceSubscription).where(
+            WorkspaceSubscription.workspace_id == workspace_id,
+            WorkspaceSubscription.status == "active",
+        )
+        result = await self.db.execute(stmt)
+        ws_sub = result.scalar_one_or_none()
+
+        if not ws_sub or not ws_sub.usage_subscription_item_id:
+            logger.warning(
+                f"No active workspace subscription with usage item for workspace {workspace_id}"
+            )
+            return {"reported": 0, "total_cost_cents": 0.0}
+
+        # Get unreported usage records for this workspace
+        stmt = (
+            select(UsageRecord)
+            .where(
+                UsageRecord.workspace_id == workspace_id,
+                UsageRecord.reported_to_stripe == False,
+            )
+            .order_by(UsageRecord.created_at)
+        )
+        result = await self.db.execute(stmt)
+        unreported = list(result.scalars().all())
+
+        if not unreported:
+            return {"reported": 0, "total_cost_cents": 0.0}
+
+        # Calculate total usage in cents (Stripe expects integer cents)
+        total_cost_cents = sum(int(r.total_cost_cents) for r in unreported)
+
+        if total_cost_cents == 0:
+            # Mark as reported even if zero cost
+            for record in unreported:
+                record.reported_to_stripe = True
+                record.reported_at = datetime.utcnow()
+            await self.db.commit()
+            return {"reported": len(unreported), "total_cost_cents": 0.0}
+
+        try:
+            # Report to Stripe using the workspace subscription's usage item
+            stripe.SubscriptionItem.create_usage_record(
+                ws_sub.usage_subscription_item_id,
+                quantity=total_cost_cents,
+                timestamp=int(datetime.utcnow().timestamp()),
+                action="increment",
+            )
+
+            # Mark records as reported
+            for record in unreported:
+                record.reported_to_stripe = True
+                record.reported_at = datetime.utcnow()
+
+            # Update postpaid accrued amount if postpaid billing
+            if ws_sub.payment_timing == "postpaid":
+                ws_sub.postpaid_usage_accrued_cents += total_cost_cents
+
+            await self.db.commit()
+
+            logger.info(
+                f"Reported {len(unreported)} workspace usage records to Stripe "
+                f"for workspace {workspace_id}: ${total_cost_cents / 100:.2f}"
+            )
+
+            return {
+                "reported": len(unreported),
+                "total_cost_cents": float(total_cost_cents),
+                "workspace_id": workspace_id,
+                "billing_model": ws_sub.billing_model,
+            }
+
+        except stripe.error.StripeError as e:
+            logger.error(
+                f"Failed to report workspace usage to Stripe for {workspace_id}: {e}"
+            )
+            raise

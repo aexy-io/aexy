@@ -4,7 +4,7 @@ import { ReactNode, useState } from "react";
 import { useSubscription } from "@/hooks/useSubscription";
 import { Crown, Lock, Sparkles, X } from "lucide-react";
 
-type PremiumFeature = "team_features" | "sync" | "roles" | "exports" | "advanced_analytics" | "webhooks" | "sso" | "email_delivery";
+type PremiumFeature = "team_features" | "sync" | "roles" | "exports" | "advanced_analytics" | "webhooks" | "sso" | "email_delivery" | "ai_insights" | "ai_providers";
 
 interface PremiumGateProps {
   feature: PremiumFeature;
@@ -23,6 +23,8 @@ const featureNames: Record<PremiumFeature, string> = {
   webhooks: "Webhooks",
   sso: "Single Sign-On",
   email_delivery: "Email Delivery Logs",
+  ai_insights: "AI-Powered Insights",
+  ai_providers: "Premium AI Providers",
 };
 
 const featureDescriptions: Record<PremiumFeature, string> = {
@@ -34,9 +36,12 @@ const featureDescriptions: Record<PremiumFeature, string> = {
   webhooks: "Integrate with external services via webhooks.",
   sso: "Configure SAML or OpenID Connect for centralized authentication.",
   email_delivery: "Monitor email delivery status, bounces, and logs.",
+  ai_insights: "Get AI-powered analysis of your code, PRs, and team performance.",
+  ai_providers: "Access Claude, Gemini, and other premium AI providers.",
 };
 
 const enterpriseFeatures: PremiumFeature[] = ["sso", "email_delivery"];
+const aiFeatures: PremiumFeature[] = ["ai_insights", "ai_providers"];
 
 export function PremiumGate({
   feature,
@@ -45,11 +50,12 @@ export function PremiumGate({
   showBadge = true,
   inline = false,
 }: PremiumGateProps) {
-  const { canUseTeamFeatures, canUseExports, canUseAdvancedAnalytics, canUseWebhooks, isPremium, isEnterprise, isLoading } =
+  const { canUseTeamFeatures, canUseExports, canUseAdvancedAnalytics, canUseWebhooks, canUseAI, isPremium, isEnterprise, isLoading } =
     useSubscription();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   // Check if user has access to this feature
+  // Note: All module features (team, exports, analytics, webhooks) are now available on free tier
   const hasAccess = (() => {
     switch (feature) {
       case "team_features":
@@ -65,12 +71,16 @@ export function PremiumGate({
       case "sso":
       case "email_delivery":
         return isEnterprise;
+      case "ai_insights":
+      case "ai_providers":
+        return canUseAI && isPremium;
       default:
         return isPremium;
     }
   })();
 
   const isEnterpriseFeature = enterpriseFeatures.includes(feature);
+  const isAIFeature = aiFeatures.includes(feature);
 
   if (isLoading) {
     return <>{children}</>;
@@ -99,12 +109,14 @@ export function PremiumGate({
             } inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-medium cursor-pointer transition-all ${
               isEnterpriseFeature
                 ? "bg-gradient-to-r from-purple-500 to-indigo-500 text-white hover:from-purple-600 hover:to-indigo-600"
+                : isAIFeature
+                ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:from-blue-600 hover:to-cyan-600"
                 : "bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600"
             }`}
-            title={isEnterpriseFeature ? "Enterprise feature" : "Pro feature"}
+            title={isEnterpriseFeature ? "Enterprise feature" : isAIFeature ? "Upgrade for AI" : "Pro feature"}
           >
-            <Crown className="h-3 w-3" />
-            {isEnterpriseFeature ? "Enterprise" : "Pro"}
+            {isAIFeature ? <Sparkles className="h-3 w-3" /> : <Crown className="h-3 w-3" />}
+            {isEnterpriseFeature ? "Enterprise" : isAIFeature ? "AI" : "Pro"}
           </span>
         )}
       </div>

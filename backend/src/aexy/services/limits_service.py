@@ -1,6 +1,6 @@
 """Service for checking and enforcing plan-based limits."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from aexy.models.developer import Developer
-from aexy.models.plan import DEFAULT_PLANS, Plan, PlanTier
+from aexy.models.plan import DEFAULT_PLANS, BillingModel, Plan, PlanTier
 from aexy.models.repository import DeveloperRepository
 
 
@@ -87,12 +87,69 @@ class LLMLimits:
         return self.requests_per_day == -1
 
 
+@dataclass
+class EffectivePlan:
+    """The effective plan for a workspace/developer after applying overrides."""
+
+    plan_id: str
+    plan_name: str
+    tier: str
+    billing_model: str
+
+    # Sync limits
+    max_repos: int
+    max_commits_per_repo: int
+    max_prs_per_repo: int
+    sync_history_days: int
+
+    # LLM limits
+    llm_requests_per_day: int
+    llm_requests_per_minute: int
+    llm_tokens_per_minute: int
+    llm_provider_access: list[str] = field(default_factory=list)
+    free_llm_tokens_per_month: int = 100000
+    llm_input_cost_per_1k_cents: int = 30
+    llm_output_cost_per_1k_cents: int = 60
+    enable_overage_billing: bool = True
+
+    # Feature flags
+    enable_real_time_sync: bool = False
+    enable_advanced_analytics: bool = False
+    enable_exports: bool = False
+    enable_webhooks: bool = False
+    enable_team_features: bool = False
+
+    # Pricing
+    price_monthly_cents: int = 0
+    base_fee_monthly_cents: int = 0
+    per_seat_price_monthly_cents: int = 0
+    min_seats: int = 1
+    included_seats: int = 0
+    payment_timing: str = "prepaid"
+    requires_payment_method: bool = False
+
+    # Stripe
+    stripe_product_id: str | None = None
+    stripe_price_id: str | None = None
+
+    # Override metadata
+    has_overrides: bool = False
+    discount_percent: int = 0
+
+    def is_limit_unlimited(self, limit_value: int) -> bool:
+        return limit_value == -1
+
+    def can_use_provider(self, provider: str) -> bool:
+        return provider in self.llm_provider_access
+
+
 class LimitsService:
     """Service for checking and enforcing plan-based limits."""
 
     def __init__(self, db: AsyncSession):
         self.db = db
         self._plan_cache: dict[str, Plan] = {}
+        self._effective_plan_cache: dict[str, EffectivePlan] = {}
 
     async def get_developer_with_plan(self, developer_id: str) -> Developer | None:
         """Get a developer with their plan loaded."""
@@ -154,7 +211,7 @@ class LimitsService:
         dev_plan = await self.ensure_developer_has_plan(developer_id)
 
         # Check if any workspace the developer belongs to has a better plan
-        tier_order = {"free": 0, "pro": 1, "enterprise": 2}
+        tier_order = {"free": 0, "pro": 1, "flat_plus_usage": 1, "postpaid": 1, "enterprise": 2, "custom": 2}
         dev_tier = tier_order.get(dev_plan.tier, 0)
 
         stmt = (
@@ -180,6 +237,104 @@ class LimitsService:
 
         self._plan_cache[developer_id] = best_plan
         return best_plan
+
+    async def get_effective_plan(
+        self, developer_id: str, workspace_id: str | None = None
+    ) -> EffectivePlan:
+        """Get the effective plan for a developer, applying workspace overrides.
+
+        If workspace_id is provided, checks that specific workspace's override.
+        Otherwise, finds the best workspace override for the developer.
+        """
+        cache_key = f"{developer_id}:{workspace_id or 'auto'}"
+        if cache_key in self._effective_plan_cache:
+            return self._effective_plan_cache[cache_key]
+
+        plan = await self.get_plan(developer_id)
+        override = None
+
+        from aexy.models.workspace import Workspace, WorkspaceMember, WorkspacePlanOverride
+
+        if workspace_id:
+            stmt = select(WorkspacePlanOverride).where(
+                WorkspacePlanOverride.workspace_id == workspace_id
+            )
+            result = await self.db.execute(stmt)
+            override = result.scalar_one_or_none()
+        else:
+            # Find the override from the developer's best workspace
+            stmt = (
+                select(WorkspacePlanOverride)
+                .join(Workspace, Workspace.id == WorkspacePlanOverride.workspace_id)
+                .join(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id)
+                .where(
+                    WorkspaceMember.developer_id == developer_id,
+                    WorkspaceMember.status == "active",
+                    Workspace.is_active == True,
+                )
+            )
+            result = await self.db.execute(stmt)
+            overrides = result.scalars().all()
+            if overrides:
+                # Use the first override found (typically there's one workspace)
+                override = overrides[0]
+
+        effective = self._apply_overrides(plan, override)
+        self._effective_plan_cache[cache_key] = effective
+        return effective
+
+    def _apply_overrides(
+        self, plan: Plan, override: "WorkspacePlanOverride | None"
+    ) -> EffectivePlan:
+        """Apply workspace overrides to a base plan, returning an EffectivePlan."""
+
+        def _ov(field_name: str, plan_value: Any) -> Any:
+            """Return override value if non-null, else plan value."""
+            if override is None:
+                return plan_value
+            ov_val = getattr(override, field_name, None)
+            return ov_val if ov_val is not None else plan_value
+
+        return EffectivePlan(
+            plan_id=plan.id,
+            plan_name=plan.name,
+            tier=plan.tier,
+            billing_model=_ov("billing_model", plan.billing_model),
+            # Sync limits
+            max_repos=_ov("max_repos", plan.max_repos),
+            max_commits_per_repo=_ov("max_commits_per_repo", plan.max_commits_per_repo),
+            max_prs_per_repo=_ov("max_prs_per_repo", plan.max_prs_per_repo),
+            sync_history_days=_ov("sync_history_days", plan.sync_history_days),
+            # LLM limits
+            llm_requests_per_day=_ov("llm_requests_per_day", plan.llm_requests_per_day),
+            llm_requests_per_minute=_ov("llm_requests_per_minute", plan.llm_requests_per_minute),
+            llm_tokens_per_minute=_ov("llm_tokens_per_minute", plan.llm_tokens_per_minute),
+            llm_provider_access=_ov("llm_provider_access", plan.llm_provider_access or []),
+            free_llm_tokens_per_month=_ov("free_llm_tokens_per_month", plan.free_llm_tokens_per_month),
+            llm_input_cost_per_1k_cents=_ov("llm_input_cost_per_1k_cents", plan.llm_input_cost_per_1k_cents),
+            llm_output_cost_per_1k_cents=_ov("llm_output_cost_per_1k_cents", plan.llm_output_cost_per_1k_cents),
+            enable_overage_billing=_ov("enable_overage_billing", plan.enable_overage_billing),
+            # Feature flags
+            enable_real_time_sync=_ov("enable_real_time_sync", plan.enable_real_time_sync),
+            enable_advanced_analytics=_ov("enable_advanced_analytics", plan.enable_advanced_analytics),
+            enable_exports=_ov("enable_exports", plan.enable_exports),
+            enable_webhooks=_ov("enable_webhooks", plan.enable_webhooks),
+            enable_team_features=_ov("enable_team_features", plan.enable_team_features),
+            # Pricing
+            price_monthly_cents=_ov("price_monthly_cents", plan.price_monthly_cents),
+            base_fee_monthly_cents=_ov("base_fee_monthly_cents", plan.base_fee_monthly_cents),
+            per_seat_price_monthly_cents=_ov("per_seat_price_monthly_cents", plan.per_seat_price_monthly_cents),
+            min_seats=_ov("min_seats", plan.min_seats),
+            included_seats=_ov("included_seats", plan.included_seats),
+            payment_timing=_ov("payment_timing", plan.payment_timing),
+            requires_payment_method=_ov("requires_payment_method", plan.requires_payment_method),
+            # Stripe
+            stripe_product_id=_ov("stripe_product_id", plan.stripe_product_id),
+            stripe_price_id=_ov("stripe_price_id", plan.stripe_price_id),
+            # Override metadata
+            has_overrides=override is not None,
+            discount_percent=(override.discount_percent or 0) if override else 0,
+        )
 
     async def get_sync_limits(self, developer_id: str) -> SyncLimits:
         """Get sync limits for a developer based on their plan."""
@@ -585,6 +740,7 @@ class LimitsService:
                 "id": plan.id,
                 "name": plan.name,
                 "tier": plan.tier,
+                "billing_model": plan.billing_model,
             },
             "repos": {
                 "used": repos_count,
@@ -597,6 +753,11 @@ class LimitsService:
                 "unlimited": plan.llm_requests_per_day == -1,
                 "providers": plan.llm_provider_access or [],
                 "reset_at": developer.llm_requests_reset_at.isoformat() if developer.llm_requests_reset_at else None,
+            },
+            "tokens": {
+                "free_tokens_per_month": plan.free_llm_tokens_per_month,
+                "used_this_month": developer.llm_tokens_used_this_month or 0,
+                "overage_cost_cents": developer.llm_overage_cost_cents or 0,
             },
             "features": {
                 "real_time_sync": plan.enable_real_time_sync,

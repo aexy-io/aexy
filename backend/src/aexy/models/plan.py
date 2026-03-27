@@ -12,12 +12,24 @@ from sqlalchemy.sql import func
 from aexy.core.database import Base
 
 
+class BillingModel(str, Enum):
+    """Available billing models."""
+
+    FREE = "free"
+    PER_SEAT = "per_seat"
+    FLAT_PLUS_USAGE = "flat_plus_usage"
+    POSTPAID = "postpaid"
+
+
 class PlanTier(str, Enum):
     """Available subscription tiers."""
 
     FREE = "free"
     PRO = "pro"
     ENTERPRISE = "enterprise"
+    FLAT_PLUS_USAGE = "flat_plus_usage"
+    POSTPAID = "postpaid"
+    CUSTOM = "custom"
 
 
 class Plan(Base):
@@ -67,6 +79,19 @@ class Plan(Base):
     enable_webhooks: Mapped[bool] = mapped_column(Boolean, default=False)
     enable_team_features: Mapped[bool] = mapped_column(Boolean, default=False)
 
+    # Billing model
+    billing_model: Mapped[str] = mapped_column(
+        String(50), default=BillingModel.FREE.value
+    )  # BillingModel value
+    base_fee_monthly_cents: Mapped[int] = mapped_column(Integer, default=0)
+    per_seat_price_monthly_cents: Mapped[int] = mapped_column(Integer, default=0)
+    min_seats: Mapped[int] = mapped_column(Integer, default=1)
+    included_seats: Mapped[int] = mapped_column(Integer, default=0)
+    requires_payment_method: Mapped[bool] = mapped_column(Boolean, default=False)
+    payment_timing: Mapped[str] = mapped_column(
+        String(50), default="prepaid"
+    )  # "prepaid" | "postpaid"
+
     # Pricing (for display - actual billing via Stripe later)
     price_monthly_cents: Mapped[int] = mapped_column(Integer, default=0)
     price_yearly_cents: Mapped[int] = mapped_column(Integer, default=0)
@@ -112,10 +137,11 @@ DEFAULT_PLANS = [
     {
         "name": "Free",
         "tier": PlanTier.FREE.value,
-        "description": "Perfect for trying out Aexy",
-        "max_repos": 5,
-        "max_commits_per_repo": 500,
-        "max_prs_per_repo": 100,
+        "billing_model": BillingModel.FREE.value,
+        "description": "All modules free with fair limits — only AI is limited",
+        "max_repos": 10,
+        "max_commits_per_repo": 1000,
+        "max_prs_per_repo": 200,
         "sync_history_days": 90,
         "llm_requests_per_day": 50,
         "llm_requests_per_minute": 5,
@@ -126,18 +152,26 @@ DEFAULT_PLANS = [
         "llm_input_cost_per_1k_cents": 0,
         "llm_output_cost_per_1k_cents": 0,
         "enable_overage_billing": False,
-        "enable_real_time_sync": False,
-        "enable_advanced_analytics": False,
-        "enable_exports": False,
-        "enable_webhooks": False,
-        "enable_team_features": False,
+        # All module features enabled — only AI is gated
+        "enable_real_time_sync": True,
+        "enable_advanced_analytics": True,
+        "enable_exports": True,
+        "enable_webhooks": True,
+        "enable_team_features": True,
         "price_monthly_cents": 0,
         "price_yearly_cents": 0,
+        "per_seat_price_monthly_cents": 0,
+        "base_fee_monthly_cents": 0,
+        "min_seats": 1,
+        "included_seats": 10,
+        "requires_payment_method": False,
+        "payment_timing": "prepaid",
     },
     {
         "name": "Pro",
         "tier": PlanTier.PRO.value,
-        "description": "For professional developers and small teams",
+        "billing_model": BillingModel.PER_SEAT.value,
+        "description": "Per-seat plan for professional developers and teams",
         "max_repos": 20,
         "max_commits_per_repo": 5000,
         "max_prs_per_repo": 1000,
@@ -145,7 +179,7 @@ DEFAULT_PLANS = [
         "llm_requests_per_day": 500,
         "llm_requests_per_minute": 20,
         "llm_tokens_per_minute": 100000,
-        "llm_provider_access": ["claude", "gemini", "ollama"],
+        "llm_provider_access": ["claude", "gemini", "ollama", "openrouter"],
         # Pro tier: 500K tokens/month included, then pay-per-use
         "free_llm_tokens_per_month": 500000,
         "llm_input_cost_per_1k_cents": 25,   # $0.25 per 1K input tokens
@@ -155,14 +189,21 @@ DEFAULT_PLANS = [
         "enable_advanced_analytics": True,
         "enable_exports": True,
         "enable_webhooks": True,
-        "enable_team_features": False,
+        "enable_team_features": True,
         "price_monthly_cents": 2900,
         "price_yearly_cents": 29000,  # ~2 months free
+        "per_seat_price_monthly_cents": 2900,
+        "base_fee_monthly_cents": 0,
+        "min_seats": 1,
+        "included_seats": 1,
+        "requires_payment_method": True,
+        "payment_timing": "prepaid",
     },
     {
         "name": "Enterprise",
         "tier": PlanTier.ENTERPRISE.value,
-        "description": "For large teams and organizations",
+        "billing_model": BillingModel.PER_SEAT.value,
+        "description": "Per-seat plan for large teams and organizations",
         "max_repos": -1,  # Unlimited
         "max_commits_per_repo": -1,
         "max_prs_per_repo": -1,
@@ -170,7 +211,7 @@ DEFAULT_PLANS = [
         "llm_requests_per_day": -1,
         "llm_requests_per_minute": 60,
         "llm_tokens_per_minute": -1,  # Unlimited
-        "llm_provider_access": ["claude", "gemini", "ollama"],
+        "llm_provider_access": ["claude", "gemini", "ollama", "openrouter"],
         # Enterprise tier: 2M tokens/month included, discounted overage
         "free_llm_tokens_per_month": 2000000,
         "llm_input_cost_per_1k_cents": 15,   # $0.15 per 1K input tokens (40% discount)
@@ -183,6 +224,74 @@ DEFAULT_PLANS = [
         "enable_team_features": True,
         "price_monthly_cents": 9900,
         "price_yearly_cents": 99000,
+        "per_seat_price_monthly_cents": 9900,
+        "base_fee_monthly_cents": 0,
+        "min_seats": 5,
+        "included_seats": 5,
+        "requires_payment_method": True,
+        "payment_timing": "prepaid",
+    },
+    {
+        "name": "Flat + Usage",
+        "tier": PlanTier.FLAT_PLUS_USAGE.value,
+        "billing_model": BillingModel.FLAT_PLUS_USAGE.value,
+        "description": "Flat monthly fee plus pay-per-use AI",
+        "max_repos": -1,
+        "max_commits_per_repo": -1,
+        "max_prs_per_repo": -1,
+        "sync_history_days": -1,
+        "llm_requests_per_day": -1,
+        "llm_requests_per_minute": 30,
+        "llm_tokens_per_minute": 200000,
+        "llm_provider_access": ["claude", "gemini", "ollama", "openrouter"],
+        "free_llm_tokens_per_month": 0,  # No free tokens — all metered
+        "llm_input_cost_per_1k_cents": 20,
+        "llm_output_cost_per_1k_cents": 40,
+        "enable_overage_billing": True,
+        "enable_real_time_sync": True,
+        "enable_advanced_analytics": True,
+        "enable_exports": True,
+        "enable_webhooks": True,
+        "enable_team_features": True,
+        "price_monthly_cents": 4900,
+        "price_yearly_cents": 49000,
+        "per_seat_price_monthly_cents": 0,
+        "base_fee_monthly_cents": 4900,  # $49/mo flat base
+        "min_seats": 1,
+        "included_seats": -1,  # Unlimited seats included
+        "requires_payment_method": True,
+        "payment_timing": "prepaid",
+    },
+    {
+        "name": "Postpaid",
+        "tier": PlanTier.POSTPAID.value,
+        "billing_model": BillingModel.POSTPAID.value,
+        "description": "Pay after use — billed at end of billing period",
+        "max_repos": -1,
+        "max_commits_per_repo": -1,
+        "max_prs_per_repo": -1,
+        "sync_history_days": -1,
+        "llm_requests_per_day": -1,
+        "llm_requests_per_minute": 30,
+        "llm_tokens_per_minute": 200000,
+        "llm_provider_access": ["claude", "gemini", "ollama", "openrouter"],
+        "free_llm_tokens_per_month": 0,
+        "llm_input_cost_per_1k_cents": 20,
+        "llm_output_cost_per_1k_cents": 40,
+        "enable_overage_billing": True,
+        "enable_real_time_sync": True,
+        "enable_advanced_analytics": True,
+        "enable_exports": True,
+        "enable_webhooks": True,
+        "enable_team_features": True,
+        "price_monthly_cents": 0,  # No upfront cost
+        "price_yearly_cents": 0,
+        "per_seat_price_monthly_cents": 1900,  # $19/seat/mo billed at end
+        "base_fee_monthly_cents": 0,
+        "min_seats": 1,
+        "included_seats": 0,
+        "requires_payment_method": True,
+        "payment_timing": "postpaid",
     },
 ]
 

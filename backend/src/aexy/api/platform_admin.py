@@ -19,8 +19,14 @@ from aexy.core.config import get_settings
 from aexy.core.database import get_db
 from aexy.models.developer import Developer
 from aexy.models.notification import EmailNotificationLog, Notification
-from aexy.models.workspace import Workspace, WorkspaceMember
+from aexy.models.workspace import Workspace, WorkspaceMember, WorkspacePlanOverride
+from aexy.schemas.billing import (
+    EffectivePlanResponse,
+    WorkspacePlanOverrideCreate,
+    WorkspacePlanOverrideResponse,
+)
 from aexy.services.developer_service import DeveloperService
+from aexy.services.limits_service import LimitsService
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -767,3 +773,163 @@ async def list_ai_feedback(
         "page": result["page"],
         "limit": result["limit"],
     }
+
+
+# =============================================================================
+# WORKSPACE PLAN OVERRIDE MANAGEMENT
+# =============================================================================
+
+
+@router.post(
+    "/workspaces/{workspace_id}/plan-override",
+    response_model=WorkspacePlanOverrideResponse,
+    status_code=201,
+)
+async def create_or_update_plan_override(
+    workspace_id: str,
+    data: WorkspacePlanOverrideCreate,
+    admin: Developer = Depends(get_platform_admin),
+    db: AsyncSession = Depends(get_db),
+) -> WorkspacePlanOverrideResponse:
+    """Create or update a workspace plan override.
+
+    If an override already exists for this workspace, it will be updated.
+    Otherwise a new override is created.
+    """
+    # Verify workspace exists
+    ws_result = await db.execute(
+        select(Workspace).where(Workspace.id == workspace_id)
+    )
+    workspace = ws_result.scalar_one_or_none()
+    if not workspace:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Workspace not found",
+        )
+
+    # Check for existing override
+    stmt = select(WorkspacePlanOverride).where(
+        WorkspacePlanOverride.workspace_id == workspace_id
+    )
+    result = await db.execute(stmt)
+    override = result.scalar_one_or_none()
+
+    update_fields = data.model_dump(exclude_unset=True)
+    update_fields["configured_by"] = admin.email
+
+    if override:
+        # Update existing override
+        for field, value in update_fields.items():
+            setattr(override, field, value)
+    else:
+        # Create new override
+        override = WorkspacePlanOverride(
+            workspace_id=workspace_id,
+            **update_fields,
+        )
+        db.add(override)
+
+    await db.flush()
+    await db.refresh(override)
+    return WorkspacePlanOverrideResponse.model_validate(override)
+
+
+@router.get(
+    "/workspaces/{workspace_id}/plan-override",
+    response_model=WorkspacePlanOverrideResponse,
+)
+async def get_plan_override(
+    workspace_id: str,
+    admin: Developer = Depends(get_platform_admin),
+    db: AsyncSession = Depends(get_db),
+) -> WorkspacePlanOverrideResponse:
+    """Get the current plan override for a workspace."""
+    stmt = select(WorkspacePlanOverride).where(
+        WorkspacePlanOverride.workspace_id == workspace_id
+    )
+    result = await db.execute(stmt)
+    override = result.scalar_one_or_none()
+
+    if not override:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No plan override found for this workspace",
+        )
+
+    return WorkspacePlanOverrideResponse.model_validate(override)
+
+
+@router.delete("/workspaces/{workspace_id}/plan-override")
+async def delete_plan_override(
+    workspace_id: str,
+    admin: Developer = Depends(get_platform_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, str]:
+    """Remove a workspace plan override, reverting to the base plan."""
+    stmt = select(WorkspacePlanOverride).where(
+        WorkspacePlanOverride.workspace_id == workspace_id
+    )
+    result = await db.execute(stmt)
+    override = result.scalar_one_or_none()
+
+    if not override:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No plan override found for this workspace",
+        )
+
+    await db.delete(override)
+    await db.flush()
+    return {"status": "deleted"}
+
+
+@router.get(
+    "/workspaces/{workspace_id}/effective-plan",
+    response_model=EffectivePlanResponse,
+)
+async def get_effective_plan(
+    workspace_id: str,
+    admin: Developer = Depends(get_platform_admin),
+    db: AsyncSession = Depends(get_db),
+) -> EffectivePlanResponse:
+    """Preview the effective plan for a workspace with overrides applied."""
+    # Verify workspace exists and get its owner for plan resolution
+    ws_result = await db.execute(
+        select(Workspace).where(Workspace.id == workspace_id)
+    )
+    workspace = ws_result.scalar_one_or_none()
+    if not workspace:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Workspace not found",
+        )
+
+    limits_service = LimitsService(db)
+    effective = await limits_service.get_effective_plan(
+        developer_id=workspace.owner_id,
+        workspace_id=workspace_id,
+    )
+
+    response_fields = EffectivePlanResponse.model_fields.keys()
+    return EffectivePlanResponse(**{k: v for k, v in vars(effective).items() if k in response_fields})
+
+
+@router.get(
+    "/plan-overrides",
+    response_model=list[WorkspacePlanOverrideResponse],
+)
+async def list_plan_overrides(
+    admin: Developer = Depends(get_platform_admin),
+    db: AsyncSession = Depends(get_db),
+) -> list[WorkspacePlanOverrideResponse]:
+    """List all workspaces with plan overrides."""
+    stmt = select(WorkspacePlanOverride).order_by(
+        WorkspacePlanOverride.created_at.desc()
+    )
+    result = await db.execute(stmt)
+    overrides = result.scalars().all()
+
+    return [
+        WorkspacePlanOverrideResponse.model_validate(override)
+        for override in overrides
+    ]
