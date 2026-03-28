@@ -2176,6 +2176,13 @@ export interface Invoice {
   paid_at: string | null;
   invoice_pdf: string | null;
   hosted_invoice_url: string | null;
+  payment_method: string;
+  bank_transfer_reference: string | null;
+  manual_payment_note: string | null;
+  marked_paid_by: string | null;
+  description: string | null;
+  due_date: string | null;
+  workspace_id: string | null;
 }
 
 export interface LimitsUsageSummary {

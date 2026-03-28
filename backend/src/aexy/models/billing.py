@@ -390,10 +390,19 @@ class Invoice(Base):
         index=True,
     )
 
-    # Stripe invoice info
-    stripe_invoice_id: Mapped[str] = mapped_column(
+    # Workspace attribution (for manual invoices)
+    workspace_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("workspaces.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    # Stripe invoice info (nullable for manual invoices)
+    stripe_invoice_id: Mapped[str | None] = mapped_column(
         String(255),
         unique=True,
+        nullable=True,
         index=True,
     )
     stripe_invoice_number: Mapped[str | None] = mapped_column(
@@ -427,6 +436,20 @@ class Invoice(Base):
     # PDF and hosted invoice URL
     invoice_pdf: Mapped[str | None] = mapped_column(Text, nullable=True)
     hosted_invoice_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Payment method: "stripe" | "bank_transfer" | "manual"
+    payment_method: Mapped[str] = mapped_column(
+        String(50), default="stripe"
+    )
+    bank_transfer_reference: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
+    manual_payment_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    marked_paid_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    due_date: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Payment info
     paid_at: Mapped[datetime | None] = mapped_column(

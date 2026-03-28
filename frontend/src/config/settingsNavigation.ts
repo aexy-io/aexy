@@ -20,6 +20,7 @@ import {
   Activity,
   Bell,
   Settings2,
+  Receipt,
   type LucideIcon,
 } from "lucide-react";
 
@@ -267,6 +268,15 @@ export const settingsNavigation: SettingsNavCategory[] = [
         description: "Configure custom pricing, limits, and billing models per workspace",
         adminOnly: true,
         keywords: ["plan", "override", "custom", "pricing", "discount", "admin", "billing model"],
+      },
+      {
+        id: "admin-invoices",
+        label: "Invoices",
+        href: "/settings/admin-invoices",
+        icon: Receipt,
+        description: "Create, manage, and reconcile invoices for B2B customers",
+        adminOnly: true,
+        keywords: ["invoice", "billing", "payment", "bank transfer", "manual", "reconcile"],
       },
     ],
   },

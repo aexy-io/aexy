@@ -17,6 +17,8 @@
     "test:e2e:billing": "playwright test e2e/billing.spec.ts",
     "test:e2e:billing:headed": "playwright test e2e/billing.spec.ts --headed",
     "test:e2e:billing:ui": "playwright test e2e/billing.spec.ts --ui",
+    "test:e2e:invoices": "playwright test e2e/admin-invoices.spec.ts",
+    "test:e2e:invoices:headed": "playwright test e2e/admin-invoices.spec.ts --headed",
     "changelog": "node scripts/generate-changelog.mjs",
     "prebuild": "node scripts/generate-changelog.mjs"
   },

@@ -83,7 +83,7 @@ class InvoiceResponse(BaseModel):
     """Invoice details."""
 
     id: str
-    stripe_invoice_id: str
+    stripe_invoice_id: str | None = None
     stripe_invoice_number: str | None = None
     status: str
     subtotal_cents: int
@@ -97,6 +97,13 @@ class InvoiceResponse(BaseModel):
     period_start: datetime | None = None
     period_end: datetime | None = None
     paid_at: datetime | None = None
+    payment_method: str = "stripe"
+    bank_transfer_reference: str | None = None
+    manual_payment_note: str | None = None
+    marked_paid_by: str | None = None
+    description: str | None = None
+    due_date: datetime | None = None
+    workspace_id: str | None = None
     created_at: datetime
 
     class Config:
@@ -360,6 +367,8 @@ class WorkspacePlanOverrideCreate(BaseModel):
     requires_payment_method: bool | None = None
     stripe_product_id: str | None = None
     stripe_price_id: str | None = None
+    days_until_due: int | None = None
+    preferred_payment_method: str | None = None
     discount_percent: int | None = None
     discount_description: str | None = None
     notes: str | None = None
@@ -396,6 +405,8 @@ class WorkspacePlanOverrideResponse(BaseModel):
     payment_timing: str | None = None
     requires_payment_method: bool | None = None
     discount_percent: int | None = None
+    days_until_due: int | None = None
+    preferred_payment_method: str | None = None
     discount_description: str | None = None
     notes: str | None = None
     configured_by: str | None = None
@@ -411,3 +422,25 @@ class UpdateSeatsRequest(BaseModel):
 
     seat_count: int = Field(..., ge=1, description="New total seat count")
     workspace_id: str = Field(..., description="Workspace ID")
+
+
+# --- Admin Invoice Management ---
+
+
+class CreateManualInvoiceRequest(BaseModel):
+    """Request to create a manual invoice (bank transfer / offline)."""
+
+    workspace_id: str
+    amount_cents: int = Field(..., ge=1, description="Total amount in cents")
+    description: str = Field(..., description="Invoice description / line items")
+    due_date: datetime | None = None
+    payment_method: str = Field(default="bank_transfer", description="stripe | bank_transfer | manual")
+    currency: str = "usd"
+
+
+class MarkInvoicePaidRequest(BaseModel):
+    """Request to mark an invoice as paid (manual reconciliation)."""
+
+    bank_transfer_reference: str | None = Field(default=None, description="Wire ref / ACH trace number")
+    payment_note: str | None = Field(default=None, description="Admin notes about the payment")
+    payment_date: datetime | None = Field(default=None, description="When the payment was received")

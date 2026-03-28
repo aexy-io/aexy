@@ -20,8 +20,12 @@ from aexy.core.database import get_db
 from aexy.models.developer import Developer
 from aexy.models.notification import EmailNotificationLog, Notification
 from aexy.models.workspace import Workspace, WorkspaceMember, WorkspacePlanOverride
+from aexy.models.billing import CustomerBilling, Invoice
 from aexy.schemas.billing import (
+    CreateManualInvoiceRequest,
     EffectivePlanResponse,
+    InvoiceResponse,
+    MarkInvoicePaidRequest,
     WorkspacePlanOverrideCreate,
     WorkspacePlanOverrideResponse,
 )
@@ -203,16 +207,33 @@ async def get_current_developer(
 
 async def get_platform_admin(
     current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
 ) -> Developer:
-    """Verify user is a platform admin (email in ADMIN_EMAILS).
+    """Verify user is a platform admin.
 
-    Platform admins have access to global system monitoring and management.
+    Double auth: user must have admin email AND be a member of the platform org.
     """
     if current_user.email.lower() not in settings.admin_email_list:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Platform admin access required",
         )
+
+    # Double auth: verify membership in platform org
+    if settings.platform_org_id:
+        stmt = select(WorkspaceMember).where(
+            WorkspaceMember.workspace_id == settings.platform_org_id,
+            WorkspaceMember.developer_id == current_user.id,
+            WorkspaceMember.status == "active",
+        )
+        result = await db.execute(stmt)
+        membership = result.scalar_one_or_none()
+        if not membership:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Platform admin access required (not a member of platform org)",
+            )
+
     return current_user
 
 
@@ -221,13 +242,34 @@ async def get_platform_admin(
 # =============================================================================
 
 
-@router.get("/check", response_model=AdminCheckResponse)
+@router.get("/check")
 async def check_admin_status(
     current_user: Developer = Depends(get_current_developer),
-) -> AdminCheckResponse:
-    """Check if the current user is a platform admin."""
-    is_admin = current_user.email.lower() in settings.admin_email_list
-    return AdminCheckResponse(is_admin=is_admin)
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Check if the current user is a platform admin.
+
+    Returns admin status and the platform org ID for frontend routing.
+    """
+    is_admin_email = current_user.email.lower() in settings.admin_email_list
+    is_in_platform_org = False
+    platform_org_id = settings.platform_org_id or None
+
+    if is_admin_email and platform_org_id:
+        stmt = select(WorkspaceMember).where(
+            WorkspaceMember.workspace_id == platform_org_id,
+            WorkspaceMember.developer_id == current_user.id,
+            WorkspaceMember.status == "active",
+        )
+        result = await db.execute(stmt)
+        is_in_platform_org = result.scalar_one_or_none() is not None
+
+    is_admin = is_admin_email and (not platform_org_id or is_in_platform_org)
+
+    return {
+        "is_admin": is_admin,
+        "platform_org_id": platform_org_id,
+    }
 
 
 @router.get("/dashboard/stats", response_model=AdminDashboardStats)
@@ -933,3 +975,331 @@ async def list_plan_overrides(
         WorkspacePlanOverrideResponse.model_validate(override)
         for override in overrides
     ]
+
+
+# =============================================================================
+# INVOICE MANAGEMENT
+# =============================================================================
+
+
+@router.post("/invoices", response_model=InvoiceResponse, status_code=201)
+async def create_manual_invoice(
+    data: CreateManualInvoiceRequest,
+    admin: Developer = Depends(get_platform_admin),
+    db: AsyncSession = Depends(get_db),
+) -> InvoiceResponse:
+    """Create a manual invoice for bank transfer or offline payment."""
+    # Verify workspace exists and get its owner
+    ws_result = await db.execute(
+        select(Workspace).where(Workspace.id == data.workspace_id)
+    )
+    workspace = ws_result.scalar_one_or_none()
+    if not workspace:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Workspace not found",
+        )
+
+    # Look up or create CustomerBilling for the workspace owner
+    cb_result = await db.execute(
+        select(CustomerBilling).where(
+            CustomerBilling.developer_id == workspace.owner_id
+        )
+    )
+    customer = cb_result.scalar_one_or_none()
+
+    if not customer:
+        # Look up the owner to get their email for billing
+        owner_result = await db.execute(
+            select(Developer).where(Developer.id == workspace.owner_id)
+        )
+        owner = owner_result.scalar_one_or_none()
+
+        customer = CustomerBilling(
+            developer_id=workspace.owner_id,
+            billing_email=owner.email if owner else None,
+            billing_name=owner.name if owner else None,
+        )
+        db.add(customer)
+        await db.flush()
+
+    invoice = Invoice(
+        workspace_id=data.workspace_id,
+        customer_id=customer.id,
+        stripe_invoice_id=None,
+        status="open",
+        subtotal_cents=data.amount_cents,
+        tax_cents=0,
+        total_cents=data.amount_cents,
+        amount_paid_cents=0,
+        amount_due_cents=data.amount_cents,
+        payment_method=data.payment_method,
+        description=data.description,
+        due_date=data.due_date,
+        currency=data.currency,
+    )
+    db.add(invoice)
+    await db.flush()
+    await db.refresh(invoice)
+
+    logger.info(
+        f"Admin {admin.email} created manual invoice {invoice.id} "
+        f"for workspace {data.workspace_id}: {data.amount_cents} cents"
+    )
+
+    return InvoiceResponse.model_validate(invoice)
+
+
+@router.post(
+    "/invoices/{invoice_id}/mark-paid",
+    response_model=InvoiceResponse,
+)
+async def mark_invoice_paid(
+    invoice_id: str,
+    data: MarkInvoicePaidRequest,
+    admin: Developer = Depends(get_platform_admin),
+    db: AsyncSession = Depends(get_db),
+) -> InvoiceResponse:
+    """Mark an invoice as paid (manual reconciliation)."""
+    result = await db.execute(
+        select(Invoice).where(Invoice.id == invoice_id)
+    )
+    invoice = result.scalar_one_or_none()
+
+    if not invoice:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invoice not found",
+        )
+
+    if invoice.status == "paid":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invoice is already paid",
+        )
+
+    if invoice.status == "void":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot mark a voided invoice as paid",
+        )
+
+    invoice.status = "paid"
+    invoice.amount_paid_cents = invoice.total_cents
+    invoice.amount_due_cents = 0
+    invoice.paid_at = data.payment_date or datetime.now(timezone.utc)
+    invoice.bank_transfer_reference = data.bank_transfer_reference
+    invoice.manual_payment_note = data.payment_note
+    invoice.marked_paid_by = admin.email
+
+    await db.flush()
+    await db.refresh(invoice)
+
+    logger.info(
+        f"Admin {admin.email} marked invoice {invoice_id} as paid"
+    )
+
+    return InvoiceResponse.model_validate(invoice)
+
+
+@router.post(
+    "/invoices/{invoice_id}/void",
+    response_model=InvoiceResponse,
+)
+async def void_invoice(
+    invoice_id: str,
+    admin: Developer = Depends(get_platform_admin),
+    db: AsyncSession = Depends(get_db),
+) -> InvoiceResponse:
+    """Void an invoice."""
+    result = await db.execute(
+        select(Invoice).where(Invoice.id == invoice_id)
+    )
+    invoice = result.scalar_one_or_none()
+
+    if not invoice:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invoice not found",
+        )
+
+    if invoice.status == "paid":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot void a paid invoice",
+        )
+
+    if invoice.status == "void":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invoice is already voided",
+        )
+
+    invoice.status = "void"
+    invoice.amount_due_cents = 0
+
+    await db.flush()
+    await db.refresh(invoice)
+
+    logger.info(
+        f"Admin {admin.email} voided invoice {invoice_id}"
+    )
+
+    return InvoiceResponse.model_validate(invoice)
+
+
+@router.get("/invoices", response_model=list[InvoiceResponse])
+async def list_invoices(
+    admin: Developer = Depends(get_platform_admin),
+    db: AsyncSession = Depends(get_db),
+    status_filter: str | None = Query(None, alias="status", description="Filter by status"),
+    payment_method: str | None = Query(None, description="Filter by payment method"),
+    workspace_id: str | None = Query(None, description="Filter by workspace ID"),
+    limit: int = Query(50, ge=1, le=200),
+) -> list[InvoiceResponse]:
+    """List all invoices with optional filters."""
+    query = select(Invoice)
+
+    if status_filter:
+        query = query.where(Invoice.status == status_filter)
+    if payment_method:
+        query = query.where(Invoice.payment_method == payment_method)
+    if workspace_id:
+        query = query.where(Invoice.workspace_id == workspace_id)
+
+    query = query.order_by(Invoice.created_at.desc()).limit(limit)
+
+    result = await db.execute(query)
+    invoices = result.scalars().all()
+
+    return [InvoiceResponse.model_validate(inv) for inv in invoices]
+
+
+@router.post(
+    "/workspaces/{workspace_id}/generate-invoice",
+    response_model=InvoiceResponse,
+    status_code=201,
+)
+async def generate_invoice_from_usage(
+    workspace_id: str,
+    admin: Developer = Depends(get_platform_admin),
+    db: AsyncSession = Depends(get_db),
+) -> InvoiceResponse:
+    """Generate an invoice from workspace usage for the current billing period."""
+    from aexy.models.workspace import WorkspaceSubscription
+    from aexy.services.postpaid_billing_service import PostpaidBillingService
+
+    # Verify workspace exists
+    ws_result = await db.execute(
+        select(Workspace).where(Workspace.id == workspace_id)
+    )
+    workspace = ws_result.scalar_one_or_none()
+    if not workspace:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Workspace not found",
+        )
+
+    # Determine billing period from WorkspaceSubscription, or default to current month
+    sub_result = await db.execute(
+        select(WorkspaceSubscription).where(
+            WorkspaceSubscription.workspace_id == workspace_id
+        )
+    )
+    sub = sub_result.scalar_one_or_none()
+
+    now = datetime.now(timezone.utc)
+    if sub and sub.current_period_start and sub.current_period_end:
+        period_start = sub.current_period_start
+        period_end = sub.current_period_end
+    else:
+        # Default to current calendar month
+        period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        # Next month start
+        if now.month == 12:
+            period_end = period_start.replace(year=now.year + 1, month=1)
+        else:
+            period_end = period_start.replace(month=now.month + 1)
+
+    # Calculate charges
+    billing_service = PostpaidBillingService(db)
+    charges = await billing_service.calculate_period_charges(
+        workspace_id=workspace_id,
+        period_start=period_start,
+        period_end=period_end,
+    )
+
+    if "error" in charges:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=charges["error"],
+        )
+
+    total_cents = charges.get("total_cents", 0)
+    if total_cents <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No charges to invoice for this period",
+        )
+
+    # Look up or create CustomerBilling for the workspace owner
+    cb_result = await db.execute(
+        select(CustomerBilling).where(
+            CustomerBilling.developer_id == workspace.owner_id
+        )
+    )
+    customer = cb_result.scalar_one_or_none()
+
+    if not customer:
+        owner_result = await db.execute(
+            select(Developer).where(Developer.id == workspace.owner_id)
+        )
+        owner = owner_result.scalar_one_or_none()
+
+        customer = CustomerBilling(
+            developer_id=workspace.owner_id,
+            billing_email=owner.email if owner else None,
+            billing_name=owner.name if owner else None,
+        )
+        db.add(customer)
+        await db.flush()
+
+    # Build description from charge breakdown
+    description_parts = [
+        f"Usage invoice for {period_start.strftime('%Y-%m-%d')} to {period_end.strftime('%Y-%m-%d')}",
+    ]
+    if charges.get("seat_charges_cents", 0) > 0:
+        description_parts.append(
+            f"Seats: {charges['seat_count']} x ${charges['seat_charges_cents'] / 100:.2f}"
+        )
+    if charges.get("usage_charges_cents", 0) > 0:
+        description_parts.append(
+            f"Usage: ${charges['usage_charges_cents'] / 100:.2f}"
+        )
+
+    invoice = Invoice(
+        workspace_id=workspace_id,
+        customer_id=customer.id,
+        stripe_invoice_id=None,
+        status="open",
+        subtotal_cents=total_cents,
+        tax_cents=0,
+        total_cents=total_cents,
+        amount_paid_cents=0,
+        amount_due_cents=total_cents,
+        payment_method="bank_transfer",
+        description="\n".join(description_parts),
+        period_start=period_start,
+        period_end=period_end,
+        currency="usd",
+    )
+    db.add(invoice)
+    await db.flush()
+    await db.refresh(invoice)
+
+    logger.info(
+        f"Admin {admin.email} generated usage invoice {invoice.id} "
+        f"for workspace {workspace_id}: {total_cents} cents"
+    )
+
+    return InvoiceResponse.model_validate(invoice)

@@ -307,6 +307,11 @@ class WorkspaceSubscription(Base):
         DateTime(timezone=True), nullable=True
     )
 
+    # Preferred payment method: "stripe" | "bank_transfer"
+    preferred_payment_method: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="stripe"
+    )
+
     # Status
     status: Mapped[str] = mapped_column(
         String(50), nullable=False, default="active"
@@ -473,6 +478,10 @@ class WorkspacePlanOverride(Base):
     # Stripe overrides (custom Stripe product/price for this org)
     stripe_product_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     stripe_price_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # Net terms and payment method
+    days_until_due: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    preferred_payment_method: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     # Discount
     discount_percent: Mapped[int | None] = mapped_column(Integer, nullable=True)

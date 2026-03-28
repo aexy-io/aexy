@@ -132,6 +132,10 @@ class EffectivePlan:
     stripe_product_id: str | None = None
     stripe_price_id: str | None = None
 
+    # Net terms and payment
+    days_until_due: int = 30
+    preferred_payment_method: str = "stripe"
+
     # Override metadata
     has_overrides: bool = False
     discount_percent: int = 0
@@ -331,6 +335,9 @@ class LimitsService:
             # Stripe
             stripe_product_id=_ov("stripe_product_id", plan.stripe_product_id),
             stripe_price_id=_ov("stripe_price_id", plan.stripe_price_id),
+            # Net terms and payment
+            days_until_due=_ov("days_until_due", 30),
+            preferred_payment_method=_ov("preferred_payment_method", "stripe"),
             # Override metadata
             has_overrides=override is not None,
             discount_percent=(override.discount_percent or 0) if override else 0,
