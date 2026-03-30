@@ -198,7 +198,7 @@ export function InvoiceList({ limit = 10, className = "" }: InvoiceListProps) {
                 </td>
                 <td className="px-6 py-4 text-right">
                   <span className="text-foreground font-medium">
-                    {formatCurrency(invoice.amount_due, invoice.currency.toUpperCase())}
+                    {formatCurrency(invoice.total_cents, invoice.currency.toUpperCase())}
                   </span>
                 </td>
                 <td className="px-6 py-4 text-foreground">

@@ -47,6 +47,7 @@ class AdminCheckResponse(BaseModel):
     """Response for admin check endpoint."""
 
     is_admin: bool
+    platform_org_id: str | None = None
 
 
 class AdminDashboardStats(BaseModel):
@@ -242,11 +243,11 @@ async def get_platform_admin(
 # =============================================================================
 
 
-@router.get("/check")
+@router.get("/check", response_model=AdminCheckResponse)
 async def check_admin_status(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
-) -> dict:
+) -> AdminCheckResponse:
     """Check if the current user is a platform admin.
 
     Returns admin status and the platform org ID for frontend routing.
@@ -266,10 +267,10 @@ async def check_admin_status(
 
     is_admin = is_admin_email and (not platform_org_id or is_in_platform_org)
 
-    return {
-        "is_admin": is_admin,
-        "platform_org_id": platform_org_id,
-    }
+    return AdminCheckResponse(
+        is_admin=is_admin,
+        platform_org_id=platform_org_id,
+    )
 
 
 @router.get("/dashboard/stats", response_model=AdminDashboardStats)

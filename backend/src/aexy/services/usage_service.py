@@ -755,10 +755,10 @@ class UsageService:
         self,
         workspace_id: str,
     ) -> dict[str, Any]:
-        """Report workspace-level metered usage to Stripe for flat_plus_usage and postpaid billing.
+        """Report workspace-level metered usage to Stripe for flat_plus_usage billing.
 
-        Finds the WorkspaceSubscription's usage_subscription_item_id and reports
-        unreported usage records for this workspace.
+        For postpaid workspaces, use PostpaidBillingService.finalize_period() instead —
+        postpaid uses the accrual counter as its source of truth, not per-record tracking.
         """
         from aexy.models.workspace import WorkspaceSubscription
 
@@ -815,10 +815,6 @@ class UsageService:
             for record in unreported:
                 record.reported_to_stripe = True
                 record.reported_at = datetime.utcnow()
-
-            # Update postpaid accrued amount if postpaid billing
-            if ws_sub.payment_timing == "postpaid":
-                ws_sub.postpaid_usage_accrued_cents += total_cost_cents
 
             await self.db.commit()
 

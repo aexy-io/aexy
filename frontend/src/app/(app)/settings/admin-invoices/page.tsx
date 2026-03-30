@@ -22,8 +22,9 @@ interface AdminInvoice {
   workspace_id: string | null;
   number: string | null;
   status: string;
-  amount_due: number;
-  amount_paid: number;
+  total_cents: number;
+  amount_due_cents: number;
+  amount_paid_cents: number;
   currency: string;
   description: string | null;
   due_date: string | null;
@@ -68,11 +69,11 @@ const adminInvoiceApi = {
   },
 };
 
-function formatCurrency(amountCents: number, currency: string = "USD") {
+function formatCurrency(cents: number, currency: string = "USD") {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: currency.toUpperCase(),
-  }).format(amountCents / 100);
+  }).format(cents / 100);
 }
 
 function formatDate(dateStr: string | null) {
@@ -182,6 +183,7 @@ export default function AdminInvoicesPage() {
     queryKey: ["admin-invoices"],
     queryFn: () => adminInvoiceApi.list(),
     retry: 1,
+    staleTime: 30 * 1000,
   });
 
   const createMutation = useMutation({
@@ -527,7 +529,7 @@ export default function AdminInvoicesPage() {
                     <td className="px-3 py-3 text-right">
                       <span className="text-sm font-medium text-foreground">
                         {formatCurrency(
-                          invoice.amount_due,
+                          invoice.total_cents,
                           invoice.currency
                         )}
                       </span>

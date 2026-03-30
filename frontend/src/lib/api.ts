@@ -2165,10 +2165,15 @@ export interface BillingHistoryEntry {
 
 export interface Invoice {
   id: string;
+  stripe_invoice_id: string | null;
+  stripe_invoice_number: string | null;
   number: string | null;
   status: string;
-  amount_due: number;
-  amount_paid: number;
+  subtotal_cents: number;
+  tax_cents: number;
+  total_cents: number;
+  amount_paid_cents: number;
+  amount_due_cents: number;
   currency: string;
   period_start: string | null;
   period_end: string | null;
@@ -15030,6 +15035,7 @@ export const learningIntegrationsApi = {
 
 export interface AdminCheckResponse {
   is_admin: boolean;
+  platform_org_id: string | null;
 }
 
 export interface AdminDashboardStats {

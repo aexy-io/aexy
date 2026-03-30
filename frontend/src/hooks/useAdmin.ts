@@ -27,7 +27,7 @@ export function useAdmin() {
     data: adminCheck,
     isLoading: isCheckLoading,
     error,
-  } = useQuery<{ is_admin: boolean; platform_org_id: string | null }>({
+  } = useQuery({
     queryKey: ["admin-check"],
     queryFn: () => platformAdminApi.checkAdmin(),
     enabled: !!user && !isAuthLoading,
