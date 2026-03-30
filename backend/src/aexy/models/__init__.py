@@ -499,6 +499,7 @@ from aexy.models.gtm_webhook import GTMWebhook, GTMWebhookDelivery, GTMProviderH
 from aexy.models.api_token import ApiToken
 from aexy.models.ask import AskConversation, AskMessage, AskConversationParticipant, AskShareLink
 from aexy.models.ai_feedback import AIFeedback
+from aexy.models.llm_prompt_log import LLMPromptLog
 from aexy.models.chat import (
     ChatChannel,
     ChatChannelMember,
@@ -1024,6 +1025,8 @@ __all__ = [
     "AskShareLink",
     # AI Feedback
     "AIFeedback",
+    # LLM Prompt Log
+    "LLMPromptLog",
     # Team Chat
     "ChatChannel",
     "ChatChannelMember",

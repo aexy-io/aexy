@@ -174,6 +174,56 @@ class LLMGateway:
             # Log but don't fail the request if usage tracking fails
             logger.warning(f"Failed to record usage: {e}")
 
+    async def _log_prompt(
+        self,
+        db: AsyncSession | None,
+        developer_id: str | None,
+        workspace_id: str | None,
+        provider: str,
+        model: str,
+        operation: str,
+        user_prompt: str,
+        completion: str,
+        system_prompt: str | None = None,
+        analysis_type: str | None = None,
+        confidence: float | None = None,
+        input_tokens: int = 0,
+        output_tokens: int = 0,
+        is_cached: bool = False,
+        request_metadata: dict | None = None,
+        response_metadata: dict | None = None,
+    ) -> None:
+        """Log prompt/completion pair for fine-tuning dataset collection."""
+        if not db:
+            return
+
+        try:
+            from aexy.models.llm_prompt_log import LLMPromptLog
+
+            log = LLMPromptLog(
+                developer_id=developer_id,
+                workspace_id=workspace_id,
+                provider=provider,
+                model=model,
+                operation=operation,
+                system_prompt=system_prompt,
+                user_prompt=user_prompt[:50000] if user_prompt else "",
+                completion=completion[:50000] if completion else "",
+                analysis_type=analysis_type,
+                confidence=confidence,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                total_tokens=input_tokens + output_tokens,
+                is_cached=is_cached,
+                is_flagged=confidence is not None and confidence < 0.3,
+                request_metadata=request_metadata,
+                response_metadata=response_metadata,
+            )
+            db.add(log)
+            await db.flush()
+        except Exception as e:
+            logger.warning(f"Failed to log prompt: {e}")
+
     @staticmethod
     def _hash_content(content: str) -> str:
         """Generate a hash for content-based caching.
@@ -250,6 +300,27 @@ class LLMGateway:
             result=result,
             operation=f"analysis:{request.analysis_type.value}",
             workspace_id=workspace_id,
+        )
+
+        # Log prompt/completion for fine-tuning dataset
+        await self._log_prompt(
+            db=db,
+            developer_id=developer_id,
+            workspace_id=workspace_id,
+            provider=result.provider,
+            model=result.model,
+            operation=f"analysis:{request.analysis_type.value}",
+            user_prompt=request.content,
+            completion=result.raw_response or result.summary,
+            system_prompt=request.context.get("system_prompt"),
+            analysis_type=request.analysis_type.value,
+            confidence=result.confidence,
+            input_tokens=result.input_tokens,
+            output_tokens=result.output_tokens,
+            request_metadata={
+                "file_path": request.file_path,
+                "language_hint": request.language_hint,
+            },
         )
 
         if use_cache and self.cache and cache_key and result.confidence > 0:
@@ -414,6 +485,22 @@ class LLMGateway:
                     operation="call_llm",
                     workspace_id=workspace_id,
                 )
+
+            # Log prompt/completion for fine-tuning dataset
+            provider_name = self.provider.__class__.__name__.lower().replace("provider", "")
+            await self._log_prompt(
+                db=db,
+                developer_id=developer_id,
+                workspace_id=workspace_id,
+                provider=provider_name,
+                model=getattr(self.provider, "model", "unknown"),
+                operation="call_llm",
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                completion=result[0] if result else "",
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+            )
 
         return result
 
