@@ -140,6 +140,7 @@ class LLMGateway:
         developer_id: str | None,
         result: AnalysisResult,
         operation: str = "analysis",
+        workspace_id: str | None = None,
     ) -> None:
         """Record token usage for billing.
 
@@ -148,6 +149,7 @@ class LLMGateway:
             developer_id: Developer ID for billing.
             result: Analysis result containing token counts.
             operation: Type of operation performed.
+            workspace_id: Workspace ID for workspace-level billing attribution.
         """
         if not db or not developer_id:
             return
@@ -166,6 +168,7 @@ class LLMGateway:
                 input_tokens=result.input_tokens,
                 output_tokens=result.output_tokens,
                 operation=operation,
+                workspace_id=workspace_id,
             )
         except Exception as e:
             # Log but don't fail the request if usage tracking fails
@@ -240,12 +243,13 @@ class LLMGateway:
             developer_id=developer_id,
         )
 
-        # Track usage for billing
+        # Track usage for billing (workspace_id enables per-org billing attribution)
         await self._record_usage(
             db=db,
             developer_id=developer_id,
             result=result,
             operation=f"analysis:{request.analysis_type.value}",
+            workspace_id=workspace_id,
         )
 
         if use_cache and self.cache and cache_key and result.confidence > 0:
@@ -349,6 +353,7 @@ class LLMGateway:
         skip_rate_limit: bool = False,
         workspace_id: str | None = None,
         developer_id: str | None = None,
+        db: AsyncSession | None = None,
     ) -> tuple[str, int, int, int]:
         """Call LLM directly with custom prompts and rate limiting.
 
@@ -362,6 +367,7 @@ class LLMGateway:
             skip_rate_limit: Skip rate limit check.
             workspace_id: Optional workspace ID for workspace-level rate limiting.
             developer_id: Optional developer ID for developer-level rate limiting.
+            db: Database session for billing usage tracking.
 
         Returns:
             Tuple of (response_text, total_tokens, input_tokens, output_tokens).
@@ -380,14 +386,34 @@ class LLMGateway:
         # Call provider directly
         result = await self.provider._call_api(system_prompt, user_prompt)
 
-        # Record usage for rate limiting
+        # Record usage for rate limiting + billing
         if isinstance(result, tuple) and len(result) >= 2:
             total_tokens = result[1] if len(result) > 1 else 0
+            input_tokens = result[2] if len(result) > 2 else 0
+            output_tokens = result[3] if len(result) > 3 else 0
             await self._record_rate_limit_usage(
                 total_tokens,
                 workspace_id=workspace_id,
                 developer_id=developer_id,
             )
+
+            # Track usage for billing
+            if db and developer_id and (input_tokens > 0 or output_tokens > 0):
+                billing_result = AnalysisResult(
+                    summary=result[0][:100] if result else "",
+                    confidence=1.0,
+                    provider=self.provider.__class__.__name__.lower().replace("provider", ""),
+                    model=getattr(self.provider, "model", "unknown"),
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                )
+                await self._record_usage(
+                    db=db,
+                    developer_id=developer_id,
+                    result=billing_result,
+                    operation="call_llm",
+                    workspace_id=workspace_id,
+                )
 
         return result
 

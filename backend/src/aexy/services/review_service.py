@@ -81,6 +81,7 @@ class ReviewService:
         db: AsyncSession,
         llm_gateway: LLMGateway | None = None,
         contribution_service: ContributionService | None = None,
+        workspace_id: str | None = None,
     ) -> None:
         """Initialize the review service.
 
@@ -88,10 +89,12 @@ class ReviewService:
             db: Database session.
             llm_gateway: LLM gateway for summary generation.
             contribution_service: Service for contribution aggregation.
+            workspace_id: Workspace ID for billing attribution.
         """
         self.db = db
         self.llm_gateway = llm_gateway
         self.contribution_service = contribution_service
+        self.workspace_id = workspace_id
 
     # ============ Review Cycle Management ============
 

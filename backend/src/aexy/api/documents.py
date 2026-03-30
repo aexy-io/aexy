@@ -846,7 +846,7 @@ async def generate_documentation(
         category = TemplateCategory.FUNCTION_DOCS
 
     # Generate documentation
-    gen_service = DocumentGenerationService(db)
+    gen_service = DocumentGenerationService(db, workspace_id=workspace_id)
 
     try:
         # Import GitHub service to fetch code
@@ -913,7 +913,7 @@ async def generate_from_code(
     except ValueError:
         category = TemplateCategory.FUNCTION_DOCS
 
-    gen_service = DocumentGenerationService(db)
+    gen_service = DocumentGenerationService(db, workspace_id=workspace_id)
 
     try:
         content = await gen_service.generate_from_code(
@@ -1035,7 +1035,7 @@ async def generate_from_repository(
             repo=repo.name,
         )
 
-        gen_service = DocumentGenerationService(db)
+        gen_service = DocumentGenerationService(db, workspace_id=workspace_id)
 
         # Generate documentation
         content = await gen_service.generate_module_documentation(
@@ -1107,7 +1107,7 @@ async def suggest_improvements(
             detail="Document not found",
         )
 
-    gen_service = DocumentGenerationService(db)
+    gen_service = DocumentGenerationService(db, workspace_id=workspace_id)
 
     try:
         suggestions = await gen_service.suggest_improvements(
