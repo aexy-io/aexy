@@ -7,7 +7,7 @@
 
 ## Fix Status (2026-03-31)
 
-**12 fixes across P0/P1/P2**, all verified with **20 Playwright E2E tests** (20/20 passing, 18s).
+**16 fixes across P0/P1/P2**, all verified with **26 Playwright E2E tests** (26/26 passing, 17.8s).
 
 **Test file:** `frontend/e2e/reviews.spec.ts`
 
@@ -38,6 +38,15 @@
 | P2.2 | Form label accessibility (htmlFor/id) | FIXED | `goal form labels are associated with inputs` / `cycle form labels are associated with inputs` |
 | P2.3 | Live goal card preview on create form | FIXED | `shows live preview that updates as user types` |
 
+### Additional Fixes (Round 3)
+
+| # | Fix | Status | Playwright Tests |
+|---|-----|--------|-----------------|
+| P1.8 | Error toasts on API failures (summary, progress, auto-link, complete) | FIXED | `shows error toast when generate summary fails` / `shows error toast when goal progress update fails` |
+| P2.a11y | aria-label on icon-only buttons (Eye, Trash2, MoreVertical) | FIXED | `management view icon buttons have aria-labels` / `goal card delete button has aria-label` |
+| P2.14 | Cycle timeline preview with phase markers and deadlines | FIXED | `shows timeline preview when dates are filled` |
+| P2.a11y | aria-live="polite" on goals list results area | FIXED | `goals list filter results area has aria-live` |
+
 ### Bonus Fixes
 
 - Defensive null check in `useAppAccess.ts` for `effectiveAccess.apps` — prevented runtime crash
@@ -49,14 +58,15 @@
 
 | File | Changes |
 |------|---------|
-| `reviews/page.tsx` | Example goal preview, AI insight preview in empty states |
-| `reviews/goals/page.tsx` | Filter count badges, styled delete modal with toast |
+| `reviews/page.tsx` | Example goal preview, AI insight preview, error toast on summary |
+| `reviews/goals/page.tsx` | Filter counts, delete modal, aria-label, aria-live |
 | `reviews/goals/new/page.tsx` | Toast, tooltip, label a11y, 3-column layout with live preview |
-| `reviews/cycles/page.tsx` | Breadcrumbs, mobile card view |
-| `reviews/cycles/new/page.tsx` | Date validation, toast, tooltip, label a11y |
-| `reviews/manage/page.tsx` | "Active Unknown" fix, ARIA tab roles |
+| `reviews/goals/[goalId]/page.tsx` | Error toasts on progress, auto-link, complete |
+| `reviews/cycles/page.tsx` | Breadcrumbs, mobile cards, aria-label on actions |
+| `reviews/cycles/new/page.tsx` | Date validation, toast, tooltip, label a11y, timeline preview |
+| `reviews/manage/page.tsx` | "Active Unknown" fix, ARIA tabs, aria-label on eye button |
 | `useAppAccess.ts` | Defensive null check |
-| `e2e/reviews.spec.ts` | 20 Playwright E2E tests |
+| `e2e/reviews.spec.ts` | 26 Playwright E2E tests |
 
 ---
 
@@ -360,8 +370,8 @@ However, as a "wow" feature for new clients, there are several issues that would
 | 4.1.2 Name, Role, Value | PASS | ~~Custom controls missing ARIA~~ FIXED (P1.1, P1.2): Modal + tabs have proper ARIA |
 
 **Remaining a11y work:**
-1. Add `aria-label` to icon-only buttons
-2. Add `aria-live="polite"` regions for dynamic content updates
+1. ~~Add `aria-label` to icon-only buttons~~ FIXED (P2.a11y)
+2. ~~Add `aria-live="polite"` regions~~ FIXED (P2.a11y)
 3. Status badges: add text/icon alternative alongside color
 
 ---
@@ -395,7 +405,7 @@ However, as a "wow" feature for new clients, there are several issues that would
 
 6. ~~**Accessibility (tabs)**~~ FIXED (P1.2) - ARIA tablist/tab/tabpanel + aria-selected
 7. ~~**Mobile DataTable**~~ FIXED (P1.4) - Responsive card view on mobile
-8. **Error messages** - Replace silent failures with user-facing, actionable error messages
+8. ~~**Error messages**~~ FIXED (P1.8) - Toast errors on summary, progress, auto-link, complete failures
 9. ~~**Navigation consistency**~~ FIXED (P1.3) - Breadcrumbs on all sub-pages
 10. ~~**Success confirmations**~~ FIXED (P0.5) - Toast notifications via sonner
 11. ~~**Replace browser confirm()**~~ FIXED (P1.1) - Styled modal with Cancel/Delete
@@ -404,7 +414,7 @@ However, as a "wow" feature for new clients, there are several issues that would
 
 12. **Onboarding wizard** - Guided first-run: Connect GitHub -> Create Goal -> Start Cycle
 13. ~~**Goal preview**~~ FIXED (P2.3) - Live preview sidebar on create form
-14. **Cycle timeline preview** - Visual Gantt showing the three review phases
+14. ~~**Cycle timeline preview**~~ FIXED (P2.14) - Visual timeline with phase markers and deadlines
 15. **Loading indicator consistency** - Single spinner style and color across all pages
 16. ~~**Filter counts**~~ FIXED (P2.1) - Count badges on goals filter tabs
 17. **Contributions tab** - Currently placeholder; needs real GitHub data integration
@@ -422,4 +432,4 @@ However, as a "wow" feature for new clients, there are several issues that would
 
 ## Summary
 
-The Reviews feature has excellent **product vision** (SMART goals + GitHub + AI + 360-degree feedback) and **solid visual design**. ~~The main gaps are in the first-use experience (everything looks empty) and interaction polish (validation, error handling, accessibility).~~ **12 of the identified issues have been fixed** across P0/P1/P2, all verified with 20 Playwright E2E tests. The remaining gaps are primarily: onboarding wizard, cycle timeline preview, error message improvements, and full i18n support.
+The Reviews feature has excellent **product vision** (SMART goals + GitHub + AI + 360-degree feedback) and **solid visual design**. ~~The main gaps are in the first-use experience (everything looks empty) and interaction polish (validation, error handling, accessibility).~~ **16 of the 23 identified issues have been fixed** across P0/P1/P2, all verified with 26 Playwright E2E tests. The remaining gaps are: onboarding wizard, loading spinner consistency, contributions/feedback tab real data, i18n, custom date picker, pagination, and dark/light mode.
