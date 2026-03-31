@@ -297,7 +297,7 @@ export default function GoalsPage() {
         <div aria-live="polite">
         {goalsLoading ? (
           <div className="flex justify-center py-16">
-            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-cyan-500"></div>
+            <div data-testid="loading-spinner" className="animate-spin rounded-full h-10 w-10 border-4 border-primary-500/20 border-t-primary-500"></div>
           </div>
         ) : filteredGoals.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">

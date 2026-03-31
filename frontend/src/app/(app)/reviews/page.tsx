@@ -301,7 +301,7 @@ export default function ReviewsPage() {
             <div className="p-6">
               {statsLoading ? (
                 <div className="flex justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cyan-500"></div>
+                  <div data-testid="loading-spinner" className="animate-spin rounded-full h-8 w-8 border-4 border-primary-500/20 border-t-primary-500"></div>
                 </div>
               ) : activeGoals.length > 0 ? (
                 <div className="space-y-3">
@@ -367,7 +367,7 @@ export default function ReviewsPage() {
             <div className="p-6">
               {cyclesLoading ? (
                 <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-purple-500"></div>
+                  <div className="animate-spin rounded-full h-6 w-6 border-4 border-primary-500/20 border-t-primary-500"></div>
                 </div>
               ) : activeCycle ? (
                 <CycleCard cycle={activeCycle} />
@@ -414,7 +414,7 @@ export default function ReviewsPage() {
             <div className="p-6">
               {statsLoading ? (
                 <div className="flex justify-center py-6">
-                  <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-amber-500"></div>
+                  <div className="animate-spin rounded-full h-6 w-6 border-4 border-primary-500/20 border-t-primary-500"></div>
                 </div>
               ) : peerRequests.length > 0 ? (
                 <div className="space-y-3">
@@ -462,7 +462,7 @@ export default function ReviewsPage() {
               >
                 {isGenerating ? (
                   <>
-                    <div className="animate-spin rounded-full h-3.5 w-3.5 border-t-2 border-emerald-400"></div>
+                    <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-primary-500/20 border-t-primary-500"></div>
                     Generating...
                   </>
                 ) : (
@@ -476,7 +476,7 @@ export default function ReviewsPage() {
             <div className="p-6">
               {contributionsLoading ? (
                 <div className="flex justify-center py-6">
-                  <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-emerald-500"></div>
+                  <div className="animate-spin rounded-full h-6 w-6 border-4 border-primary-500/20 border-t-primary-500"></div>
                 </div>
               ) : contributionSummary ? (
                 <div className="space-y-4">

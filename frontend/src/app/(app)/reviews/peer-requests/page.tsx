@@ -157,7 +157,7 @@ export default function PeerRequestsPage() {
         {/* Content */}
         {isLoading ? (
           <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-amber-500"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary-500/20 border-t-primary-500"></div>
           </div>
         ) : error ? (
           <div className="text-center py-12">
