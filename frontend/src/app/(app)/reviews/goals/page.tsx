@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -116,11 +117,11 @@ function GoalCard({ goal, onDelete }: { goal: WorkGoal; onDelete: (id: string) =
             View Details
           </Link>
           <button
+            data-testid="delete-goal-btn"
             onClick={(e) => {
               e.preventDefault();
-              if (confirm("Are you sure you want to delete this goal?")) {
-                onDelete(goal.id);
-              }
+              e.stopPropagation();
+              onDelete(goal.id);
             }}
             className="text-muted-foreground hover:text-red-400 transition"
           >
@@ -137,6 +138,7 @@ export default function GoalsPage() {
   const { currentWorkspaceId, currentWorkspaceLoading } = useWorkspace();
   const [filter, setFilter] = useState<"all" | "active" | "completed">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [deleteConfirmGoalId, setDeleteConfirmGoalId] = useState<string | null>(null);
 
   const developerId = user?.id;
   const { goals, isLoading: goalsLoading, deleteGoal } = useGoals(developerId, {
@@ -169,8 +171,11 @@ export default function GoalsPage() {
   const handleDeleteGoal = async (goalId: string) => {
     try {
       await deleteGoal(goalId);
+      toast.success("Goal deleted");
+      setDeleteConfirmGoalId(null);
     } catch (err) {
       console.error("Failed to delete goal:", err);
+      toast.error("Failed to delete goal");
     }
   };
 
@@ -283,7 +288,7 @@ export default function GoalsPage() {
         ) : filteredGoals.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredGoals.map((goal) => (
-              <GoalCard key={goal.id} goal={goal} onDelete={handleDeleteGoal} />
+              <GoalCard key={goal.id} goal={goal} onDelete={(id) => setDeleteConfirmGoalId(id)} />
             ))}
           </div>
         ) : goals.length > 0 && filteredGoals.length === 0 ? (
@@ -307,6 +312,34 @@ export default function GoalsPage() {
               { label: "Create Goal", href: "/reviews/goals/new" },
             ]}
           />
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {deleteConfirmGoalId && (
+          <div data-testid="delete-confirm-modal" className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-muted border border-border rounded-xl p-6 max-w-md mx-4 shadow-xl">
+              <h3 className="text-lg font-semibold text-foreground mb-2">Delete Goal</h3>
+              <p className="text-muted-foreground text-sm mb-6">
+                Are you sure you want to delete this goal? This action cannot be undone.
+              </p>
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  data-testid="delete-confirm-cancel"
+                  onClick={() => setDeleteConfirmGoalId(null)}
+                  className="px-4 py-2 text-muted-foreground hover:text-foreground transition text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  data-testid="delete-confirm-submit"
+                  onClick={() => handleDeleteGoal(deleteConfirmGoalId)}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg transition text-sm font-medium"
+                >
+                  Delete Goal
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </div>

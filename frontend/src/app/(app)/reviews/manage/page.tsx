@@ -323,7 +323,7 @@ export default function ReviewsManagePage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 bg-muted p-1 rounded-lg w-fit">
+        <div role="tablist" className="flex gap-2 mb-6 bg-muted p-1 rounded-lg w-fit">
           {[
             { key: "overview", label: "Team Overview", icon: Users },
             { key: "actionables", label: "Actionables", icon: AlertCircle, count: actionables.length },
@@ -331,6 +331,8 @@ export default function ReviewsManagePage() {
           ].map((tab) => (
             <button
               key={tab.key}
+              role="tab"
+              aria-selected={activeTab === tab.key}
               onClick={() => setActiveTab(tab.key as typeof activeTab)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
                 activeTab === tab.key
@@ -353,7 +355,7 @@ export default function ReviewsManagePage() {
 
         {/* Tab Content */}
         {activeTab === "overview" && (
-          <div className="space-y-6">
+          <div role="tabpanel" className="space-y-6">
             {/* Filters */}
             <div className="flex items-center gap-4">
               <SearchInput
@@ -441,7 +443,7 @@ export default function ReviewsManagePage() {
         )}
 
         {activeTab === "actionables" && (
-          <div className="space-y-4">
+          <div role="tabpanel" className="space-y-4">
             {actionables.length > 0 ? (
               <>
                 <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-6">
@@ -526,7 +528,7 @@ export default function ReviewsManagePage() {
         )}
 
         {activeTab === "suggestions" && (
-          <div className="space-y-6">
+          <div role="tabpanel" className="space-y-6">
             {/* Info Banner */}
             <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4">
               <div className="flex items-center gap-3">

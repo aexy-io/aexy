@@ -380,3 +380,141 @@ test.describe("P0.5: Success toasts", () => {
     await expect(page.locator("text=Review cycle created successfully")).toBeVisible({ timeout: 5000 });
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// P1.1 — Replace browser confirm() with styled modal for goal deletion
+// ─────────────────────────────────────────────────────────────────────────────
+
+test.describe("P1.1: Goal deletion — styled confirmation modal", () => {
+  test("clicking delete shows a styled modal, not browser confirm()", async ({ page }) => {
+    await setupReviewsMocks(page);
+
+    // Mock goals list with one goal
+    await page.route(`${API_BASE}/reviews/goals**`, (route) => {
+      if (route.request().method() === "GET") {
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify([
+            {
+              id: "goal-1",
+              title: "Test Goal",
+              description: "A test goal",
+              goal_type: "performance",
+              priority: "medium",
+              status: "active",
+              progress: 50,
+              time_bound: "2026-12-31",
+              key_results: [],
+              created_at: "2026-01-01T00:00:00Z",
+            },
+          ]),
+        });
+      } else {
+        route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({}) });
+      }
+    });
+
+    await page.goto("/reviews/goals");
+    await page.waitForSelector("text=Test Goal");
+
+    // Click delete button
+    await page.click("[data-testid='delete-goal-btn']");
+
+    // Should show a styled modal, NOT a browser confirm
+    await expect(page.locator("[data-testid='delete-confirm-modal']")).toBeVisible();
+    await expect(page.locator("[data-testid='delete-confirm-modal']")).toContainText(/delete|remove/i);
+
+    // Should have Cancel and Confirm buttons
+    await expect(page.locator("[data-testid='delete-confirm-cancel']")).toBeVisible();
+    await expect(page.locator("[data-testid='delete-confirm-submit']")).toBeVisible();
+  });
+
+  test("cancel button closes modal without deleting", async ({ page }) => {
+    await setupReviewsMocks(page);
+
+    await page.route(`${API_BASE}/reviews/goals**`, (route) => {
+      if (route.request().method() === "GET") {
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify([
+            {
+              id: "goal-1",
+              title: "Test Goal",
+              goal_type: "performance",
+              priority: "medium",
+              status: "active",
+              progress: 50,
+              time_bound: "2026-12-31",
+              key_results: [],
+              created_at: "2026-01-01T00:00:00Z",
+            },
+          ]),
+        });
+      } else {
+        route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({}) });
+      }
+    });
+
+    await page.goto("/reviews/goals");
+    await page.waitForSelector("text=Test Goal");
+
+    await page.click("[data-testid='delete-goal-btn']");
+    await expect(page.locator("[data-testid='delete-confirm-modal']")).toBeVisible();
+
+    // Click cancel
+    await page.click("[data-testid='delete-confirm-cancel']");
+
+    // Modal should close, goal should still be visible
+    await expect(page.locator("[data-testid='delete-confirm-modal']")).toHaveCount(0);
+    await expect(page.locator("text=Test Goal")).toBeVisible();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// P1.2 — ARIA attributes on tab interfaces
+// ─────────────────────────────────────────────────────────────────────────────
+
+test.describe("P1.2: ARIA tab attributes on management view", () => {
+  test("tabs have proper ARIA roles and attributes", async ({ page }) => {
+    await setupReviewsMocks(page);
+    await page.goto("/reviews/manage");
+    await page.waitForSelector("text=Review Management");
+
+    // Should have tablist role
+    await expect(page.locator("[role='tablist']")).toBeVisible();
+
+    // Each tab should have role=tab
+    const tabs = page.locator("[role='tab']");
+    await expect(tabs).toHaveCount(3);
+
+    // Active tab should have aria-selected=true
+    await expect(page.locator("[role='tab'][aria-selected='true']")).toHaveCount(1);
+    await expect(page.locator("[role='tab'][aria-selected='true']")).toContainText("Team Overview");
+
+    // Tab panel should exist
+    await expect(page.locator("[role='tabpanel']")).toBeVisible();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// P1.3 — Breadcrumb consistency on cycles page
+// ─────────────────────────────────────────────────────────────────────────────
+
+test.describe("P1.3: Navigation consistency", () => {
+  test("cycles list page uses breadcrumb navigation", async ({ page }) => {
+    await setupReviewsMocks(page);
+
+    await page.route(`${API_BASE}/reviews/workspaces/ws-1/cycles**`, (route) => {
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([]) });
+    });
+
+    await page.goto("/reviews/cycles");
+    await page.waitForSelector("text=Review Cycles");
+
+    // Should have breadcrumb nav, NOT "Back to Reviews" link
+    await expect(page.locator("nav[aria-label='Breadcrumb']")).toBeVisible();
+    await expect(page.locator("text=Back to Reviews")).toHaveCount(0);
+  });
+});

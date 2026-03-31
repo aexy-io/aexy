@@ -12,8 +12,8 @@ import {
   Users,
   Settings,
   MoreVertical,
-  ArrowLeft,
 } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useReviewCycles } from "@/hooks/useReviews";
 import { ReviewCycle } from "@/lib/api";
@@ -257,14 +257,13 @@ export default function ReviewCyclesPage() {
   return (
     <div className="min-h-screen bg-background">
 <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* Back Link */}
-        <Link
-          href="/reviews"
-          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Reviews
-        </Link>
+        {/* Breadcrumb */}
+        <Breadcrumb
+          items={[
+            { label: "Reviews", href: "/reviews" },
+            { label: "Cycles" },
+          ]}
+        />
 
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
