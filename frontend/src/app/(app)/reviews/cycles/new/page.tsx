@@ -273,6 +273,61 @@ export default function NewReviewCyclePage() {
             </div>
           </div>
 
+          {/* Timeline Preview */}
+          {periodStart && periodEnd && !dateValidationError && (
+            <div data-testid="cycle-timeline-preview" className="bg-background/50 rounded-xl border border-border p-6">
+              <h2 className="text-lg font-semibold text-foreground mb-4">Timeline Preview</h2>
+              <div className="relative">
+                {/* Timeline bar */}
+                <div className="h-2 bg-accent rounded-full mb-6" />
+
+                {/* Phase markers */}
+                <div className="grid grid-cols-3 gap-2 -mt-4">
+                  <div className="text-center">
+                    <div className="w-4 h-4 bg-blue-500 rounded-full mx-auto mb-2 ring-4 ring-blue-500/20" />
+                    <p className="text-xs font-medium text-blue-400">Self Review</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {selfReviewDeadline
+                        ? `Due ${new Date(selfReviewDeadline).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+                        : "No deadline"}
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <div className="w-4 h-4 bg-purple-500 rounded-full mx-auto mb-2 ring-4 ring-purple-500/20" />
+                    <p className="text-xs font-medium text-purple-400">Peer Review</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {peerReviewDeadline
+                        ? `Due ${new Date(peerReviewDeadline).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+                        : "No deadline"}
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <div className="w-4 h-4 bg-amber-500 rounded-full mx-auto mb-2 ring-4 ring-amber-500/20" />
+                    <p className="text-xs font-medium text-amber-400">Manager Review</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {managerReviewDeadline
+                        ? `Due ${new Date(managerReviewDeadline).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+                        : "No deadline"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Period range */}
+                <div className="flex items-center justify-between mt-4 pt-3 border-t border-border">
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(periodStart).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {cycleType === "quarterly" ? "~3 months" : cycleType === "semi_annual" ? "~6 months" : cycleType === "annual" ? "~12 months" : "Custom"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(periodEnd).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Review Settings */}
           <div className="bg-background/50 rounded-xl border border-border p-6">
             <h2 className="text-lg font-semibold text-foreground mb-4">Review Settings</h2>

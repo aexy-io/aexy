@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -131,6 +132,7 @@ export default function ReviewsPage() {
       await generateSummary("quarterly");
     } catch (err) {
       console.error("Failed to generate summary:", err);
+      toast.error("Failed to generate summary. Please try again.");
     } finally {
       setIsGenerating(false);
     }

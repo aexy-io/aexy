@@ -58,6 +58,7 @@ function ActionsCell({ cycle }: { cycle: ReviewCycle }) {
       </Link>
       <div className="relative">
         <button
+          aria-label="More actions"
           onClick={() => setShowMenu(!showMenu)}
           className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
         >

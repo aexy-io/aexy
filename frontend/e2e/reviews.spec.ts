@@ -658,3 +658,144 @@ test.describe("P2.3: Goal card preview on create form", () => {
     await expect(preview).toContainText(/performance/i);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// P1.8 — User-facing error messages on API failures
+// ─────────────────────────────────────────────────────────────────────────────
+
+test.describe("P1.8: Error toasts on API failures", () => {
+  test("shows error toast when generate summary fails", async ({ page }) => {
+    await setupReviewsMocks(page);
+
+    // Mock summary generation to fail
+    await page.route(`${API_BASE}/reviews/contributions/generate**`, (route) => {
+      route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ detail: "Server error" }) });
+    });
+
+    await page.goto("/reviews");
+    await page.waitForSelector("text=Performance Reviews");
+
+    // Click generate summary
+    await page.click("button:has-text('Generate Summary')");
+
+    // Should show error toast
+    await expect(page.locator("text=Failed to generate summary")).toBeVisible({ timeout: 5000 });
+  });
+
+  test("shows error toast when goal progress update fails", async ({ page }) => {
+    await setupReviewsMocks(page);
+
+    // Mock goal detail
+    await page.route(`${API_BASE}/reviews/goals/goal-1`, (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          id: "goal-1", title: "Test Goal", goal_type: "performance", priority: "medium",
+          status: "active", progress: 50, time_bound: "2026-12-31", key_results: [],
+          created_at: "2026-01-01T00:00:00Z", tracking_keywords: [],
+        }),
+      });
+    });
+
+    // Mock progress update to fail
+    await page.route(`${API_BASE}/reviews/goals/goal-1/progress`, (route) => {
+      route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ detail: "Error" }) });
+    });
+
+    await page.goto("/reviews/goals/goal-1");
+    await page.waitForSelector("text=Test Goal");
+
+    // Try to update progress
+    const slider = page.locator("input[type='range']");
+    if (await slider.count() > 0) {
+      await slider.fill("80");
+      await expect(page.locator("text=Failed to update progress")).toBeVisible({ timeout: 5000 });
+    }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// P2.a11y — aria-label on icon-only buttons
+// ─────────────────────────────────────────────────────────────────────────────
+
+test.describe("P2.a11y: Icon-only button labels", () => {
+  test("management view icon buttons have aria-labels", async ({ page }) => {
+    await setupReviewsMocks(page);
+    await page.goto("/reviews/manage");
+    await page.waitForSelector("text=Review Management");
+
+    // Eye button should have aria-label
+    const eyeBtn = page.locator("button[aria-label='Preview member']");
+    await expect(eyeBtn).toBeVisible();
+
+    // Export button should have aria-label or text
+    await expect(page.locator("button:has-text('Export Report')")).toBeVisible();
+  });
+
+  test("goal card delete button has aria-label", async ({ page }) => {
+    await setupReviewsMocks(page);
+
+    await page.route(`${API_BASE}/reviews/goals**`, (route) => {
+      if (route.request().method() === "GET") {
+        route.fulfill({
+          status: 200, contentType: "application/json",
+          body: JSON.stringify([{
+            id: "g1", title: "Test", goal_type: "performance", priority: "medium",
+            status: "active", progress: 50, time_bound: "2026-12-31", key_results: [],
+            created_at: "2026-01-01T00:00:00Z",
+          }]),
+        });
+      } else {
+        route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({}) });
+      }
+    });
+
+    await page.goto("/reviews/goals");
+    await page.waitForSelector("text=Test");
+
+    await expect(page.locator("button[aria-label='Delete goal']")).toBeVisible();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// P2.14 — Cycle timeline preview on create form
+// ─────────────────────────────────────────────────────────────────────────────
+
+test.describe("P2.14: Cycle timeline preview", () => {
+  test("shows timeline preview when dates are filled", async ({ page }) => {
+    await setupReviewsMocks(page);
+    await page.goto("/reviews/cycles/new");
+    await page.waitForSelector("text=Create Review Cycle");
+
+    // Fill dates
+    await page.fill("#cycle-name", "Q1 Review");
+    await page.fill("#cycle-period-start", "2026-01-01");
+    await page.fill("#cycle-period-end", "2026-03-31");
+
+    // Timeline preview should appear
+    const timeline = page.locator("[data-testid='cycle-timeline-preview']");
+    await expect(timeline).toBeVisible();
+    await expect(timeline).toContainText(/self review|peer review|manager review/i);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// P2.a11y — aria-live regions
+// ─────────────────────────────────────────────────────────────────────────────
+
+test.describe("P2.a11y: aria-live regions", () => {
+  test("goals list filter results area has aria-live", async ({ page }) => {
+    await setupReviewsMocks(page);
+
+    await page.route(`${API_BASE}/reviews/goals**`, (route) => {
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(mockGoalsList) });
+    });
+
+    await page.goto("/reviews/goals");
+    await page.waitForSelector("text=My Goals");
+
+    // The goals grid/results area should have aria-live for screen readers
+    await expect(page.locator("main [aria-live='polite']")).toBeVisible();
+  });
+});

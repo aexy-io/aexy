@@ -423,7 +423,7 @@ export default function ReviewsManagePage() {
                         {member.lastActivity ? `Joined ${member.lastActivity}` : "Recently joined"}
                       </span>
                       <div className="flex items-center gap-2">
-                        <button className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition">
+                        <button aria-label="Preview member" className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition">
                           <Eye className="h-4 w-4" />
                         </button>
                         <Link
