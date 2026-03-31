@@ -518,3 +518,63 @@ test.describe("P1.3: Navigation consistency", () => {
     await expect(page.locator("text=Back to Reviews")).toHaveCount(0);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// P1.4 — Mobile card fallback for cycles DataTable
+// ─────────────────────────────────────────────────────────────────────────────
+
+test.describe("P1.4: Cycles mobile card view", () => {
+  const mockCycles = [
+    {
+      id: "cycle-1",
+      name: "Q1 2026 Review",
+      cycle_type: "quarterly",
+      status: "active",
+      period_start: "2026-01-01",
+      period_end: "2026-03-31",
+      self_review_deadline: "2026-02-15",
+      peer_review_deadline: null,
+      manager_review_deadline: null,
+      created_at: "2026-01-01T00:00:00Z",
+    },
+  ];
+
+  test("shows card view on mobile viewport", async ({ page }) => {
+    await setupReviewsMocks(page);
+
+    await page.route(`${API_BASE}/reviews/workspaces/ws-1/cycles**`, (route) => {
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(mockCycles) });
+    });
+
+    // Set mobile viewport
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto("/reviews/cycles");
+    await page.waitForSelector("text=Review Cycles");
+
+    // Mobile cards should be visible
+    await expect(page.locator("[data-testid='cycles-mobile-cards']")).toBeVisible();
+
+    // Should show cycle name in card
+    await expect(page.locator("[data-testid='cycles-mobile-cards']")).toContainText("Q1 2026 Review");
+    await expect(page.locator("[data-testid='cycles-mobile-cards']")).toContainText("Active");
+  });
+
+  test("shows DataTable on desktop viewport", async ({ page }) => {
+    await setupReviewsMocks(page);
+
+    await page.route(`${API_BASE}/reviews/workspaces/ws-1/cycles**`, (route) => {
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(mockCycles) });
+    });
+
+    // Desktop viewport
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/reviews/cycles");
+    await page.waitForSelector("text=Review Cycles");
+
+    // Mobile cards should be hidden
+    await expect(page.locator("[data-testid='cycles-mobile-cards']")).toBeHidden();
+
+    // DataTable should show the cycle (use first match to avoid strict mode on both table + hidden cards)
+    await expect(page.locator("table >> text=Q1 2026 Review").first()).toBeVisible();
+  });
+});

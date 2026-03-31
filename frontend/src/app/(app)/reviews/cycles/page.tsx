@@ -305,7 +305,7 @@ export default function ReviewCyclesPage() {
           </span>
         </div>
 
-        {/* Cycles Table */}
+        {/* Cycles Table (desktop) */}
         {error ? (
           <div className="bg-background/50 rounded-xl border border-border overflow-hidden">
             <div className="text-center py-12">
@@ -319,20 +319,79 @@ export default function ReviewCyclesPage() {
             </div>
           </div>
         ) : (
-          <DataTable
-            columns={cycleColumns}
-            data={cycles}
-            rowKey={(cycle) => cycle.id}
-            isLoading={isLoading}
-            skeletonRows={4}
-            emptyIcon={
-              <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto">
-                <Calendar className="w-10 h-10 text-muted-foreground" />
-              </div>
-            }
-            emptyTitle="No review cycles yet"
-            emptyDescription="Create your first review cycle to start collecting 360° feedback from your team."
-          />
+          <>
+            {/* Desktop: DataTable */}
+            <div className="hidden md:block">
+              <DataTable
+                columns={cycleColumns}
+                data={cycles}
+                rowKey={(cycle) => cycle.id}
+                isLoading={isLoading}
+                skeletonRows={4}
+                emptyIcon={
+                  <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto">
+                    <Calendar className="w-10 h-10 text-muted-foreground" />
+                  </div>
+                }
+                emptyTitle="No review cycles yet"
+                emptyDescription="Create your first review cycle to start collecting 360° feedback from your team."
+              />
+            </div>
+
+            {/* Mobile: Card view */}
+            <div className="md:hidden space-y-3" data-testid="cycles-mobile-cards">
+              {isLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="bg-muted rounded-xl border border-border p-4 animate-pulse">
+                      <div className="h-5 w-40 bg-accent rounded mb-3" />
+                      <div className="h-4 w-24 bg-accent rounded mb-2" />
+                      <div className="h-3 w-32 bg-accent rounded" />
+                    </div>
+                  ))}
+                </div>
+              ) : cycles.length === 0 ? (
+                <div className="bg-muted rounded-xl border border-border p-8 text-center">
+                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
+                    <Calendar className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <p className="text-foreground font-medium mb-1">No review cycles yet</p>
+                  <p className="text-muted-foreground text-sm">
+                    Create your first review cycle to start collecting 360° feedback.
+                  </p>
+                </div>
+              ) : (
+                cycles.map((cycle) => {
+                  const statusColor = getStatusColor(REVIEW_CYCLE_STATUS_COLORS, cycle.status);
+                  return (
+                    <Link
+                      key={cycle.id}
+                      href={`/reviews/cycles/${cycle.id}`}
+                      className="block bg-muted rounded-xl border border-border p-4 hover:border-purple-500/30 transition"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-purple-400" />
+                          <span className="text-foreground font-medium">{cycle.name}</span>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor.text} ${statusColor.bg}`}>
+                          {statusLabels[cycle.status] || cycle.status}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-1">
+                        {cycleTypeLabels[cycle.cycle_type] || cycle.cycle_type}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(cycle.period_start).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                        {" - "}
+                        {new Date(cycle.period_end).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      </p>
+                    </Link>
+                  );
+                })
+              )}
+            </div>
+          </>
         )}
 
         {/* Help Section */}
