@@ -578,3 +578,83 @@ test.describe("P1.4: Cycles mobile card view", () => {
     await expect(page.locator("table >> text=Q1 2026 Review").first()).toBeVisible();
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// P2.1 — Filter counts on goals list tabs
+// ─────────────────────────────────────────────────────────────────────────────
+
+const mockGoalsList = [
+  { id: "g1", title: "Goal Active 1", goal_type: "performance", priority: "medium", status: "active", progress: 30, time_bound: "2026-12-31", key_results: [], created_at: "2026-01-01T00:00:00Z" },
+  { id: "g2", title: "Goal Active 2", goal_type: "skill_development", priority: "high", status: "in_progress", progress: 60, time_bound: "2026-06-30", key_results: [], created_at: "2026-01-01T00:00:00Z" },
+  { id: "g3", title: "Goal Done", goal_type: "project", priority: "low", status: "completed", progress: 100, time_bound: "2026-03-31", key_results: [], created_at: "2026-01-01T00:00:00Z" },
+];
+
+test.describe("P2.1: Goals filter tab counts", () => {
+  test("filter tabs show counts in parentheses", async ({ page }) => {
+    await setupReviewsMocks(page);
+
+    await page.route(`${API_BASE}/reviews/goals**`, (route) => {
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(mockGoalsList) });
+    });
+
+    await page.goto("/reviews/goals");
+    await page.waitForSelector("text=My Goals");
+
+    // Tabs should show counts
+    await expect(page.locator("[data-testid='filter-tab-all']")).toContainText("3");
+    await expect(page.locator("[data-testid='filter-tab-active']")).toContainText("2");
+    await expect(page.locator("[data-testid='filter-tab-completed']")).toContainText("1");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// P2.2 — Form label associations (htmlFor/id)
+// ─────────────────────────────────────────────────────────────────────────────
+
+test.describe("P2.2: Form label accessibility", () => {
+  test("goal form labels are associated with inputs", async ({ page }) => {
+    await setupReviewsMocks(page);
+    await page.goto("/reviews/goals/new");
+    await page.waitForSelector("text=Create SMART Goal");
+
+    // Clicking the label should focus the input
+    const titleLabel = page.locator("label[for='goal-title']");
+    await expect(titleLabel).toBeVisible();
+    const titleInput = page.locator("#goal-title");
+    await expect(titleInput).toBeVisible();
+  });
+
+  test("cycle form labels are associated with inputs", async ({ page }) => {
+    await setupReviewsMocks(page);
+    await page.goto("/reviews/cycles/new");
+    await page.waitForSelector("text=Create Review Cycle");
+
+    const nameLabel = page.locator("label[for='cycle-name']");
+    await expect(nameLabel).toBeVisible();
+    const nameInput = page.locator("#cycle-name");
+    await expect(nameInput).toBeVisible();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// P2.3 — Goal card live preview on create form
+// ─────────────────────────────────────────────────────────────────────────────
+
+test.describe("P2.3: Goal card preview on create form", () => {
+  test("shows live preview that updates as user types", async ({ page }) => {
+    await setupReviewsMocks(page);
+    await page.goto("/reviews/goals/new");
+    await page.waitForSelector("text=Create SMART Goal");
+
+    // Preview should exist
+    const preview = page.locator("[data-testid='goal-preview']");
+    await expect(preview).toBeVisible();
+
+    // Type a title and verify it appears in preview
+    await page.fill("#goal-title", "Ship new auth system");
+    await expect(preview).toContainText("Ship new auth system");
+
+    // Preview should also show the goal type
+    await expect(preview).toContainText(/performance/i);
+  });
+});

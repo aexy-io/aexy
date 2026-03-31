@@ -169,7 +169,7 @@ export default function NewGoalPage() {
 
   return (
     <div className="min-h-screen bg-background">
-<main className="max-w-4xl mx-auto px-4 py-8">
+<main className="max-w-6xl mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <Breadcrumb
           items={[
@@ -196,17 +196,19 @@ export default function NewGoalPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-8">
           {/* Basic Info */}
           <div className="bg-muted rounded-xl border border-border p-6">
             <h2 className="text-lg font-semibold text-foreground mb-4">Basic Information</h2>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
+                <label htmlFor="goal-title" className="block text-sm font-medium text-foreground mb-2">
                   Goal Title *
                 </label>
                 <input
+                  id="goal-title"
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
@@ -217,10 +219,11 @@ export default function NewGoalPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
+                <label htmlFor="goal-description" className="block text-sm font-medium text-foreground mb-2">
                   Description
                 </label>
                 <textarea
+                  id="goal-description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Describe your goal in detail..."
@@ -267,11 +270,12 @@ export default function NewGoalPage() {
 
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
+                  <label htmlFor="goal-target-date" className="block text-sm font-medium text-foreground mb-2">
                     <Calendar className="h-4 w-4 inline mr-1" />
                     Target Date *
                   </label>
                   <input
+                    id="goal-target-date"
                     type="date"
                     value={timeBound}
                     onChange={(e) => setTimeBound(e.target.value)}
@@ -489,6 +493,57 @@ export default function NewGoalPage() {
                 )}
               </button>
             </span>
+          </div>
+          </div>
+
+          {/* Live Preview */}
+          <div className="lg:col-span-1">
+            <div className="lg:sticky lg:top-8" data-testid="goal-preview">
+              <h3 className="text-sm font-medium text-muted-foreground mb-3">Preview</h3>
+              <div className="bg-muted rounded-xl border border-border p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Target className="h-4 w-4 text-cyan-400" />
+                    <span className="text-foreground font-medium text-sm">
+                      {title.trim() || "Goal title..."}
+                    </span>
+                  </div>
+                  <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-400 text-xs rounded-full capitalize">
+                    {goalTypes.find(g => g.value === goalType)?.label || goalType}
+                  </span>
+                </div>
+                {description && (
+                  <p className="text-muted-foreground text-xs mb-3 line-clamp-2">{description}</p>
+                )}
+                <div className="w-full bg-accent rounded-full h-2 mb-3">
+                  <div className="bg-cyan-500 h-2 rounded-full" style={{ width: "0%" }} />
+                </div>
+                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                  {keyResults.filter(kr => kr.description.trim()).length > 0 && (
+                    <span>{keyResults.filter(kr => kr.description.trim()).length} key result{keyResults.filter(kr => kr.description.trim()).length !== 1 ? "s" : ""}</span>
+                  )}
+                  {timeBound && (
+                    <span>Due {new Date(timeBound).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                  )}
+                  <span className={`capitalize ${
+                    priority === "critical" ? "text-red-400" :
+                    priority === "high" ? "text-orange-400" :
+                    priority === "medium" ? "text-yellow-400" : "text-muted-foreground"
+                  }`}>
+                    {priority}
+                  </span>
+                </div>
+                {trackingKeywords.trim() && (
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {trackingKeywords.split(",").filter(k => k.trim()).slice(0, 5).map((kw, i) => (
+                      <span key={i} className="px-2 py-0.5 bg-accent text-muted-foreground text-xs rounded">
+                        {kw.trim()}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </form>
       </main>

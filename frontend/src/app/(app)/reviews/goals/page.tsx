@@ -168,6 +168,12 @@ export default function GoalsPage() {
     return result;
   }, [goals, filter, searchQuery]);
 
+  const filterCounts = useMemo(() => {
+    const active = goals.filter(g => g.status !== "completed" && g.status !== "cancelled").length;
+    const completed = goals.filter(g => g.status === "completed").length;
+    return { all: goals.length, active, completed };
+  }, [goals]);
+
   const handleDeleteGoal = async (goalId: string) => {
     try {
       await deleteGoal(goalId);
@@ -261,14 +267,20 @@ export default function GoalsPage() {
             {(["all", "active", "completed"] as const).map((f) => (
               <button
                 key={f}
+                data-testid={`filter-tab-${f}`}
                 onClick={() => setFilter(f)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition capitalize ${
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition capitalize ${
                   filter === f
                     ? "bg-accent text-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {f}
+                <span className={`px-1.5 py-0.5 rounded-full text-xs ${
+                  filter === f ? "bg-muted" : "bg-accent"
+                }`}>
+                  {filterCounts[f]}
+                </span>
               </button>
             ))}
           </div>

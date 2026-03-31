@@ -163,10 +163,11 @@ export default function NewReviewCyclePage() {
             <h2 className="text-lg font-semibold text-foreground mb-4">Basic Information</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">
+                <label htmlFor="cycle-name" className="block text-sm font-medium text-foreground mb-1.5">
                   Cycle Name *
                 </label>
                 <input
+                  id="cycle-name"
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -194,10 +195,11 @@ export default function NewReviewCyclePage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1.5">
+                  <label htmlFor="cycle-period-start" className="block text-sm font-medium text-foreground mb-1.5">
                     Period Start *
                   </label>
                   <input
+                    id="cycle-period-start"
                     type="date"
                     value={periodStart}
                     onChange={(e) => setPeriodStart(e.target.value)}
@@ -206,10 +208,11 @@ export default function NewReviewCyclePage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1.5">
+                  <label htmlFor="cycle-period-end" className="block text-sm font-medium text-foreground mb-1.5">
                     Period End *
                   </label>
                   <input
+                    id="cycle-period-end"
                     type="date"
                     value={periodEnd}
                     onChange={(e) => setPeriodEnd(e.target.value)}
