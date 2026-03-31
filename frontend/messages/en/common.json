@@ -1,0 +1,33 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "search": "Search",
+    "create": "Create",
+    "edit": "Edit",
+    "viewAll": "View all",
+    "viewDetails": "View Details",
+    "goBack": "Go Back",
+    "tryAgain": "Try again",
+    "noResults": "No results found",
+    "error": "An error occurred",
+    "success": "Success",
+    "status": {
+      "active": "Active",
+      "completed": "Completed",
+      "pending": "Pending",
+      "draft": "Draft",
+      "cancelled": "Cancelled",
+      "inProgress": "In Progress"
+    },
+    "priority": {
+      "critical": "Critical",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    }
+  }
+}
