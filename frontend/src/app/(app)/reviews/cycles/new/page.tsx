@@ -16,8 +16,11 @@ import {
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { reviewsApi } from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
 export default function NewReviewCyclePage() {
+  const t = useTranslations("reviews.cycles.form");
+  const tp = useTranslations("reviews.cycles");
   const router = useRouter();
   const { user, isLoading: authLoading, isAuthenticated, logout } = useAuth();
   const { currentWorkspaceId, currentWorkspaceLoading, hasWorkspaces } = useWorkspace();
@@ -46,7 +49,7 @@ export default function NewReviewCyclePage() {
 
   // Date validation
   const dateValidationError = periodStart && periodEnd && periodEnd < periodStart
-    ? "End date must be after start date"
+    ? t("dateError")
     : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -77,7 +80,7 @@ export default function NewReviewCyclePage() {
         },
       });
 
-      toast.success("Review cycle created successfully");
+      toast.success(tp("cycleCreated"));
       router.push(`/reviews/cycles/${cycle.id}`);
     } catch (err) {
       console.error("Failed to create review cycle:", err);
@@ -149,9 +152,9 @@ export default function NewReviewCyclePage() {
             <Calendar className="h-7 w-7 text-purple-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Create Review Cycle</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
             <p className="text-muted-foreground text-sm">
-              Set up a new performance review cycle for your team
+              {t("subtitle")}
             </p>
           </div>
         </div>
@@ -164,14 +167,14 @@ export default function NewReviewCyclePage() {
             <div className="space-y-4">
               <div>
                 <label htmlFor="cycle-name" className="block text-sm font-medium text-foreground mb-1.5">
-                  Cycle Name *
+                  {t("cycleName")} *
                 </label>
                 <input
                   id="cycle-name"
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g., Q1 2024 Performance Review"
+                  placeholder={t("cycleNamePlaceholder")}
                   required
                   className="w-full bg-muted border border-border rounded-lg px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
@@ -179,7 +182,7 @@ export default function NewReviewCyclePage() {
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1.5">
-                  Cycle Type
+                  {t("cycleType")}
                 </label>
                 <select
                   value={cycleType}
@@ -196,7 +199,7 @@ export default function NewReviewCyclePage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="cycle-period-start" className="block text-sm font-medium text-foreground mb-1.5">
-                    Period Start *
+                    {t("periodStart")} *
                   </label>
                   <input
                     id="cycle-period-start"
@@ -209,7 +212,7 @@ export default function NewReviewCyclePage() {
                 </div>
                 <div>
                   <label htmlFor="cycle-period-end" className="block text-sm font-medium text-foreground mb-1.5">
-                    Period End *
+                    {t("periodEnd")} *
                   </label>
                   <input
                     id="cycle-period-end"
@@ -232,14 +235,14 @@ export default function NewReviewCyclePage() {
 
           {/* Deadlines */}
           <div className="bg-background/50 rounded-xl border border-border p-6">
-            <h2 className="text-lg font-semibold text-foreground mb-4">Phase Deadlines</h2>
+            <h2 className="text-lg font-semibold text-foreground mb-4">{t("deadlines.title")}</h2>
             <p className="text-muted-foreground text-sm mb-4">
-              Set deadlines for each review phase. Leave blank for no deadline.
+              {t("deadlines.subtitle")}
             </p>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1.5">
-                  Self Review Deadline
+                  {t("deadlines.selfReview")}
                 </label>
                 <input
                   type="date"
@@ -250,7 +253,7 @@ export default function NewReviewCyclePage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1.5">
-                  Peer Review Deadline
+                  {t("deadlines.peerReview")}
                 </label>
                 <input
                   type="date"
@@ -261,7 +264,7 @@ export default function NewReviewCyclePage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1.5">
-                  Manager Review Deadline
+                  {t("deadlines.managerReview")}
                 </label>
                 <input
                   type="date"
@@ -276,7 +279,7 @@ export default function NewReviewCyclePage() {
           {/* Timeline Preview */}
           {periodStart && periodEnd && !dateValidationError && (
             <div data-testid="cycle-timeline-preview" className="bg-background/50 rounded-xl border border-border p-6">
-              <h2 className="text-lg font-semibold text-foreground mb-4">Timeline Preview</h2>
+              <h2 className="text-lg font-semibold text-foreground mb-4">{t("timeline.title")}</h2>
               <div className="relative">
                 {/* Timeline bar */}
                 <div className="h-2 bg-accent rounded-full mb-6" />
@@ -285,29 +288,29 @@ export default function NewReviewCyclePage() {
                 <div className="grid grid-cols-3 gap-2 -mt-4">
                   <div className="text-center">
                     <div className="w-4 h-4 bg-blue-500 rounded-full mx-auto mb-2 ring-4 ring-blue-500/20" />
-                    <p className="text-xs font-medium text-blue-400">Self Review</p>
+                    <p className="text-xs font-medium text-blue-400">{t("timeline.selfReview")}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {selfReviewDeadline
                         ? `Due ${new Date(selfReviewDeadline).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
-                        : "No deadline"}
+                        : t("timeline.noDeadline")}
                     </p>
                   </div>
                   <div className="text-center">
                     <div className="w-4 h-4 bg-purple-500 rounded-full mx-auto mb-2 ring-4 ring-purple-500/20" />
-                    <p className="text-xs font-medium text-purple-400">Peer Review</p>
+                    <p className="text-xs font-medium text-purple-400">{t("timeline.peerReview")}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {peerReviewDeadline
                         ? `Due ${new Date(peerReviewDeadline).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
-                        : "No deadline"}
+                        : t("timeline.noDeadline")}
                     </p>
                   </div>
                   <div className="text-center">
                     <div className="w-4 h-4 bg-amber-500 rounded-full mx-auto mb-2 ring-4 ring-amber-500/20" />
-                    <p className="text-xs font-medium text-amber-400">Manager Review</p>
+                    <p className="text-xs font-medium text-amber-400">{t("timeline.managerReview")}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {managerReviewDeadline
                         ? `Due ${new Date(managerReviewDeadline).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
-                        : "No deadline"}
+                        : t("timeline.noDeadline")}
                     </p>
                   </div>
                 </div>
@@ -330,7 +333,7 @@ export default function NewReviewCyclePage() {
 
           {/* Review Settings */}
           <div className="bg-background/50 rounded-xl border border-border p-6">
-            <h2 className="text-lg font-semibold text-foreground mb-4">Review Settings</h2>
+            <h2 className="text-lg font-semibold text-foreground mb-4">{t("settings.title")}</h2>
             <div className="space-y-4">
               {/* Enable/Disable Phases */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -341,7 +344,7 @@ export default function NewReviewCyclePage() {
                     onChange={(e) => setEnableSelfReview(e.target.checked)}
                     className="w-4 h-4 rounded border-border text-purple-600 focus:ring-purple-500"
                   />
-                  <span className="text-sm text-foreground">Self Review</span>
+                  <span className="text-sm text-foreground">{t("settings.selfReview")}</span>
                 </label>
                 <label className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted transition">
                   <input
@@ -350,7 +353,7 @@ export default function NewReviewCyclePage() {
                     onChange={(e) => setEnablePeerReview(e.target.checked)}
                     className="w-4 h-4 rounded border-border text-purple-600 focus:ring-purple-500"
                   />
-                  <span className="text-sm text-foreground">Peer Review</span>
+                  <span className="text-sm text-foreground">{t("settings.peerReview")}</span>
                 </label>
                 <label className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted transition">
                   <input
@@ -359,7 +362,7 @@ export default function NewReviewCyclePage() {
                     onChange={(e) => setEnableManagerReview(e.target.checked)}
                     className="w-4 h-4 rounded border-border text-purple-600 focus:ring-purple-500"
                   />
-                  <span className="text-sm text-foreground">Manager Review</span>
+                  <span className="text-sm text-foreground">{t("settings.managerReview")}</span>
                 </label>
               </div>
 
@@ -368,7 +371,7 @@ export default function NewReviewCyclePage() {
                 <div className="mt-4 pt-4 border-t border-border space-y-4">
                   <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                     <Users className="h-4 w-4" />
-                    Peer Review Settings
+                    {t("settings.peerSettings")}
                   </h3>
 
                   <label className="flex items-center gap-3 cursor-pointer">
@@ -378,13 +381,13 @@ export default function NewReviewCyclePage() {
                       onChange={(e) => setAnonymousPeerReviews(e.target.checked)}
                       className="w-4 h-4 rounded border-border text-purple-600 focus:ring-purple-500"
                     />
-                    <span className="text-sm text-foreground">Anonymous peer reviews</span>
+                    <span className="text-sm text-foreground">{t("settings.anonymousPeerReviews")}</span>
                   </label>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-foreground mb-1.5">
-                        Min Peer Reviewers
+                        {t("settings.minPeerReviewers")}
                       </label>
                       <input
                         type="number"
@@ -397,7 +400,7 @@ export default function NewReviewCyclePage() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-foreground mb-1.5">
-                        Max Peer Reviewers
+                        {t("settings.maxPeerReviewers")}
                       </label>
                       <input
                         type="number"
@@ -412,7 +415,7 @@ export default function NewReviewCyclePage() {
 
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-1.5">
-                      Peer Selection Mode
+                      {t("settings.peerSelectionMode")}
                     </label>
                     <select
                       value={peerSelectionMode}
@@ -424,7 +427,7 @@ export default function NewReviewCyclePage() {
                       <option value="both">Both (Recommended)</option>
                     </select>
                     <p className="text-xs text-muted-foreground mt-1">
-                      &quot;Both&quot; allows employees to request reviewers and managers to assign additional ones.
+                      {t("settings.peerSelectionHelp")}
                     </p>
                   </div>
                 </div>
@@ -440,9 +443,9 @@ export default function NewReviewCyclePage() {
                     className="w-4 h-4 rounded border-border text-purple-600 focus:ring-purple-500"
                   />
                   <div>
-                    <span className="text-sm text-foreground">Include GitHub metrics</span>
+                    <span className="text-sm text-foreground">{t("settings.includeGitHub")}</span>
                     <p className="text-xs text-muted-foreground">
-                      Auto-import commits, PRs, and code reviews from the review period
+                      {t("settings.includeGitHubDesc")}
                     </p>
                   </div>
                 </label>
@@ -467,7 +470,7 @@ export default function NewReviewCyclePage() {
             </Link>
             <span
               data-testid="create-cycle-tooltip"
-              title={(!name || !periodStart || !periodEnd || !!dateValidationError) ? "Fill in cycle name, start date, and end date to create" : ""}
+              title={(!name || !periodStart || !periodEnd || !!dateValidationError) ? t("disabledTooltip") : ""}
             >
               <button
                 type="submit"
@@ -477,12 +480,12 @@ export default function NewReviewCyclePage() {
                 {isSubmitting ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white"></div>
-                    Creating...
+                    {t("creating")}
                   </>
                 ) : (
                   <>
                     <CheckCircle className="h-4 w-4" />
-                    Create Cycle
+                    {t("createCycle")}
                   </>
                 )}
               </button>

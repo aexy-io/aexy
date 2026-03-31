@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { redirect } from "next/navigation";
@@ -124,6 +125,8 @@ export default function ReviewsPage() {
     useContributionSummary(developerId);
 
   const [isGenerating, setIsGenerating] = useState(false);
+  const t = useTranslations("reviews");
+  const tc = useTranslations("common");
 
   const handleGenerateSummary = async () => {
     if (!developerId) return;
@@ -132,7 +135,7 @@ export default function ReviewsPage() {
       await generateSummary("quarterly");
     } catch (err) {
       console.error("Failed to generate summary:", err);
-      toast.error("Failed to generate summary. Please try again.");
+      toast.error(t("dashboard.failedToGenerateSummary"));
     } finally {
       setIsGenerating(false);
     }
@@ -191,9 +194,9 @@ export default function ReviewsPage() {
               <ClipboardCheck className="h-7 w-7 text-teal-400" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">Performance Reviews</h1>
+              <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
               <p className="text-muted-foreground text-sm">
-                Track goals, contributions, and 360° feedback
+                {t("description")}
               </p>
             </div>
           </div>
@@ -203,7 +206,7 @@ export default function ReviewsPage() {
               className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition text-sm font-medium"
             >
               <Plus className="h-4 w-4" />
-              New Goal
+              {t("newGoal")}
             </Link>
             {hasWorkspaces && (
               <>
@@ -212,14 +215,14 @@ export default function ReviewsPage() {
                   className="flex items-center gap-2 px-4 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-600/30 rounded-lg transition text-sm"
                 >
                   <Users className="h-4 w-4" />
-                  Management View
+                  {t("managementView")}
                 </Link>
                 <Link
                   href="/reviews/cycles"
                   className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-muted text-foreground rounded-lg transition text-sm"
                 >
                   <Settings className="h-4 w-4" />
-                  Manage Cycles
+                  {t("manageCycles")}
                 </Link>
               </>
             )}
@@ -233,50 +236,50 @@ export default function ReviewsPage() {
               <div className="p-2 bg-cyan-500/10 rounded-lg">
                 <Target className="w-5 h-5 text-cyan-400" />
               </div>
-              <span className="text-muted-foreground text-sm">Active Goals</span>
+              <span className="text-muted-foreground text-sm">{t("stats.activeGoals")}</span>
             </div>
             <p className="text-2xl font-bold text-foreground">
               {statsLoading ? "-" : stats.activeGoals}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">In progress</p>
+            <p className="text-xs text-muted-foreground mt-1">{t("stats.inProgress")}</p>
           </div>
           <div className="bg-background/50 rounded-xl p-4 border border-border hover:border-border transition">
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 bg-emerald-500/10 rounded-lg">
                 <CheckCircle className="w-5 h-5 text-emerald-400" />
               </div>
-              <span className="text-muted-foreground text-sm">Completed</span>
+              <span className="text-muted-foreground text-sm">{t("stats.completed")}</span>
             </div>
             <p className="text-2xl font-bold text-foreground">
               {statsLoading ? "-" : stats.completedGoals}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">This quarter</p>
+            <p className="text-xs text-muted-foreground mt-1">{t("stats.thisQuarter")}</p>
           </div>
           <div className="bg-background/50 rounded-xl p-4 border border-border hover:border-border transition">
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 bg-purple-500/10 rounded-lg">
                 <MessageSquare className="w-5 h-5 text-purple-400" />
               </div>
-              <span className="text-muted-foreground text-sm">Peer Reviews</span>
+              <span className="text-muted-foreground text-sm">{t("stats.peerReviews")}</span>
             </div>
             <p className="text-2xl font-bold text-foreground">
               {statsLoading ? "-" : stats.pendingPeerRequests}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">Pending requests</p>
+            <p className="text-xs text-muted-foreground mt-1">{t("stats.pendingRequests")}</p>
           </div>
           <div className="bg-background/50 rounded-xl p-4 border border-border hover:border-border transition">
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 bg-orange-500/10 rounded-lg">
                 <GitPullRequest className="w-5 h-5 text-orange-400" />
               </div>
-              <span className="text-muted-foreground text-sm">Contributions</span>
+              <span className="text-muted-foreground text-sm">{t("stats.contributions")}</span>
             </div>
             <p className="text-2xl font-bold text-foreground">
               {contributionsLoading
                 ? "-"
                 : contributionSummary?.metrics?.pull_requests?.total || 0}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">Auto-linked PRs</p>
+            <p className="text-xs text-muted-foreground mt-1">{t("stats.autoLinkedPRs")}</p>
           </div>
         </div>
 
@@ -289,13 +292,13 @@ export default function ReviewsPage() {
                 <div className="p-2 bg-cyan-500/10 rounded-lg">
                   <Target className="h-5 w-5 text-cyan-400" />
                 </div>
-                <h3 className="text-lg font-semibold text-foreground">My Goals</h3>
+                <h3 className="text-lg font-semibold text-foreground">{t("dashboard.myGoals")}</h3>
               </div>
               <Link
                 href="/reviews/goals"
                 className="text-cyan-400 hover:text-cyan-300 text-sm flex items-center gap-1 transition"
               >
-                View all <ChevronRight className="w-4 h-4" />
+                {tc("viewAll")} <ChevronRight className="w-4 h-4" />
               </Link>
             </div>
             <div className="p-6">
@@ -361,7 +364,7 @@ export default function ReviewsPage() {
                 <div className="p-2 bg-purple-500/10 rounded-lg">
                   <Calendar className="h-5 w-5 text-purple-400" />
                 </div>
-                <h3 className="text-lg font-semibold text-foreground">Review Cycle</h3>
+                <h3 className="text-lg font-semibold text-foreground">{t("dashboard.reviewCycle")}</h3>
               </div>
             </div>
             <div className="p-6">
@@ -377,14 +380,14 @@ export default function ReviewsPage() {
                     <Calendar className="w-8 h-8 text-muted-foreground" />
                   </div>
                   <p className="text-muted-foreground text-sm mb-4">
-                    No active review cycle
+                    {t("dashboard.noActiveReviewCycle")}
                   </p>
                   {hasWorkspaces && (
                     <Link
                       href="/reviews/cycles"
                       className="text-purple-400 hover:text-purple-300 text-sm transition"
                     >
-                      Create a review cycle
+                      {t("dashboard.createReviewCycle")}
                     </Link>
                   )}
                 </div>
@@ -402,13 +405,13 @@ export default function ReviewsPage() {
                 <div className="p-2 bg-amber-500/10 rounded-lg">
                   <MessageSquare className="h-5 w-5 text-amber-400" />
                 </div>
-                <h3 className="text-lg font-semibold text-foreground">Feedback Requests</h3>
+                <h3 className="text-lg font-semibold text-foreground">{t("dashboard.feedbackRequests")}</h3>
               </div>
               <Link
                 href="/reviews/peer-requests"
                 className="text-amber-400 hover:text-amber-300 text-sm flex items-center gap-1 transition"
               >
-                View all <ChevronRight className="w-4 h-4" />
+                {tc("viewAll")} <ChevronRight className="w-4 h-4" />
               </Link>
             </div>
             <div className="p-6">
@@ -439,7 +442,7 @@ export default function ReviewsPage() {
                     <MessageSquare className="w-7 h-7 text-muted-foreground" />
                   </div>
                   <p className="text-muted-foreground text-sm">
-                    No pending feedback requests
+                    {t("dashboard.noPendingFeedback")}
                   </p>
                 </div>
               )}
@@ -453,7 +456,7 @@ export default function ReviewsPage() {
                 <div className="p-2 bg-emerald-500/10 rounded-lg">
                   <GitPullRequest className="h-5 w-5 text-emerald-400" />
                 </div>
-                <h3 className="text-lg font-semibold text-foreground">Contributions</h3>
+                <h3 className="text-lg font-semibold text-foreground">{t("stats.contributions")}</h3>
               </div>
               <button
                 onClick={handleGenerateSummary}
@@ -463,12 +466,12 @@ export default function ReviewsPage() {
                 {isGenerating ? (
                   <>
                     <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-primary-500/20 border-t-primary-500"></div>
-                    Generating...
+                    {t("dashboard.generating")}
                   </>
                 ) : (
                   <>
                     <Sparkles className="h-3.5 w-3.5" />
-                    Generate Summary
+                    {t("dashboard.generateSummary")}
                   </>
                 )}
               </button>
@@ -486,19 +489,19 @@ export default function ReviewsPage() {
                       <p className="text-lg font-bold text-foreground">
                         {contributionSummary.metrics?.commits?.total || 0}
                       </p>
-                      <p className="text-xs text-muted-foreground">Commits</p>
+                      <p className="text-xs text-muted-foreground">{t("dashboard.commits")}</p>
                     </div>
                     <div className="bg-muted/50 rounded-lg p-3 text-center">
                       <p className="text-lg font-bold text-foreground">
                         {contributionSummary.metrics?.pull_requests?.total || 0}
                       </p>
-                      <p className="text-xs text-muted-foreground">PRs</p>
+                      <p className="text-xs text-muted-foreground">{t("dashboard.prs")}</p>
                     </div>
                     <div className="bg-muted/50 rounded-lg p-3 text-center">
                       <p className="text-lg font-bold text-foreground">
                         {contributionSummary.metrics?.code_reviews?.total || 0}
                       </p>
-                      <p className="text-xs text-muted-foreground">Reviews</p>
+                      <p className="text-xs text-muted-foreground">{t("dashboard.codeReviews")}</p>
                     </div>
                   </div>
                   {/* AI Preview */}
@@ -506,7 +509,7 @@ export default function ReviewsPage() {
                     <div data-testid="ai-preview" className="mt-4 p-3 bg-gradient-to-r from-purple-500/10 to-cyan-500/10 border border-purple-500/20 rounded-lg">
                       <div className="flex items-center gap-2 mb-1.5">
                         <Sparkles className="h-3.5 w-3.5 text-purple-400" />
-                        <span className="text-purple-400 text-xs font-medium">AI Insight Preview</span>
+                        <span className="text-purple-400 text-xs font-medium">{t("dashboard.aiInsightPreviewLabel")}</span>
                       </div>
                       <p className="text-muted-foreground text-xs italic">
                         &quot;Connect your GitHub account to unlock AI-generated contribution narratives that synthesize your commits, PRs, and code reviews into compelling summaries.&quot;
@@ -545,27 +548,27 @@ export default function ReviewsPage() {
             <div className="p-2 bg-cyan-500/10 rounded-lg w-fit mb-3">
               <Target className="h-5 w-5 text-cyan-400" />
             </div>
-            <h4 className="text-foreground font-medium mb-2">SMART Goals</h4>
+            <h4 className="text-foreground font-medium mb-2">{t("features.smartGoals")}</h4>
             <p className="text-muted-foreground text-sm">
-              Set Specific, Measurable, Achievable, Relevant, and Time-bound goals with key results tracking.
+              {t("features.smartGoalsDesc")}
             </p>
           </div>
           <div className="bg-background/30 rounded-xl p-5 border border-border/50">
             <div className="p-2 bg-purple-500/10 rounded-lg w-fit mb-3">
               <Users className="h-5 w-5 text-purple-400" />
             </div>
-            <h4 className="text-foreground font-medium mb-2">360° Feedback</h4>
+            <h4 className="text-foreground font-medium mb-2">{t("features.feedback360")}</h4>
             <p className="text-muted-foreground text-sm">
-              Request anonymous peer reviews using the COIN framework (Context, Observation, Impact, Next Steps).
+              {t("features.feedback360Desc")}
             </p>
           </div>
           <div className="bg-background/30 rounded-xl p-5 border border-border/50">
             <div className="p-2 bg-emerald-500/10 rounded-lg w-fit mb-3">
               <Sparkles className="h-5 w-5 text-emerald-400" />
             </div>
-            <h4 className="text-foreground font-medium mb-2">AI Summaries</h4>
+            <h4 className="text-foreground font-medium mb-2">{t("features.aiSummaries")}</h4>
             <p className="text-muted-foreground text-sm">
-              Auto-generate contribution narratives from your GitHub commits, PRs, and code reviews.
+              {t("features.aiSummariesDesc")}
             </p>
           </div>
         </div>

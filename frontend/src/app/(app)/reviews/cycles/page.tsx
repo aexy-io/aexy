@@ -19,6 +19,7 @@ import { useReviewCycles } from "@/hooks/useReviews";
 import { ReviewCycle } from "@/lib/api";
 import { REVIEW_CYCLE_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 import { DataTable, DataTableColumn } from "@/components/ui/data-table";
+import { useTranslations } from "next-intl";
 
 const statusLabels: Record<string, string> = {
   draft: "Draft",
@@ -183,6 +184,7 @@ const cycleColumns: DataTableColumn<ReviewCycle>[] = [
 ];
 
 export default function ReviewCyclesPage() {
+  const t = useTranslations("reviews.cycles");
   const { user, isLoading: authLoading, isAuthenticated, logout } = useAuth();
   const { currentWorkspaceId, currentWorkspaceLoading, hasWorkspaces } = useWorkspace();
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
@@ -273,9 +275,9 @@ export default function ReviewCyclesPage() {
               <Calendar className="h-7 w-7 text-purple-400" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">Review Cycles</h1>
+              <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
               <p className="text-muted-foreground text-sm">
-                Manage performance review cycles for your workspace
+                {t("description")}
               </p>
             </div>
           </div>
@@ -284,7 +286,7 @@ export default function ReviewCyclesPage() {
             className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition text-sm font-medium"
           >
             <Plus className="h-4 w-4" />
-            New Cycle
+            {t("newCycle")}
           </Link>
         </div>
 
@@ -334,8 +336,8 @@ export default function ReviewCyclesPage() {
                     <Calendar className="w-10 h-10 text-muted-foreground" />
                   </div>
                 }
-                emptyTitle="No review cycles yet"
-                emptyDescription="Create your first review cycle to start collecting 360° feedback from your team."
+                emptyTitle={t("noCycles")}
+                emptyDescription={t("noCyclesDescription")}
               />
             </div>
 
@@ -356,9 +358,9 @@ export default function ReviewCyclesPage() {
                   <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
                     <Calendar className="w-8 h-8 text-muted-foreground" />
                   </div>
-                  <p className="text-foreground font-medium mb-1">No review cycles yet</p>
+                  <p className="text-foreground font-medium mb-1">{t("noCycles")}</p>
                   <p className="text-muted-foreground text-sm">
-                    Create your first review cycle to start collecting 360° feedback.
+                    {t("noCyclesDescription")}
                   </p>
                 </div>
               ) : (
@@ -401,27 +403,27 @@ export default function ReviewCyclesPage() {
             <div className="p-2 bg-blue-500/10 rounded-lg w-fit mb-3">
               <Users className="h-5 w-5 text-blue-400" />
             </div>
-            <h4 className="text-foreground font-medium mb-2">Self Review Phase</h4>
+            <h4 className="text-foreground font-medium mb-2">{t("phases.selfReviewTitle")}</h4>
             <p className="text-muted-foreground text-sm">
-              Team members reflect on their achievements and areas for growth using structured prompts.
+              {t("phases.selfReviewDesc")}
             </p>
           </div>
           <div className="bg-background/30 rounded-xl p-5 border border-border/50">
             <div className="p-2 bg-purple-500/10 rounded-lg w-fit mb-3">
               <Users className="h-5 w-5 text-purple-400" />
             </div>
-            <h4 className="text-foreground font-medium mb-2">Peer Review Phase</h4>
+            <h4 className="text-foreground font-medium mb-2">{t("phases.peerReviewTitle")}</h4>
             <p className="text-muted-foreground text-sm">
-              Collect anonymous 360° feedback from colleagues using the COIN framework.
+              {t("phases.peerReviewDesc")}
             </p>
           </div>
           <div className="bg-background/30 rounded-xl p-5 border border-border/50">
             <div className="p-2 bg-amber-500/10 rounded-lg w-fit mb-3">
               <CheckCircle className="h-5 w-5 text-amber-400" />
             </div>
-            <h4 className="text-foreground font-medium mb-2">Manager Review Phase</h4>
+            <h4 className="text-foreground font-medium mb-2">{t("phases.managerReviewTitle")}</h4>
             <p className="text-muted-foreground text-sm">
-              Managers synthesize feedback and provide final ratings and development recommendations.
+              {t("phases.managerReviewDesc")}
             </p>
           </div>
         </div>

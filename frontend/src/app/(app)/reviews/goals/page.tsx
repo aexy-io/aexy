@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { redirect } from "next/navigation";
@@ -135,6 +136,7 @@ function GoalCard({ goal, onDelete }: { goal: WorkGoal; onDelete: (id: string) =
 }
 
 export default function GoalsPage() {
+  const t = useTranslations("reviews.goals");
   const { user, isLoading: authLoading, isAuthenticated, logout } = useAuth();
   const { currentWorkspaceId, currentWorkspaceLoading } = useWorkspace();
   const [filter, setFilter] = useState<"all" | "active" | "completed">("all");
@@ -178,11 +180,11 @@ export default function GoalsPage() {
   const handleDeleteGoal = async (goalId: string) => {
     try {
       await deleteGoal(goalId);
-      toast.success("Goal deleted");
+      toast.success(t("goalDeleted"));
       setDeleteConfirmGoalId(null);
     } catch (err) {
       console.error("Failed to delete goal:", err);
-      toast.error("Failed to delete goal");
+      toast.error(t("goalDeleteFailed"));
     }
   };
 
@@ -248,9 +250,9 @@ export default function GoalsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">My Goals</h1>
+            <h1 className="text-3xl font-bold text-foreground">{t("title")}</h1>
             <p className="text-muted-foreground mt-1">
-              Track your SMART goals and key results
+              {t("description")}
             </p>
           </div>
           <Link
@@ -258,7 +260,7 @@ export default function GoalsPage() {
             className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition text-sm font-medium"
           >
             <Plus className="h-4 w-4" />
-            New Goal
+            {t("newGoal")}
           </Link>
         </div>
 
@@ -276,7 +278,7 @@ export default function GoalsPage() {
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {f}
+                {t(f)}
                 <span className={`px-1.5 py-0.5 rounded-full text-xs ${
                   filter === f ? "bg-muted" : "bg-accent"
                 }`}>
@@ -288,7 +290,7 @@ export default function GoalsPage() {
           <SearchInput
             value={searchQuery}
             onChange={setSearchQuery}
-            placeholder="Search goals..."
+            placeholder={t("searchPlaceholder")}
             wrapperClassName="flex-1"
           />
         </div>
@@ -311,19 +313,19 @@ export default function GoalsPage() {
               <div className="w-16 h-16 bg-accent rounded-full flex items-center justify-center mx-auto mb-4">
                 <Search className="w-8 h-8 text-muted-foreground" />
               </div>
-              <h3 className="text-lg font-medium text-foreground mb-2">No matching goals</h3>
+              <h3 className="text-lg font-medium text-foreground mb-2">{t("noMatchingGoals")}</h3>
               <p className="text-muted-foreground text-sm">
-                Try adjusting your filters or search query
+                {t("noMatchingGoalsDescription")}
               </p>
             </div>
           </div>
         ) : (
           <EmptyState
             icon={Target}
-            title="No goals yet"
-            description="Set goals to track progress and align team objectives with company priorities."
+            title={t("noGoals")}
+            description={t("noGoalsDescription")}
             actions={[
-              { label: "Create Goal", href: "/reviews/goals/new" },
+              { label: t("createGoal"), href: "/reviews/goals/new" },
             ]}
           />
         )}
@@ -333,9 +335,9 @@ export default function GoalsPage() {
         {deleteConfirmGoalId && (
           <div data-testid="delete-confirm-modal" className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-muted border border-border rounded-xl p-6 max-w-md mx-4 shadow-xl">
-              <h3 className="text-lg font-semibold text-foreground mb-2">Delete Goal</h3>
+              <h3 className="text-lg font-semibold text-foreground mb-2">{t("deleteConfirmTitle")}</h3>
               <p className="text-muted-foreground text-sm mb-6">
-                Are you sure you want to delete this goal? This action cannot be undone.
+                {t("deleteConfirmMessage")}
               </p>
               <div className="flex items-center justify-end gap-3">
                 <button
@@ -350,7 +352,7 @@ export default function GoalsPage() {
                   onClick={() => handleDeleteGoal(deleteConfirmGoalId)}
                   className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg transition text-sm font-medium"
                 >
-                  Delete Goal
+                  {t("deleteGoal")}
                 </button>
               </div>
             </div>

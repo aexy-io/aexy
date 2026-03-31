@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/useAuth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -77,6 +78,7 @@ function RequestCard({ request }: { request: ReviewRequest }) {
 }
 
 export default function PeerRequestsPage() {
+  const t = useTranslations("reviews.peerRequests");
   const { user, isLoading: authLoading, isAuthenticated, logout } = useAuth();
   const developerId = user?.id;
 
@@ -121,9 +123,9 @@ export default function PeerRequestsPage() {
             <MessageSquare className="h-7 w-7 text-amber-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Peer Review Requests</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
             <p className="text-muted-foreground text-sm">
-              Feedback requests from your colleagues
+              {t("description")}
             </p>
           </div>
         </div>
@@ -132,25 +134,25 @@ export default function PeerRequestsPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-background/50 rounded-xl p-4 border border-border">
             <p className="text-2xl font-bold text-foreground">{requests.length}</p>
-            <p className="text-sm text-muted-foreground">Total Requests</p>
+            <p className="text-sm text-muted-foreground">{t("totalRequests")}</p>
           </div>
           <div className="bg-background/50 rounded-xl p-4 border border-border">
             <p className="text-2xl font-bold text-amber-400">
               {requests.filter((r) => r.status === "pending").length}
             </p>
-            <p className="text-sm text-muted-foreground">Pending</p>
+            <p className="text-sm text-muted-foreground">{t("pending")}</p>
           </div>
           <div className="bg-background/50 rounded-xl p-4 border border-border">
             <p className="text-2xl font-bold text-blue-400">
               {requests.filter((r) => r.status === "accepted").length}
             </p>
-            <p className="text-sm text-muted-foreground">In Progress</p>
+            <p className="text-sm text-muted-foreground">{t("inProgress")}</p>
           </div>
           <div className="bg-background/50 rounded-xl p-4 border border-border">
             <p className="text-2xl font-bold text-green-400">
               {requests.filter((r) => r.status === "completed").length}
             </p>
-            <p className="text-sm text-muted-foreground">Completed</p>
+            <p className="text-sm text-muted-foreground">{t("completed")}</p>
           </div>
         </div>
 
@@ -174,9 +176,9 @@ export default function PeerRequestsPage() {
             <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
               <MessageSquare className="w-10 h-10 text-muted-foreground" />
             </div>
-            <h3 className="text-xl font-medium text-foreground mb-2">No peer requests yet</h3>
+            <h3 className="text-xl font-medium text-foreground mb-2">{t("noPeerRequests")}</h3>
             <p className="text-muted-foreground text-sm max-w-md mx-auto">
-              When colleagues request your feedback for their performance review, they&apos;ll appear here.
+              {t("noPeerRequestsDescription")}
             </p>
           </div>
         ) : (
@@ -215,26 +217,26 @@ export default function PeerRequestsPage() {
 
         {/* Help Section */}
         <div className="mt-12 bg-background/30 rounded-xl p-6 border border-border/50">
-          <h3 className="text-foreground font-medium mb-3">About Peer Reviews</h3>
+          <h3 className="text-foreground font-medium mb-3">{t("aboutTitle")}</h3>
           <p className="text-muted-foreground text-sm mb-4">
-            Peer reviews use the COIN framework for structured, constructive feedback:
+            {t("aboutDescription")}
           </p>
           <div className="grid md:grid-cols-4 gap-4 text-sm">
             <div className="bg-muted/50 rounded-lg p-3">
-              <p className="text-cyan-400 font-medium mb-1">Context</p>
-              <p className="text-muted-foreground text-xs">The situation or setting</p>
+              <p className="text-cyan-400 font-medium mb-1">{t("coin.context")}</p>
+              <p className="text-muted-foreground text-xs">{t("coin.contextDesc")}</p>
             </div>
             <div className="bg-muted/50 rounded-lg p-3">
-              <p className="text-blue-400 font-medium mb-1">Observation</p>
-              <p className="text-muted-foreground text-xs">Specific behavior observed</p>
+              <p className="text-blue-400 font-medium mb-1">{t("coin.observation")}</p>
+              <p className="text-muted-foreground text-xs">{t("coin.observationDesc")}</p>
             </div>
             <div className="bg-muted/50 rounded-lg p-3">
-              <p className="text-purple-400 font-medium mb-1">Impact</p>
-              <p className="text-muted-foreground text-xs">Effect on team/project</p>
+              <p className="text-purple-400 font-medium mb-1">{t("coin.impact")}</p>
+              <p className="text-muted-foreground text-xs">{t("coin.impactDesc")}</p>
             </div>
             <div className="bg-muted/50 rounded-lg p-3">
-              <p className="text-green-400 font-medium mb-1">Next Steps</p>
-              <p className="text-muted-foreground text-xs">Actionable recommendations</p>
+              <p className="text-green-400 font-medium mb-1">{t("coin.nextSteps")}</p>
+              <p className="text-muted-foreground text-xs">{t("coin.nextStepsDesc")}</p>
             </div>
           </div>
         </div>
