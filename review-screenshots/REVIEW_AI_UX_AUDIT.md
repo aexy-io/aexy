@@ -7,7 +7,7 @@
 
 ## Fix Status (2026-03-31)
 
-**16 fixes across P0/P1/P2**, all verified with **26 Playwright E2E tests** (26/26 passing, 17.8s).
+**18 fixes across P0/P1/P2**, all verified with **28 Playwright E2E tests** (28/28 passing, 23.7s).
 
 **Test file:** `frontend/e2e/reviews.spec.ts`
 
@@ -47,6 +47,13 @@
 | P2.14 | Cycle timeline preview with phase markers and deadlines | FIXED | `shows timeline preview when dates are filled` |
 | P2.a11y | aria-live="polite" on goals list results area | FIXED | `goals list filter results area has aria-live` |
 
+### Additional Fixes (Round 4)
+
+| # | Fix | Status | Playwright Tests |
+|---|-----|--------|-----------------|
+| Onboarding | Fix checklist href, add create-goal item, add to dev/mgr presets | FIXED | `create-review-cycle links to /reviews/cycles/new` |
+| Spinners | Unify 7 spinners to primary-500 across 3 files | FIXED | `reviews dashboard loading uses primary spinner color` |
+
 ### Bonus Fixes
 
 - Defensive null check in `useAppAccess.ts` for `effectiveAccess.apps` — prevented runtime crash
@@ -66,7 +73,8 @@
 | `reviews/cycles/new/page.tsx` | Date validation, toast, tooltip, label a11y, timeline preview |
 | `reviews/manage/page.tsx` | "Active Unknown" fix, ARIA tabs, aria-label on eye button |
 | `useAppAccess.ts` | Defensive null check |
-| `e2e/reviews.spec.ts` | 26 Playwright E2E tests |
+| `e2e/reviews.spec.ts` | 28 Playwright E2E tests |
+| `WorkspaceChecklist.tsx` | Fixed href, added create-goal item, updated presets |
 
 ---
 
@@ -350,7 +358,7 @@ However, as a "wow" feature for new clients, there are several issues that would
 | Issue | Where | Status |
 |-------|-------|--------|
 | ~~Navigation pattern varies~~ | ~~Cycles uses "Back to Reviews" link~~ | FIXED (P1.3) |
-| Loading indicator colors differ | Cyan spinner in dashboard, amber in peer requests, gray in forms | Open |
+| ~~Loading indicator colors differ~~ | ~~Cyan, amber, emerald, purple spinners~~ | FIXED |
 | Empty state icons inconsistent | Calendar for cycles, target for goals, chat for peer requests | Open |
 | Date format not standardized | "dd/mm/yyyy" in forms vs "MMM dd, yyyy" in displays | Open |
 
@@ -412,10 +420,10 @@ However, as a "wow" feature for new clients, there are several issues that would
 
 ### P2 - Polish for Premium Feel
 
-12. **Onboarding wizard** - Guided first-run: Connect GitHub -> Create Goal -> Start Cycle
+12. ~~**Onboarding wizard**~~ IMPROVED - Fixed checklist href, added create-goal item to dev/mgr presets
 13. ~~**Goal preview**~~ FIXED (P2.3) - Live preview sidebar on create form
 14. ~~**Cycle timeline preview**~~ FIXED (P2.14) - Visual timeline with phase markers and deadlines
-15. **Loading indicator consistency** - Single spinner style and color across all pages
+15. ~~**Loading indicator consistency**~~ FIXED - 7 spinners unified to primary-500
 16. ~~**Filter counts**~~ FIXED (P2.1) - Count badges on goals filter tabs
 17. **Contributions tab** - Currently placeholder; needs real GitHub data integration
 18. **Feedback tab** - Currently hardcoded dummy data; needs real peer review data
@@ -432,4 +440,4 @@ However, as a "wow" feature for new clients, there are several issues that would
 
 ## Summary
 
-The Reviews feature has excellent **product vision** (SMART goals + GitHub + AI + 360-degree feedback) and **solid visual design**. ~~The main gaps are in the first-use experience (everything looks empty) and interaction polish (validation, error handling, accessibility).~~ **16 of the 23 identified issues have been fixed** across P0/P1/P2, all verified with 26 Playwright E2E tests. The remaining gaps are: onboarding wizard, loading spinner consistency, contributions/feedback tab real data, i18n, custom date picker, pagination, and dark/light mode.
+The Reviews feature has excellent **product vision** (SMART goals + GitHub + AI + 360-degree feedback) and **solid visual design**. ~~The main gaps are in the first-use experience (everything looks empty) and interaction polish (validation, error handling, accessibility).~~ **18 of the 23 identified issues have been fixed** across P0/P1/P2, all verified with 28 Playwright E2E tests. The remaining gaps are: contributions/feedback tab real data (backend integration), i18n, custom date picker, pagination, and dark/light mode.
