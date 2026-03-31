@@ -1,0 +1,19 @@
+{
+  "tracking": {
+    "title": "Activity Tracking",
+    "standups": {
+      "title": "Standups",
+      "submit": "Submit Standup",
+      "noStandups": "No standups yet"
+    },
+    "blockers": {
+      "title": "Blockers",
+      "add": "Add Blocker",
+      "noBlockers": "No blockers"
+    },
+    "time": {
+      "title": "Time Tracking",
+      "log": "Log Time"
+    }
+  }
+}

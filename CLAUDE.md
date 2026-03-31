@@ -198,8 +198,11 @@ The frontend uses **next-intl** for internationalization with a cookie-based loc
 - **No URL prefix**: URLs stay clean (`/dashboard`, not `/en/dashboard`)
 
 ### Key Files
-- `frontend/messages/en.json` — English translations (all namespaces in one file)
-- `frontend/messages/hi.json` — Hindi translations
+- `frontend/messages/en/*.json` — English translations (one file per module)
+- `frontend/messages/hi/*.json` — Hindi translations (one file per module)
+- `frontend/messages/en.json` — Merged English (auto-generated, do not hand-edit)
+- `frontend/messages/hi.json` — Merged Hindi (auto-generated, do not hand-edit)
+- `frontend/scripts/merge-messages.js` — Merge script (runs automatically via `prebuild`)
 - `frontend/src/i18n/request.ts` — Server-side config (reads locale from cookie)
 - `frontend/src/middleware.ts` — Sets `x-locale` header from cookie
 - `frontend/src/stores/localeStore.ts` — Zustand store for locale preference
@@ -235,15 +238,27 @@ Then add the keys to both `messages/en.json` and `messages/hi.json`:
 ```
 
 ### Message File Structure
-All namespaces live in a single JSON file per locale. Top-level keys are namespace names:
+Each module has its own JSON file per locale. At build time, they're merged into a single file:
 ```
-{
-  "common": { ... },       // Shared UI strings (buttons, status labels)
-  "reviews": { ... },      // Performance reviews module
-  "dashboard": { ... },    // Dashboard module
-  "sidebar": { ... },      // Sidebar/navigation labels
-  ...
-}
+messages/
+  en/
+    common.json        # { "common": { "save": "Save", ... } }
+    reviews.json       # { "reviews": { "title": "Performance Reviews", ... } }
+    sidebar.json       # { "sidebar": { "items": { ... } } }
+    settings.json      # { "settings": { ... } }
+  hi/
+    common.json        # Same keys, Hindi values
+    reviews.json
+    sidebar.json
+    settings.json
+  en.json              # Auto-merged (do not edit)
+  hi.json              # Auto-merged (do not edit)
+```
+
+**Adding a new module's translations:**
+1. Create `messages/en/mymodule.json` with `{ "myModule": { ... } }`
+2. Create `messages/hi/mymodule.json` with the same keys, Hindi values
+3. Run `npm run i18n:merge` (or it runs automatically on `npm run build`)
 ```
 
 ### Adding a New Locale

@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "i18n:merge": "node scripts/merge-messages.js",
+    "prebuild": "node scripts/merge-messages.js",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
