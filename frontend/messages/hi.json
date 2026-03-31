@@ -266,5 +266,70 @@
       "viewMember": "सदस्य देखें",
       "discard": "हटाएं"
     }
+  },
+  "sidebar": {
+    "sections": {
+      "ai": "AI",
+      "engineering": "इंजीनियरिंग",
+      "compliance": "अनुपालन",
+      "people": "लोग",
+      "business": "व्यापार",
+      "knowledge": "ज्ञान",
+      "favorites": "पसंदीदा"
+    },
+    "items": {
+      "dashboard": "डैशबोर्ड",
+      "activity": "गतिविधि",
+      "chat": "चैट",
+      "aiAgents": "AI एजेंट",
+      "automations": "स्वचालन",
+      "templates": "टेम्पलेट",
+      "tracking": "ट्रैकिंग",
+      "planning": "प्लानिंग",
+      "tickets": "टिकट",
+      "uptime": "अपटाइम",
+      "reviews": "समीक्षा",
+      "leave": "छुट्टी",
+      "learning": "सीखना",
+      "docs": "दस्तावेज़",
+      "tables": "टेबल",
+      "forms": "फॉर्म",
+      "reports": "रिपोर्ट",
+      "crm": "CRM",
+      "booking": "बुकिंग",
+      "emailMarketing": "ईमेल",
+      "gtm": "GTM",
+      "insights": "इनसाइट्स",
+      "hiring": "भर्ती",
+      "compliance": "अनुपालन",
+      "reminders": "रिमाइंडर",
+      "settings": "सेटिंग्स",
+      "logout": "लॉग आउट",
+      "discoverMore": "और खोजें",
+      "pinToFavorites": "पसंदीदा में जोड़ें",
+      "removeFromFavorites": "हटाएं"
+    }
+  },
+  "dashboard": {
+    "title": "डैशबोर्ड",
+    "welcome": "वापसी पर स्वागत है",
+    "quickStats": "त्वरित आँकड़े"
+  },
+  "tracking": {
+    "title": "गतिविधि ट्रैकिंग",
+    "standups": {
+      "title": "स्टैंडअप",
+      "submit": "स्टैंडअप जमा करें",
+      "noStandups": "अभी तक कोई स्टैंडअप नहीं"
+    },
+    "blockers": {
+      "title": "ब्लॉकर",
+      "add": "ब्लॉकर जोड़ें",
+      "noBlockers": "कोई ब्लॉकर नहीं"
+    },
+    "time": {
+      "title": "समय ट्रैकिंग",
+      "log": "समय दर्ज करें"
+    }
   }
 }
