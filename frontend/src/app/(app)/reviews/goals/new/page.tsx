@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { redirect, useRouter } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
   Target,
@@ -138,6 +139,7 @@ export default function NewGoalPage() {
           .filter(Boolean),
       });
 
+      toast.success("Goal created successfully");
       router.push("/reviews/goals");
     } catch (err) {
       console.error("Failed to create goal:", err);
@@ -465,23 +467,28 @@ export default function NewGoalPage() {
             >
               Cancel
             </Link>
-            <button
-              type="submit"
-              disabled={isSubmitting || !title.trim() || !timeBound}
-              className="flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            <span
+              data-testid="create-goal-tooltip"
+              title={(!title.trim() || !timeBound) ? "Fill in goal title and target date to create" : ""}
             >
-              {isSubmitting ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white"></div>
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="h-4 w-4" />
-                  Create Goal
-                </>
-              )}
-            </button>
+              <button
+                type="submit"
+                disabled={isSubmitting || !title.trim() || !timeBound}
+                className="flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white"></div>
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4" />
+                    Create Goal
+                  </>
+                )}
+              </button>
+            </span>
           </div>
         </form>
       </main>

@@ -107,8 +107,8 @@ export default function ReviewsManagePage() {
         completedGoals: 0,
         pendingFeedback: 0,
         lastActivity: member.joined_at
-          ? new Date(member.joined_at).toLocaleDateString()
-          : "Unknown",
+          ? new Date(member.joined_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+          : null,
       };
     });
   }, [members, reviews]);
@@ -382,7 +382,7 @@ export default function ReviewsManagePage() {
                 return (
                   <div
                     key={member.id}
-                    className="bg-muted rounded-xl border border-border p-5 hover:border-border transition"
+                    data-testid="member-card" className="bg-muted rounded-xl border border-border p-5 hover:border-border transition"
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3">
@@ -417,7 +417,9 @@ export default function ReviewsManagePage() {
                     </div>
 
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-border">
-                      <span className="text-muted-foreground text-xs">Active {member.lastActivity}</span>
+                      <span className="text-muted-foreground text-xs" data-testid="member-activity">
+                        {member.lastActivity ? `Joined ${member.lastActivity}` : "Recently joined"}
+                      </span>
                       <div className="flex items-center gap-2">
                         <button className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition">
                           <Eye className="h-4 w-4" />

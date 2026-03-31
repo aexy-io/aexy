@@ -281,7 +281,7 @@ export default function ReviewsPage() {
         {/* Main Content Grid */}
         <div className="grid lg:grid-cols-3 gap-6">
           {/* My Goals */}
-          <div className="lg:col-span-2 bg-background/50 rounded-xl border border-border overflow-hidden">
+          <div data-testid="goals-section" className="lg:col-span-2 bg-background/50 rounded-xl border border-border overflow-hidden">
             <div className="px-6 py-4 border-b border-border flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-cyan-500/10 rounded-lg">
@@ -316,21 +316,37 @@ export default function ReviewsPage() {
                   )}
                 </div>
               ) : (
-                <div className="text-center py-12">
-                  <div className="w-20 h-20 bg-accent rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Target className="w-10 h-10 text-muted-foreground" />
+                <div data-testid="example-goal" className="space-y-4">
+                  {/* Example goal preview */}
+                  <div className="opacity-60 border border-dashed border-border rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Target className="h-4 w-4 text-cyan-400" />
+                        <span className="text-foreground text-sm font-medium">Improve API response times by 50%</span>
+                      </div>
+                      <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-400 text-xs rounded-full">Performance</span>
+                    </div>
+                    <div className="w-full bg-accent rounded-full h-2 mb-2">
+                      <div className="bg-cyan-500 h-2 rounded-full" style={{ width: "65%" }} />
+                    </div>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span>2 key results</span>
+                      <span>3 PRs linked</span>
+                      <span className="text-cyan-400">65% complete</span>
+                    </div>
                   </div>
-                  <h3 className="text-xl font-medium text-foreground mb-2">No goals yet</h3>
-                  <p className="text-muted-foreground text-sm mb-6 max-w-md mx-auto">
-                    Create SMART goals to track your progress and automatically link your GitHub contributions.
+                  <p className="text-muted-foreground text-sm text-center">
+                    This is what your goals will look like. Start tracking your progress now.
                   </p>
-                  <Link
-                    href="/reviews/goals/new"
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition font-medium"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Create Your First Goal
-                  </Link>
+                  <div className="text-center">
+                    <Link
+                      href="/reviews/goals/new"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition text-sm font-medium"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Create Your First Goal
+                    </Link>
+                  </div>
                 </div>
               )}
             </div>
@@ -429,7 +445,7 @@ export default function ReviewsPage() {
           </div>
 
           {/* Contribution Summary */}
-          <div className="bg-background/50 rounded-xl border border-border overflow-hidden">
+          <div data-testid="contributions-section" className="bg-background/50 rounded-xl border border-border overflow-hidden">
             <div className="px-6 py-4 border-b border-border flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-emerald-500/10 rounded-lg">
@@ -483,6 +499,18 @@ export default function ReviewsPage() {
                       <p className="text-xs text-muted-foreground">Reviews</p>
                     </div>
                   </div>
+                  {/* AI Preview */}
+                  {!contributionSummary?.ai_insights && (
+                    <div data-testid="ai-preview" className="mt-4 p-3 bg-gradient-to-r from-purple-500/10 to-cyan-500/10 border border-purple-500/20 rounded-lg">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <Sparkles className="h-3.5 w-3.5 text-purple-400" />
+                        <span className="text-purple-400 text-xs font-medium">AI Insight Preview</span>
+                      </div>
+                      <p className="text-muted-foreground text-xs italic">
+                        &quot;Connect your GitHub account to unlock AI-generated contribution narratives that synthesize your commits, PRs, and code reviews into compelling summaries.&quot;
+                      </p>
+                    </div>
+                  )}
                   {/* AI Insights */}
                   {contributionSummary.ai_insights && (
                     <div className="bg-emerald-900/20 border border-emerald-800/50 rounded-lg p-3">

@@ -65,6 +65,7 @@ def create_app() -> FastAPI:
     allowed_origins = [
         settings.frontend_url,
         "http://localhost:3000",  # Local development
+        "http://localhost:3003",  # Dev compose (alternate port)
     ]
     # Remove duplicates and empty strings
     allowed_origins = list(set(origin for origin in allowed_origins if origin))
