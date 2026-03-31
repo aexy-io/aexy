@@ -7,7 +7,9 @@
 
 ## P0 Fix Status (2026-03-31)
 
-All P0 issues have been fixed and verified with Playwright E2E tests (10/10 passing).
+All P0 and P1 issues have been fixed and verified with Playwright E2E tests (16/16 passing).
+
+### P0 Fixes (Critical)
 
 | # | Fix | Status | Test | Files Changed |
 |---|-----|--------|------|---------------|
@@ -17,9 +19,23 @@ All P0 issues have been fixed and verified with Playwright E2E tests (10/10 pass
 | P0.4 | Empty state AI previews | FIXED | `AI contributions section shows preview` / `goals section shows example goal preview` | `reviews/page.tsx` |
 | P0.5 | Success toasts after create | FIXED | `shows toast after goal creation` / `shows toast after cycle creation` | `reviews/goals/new/page.tsx`, `reviews/cycles/new/page.tsx` |
 
-**Bonus fix:** Defensive null check in `useAppAccess.ts` for `effectiveAccess.apps` to prevent runtime crashes.
+### P1 Fixes (Launch)
 
-**Test file:** `frontend/e2e/reviews.spec.ts` (10 tests)
+| # | Fix | Status | Test | Files Changed |
+|---|-----|--------|------|---------------|
+| P1.1 | Styled delete confirmation modal | FIXED | `clicking delete shows a styled modal` / `cancel button closes modal without deleting` | `reviews/goals/page.tsx` |
+| P1.2 | ARIA tab attributes (tablist/tab/tabpanel) | FIXED | `tabs have proper ARIA roles and attributes` | `reviews/manage/page.tsx` |
+| P1.3 | Breadcrumb navigation consistency | FIXED | `cycles list page uses breadcrumb navigation` | `reviews/cycles/page.tsx` |
+| P1.4 | Mobile card view for cycles DataTable | FIXED | `shows card view on mobile viewport` / `shows DataTable on desktop viewport` | `reviews/cycles/page.tsx` |
+
+### Bonus Fixes
+
+- Defensive null check in `useAppAccess.ts` for `effectiveAccess.apps` to prevent runtime crashes
+- JSONB `server_default` syntax fix in `dashboard.py` and `crm.py` models
+- CORS origin added for dev port 3003
+- `docker-compose.dev.yml` with non-conflicting ports for parallel development
+
+**Test file:** `frontend/e2e/reviews.spec.ts` (16 tests, 10.7s)
 
 ---
 
