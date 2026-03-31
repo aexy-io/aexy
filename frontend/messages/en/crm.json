@@ -1,0 +1,192 @@
+{
+  "crm": {
+    "title": "CRM",
+    "description": "Manage your contacts, companies, and deals",
+
+    "objects": {
+      "company": "Company",
+      "companies": "Companies",
+      "person": "Person",
+      "people": "People",
+      "deal": "Deal",
+      "deals": "Deals",
+      "custom": "Custom",
+      "standardObjects": "Standard Objects",
+      "customObjects": "Custom Objects",
+      "records": "records",
+      "attributes": "attributes"
+    },
+
+    "actions": {
+      "newObject": "New Object",
+      "automations": "Automations",
+      "settings": "Settings",
+      "startSetup": "Start Setup",
+      "refreshCounts": "Refresh record counts",
+      "filter": "Filter",
+      "connect": "Connect",
+      "manage": "Manage",
+      "syncNow": "Sync Now",
+      "connectGmail": "Connect Gmail",
+      "connectCalendar": "Connect Calendar",
+      "linkToRecord": "Link to Record",
+      "reply": "Reply",
+      "send": "Send",
+      "dismiss": "Dismiss",
+      "reconnectGoogle": "Reconnect Google",
+      "previous": "Previous",
+      "next": "Next"
+    },
+
+    "createObject": {
+      "title": "Create Custom Object",
+      "nameSingular": "Name (singular)",
+      "namePlural": "Name (plural)",
+      "descriptionOptional": "Description (optional)",
+      "placeholderSingular": "e.g., Project",
+      "placeholderPlural": "e.g., Projects",
+      "placeholderDescription": "What is this object used for?",
+      "creating": "Creating...",
+      "create": "Create"
+    },
+
+    "createRecord": {
+      "title": "Create {objectName}",
+      "creating": "Creating...",
+      "create": "Create"
+    },
+
+    "empty": {
+      "welcomeTitle": "Welcome to CRM",
+      "welcomeDescription": "Get started by setting up your CRM. Choose a template and configure your workspace.",
+      "objectNotFound": "Object not found",
+      "objectNotFoundDescription": "The object you're looking for doesn't exist.",
+      "goBackToCRM": "Go back to CRM",
+      "noRecordsMatch": "No records match your search",
+      "noRecordsYet": "No {objectName} yet"
+    },
+
+    "quickAccess": {
+      "inbox": "Inbox",
+      "inboxDescription": "View synced emails and link to records",
+      "calendar": "Calendar",
+      "calendarDescription": "View meetings and schedule events",
+      "activities": "Activities",
+      "activitiesDescription": "Track all interactions and tasks",
+      "integrations": "Integrations",
+      "integrationsDescription": "Connect Google, Slack, and more"
+    },
+
+    "google": {
+      "connectTitle": "Connect Google",
+      "connectDescription": "Sync emails and calendar events to enrich your CRM",
+      "connectedTitle": "Google Connected",
+      "gmailSynced": "Gmail synced",
+      "calendarSynced": "Calendar synced"
+    },
+
+    "inbox": {
+      "title": "Inbox",
+      "searchEmails": "Search emails...",
+      "noSubject": "(no subject)",
+      "noEmailsFound": "No emails found",
+      "noMessageContent": "No message content",
+      "loadingEmailContent": "Loading email content...",
+      "selectAnEmail": "Select an email to view",
+      "noEmailsSyncedTitle": "No emails synced yet",
+      "noEmailsSyncedDescription": "Sync your Gmail to see emails here and automatically link them to contacts.",
+      "connectEmailTitle": "Connect your email",
+      "connectEmailDescription": "Connect your Google account to sync emails and calendar events.",
+      "labels": "Labels",
+      "replyingTo": "Replying to {name}",
+      "writeReply": "Write your reply...",
+      "syncing": "Syncing...",
+      "sync": "Sync",
+      "startingSync": "Starting sync...",
+      "back": "Back"
+    },
+
+    "calendar": {
+      "title": "Calendar",
+      "today": "Today",
+      "month": "Month",
+      "week": "Week",
+      "day": "Day",
+      "allDay": "All day",
+      "noEventsScheduled": "No events scheduled for this day",
+      "noEventsSyncedTitle": "No events synced yet",
+      "noEventsSyncedDescription": "Sync your Google Calendar to see events here and link them to contacts.",
+      "connectCalendarTitle": "Connect your calendar",
+      "connectCalendarDescription": "Connect your Google account to sync calendar events.",
+      "joinMeeting": "Join meeting",
+      "close": "Close",
+      "weekViewComingSoon": "Week view coming soon"
+    },
+
+    "activities": {
+      "title": "Activities",
+      "searchActivities": "Search activities...",
+      "refresh": "Refresh",
+      "noMatchingActivities": "No matching activities",
+      "adjustFiltersMessage": "Try adjusting your search or filters.",
+      "noActivitiesYetTitle": "No activities yet",
+      "noActivitiesYetDescription": "Activities will appear as you interact with contacts, deals, and records in your CRM.",
+      "activity": "activity",
+      "activities_plural": "activities"
+    },
+
+    "activityTypes": {
+      "all": "All",
+      "emails": "Emails",
+      "meetings": "Meetings",
+      "calls": "Calls",
+      "notes": "Notes",
+      "tasks": "Tasks",
+      "created": "Created",
+      "updated": "Updated",
+      "deleted": "Deleted",
+      "viewed": "Viewed",
+      "linked": "Linked"
+    },
+
+    "pipeline": {
+      "searchObjects": "Search objects...",
+      "table": "Table",
+      "board": "Board",
+      "deleteConfirm": "Are you sure you want to delete this record?",
+      "bulkDeleteConfirm": "Are you sure you want to delete {count} records?"
+    },
+
+    "views": {
+      "grid": "Grid",
+      "list": "List"
+    },
+
+    "linkRecord": {
+      "title": "Link to Record",
+      "person": "Person",
+      "company": "Company",
+      "searchPeople": "Search people...",
+      "searchCompanies": "Search companies...",
+      "searchPrompt": "Search for a {type} record to link this email to.",
+      "linkedNote": "Linked emails will appear in the record's activity timeline."
+    },
+
+    "errors": {
+      "failedToLoadEmails": "Failed to load emails",
+      "failedToSyncEmails": "Failed to sync emails. Please try again.",
+      "failedToLoadCalendar": "Failed to load calendar events",
+      "failedToSyncCalendar": "Failed to sync calendar. Please try again.",
+      "permissionsNeeded": "Gmail permissions are insufficient. Please reconnect with full access.",
+      "calendarPermissionsNeeded": "Calendar permissions are insufficient. Please reconnect with full access.",
+      "syncTimedOut": "Sync timed out. Please try again.",
+      "failedToCheckSync": "Failed to check sync status. Please refresh the page."
+    },
+
+    "search": {
+      "objects": "Search objects...",
+      "emails": "Search emails...",
+      "records": "Search {objectName}..."
+    }
+  }
+}

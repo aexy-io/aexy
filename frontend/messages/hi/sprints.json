@@ -1,0 +1,167 @@
+{
+  "sprints": {
+    "title": "प्लानिंग",
+    "description": "अपने प्रोजेक्ट्स में Sprint प्रबंधित करें और प्रगति ट्रैक करें",
+
+    "tabs": {
+      "projects": "प्रोजेक्ट्स",
+      "epics": "Epics",
+      "automations": "ऑटोमेशन"
+    },
+
+    "actions": {
+      "teamReviews": "टीम समीक्षा",
+      "settings": "सेटिंग्स",
+      "newSprint": "नया Sprint",
+      "createSprint": "Sprint बनाएं",
+      "creating": "बनाया जा रहा है...",
+      "createProject": "प्रोजेक्ट बनाएं",
+      "createWorkspace": "वर्कस्पेस बनाएं",
+      "viewBoard": "बोर्ड देखें",
+      "open": "खोलें",
+      "delete": "हटाएं",
+      "cancel": "रद्द करें"
+    },
+
+    "projectCard": {
+      "public": "सार्वजनिक",
+      "private": "निजी",
+      "members": "{count} सदस्य",
+      "activeSprint": "सक्रिय Sprint",
+      "planning": "प्लानिंग",
+      "notScheduled": "शेड्यूल नहीं किया",
+      "noActiveSprint": "कोई सक्रिय Sprint नहीं",
+      "createASprint": "Sprint बनाएं",
+      "complete": "% पूर्ण",
+      "tasks": "कार्य",
+      "points": "पॉइंट्स",
+      "sprints": "Sprint",
+      "completed": "पूर्ण",
+      "openTasks": "खुले कार्य"
+    },
+
+    "board": {
+      "title": "बोर्ड",
+      "backlog": "Backlog",
+      "columns": {
+        "backlog": "Backlog",
+        "todo": "करने हैं",
+        "inProgress": "प्रगति में",
+        "review": "समीक्षा",
+        "done": "पूर्ण"
+      }
+    },
+
+    "sprintStatus": {
+      "planning": "प्लानिंग",
+      "active": "सक्रिय",
+      "review": "समीक्षा में",
+      "retrospective": "रेट्रोस्पेक्टिव",
+      "completed": "पूर्ण"
+    },
+
+    "sprintCard": {
+      "currentSprint": "वर्तमान Sprint",
+      "daysLeft": "{count} दिन शेष",
+      "endsToday": "आज समाप्त",
+      "daysOverdue": "{count} दिन विलंबित",
+      "progress": "प्रगति",
+      "totalTasks": "कुल कार्य",
+      "completed": "पूर्ण",
+      "storyPoints": "स्टोरी पॉइंट्स",
+      "notSet": "निर्धारित नहीं"
+    },
+
+    "sprintPlanning": {
+      "title": "Sprint प्लानिंग",
+      "description": "Sprint प्रबंधित करें और प्रगति ट्रैक करें",
+      "activeSprint": "सक्रिय Sprint",
+      "inReview": "समीक्षा में",
+      "userStories": "यूज़र स्टोरीज़",
+      "inProgressCount": "{count} प्रगति में",
+      "openBugs": "खुले बग्स",
+      "blockers": "{count} ब्लॉकर्स",
+      "critical": "{count} क्रिटिकल",
+      "releases": "रिलीज़",
+      "okrGoals": "OKR लक्ष्य",
+      "onTrack": "{count} सही दिशा में",
+      "atRisk": "{count} जोखिम में"
+    },
+
+    "createModal": {
+      "title": "Sprint बनाएं",
+      "sprintName": "Sprint का नाम",
+      "sprintNamePlaceholder": "Sprint 24",
+      "sprintGoal": "Sprint लक्ष्य (वैकल्पिक)",
+      "sprintGoalPlaceholder": "इस Sprint में आप क्या हासिल करना चाहते हैं?",
+      "startDate": "आरंभ तिथि",
+      "endDate": "समाप्ति तिथि",
+      "sprintNameRequired": "Sprint का नाम आवश्यक है",
+      "failedToCreate": "Sprint बनाने में विफल"
+    },
+
+    "empty": {
+      "noWorkspace": "अभी कोई वर्कस्पेस नहीं",
+      "noWorkspaceDesc": "Sprint प्लानिंग शुरू करने के लिए वर्कस्पेस बनाएं और प्रोजेक्ट जोड़ें।",
+      "noProjects": "अभी कोई प्रोजेक्ट नहीं",
+      "noProjectsDesc": "Sprint प्लानिंग शुरू करने के लिए अपने वर्कस्पेस में प्रोजेक्ट बनाएं।",
+      "noSprints": "अभी कोई Sprint नहीं",
+      "noSprintsDesc": "कार्य की योजना बनाना और ट्रैक करना शुरू करने के लिए अपना पहला Sprint बनाएं।",
+      "deleteConfirm": "क्या आप वाकई इस Sprint को हटाना चाहते हैं? यह क्रिया पूर्ववत नहीं की जा सकती।"
+    },
+
+    "epics": {
+      "title": "Epics",
+      "createEpic": "Epic बनाएं",
+      "creating": "बनाया जा रहा है...",
+      "description": "Epics विभिन्न Sprint और टीमों में संबंधित कार्यों को समूहित करते हैं",
+      "searchPlaceholder": "Epics खोजें...",
+      "allStatuses": "सभी स्थितियां",
+      "allPriorities": "सभी प्राथमिकताएं",
+      "noWorkspace": "अभी कोई वर्कस्पेस नहीं",
+      "noWorkspaceDesc": "Epics ट्रैक करना शुरू करने के लिए वर्कस्पेस बनाएं।",
+      "noEpics": "अभी कोई Epic नहीं",
+      "noEpicsDesc": "बड़ी पहलों को ट्रैक करना शुरू करने के लिए अपना पहला Epic बनाएं।",
+      "totalEpics": "कुल Epics",
+      "progress": "प्रगति",
+
+      "status": {
+        "open": "खुला",
+        "inProgress": "प्रगति में",
+        "done": "पूर्ण",
+        "cancelled": "रद्द"
+      },
+
+      "form": {
+        "title": "Epic बनाएं",
+        "titleLabel": "शीर्षक",
+        "titlePlaceholder": "जैसे, यूज़र प्रमाणीकरण प्रणाली",
+        "descriptionLabel": "विवरण (वैकल्पिक)",
+        "descriptionPlaceholder": "Epic के लक्ष्य और दायरे का वर्णन करें...",
+        "priorityLabel": "प्राथमिकता",
+        "colorLabel": "रंग"
+      }
+    },
+
+    "backlog": {
+      "title": "Backlog",
+      "moveToTodo": "करने हैं में ले जाएं",
+      "searchPlaceholder": "Backlog में खोजें..."
+    },
+
+    "taskStatus": {
+      "backlog": "Backlog",
+      "todo": "करने हैं",
+      "inProgress": "प्रगति में",
+      "review": "समीक्षा",
+      "done": "पूर्ण"
+    },
+
+    "priority": {
+      "critical": "अत्यावश्यक",
+      "high": "उच्च",
+      "medium": "मध्यम",
+      "low": "निम्न"
+    }
+  }
+}

@@ -1,0 +1,158 @@
+{
+  "insights": {
+    "title": "Team Insights",
+    "description": "Metrics-driven view of team velocity, efficiency, and workload distribution",
+
+    "period": {
+      "weekly": "Weekly",
+      "monthly": "Monthly",
+      "sprint": "Sprint"
+    },
+
+    "nav": {
+      "compare": "Compare",
+      "allocations": "Allocations",
+      "alerts": "Alerts",
+      "executive": "Executive",
+      "capacity": "Capacity",
+      "aiInsights": "AI Insights",
+      "myInsights": "My Insights",
+      "repositories": "Repositories",
+      "leaderboard": "Leaderboard",
+      "syncStatus": "Sync Status"
+    },
+
+    "actions": {
+      "generateSnapshots": "Generate Snapshots",
+      "generating": "Generating...",
+      "refresh": "Refresh",
+      "viewAll": "View all",
+      "details": "Details",
+      "installGitHubApp": "Install GitHub App",
+      "goToRepoSettings": "Go to Repository Settings",
+      "selectRepositories": "Select Repositories"
+    },
+
+    "stats": {
+      "teamSize": "Team Size",
+      "commits": "Commits",
+      "prsMerged": "PRs Merged",
+      "reviews": "Reviews",
+      "linesChanged": "Lines Changed",
+      "workloadEquality": "Workload Equality",
+      "perMember": "{value}/member"
+    },
+
+    "gini": {
+      "veryEqual": "Very Equal",
+      "balanced": "Balanced",
+      "moderate": "Moderate",
+      "unequal": "Unequal"
+    },
+
+    "chart": {
+      "workloadDistribution": "Workload Distribution",
+      "noWorkloadData": "No workload data available",
+      "topContributor": "Top contributor: {percent}% of work",
+      "giniLabel": "Gini: {value}",
+      "commits": "Commits",
+      "prs": "PRs",
+      "reviews": "Reviews"
+    },
+
+    "leaderboard": {
+      "title": "Leaderboard",
+      "description": "Ranked developer metrics",
+      "topContributors": "Top Contributors",
+      "noData": "No leaderboard data",
+      "noDataFull": "No leaderboard data available. Generate snapshots first.",
+      "metrics": {
+        "commits": "Commits",
+        "prsMerged": "PRs Merged",
+        "reviews": "Reviews",
+        "linesChanged": "Lines Changed"
+      }
+    },
+
+    "developer": {
+      "title": "Developer",
+      "summary": "Developer Summary",
+      "bottleneck": "bottleneck",
+      "noData": "No developer data",
+      "noDataDesc": "Generate snapshots to see developer metrics."
+    },
+
+    "table": {
+      "developer": "Developer",
+      "commits": "Commits",
+      "prsMerged": "PRs Merged",
+      "linesChanged": "Lines Changed",
+      "reviewsGiven": "Reviews Given"
+    },
+
+    "syncStatus": {
+      "title": "Sync Status",
+      "description": "Data sync status per developer and repository",
+      "developers": "{count} developers",
+      "reposEnabled": "{count} repos enabled",
+      "failed": "{count} failed",
+      "external": "External",
+      "noRepositoriesLinked": "No repositories linked.",
+      "noDevelopers": "No developers found in this workspace.",
+      "statuses": {
+        "synced": "Synced",
+        "syncing": "Syncing",
+        "failed": "Failed",
+        "pending": "Pending"
+      },
+      "columns": {
+        "repository": "Repository",
+        "disabled": "(disabled)",
+        "status": "Status",
+        "commits": "Commits",
+        "prs": "PRs",
+        "reviews": "Reviews",
+        "lastSync": "Last Sync",
+        "never": "Never"
+      }
+    },
+
+    "github": {
+      "connectTitle": "Connect your GitHub account",
+      "connectDesc": "Install the Aexy GitHub App to grant access to your repositories. This is required to generate team insights, velocity metrics, and workload analysis.",
+      "noReposTitle": "No repositories enabled",
+      "noReposDesc": "Your GitHub App is connected but you haven't enabled any repositories yet. Enable at least one repository to see team velocity, efficiency, and workload distribution."
+    },
+
+    "empty": {
+      "noData": "No insights data yet. Click \"Generate Snapshots\" to compute metrics.",
+      "failedToGenerate": "Failed to generate snapshots. Please try again."
+    },
+
+    "ai": {
+      "title": "AI Insights",
+      "teamNarrative": "Team Narrative",
+      "teamNarrativeDesc": "AI-generated summary of team metrics",
+      "sprintRetro": "Sprint Retro",
+      "sprintRetroDesc": "AI-powered retrospective insights",
+      "trajectory": "Trajectory",
+      "trajectoryDesc": "Team performance trajectory forecast",
+      "rootCause": "Root Cause",
+      "rootCauseDesc": "Analyze why metrics changed",
+      "teamComposition": "Team Composition",
+      "teamCompositionDesc": "Recommendations for team structure",
+      "hiringForecast": "Hiring Forecast",
+      "hiringForecastDesc": "When to hire next"
+    },
+
+    "myInsights": {
+      "title": "My Insights",
+      "description": "Your personal developer metrics and health score"
+    },
+
+    "repositories": {
+      "title": "Repositories",
+      "description": "Repository-level insights and activity metrics"
+    }
+  }
+}

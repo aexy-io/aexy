@@ -1,0 +1,74 @@
+{
+  "compliance": {
+    "title": "Compliance",
+    "description": "Manage compliance reminders, documents, training, and certifications",
+
+    "stats": {
+      "activeReminders": "Active Reminders",
+      "pending": "Pending",
+      "overdue": "Overdue",
+      "completedThisWeek": "Completed This Week"
+    },
+
+    "modules": {
+      "reminders": "Reminders",
+      "remindersDescription": "Track compliance commitments, reviews, and recurring tasks",
+      "documentCenter": "Document Center",
+      "documentCenterDescription": "Upload, organize, and link compliance documents",
+      "questionnaires": "Questionnaires",
+      "questionnairesDescription": "Import and manage compliance questionnaires",
+      "training": "Training",
+      "trainingDescription": "Mandatory training programs and assignments",
+      "certifications": "Certifications",
+      "certificationsDescription": "Track employee certifications and renewals",
+      "calendar": "Calendar",
+      "calendarDescription": "View all compliance deadlines in a calendar"
+    },
+
+    "reminders": {
+      "title": "Compliance Reminders",
+      "active": "Active",
+      "overdueCount": "{count} overdue",
+      "createReminder": "Create Reminder",
+      "importReminders": "Import Reminders",
+      "allReminders": "All Reminders",
+      "myReminders": "My Reminders",
+      "noReminders": "No reminders yet",
+      "noRemindersDescription": "Create compliance reminders to track important deadlines and recurring tasks."
+    },
+
+    "documents": {
+      "title": "Compliance Documents",
+      "uploadDocument": "Upload Document",
+      "noDocuments": "No documents yet",
+      "noDocumentsDescription": "Upload and organize compliance-related documents."
+    },
+
+    "training": {
+      "title": "Training Programs",
+      "mandatory": "Mandatory",
+      "optional": "Optional",
+      "completed": "Completed",
+      "notStarted": "Not Started",
+      "inProgress": "In Progress",
+      "overdue": "Overdue"
+    },
+
+    "certifications": {
+      "title": "Certifications",
+      "valid": "Valid",
+      "expired": "Expired",
+      "expiringSoon": "Expiring Soon",
+      "noCertifications": "No certifications tracked yet"
+    },
+
+    "status": {
+      "active": "Active",
+      "completed": "Completed",
+      "overdue": "Overdue",
+      "pending": "Pending",
+      "cancelled": "Cancelled",
+      "expired": "Expired"
+    }
+  }
+}

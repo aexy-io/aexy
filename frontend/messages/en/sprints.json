@@ -1,0 +1,167 @@
+{
+  "sprints": {
+    "title": "Planning",
+    "description": "Manage sprints and track progress across your projects",
+
+    "tabs": {
+      "projects": "Projects",
+      "epics": "Epics",
+      "automations": "Automations"
+    },
+
+    "actions": {
+      "teamReviews": "Team Reviews",
+      "settings": "Settings",
+      "newSprint": "New Sprint",
+      "createSprint": "Create Sprint",
+      "creating": "Creating...",
+      "createProject": "Create Project",
+      "createWorkspace": "Create Workspace",
+      "viewBoard": "View Board",
+      "open": "Open",
+      "delete": "Delete",
+      "cancel": "Cancel"
+    },
+
+    "projectCard": {
+      "public": "Public",
+      "private": "Private",
+      "members": "{count} members",
+      "activeSprint": "Active Sprint",
+      "planning": "Planning",
+      "notScheduled": "Not scheduled",
+      "noActiveSprint": "No active sprint",
+      "createASprint": "Create a sprint",
+      "complete": "% complete",
+      "tasks": "tasks",
+      "points": "points",
+      "sprints": "Sprints",
+      "completed": "Completed",
+      "openTasks": "Open Tasks"
+    },
+
+    "board": {
+      "title": "Board",
+      "backlog": "Backlog",
+      "columns": {
+        "backlog": "Backlog",
+        "todo": "To Do",
+        "inProgress": "In Progress",
+        "review": "Review",
+        "done": "Done"
+      }
+    },
+
+    "sprintStatus": {
+      "planning": "Planning",
+      "active": "Active",
+      "review": "In Review",
+      "retrospective": "Retrospective",
+      "completed": "Completed"
+    },
+
+    "sprintCard": {
+      "currentSprint": "Current Sprint",
+      "daysLeft": "{count} days left",
+      "endsToday": "Ends today",
+      "daysOverdue": "{count} days overdue",
+      "progress": "Progress",
+      "totalTasks": "Total Tasks",
+      "completed": "Completed",
+      "storyPoints": "Story Points",
+      "notSet": "Not set"
+    },
+
+    "sprintPlanning": {
+      "title": "Sprint Planning",
+      "description": "Manage sprints and track progress",
+      "activeSprint": "Active Sprint",
+      "inReview": "In Review",
+      "userStories": "User Stories",
+      "inProgressCount": "{count} in progress",
+      "openBugs": "Open Bugs",
+      "blockers": "{count} blockers",
+      "critical": "{count} critical",
+      "releases": "Releases",
+      "okrGoals": "OKR Goals",
+      "onTrack": "{count} on track",
+      "atRisk": "{count} at risk"
+    },
+
+    "createModal": {
+      "title": "Create Sprint",
+      "sprintName": "Sprint Name",
+      "sprintNamePlaceholder": "Sprint 24",
+      "sprintGoal": "Sprint Goal (optional)",
+      "sprintGoalPlaceholder": "What do you want to achieve in this sprint?",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "sprintNameRequired": "Sprint name is required",
+      "failedToCreate": "Failed to create sprint"
+    },
+
+    "empty": {
+      "noWorkspace": "No Workspace Yet",
+      "noWorkspaceDesc": "Create a workspace and add projects to start planning sprints.",
+      "noProjects": "No Projects Yet",
+      "noProjectsDesc": "Create projects in your workspace to start planning sprints.",
+      "noSprints": "No Sprints Yet",
+      "noSprintsDesc": "Create your first sprint to start planning and tracking work.",
+      "deleteConfirm": "Are you sure you want to delete this sprint? This action cannot be undone."
+    },
+
+    "epics": {
+      "title": "Epics",
+      "createEpic": "Create Epic",
+      "creating": "Creating...",
+      "description": "Epics group related tasks across sprints and teams",
+      "searchPlaceholder": "Search epics...",
+      "allStatuses": "All Statuses",
+      "allPriorities": "All Priorities",
+      "noWorkspace": "No Workspace Yet",
+      "noWorkspaceDesc": "Create a workspace to start tracking epics.",
+      "noEpics": "No Epics Yet",
+      "noEpicsDesc": "Create your first epic to start tracking large initiatives.",
+      "totalEpics": "Total Epics",
+      "progress": "Progress",
+
+      "status": {
+        "open": "Open",
+        "inProgress": "In Progress",
+        "done": "Done",
+        "cancelled": "Cancelled"
+      },
+
+      "form": {
+        "title": "Create Epic",
+        "titleLabel": "Title",
+        "titlePlaceholder": "e.g., User Authentication System",
+        "descriptionLabel": "Description (optional)",
+        "descriptionPlaceholder": "Describe the epic's goals and scope...",
+        "priorityLabel": "Priority",
+        "colorLabel": "Color"
+      }
+    },
+
+    "backlog": {
+      "title": "Backlog",
+      "moveToTodo": "Move to To Do",
+      "searchPlaceholder": "Search backlog..."
+    },
+
+    "taskStatus": {
+      "backlog": "Backlog",
+      "todo": "To Do",
+      "inProgress": "In Progress",
+      "review": "Review",
+      "done": "Done"
+    },
+
+    "priority": {
+      "critical": "Critical",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    }
+  }
+}

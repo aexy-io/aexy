@@ -1,0 +1,159 @@
+{
+  "agents": {
+    "title": "AI Agents",
+    "description": "बुद्धिमान स्वचालन Agent बनाएं और प्रबंधित करें",
+
+    "actions": {
+      "createAgent": "Agent बनाएं",
+      "createYourFirstAgent": "अपना पहला Agent बनाएं",
+      "editAgent": "Agent संपादित करें",
+      "deleteAgent": "Agent हटाएं",
+      "pauseAgent": "Agent रोकें",
+      "activateAgent": "Agent सक्रिय करें",
+      "runAgent": "Agent चलाएं",
+      "chat": "चैट",
+      "run": "चलाएं",
+      "pause": "रोकें",
+      "activate": "सक्रिय करें",
+      "edit": "संपादित करें",
+      "filters": "फ़िल्टर"
+    },
+
+    "stats": {
+      "totalAgents": "कुल Agent",
+      "activeAgents": "सक्रिय Agent",
+      "totalExecutions": "कुल निष्पादन",
+      "totalRuns": "कुल रन",
+      "success": "सफलता",
+      "successRate": "सफलता दर",
+      "avgTime": "औसत समय",
+      "avgDuration": "औसत अवधि"
+    },
+
+    "status": {
+      "active": "सक्रिय",
+      "inactive": "निष्क्रिय",
+      "allStatus": "सभी स्थिति",
+      "running": "चल रहा है..."
+    },
+
+    "types": {
+      "allTypes": "सभी प्रकार",
+      "support": "सहायता Agent",
+      "sales": "सेल्स Agent",
+      "scheduling": "शेड्यूलिंग Agent",
+      "onboarding": "ऑनबोर्डिंग Agent",
+      "recruiting": "भर्ती Agent",
+      "newsletter": "न्यूज़लेटर Agent",
+      "triage": "ट्रायेज Agent",
+      "insights": "इनसाइट्स Agent",
+      "standup": "स्टैंडअप Agent",
+      "custom": "कस्टम Agent"
+    },
+
+    "typeDescriptions": {
+      "support": "ग्राहक सहायता पूछताछ और समस्याओं को संभालें",
+      "sales": "सेल्स आउटरीच और फॉलो-अप में सहायता करें",
+      "scheduling": "मीटिंग शेड्यूलिंग और कैलेंडर समन्वय प्रबंधित करें",
+      "onboarding": "नए उपयोगकर्ताओं को ऑनबोर्डिंग प्रक्रियाओं में मार्गदर्शन करें",
+      "recruiting": "उम्मीदवार आउटरीच और स्क्रीनिंग में सहायता करें",
+      "newsletter": "न्यूज़लेटर सदस्यताओं और सामग्री का प्रबंधन करें",
+      "triage": "आने वाले टिकटों को प्राथमिकता और विभाग के अनुसार वर्गीकृत और रूट करें",
+      "insights": "टीम मेट्रिक्स, बर्नआउट जोखिम और प्रदर्शन रुझानों को सक्रिय रूप से सामने लाएं",
+      "standup": "गतिविधि से स्टैंडअप सारांश तैयार करें और टीम सदस्यों को याद दिलाएं",
+      "custom": "अपने स्वयं के कॉन्फ़िगरेशन के साथ कस्टम Agent बनाएं"
+    },
+
+    "tools": {
+      "title": "टूल्स",
+      "availableTools": "उपलब्ध टूल्स",
+      "reply": "उत्तर दें",
+      "sendEmail": "ईमेल भेजें",
+      "searchContacts": "संपर्क खोजें",
+      "enrichPerson": "व्यक्ति समृद्ध करें",
+      "updateCRM": "CRM अपडेट करें",
+      "schedule": "शेड्यूल करें",
+      "escalate": "एस्केलेट करें",
+      "getEmailHistory": "ईमेल इतिहास प्राप्त करें",
+      "createTask": "कार्य बनाएं",
+      "getWritingStyle": "लेखन शैली प्राप्त करें",
+      "classifyTicket": "टिकट वर्गीकृत करें",
+      "assignTicket": "टिकट असाइन करें",
+      "getTeamMetrics": "टीम मेट्रिक्स प्राप्त करें",
+      "getBurnoutRisk": "बर्नआउट जोखिम प्राप्त करें",
+      "getVelocity": "वेलोसिटी प्राप्त करें",
+      "sendSlack": "Slack भेजें",
+      "getGitActivity": "Git गतिविधि प्राप्त करें",
+      "getTaskUpdates": "कार्य अपडेट प्राप्त करें"
+    },
+
+    "config": {
+      "title": "कॉन्फ़िगरेशन",
+      "llm": "LLM",
+      "temperature": "तापमान",
+      "workingHours": "कार्य समय",
+      "persona": "व्यक्तित्व",
+      "mentionHandle": "मेंशन हैंडल",
+      "type": "प्रकार",
+      "status": "स्थिति"
+    },
+
+    "detail": {
+      "statistics": "आंकड़े",
+      "executionHistory": "निष्पादन इतिहास",
+      "executionDetails": "निष्पादन विवरण",
+      "loadingExecutions": "निष्पादन लोड हो रहे हैं...",
+      "noExecutionsYet": "अभी तक कोई निष्पादन नहीं",
+      "selectExecutionToView": "विवरण देखने के लिए एक निष्पादन चुनें",
+      "steps": "चरण",
+      "step": "चरण {number}",
+      "output": "आउटपुट",
+      "error": "त्रुटि",
+      "tokens": "टोकन",
+      "duration": "अवधि"
+    },
+
+    "runDialog": {
+      "title": "{agentName} चलाएं",
+      "provideContext": "Agent के लिए संदर्भ प्रदान करें",
+      "taskDescription": "कार्य विवरण",
+      "taskPlaceholder": "जैसे, टेक उद्योग में संपर्क खोजें और एक व्यक्तिगत ईमेल का मसौदा तैयार करें...",
+      "taskHelp": "Agent से आप क्या करवाना चाहते हैं, इसके बारे में विशिष्ट रहें। Agent कार्य पूरा करने के लिए अपने उपलब्ध टूल्स का उपयोग करेगा।"
+    },
+
+    "wizard": {
+      "chooseType": "Agent प्रकार चुनें",
+      "chooseTypeDescription": "सहायता, सेल्स, शेड्यूलिंग, या कस्टम",
+      "configureTools": "टूल्स और व्यक्तित्व कॉन्फ़िगर करें",
+      "configureToolsDescription": "सेट करें कि आपका Agent क्या कर सकता है",
+      "activateAndMonitor": "सक्रिय करें और मॉनिटर करें",
+      "activateAndMonitorDescription": "अपने Agent को कार्य संभालते हुए देखें"
+    },
+
+    "empty": {
+      "noAgentsTitle": "अभी तक कोई Agent नहीं",
+      "noAgentsDescription": "ईमेल प्रतिक्रियाओं को स्वचालित करने, मीटिंग शेड्यूल करने, CRM डेटा प्रबंधित करने और अधिक के लिए AI Agent बनाएं।",
+      "noAgentsFound": "कोई Agent नहीं मिला",
+      "noAgentsFoundDescription": "अपनी खोज या फ़िल्टर समायोजित करने का प्रयास करें",
+      "agentNotFoundTitle": "Agent नहीं मिला",
+      "agentNotFoundDescription": "जिस Agent को आप ढूंढ रहे हैं वह मौजूद नहीं है या हटा दिया गया है।",
+      "noWorkspace": "कोई कार्यस्थल चयनित नहीं"
+    },
+
+    "confirmations": {
+      "deleteAgentConfirm": "क्या आप वाकई इस Agent को हटाना चाहते हैं? यह क्रिया पूर्ववत नहीं की जा सकती।"
+    },
+
+    "search": {
+      "agents": "Agent खोजें..."
+    },
+
+    "execution": {
+      "completed": "पूर्ण",
+      "failed": "विफल",
+      "pending": "लंबित",
+      "running": "चल रहा है",
+      "cancelled": "रद्द"
+    }
+  }
+}
