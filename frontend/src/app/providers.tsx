@@ -5,13 +5,16 @@ import { useState, Suspense } from "react";
 import { NextIntlClientProvider } from "next-intl";
 import { NavigationProgress } from "@/components/ui/navigation-progress";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { useLocaleStore } from "@/stores/localeStore";
 
 export function Providers({
   children,
   messages,
+  serverLocale,
 }: {
   children: React.ReactNode;
   messages: Record<string, unknown>;
+  serverLocale: string;
 }) {
   const [queryClient] = useState(
     () =>
@@ -26,7 +29,7 @@ export function Providers({
   );
 
   return (
-    <NextIntlClientProvider locale="en" messages={messages}>
+    <NextIntlClientProvider locale={serverLocale} messages={messages}>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <Suspense fallback={null}>

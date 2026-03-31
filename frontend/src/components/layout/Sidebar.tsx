@@ -37,6 +37,7 @@ import { useAppAccess } from "@/hooks/useAppAccess";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useSidebarPersona } from "@/hooks/useSidebarPersona";
+import { LocaleSelector } from "@/components/LocaleSelector";
 import { SidebarItemConfig, SidebarSectionConfig, SidebarLayoutConfig } from "@/config/sidebarLayouts";
 import { appAccessApi } from "@/lib/api";
 import { useAccessRequests } from "@/hooks/useAccessRequests";
@@ -927,6 +928,11 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
                                 <Settings className="h-4 w-4 shrink-0" />
                                 {!isCollapsed && <span>Settings</span>}
                             </Link>
+                            {!isCollapsed && (
+                                <div className="px-3 py-1.5">
+                                    <LocaleSelector />
+                                </div>
+                            )}
                             {logout && (
                                 <button
                                     onClick={logout}

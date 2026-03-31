@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Script from "next/script";
-import { getMessages } from "next-intl/server";
+import { getMessages, getLocale } from "next-intl/server";
 import "./globals.css";
 import { Providers } from "./providers";
 import { Toaster } from "sonner";
@@ -22,12 +22,12 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const messages = await getMessages();
+  const [messages, locale] = await Promise.all([getMessages(), getLocale()]);
 
   return (
-    <html lang="en">
+    <html lang={locale}>
       <body className={inter.className}>
-        <Providers messages={messages}>{children}</Providers>
+        <Providers messages={messages} serverLocale={locale}>{children}</Providers>
         <Toaster richColors position="top-right" />
         {process.env.NEXT_PUBLIC_GTM_WORKSPACE_ID && (
           <Script
