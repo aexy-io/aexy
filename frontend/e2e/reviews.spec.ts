@@ -847,3 +847,104 @@ test.describe("Spinner consistency", () => {
     }
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Contributions tab — wire up real data
+// ─────────────────────────────────────────────────────────────────────────────
+
+const mockReviewDetail = {
+  id: "review-1",
+  developer_id: "dev-1",
+  developer_name: "Jane Dev",
+  developer_email: "jane@example.com",
+  manager_name: "Manager Bob",
+  cycle_id: "cycle-1",
+  status: "self_review_submitted",
+  created_at: "2026-01-01T00:00:00Z",
+  contribution_summary: {
+    metrics: {
+      commits: { total: 42 },
+      pull_requests: { total: 8, created: 8, merged: 6, closed: 1 },
+      code_reviews: { total: 15 },
+      lines: { added: 3200, removed: 1100 },
+      skills_demonstrated: ["TypeScript", "React", "Testing"],
+    },
+  },
+  ai_summary: "Jane demonstrated strong technical leadership this quarter.",
+  self_review: {
+    id: "sub-1",
+    submission_type: "self",
+    responses: {
+      context: "Q1 2026 review period",
+      observation: "Led the auth refactor project",
+      strengths: ["Technical depth", "Code review quality"],
+      growth_areas: ["Public speaking", "Documentation"],
+    },
+    created_at: "2026-02-01T00:00:00Z",
+  },
+  peer_reviews: [
+    {
+      id: "sub-2",
+      submission_type: "peer",
+      is_anonymous: true,
+      responses: {
+        context: "Worked together on auth project",
+        observation: "Very thorough code reviews",
+        impact: "Caught several critical bugs early",
+        next_steps: "Could mentor more junior devs",
+        strengths: ["Attention to detail", "Deep technical knowledge"],
+        growth_areas: ["Could delegate more"],
+      },
+      created_at: "2026-02-15T00:00:00Z",
+    },
+  ],
+  manager_review: null,
+  goals: [],
+};
+
+test.describe("Contributions tab — real data", () => {
+  test("shows contribution metrics instead of placeholder", async ({ page }) => {
+    await setupReviewsMocks(page);
+
+    await page.route(`${API_BASE}/reviews/manage/**`, (route) => {
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(mockReviewDetail) });
+    });
+
+    await page.route(`${API_BASE}/reviews/*`, (route) => {
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(mockReviewDetail) });
+    });
+
+    await page.goto("/reviews/manage/dev-1");
+    await page.waitForSelector("text=Jane Dev");
+
+    // Click Contributions tab
+    await page.click("[data-testid='tab-contributions']");
+
+    // Should show actual metrics, not placeholder
+    await expect(page.locator("text=42").first()).toBeVisible(); // commits
+    await expect(page.locator("text=Pull Requests")).toBeVisible(); // real column header
+  });
+});
+
+test.describe("Feedback tab — full data", () => {
+  test("shows self-review and peer review details", async ({ page }) => {
+    await setupReviewsMocks(page);
+
+    await page.route(`${API_BASE}/reviews/manage/**`, (route) => {
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(mockReviewDetail) });
+    });
+
+    await page.route(`${API_BASE}/reviews/*`, (route) => {
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(mockReviewDetail) });
+    });
+
+    await page.goto("/reviews/manage/dev-1");
+    await page.waitForSelector("text=Jane Dev");
+
+    // Click Feedback tab
+    await page.click("[data-testid='tab-feedback']");
+
+    // Should show growth areas (not just strengths)
+    await expect(page.locator("h3:has-text('Growth Areas')")).toBeVisible();
+  });
+});

@@ -334,6 +334,7 @@ export default function MemberDetailPage() {
           ].map((tab) => (
             <button
               key={tab.key}
+              data-testid={`tab-${tab.key}`}
               onClick={() => setActiveTab(tab.key as typeof activeTab)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
                 activeTab === tab.key
@@ -641,59 +642,193 @@ export default function MemberDetailPage() {
         )}
 
         {activeTab === "contributions" && (
-          <div className="bg-muted rounded-xl border border-border p-6">
-            <div className="text-center py-12">
-              <GitPullRequest className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-xl font-medium text-foreground mb-2">Contribution History</h3>
-              <p className="text-muted-foreground text-sm mb-6">
-                Detailed contribution history will be loaded from GitHub
-              </p>
-              <button className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition text-sm font-medium mx-auto">
-                <Sparkles className="h-4 w-4" />
-                Generate Contribution Summary
-              </button>
+          <div className="space-y-6">
+            {/* Contribution Metrics */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-muted rounded-xl p-4 border border-border">
+                <div className="flex items-center gap-2 mb-2">
+                  <GitCommit className="w-4 h-4 text-cyan-400" />
+                  <span className="text-muted-foreground text-sm">Commits</span>
+                </div>
+                <p className="text-2xl font-bold text-foreground">{member.contributions.commits}</p>
+              </div>
+              <div className="bg-muted rounded-xl p-4 border border-border">
+                <div className="flex items-center gap-2 mb-2">
+                  <GitPullRequest className="w-4 h-4 text-purple-400" />
+                  <span className="text-muted-foreground text-sm">Pull Requests</span>
+                </div>
+                <p className="text-2xl font-bold text-foreground">{member.contributions.prs}</p>
+              </div>
+              <div className="bg-muted rounded-xl p-4 border border-border">
+                <div className="flex items-center gap-2 mb-2">
+                  <MessageSquare className="w-4 h-4 text-amber-400" />
+                  <span className="text-muted-foreground text-sm">Code Reviews</span>
+                </div>
+                <p className="text-2xl font-bold text-foreground">{member.contributions.reviews}</p>
+              </div>
+              <div className="bg-muted rounded-xl p-4 border border-border">
+                <div className="flex items-center gap-2 mb-2">
+                  <Code className="w-4 h-4 text-emerald-400" />
+                  <span className="text-muted-foreground text-sm">Lines Changed</span>
+                </div>
+                <p className="text-2xl font-bold text-foreground">
+                  <span className="text-emerald-400">+{member.contributions.linesAdded.toLocaleString()}</span>
+                  {" "}
+                  <span className="text-red-400">-{member.contributions.linesRemoved.toLocaleString()}</span>
+                </p>
+              </div>
             </div>
+
+            {/* Skills */}
+            {member.skills.length > 0 && (
+              <div className="bg-muted rounded-xl border border-border p-5">
+                <h3 className="text-foreground font-medium mb-3">Skills Demonstrated</h3>
+                <div className="flex flex-wrap gap-2">
+                  {member.skills.map((skill) => (
+                    <span key={skill} className="px-3 py-1 bg-accent text-foreground text-sm rounded-lg">
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* AI Summary */}
+            {review?.ai_summary && (
+              <div className="bg-gradient-to-r from-purple-500/10 to-cyan-500/10 border border-purple-500/20 rounded-xl p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles className="h-4 w-4 text-purple-400" />
+                  <h3 className="text-purple-400 font-medium">AI Summary</h3>
+                </div>
+                <p className="text-foreground text-sm">{review.ai_summary}</p>
+              </div>
+            )}
+
+            {member.contributions.commits === 0 && member.contributions.prs === 0 && (
+              <div className="bg-muted rounded-xl border border-border p-8 text-center">
+                <GitPullRequest className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground text-sm">
+                  No GitHub contributions found for this review period. Connect GitHub to import activity.
+                </p>
+              </div>
+            )}
           </div>
         )}
 
         {activeTab === "feedback" && (
-          <div className="grid lg:grid-cols-2 gap-6">
+          <div className="space-y-6">
+            {/* Self Review */}
             <div className="bg-muted rounded-xl border border-border overflow-hidden">
               <div className="px-6 py-4 border-b border-border">
                 <h3 className="text-lg font-semibold text-foreground">Self Review</h3>
               </div>
-              <div className="p-6 text-center py-12">
-                <ClipboardCheck className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground text-sm">Self review submitted</p>
-                <button className="mt-4 text-primary-400 hover:text-primary-300 text-sm transition">
-                  View submission
-                </button>
-              </div>
+              {review?.self_review?.responses ? (
+                <div className="p-6 space-y-4">
+                  {review.self_review.responses.context && (
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Context</p>
+                      <p className="text-foreground text-sm">{review.self_review.responses.context}</p>
+                    </div>
+                  )}
+                  {review.self_review.responses.observation && (
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Key Accomplishments</p>
+                      <p className="text-foreground text-sm">{review.self_review.responses.observation}</p>
+                    </div>
+                  )}
+                  {review.self_review.responses.strengths && review.self_review.responses.strengths.length > 0 && (
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Strengths</p>
+                      <div className="flex flex-wrap gap-2">
+                        {(Array.isArray(review.self_review.responses.strengths) ? review.self_review.responses.strengths : []).map((s: string, i: number) => (
+                          <span key={i} className="px-3 py-1 bg-emerald-500/10 text-emerald-400 text-sm rounded-lg">{s}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {review.self_review.responses.growth_areas && review.self_review.responses.growth_areas.length > 0 && (
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Growth Areas</p>
+                      <div className="flex flex-wrap gap-2">
+                        {(Array.isArray(review.self_review.responses.growth_areas) ? review.self_review.responses.growth_areas : []).map((g: string, i: number) => (
+                          <span key={i} className="px-3 py-1 bg-amber-500/10 text-amber-400 text-sm rounded-lg">{g}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="p-6 text-center py-8">
+                  <ClipboardCheck className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-muted-foreground text-sm">Self review not yet submitted</p>
+                </div>
+              )}
             </div>
 
+            {/* Peer Reviews */}
             <div className="bg-muted rounded-xl border border-border overflow-hidden">
-              <div className="px-6 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="px-6 py-4 border-b border-border flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-foreground">Peer Reviews</h3>
                 <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 text-xs rounded-full">
-                  {member.feedbackSummary.peerCount} received
+                  {review?.peer_reviews?.length || 0} received
                 </span>
               </div>
-              <div className="p-6">
-                <div className="space-y-4">
-                  {member.feedbackSummary.strengths.slice(0, 2).map((item, idx) => (
-                    <div key={idx} className="bg-background rounded-lg p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-6 h-6 bg-accent rounded-full flex items-center justify-center text-muted-foreground text-xs">
-                          A
+              {review?.peer_reviews && review.peer_reviews.length > 0 ? (
+                <div className="p-6 space-y-4">
+                  {review.peer_reviews.map((pr: any, idx: number) => (
+                    <div key={idx} className="bg-background rounded-xl p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 bg-purple-500/20 rounded-full flex items-center justify-center text-purple-400 text-xs font-medium">
+                          {pr.is_anonymous ? "A" : (pr.reviewer_name || "P")[0]}
                         </div>
-                        <span className="text-muted-foreground text-sm">Anonymous peer</span>
+                        <span className="text-muted-foreground text-sm">
+                          {pr.is_anonymous ? "Anonymous peer" : pr.reviewer_name || "Peer reviewer"}
+                        </span>
                       </div>
-                      <p className="text-foreground text-sm">&ldquo;{item}&rdquo;</p>
+                      {pr.responses?.observation && (
+                        <p className="text-foreground text-sm">&ldquo;{pr.responses.observation}&rdquo;</p>
+                      )}
+                      {pr.responses?.impact && (
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Impact</p>
+                          <p className="text-foreground text-sm">{pr.responses.impact}</p>
+                        </div>
+                      )}
+                      {pr.responses?.next_steps && (
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Suggested Next Steps</p>
+                          <p className="text-foreground text-sm">{pr.responses.next_steps}</p>
+                        </div>
+                      )}
+                      {pr.responses?.strengths && pr.responses.strengths.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {pr.responses.strengths.map((s: string, i: number) => (
+                            <span key={i} className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-xs rounded">{s}</span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
-              </div>
+              ) : (
+                <div className="p-6 text-center py-8">
+                  <Users className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-muted-foreground text-sm">No peer reviews received yet</p>
+                </div>
+              )}
             </div>
+
+            {/* Growth Areas Summary */}
+            {member.feedbackSummary.growthAreas.length > 0 && (
+              <div className="bg-muted rounded-xl border border-border p-5">
+                <h3 className="text-foreground font-medium mb-3">Growth Areas</h3>
+                <div className="flex flex-wrap gap-2">
+                  {member.feedbackSummary.growthAreas.map((area, idx) => (
+                    <span key={idx} className="px-3 py-1 bg-amber-500/10 text-amber-400 text-sm rounded-lg">{area}</span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </main>
