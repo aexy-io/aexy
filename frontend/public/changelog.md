@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2026-03-31
+
+### Added
+
+#### Reviews UX/UI Audit & Fixes (20 issues fixed, 30 Playwright E2E tests)
+Comprehensive UX/UI audit of the Performance Reviews feature with screenshot-driven TDD fixes.
+
+- **P0 Fixes**: "Active Unknown" bug, date validation on cycle creation, disabled button tooltips, AI preview empty states, success toasts on create/delete
+- **P1 Fixes**: Styled delete confirmation modal (replaces browser `confirm()`), ARIA tab attributes (`role=tablist/tab/tabpanel`), breadcrumb navigation consistency, mobile card view for cycles DataTable, user-facing error toasts on API failures
+- **P2 Fixes**: Filter count badges on goals tabs, form label accessibility (`htmlFor`/`id`), live goal card preview on create form, `aria-label` on icon-only buttons, cycle timeline preview with phase markers, `aria-live` regions for screen readers, unified loading spinners to `primary-500`
+- **Contributions & Feedback tabs**: Wired up with real data (metrics grid, skills, AI summary, self-review responses, full COIN peer feedback)
+- **Onboarding**: Fixed checklist href, added "Create a SMART goal" item to developer/manager presets
+- **Audit doc**: `review-screenshots/REVIEW_AI_UX_AUDIT.md` with before/after screenshots
+
+#### Next.js 16 + React 19 Upgrade
+- Upgraded `next` from 14.1.0 to 16.2.1, `react`/`react-dom` to 19.x
+- Fixed JSX parse error in `CustomFieldTypeManager.tsx` (stricter parser)
+- Installed missing `@tiptap/suggestion` dependency
+- Defensive null check in `useAppAccess.ts`
+
+#### Internationalization (i18n) with next-intl
+Full i18n infrastructure with English + Hindi support across all modules.
+
+- **next-intl**: Cookie-based locale system with middleware, Zustand locale store, and language selector in sidebar
+- **20 module message files** per locale (EN + Hindi): common, reviews, sidebar, dashboard, tracking, settings, sprints, insights, crm, hiring, agents, booking, email-marketing, learning, uptime, compliance, admin, marketing, products, pages
+- **Per-module JSON files** merged at build time via `npm run i18n:merge` (auto-runs on `prebuild`)
+- **~1800+ translation keys** per locale covering all feature modules + homepage + product pages + pricing
+- **7 review pages** fully converted to `useTranslations()` — remaining pages can adopt incrementally
+- **CLAUDE.md** updated with i18n architecture docs, conventions, and how-to guides
+
+### Changed
+- `docker-compose.dev.yml` added with non-conflicting ports for parallel development
+- CORS origin added for dev port 3003
+- JSONB `server_default` syntax fix in dashboard and CRM models
+
 ## [0.7.0] - 2026-03-25
 
 ### Added

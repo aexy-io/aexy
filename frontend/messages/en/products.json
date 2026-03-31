@@ -1,0 +1,686 @@
+{
+  "products": {
+    "reviews": {
+      "headline": "Reviews that feel fair",
+      "description": "Performance reviews backed by real contribution data. SMART goals linked to GitHub. 360° feedback with anonymity. AI-generated summaries that capture the full picture.",
+      "featuresHeading": "Performance reviews that actually work",
+      "featuresSubheading": "Move beyond subjective opinions to data-driven performance management.",
+      "features": {
+        "smartGoals": {
+          "name": "SMART Goals",
+          "description": "Set objectives that automatically link to GitHub contributions. Track progress with real data, not guesswork."
+        },
+        "feedback360": {
+          "name": "360° Feedback",
+          "description": "Anonymous peer reviews using the COIN framework. Get balanced feedback from managers, peers, and direct reports."
+        },
+        "aiSummaries": {
+          "name": "AI-Generated Summaries",
+          "description": "LLM-powered insights that synthesize GitHub activity into compelling review narratives."
+        },
+        "growthTracking": {
+          "name": "Growth Tracking",
+          "description": "Monitor skill development over time. Connect learning paths to performance goals."
+        }
+      },
+      "privacy": {
+        "heading": "Anonymous and secure",
+        "description": "Peer feedback is always anonymous. Reviewers can speak honestly without fear. All data is encrypted and you control who sees what."
+      },
+      "cta": "Start Reviews Free",
+      "ctaHeading": "Make performance reviews fair",
+      "ctaDescription": "Data-driven reviews that developers and managers both trust."
+    },
+    "crm": {
+      "headline": "Relationships connected to delivery",
+      "description": "CRM that integrates with your engineering workflow. Gmail sync, AI enrichment, and deep linking to projects and tickets. This isn't a sales-only CRM.",
+      "featuresHeading": "CRM built for engineering teams",
+      "featuresSubheading": "Not a traditional sales CRM. A relationship management system that connects people to projects.",
+      "features": {
+        "gmailSync": {
+          "name": "Gmail Sync",
+          "description": "Two-way email sync with Gmail. All conversations automatically linked to contacts and deals."
+        },
+        "calendarIntegration": {
+          "name": "Calendar Integration",
+          "description": "Google Calendar sync with automatic contact linking. Never miss a meeting or follow-up."
+        },
+        "aiEnrichment": {
+          "name": "AI Contact Enrichment",
+          "description": "Automatically extract and enrich contact info from email signatures, LinkedIn, and more."
+        },
+        "salesPipeline": {
+          "name": "Sales Pipeline",
+          "description": "Visual deal tracking with customizable stages. Forecast revenue and track conversion rates."
+        }
+      },
+      "inbox": {
+        "heading": "Email that works with you",
+        "description": "Reply to emails directly from Aexy. All conversations automatically linked to contacts and deals. Never lose context again."
+      },
+      "cta": "Start CRM Free",
+      "ctaHeading": "Manage relationships the right way",
+      "ctaDescription": "CRM that connects to your engineering workflow."
+    },
+    "aiAgents": {
+      "headline": "Intelligent automation across your stack",
+      "description": "Create custom AI agents to handle email, support, scheduling, and CRM tasks. Configure LLM providers, tools, and behavior. Works across your entire workflow.",
+      "featuresHeading": "Build agents that work for you",
+      "featuresSubheading": "Configure intelligent automation with fine-grained control over behavior, tools, and confidence thresholds.",
+      "features": {
+        "emailAutomation": {
+          "name": "Email Automation",
+          "description": "Auto-respond to emails with context-aware replies. Handle inquiries, follow-ups, and escalations automatically."
+        },
+        "crmIntegration": {
+          "name": "CRM Integration",
+          "description": "Search contacts, enrich data, update records, and log activities automatically as agents interact."
+        },
+        "multipleLLM": {
+          "name": "Multiple LLM Providers",
+          "description": "Choose between Claude (Anthropic), Gemini (Google), or Ollama for self-hosted inference."
+        },
+        "confidenceThresholds": {
+          "name": "Confidence Thresholds",
+          "description": "Set approval requirements below confidence thresholds. Never send uncertain responses without review."
+        }
+      },
+      "agentTypes": {
+        "heading": "Pre-built agent types",
+        "subheading": "Start with a template or build fully custom agents from scratch.",
+        "support": "Customer support automation",
+        "sales": "Outreach and follow-ups",
+        "scheduling": "Calendar management",
+        "custom": "Build your own"
+      },
+      "tools": {
+        "heading": "Grant access to powerful tools",
+        "description": "Each agent can access a curated set of tools. Control what actions agents can take with granular permissions."
+      },
+      "behavior": {
+        "heading": "Fine-grained behavior control",
+        "description": "Set confidence thresholds, working hours, response limits, and escalation rules. Agents only act when you want them to."
+      },
+      "cta": "Create Your First Agent",
+      "ctaHeading": "Automate intelligently",
+      "ctaDescription": "Create AI agents that work across your entire workflow."
+    },
+    "booking": {
+      "headline": "Scheduling for teams",
+      "description": "Calendar scheduling that works with your team. Book meetings with multiple attendees, sync with Google and Microsoft calendars, and share booking links anywhere.",
+      "featuresHeading": "Scheduling that scales with your team",
+      "featuresSubheading": "Not just another calendar tool. A complete booking system built for engineering teams.",
+      "features": {
+        "calendarSync": {
+          "name": "Calendar Sync",
+          "description": "Connect Google Calendar or Microsoft Outlook. Automatic availability detection and conflict prevention."
+        },
+        "teamBooking": {
+          "name": "Team Booking",
+          "description": "Book with entire teams or rotating hosts. Round-robin, collective, and all-hands meeting modes."
+        },
+        "rsvpSystem": {
+          "name": "RSVP System",
+          "description": "Team members receive invitations and can accept or decline. Track response status in real-time."
+        },
+        "customLinks": {
+          "name": "Custom Booking Links",
+          "description": "Shareable links for workspaces, event types, and specific teams. Clean URLs that work anywhere."
+        }
+      },
+      "teamModes": {
+        "heading": "Book meetings with entire teams",
+        "subheading": "Three flexible assignment modes for different meeting types.",
+        "roundRobin": "Rotates between team members",
+        "collective": "First available member",
+        "allHands": "Everyone attends with RSVP"
+      },
+      "cta": "Start Booking Free",
+      "ctaHeading": "Start scheduling smarter",
+      "ctaDescription": "Calendar booking that works for your entire team."
+    },
+    "docs": {
+      "headline": "Documentation that stays current",
+      "description": "Write docs that connect to your code and work. Version-controlled, searchable, and always linked to the right context.",
+      "featuresHeading": "Documentation that works with you",
+      "featuresSubheading": "Not just a wiki. A living knowledge base connected to your entire engineering operation.",
+      "features": {
+        "richTextEditor": {
+          "name": "Rich Text Editor",
+          "description": "Markdown and WYSIWYG editing. Code blocks with syntax highlighting, tables, and embeds."
+        },
+        "organized": {
+          "name": "Organized by Default",
+          "description": "Hierarchical structure with folders and tags. Find any document instantly with powerful search."
+        },
+        "linked": {
+          "name": "Linked to Everything",
+          "description": "Connect docs to tickets, PRs, epics, and team members. Build a living knowledge base."
+        },
+        "versionHistory": {
+          "name": "Version History",
+          "description": "Full revision history with diffs. Restore previous versions with one click."
+        }
+      },
+      "ai": {
+        "heading": "AI writing assistant",
+        "description": "Generate documentation from code comments. Summarize long documents. Get suggestions for improving clarity and completeness."
+      },
+      "cta": "Start Writing Free",
+      "ctaHeading": "Build your engineering knowledge base",
+      "ctaDescription": "Documentation that stays connected to your work."
+    },
+    "emailMarketing": {
+      "headline": "Campaigns that convert",
+      "description": "Email marketing built for modern teams. Visual builder, full tracking, multi-domain infrastructure, and AI-powered warming. Enterprise-grade deliverability without the complexity.",
+      "featuresHeading": "Everything you need to send at scale",
+      "featuresSubheading": "From visual design to deliverability infrastructure. Built for teams who care about results.",
+      "features": {
+        "visualBuilder": {
+          "name": "Visual Email Builder",
+          "description": "Drag-and-drop email creation with 16+ block types. Hero sections, buttons, social links, and dynamic content."
+        },
+        "analytics": {
+          "name": "Full Analytics",
+          "description": "Track opens, clicks, bounces, and conversions. Device breakdown, ISP metrics, and AI-powered send time optimization."
+        },
+        "multiDomain": {
+          "name": "Multi-Domain Sending",
+          "description": "Route emails through multiple domains and providers. Automatic failover and smart ISP-based routing."
+        },
+        "ipWarming": {
+          "name": "IP Warming Automation",
+          "description": "AI-driven warming schedules. Conservative, moderate, or aggressive plans with automatic health monitoring."
+        }
+      },
+      "builder": {
+        "heading": "Design emails without code",
+        "description": "Drag and drop blocks to create beautiful emails. 16+ block types including headers, buttons, hero sections, and dynamic content with Jinja2 variables."
+      },
+      "infrastructure": {
+        "heading": "Enterprise-grade deliverability",
+        "description": "Multi-domain sending with automatic warming, health monitoring, and smart routing. Connect SES, SendGrid, Mailgun, or Postmark."
+      },
+      "cta": "Start Sending Free",
+      "ctaHeading": "Ready to send emails that get results?",
+      "ctaDescription": "Start with the visual builder. Scale with enterprise infrastructure."
+    },
+    "forms": {
+      "headline": "Beautiful forms in minutes",
+      "description": "Drag-and-drop form builder with conditional logic, integrations, and analytics. Create intake forms, surveys, and bug reports without code.",
+      "featuresHeading": "Forms that work for you",
+      "featuresSubheading": "Build once, use everywhere. Collect data and trigger automations.",
+      "features": {
+        "dragAndDrop": {
+          "name": "Drag & Drop Builder",
+          "description": "Build beautiful forms without code. Drag fields, customize layouts, and preview in real-time."
+        },
+        "conditionalLogic": {
+          "name": "Conditional Logic",
+          "description": "Show or hide fields based on responses. Create dynamic forms that adapt to user input."
+        },
+        "multipleDestinations": {
+          "name": "Multiple Destinations",
+          "description": "Send responses to Slack, email, webhooks, or create tickets automatically."
+        },
+        "responseAnalytics": {
+          "name": "Response Analytics",
+          "description": "Track completion rates, average time, and drop-off points. Optimize your forms with data."
+        }
+      },
+      "useCases": {
+        "heading": "Built for engineering teams",
+        "bugReports": "Let users submit bugs directly to your ticketing system",
+        "featureRequests": "Collect and prioritize user feedback automatically",
+        "intakeForms": "Onboard new projects with structured intake forms"
+      },
+      "cta": "Create a Form Free",
+      "ctaHeading": "Create your first form in minutes",
+      "ctaDescription": "No credit card required. Free for small teams."
+    },
+    "gtmIntelligence": {
+      "headline": "Know who's on your website",
+      "description": "Visitor identification, company enrichment, lead scoring, and multi-channel outreach -- all in one platform. Turn anonymous traffic into qualified pipeline.",
+      "featuresHeading": "Full-stack go-to-market intelligence",
+      "featuresSubheading": "From anonymous visitor to closed deal. Every stage automated, every signal captured.",
+      "features": {
+        "visitorIdentification": {
+          "name": "Visitor Identification",
+          "description": "Turn anonymous website traffic into named accounts. IP-to-company resolution powered by Snitcher with automatic CRM matching."
+        },
+        "leadScoring": {
+          "name": "Lead Scoring & ICP Matching",
+          "description": "Multi-factor scoring: firmographic (40%), behavioral (35%), engagement (25%). Configurable ICP templates with lifecycle stage automation."
+        },
+        "providerRegistry": {
+          "name": "10-Slot Provider Registry",
+          "description": "Hot-swap any integration without code changes. Snitcher, Apollo, MillionVerifier, PhantomBuster, Twilio, and more. Your stack, your rules."
+        },
+        "eventPipeline": {
+          "name": "Real-Time Event Pipeline",
+          "description": "Lightweight tracking pixel captures page views, scroll depth, UTMs, and time-on-page. Temporal-powered processing with sub-second latency."
+        }
+      },
+      "tracking": {
+        "heading": "One script tag. Full visibility.",
+        "description": "Drop a single script tag and start capturing visitor behavior instantly."
+      },
+      "providers": {
+        "heading": "Your stack, your rules",
+        "description": "10 provider slots, each hot-swappable without code changes. Start with Snitcher + MillionVerifier at $55/mo. Scale to a full enterprise stack when you're ready."
+      },
+      "cta": "Start Identifying Visitors",
+      "ctaHeading": "Stop guessing. Start knowing.",
+      "ctaDescription": "See who visits your site, score them automatically, and route hot leads to sales -- all for $55/mo."
+    },
+    "hiring": {
+      "headline": "Hire engineers based on real skills",
+      "description": "AI-powered job descriptions, technical assessments that mirror real work, and skills-based matching. Hire the right people faster.",
+      "featuresHeading": "Hiring tools that work",
+      "featuresSubheading": "From job posting to offer letter, everything you need to hire great engineers.",
+      "features": {
+        "jdGenerator": {
+          "name": "AI Job Description Generator",
+          "description": "Generate compelling job descriptions from your codebase. Match requirements to actual skills needed."
+        },
+        "assessments": {
+          "name": "Technical Assessments",
+          "description": "Build custom assessments that mirror real work. Test actual skills, not trivia or algorithm puzzles."
+        },
+        "skillsMatching": {
+          "name": "Skills-Based Matching",
+          "description": "Match candidates to roles based on demonstrated skills from their GitHub profiles."
+        },
+        "hiringAnalytics": {
+          "name": "Hiring Analytics",
+          "description": "Track pipeline metrics, time-to-hire, and candidate quality. Data-driven hiring decisions."
+        }
+      },
+      "workflow": {
+        "heading": "Assessment workflow",
+        "steps": {
+          "create": "Build from templates or from scratch",
+          "invite": "Send via email or shareable link",
+          "autoScore": "AI evaluates technical responses",
+          "review": "Compare candidates objectively"
+        }
+      },
+      "jd": {
+        "heading": "Generate JDs from code",
+        "description": "Our AI analyzes your codebase to understand the real skills needed. Generate job descriptions that attract candidates who can actually do the work."
+      },
+      "cta": "Start Hiring Free",
+      "ctaHeading": "Hire better engineers faster",
+      "ctaDescription": "Skills-based hiring that works."
+    },
+    "learning": {
+      "headline": "Grow your team's skills",
+      "description": "AI-powered skill gap analysis and personalized learning paths. Track growth, celebrate achievements, and build a culture of continuous learning.",
+      "featuresHeading": "Learning that actually sticks",
+      "featuresSubheading": "Move beyond random tutorials to structured, personalized growth.",
+      "features": {
+        "skillGapAnalysis": {
+          "name": "Skill Gap Analysis",
+          "description": "AI identifies skill gaps by comparing your team's capabilities with project requirements and industry standards."
+        },
+        "learningPaths": {
+          "name": "Personalized Learning Paths",
+          "description": "Curated learning resources tailored to each developer's current skills and growth goals."
+        },
+        "gamifiedProgress": {
+          "name": "Gamified Progress",
+          "description": "Achievement badges, skill levels, and leaderboards that make learning engaging and visible."
+        },
+        "careerGrowth": {
+          "name": "Career Growth Tracking",
+          "description": "Visualize skill development over time. Connect learning to promotions and career milestones."
+        }
+      },
+      "howItWorks": {
+        "heading": "How learning paths work",
+        "analyze": "AI scans your code contributions to identify strengths and gaps",
+        "setGoals": "Choose what you want to learn based on career aspirations",
+        "learn": "Follow curated resources and apply skills in real projects",
+        "levelUp": "Earn badges, track progress, and celebrate achievements"
+      },
+      "cta": "Start Learning Free",
+      "ctaHeading": "Start growing your team today",
+      "ctaDescription": "Personalized learning paths for every developer."
+    },
+    "planning": {
+      "headline": "Planning that reflects reality",
+      "description": "Sprint planning powered by real team capacity. AI-driven task assignment. Automatic sync with GitHub, Jira, and Linear. No more guessing games.",
+      "featuresHeading": "Planning that actually works",
+      "featuresSubheading": "Built by engineering leaders who were tired of plans that never matched reality.",
+      "features": {
+        "visualPlanning": {
+          "name": "Visual Sprint Planning",
+          "description": "Drag-and-drop kanban boards. Plan sprints visually with real capacity data from your team."
+        },
+        "epicTracking": {
+          "name": "Epic & Initiative Tracking",
+          "description": "Create epics spanning multiple sprints. Track progress across projects with automatic rollups."
+        },
+        "aiTaskAssignment": {
+          "name": "AI Task Assignment",
+          "description": "Intelligent task matching based on developer skills and current workload. Never over-allocate again."
+        },
+        "velocityAnalytics": {
+          "name": "Velocity Analytics",
+          "description": "Track sprint velocity, predict completion dates, and identify patterns over time."
+        }
+      },
+      "aiAssignment": {
+        "heading": "Smart task assignment",
+        "description": "Our AI analyzes developer skills from their actual code contributions and matches tasks to the best-suited team members automatically."
+      },
+      "integrations": {
+        "heading": "Works with your existing tools",
+        "subheading": "Import from anywhere, sync everywhere."
+      },
+      "cta": "Start Planning Free",
+      "ctaHeading": "Transform your sprint planning",
+      "ctaDescription": "Join thousands of teams planning smarter with Aexy."
+    },
+    "reminders": {
+      "headline": "Never miss a compliance deadline",
+      "description": "Track recurring compliance commitments, scheduled reviews, and periodic tasks with smart assignment, escalation workflows, and evidence tracking.",
+      "featuresHeading": "Everything you need for compliance tracking",
+      "featuresSubheading": "From simple reminders to complex escalation workflows with evidence tracking.",
+      "features": {
+        "smartScheduling": {
+          "name": "Smart Scheduling",
+          "description": "Set up one-time, daily, weekly, monthly, quarterly, or custom cron schedules. Never miss a compliance deadline again."
+        },
+        "intelligentAssignment": {
+          "name": "Intelligent Assignment",
+          "description": "Auto-assign to fixed owners, round-robin between teams, integrate with on-call schedules, or use domain-based rules."
+        },
+        "escalation": {
+          "name": "Escalation Workflows",
+          "description": "Multi-level escalation chains ensure nothing falls through the cracks. Get notified via Slack, email, or in-app."
+        },
+        "evidenceTracking": {
+          "name": "Evidence Tracking",
+          "description": "Attach completion evidence, notes, and documentation. Build an audit trail for compliance requirements."
+        }
+      },
+      "useCases": {
+        "heading": "Built for engineering teams",
+        "subheading": "Track any recurring task -- from SOC 2 compliance to team retrospectives.",
+        "soc2": "Track quarterly access reviews, annual penetration tests, and continuous monitoring requirements.",
+        "security": "Never miss certificate renewals, vulnerability scans, or security training deadlines.",
+        "teamManagement": "Schedule recurring 1:1s, performance reviews, and team retrospectives."
+      },
+      "escalationFlow": {
+        "heading": "Automatic escalation when things slip",
+        "description": "Configure multi-level escalation chains. If a reminder goes overdue, the right people get notified automatically -- from team leads to directors."
+      },
+      "cta": "Start Tracking Free",
+      "ctaHeading": "Start tracking compliance today",
+      "ctaDescription": "Free for unlimited reminders. No credit card required."
+    },
+    "tickets": {
+      "headline": "Ticketing that developers love",
+      "description": "Fast, flexible issue tracking built for engineering teams. Keyboard-first, deeply integrated with your code, and powered by AI for smart routing.",
+      "featuresHeading": "Everything you need to track work",
+      "featuresSubheading": "Powerful enough for complex projects, simple enough for everyday use.",
+      "features": {
+        "customWorkflows": {
+          "name": "Custom Workflows",
+          "description": "Define your own ticket statuses and transitions. Build workflows that match how your team actually works."
+        },
+        "deepLinking": {
+          "name": "Deep Linking",
+          "description": "Link tickets to PRs, commits, epics, and sprints. Everything connected, nothing lost."
+        },
+        "aiTriage": {
+          "name": "AI Triage",
+          "description": "Automatic priority assignment, duplicate detection, and smart routing to the right team."
+        },
+        "smartNotifications": {
+          "name": "Smart Notifications",
+          "description": "Get notified about what matters. Customizable alerts based on priority, assignee, or label changes."
+        }
+      },
+      "keyboard": {
+        "heading": "Keyboard-first experience",
+        "description": "Navigate, search, and manage tickets without touching your mouse. Built for developers who value speed."
+      },
+      "cta": "Start Tracking Free",
+      "ctaHeading": "Start tracking issues the right way",
+      "ctaDescription": "Fast, flexible, and built for engineering teams."
+    },
+    "tracking": {
+      "headline": "Know what your team is actually building",
+      "description": "Real-time visibility into engineering activity. Automatic skill profiling from code. No manual status updates. No surveillance. Just clarity.",
+      "featuresHeading": "Everything you need to understand your team",
+      "featuresSubheading": "Automatic tracking that respects developer autonomy while giving leaders the visibility they need.",
+      "features": {
+        "realTimeTracking": {
+          "name": "Real-time Activity Tracking",
+          "description": "See what your team is working on as it happens. Commits, PRs, and code reviews sync automatically."
+        },
+        "developerProfiles": {
+          "name": "Developer Profiles",
+          "description": "AI-generated skill profiles from actual code contributions. Know your team's true expertise."
+        },
+        "trendAnalysis": {
+          "name": "Trend Analysis",
+          "description": "Track productivity patterns over time. Identify bottlenecks before they become problems."
+        },
+        "contributionInsights": {
+          "name": "Contribution Insights",
+          "description": "Understand how work is distributed across the team. Balance workloads effectively."
+        }
+      },
+      "notSurveillance": {
+        "heading": "Tracking, not surveillance",
+        "description": "We built Aexy because we believe visibility should empower teams, not monitor them."
+      },
+      "cta": "Start Tracking Free",
+      "ctaHeading": "Start understanding your engineering team today",
+      "ctaDescription": "Connect GitHub and see insights in minutes. Free forever for small teams."
+    },
+    "uptime": {
+      "headline": "Know when your services go down",
+      "description": "Monitor endpoints, get instant alerts, and automatically create tickets. Keep your services healthy with real-time monitoring built for engineering teams.",
+      "featuresHeading": "Everything you need for reliable monitoring",
+      "featuresSubheading": "From simple HTTP checks to complex incident management with automatic ticketing.",
+      "features": {
+        "multiProtocol": {
+          "name": "Multi-Protocol Monitoring",
+          "description": "Monitor HTTP endpoints, TCP ports, and WebSocket connections. Verify SSL certificates and track response times."
+        },
+        "autoTicketing": {
+          "name": "Auto-Ticketing",
+          "description": "Automatically create support tickets when incidents occur. Auto-close tickets when services recover."
+        },
+        "smartAlerts": {
+          "name": "Smart Alerts",
+          "description": "Get notified via Slack, email, or webhooks. Configure thresholds to avoid false positives."
+        },
+        "uptimeReports": {
+          "name": "Uptime Reports",
+          "description": "Track uptime percentages, response times, and incident history. Export reports for SLA compliance."
+        }
+      },
+      "incidentManagement": {
+        "heading": "Automatic incident management",
+        "description": "When your service goes down, we automatically create a ticket and notify your team. When it recovers, we close the ticket with a full timeline."
+      },
+      "cta": "Start Monitoring Free",
+      "ctaHeading": "Start monitoring your services today",
+      "ctaDescription": "Free for up to 10 monitors. No credit card required."
+    },
+    "for": {
+      "developers": {
+        "headline": "Tools that respect developers",
+        "description": "Finally, engineering tools that don't treat you like a resource to be monitored. Open source. Keyboard-first. Built by developers, for developers.",
+        "featuresHeading": "Why developers love Aexy",
+        "featuresSubheading": "Built with developer experience as the top priority.",
+        "features": {
+          "noSurveillance": {
+            "name": "No Surveillance",
+            "description": "We track contributions, not keystrokes. No screenshots, no productivity scores. Your work speaks for itself."
+          },
+          "transparentAlgorithms": {
+            "name": "Transparent Algorithms",
+            "description": "Open source means you can see exactly how we calculate everything. No black boxes."
+          },
+          "growSkills": {
+            "name": "Grow Your Skills",
+            "description": "Get personalized learning paths based on skill gaps. Level up with real guidance."
+          },
+          "fairReviews": {
+            "name": "Fair Reviews",
+            "description": "Performance reviews backed by your actual contributions. No more politics."
+          }
+        },
+        "highlights": {
+          "keyboardFirst": "Navigate with shortcuts. Built for developers who hate mice.",
+          "githubNative": "Deep integration with your existing workflow. Not another tool to learn.",
+          "skillProfiles": "Auto-generated from your code. Show what you actually know.",
+          "learningPaths": "Gamified skill development. Earn badges, level up."
+        },
+        "openSource": {
+          "heading": "Open source, always",
+          "description": "Every algorithm, every metric, every line of code is open for you to inspect. We believe developer tools should be transparent. Fork it, audit it, self-host it. Your data, your rules."
+        },
+        "cta": "Sign in with GitHub",
+        "ctaHeading": "Join developers who get it",
+        "ctaDescription": "Tools that respect your craft."
+      },
+      "managers": {
+        "headline": "Lead your team with clarity, not chaos",
+        "description": "Stop guessing what your team is working on. Get real-time visibility, data-driven planning, and fair performance reviews -- all without micromanaging.",
+        "featuresHeading": "Everything you need to lead effectively",
+        "features": {
+          "teamVisibility": {
+            "name": "Team Visibility",
+            "description": "See what your team is working on without micromanaging. Real-time dashboards, not status meetings."
+          },
+          "sprintPlanning": {
+            "name": "Sprint Planning",
+            "description": "Plan sprints with real capacity data. AI suggests task assignments based on skills and workload."
+          },
+          "performanceReviews": {
+            "name": "Performance Reviews",
+            "description": "Run fair reviews backed by contribution data. SMART goals that auto-link to GitHub activity."
+          },
+          "teamGrowth": {
+            "name": "Team Growth",
+            "description": "Identify skill gaps and create personalized learning paths. Track growth over time."
+          }
+        },
+        "painPoints": {
+          "heading": "Sound familiar?",
+          "problems": {
+            "noVisibility": "No visibility into what the team is actually working on",
+            "gutFeeling": "Sprint planning based on gut feeling",
+            "subjectiveReviews": "Performance reviews feel subjective",
+            "skillGaps": "Skill gaps discovered too late"
+          },
+          "solutions": {
+            "noVisibility": "Real-time activity tracking synced with GitHub",
+            "gutFeeling": "AI-powered capacity planning based on historical data",
+            "subjectiveReviews": "SMART goals linked to actual code contributions",
+            "skillGaps": "Continuous skill analysis and learning paths"
+          }
+        },
+        "cta": "Start Free",
+        "ctaHeading": "Ready to lead with clarity?",
+        "ctaDescription": "Join thousands of engineering managers using Aexy."
+      },
+      "leaders": {
+        "headline": "Run engineering with clarity at scale",
+        "description": "The Engineering OS for leaders who need visibility without micromanagement. One platform connecting planning, execution, people, and customers.",
+        "featuresHeading": "The challenges you face",
+        "featuresSubheading": "And how the Engineering OS solves them.",
+        "features": {
+          "visibilityGap": {
+            "name": "Visibility Gap",
+            "description": "You can't see what engineering is actually delivering until quarterly reviews. Roadmaps don't match reality.",
+            "solution": "Real-time dashboards showing actual progress, not reported status."
+          },
+          "hiringAtScale": {
+            "name": "Hiring at Scale",
+            "description": "Resume-based hiring doesn't work. You keep hiring based on interviews that don't predict performance.",
+            "solution": "Skills-based hiring from actual code contributions and technical assessments."
+          },
+          "retentionRisk": {
+            "name": "Retention Risk",
+            "description": "You don't know who's burning out until they leave. Exit interviews are too late.",
+            "solution": "Early warning signals from workload patterns and engagement metrics."
+          },
+          "toolSprawl": {
+            "name": "Tool Sprawl",
+            "description": "Engineering runs on 10+ disconnected tools. Data is siloed. No single source of truth.",
+            "solution": "One platform connecting code, planning, people, and customers."
+          }
+        },
+        "dashboard": {
+          "heading": "See everything that matters",
+          "subheading": "Executive dashboards built for engineering leaders."
+        },
+        "enterprise": {
+          "heading": "Enterprise-ready from day one",
+          "soc2": "SOC 2 Type II",
+          "sso": "SSO & SCIM",
+          "auditLogs": "Audit Logs",
+          "vpcDeploy": "VPC Deploy",
+          "sla": "99.9% SLA",
+          "apiAccess": "API Access"
+        },
+        "cta": "Schedule Demo",
+        "ctaHeading": "Ready to transform your engineering organization?",
+        "ctaDescription": "Let's discuss how the Engineering OS can help."
+      },
+      "peopleOps": {
+        "headline": "People ops that engineering trusts",
+        "description": "Hiring, reviews, and L&D that actually work for technical teams. Data-driven decisions that engineers respect because they're based on real contributions.",
+        "featuresHeading": "Your complete people toolkit",
+        "featuresSubheading": "Everything you need to hire, develop, and retain engineering talent.",
+        "features": {
+          "technicalHiring": {
+            "name": "Technical Hiring",
+            "description": "Hire based on actual skills, not just resumes. AI-powered assessments that mirror real work."
+          },
+          "performanceReviews": {
+            "name": "Performance Reviews",
+            "description": "Fair reviews backed by contribution data. 360° feedback with anonymous peer reviews."
+          },
+          "learningAndDevelopment": {
+            "name": "Learning & Development",
+            "description": "Personalized learning paths based on skill gaps. Track growth and career progression."
+          },
+          "peopleAnalytics": {
+            "name": "People Analytics",
+            "description": "Understand team health, engagement patterns, and predict attrition risks early."
+          }
+        },
+        "benefits": {
+          "fasterHiring": "40% faster hiring",
+          "fasterHiringDesc": "Skills-based matching reduces screening time",
+          "fairEvaluations": "Fair evaluations",
+          "fairEvaluationsDesc": "Objective data eliminates bias in reviews",
+          "visibleLDImpact": "Visible L&D impact",
+          "visibleLDImpactDesc": "Track skill growth over time",
+          "earlyWarning": "Early warning system",
+          "earlyWarningDesc": "Predict burnout before it happens"
+        },
+        "reviews": {
+          "heading": "Performance reviews that feel fair",
+          "description": "No more subjective reviews that frustrate engineers. Every evaluation is backed by actual contribution data, peer feedback, and SMART goal progress."
+        },
+        "integrations": {
+          "heading": "Works with tools you already use",
+          "description": "Integrates with your existing ATS, HRIS, and communication tools. No need to rip and replace."
+        },
+        "cta": "Start Free",
+        "ctaHeading": "Ready to transform your people ops?",
+        "ctaDescription": "Join HR teams who've earned engineering's trust."
+      }
+    }
+  }
+}
