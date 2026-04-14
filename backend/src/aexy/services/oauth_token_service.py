@@ -157,17 +157,17 @@ async def ensure_valid_google_integration_token(
     )
 
 
-async def ensure_valid_microsoft_token(
+async def _refresh_microsoft(
     db: AsyncSession,
-    connection: MicrosoftConnection,
+    connection: object,
+    expiry_attr: str,
+    scopes: list[str],
+    owner_ref: str,
+    revoke_handler=_default_revoke_handler,
 ) -> str:
-    """Return a valid Microsoft Graph access token, refreshing if needed.
-
-    Microsoft Entra ID rotates refresh tokens on every refresh grant — if
-    we fail to persist the new `refresh_token` the family is broken and the
-    next refresh fires `invalid_grant`.
-    """
-    if not _needs_refresh(connection.token_expires_at):
+    """Shared Microsoft refresh flow. `scopes` is sent with the grant so
+    the new access token carries matching permissions."""
+    if not _needs_refresh(getattr(connection, expiry_attr, None)):
         return connection.access_token
     if not connection.refresh_token:
         return connection.access_token
@@ -185,9 +185,7 @@ async def ensure_valid_microsoft_token(
                     "client_secret": settings.microsoft_client_secret,
                     "grant_type": "refresh_token",
                     "refresh_token": connection.refresh_token,
-                    # Re-request the scopes we already hold so the new access
-                    # token carries the same permissions.
-                    "scope": " ".join(connection.scopes or []),
+                    "scope": " ".join(scopes),
                 },
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
             )
@@ -196,10 +194,8 @@ async def ensure_valid_microsoft_token(
         raise TokenRefreshError(str(e)) from e
 
     if resp.status_code == 400 and "invalid_grant" in resp.text:
-        logger.warning(
-            "Microsoft refresh_token revoked for developer %s", connection.developer_id
-        )
-        connection.refresh_token = None
+        logger.warning("Microsoft refresh_token revoked for %s", owner_ref)
+        revoke_handler(connection)
         await db.flush()
         raise RefreshTokenRevokedError(
             "Microsoft refresh token is invalid or revoked"
@@ -217,8 +213,10 @@ async def ensure_valid_microsoft_token(
     connection.access_token = data["access_token"]
     expires_in = data.get("expires_in")
     if expires_in:
-        connection.token_expires_at = (
-            datetime.now(timezone.utc) + timedelta(seconds=int(expires_in))
+        setattr(
+            connection,
+            expiry_attr,
+            datetime.now(timezone.utc) + timedelta(seconds=int(expires_in)),
         )
     # Microsoft ALWAYS rotates refresh tokens — persist or the next refresh
     # fails with invalid_grant.
@@ -226,3 +224,62 @@ async def ensure_valid_microsoft_token(
         connection.refresh_token = data["refresh_token"]
     await db.flush()
     return connection.access_token
+
+
+async def ensure_valid_microsoft_token(
+    db: AsyncSession,
+    connection: MicrosoftConnection,
+) -> str:
+    """Return a valid Microsoft Graph access token for a developer's
+    MicrosoftConnection, refreshing if needed."""
+    return await _refresh_microsoft(
+        db,
+        connection,
+        expiry_attr="token_expires_at",
+        scopes=connection.scopes or [],
+        owner_ref=f"developer={connection.developer_id}",
+    )
+
+
+# --------------------- Booking CalendarConnection ---------------------
+
+# Scopes to re-request when refreshing a Microsoft booking calendar. Kept
+# narrow on purpose — booking only needs Calendar read/write.
+_MS_CALENDAR_REFRESH_SCOPES = [
+    "https://graph.microsoft.com/Calendars.ReadWrite",
+    "offline_access",
+]
+
+
+async def ensure_valid_calendar_connection_token(
+    db: AsyncSession,
+    connection: object,  # booking.CalendarConnection
+) -> str:
+    """Return a valid access token for a booking CalendarConnection.
+
+    Dispatches to the Google or Microsoft refresh primitive based on the
+    connection's `provider` column. Refresh-token rotation, invalid_grant
+    handling, and revoke signalling are shared with the developer- and
+    workspace-level helpers.
+    """
+    provider = (getattr(connection, "provider", "") or "").lower()
+    owner_ref = f"calendar-connection={getattr(connection, 'id', '?')}"
+
+    if provider == "google":
+        return await _refresh_google(
+            db,
+            connection,
+            expiry_attr="token_expires_at",
+            owner_ref=owner_ref,
+        )
+    if provider == "microsoft":
+        return await _refresh_microsoft(
+            db,
+            connection,
+            expiry_attr="token_expires_at",
+            scopes=_MS_CALENDAR_REFRESH_SCOPES,
+            owner_ref=owner_ref,
+        )
+    raise TokenRefreshError(
+        f"Unsupported calendar connection provider: {provider!r}"
+    )

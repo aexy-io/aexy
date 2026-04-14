@@ -10,12 +10,17 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
+from aexy.models.booking.calendar_connection import (
+    CalendarConnection,
+    CalendarProvider,
+)
 from aexy.models.developer import Developer, GoogleConnection, MicrosoftConnection
 from aexy.models.google_integration import GoogleIntegration
 from aexy.models.workspace import Workspace
 from aexy.services.oauth_token_service import (
     RefreshTokenRevokedError,
     TokenRefreshError,
+    ensure_valid_calendar_connection_token,
     ensure_valid_google_integration_token,
     ensure_valid_google_token,
     ensure_valid_microsoft_token,
@@ -92,6 +97,56 @@ async def google_integration(db_session):
     await db_session.commit()
     await db_session.refresh(integ)
     return integ
+
+
+@pytest_asyncio.fixture
+async def calendar_conn_google(db_session):
+    """Booking CalendarConnection for a Google calendar, token expired."""
+    user = Developer(email=f"{_uniq('cal-g')}@example.com", name="Cal Google")
+    db_session.add(user)
+    await db_session.flush()
+    ws = Workspace(name=_uniq("ws"), slug=_uniq("ws-slug"), owner_id=user.id)
+    db_session.add(ws)
+    await db_session.flush()
+    conn = CalendarConnection(
+        user_id=user.id,
+        workspace_id=ws.id,
+        provider=CalendarProvider.GOOGLE.value,
+        calendar_id="primary",
+        calendar_name="Primary",
+        access_token="old-cal-access",
+        refresh_token="old-cal-refresh",
+        token_expires_at=datetime.now(timezone.utc) - timedelta(minutes=1),
+    )
+    db_session.add(conn)
+    await db_session.commit()
+    await db_session.refresh(conn)
+    return conn
+
+
+@pytest_asyncio.fixture
+async def calendar_conn_microsoft(db_session):
+    """Booking CalendarConnection for a Microsoft calendar, token expired."""
+    user = Developer(email=f"{_uniq('cal-ms')}@example.com", name="Cal MS")
+    db_session.add(user)
+    await db_session.flush()
+    ws = Workspace(name=_uniq("ws"), slug=_uniq("ws-slug"), owner_id=user.id)
+    db_session.add(ws)
+    await db_session.flush()
+    conn = CalendarConnection(
+        user_id=user.id,
+        workspace_id=ws.id,
+        provider=CalendarProvider.MICROSOFT.value,
+        calendar_id="primary",
+        calendar_name="Primary",
+        access_token="old-cal-access",
+        refresh_token="old-cal-refresh",
+        token_expires_at=datetime.now(timezone.utc) - timedelta(minutes=1),
+    )
+    db_session.add(conn)
+    await db_session.commit()
+    await db_session.refresh(conn)
+    return conn
 
 
 @pytest_asyncio.fixture
@@ -351,3 +406,85 @@ class TestEnsureValidMicrosoftToken:
         token = await ensure_valid_microsoft_token(db_session, microsoft_conn)
         assert token == "old-ms-access"
         spy.assert_not_called()
+
+
+# ============================================================
+# Booking CalendarConnection (provider dispatch)
+# ============================================================
+
+
+class TestEnsureValidCalendarConnectionToken:
+    @pytest.mark.asyncio
+    async def test_google_branch_refreshes_and_rotates(
+        self, db_session, calendar_conn_google, mocker
+    ):
+        _mock_httpx(mocker, _fake_token_response(200, {
+            "access_token": "fresh-cal-access",
+            "expires_in": 3600,
+            "refresh_token": "rotated-cal-refresh",
+        }))
+
+        token = await ensure_valid_calendar_connection_token(
+            db_session, calendar_conn_google
+        )
+        assert token == "fresh-cal-access"
+        assert calendar_conn_google.access_token == "fresh-cal-access"
+        assert calendar_conn_google.refresh_token == "rotated-cal-refresh"
+
+    @pytest.mark.asyncio
+    async def test_microsoft_branch_sends_calendar_scopes(
+        self, db_session, calendar_conn_microsoft, mocker
+    ):
+        captured: dict = {}
+
+        async def _post(url, data=None, headers=None):
+            captured["url"] = url
+            captured["data"] = data
+            return _fake_token_response(200, {
+                "access_token": "fresh-cal-access",
+                "expires_in": 3600,
+                "refresh_token": "rotated-cal-refresh",
+            })
+
+        fake_client = MagicMock()
+        fake_client.post = AsyncMock(side_effect=_post)
+        fake_client.__aenter__ = AsyncMock(return_value=fake_client)
+        fake_client.__aexit__ = AsyncMock(return_value=None)
+        mocker.patch(
+            "aexy.services.oauth_token_service.httpx.AsyncClient",
+            return_value=fake_client,
+        )
+
+        await ensure_valid_calendar_connection_token(db_session, calendar_conn_microsoft)
+
+        assert "login.microsoftonline.com" in captured["url"]
+        # Booking only needs Calendar RW — helper re-requests only those scopes
+        assert "Calendars.ReadWrite" in captured["data"]["scope"]
+        assert "offline_access" in captured["data"]["scope"]
+        # Microsoft rotation persisted
+        assert calendar_conn_microsoft.refresh_token == "rotated-cal-refresh"
+
+    @pytest.mark.asyncio
+    async def test_invalid_grant_clears_refresh_token_on_google_branch(
+        self, db_session, calendar_conn_google, mocker
+    ):
+        _mock_httpx(mocker, _fake_token_response(
+            400, '{"error":"invalid_grant"}'
+        ))
+        with pytest.raises(RefreshTokenRevokedError):
+            await ensure_valid_calendar_connection_token(
+                db_session, calendar_conn_google
+            )
+        await db_session.refresh(calendar_conn_google)
+        assert calendar_conn_google.refresh_token is None
+
+    @pytest.mark.asyncio
+    async def test_unknown_provider_raises(
+        self, db_session, calendar_conn_google, mocker
+    ):
+        calendar_conn_google.provider = "wobble"
+        await db_session.flush()
+        with pytest.raises(TokenRefreshError):
+            await ensure_valid_calendar_connection_token(
+                db_session, calendar_conn_google
+            )

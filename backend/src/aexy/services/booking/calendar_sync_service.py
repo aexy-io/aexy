@@ -20,11 +20,11 @@ logger = logging.getLogger(__name__)
 
 # Google Calendar API endpoints
 GOOGLE_CALENDAR_API = "https://www.googleapis.com/calendar/v3"
-GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 
 # Microsoft Graph API endpoints
 MICROSOFT_GRAPH_API = "https://graph.microsoft.com/v1.0"
-MICROSOFT_TOKEN_URL = "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token"
+
+# Token-refresh URLs live in aexy.services.oauth_token_service now.
 
 
 class CalendarSyncServiceError(Exception):
@@ -997,104 +997,35 @@ class CalendarSyncService:
         self,
         connection: CalendarConnection,
     ) -> CalendarConnection:
-        """Refresh OAuth token if expired or about to expire (internal)."""
-        if not connection.token_expires_at:
-            return connection
+        """Refresh OAuth token if expired or about to expire.
 
-        # Check if token expires within 5 minutes
-        now = datetime.now(ZoneInfo("UTC"))
-        expires_soon = connection.token_expires_at <= now + timedelta(minutes=5)
-
-        if not expires_soon:
-            return connection
-
-        if not connection.refresh_token:
-            logger.warning(f"No refresh token for connection {connection.id}")
-            return connection
-
-        settings = get_settings()
+        Delegates to the shared oauth_token_service so refresh-token
+        rotation and invalid_grant handling are centralised across all
+        OAuth-token-holding rows (developer connections, workspace
+        integrations, and booking calendar connections).
+        """
+        from aexy.services.oauth_token_service import (
+            RefreshTokenRevokedError,
+            TokenRefreshError,
+            ensure_valid_calendar_connection_token,
+        )
 
         try:
-            if connection.provider == CalendarProvider.GOOGLE.value:
-                await self._refresh_google_token(connection, settings)
-            elif connection.provider == CalendarProvider.MICROSOFT.value:
-                await self._refresh_microsoft_token(connection, settings)
-
+            await ensure_valid_calendar_connection_token(self.db, connection)
+        except RefreshTokenRevokedError as e:
+            # Mark the connection as out-of-sync so the UI can prompt to
+            # reconnect. refresh_token is nullable on this model, so the
+            # default revoke handler has already cleared it.
+            connection.sync_enabled = False
             await self.db.flush()
-            await self.db.refresh(connection)
-        except Exception as e:
-            logger.error(f"Failed to refresh token for connection {connection.id}: {e}")
-            raise CalendarTokenRefreshError(f"Token refresh failed: {e}")
+            raise CalendarTokenRefreshError(
+                "Refresh token revoked — reconnect the calendar"
+            ) from e
+        except TokenRefreshError as e:
+            raise CalendarTokenRefreshError(f"Token refresh failed: {e}") from e
 
+        await self.db.refresh(connection)
         return connection
-
-    async def _refresh_google_token(
-        self,
-        connection: CalendarConnection,
-        settings,
-    ) -> None:
-        """Refresh Google OAuth token."""
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                GOOGLE_TOKEN_URL,
-                data={
-                    "client_id": settings.google_client_id,
-                    "client_secret": settings.google_client_secret,
-                    "refresh_token": connection.refresh_token,
-                    "grant_type": "refresh_token",
-                },
-                timeout=30.0,
-            )
-
-            if response.status_code != 200:
-                logger.error(f"Google token refresh failed: {response.text}")
-                raise CalendarTokenRefreshError("Google token refresh failed")
-
-            token_data = response.json()
-
-        connection.access_token = token_data["access_token"]
-        connection.token_expires_at = datetime.now(ZoneInfo("UTC")) + timedelta(
-            seconds=token_data.get("expires_in", 3600)
-        )
-        # Google may return a new refresh token
-        if "refresh_token" in token_data:
-            connection.refresh_token = token_data["refresh_token"]
-
-    async def _refresh_microsoft_token(
-        self,
-        connection: CalendarConnection,
-        settings,
-    ) -> None:
-        """Refresh Microsoft OAuth token."""
-        tenant = settings.microsoft_tenant_id or "common"
-        token_url = MICROSOFT_TOKEN_URL.format(tenant=tenant)
-
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                token_url,
-                data={
-                    "client_id": settings.microsoft_client_id,
-                    "client_secret": settings.microsoft_client_secret,
-                    "refresh_token": connection.refresh_token,
-                    "grant_type": "refresh_token",
-                    "scope": "https://graph.microsoft.com/Calendars.ReadWrite offline_access",
-                },
-                timeout=30.0,
-            )
-
-            if response.status_code != 200:
-                logger.error(f"Microsoft token refresh failed: {response.text}")
-                raise CalendarTokenRefreshError("Microsoft token refresh failed")
-
-            token_data = response.json()
-
-        connection.access_token = token_data["access_token"]
-        connection.token_expires_at = datetime.now(ZoneInfo("UTC")) + timedelta(
-            seconds=token_data.get("expires_in", 3600)
-        )
-        # Microsoft always returns a new refresh token
-        if "refresh_token" in token_data:
-            connection.refresh_token = token_data["refresh_token"]
 
     async def get_connections_needing_sync(
         self,
