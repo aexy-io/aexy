@@ -10,7 +10,7 @@ export default function ProjectLayout({
   params,
 }: {
   children: React.ReactNode;
-  params: { projectId: string };
+  params: Promise<{ projectId: string }>;
 }) {
   return <ProjectLayoutClient params={params}>{children}</ProjectLayoutClient>;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { use, useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -1002,9 +1002,9 @@ function TaskDetailModal({ task, sprintId, onClose, onUpdate, onDelete, isUpdati
 export default function SprintBoardPage({
   params,
 }: {
-  params: { projectId: string; sprintId: string };
+  params: Promise<{ projectId: string; sprintId: string }>;
 }) {
-  const { projectId, sprintId } = params;
+  const { projectId, sprintId } = use(params);
 
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { currentWorkspaceId, currentWorkspaceLoading } = useWorkspace();

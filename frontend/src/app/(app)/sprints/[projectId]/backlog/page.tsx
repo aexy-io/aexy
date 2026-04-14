@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { use, useState, useMemo, useCallback, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
@@ -481,9 +481,9 @@ function AddBacklogItemModal({ onClose, onAdd, isAdding, sprints, epics }: AddBa
 export default function BacklogPage({
   params,
 }: {
-  params: { projectId: string };
+  params: Promise<{ projectId: string }>;
 }) {
-  const { projectId } = params;
+  const { projectId } = use(params);
 
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { currentWorkspaceId, currentWorkspaceLoading } = useWorkspace();
