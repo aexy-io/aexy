@@ -35,6 +35,7 @@ import { redirect } from "next/navigation";
 import { Project, SprintListItem, SprintTask, projectTasksApi } from "@/lib/api";
 import { EpicsTab } from "./components/EpicsTab";
 import { ModuleAutomationsPanel } from "@/components/ModuleAutomationsPanel";
+import { CreateProjectModal, type CreateProjectInput } from "@/components/projects/CreateProjectModal";
 import { cn } from "@/lib/utils";
 
 function ProjectCard({
@@ -282,11 +283,13 @@ function SprintsContent({
   projectsLoading,
   workspaceId,
   hasWorkspaces,
+  onCreateProject,
 }: {
   projects: Project[];
   projectsLoading: boolean;
   workspaceId: string | null;
   hasWorkspaces: boolean;
+  onCreateProject: () => void;
 }) {
   if (!hasWorkspaces) {
     return (
@@ -342,13 +345,14 @@ function SprintsContent({
         <p className="text-muted-foreground mb-6 max-w-md mx-auto">
           Create projects in your workspace to start planning sprints.
         </p>
-        <Link
-          href="/settings/projects"
+        <button
+          type="button"
+          onClick={onCreateProject}
           className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-600 to-blue-600 hover:from-primary-500 hover:to-blue-500 text-white rounded-xl transition font-medium shadow-lg shadow-primary-500/20"
         >
           <Plus className="h-4 w-4" />
           Create Project
-        </Link>
+        </button>
       </motion.div>
     );
   }
@@ -379,8 +383,15 @@ function SprintsPageContent() {
   const router = useRouter();
 
   const activeTab = searchParams.get("tab") || "sprints";
-  const { projects, isLoading: projectsLoading } =
+  const { projects, isLoading: projectsLoading, createProject, isCreating } =
     useProjects(currentWorkspaceId);
+  const [showCreateProject, setShowCreateProject] = useState(false);
+
+  const handleCreateProject = async (data: CreateProjectInput) => {
+    const project = await createProject(data);
+    // Navigate directly to the new project's sprint board
+    router.push(`/sprints/${project.id}/board`);
+  };
 
   const setActiveTab = (tab: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -448,6 +459,14 @@ function SprintsPageContent() {
           <div className="flex items-center gap-3">
             {hasWorkspaces && activeTab === "sprints" && (
               <>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateProject(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-600 to-blue-600 hover:from-primary-500 hover:to-blue-500 text-white rounded-xl transition text-sm font-medium shadow-lg shadow-primary-500/20"
+                >
+                  <Plus className="h-4 w-4" />
+                  New Project
+                </button>
                 <Link
                   href="/reviews"
                   className="flex items-center gap-2 px-4 py-2 bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 border border-teal-500/20 rounded-xl transition text-sm"
@@ -519,6 +538,7 @@ function SprintsPageContent() {
             projectsLoading={projectsLoading}
             workspaceId={currentWorkspaceId}
             hasWorkspaces={hasWorkspaces}
+            onCreateProject={() => setShowCreateProject(true)}
           />
         ) : activeTab === "automations" ? (
           <ModuleAutomationsPanel module="sprints" moduleLabel="Sprints" />
@@ -529,6 +549,14 @@ function SprintsPageContent() {
           />
         )}
       </main>
+
+      {showCreateProject && (
+        <CreateProjectModal
+          onClose={() => setShowCreateProject(false)}
+          onCreate={handleCreateProject}
+          isCreating={isCreating}
+        />
+      )}
     </div>
   );
 }
