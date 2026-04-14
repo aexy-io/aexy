@@ -572,6 +572,10 @@ class Settings(BaseSettings):
         default="http://localhost:8000/api/v1/integrations/microsoft/callback",
         description="Microsoft OAuth redirect URI for calendar integration",
     )
+    microsoft_auth_redirect_uri: str = Field(
+        default="http://localhost:8000/api/v1/auth/microsoft/callback",
+        description="Microsoft OAuth redirect URI for sign-in/sign-up",
+    )
 
     # Slack Integration
     slack_client_id: str = Field(

@@ -64,6 +64,28 @@ GOOGLE_CRM_SCOPES = [
     "https://www.googleapis.com/auth/calendar.events",
 ]
 
+# Microsoft (Entra ID / Azure AD) OAuth configuration
+_ms_tenant = settings.microsoft_tenant_id or "common"
+MICROSOFT_AUTH_URL = f"https://login.microsoftonline.com/{_ms_tenant}/oauth2/v2.0/authorize"
+MICROSOFT_TOKEN_URL = f"https://login.microsoftonline.com/{_ms_tenant}/oauth2/v2.0/token"
+MICROSOFT_GRAPH_ME_URL = "https://graph.microsoft.com/v1.0/me"
+
+# Microsoft OAuth scopes for authentication (basic profile + email)
+MICROSOFT_AUTH_SCOPES = [
+    "openid",
+    "profile",
+    "email",
+    "User.Read",
+    "offline_access",
+]
+
+# Microsoft OAuth scopes for CRM (Mail + Calendar via Graph)
+MICROSOFT_CRM_SCOPES = MICROSOFT_AUTH_SCOPES + [
+    "Mail.Read",
+    "Mail.Send",
+    "Calendars.ReadWrite",
+]
+
 # Redis key prefix for OAuth states
 OAUTH_STATE_PREFIX = "oauth_state:"
 
@@ -417,4 +439,163 @@ async def google_callback(
         return RedirectResponse(url=f"{frontend_url}/?error=request_failed")
     except Exception as e:
         logger.error(f"Google OAuth callback failed: {e}", exc_info=True)
+        return RedirectResponse(url=f"{frontend_url}/?error=auth_failed")
+
+
+# ============================ Microsoft OAuth ============================
+
+
+def _microsoft_authorize_redirect(scope_type: str, redirect_url: str | None) -> RedirectResponse:
+    """Build the Microsoft authorize URL and return a RedirectResponse."""
+    if not settings.microsoft_client_id:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Microsoft OAuth is not configured",
+        )
+
+    state = secrets.token_urlsafe(32)
+    redis_client = get_redis_client()
+    state_data = {
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "scope_type": scope_type,  # "login" or "crm"
+        "provider": "microsoft",
+        "redirect_url": redirect_url,
+    }
+    redis_client.setex(f"{OAUTH_STATE_PREFIX}{state}", OAUTH_STATE_TTL, json.dumps(state_data))
+
+    scopes = MICROSOFT_CRM_SCOPES if scope_type == "crm" else MICROSOFT_AUTH_SCOPES
+    params = {
+        "client_id": settings.microsoft_client_id,
+        "redirect_uri": settings.microsoft_auth_redirect_uri,
+        "response_type": "code",
+        "scope": " ".join(scopes),
+        "state": state,
+        # select_account for normal logins, consent for CRM upgrades
+        "prompt": "consent" if scope_type == "crm" else "select_account",
+        "response_mode": "query",
+    }
+    return RedirectResponse(url=f"{MICROSOFT_AUTH_URL}?{urlencode(params)}")
+
+
+@router.get("/microsoft/login")
+async def microsoft_login(redirect_url: str | None = None) -> RedirectResponse:
+    """Initiate Microsoft OAuth flow for authentication."""
+    return _microsoft_authorize_redirect("login", redirect_url)
+
+
+@router.get("/microsoft/connect-crm")
+async def microsoft_connect_crm(redirect_url: str | None = None) -> RedirectResponse:
+    """Initiate Microsoft OAuth flow with Mail + Calendar scopes."""
+    return _microsoft_authorize_redirect("crm", redirect_url)
+
+
+@router.get("/microsoft/callback")
+async def microsoft_callback(
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+    error_description: str | None = None,
+    db: AsyncSession = Depends(get_db),
+) -> RedirectResponse:
+    """Handle Microsoft OAuth callback."""
+    frontend_url = settings.frontend_url or "http://localhost:3000"
+
+    if error:
+        logger.warning(f"Microsoft OAuth returned error: {error} — {error_description}")
+        return RedirectResponse(url=f"{frontend_url}/?error={error}")
+
+    if not code:
+        return RedirectResponse(url=f"{frontend_url}/?error=missing_code")
+
+    # Verify state
+    redis_client = get_redis_client()
+    state_key = f"{OAUTH_STATE_PREFIX}{state}" if state else None
+    state_data_raw = redis_client.get(state_key) if state_key else None
+    if not state or not state_data_raw:
+        return RedirectResponse(url=f"{frontend_url}/?error=invalid_state")
+    redis_client.delete(state_key)
+
+    state_meta = json.loads(state_data_raw)
+    scope_type = state_meta.get("scope_type", "login")
+    custom_redirect_url = state_meta.get("redirect_url")
+    scopes_to_store = MICROSOFT_CRM_SCOPES if scope_type == "crm" else MICROSOFT_AUTH_SCOPES
+
+    try:
+        async with httpx.AsyncClient() as client:
+            token_response = await client.post(
+                MICROSOFT_TOKEN_URL,
+                data={
+                    "client_id": settings.microsoft_client_id,
+                    "client_secret": settings.microsoft_client_secret,
+                    "code": code,
+                    "grant_type": "authorization_code",
+                    "redirect_uri": settings.microsoft_auth_redirect_uri,
+                    # Microsoft requires scope on the token exchange for v2.0
+                    "scope": " ".join(scopes_to_store),
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+
+            if token_response.status_code != 200:
+                logger.error(
+                    f"Microsoft token exchange failed: {token_response.status_code} — {token_response.text}"
+                )
+                return RedirectResponse(url=f"{frontend_url}/?error=token_exchange_failed")
+
+            token_data = token_response.json()
+            access_token = token_data.get("access_token")
+            refresh_token = token_data.get("refresh_token")
+            expires_in = token_data.get("expires_in", 3600)
+
+            if not access_token:
+                return RedirectResponse(url=f"{frontend_url}/?error=no_access_token")
+
+            token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+
+            # Fetch profile from Microsoft Graph
+            userinfo_response = await client.get(
+                MICROSOFT_GRAPH_ME_URL,
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            if userinfo_response.status_code != 200:
+                logger.error(
+                    f"Microsoft Graph /me failed: {userinfo_response.status_code} — {userinfo_response.text}"
+                )
+                return RedirectResponse(url=f"{frontend_url}/?error=userinfo_failed")
+
+            userinfo = userinfo_response.json()
+            microsoft_id = userinfo.get("id")
+            # Graph returns `mail` for Entra accounts, falls back to userPrincipalName
+            # for personal accounts (and some work accounts without a licensed mailbox).
+            email = userinfo.get("mail") or userinfo.get("userPrincipalName")
+            name = userinfo.get("displayName")
+
+            if not microsoft_id or not email:
+                return RedirectResponse(url=f"{frontend_url}/?error=missing_user_info")
+
+            dev_service = DeveloperService(db)
+            developer = await dev_service.get_or_create_by_microsoft(
+                microsoft_id=microsoft_id,
+                microsoft_email=email,
+                access_token=access_token,
+                refresh_token=refresh_token,
+                token_expires_at=token_expires_at,
+                microsoft_name=name,
+                scopes=scopes_to_store,
+            )
+
+            await db.commit()
+
+            jwt_token = create_access_token(developer.id)
+
+            if custom_redirect_url:
+                separator = "&" if "?" in custom_redirect_url else "?"
+                return RedirectResponse(url=f"{custom_redirect_url}{separator}token={jwt_token}")
+            return RedirectResponse(url=f"{frontend_url}/auth/callback?token={jwt_token}")
+
+    except httpx.RequestError as e:
+        logger.error(f"Microsoft OAuth request error: {e}", exc_info=True)
+        return RedirectResponse(url=f"{frontend_url}/?error=request_failed")
+    except Exception as e:
+        logger.error(f"Microsoft OAuth callback failed: {e}", exc_info=True)
         return RedirectResponse(url=f"{frontend_url}/?error=auth_failed")

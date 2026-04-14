@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from aexy.models.developer import Developer, GitHubConnection, GoogleConnection
+from aexy.models.developer import Developer, GitHubConnection, GoogleConnection, MicrosoftConnection
 from aexy.schemas.developer import DeveloperCreate, DeveloperUpdate
 
 
@@ -83,6 +83,7 @@ class DeveloperService:
             .options(
                 selectinload(Developer.github_connection),
                 selectinload(Developer.google_connection),
+                selectinload(Developer.microsoft_connection),
             )
         )
         result = await self.db.execute(stmt)
@@ -101,6 +102,7 @@ class DeveloperService:
             .options(
                 selectinload(Developer.github_connection),
                 selectinload(Developer.google_connection),
+                selectinload(Developer.microsoft_connection),
             )
         )
         result = await self.db.execute(stmt)
@@ -115,6 +117,7 @@ class DeveloperService:
             .options(
                 selectinload(Developer.github_connection),
                 selectinload(Developer.google_connection),
+                selectinload(Developer.microsoft_connection),
             )
         )
         result = await self.db.execute(stmt)
@@ -129,6 +132,7 @@ class DeveloperService:
             .options(
                 selectinload(Developer.github_connection),
                 selectinload(Developer.google_connection),
+                selectinload(Developer.microsoft_connection),
             )
         )
         result = await self.db.execute(stmt)
@@ -143,6 +147,22 @@ class DeveloperService:
             .options(
                 selectinload(Developer.github_connection),
                 selectinload(Developer.google_connection),
+                selectinload(Developer.microsoft_connection),
+            )
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_by_microsoft_id(self, microsoft_id: str) -> Developer | None:
+        """Get developer by Microsoft (Entra ID) object ID."""
+        stmt = (
+            select(Developer)
+            .join(MicrosoftConnection)
+            .where(MicrosoftConnection.microsoft_id == microsoft_id)
+            .options(
+                selectinload(Developer.github_connection),
+                selectinload(Developer.google_connection),
+                selectinload(Developer.microsoft_connection),
             )
         )
         result = await self.db.execute(stmt)
@@ -304,6 +324,7 @@ class DeveloperService:
             .options(
                 selectinload(Developer.github_connection),
                 selectinload(Developer.google_connection),
+                selectinload(Developer.microsoft_connection),
             )
             .offset(skip)
             .limit(limit)
@@ -477,4 +498,150 @@ class DeveloperService:
 
         await self.db.refresh(developer, ["google_connection"])
         await self._dispatch_signup_handler(developer, "google")
+        return developer
+
+    # -------------------------- Microsoft OAuth --------------------------
+
+    async def connect_microsoft(
+        self,
+        developer_id: str,
+        microsoft_id: str,
+        microsoft_email: str,
+        access_token: str,
+        refresh_token: str | None = None,
+        token_expires_at: datetime | None = None,
+        microsoft_name: str | None = None,
+        microsoft_avatar_url: str | None = None,
+        scopes: list[str] | None = None,
+    ) -> MicrosoftConnection:
+        """Connect a Microsoft account to a developer."""
+        developer = await self.get_by_id(developer_id)
+
+        existing = await self.get_by_microsoft_id(microsoft_id)
+        if existing and existing.id != developer_id:
+            raise DeveloperServiceError(
+                f"Microsoft account {microsoft_email} is already connected to another developer"
+            )
+
+        # Scopes we want to preserve across logins (mirror Google's pattern)
+        crm_scopes = {"Mail.Read", "Calendars.ReadWrite"}
+
+        if developer.microsoft_connection:
+            existing_scopes = set(developer.microsoft_connection.scopes or [])
+            new_scopes = set(scopes or [])
+
+            existing_has_crm = bool(existing_scopes & crm_scopes)
+            new_has_crm = bool(new_scopes & crm_scopes)
+
+            if new_has_crm or not existing_has_crm:
+                developer.microsoft_connection.access_token = access_token
+                if refresh_token:
+                    developer.microsoft_connection.refresh_token = refresh_token
+                if token_expires_at:
+                    developer.microsoft_connection.token_expires_at = token_expires_at
+
+            if scopes:
+                developer.microsoft_connection.scopes = list(existing_scopes | new_scopes)
+
+            await self.db.flush()
+            await self.db.refresh(developer.microsoft_connection)
+            return developer.microsoft_connection
+
+        connection = MicrosoftConnection(
+            developer_id=developer.id,
+            microsoft_id=microsoft_id,
+            microsoft_email=microsoft_email,
+            microsoft_name=microsoft_name,
+            microsoft_avatar_url=microsoft_avatar_url,
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_expires_at=token_expires_at,
+            scopes=scopes,
+        )
+        self.db.add(connection)
+        await self.db.flush()
+
+        if not developer.avatar_url and microsoft_avatar_url:
+            developer.avatar_url = microsoft_avatar_url
+            await self.db.flush()
+
+        await self.db.refresh(connection)
+        return connection
+
+    async def get_or_create_by_microsoft(
+        self,
+        microsoft_id: str,
+        microsoft_email: str,
+        access_token: str,
+        refresh_token: str | None = None,
+        token_expires_at: datetime | None = None,
+        microsoft_name: str | None = None,
+        microsoft_avatar_url: str | None = None,
+        scopes: list[str] | None = None,
+    ) -> Developer:
+        """Get or create developer from Microsoft OAuth."""
+        crm_scopes = {"Mail.Read", "Calendars.ReadWrite"}
+
+        developer = await self.get_by_microsoft_id(microsoft_id)
+        if developer:
+            if developer.microsoft_connection:
+                existing_scopes = set(developer.microsoft_connection.scopes or [])
+                new_scopes = set(scopes or [])
+
+                existing_has_crm = bool(existing_scopes & crm_scopes)
+                new_has_crm = bool(new_scopes & crm_scopes)
+
+                if new_has_crm or not existing_has_crm:
+                    developer.microsoft_connection.access_token = access_token
+                    if refresh_token:
+                        developer.microsoft_connection.refresh_token = refresh_token
+                    if token_expires_at:
+                        developer.microsoft_connection.token_expires_at = token_expires_at
+
+                if scopes:
+                    developer.microsoft_connection.scopes = list(existing_scopes | new_scopes)
+
+                await self.db.flush()
+            return developer
+
+        # Link Microsoft to an existing developer with matching email
+        developer = await self.get_by_email(microsoft_email)
+        if developer:
+            await self.connect_microsoft(
+                developer_id=developer.id,
+                microsoft_id=microsoft_id,
+                microsoft_email=microsoft_email,
+                access_token=access_token,
+                refresh_token=refresh_token,
+                token_expires_at=token_expires_at,
+                microsoft_name=microsoft_name,
+                microsoft_avatar_url=microsoft_avatar_url,
+                scopes=scopes,
+            )
+            await self.db.refresh(developer, ["microsoft_connection"])
+            return developer
+
+        # New developer
+        developer = Developer(
+            email=microsoft_email,
+            name=microsoft_name,
+            avatar_url=microsoft_avatar_url,
+        )
+        self.db.add(developer)
+        await self.db.flush()
+
+        await self.connect_microsoft(
+            developer_id=developer.id,
+            microsoft_id=microsoft_id,
+            microsoft_email=microsoft_email,
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_expires_at=token_expires_at,
+            microsoft_name=microsoft_name,
+            microsoft_avatar_url=microsoft_avatar_url,
+            scopes=scopes,
+        )
+
+        await self.db.refresh(developer, ["microsoft_connection"])
+        await self._dispatch_signup_handler(developer, "microsoft")
         return developer

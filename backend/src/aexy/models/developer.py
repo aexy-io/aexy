@@ -118,6 +118,12 @@ class Developer(Base):
         back_populates="developer",
         uselist=False,
     )
+    microsoft_connection: Mapped["MicrosoftConnection | None"] = relationship(
+        "MicrosoftConnection",
+        back_populates="developer",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
     commits: Mapped[list["Commit"]] = relationship(
         "Commit",
         back_populates="developer",
@@ -356,4 +362,53 @@ class GoogleConnection(Base):
     developer: Mapped["Developer"] = relationship(
         "Developer",
         back_populates="google_connection",
+    )
+
+
+class MicrosoftConnection(Base):
+    """Microsoft (Entra ID / Azure AD) OAuth connection for a developer."""
+
+    __tablename__ = "microsoft_connections"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    developer_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="CASCADE"),
+        unique=True,
+    )
+
+    # Microsoft user info (from Graph /me)
+    microsoft_id: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    microsoft_email: Mapped[str] = mapped_column(String(255), index=True)
+    microsoft_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    microsoft_avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    # OAuth tokens
+    access_token: Mapped[str] = mapped_column(Text)
+    refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    token_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    # Scopes granted (e.g. User.Read, Mail.Read, Calendars.ReadWrite)
+    scopes: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    developer: Mapped["Developer"] = relationship(
+        "Developer",
+        back_populates="microsoft_connection",
     )
