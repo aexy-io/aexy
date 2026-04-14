@@ -5,6 +5,126 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.2] - 2026-04-14
+
+### Added
+
+#### Microsoft (Entra ID) login — parallel to Google sign-in
+Added direct Microsoft 365 / Entra ID sign-in alongside the existing
+Google flow. Tenant defaults to `common` so both personal (`@outlook.com`,
+`@hotmail.com`) and work/school accounts can sign in.
+
+- Three endpoints: `GET /api/v1/auth/microsoft/login` (basic profile + email),
+  `/auth/microsoft/connect-crm` (adds Mail + Calendar via Graph), and
+  `/auth/microsoft/callback`. Two-scope split mirrors Google.
+- New `MicrosoftConnection` SQLAlchemy model and migration
+  (`migrate_2026_04_14_microsoft_connections.sql`), parallel to
+  `GoogleConnection`.
+- `DeveloperService.get_or_create_by_microsoft` with scope-merge rule:
+  a subsequent basic login never clobbers tokens that already hold
+  `Mail.Read` / `Calendars.ReadWrite`.
+- Graph `/me` user info uses `mail` with `userPrincipalName` fallback
+  (personal accounts return `mail: null`).
+- Profile fields (email / display name / avatar) resync every time the
+  user signs in, so Azure AD changes propagate.
+- Frontend: "Continue with Microsoft" button + MS lockup icon in the
+  two CTA blocks on the landing page.
+- 16 integration tests covering service scope-merge, redirect URL shape,
+  state validation, happy-path callback with mocked Graph responses,
+  and the personal-account `userPrincipalName` fallback.
+
+#### Refresh-token rotation for Google + Microsoft OAuth
+New `aexy.services.oauth_token_service` centralises refresh-token
+behaviour for every OAuth-holding row type (developer connections,
+workspace Google integrations, booking calendar connections). Three
+ad-hoc copies of the refresh flow (`gmail_sync_service`,
+`calendar_sync_service`, `booking/calendar_sync_service`, and
+`api/chat.py`) have been retired — they each had the same two bugs:
+rotated refresh tokens were silently dropped, and every non-200
+response was treated as "please reconnect" without distinguishing
+`invalid_grant` from a transient 5xx.
+
+- `ensure_valid_google_token(db, GoogleConnection)`,
+  `ensure_valid_microsoft_token(db, MicrosoftConnection)`,
+  `ensure_valid_google_integration_token(db, GoogleIntegration)`, and
+  `ensure_valid_calendar_connection_token(db, CalendarConnection)` all
+  share two primitives (`_refresh_google`, `_refresh_microsoft`).
+- Revocation signalling per model:
+  - Nullable `refresh_token` columns are cleared (raises
+    `RefreshTokenRevokedError`).
+  - `GoogleIntegration.refresh_token` is NOT NULL, so it's marked
+    `is_active=False` + `last_error="refresh_token_revoked"`.
+  - Booking `CalendarConnection` additionally flips `sync_enabled=False`.
+- Microsoft refresh re-requests stored scopes for developer connections
+  and the narrow `Calendars.ReadWrite offline_access` pair for booking
+  calendars.
+- 16 new tests cover rotation, no-op-when-fresh, `invalid_grant`
+  clearing, transient 5xx preserving state, scope propagation, and
+  the CalendarConnection dispatch-by-provider behaviour.
+
+#### Surface workspace-view picker on the Appearance settings page
+The persona/preset selector that filters sidebar sections and chooses
+dashboard widgets was previously reachable only via the Dashboard
+"Customize" modal. It now also lives at `/settings/appearance`, wired
+to the same `useDashboardPreferences` hook so Dashboard and Settings
+stay in sync.
+
+#### Create projects inline from /sprints
+The `/sprints` empty-state and top action bar now open an inline
+project creation modal instead of redirecting to
+`/settings/projects`. On create, the user lands directly on
+`/sprints/{newProjectId}/board`. The shared
+`CreateProjectModal` component is used by both pages.
+
+### Fixed
+
+#### Next.js 16 async dynamic route params
+Next 16 made `params` in `[projectId]/board/page.tsx` (and siblings) an
+async Promise. Fixed across 12 dynamic routes under `/sprints` and
+`/crm/agents`: client components use `React.use(params)`, server
+components `await params`.
+
+#### Onboarding: workspace switcher post-onboarding
+"Create workspace" link in the sidebar (`WorkspaceSwitcher`) routed to
+`/onboarding/workspace`, which the `OnboardingGuard` redirected back to
+`/dashboard` for already-onboarded users — making workspace creation
+impossible. The guard now lets `/onboarding/workspace` through, stale
+`localStorage` state is cleared on visit, and the newly created
+workspace is auto-selected via `switchWorkspace()` so the sidebar
+updates immediately.
+
+#### Hydration mismatch from the Redeviation browser extension
+Added `suppressHydrationWarning` on `<html>` in the root layout — the
+Redeviation DevTools extension injects `data-redeviation-bs-uid` onto
+the tag before React hydrates.
+
+#### `create project` / `New project` flow no longer bounces through
+`/settings/projects`; it creates the project in-place and jumps to
+the new board.
+
+### Changed
+
+#### docker-compose no longer hardcodes LLM env vars
+`docker-compose.yml` and `docker-compose.dev.yml` no longer set
+`LLM_PROVIDER`, `LLM_MODEL`, or any `*_API_KEY` — pydantic reads them
+from `backend/.env` by itself. Previously compose set empty strings
+that silently shadowed `.env`, so switching providers required editing
+compose instead of `.env`. Production compose keeps the injected-via-
+shell pattern it was designed for.
+
+#### npm audit vulnerabilities (15 → 0)
+`npm audit fix` cleared the 8 non-breaking advisories (critical axios,
+high next/rollup/picomatch, moderate brace-expansion/follow-redirects/
+markdown-it/next-intl open-redirect). Upgraded vitest 1.2.1 → 4.1.4
+to clear the remaining vite path-traversal + esbuild dev-server
+issues; tightened `vitest.config.ts` include/exclude so vitest 4's
+stricter scanner doesn't pull in Playwright e2e specs from
+`.next/standalone/`. Pinned `node-fetch ^2.7.0` via `overrides`
+rather than downgrading face-api.js (which `npm audit fix --force`
+wanted to do to no actual security benefit).
+
+---
+
 ## [0.7.1] - 2026-04-14
 
 ### Added
