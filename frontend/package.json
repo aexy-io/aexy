@@ -97,6 +97,9 @@
     "eslint-config-next": "^16.2.1",
     "jsdom": "^24.0.0",
     "typescript": "^5.3.3",
-    "vitest": "^1.2.1"
+    "vitest": "^4.1.4"
+  },
+  "overrides": {
+    "node-fetch": "^2.7.0"
   }
 }
