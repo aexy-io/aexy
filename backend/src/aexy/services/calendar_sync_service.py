@@ -54,41 +54,25 @@ class CalendarSyncService:
     ) -> str:
         """Refresh the access token if it's about to expire.
 
-        Returns the current or refreshed access token.
+        Delegates to the shared oauth_token_service so refresh-token
+        rotation and invalid_grant handling are centralised.
         """
-        # Check if token expires within 5 minutes
-        if integration.token_expiry and integration.token_expiry > datetime.now(
-            timezone.utc
-        ) + timedelta(minutes=5):
-            return integration.access_token
+        from aexy.services.oauth_token_service import (
+            RefreshTokenRevokedError,
+            TokenRefreshError,
+            ensure_valid_google_integration_token,
+        )
 
-        # Refresh the token
         if not integration.refresh_token:
             raise CalendarAuthError("No refresh token available")
-
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                GOOGLE_TOKEN_URL,
-                data={
-                    "client_id": settings.google_client_id,
-                    "client_secret": settings.google_client_secret,
-                    "refresh_token": integration.refresh_token,
-                    "grant_type": "refresh_token",
-                },
-            )
-
-            if response.status_code != 200:
-                logger.error(f"Failed to refresh token: {response.text}")
-                raise CalendarAuthError("Failed to refresh Google token")
-
-            token_data = response.json()
-            integration.access_token = token_data["access_token"]
-            integration.token_expiry = datetime.now(timezone.utc) + timedelta(
-                seconds=token_data.get("expires_in", 3600)
-            )
-            await self.db.flush()
-
-            return integration.access_token
+        try:
+            return await ensure_valid_google_integration_token(self.db, integration)
+        except RefreshTokenRevokedError as e:
+            raise CalendarAuthError(
+                "Google refresh token revoked — workspace needs to reconnect"
+            ) from e
+        except TokenRefreshError as e:
+            raise CalendarAuthError("Failed to refresh Google token") from e
 
     async def _make_calendar_request(
         self,

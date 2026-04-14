@@ -1,14 +1,18 @@
-"""Refresh access tokens for developer-level Google / Microsoft OAuth connections.
+"""Refresh access tokens for Google / Microsoft OAuth connections.
 
 Both providers rotate refresh tokens — every refresh-grant response may include
-a new `refresh_token` which MUST be persisted. Dropping it invalidates all
-future refreshes for that "family" and forces the user to re-consent.
+a new `refresh_token` which MUST be persisted. Dropping it invalidates the
+token family and forces the user to re-consent.
 
 This module centralises:
     * expiry-aware refresh (noop when the stored token is still valid)
     * refresh-token rotation (store the new one if Google/MS returns it)
     * invalid_grant handling (null the refresh_token so the UI can prompt
       the user to reconnect instead of retrying forever)
+
+Two row types hold Google OAuth state and they spell the expiry column
+differently (`GoogleConnection.token_expires_at` vs
+`GoogleIntegration.token_expiry`), so the helpers accept the field name.
 """
 
 from __future__ import annotations
@@ -50,16 +54,30 @@ def _needs_refresh(expires_at: datetime | None) -> bool:
     return expires_at <= datetime.now(timezone.utc) + _REFRESH_SKEW
 
 
-async def ensure_valid_google_token(
+def _default_revoke_handler(connection: object) -> None:
+    """Null out the refresh_token — the standard strategy for connection rows
+    where the column is nullable."""
+    connection.refresh_token = None
+
+
+async def _refresh_google(
     db: AsyncSession,
-    connection: GoogleConnection,
+    connection: object,
+    expiry_attr: str,
+    owner_ref: str,
+    revoke_handler=_default_revoke_handler,
 ) -> str:
-    """Return a valid Google access token for `connection`, refreshing if needed."""
-    if not _needs_refresh(connection.token_expires_at):
+    """Shared refresh flow for any row with Google access/refresh tokens.
+
+    `expiry_attr` is the attribute name that stores the expiry datetime
+    (GoogleConnection uses `token_expires_at`; GoogleIntegration uses
+    `token_expiry`). `revoke_handler` mutates the row when the refresh
+    token is revoked — different models flag revocation differently.
+    `owner_ref` is used for logging only.
+    """
+    if not _needs_refresh(getattr(connection, expiry_attr, None)):
         return connection.access_token
     if not connection.refresh_token:
-        # No way to refresh — return what we have; the caller's API call
-        # will fail with 401 and the UI should catch that separately.
         return connection.access_token
 
     settings = get_settings()
@@ -79,10 +97,8 @@ async def ensure_valid_google_token(
         raise TokenRefreshError(str(e)) from e
 
     if resp.status_code == 400 and "invalid_grant" in resp.text:
-        logger.warning(
-            "Google refresh_token revoked for developer %s", connection.developer_id
-        )
-        connection.refresh_token = None
+        logger.warning("Google refresh_token revoked for %s", owner_ref)
+        revoke_handler(connection)
         await db.flush()
         raise RefreshTokenRevokedError("Google refresh token is invalid or revoked")
 
@@ -96,14 +112,49 @@ async def ensure_valid_google_token(
     connection.access_token = data["access_token"]
     expires_in = data.get("expires_in")
     if expires_in:
-        connection.token_expires_at = (
-            datetime.now(timezone.utc) + timedelta(seconds=int(expires_in))
+        setattr(
+            connection,
+            expiry_attr,
+            datetime.now(timezone.utc) + timedelta(seconds=int(expires_in)),
         )
-    # Google rarely rotates this, but when it does we MUST persist the new one.
     if data.get("refresh_token"):
         connection.refresh_token = data["refresh_token"]
     await db.flush()
     return connection.access_token
+
+
+async def ensure_valid_google_token(
+    db: AsyncSession,
+    connection: GoogleConnection,
+) -> str:
+    """Return a valid Google access token for a developer's GoogleConnection."""
+    return await _refresh_google(
+        db,
+        connection,
+        expiry_attr="token_expires_at",
+        owner_ref=f"developer={connection.developer_id}",
+    )
+
+
+def _mark_integration_revoked(integration: object) -> None:
+    """GoogleIntegration.refresh_token is NOT NULL. Mark the integration
+    inactive with a diagnostic error instead of nulling the column."""
+    integration.is_active = False
+    integration.last_error = "refresh_token_revoked"
+
+
+async def ensure_valid_google_integration_token(
+    db: AsyncSession,
+    integration: object,  # GoogleIntegration (avoid circular import)
+) -> str:
+    """Return a valid Google access token for a workspace's GoogleIntegration."""
+    return await _refresh_google(
+        db,
+        integration,
+        expiry_attr="token_expiry",
+        owner_ref=f"workspace={getattr(integration, 'workspace_id', '?')}",
+        revoke_handler=_mark_integration_revoked,
+    )
 
 
 async def ensure_valid_microsoft_token(
