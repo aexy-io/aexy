@@ -25,7 +25,7 @@ export default async function RootLayout({
   const [messages, locale] = await Promise.all([getMessages(), getLocale()]);
 
   return (
-    <html lang={locale}>
+    <html lang={locale} suppressHydrationWarning>
       <body className={inter.className}>
         <Providers messages={messages} serverLocale={locale}>{children}</Providers>
         <Toaster richColors position="top-right" />

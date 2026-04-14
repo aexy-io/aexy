@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
@@ -23,8 +23,9 @@ import {
 import { SearchInput } from "@/components/ui/search-input";
 import { motion } from "framer-motion";
 import { useOnboarding } from "../OnboardingContext";
-import { workspaceApi, type MyInvitation } from "@/lib/api";
+import { workspaceApi, repositoriesApi, type MyInvitation } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
+import { useWorkspace } from "@/hooks/useWorkspace";
 import type { LucideIcon } from "lucide-react";
 
 type WorkspaceMode = "select" | "create" | "join";
@@ -71,6 +72,7 @@ const useCaseModules: Record<string, { icon: LucideIcon; label: string }[]> = {
 export default function WorkspaceStep() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { switchWorkspace } = useWorkspace();
   const { data, updateData, updateWorkspace, setCurrentStep } = useOnboarding();
   const [mode, setMode] = useState<WorkspaceMode>("select");
   const [workspaceName, setWorkspaceName] = useState("");
@@ -80,6 +82,29 @@ export default function WorkspaceStep() {
   const [invitations, setInvitations] = useState<MyInvitation[]>([]);
   const [loadingInvitations, setLoadingInvitations] = useState(true);
   const [acceptingToken, setAcceptingToken] = useState<string | null>(null);
+  const [onboardingCompleted, setOnboardingCompleted] = useState(false);
+  const updateWorkspaceRef = useRef(updateWorkspace);
+  updateWorkspaceRef.current = updateWorkspace;
+
+  useEffect(() => {
+    repositoriesApi
+      .getOnboardingStatus()
+      .then((s) => {
+        setOnboardingCompleted(s.completed);
+        // Existing users revisiting this page to create an additional
+        // workspace should start from a fresh form, not see the stale
+        // "Workspace Ready" card from their original onboarding run.
+        if (s.completed) {
+          updateWorkspaceRef.current({
+            id: null,
+            name: null,
+            type: null,
+            joinRequestStatus: "none",
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     setCurrentStep(3);
@@ -125,11 +150,14 @@ export default function WorkspaceStep() {
         joinRequestStatus: "none",
       });
 
-      // Update sidebar workspace list and switch to the new workspace
-      localStorage.setItem("current_workspace_id", workspace.id);
+      // Refresh the workspace list and auto-select the new workspace so the
+      // sidebar + all workspace-scoped queries switch to it immediately.
       await queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+      switchWorkspace(workspace.id);
 
-      router.push("/onboarding/connect");
+      // Existing users creating additional workspaces go straight to the
+      // dashboard; first-time users continue the onboarding flow.
+      router.push(onboardingCompleted ? "/dashboard" : "/onboarding/connect");
     } catch (err) {
       console.error("Failed to create workspace:", err);
       setError("Failed to create workspace. Please try again.");
@@ -183,11 +211,11 @@ export default function WorkspaceStep() {
         joinRequestStatus: "none",
       });
 
-      // Update sidebar workspace list and switch to the accepted workspace
-      localStorage.setItem("current_workspace_id", result.workspace_id);
+      // Refresh the workspace list and auto-select the accepted workspace.
       await queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+      switchWorkspace(result.workspace_id);
 
-      router.push("/onboarding/connect");
+      router.push(onboardingCompleted ? "/dashboard" : "/onboarding/connect");
     } catch (err) {
       console.error("Failed to accept invitation:", err);
       setError("Failed to accept invitation. Please try again.");
@@ -197,7 +225,7 @@ export default function WorkspaceStep() {
   };
 
   const handleContinue = () => {
-    router.push("/onboarding/connect");
+    router.push(onboardingCompleted ? "/dashboard" : "/onboarding/connect");
   };
 
   // Build sidebar module preview based on selected use cases
