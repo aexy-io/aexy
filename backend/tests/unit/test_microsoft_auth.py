@@ -120,6 +120,30 @@ class TestGetOrCreateByMicrosoft:
         assert second.microsoft_connection.access_token == "at-2"
 
     @pytest.mark.asyncio
+    async def test_profile_fields_sync_on_relogin(self, service, db_session):
+        """Name and email updates in Microsoft should propagate on re-login."""
+        mid = _uniq("aad-sync")
+        await service.get_or_create_by_microsoft(
+            microsoft_id=mid,
+            microsoft_email=f"old-{mid}@contoso.com",
+            microsoft_name="Old Name",
+            access_token="at-1",
+        )
+        await db_session.commit()
+
+        new_email = f"new-{mid}@contoso.com"
+        dev = await service.get_or_create_by_microsoft(
+            microsoft_id=mid,
+            microsoft_email=new_email,
+            microsoft_name="New Name",
+            access_token="at-2",
+        )
+        await db_session.commit()
+
+        assert dev.microsoft_connection.microsoft_email == new_email
+        assert dev.microsoft_connection.microsoft_name == "New Name"
+
+    @pytest.mark.asyncio
     async def test_attaches_to_existing_developer_with_matching_email(
         self, service, db_session
     ):

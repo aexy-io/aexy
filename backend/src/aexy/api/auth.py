@@ -64,11 +64,20 @@ GOOGLE_CRM_SCOPES = [
     "https://www.googleapis.com/auth/calendar.events",
 ]
 
-# Microsoft (Entra ID / Azure AD) OAuth configuration
-_ms_tenant = settings.microsoft_tenant_id or "common"
-MICROSOFT_AUTH_URL = f"https://login.microsoftonline.com/{_ms_tenant}/oauth2/v2.0/authorize"
-MICROSOFT_TOKEN_URL = f"https://login.microsoftonline.com/{_ms_tenant}/oauth2/v2.0/token"
+# Microsoft (Entra ID / Azure AD) OAuth configuration.
+# URLs are computed per-request from settings so MICROSOFT_TENANT_ID
+# can be changed without a module reload (and so tests can override it).
 MICROSOFT_GRAPH_ME_URL = "https://graph.microsoft.com/v1.0/me"
+
+
+def _microsoft_authorize_url() -> str:
+    tenant = settings.microsoft_tenant_id or "common"
+    return f"https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize"
+
+
+def _microsoft_token_url() -> str:
+    tenant = settings.microsoft_tenant_id or "common"
+    return f"https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token"
 
 # Microsoft OAuth scopes for authentication (basic profile + email)
 MICROSOFT_AUTH_SCOPES = [
@@ -474,7 +483,7 @@ def _microsoft_authorize_redirect(scope_type: str, redirect_url: str | None) -> 
         "prompt": "consent" if scope_type == "crm" else "select_account",
         "response_mode": "query",
     }
-    return RedirectResponse(url=f"{MICROSOFT_AUTH_URL}?{urlencode(params)}")
+    return RedirectResponse(url=f"{_microsoft_authorize_url()}?{urlencode(params)}")
 
 
 @router.get("/microsoft/login")
@@ -508,10 +517,12 @@ async def microsoft_callback(
         return RedirectResponse(url=f"{frontend_url}/?error=missing_code")
 
     # Verify state
+    if not state:
+        return RedirectResponse(url=f"{frontend_url}/?error=invalid_state")
     redis_client = get_redis_client()
-    state_key = f"{OAUTH_STATE_PREFIX}{state}" if state else None
-    state_data_raw = redis_client.get(state_key) if state_key else None
-    if not state or not state_data_raw:
+    state_key = f"{OAUTH_STATE_PREFIX}{state}"
+    state_data_raw = redis_client.get(state_key)
+    if not state_data_raw:
         return RedirectResponse(url=f"{frontend_url}/?error=invalid_state")
     redis_client.delete(state_key)
 
@@ -523,7 +534,7 @@ async def microsoft_callback(
     try:
         async with httpx.AsyncClient() as client:
             token_response = await client.post(
-                MICROSOFT_TOKEN_URL,
+                _microsoft_token_url(),
                 data={
                     "client_id": settings.microsoft_client_id,
                     "client_secret": settings.microsoft_client_secret,

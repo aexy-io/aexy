@@ -543,6 +543,13 @@ class DeveloperService:
             if scopes:
                 developer.microsoft_connection.scopes = list(existing_scopes | new_scopes)
 
+            # Keep profile fields in sync with what Graph just returned
+            developer.microsoft_connection.microsoft_email = microsoft_email
+            if microsoft_name is not None:
+                developer.microsoft_connection.microsoft_name = microsoft_name
+            if microsoft_avatar_url is not None:
+                developer.microsoft_connection.microsoft_avatar_url = microsoft_avatar_url
+
             await self.db.flush()
             await self.db.refresh(developer.microsoft_connection)
             return developer.microsoft_connection
@@ -600,6 +607,13 @@ class DeveloperService:
 
                 if scopes:
                     developer.microsoft_connection.scopes = list(existing_scopes | new_scopes)
+
+                # Keep profile fields in sync with what Graph just returned
+                developer.microsoft_connection.microsoft_email = microsoft_email
+                if microsoft_name is not None:
+                    developer.microsoft_connection.microsoft_name = microsoft_name
+                if microsoft_avatar_url is not None:
+                    developer.microsoft_connection.microsoft_avatar_url = microsoft_avatar_url
 
                 await self.db.flush()
             return developer

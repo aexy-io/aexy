@@ -117,6 +117,7 @@ class Developer(Base):
         "GoogleConnection",
         back_populates="developer",
         uselist=False,
+        cascade="all, delete-orphan",
     )
     microsoft_connection: Mapped["MicrosoftConnection | None"] = relationship(
         "MicrosoftConnection",
