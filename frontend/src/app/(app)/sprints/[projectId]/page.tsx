@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { use, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -343,8 +343,8 @@ function CreateSprintModal({ onClose, onCreate, isCreating }: CreateSprintModalP
   );
 }
 
-export default function SprintsPage({ params }: { params: { projectId: string } }) {
-  const { projectId } = params;
+export default function SprintsPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = use(params);
 
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { currentWorkspaceId, currentWorkspaceLoading } = useWorkspace();
