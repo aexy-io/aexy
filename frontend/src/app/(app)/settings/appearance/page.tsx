@@ -4,6 +4,9 @@ import { LayoutGrid, List, Check, Moon, Sun, Monitor } from "lucide-react";
 import { useSidebarLayout } from "@/hooks/useSidebarLayout";
 import { SidebarLayoutType, SIDEBAR_LAYOUTS } from "@/config/sidebarLayouts";
 import { useTheme, ThemeMode } from "@/hooks/useTheme";
+import { useDashboardPreferences } from "@/hooks/useDashboardPreferences";
+import { PresetType } from "@/config/dashboardPresets";
+import { PresetSelector } from "@/components/dashboard/PresetSelector";
 
 const THEME_OPTIONS: {
     id: ThemeMode;
@@ -57,6 +60,8 @@ const LAYOUT_OPTIONS: {
 export default function AppearanceSettingsPage() {
     const { layout, setLayout, isLoaded } = useSidebarLayout();
     const { theme, setTheme, resolvedTheme } = useTheme();
+    const { preferences, setPreset, isUpdating } = useDashboardPreferences();
+    const currentPreset: PresetType = (preferences?.preset_type as PresetType) || "developer";
 
     const handleLayoutChange = (newLayout: SidebarLayoutType) => {
         setLayout(newLayout);
@@ -64,6 +69,10 @@ export default function AppearanceSettingsPage() {
 
     const handleThemeChange = (newTheme: ThemeMode) => {
         setTheme(newTheme);
+    };
+
+    const handlePresetChange = (preset: PresetType) => {
+        setPreset(preset);
     };
 
     return (
@@ -128,6 +137,30 @@ export default function AppearanceSettingsPage() {
                             {theme === 'system'
                                 ? `Currently using ${resolvedTheme} mode based on your system settings.`
                                 : 'Changes are saved automatically and will take effect immediately.'}
+                        </p>
+                    </div>
+                </div>
+
+                {/* Workspace View (Persona/Preset) Section */}
+                <div className="bg-card rounded-xl overflow-hidden border border-border">
+                    <div className="p-4 border-b border-border">
+                        <h3 className="text-foreground font-medium">Workspace View</h3>
+                        <p className="text-muted-foreground text-sm mt-1">
+                            Choose a role-based view — this tailors both the sidebar navigation and dashboard widgets to the tasks that matter to you.
+                        </p>
+                    </div>
+
+                    <div className="p-4">
+                        <PresetSelector
+                            currentPreset={currentPreset}
+                            onSelectPreset={handlePresetChange}
+                            isLoading={isUpdating}
+                        />
+                    </div>
+
+                    <div className="px-4 pb-4">
+                        <p className="text-xs text-muted-foreground">
+                            Changes apply immediately to the sidebar and reset your dashboard widgets to the preset&apos;s defaults.
                         </p>
                     </div>
                 </div>
