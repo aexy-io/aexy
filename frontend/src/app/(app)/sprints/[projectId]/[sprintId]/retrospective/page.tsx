@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { use, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -267,9 +267,9 @@ function ActionItemsColumn({ items, onAdd, onUpdateStatus, onDelete }: ActionIte
 export default function RetrospectivePage({
   params,
 }: {
-  params: { projectId: string; sprintId: string };
+  params: Promise<{ projectId: string; sprintId: string }>;
 }) {
-  const { projectId, sprintId } = params;
+  const { projectId, sprintId } = use(params);
 
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { currentWorkspaceId, currentWorkspaceLoading } = useWorkspace();

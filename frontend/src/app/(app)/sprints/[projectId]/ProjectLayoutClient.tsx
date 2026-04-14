@@ -16,7 +16,7 @@ import {
   Vote,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { use, useState } from "react";
 
 interface NavItem {
   label: string;
@@ -31,10 +31,10 @@ export default function ProjectLayoutClient({
   params,
 }: {
   children: React.ReactNode;
-  params: { projectId: string };
+  params: Promise<{ projectId: string }>;
 }) {
   const pathname = usePathname();
-  const { projectId } = params;
+  const { projectId } = use(params);
   const [showMore, setShowMore] = useState(false);
 
   const navItems: NavItem[] = [

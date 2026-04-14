@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { use, useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -427,9 +427,9 @@ function TemplateFormModal({ template, onClose, onSave, isSaving }: TemplateForm
 export default function TaskTemplatesPage({
   params,
 }: {
-  params: { projectId: string };
+  params: Promise<{ projectId: string }>;
 }) {
-  const { projectId } = params;
+  const { projectId } = use(params);
   const router = useRouter();
   const queryClient = useQueryClient();
 

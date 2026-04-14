@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { use, useState, useMemo, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -1335,9 +1335,9 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
 export default function ProjectBoardPage({
   params,
 }: {
-  params: { projectId: string };
+  params: Promise<{ projectId: string }>;
 }) {
-  const { projectId } = params;
+  const { projectId } = use(params);
   const router = useRouter();
   const searchParams = useSearchParams();
 
