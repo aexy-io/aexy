@@ -1,6 +1,6 @@
 """Database models for Aexy."""
 
-from aexy.models.plan import Plan, PlanTier, DEFAULT_PLANS
+from aexy.models.plan import Plan, PlanTier, BillingModel, DEFAULT_PLANS
 from aexy.models.developer import Developer, GitHubConnection, GitHubInstallation, GoogleConnection
 from aexy.models.billing import (
     CustomerBilling,
@@ -42,6 +42,7 @@ from aexy.models.workspace import (
     Workspace,
     WorkspaceMember,
     WorkspaceSubscription,
+    WorkspacePlanOverride,
 )
 from aexy.models.team import (
     Team,
@@ -498,6 +499,7 @@ from aexy.models.gtm_webhook import GTMWebhook, GTMWebhookDelivery, GTMProviderH
 from aexy.models.api_token import ApiToken
 from aexy.models.ask import AskConversation, AskMessage, AskConversationParticipant, AskShareLink
 from aexy.models.ai_feedback import AIFeedback
+from aexy.models.llm_prompt_log import LLMPromptLog
 from aexy.models.chat import (
     ChatChannel,
     ChatChannelMember,
@@ -514,6 +516,7 @@ __all__ = [
     # Plan
     "Plan",
     "PlanTier",
+    "BillingModel",
     "DEFAULT_PLANS",
     # Billing
     "CustomerBilling",
@@ -558,6 +561,7 @@ __all__ = [
     "Workspace",
     "WorkspaceMember",
     "WorkspaceSubscription",
+    "WorkspacePlanOverride",
     # Team
     "Team",
     "TeamMember",
@@ -1021,6 +1025,8 @@ __all__ = [
     "AskShareLink",
     # AI Feedback
     "AIFeedback",
+    # LLM Prompt Log
+    "LLMPromptLog",
     # Team Chat
     "ChatChannel",
     "ChatChannelMember",

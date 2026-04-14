@@ -11,8 +11,13 @@ function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    // Skip check for the complete page (user is finishing onboarding)
-    if (pathname === "/onboarding/complete") {
+    // Skip check for pages that existing users may legitimately revisit:
+    // - /onboarding/complete: user is finishing onboarding
+    // - /onboarding/workspace: user is creating an additional workspace
+    if (
+      pathname === "/onboarding/complete" ||
+      pathname === "/onboarding/workspace"
+    ) {
       setIsChecking(false);
       return;
     }

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -116,11 +118,12 @@ function GoalCard({ goal, onDelete }: { goal: WorkGoal; onDelete: (id: string) =
             View Details
           </Link>
           <button
+            data-testid="delete-goal-btn"
+            aria-label="Delete goal"
             onClick={(e) => {
               e.preventDefault();
-              if (confirm("Are you sure you want to delete this goal?")) {
-                onDelete(goal.id);
-              }
+              e.stopPropagation();
+              onDelete(goal.id);
             }}
             className="text-muted-foreground hover:text-red-400 transition"
           >
@@ -133,10 +136,12 @@ function GoalCard({ goal, onDelete }: { goal: WorkGoal; onDelete: (id: string) =
 }
 
 export default function GoalsPage() {
+  const t = useTranslations("reviews.goals");
   const { user, isLoading: authLoading, isAuthenticated, logout } = useAuth();
   const { currentWorkspaceId, currentWorkspaceLoading } = useWorkspace();
   const [filter, setFilter] = useState<"all" | "active" | "completed">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [deleteConfirmGoalId, setDeleteConfirmGoalId] = useState<string | null>(null);
 
   const developerId = user?.id;
   const { goals, isLoading: goalsLoading, deleteGoal } = useGoals(developerId, {
@@ -166,11 +171,20 @@ export default function GoalsPage() {
     return result;
   }, [goals, filter, searchQuery]);
 
+  const filterCounts = useMemo(() => {
+    const active = goals.filter(g => g.status !== "completed" && g.status !== "cancelled").length;
+    const completed = goals.filter(g => g.status === "completed").length;
+    return { all: goals.length, active, completed };
+  }, [goals]);
+
   const handleDeleteGoal = async (goalId: string) => {
     try {
       await deleteGoal(goalId);
+      toast.success(t("goalDeleted"));
+      setDeleteConfirmGoalId(null);
     } catch (err) {
       console.error("Failed to delete goal:", err);
+      toast.error(t("goalDeleteFailed"));
     }
   };
 
@@ -236,9 +250,9 @@ export default function GoalsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">My Goals</h1>
+            <h1 className="text-3xl font-bold text-foreground">{t("title")}</h1>
             <p className="text-muted-foreground mt-1">
-              Track your SMART goals and key results
+              {t("description")}
             </p>
           </div>
           <Link
@@ -246,7 +260,7 @@ export default function GoalsPage() {
             className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition text-sm font-medium"
           >
             <Plus className="h-4 w-4" />
-            New Goal
+            {t("newGoal")}
           </Link>
         </div>
 
@@ -256,34 +270,41 @@ export default function GoalsPage() {
             {(["all", "active", "completed"] as const).map((f) => (
               <button
                 key={f}
+                data-testid={`filter-tab-${f}`}
                 onClick={() => setFilter(f)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition capitalize ${
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition capitalize ${
                   filter === f
                     ? "bg-accent text-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {f}
+                {t(f)}
+                <span className={`px-1.5 py-0.5 rounded-full text-xs ${
+                  filter === f ? "bg-muted" : "bg-accent"
+                }`}>
+                  {filterCounts[f]}
+                </span>
               </button>
             ))}
           </div>
           <SearchInput
             value={searchQuery}
             onChange={setSearchQuery}
-            placeholder="Search goals..."
+            placeholder={t("searchPlaceholder")}
             wrapperClassName="flex-1"
           />
         </div>
 
         {/* Goals List or Empty State */}
+        <div aria-live="polite">
         {goalsLoading ? (
           <div className="flex justify-center py-16">
-            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-cyan-500"></div>
+            <div data-testid="loading-spinner" className="animate-spin rounded-full h-10 w-10 border-4 border-primary-500/20 border-t-primary-500"></div>
           </div>
         ) : filteredGoals.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredGoals.map((goal) => (
-              <GoalCard key={goal.id} goal={goal} onDelete={handleDeleteGoal} />
+              <GoalCard key={goal.id} goal={goal} onDelete={(id) => setDeleteConfirmGoalId(id)} />
             ))}
           </div>
         ) : goals.length > 0 && filteredGoals.length === 0 ? (
@@ -292,21 +313,50 @@ export default function GoalsPage() {
               <div className="w-16 h-16 bg-accent rounded-full flex items-center justify-center mx-auto mb-4">
                 <Search className="w-8 h-8 text-muted-foreground" />
               </div>
-              <h3 className="text-lg font-medium text-foreground mb-2">No matching goals</h3>
+              <h3 className="text-lg font-medium text-foreground mb-2">{t("noMatchingGoals")}</h3>
               <p className="text-muted-foreground text-sm">
-                Try adjusting your filters or search query
+                {t("noMatchingGoalsDescription")}
               </p>
             </div>
           </div>
         ) : (
           <EmptyState
             icon={Target}
-            title="No goals yet"
-            description="Set goals to track progress and align team objectives with company priorities."
+            title={t("noGoals")}
+            description={t("noGoalsDescription")}
             actions={[
-              { label: "Create Goal", href: "/reviews/goals/new" },
+              { label: t("createGoal"), href: "/reviews/goals/new" },
             ]}
           />
+        )}
+        </div>
+
+        {/* Delete Confirmation Modal */}
+        {deleteConfirmGoalId && (
+          <div data-testid="delete-confirm-modal" className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-muted border border-border rounded-xl p-6 max-w-md mx-4 shadow-xl">
+              <h3 className="text-lg font-semibold text-foreground mb-2">{t("deleteConfirmTitle")}</h3>
+              <p className="text-muted-foreground text-sm mb-6">
+                {t("deleteConfirmMessage")}
+              </p>
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  data-testid="delete-confirm-cancel"
+                  onClick={() => setDeleteConfirmGoalId(null)}
+                  className="px-4 py-2 text-muted-foreground hover:text-foreground transition text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  data-testid="delete-confirm-submit"
+                  onClick={() => handleDeleteGoal(deleteConfirmGoalId)}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg transition text-sm font-medium"
+                >
+                  {t("deleteGoal")}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </div>

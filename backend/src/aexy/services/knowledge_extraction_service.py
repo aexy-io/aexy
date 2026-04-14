@@ -128,13 +128,15 @@ Focus on meaningful, non-obvious relationships. Don't create relationships betwe
 class KnowledgeExtractionService:
     """Service for extracting entities and relationships from documents."""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession, workspace_id: str | None = None):
         """Initialize the knowledge extraction service.
 
         Args:
             db: Async database session.
+            workspace_id: Workspace ID for billing attribution.
         """
         self.db = db
+        self.workspace_id = workspace_id
         self.gateway = get_llm_gateway()
 
     async def extract_entities_from_document(
@@ -193,6 +195,7 @@ class KnowledgeExtractionService:
                 use_cache=True,
                 db=self.db,
                 developer_id=developer_id,
+                workspace_id=self.workspace_id,
             )
 
             # Parse the result
@@ -293,6 +296,7 @@ class KnowledgeExtractionService:
                 use_cache=True,
                 db=self.db,
                 developer_id=developer_id,
+                workspace_id=self.workspace_id,
             )
 
             extracted_data = self._parse_json_response(llm_result.raw_response)

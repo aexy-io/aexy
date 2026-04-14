@@ -38,13 +38,15 @@ logger = logging.getLogger(__name__)
 class DocumentGenerationService:
     """Service for generating documentation from code using LLMs."""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession, workspace_id: str | None = None):
         """Initialize the document generation service.
 
         Args:
             db: Async database session.
+            workspace_id: Workspace ID for billing attribution.
         """
         self.db = db
+        self.workspace_id = workspace_id
         self.gateway = get_llm_gateway()
 
     async def generate_from_code(
@@ -107,6 +109,7 @@ class DocumentGenerationService:
             use_cache=False,  # Don't cache doc generation
             db=self.db,
             developer_id=developer_id,
+            workspace_id=self.workspace_id,
         )
 
         # Parse the result

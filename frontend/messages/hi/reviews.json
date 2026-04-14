@@ -1,0 +1,239 @@
+{
+  "reviews": {
+    "title": "प्रदर्शन समीक्षा",
+    "description": "लक्ष्य, योगदान और 360° फीडबैक ट्रैक करें",
+    "newGoal": "नया लक्ष्य",
+    "managementView": "प्रबंधन दृश्य",
+    "manageCycles": "चक्र प्रबंधित करें",
+    "stats": {
+      "activeGoals": "सक्रिय लक्ष्य",
+      "completed": "पूर्ण",
+      "peerReviews": "सहकर्मी समीक्षा",
+      "contributions": "योगदान",
+      "inProgress": "प्रगति में",
+      "thisQuarter": "इस तिमाही",
+      "pendingRequests": "लंबित अनुरोध",
+      "autoLinkedPRs": "स्वचालित-लिंक्ड PR"
+    },
+    "dashboard": {
+      "myGoals": "मेरे लक्ष्य",
+      "reviewCycle": "समीक्षा चक्र",
+      "feedbackRequests": "फीडबैक अनुरोध",
+      "noActiveReviewCycle": "कोई सक्रिय समीक्षा चक्र नहीं",
+      "createReviewCycle": "समीक्षा चक्र बनाएं",
+      "noPendingFeedback": "कोई लंबित फीडबैक अनुरोध नहीं",
+      "generateSummary": "सारांश बनाएं",
+      "generating": "बनाया जा रहा है...",
+      "commits": "Commits",
+      "prs": "PRs",
+      "codeReviews": "समीक्षाएं",
+      "failedToGenerateSummary": "सारांश बनाने में विफल। कृपया पुनः प्रयास करें।",
+      "exampleGoalPreview": "आपके लक्ष्य ऐसे दिखेंगे। अभी अपनी प्रगति ट्रैक करना शुरू करें।",
+      "aiInsightPreview": "AI-जनित योगदान विवरण प्राप्त करने के लिए अपना GitHub अकाउंट कनेक्ट करें, जो आपके commits, PRs और कोड समीक्षाओं को प्रभावशाली सारांश में संकलित करता है।",
+      "aiInsightPreviewLabel": "AI इनसाइट प्रीव्यू"
+    },
+    "features": {
+      "smartGoals": "SMART लक्ष्य",
+      "smartGoalsDesc": "Key Results ट्रैकिंग के साथ विशिष्ट, मापने योग्य, प्राप्त करने योग्य, प्रासंगिक और समयबद्ध लक्ष्य निर्धारित करें।",
+      "feedback360": "360° फीडबैक",
+      "feedback360Desc": "COIN फ्रेमवर्क (संदर्भ, अवलोकन, प्रभाव, अगले कदम) का उपयोग करके गुमनाम सहकर्मी समीक्षा का अनुरोध करें।",
+      "aiSummaries": "AI सारांश",
+      "aiSummariesDesc": "अपने GitHub commits, PRs और कोड समीक्षाओं से स्वचालित रूप से योगदान विवरण बनाएं।"
+    },
+    "goals": {
+      "title": "मेरे लक्ष्य",
+      "description": "अपने SMART लक्ष्य और Key Results ट्रैक करें",
+      "newGoal": "नया लक्ष्य",
+      "createGoal": "लक्ष्य बनाएं",
+      "creating": "बनाया जा रहा है...",
+      "createFirstGoal": "अपना पहला लक्ष्य बनाएं",
+      "deleteGoal": "लक्ष्य हटाएं",
+      "deleteConfirmTitle": "लक्ष्य हटाएं",
+      "deleteConfirmMessage": "क्या आप वाकई इस लक्ष्य को हटाना चाहते हैं? यह क्रिया पूर्ववत नहीं की जा सकती।",
+      "goalCreated": "लक्ष्य सफलतापूर्वक बनाया गया",
+      "goalDeleted": "लक्ष्य हटाया गया",
+      "goalDeleteFailed": "लक्ष्य हटाने में विफल",
+      "noGoals": "अभी कोई लक्ष्य नहीं",
+      "noGoalsDescription": "प्रगति ट्रैक करने और टीम के उद्देश्यों को कंपनी की प्राथमिकताओं से संरेखित करने के लिए लक्ष्य निर्धारित करें।",
+      "noMatchingGoals": "कोई मेल खाने वाला लक्ष्य नहीं",
+      "noMatchingGoalsDescription": "अपने फ़िल्टर या खोज क्वेरी को समायोजित करके देखें।",
+      "searchPlaceholder": "लक्ष्य खोजें...",
+      "all": "सभी",
+      "active": "सक्रिय",
+      "completed": "पूर्ण",
+      "form": {
+        "title": "SMART लक्ष्य बनाएं",
+        "subtitle": "Key Results के साथ विशिष्ट, मापने योग्य उद्देश्य परिभाषित करें",
+        "goalTitle": "लक्ष्य शीर्षक",
+        "goalTitlePlaceholder": "जैसे, API रिस्पॉन्स टाइम 50% कम करें",
+        "descriptionLabel": "विवरण",
+        "descriptionPlaceholder": "अपने लक्ष्य का विस्तार से वर्णन करें...",
+        "goalType": "लक्ष्य प्रकार",
+        "priorityLabel": "प्राथमिकता",
+        "targetDate": "लक्ष्य तिथि",
+        "privateGoal": "निजी लक्ष्य (केवल आपको और मैनेजर को दिखेगा)",
+        "disabledTooltip": "बनाने के लिए लक्ष्य शीर्षक और लक्ष्य तिथि भरें",
+        "types": {
+          "performance": "प्रदर्शन - डिलीवरी और गुणवत्ता लक्ष्य",
+          "skillDevelopment": "कौशल विकास - नई तकनीकें सीखना",
+          "project": "प्रोजेक्ट - फीचर और माइलस्टोन लक्ष्य",
+          "leadership": "नेतृत्व - मेंटरिंग और टीम पर प्रभाव",
+          "teamContribution": "टीम योगदान - सहयोग और सहायता"
+        },
+        "smart": {
+          "title": "SMART फ्रेमवर्क",
+          "recommended": "अनुशंसित",
+          "subtitle": "बेहतर स्पष्टता और ट्रैकिंग के लिए SMART फ्रेमवर्क का उपयोग करके अपना लक्ष्य विभाजित करें।",
+          "specific": "विशिष्ट - आप वास्तव में क्या हासिल करना चाहते हैं?",
+          "specificPlaceholder": "जैसे, /users endpoint के लिए औसत API रिस्पॉन्स टाइम 800ms से घटाकर 400ms करें",
+          "measurable": "मापने योग्य - आप प्रगति कैसे मापेंगे?",
+          "measurablePlaceholder": "जैसे, मॉनिटरिंग डैशबोर्ड में p95 रिस्पॉन्स टाइम ट्रैक करें, 50% कमी का लक्ष्य",
+          "achievable": "प्राप्त करने योग्य - क्या यह उपलब्ध संसाधनों से यथार्थवादी है?",
+          "achievablePlaceholder": "जैसे, हां, प्रोफाइलिंग में N+1 क्वेरीज़ मिलीं जिन्हें ऑप्टिमाइज़ किया जा सकता है",
+          "relevant": "प्रासंगिक - यह क्यों महत्वपूर्ण है?",
+          "relevantPlaceholder": "जैसे, यूज़र अनुभव में सुधार और सर्वर लागत में 20% की कमी"
+        },
+        "keyResults": {
+          "title": "Key Results (OKR)",
+          "subtitle": "मापने योग्य परिणाम परिभाषित करें जो लक्ष्य पूर्ति दर्शाते हैं",
+          "addKeyResult": "Key Result जोड़ें",
+          "keyResultNumber": "Key Result #{number}"
+        },
+        "autoLink": {
+          "title": "GitHub गतिविधि स्वचालित-लिंक करें",
+          "beta": "Beta",
+          "subtitle": "इन कीवर्ड वाले commits और PRs स्वचालित रूप से इस लक्ष्य से लिंक हो जाएंगे।",
+          "keywordsLabel": "ट्रैकिंग कीवर्ड (कॉमा से अलग करें)",
+          "keywordsPlaceholder": "जैसे, performance, api-optimization, response-time",
+          "keywordsTip": "सुझाव: बेहतर मैचिंग के लिए प्रोजेक्ट कोड, फीचर नाम या इश्यू नंबर उपयोग करें"
+        },
+        "preview": "प्रीव्यू"
+      }
+    },
+    "cycles": {
+      "title": "समीक्षा चक्र",
+      "description": "अपने वर्कस्पेस के लिए प्रदर्शन समीक्षा चक्र प्रबंधित करें",
+      "newCycle": "नया चक्र",
+      "noCycles": "अभी कोई समीक्षा चक्र नहीं",
+      "noCyclesDescription": "अपनी टीम से 360° फीडबैक एकत्र करना शुरू करने के लिए अपना पहला समीक्षा चक्र बनाएं।",
+      "cycleCreated": "समीक्षा चक्र सफलतापूर्वक बनाया गया",
+      "backToReviews": "समीक्षा पर वापस जाएं",
+      "form": {
+        "title": "समीक्षा चक्र बनाएं",
+        "subtitle": "अपनी टीम के लिए एक नया प्रदर्शन समीक्षा चक्र सेट करें",
+        "cycleName": "चक्र का नाम",
+        "cycleNamePlaceholder": "जैसे, Q1 2024 प्रदर्शन समीक्षा",
+        "cycleType": "चक्र प्रकार",
+        "periodStart": "अवधि आरंभ",
+        "periodEnd": "अवधि समाप्ति",
+        "createCycle": "चक्र बनाएं",
+        "creating": "बनाया जा रहा है...",
+        "disabledTooltip": "बनाने के लिए चक्र का नाम, आरंभ तिथि और समाप्ति तिथि भरें",
+        "dateError": "समाप्ति तिथि आरंभ तिथि के बाद होनी चाहिए",
+        "types": {
+          "annual": "वार्षिक",
+          "semiAnnual": "अर्धवार्षिक",
+          "quarterly": "तिमाही",
+          "custom": "कस्टम"
+        },
+        "deadlines": {
+          "title": "चरण की समय सीमाएं",
+          "subtitle": "प्रत्येक समीक्षा चरण के लिए समय सीमा निर्धारित करें। कोई समय सीमा न चाहें तो खाली छोड़ दें।",
+          "selfReview": "स्व-समीक्षा की समय सीमा",
+          "peerReview": "सहकर्मी समीक्षा की समय सीमा",
+          "managerReview": "मैनेजर समीक्षा की समय सीमा"
+        },
+        "settings": {
+          "title": "समीक्षा सेटिंग्स",
+          "selfReview": "स्व-समीक्षा",
+          "peerReview": "सहकर्मी समीक्षा",
+          "managerReview": "मैनेजर समीक्षा",
+          "peerSettings": "सहकर्मी समीक्षा सेटिंग्स",
+          "anonymousPeerReviews": "गुमनाम सहकर्मी समीक्षा",
+          "minPeerReviewers": "न्यूनतम सहकर्मी समीक्षक",
+          "maxPeerReviewers": "अधिकतम सहकर्मी समीक्षक",
+          "peerSelectionMode": "सहकर्मी चयन मोड",
+          "peerSelectionModes": {
+            "employeeChoice": "केवल कर्मचारी की पसंद",
+            "managerAssigned": "केवल मैनेजर द्वारा नियुक्त",
+            "both": "दोनों (अनुशंसित)"
+          },
+          "peerSelectionHelp": "\"दोनों\" कर्मचारियों को समीक्षक अनुरोध करने और मैनेजरों को अतिरिक्त समीक्षक नियुक्त करने की अनुमति देता है।",
+          "includeGitHub": "GitHub मेट्रिक्स शामिल करें",
+          "includeGitHubDesc": "समीक्षा अवधि से commits, PRs और कोड समीक्षाएं स्वचालित रूप से आयात करें"
+        },
+        "timeline": {
+          "title": "टाइमलाइन प्रीव्यू",
+          "selfReview": "स्व-समीक्षा",
+          "peerReview": "सहकर्मी समीक्षा",
+          "managerReview": "मैनेजर समीक्षा",
+          "noDeadline": "कोई समय सीमा नहीं"
+        }
+      },
+      "phases": {
+        "selfReviewTitle": "स्व-समीक्षा चरण",
+        "selfReviewDesc": "टीम सदस्य संरचित प्रॉम्प्ट का उपयोग करके अपनी उपलब्धियों और विकास के क्षेत्रों पर विचार करते हैं।",
+        "peerReviewTitle": "सहकर्मी समीक्षा चरण",
+        "peerReviewDesc": "COIN फ्रेमवर्क का उपयोग करके सहकर्मियों से गुमनाम 360° फीडबैक एकत्र करें।",
+        "managerReviewTitle": "मैनेजर समीक्षा चरण",
+        "managerReviewDesc": "मैनेजर फीडबैक का संश्लेषण करते हैं और अंतिम रेटिंग तथा विकास सिफारिशें प्रदान करते हैं।"
+      },
+      "statuses": {
+        "draft": "ड्राफ्ट",
+        "active": "सक्रिय",
+        "selfReview": "स्व-समीक्षा",
+        "peerReview": "सहकर्मी समीक्षा",
+        "managerReview": "मैनेजर समीक्षा",
+        "completed": "पूर्ण"
+      }
+    },
+    "peerRequests": {
+      "title": "सहकर्मी समीक्षा अनुरोध",
+      "description": "आपके सहकर्मियों के फीडबैक अनुरोध",
+      "totalRequests": "कुल अनुरोध",
+      "pending": "लंबित",
+      "inProgress": "प्रगति में",
+      "completed": "पूर्ण",
+      "noPeerRequests": "अभी कोई सहकर्मी अनुरोध नहीं",
+      "noPeerRequestsDescription": "जब सहकर्मी अपनी प्रदर्शन समीक्षा के लिए आपका फीडबैक मांगेंगे, तो वे यहां दिखाई देंगे।",
+      "aboutTitle": "सहकर्मी समीक्षा के बारे में",
+      "aboutDescription": "सहकर्मी समीक्षा संरचित, रचनात्मक फीडबैक के लिए COIN फ्रेमवर्क का उपयोग करती है:",
+      "coin": {
+        "context": "संदर्भ",
+        "contextDesc": "स्थिति या परिदृश्य",
+        "observation": "अवलोकन",
+        "observationDesc": "देखा गया विशिष्ट व्यवहार",
+        "impact": "प्रभाव",
+        "impactDesc": "टीम/प्रोजेक्ट पर असर",
+        "nextSteps": "अगले कदम",
+        "nextStepsDesc": "कार्रवाई योग्य सिफारिशें"
+      }
+    },
+    "manage": {
+      "title": "समीक्षा प्रबंधन",
+      "description": "टीम की समीक्षाओं की निगरानी करें, डिलीवरेबल्स ट्रैक करें और लक्ष्य प्रबंधित करें",
+      "reviewCycles": "समीक्षा चक्र",
+      "exportReport": "रिपोर्ट निर्यात करें",
+      "teamMembers": "टीम सदस्य",
+      "completed": "पूर्ण",
+      "inProgress": "प्रगति में",
+      "actionNeeded": "कार्रवाई आवश्यक",
+      "suggestions": "सुझाव",
+      "teamOverview": "टीम अवलोकन",
+      "actionables": "कार्रवाई योग्य",
+      "githubSuggestions": "GitHub सुझाव",
+      "searchTeamMembers": "टीम सदस्य खोजें...",
+      "allCaughtUp": "सब अपडेट हो गया!",
+      "allCaughtUpDesc": "इस समय कोई लंबित कार्रवाई नहीं है। बाद में देखें या टीम अवलोकन देखें।",
+      "noSuggestions": "अभी कोई सुझाव नहीं",
+      "noSuggestionsDesc": "जैसे-जैसे हम आपकी टीम की GitHub गतिविधि और प्रोजेक्ट प्रबंधन डेटा का विश्लेषण करेंगे, लक्ष्य सुझाव यहां दिखाई देंगे।",
+      "recentlyJoined": "हाल ही में शामिल हुए",
+      "joined": "{date} को शामिल हुए",
+      "aiSuggestionsBanner": "AI-संचालित लक्ष्य सुझाव",
+      "aiSuggestionsDesc": "GitHub गतिविधि, PR पैटर्न और प्रोजेक्ट प्रबंधन डेटा पर आधारित। लक्ष्य में बदलें या हटाएं।",
+      "convertToGoal": "लक्ष्य में बदलें",
+      "viewMember": "सदस्य देखें",
+      "discard": "हटाएं"
+    }
+  }
+}

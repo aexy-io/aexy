@@ -1,0 +1,199 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: aexy-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: aexy
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: aexy-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: aexy-rustfs
+    ports:
+      - "127.0.0.1:9002:9000"
+      - "127.0.0.1:9003:9001"
+    environment:
+      - RUSTFS_ROOT_USER=${RUSTFS_ROOT_USER:-aexy-admin}
+      - RUSTFS_ROOT_PASSWORD=${RUSTFS_ROOT_PASSWORD:-aexy-secret-key}
+    volumes:
+      - rustfs_data:/data
+      - rustfs_logs:/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: server /data --console-address ":9001"
+
+  temporal:
+    image: temporalio/auto-setup:latest
+    container_name: aexy-temporal
+    ports:
+      - "7233:7233"
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PWD=postgres
+      - POSTGRES_SEEDS=postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  temporal-ui:
+    image: temporalio/ui:latest
+    container_name: aexy-temporal-ui
+    ports:
+      - "8081:8080"
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+    depends_on:
+      - temporal
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aexy-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/aexy
+      - REDIS_URL=redis://redis:6379/0
+      - TEMPORAL_ADDRESS=temporal:7233
+      - LLM_PROVIDER=gemini
+      - LLM_MODEL=gemini-2.0-flash
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-your-gemini-api-key}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      - S3_ENDPOINT_URL=http://rustfs:9000
+      - S3_ACCESS_KEY_ID=${RUSTFS_ROOT_USER:-aexy-admin}
+      - S3_SECRET_ACCESS_KEY=${RUSTFS_ROOT_PASSWORD:-aexy-secret-key}
+      - S3_BUCKET_NAME=aexy-storage
+      - S3_REGION=us-east-1
+      - S3_PUBLIC_ENDPOINT_URL=http://localhost:9002
+      - PLATFORM_ORG_ID=${PLATFORM_ORG_ID:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      temporal:
+        condition: service_started
+    volumes:
+      - ./backend:/app
+    command: uvicorn aexy.main:app --host 0.0.0.0 --port 8000 --reload
+
+  temporal-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aexy-temporal-worker
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/aexy
+      - REDIS_URL=redis://redis:6379/0
+      - TEMPORAL_ADDRESS=temporal:7233
+      - LLM_PROVIDER=gemini
+      - LLM_MODEL=gemini-2.0-flash
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-your-gemini-api-key}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      - S3_ENDPOINT_URL=http://rustfs:9000
+      - S3_ACCESS_KEY_ID=${RUSTFS_ROOT_USER:-aexy-admin}
+      - S3_SECRET_ACCESS_KEY=${RUSTFS_ROOT_PASSWORD:-aexy-secret-key}
+      - S3_BUCKET_NAME=aexy-storage
+      - S3_REGION=us-east-1
+      - S3_PUBLIC_ENDPOINT_URL=http://localhost:9002
+      - PLATFORM_ORG_ID=${PLATFORM_ORG_ID:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      temporal:
+        condition: service_started
+    volumes:
+      - ./backend:/app
+    command: python -m aexy.temporal.worker
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: aexy-frontend
+    ports:
+      - "3003:3000"
+    env_file:
+      - ./frontend/.env
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+      - NEXT_PUBLIC_GTM_WORKSPACE_ID=${NEXT_PUBLIC_GTM_WORKSPACE_ID:-}
+      - NEXT_PUBLIC_GTM_API_URL=${NEXT_PUBLIC_GTM_API_URL:-http://localhost:8000/api/v1}
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm run dev -- -p 3000
+
+  mailagent:
+    build:
+      context: ./mailagent
+      dockerfile: Dockerfile
+    container_name: aexy-mailagent
+    ports:
+      - "8002:8001"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/aexy
+      - REDIS_URL=redis://redis:6379/0
+      - DEBUG=true
+      - ENVIRONMENT=development
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - POSTMARK_SERVER_TOKEN=${POSTMARK_SERVER_TOKEN:-}
+      - BACKEND_URL=http://aexy-backend:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./mailagent:/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+  redis_data:
+  rustfs_data:
+  rustfs_logs:

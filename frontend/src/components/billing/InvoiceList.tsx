@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, Download, ExternalLink, Loader2, CheckCircle, Clock, XCircle } from "lucide-react";
+import { FileText, Download, ExternalLink, Loader2, CheckCircle, Clock, XCircle, Landmark, CreditCard } from "lucide-react";
 import { useInvoices, formatCurrency } from "@/hooks/useBillingUsage";
 
 interface InvoiceListProps {
@@ -40,6 +40,37 @@ function getStatusBadge(status: string) {
         </span>
       );
   }
+}
+
+function getPaymentMethodBadge(method: string | undefined) {
+  if (!method || method === "stripe") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 text-xs font-medium rounded-full">
+        <CreditCard className="h-3 w-3" />
+        Stripe
+      </span>
+    );
+  }
+  if (method === "bank_transfer") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 text-xs font-medium rounded-full">
+        <Landmark className="h-3 w-3" />
+        Bank Transfer
+      </span>
+    );
+  }
+  if (method === "manual") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-1 bg-zinc-50 text-zinc-600 dark:bg-zinc-900/30 dark:text-zinc-400 text-xs font-medium rounded-full">
+        Manual
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center px-2 py-1 bg-accent text-foreground text-xs font-medium rounded-full">
+      {method}
+    </span>
+  );
 }
 
 function formatDate(dateStr: string | null) {
@@ -122,6 +153,9 @@ export function InvoiceList({ limit = 10, className = "" }: InvoiceListProps) {
               <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Status
               </th>
+              <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Payment
+              </th>
               <th className="text-right px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Amount
               </th>
@@ -150,9 +184,21 @@ export function InvoiceList({ limit = 10, className = "" }: InvoiceListProps) {
                   {formatDateRange(invoice.period_start, invoice.period_end)}
                 </td>
                 <td className="px-6 py-4">{getStatusBadge(invoice.status)}</td>
+                <td className="px-6 py-4">
+                  <div>
+                    {getPaymentMethodBadge(invoice.payment_method)}
+                    {invoice.status === "paid" &&
+                      invoice.payment_method === "bank_transfer" &&
+                      invoice.bank_transfer_reference && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Ref: {invoice.bank_transfer_reference}
+                        </p>
+                      )}
+                  </div>
+                </td>
                 <td className="px-6 py-4 text-right">
                   <span className="text-foreground font-medium">
-                    {formatCurrency(invoice.amount_due, invoice.currency.toUpperCase())}
+                    {formatCurrency(invoice.total_cents, invoice.currency.toUpperCase())}
                   </span>
                 </td>
                 <td className="px-6 py-4 text-foreground">

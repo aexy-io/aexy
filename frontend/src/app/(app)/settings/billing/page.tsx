@@ -30,7 +30,7 @@ function BillingContent() {
   const searchParams = useSearchParams();
   const { user } = useAuth();
   const { currentWorkspaceId, currentWorkspace } = useWorkspace();
-  const { subscriptionStatus, plan, tier, isLoading, refetch } = useSubscription(currentWorkspaceId);
+  const { subscriptionStatus, plan, tier, billingModel, isPerSeat, isFlatPlusUsage, isPostpaid, seatSummary, postpaidSummary, isLoading, refetch } = useSubscription(currentWorkspaceId);
 
   const [portalLoading, setPortalLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -166,9 +166,30 @@ function BillingContent() {
               {tier !== "free" && (
                 <div className="text-right">
                   <p className="text-2xl font-bold text-foreground">
-                    ${(plan?.price_monthly_cents || 0) / 100}
-                    <span className="text-sm font-normal text-foreground/80">/month</span>
+                    {isPerSeat ? (
+                      <>
+                        ${(plan?.per_seat_price_monthly_cents || 0) / 100}
+                        <span className="text-sm font-normal text-foreground/80">/user/mo</span>
+                      </>
+                    ) : isFlatPlusUsage ? (
+                      <>
+                        ${(plan?.base_fee_monthly_cents || 0) / 100}
+                        <span className="text-sm font-normal text-foreground/80">/mo + usage</span>
+                      </>
+                    ) : isPostpaid ? (
+                      <span className="text-sm font-normal text-foreground/80">Pay after use</span>
+                    ) : (
+                      <>
+                        ${(plan?.price_monthly_cents || 0) / 100}
+                        <span className="text-sm font-normal text-foreground/80">/month</span>
+                      </>
+                    )}
                   </p>
+                  {billingModel !== "free" && (
+                    <p className="text-xs text-foreground/60 mt-0.5 capitalize">
+                      {billingModel?.replace(/_/g, " ")} billing
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -213,7 +234,7 @@ function BillingContent() {
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div>
                     <p className="text-muted-foreground">
-                      You're on the free plan. Upgrade to unlock more features.
+                      You&apos;re on the free plan with access to all modules. Upgrade for more AI, repos, and team capacity.
                     </p>
                   </div>
                   <div className="flex gap-3">
@@ -222,7 +243,7 @@ function BillingContent() {
                       className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition font-medium"
                     >
                       <Sparkles className="h-4 w-4" />
-                      Upgrade to Pro
+                      See Plans
                       <ArrowRight className="h-4 w-4" />
                     </Link>
                   </div>
@@ -236,8 +257,8 @@ function BillingContent() {
                         <Sparkles className="h-5 w-5 text-primary-400" />
                       </div>
                       <div>
-                        <p className="text-foreground font-medium">Upgrade to Pro for $29/mo</p>
-                        <p className="text-muted-foreground text-sm">Get AI insights, advanced analytics, and more</p>
+                        <p className="text-foreground font-medium">Upgrade for more AI and capacity</p>
+                        <p className="text-muted-foreground text-sm">Choose per-seat, flat+usage, or postpaid billing</p>
                       </div>
                     </div>
                     <Link
@@ -252,6 +273,77 @@ function BillingContent() {
             )}
           </div>
         </div>
+
+        {/* Billing Model Specific Info */}
+        {isPerSeat && seatSummary && (
+          <div className="bg-card rounded-xl border border-border p-6">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Seat Management</h3>
+            <div className="grid md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-muted-foreground text-sm mb-1">Total Seats</p>
+                <p className="text-2xl font-bold text-foreground">{seatSummary.total_seats}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-sm mb-1">Base Seats</p>
+                <p className="text-2xl font-bold text-foreground">{seatSummary.base_seats}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-sm mb-1">Additional Seats</p>
+                <p className="text-2xl font-bold text-foreground">{seatSummary.additional_seats}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-sm mb-1">Per Seat Price</p>
+                <p className="text-2xl font-bold text-foreground">${seatSummary.per_seat_price_cents / 100}/mo</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isFlatPlusUsage && (
+          <div className="bg-card rounded-xl border border-border p-6">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Billing Breakdown</h3>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-muted-foreground text-sm mb-1">Base Fee</p>
+                <p className="text-2xl font-bold text-foreground">${(plan?.base_fee_monthly_cents || 0) / 100}/mo</p>
+                <p className="text-xs text-muted-foreground mt-1">Fixed monthly charge</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-sm mb-1">AI Usage</p>
+                <p className="text-2xl font-bold text-foreground">Metered</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  ${(plan?.llm_input_cost_per_1k_cents || 0) / 100}/1K input,{" "}
+                  ${(plan?.llm_output_cost_per_1k_cents || 0) / 100}/1K output
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isPostpaid && postpaidSummary && (
+          <div className="bg-card rounded-xl border border-border p-6">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Postpaid Billing</h3>
+            <div className="grid md:grid-cols-3 gap-4">
+              <div>
+                <p className="text-muted-foreground text-sm mb-1">Accrued This Period</p>
+                <p className="text-2xl font-bold text-foreground">${postpaidSummary.accrued_cents / 100}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-sm mb-1">Estimated Total</p>
+                <p className="text-2xl font-bold text-foreground">${postpaidSummary.estimated_total_cents / 100}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-sm mb-1">Last Settled</p>
+                <p className="text-foreground font-medium">
+                  {postpaidSummary.last_settled_at ? formatDate(postpaidSummary.last_settled_at) : "Not yet"}
+                </p>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-4">
+              You&apos;ll be invoiced at the end of each billing period. Payment is collected after usage.
+            </p>
+          </div>
+        )}
 
         {/* Usage Stats Cards */}
         <div>

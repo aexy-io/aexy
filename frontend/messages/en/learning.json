@@ -1,0 +1,79 @@
+{
+  "learning": {
+    "title": "My Learning Path",
+    "titleTeam": "Project Learning",
+    "description": "Track your growth and skill development",
+
+    "tabs": {
+      "myLearning": "My Learning",
+      "path": "Path",
+      "activities": "Activities"
+    },
+
+    "actions": {
+      "createNewPath": "Create New Path",
+      "selectProject": "Select Project",
+      "pausePath": "Pause Path",
+      "resumePath": "Resume Path",
+      "regeneratePath": "Regenerate Path",
+      "generatePath": "Generate Path",
+      "generating": "Generating..."
+    },
+
+    "stats": {
+      "totalMembers": "Total Members",
+      "withLearningPaths": "With Learning Paths",
+      "averageProgress": "Average Progress",
+      "learningRate": "Learning Rate"
+    },
+
+    "milestones": {
+      "title": "Milestones",
+      "completed": "Completed",
+      "inProgress": "In Progress",
+      "behind": "Behind",
+      "notStarted": "Not Started"
+    },
+
+    "activities": {
+      "title": "Learning Activities",
+      "startActivity": "Start",
+      "completeActivity": "Complete",
+      "startSession": "Start Session",
+      "endSession": "End Session",
+      "importCourse": "Import Course",
+      "searchCourses": "Search Courses"
+    },
+
+    "gamification": {
+      "level": "Level {level}",
+      "points": "{points} Points",
+      "streak": "Day Streak",
+      "badges": "Badges",
+      "progressRing": "Level Progress"
+    },
+
+    "team": {
+      "teamMembersProgress": "Team Members Progress",
+      "noTeamMembers": "No team members found",
+      "noActivePath": "No active learning path",
+      "learningInProgress": "Learning in progress",
+      "skillGaps": "Skill Gaps",
+      "recommendations": "Recommendations"
+    },
+
+    "trajectory": {
+      "ahead": "Ahead",
+      "onTrack": "On Track",
+      "behind": "Behind",
+      "atRisk": "At Risk"
+    },
+
+    "emptyState": {
+      "noPathsYet": "No learning paths yet",
+      "noPathsDescription": "Create a learning path to start tracking your growth and skill development.",
+      "noActivitiesYet": "No learning activities yet",
+      "noActivitiesDescription": "Start adding activities to track your learning progress."
+    }
+  }
+}

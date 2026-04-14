@@ -1,0 +1,89 @@
+{
+  "emailMarketing": {
+    "title": "Email Marketing",
+    "description": "Campaigns, templates, and analytics",
+    "newCampaign": "New Campaign",
+    "noWorkspace": "No Workspace Selected",
+    "noWorkspaceDescription": "Please select a workspace to view email marketing.",
+
+    "tabs": {
+      "campaigns": "Campaigns",
+      "templates": "Templates",
+      "analytics": "Analytics",
+      "infrastructure": "Infrastructure",
+      "automations": "Automations"
+    },
+
+    "stats": {
+      "totalSent": "Total Sent",
+      "avgOpenRate": "Avg Open Rate",
+      "avgClickRate": "Avg Click Rate",
+      "activeCampaigns": "Active Campaigns"
+    },
+
+    "campaigns": {
+      "title": "Recent Campaigns",
+      "viewAll": "View all",
+      "campaign": "Campaign",
+      "status": "Status",
+      "sent": "Sent",
+      "openRate": "Open Rate",
+      "clickRate": "Click Rate",
+      "noCampaignsYet": "No campaigns yet",
+      "noCampaignsDescription": "Create email campaigns to engage your audience with targeted messaging.",
+      "createCampaign": "Create Campaign",
+      "failedToLoad": "Failed to load campaigns"
+    },
+
+    "templates": {
+      "title": "Email Templates",
+      "newTemplate": "New Template",
+      "noTemplatesYet": "No templates yet",
+      "noTemplatesDescription": "Design reusable email templates to speed up your campaign creation.",
+      "createTemplate": "Create Template",
+      "lastEdited": "Last edited {date}",
+      "failedToLoad": "Failed to load templates"
+    },
+
+    "analytics": {
+      "performanceOverview": "Performance Overview (Last 30 Days)",
+      "emailsSent": "Emails Sent",
+      "opens": "Opens",
+      "clicks": "Clicks",
+      "bounces": "Bounces",
+      "campaigns": "Campaigns",
+      "noAnalyticsData": "No analytics data available",
+      "bestSendTimes": "Best Send Times",
+      "notEnoughData": "Not enough data yet",
+      "openRateLabel": "{rate}% open rate",
+      "topPerforming": "Top Performing Campaigns",
+      "noCampaignData": "No campaign data yet",
+      "clicksLabel": "{count} clicks",
+      "failedToLoad": "Failed to load analytics"
+    },
+
+    "infrastructure": {
+      "sendingDomains": "Sending Domains",
+      "emailProviders": "Email Providers",
+      "subscriberOverview": "Subscriber Overview",
+      "noDomainsConfigured": "No sending domains configured",
+      "noProvidersConfigured": "No email providers configured",
+      "connected": "Connected",
+      "inactive": "Inactive",
+      "activeSubscribers": "Active subscribers",
+      "unsubscribed": "Unsubscribed (30d)",
+      "bounceRate": "Bounce rate",
+      "failedToLoadDomains": "Failed to load domains",
+      "failedToLoadProviders": "Failed to load providers"
+    },
+
+    "status": {
+      "draft": "Draft",
+      "scheduled": "Scheduled",
+      "sending": "Sending",
+      "sent": "Sent",
+      "paused": "Paused",
+      "cancelled": "Cancelled"
+    }
+  }
+}

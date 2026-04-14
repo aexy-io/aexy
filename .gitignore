@@ -1,6 +1,10 @@
 node_modules
 .next
 .DS_Store
+
+# Auto-generated merged i18n files (run npm run i18n:merge to regenerate)
+frontend/messages/en.json
+frontend/messages/hi.json
 __pycache__
 .env
 celerybeat-schedule

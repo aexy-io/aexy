@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
@@ -63,6 +64,7 @@ export default function GoalDetailPage() {
       await updateProgress(newProgress);
     } catch (err) {
       console.error("Failed to update progress:", err);
+      toast.error("Failed to update progress");
     } finally {
       setIsUpdatingProgress(false);
     }
@@ -74,6 +76,7 @@ export default function GoalDetailPage() {
       await autoLink();
     } catch (err) {
       console.error("Failed to auto-link:", err);
+      toast.error("Failed to auto-link contributions");
     } finally {
       setIsAutoLinking(false);
     }
@@ -85,6 +88,7 @@ export default function GoalDetailPage() {
       await complete();
     } catch (err) {
       console.error("Failed to complete goal:", err);
+      toast.error("Failed to complete goal");
     }
   };
 

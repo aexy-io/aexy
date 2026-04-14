@@ -1,0 +1,86 @@
+{
+  "admin": {
+    "title": "Admin Dashboard",
+    "description": "Platform-wide monitoring and management",
+    "failedToLoadStats": "Failed to load dashboard stats",
+
+    "stats": {
+      "totalWorkspaces": "Total Workspaces",
+      "totalUsers": "Total Users",
+      "emailsSent": "Emails Sent",
+      "notifications": "Notifications",
+      "todayCount": "{count} today"
+    },
+
+    "email": {
+      "deliveryRate": "Email Delivery Rate (30 days)",
+      "sentToday": "Sent Today",
+      "thisWeek": "This Week",
+      "failedToday": "Failed Today",
+      "activeWorkspaces30d": "Active Workspaces (30d)",
+      "emailDelivery": "Email Delivery",
+      "recentFailedEmails": "Recent Failed Emails",
+      "viewAll": "View All",
+      "noFailedEmails": "No failed emails"
+    },
+
+    "quickLinks": {
+      "emailDelivery": "Email Delivery",
+      "notifications": "Notifications",
+      "workspaces": "Workspaces",
+      "users": "Users"
+    },
+
+    "users": {
+      "title": "Users",
+      "totalUsers": "Total Users",
+      "manageUsers": "Manage Users"
+    },
+
+    "workspaces": {
+      "title": "Workspaces",
+      "totalWorkspaces": "Total Workspaces",
+      "manageWorkspaces": "Manage Workspaces"
+    },
+
+    "aiBenchmarking": {
+      "title": "AI Benchmarking",
+      "description": "Performance metrics across Ask AI, Agents, and Automations",
+      "failedToLoad": "Failed to load benchmarking data",
+      "askAi": "Ask AI",
+      "agentExecutions": "Agent Executions",
+      "automationRuns": "Automation Runs",
+      "feedbackScore": "Feedback Score",
+      "messages": "messages",
+      "avgLatency": "avg",
+      "successRate": "{rate}% success",
+      "noData": "No data",
+      "thumbsUp": "Thumbs Up",
+      "thumbsDown": "Thumbs Down",
+      "volumeTrend": "Volume Trend",
+      "tokenUsage": "Token Usage",
+      "feedbackDistribution": "Feedback Distribution"
+    },
+
+    "status": {
+      "sent": "Sent",
+      "delivered": "Delivered",
+      "failed": "Failed",
+      "bounced": "Bounced",
+      "pending": "Pending"
+    },
+
+    "timeRange": {
+      "7days": "7 days",
+      "30days": "30 days",
+      "90days": "90 days"
+    },
+
+    "groupBy": {
+      "hour": "Hour",
+      "day": "Day",
+      "week": "Week",
+      "month": "Month"
+    }
+  }
+}

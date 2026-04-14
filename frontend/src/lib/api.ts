@@ -2057,11 +2057,14 @@ export interface WorkspaceBillingStatus {
 }
 
 // Billing/Subscription types
+export type BillingModel = "free" | "per_seat" | "flat_plus_usage" | "postpaid";
+
 export interface PlanFeatures {
   id: string;
   name: string;
-  tier: "free" | "pro" | "enterprise";
+  tier: "free" | "pro" | "enterprise" | "flat_plus_usage" | "postpaid" | "custom";
   description: string | null;
+  billing_model: BillingModel;
   price_monthly_cents: number;
   max_repos: number;
   max_commits_per_repo: number;
@@ -2069,15 +2072,43 @@ export interface PlanFeatures {
   sync_history_days: number;
   llm_requests_per_day: number;
   llm_provider_access: string[];
+  free_llm_tokens_per_month: number;
+  llm_input_cost_per_1k_cents: number;
+  llm_output_cost_per_1k_cents: number;
+  enable_overage_billing: boolean;
   enable_real_time_sync: boolean;
   enable_advanced_analytics: boolean;
   enable_exports: boolean;
   enable_webhooks: boolean;
   enable_team_features: boolean;
+  // Billing model pricing
+  base_fee_monthly_cents: number;
+  per_seat_price_monthly_cents: number;
+  min_seats: number;
+  included_seats: number;
+  requires_payment_method: boolean;
+  payment_timing: "prepaid" | "postpaid";
+}
+
+export interface SeatSummary {
+  total_seats: number;
+  base_seats: number;
+  additional_seats: number;
+  per_seat_price_cents: number;
+  included_seats: number;
+}
+
+export interface PostpaidSummary {
+  accrued_cents: number;
+  estimated_total_cents: number;
+  last_settled_at: string | null;
+  billing_period_start: string | null;
+  billing_period_end: string | null;
 }
 
 export interface SubscriptionStatus {
   has_subscription: boolean;
+  billing_model: BillingModel;
   subscription: {
     id: string;
     status: string;
@@ -2091,6 +2122,8 @@ export interface SubscriptionStatus {
     stripe_customer_id: string | null;
     email: string | null;
   } | null;
+  seat_summary: SeatSummary | null;
+  postpaid_summary: PostpaidSummary | null;
 }
 
 // Usage and Billing Types
@@ -2132,10 +2165,15 @@ export interface BillingHistoryEntry {
 
 export interface Invoice {
   id: string;
+  stripe_invoice_id: string | null;
+  stripe_invoice_number: string | null;
   number: string | null;
   status: string;
-  amount_due: number;
-  amount_paid: number;
+  subtotal_cents: number;
+  tax_cents: number;
+  total_cents: number;
+  amount_paid_cents: number;
+  amount_due_cents: number;
   currency: string;
   period_start: string | null;
   period_end: string | null;
@@ -2143,6 +2181,13 @@ export interface Invoice {
   paid_at: string | null;
   invoice_pdf: string | null;
   hosted_invoice_url: string | null;
+  payment_method: string;
+  bank_transfer_reference: string | null;
+  manual_payment_note: string | null;
+  marked_paid_by: string | null;
+  description: string | null;
+  due_date: string | null;
+  workspace_id: string | null;
 }
 
 export interface LimitsUsageSummary {
@@ -2150,6 +2195,7 @@ export interface LimitsUsageSummary {
     id: string;
     name: string;
     tier: string;
+    billing_model: BillingModel;
   };
   repos: {
     used: number;
@@ -4182,11 +4228,28 @@ export const billingApi = {
 
   createCheckoutSession: async (data: {
     plan_tier: string;
+    billing_model?: string;
     success_url: string;
     cancel_url: string;
     workspace_id?: string;
+    seat_count?: number;
   }): Promise<{ checkout_url: string }> => {
     const response = await api.post("/billing/checkout", data);
+    return response.data;
+  },
+
+  getEffectivePlan: async (workspaceId?: string): Promise<any> => {
+    const response = await api.get("/billing/effective-plan", {
+      params: workspaceId ? { workspace_id: workspaceId } : {},
+    });
+    return response.data;
+  },
+
+  updateSeats: async (data: {
+    seat_count: number;
+    workspace_id: string;
+  }): Promise<{ success: boolean; message: string }> => {
+    const response = await api.post("/billing/seats", data);
     return response.data;
   },
 
@@ -14972,6 +15035,7 @@ export const learningIntegrationsApi = {
 
 export interface AdminCheckResponse {
   is_admin: boolean;
+  platform_org_id: string | null;
 }
 
 export interface AdminDashboardStats {

@@ -1,0 +1,159 @@
+{
+  "agents": {
+    "title": "AI Agents",
+    "description": "Create and manage intelligent automation agents",
+
+    "actions": {
+      "createAgent": "Create Agent",
+      "createYourFirstAgent": "Create Your First Agent",
+      "editAgent": "Edit Agent",
+      "deleteAgent": "Delete Agent",
+      "pauseAgent": "Pause Agent",
+      "activateAgent": "Activate Agent",
+      "runAgent": "Run Agent",
+      "chat": "Chat",
+      "run": "Run",
+      "pause": "Pause",
+      "activate": "Activate",
+      "edit": "Edit",
+      "filters": "Filters"
+    },
+
+    "stats": {
+      "totalAgents": "Total Agents",
+      "activeAgents": "Active Agents",
+      "totalExecutions": "Total Executions",
+      "totalRuns": "Total Runs",
+      "success": "Success",
+      "successRate": "Success Rate",
+      "avgTime": "Avg Time",
+      "avgDuration": "Avg Duration"
+    },
+
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "allStatus": "All Status",
+      "running": "Running..."
+    },
+
+    "types": {
+      "allTypes": "All Types",
+      "support": "Support Agent",
+      "sales": "Sales Agent",
+      "scheduling": "Scheduling Agent",
+      "onboarding": "Onboarding Agent",
+      "recruiting": "Recruiting Agent",
+      "newsletter": "Newsletter Agent",
+      "triage": "Triage Agent",
+      "insights": "Insights Agent",
+      "standup": "Standup Agent",
+      "custom": "Custom Agent"
+    },
+
+    "typeDescriptions": {
+      "support": "Handle customer support inquiries and issues",
+      "sales": "Assist with sales outreach and follow-ups",
+      "scheduling": "Manage meeting scheduling and calendar coordination",
+      "onboarding": "Guide new users through onboarding processes",
+      "recruiting": "Assist with candidate outreach and screening",
+      "newsletter": "Manage newsletter subscriptions and content",
+      "triage": "Classify and route incoming tickets by priority and department",
+      "insights": "Proactively surface team metrics, burnout risks, and performance trends",
+      "standup": "Draft standup summaries from activity and remind team members",
+      "custom": "Build a custom agent with your own configuration"
+    },
+
+    "tools": {
+      "title": "Tools",
+      "availableTools": "Available Tools",
+      "reply": "Reply",
+      "sendEmail": "Send Email",
+      "searchContacts": "Search Contacts",
+      "enrichPerson": "Enrich Person",
+      "updateCRM": "Update CRM",
+      "schedule": "Schedule",
+      "escalate": "Escalate",
+      "getEmailHistory": "Get Email History",
+      "createTask": "Create Task",
+      "getWritingStyle": "Get Writing Style",
+      "classifyTicket": "Classify Ticket",
+      "assignTicket": "Assign Ticket",
+      "getTeamMetrics": "Get Team Metrics",
+      "getBurnoutRisk": "Get Burnout Risk",
+      "getVelocity": "Get Velocity",
+      "sendSlack": "Send Slack",
+      "getGitActivity": "Get Git Activity",
+      "getTaskUpdates": "Get Task Updates"
+    },
+
+    "config": {
+      "title": "Configuration",
+      "llm": "LLM",
+      "temperature": "Temperature",
+      "workingHours": "Working Hours",
+      "persona": "Persona",
+      "mentionHandle": "Mention Handle",
+      "type": "Type",
+      "status": "Status"
+    },
+
+    "detail": {
+      "statistics": "Statistics",
+      "executionHistory": "Execution History",
+      "executionDetails": "Execution Details",
+      "loadingExecutions": "Loading executions...",
+      "noExecutionsYet": "No executions yet",
+      "selectExecutionToView": "Select an execution to view details",
+      "steps": "steps",
+      "step": "Step {number}",
+      "output": "Output",
+      "error": "Error",
+      "tokens": "Tokens",
+      "duration": "Duration"
+    },
+
+    "runDialog": {
+      "title": "Run {agentName}",
+      "provideContext": "Provide context for the agent",
+      "taskDescription": "Task Description",
+      "taskPlaceholder": "e.g., Search for contacts in the tech industry and draft a personalized email...",
+      "taskHelp": "Be specific about what you want the agent to do. The agent will use its available tools to complete the task."
+    },
+
+    "wizard": {
+      "chooseType": "Choose an agent type",
+      "chooseTypeDescription": "Support, sales, scheduling, or custom",
+      "configureTools": "Configure tools & persona",
+      "configureToolsDescription": "Set up what your agent can do",
+      "activateAndMonitor": "Activate and monitor",
+      "activateAndMonitorDescription": "Watch your agent handle tasks"
+    },
+
+    "empty": {
+      "noAgentsTitle": "No Agents Yet",
+      "noAgentsDescription": "Create AI agents to automate email responses, schedule meetings, manage CRM data, and more.",
+      "noAgentsFound": "No agents found",
+      "noAgentsFoundDescription": "Try adjusting your search or filters",
+      "agentNotFoundTitle": "Agent Not Found",
+      "agentNotFoundDescription": "The agent you're looking for doesn't exist or has been deleted.",
+      "noWorkspace": "No workspace selected"
+    },
+
+    "confirmations": {
+      "deleteAgentConfirm": "Are you sure you want to delete this agent? This action cannot be undone."
+    },
+
+    "search": {
+      "agents": "Search agents..."
+    },
+
+    "execution": {
+      "completed": "Completed",
+      "failed": "Failed",
+      "pending": "Pending",
+      "running": "Running",
+      "cancelled": "Cancelled"
+    }
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "learning": {
+    "title": "मेरा Learning Path",
+    "titleTeam": "प्रोजेक्ट Learning",
+    "description": "अपने विकास और कौशल विकास को ट्रैक करें",
+
+    "tabs": {
+      "myLearning": "मेरी लर्निंग",
+      "path": "Path",
+      "activities": "गतिविधियां"
+    },
+
+    "actions": {
+      "createNewPath": "नया Path बनाएं",
+      "selectProject": "प्रोजेक्ट चुनें",
+      "pausePath": "Path रोकें",
+      "resumePath": "Path फिर शुरू करें",
+      "regeneratePath": "Path पुनर्जनित करें",
+      "generatePath": "Path जनरेट करें",
+      "generating": "जनरेट हो रहा है..."
+    },
+
+    "stats": {
+      "totalMembers": "कुल सदस्य",
+      "withLearningPaths": "Learning Paths के साथ",
+      "averageProgress": "औसत प्रगति",
+      "learningRate": "लर्निंग दर"
+    },
+
+    "milestones": {
+      "title": "Milestones",
+      "completed": "पूर्ण",
+      "inProgress": "प्रगति में",
+      "behind": "पीछे",
+      "notStarted": "शुरू नहीं हुआ"
+    },
+
+    "activities": {
+      "title": "Learning गतिविधियां",
+      "startActivity": "शुरू करें",
+      "completeActivity": "पूर्ण करें",
+      "startSession": "Session शुरू करें",
+      "endSession": "Session समाप्त करें",
+      "importCourse": "Course इंपोर्ट करें",
+      "searchCourses": "Courses खोजें"
+    },
+
+    "gamification": {
+      "level": "Level {level}",
+      "points": "{points} अंक",
+      "streak": "दैनिक Streak",
+      "badges": "Badges",
+      "progressRing": "Level प्रगति"
+    },
+
+    "team": {
+      "teamMembersProgress": "टीम सदस्यों की प्रगति",
+      "noTeamMembers": "कोई टीम सदस्य नहीं मिला",
+      "noActivePath": "कोई सक्रिय Learning Path नहीं",
+      "learningInProgress": "लर्निंग जारी है",
+      "skillGaps": "Skill Gaps",
+      "recommendations": "सिफारिशें"
+    },
+
+    "trajectory": {
+      "ahead": "आगे",
+      "onTrack": "सही राह पर",
+      "behind": "पीछे",
+      "atRisk": "जोखिम में"
+    },
+
+    "emptyState": {
+      "noPathsYet": "अभी तक कोई Learning Path नहीं",
+      "noPathsDescription": "अपने विकास और कौशल को ट्रैक करने के लिए Learning Path बनाएं।",
+      "noActivitiesYet": "अभी तक कोई Learning गतिविधि नहीं",
+      "noActivitiesDescription": "अपनी लर्निंग प्रगति ट्रैक करने के लिए गतिविधियां जोड़ना शुरू करें।"
+    }
+  }
+}

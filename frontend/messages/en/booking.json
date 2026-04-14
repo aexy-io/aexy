@@ -1,0 +1,70 @@
+{
+  "booking": {
+    "title": "Booking",
+    "description": "Manage your event types, availability, and bookings",
+
+    "stats": {
+      "totalBookings": "Total Bookings",
+      "confirmed": "Confirmed",
+      "completionRate": "Completion Rate",
+      "noShowRate": "No-Show Rate"
+    },
+
+    "eventTypes": {
+      "title": "Event Types",
+      "viewAll": "View all",
+      "noEventTypesYet": "No event types yet",
+      "noEventTypesDescription": "Create your first event type to start accepting bookings",
+      "createEventType": "Create Event Type",
+      "newEventType": "New Event Type",
+      "duration": "{minutes} min",
+      "team": "Team",
+      "copyBookingLink": "Copy booking link",
+      "bookingLinkCopied": "Booking link copied!",
+      "activated": "Event type activated",
+      "deactivated": "Event type deactivated",
+      "duplicated": "Event type duplicated",
+      "failedToLoad": "Failed to load event types"
+    },
+
+    "upcomingBookings": {
+      "title": "Upcoming Bookings",
+      "noUpcoming": "No upcoming bookings",
+      "joinMeeting": "Join Meeting",
+      "today": "Today",
+      "tomorrow": "Tomorrow"
+    },
+
+    "availability": {
+      "title": "Availability",
+      "manageAvailability": "Manage Availability",
+      "weeklyHours": "Weekly Hours",
+      "dateOverrides": "Date Overrides",
+      "timezone": "Timezone",
+      "saveChanges": "Save Changes",
+      "addOverride": "Add Override",
+      "noOverrides": "No date overrides"
+    },
+
+    "calendars": {
+      "title": "Calendar Connections",
+      "connectCalendar": "Connect Calendar",
+      "connected": "Connected",
+      "disconnected": "Disconnected"
+    },
+
+    "quickLinks": {
+      "title": "Quick Links",
+      "calendarConnections": "Calendar Connections",
+      "manageAvailability": "Manage Availability"
+    },
+
+    "locations": {
+      "zoom": "Zoom",
+      "googleMeet": "Google Meet",
+      "microsoftTeams": "Microsoft Teams",
+      "phone": "Phone",
+      "inPerson": "In Person"
+    }
+  }
+}

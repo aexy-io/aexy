@@ -1,0 +1,60 @@
+{
+  "uptime": {
+    "title": "Uptime Monitoring",
+    "description": "Monitor your endpoints and track incidents",
+    "newMonitor": "New Monitor",
+
+    "stats": {
+      "monitorsUp": "Monitors Up",
+      "monitorsDown": "Monitors Down",
+      "activeIncidents": "Active Incidents",
+      "incidents24h": "Incidents (24h)",
+      "avgUptime24h": "Avg Uptime (24h)"
+    },
+
+    "monitors": {
+      "title": "Monitors",
+      "viewAll": "View all",
+      "allMonitors": "All Monitors",
+      "createMonitor": "Create Monitor",
+      "noMonitorsYet": "No monitors yet",
+      "noMonitorsDescription": "Set up uptime monitors to track the health and availability of your services.",
+      "checkType": {
+        "http": "HTTP",
+        "tcp": "TCP",
+        "websocket": "WebSocket"
+      }
+    },
+
+    "incidents": {
+      "title": "Active Incidents",
+      "viewAll": "View all",
+      "incidentHistory": "Incident History",
+      "allSystemsOperational": "All systems operational",
+      "unknownMonitor": "Unknown Monitor",
+      "duration": "Duration: {duration}"
+    },
+
+    "history": {
+      "title": "Check History"
+    },
+
+    "status": {
+      "up": "Up",
+      "down": "Down",
+      "degraded": "Degraded",
+      "paused": "Paused",
+      "pending": "Pending",
+      "ongoing": "Ongoing",
+      "resolved": "Resolved",
+      "acknowledged": "Acknowledged"
+    },
+
+    "quickLinks": {
+      "title": "Quick Links",
+      "allMonitors": "All Monitors",
+      "incidentHistory": "Incident History",
+      "checkHistory": "Check History"
+    }
+  }
+}

@@ -86,7 +86,7 @@ export function useAppAccess(workspaceId: string | null, developerId: string | n
 
   // Get all accessible app IDs
   const accessibleApps = useMemo((): string[] => {
-    if (!effectiveAccess) {
+    if (!effectiveAccess?.apps) {
       // Return all apps if access data hasn't loaded
       return Object.keys(APP_CATALOG);
     }
