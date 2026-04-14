@@ -55,7 +55,7 @@ class LLMSettings(BaseSettings):
     # Provider selection (switchable)
     llm_provider: str = Field(
         default="claude",
-        description="LLM provider: claude, gemini, ollama, openai, openrouter",
+        description="LLM provider: claude, gemini, ollama, openai, openrouter, deepseek",
         validation_alias="LLM_PROVIDER",
     )
     llm_model: str = Field(
@@ -122,6 +122,18 @@ class LLMSettings(BaseSettings):
         default="google/gemini-2.0-flash,openai/gpt-4o,deepseek/deepseek-chat-v3,meta-llama/llama-3.1-70b-instruct",
         description="Comma-separated list of fallback models when primary is unavailable",
         validation_alias="OPENROUTER_FALLBACK_MODELS",
+    )
+
+    # DeepSeek settings (direct DeepSeek API, OpenAI-compatible)
+    deepseek_api_key: str = Field(
+        default="",
+        description="DeepSeek API key",
+        validation_alias="DEEPSEEK_API_KEY",
+    )
+    deepseek_fallback_models: str = Field(
+        default="deepseek-reasoner",
+        description="Comma-separated list of fallback DeepSeek models",
+        validation_alias="DEEPSEEK_FALLBACK_MODELS",
     )
 
     # Processing mode (configurable per billing plan)
@@ -227,6 +239,22 @@ class LLMSettings(BaseSettings):
         validation_alias="OPENROUTER_TOKENS_PER_MINUTE",
     )
 
+    deepseek_requests_per_minute: int = Field(
+        default=60,
+        description="DeepSeek requests per minute",
+        validation_alias="DEEPSEEK_REQUESTS_PER_MINUTE",
+    )
+    deepseek_requests_per_day: int = Field(
+        default=-1,
+        description="DeepSeek requests per day (-1 = unlimited)",
+        validation_alias="DEEPSEEK_REQUESTS_PER_DAY",
+    )
+    deepseek_tokens_per_minute: int = Field(
+        default=100000,
+        description="DeepSeek tokens per minute",
+        validation_alias="DEEPSEEK_TOKENS_PER_MINUTE",
+    )
+
     # Global rate limiting settings
     rate_limit_enabled: bool = Field(
         default=True,
@@ -261,6 +289,11 @@ class LLMSettings(BaseSettings):
                 requests_per_minute=self.openrouter_requests_per_minute,
                 requests_per_day=self.openrouter_requests_per_day,
                 tokens_per_minute=self.openrouter_tokens_per_minute,
+            ),
+            "deepseek": ProviderRateLimitSettings(
+                requests_per_minute=self.deepseek_requests_per_minute,
+                requests_per_day=self.deepseek_requests_per_day,
+                tokens_per_minute=self.deepseek_tokens_per_minute,
             ),
         }
         return limits_map.get(provider, ProviderRateLimitSettings())
@@ -371,6 +404,14 @@ class Settings(BaseSettings):
     openrouter_output_price_per_million: float = Field(
         default=1500.0,  # $15.00 per 1M output tokens (default model: Claude Sonnet via OpenRouter)
         description="OpenRouter output token price per million tokens (cents)",
+    )
+    deepseek_input_price_per_million: float = Field(
+        default=28.0,  # $0.28 per 1M input tokens (cache miss; same for deepseek-chat and deepseek-reasoner)
+        description="DeepSeek input token price per million tokens (cents)",
+    )
+    deepseek_output_price_per_million: float = Field(
+        default=42.0,  # $0.42 per 1M output tokens (same for deepseek-chat and deepseek-reasoner)
+        description="DeepSeek output token price per million tokens (cents)",
     )
 
     # Redis (for caching and job queue)

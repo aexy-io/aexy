@@ -42,6 +42,10 @@ PROVIDER_PRICING = {
         "input": settings.openrouter_input_price_per_million,
         "output": settings.openrouter_output_price_per_million,
     },
+    "deepseek": {
+        "input": settings.deepseek_input_price_per_million,
+        "output": settings.deepseek_output_price_per_million,
+    },
 }
 
 

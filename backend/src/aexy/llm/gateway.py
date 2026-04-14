@@ -614,6 +614,11 @@ def create_provider(config: LLMConfig) -> LLMProvider:
 
         return OpenRouterProvider(config)
 
+    elif config.provider == "deepseek":
+        from aexy.llm.deepseek_provider import DeepSeekProvider
+
+        return DeepSeekProvider(config)
+
     else:
         raise ValueError(f"Unsupported LLM provider: {config.provider}")
 
@@ -671,15 +676,25 @@ def get_llm_gateway() -> LLMGateway | None:
         if not api_key:
             logger.warning("OpenRouter API key not configured for OpenRouter provider")
             return None
+    elif provider_name == "deepseek":
+        api_key = llm_settings.deepseek_api_key
+        if not api_key:
+            logger.warning("DeepSeek API key not configured for DeepSeek provider")
+            return None
     else:
         logger.warning(f"Unknown LLM provider: {provider_name}")
         return None
 
-    # Parse fallback models for OpenRouter
+    # Parse fallback models for providers that support model fallback
     fallback_models: list[str] = []
     if provider_name == "openrouter" and llm_settings.openrouter_fallback_models:
         fallback_models = [
             m.strip() for m in llm_settings.openrouter_fallback_models.split(",")
+            if m.strip()
+        ]
+    elif provider_name == "deepseek" and llm_settings.deepseek_fallback_models:
+        fallback_models = [
+            m.strip() for m in llm_settings.deepseek_fallback_models.split(",")
             if m.strip()
         ]
 

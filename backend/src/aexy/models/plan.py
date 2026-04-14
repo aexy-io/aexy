@@ -179,7 +179,7 @@ DEFAULT_PLANS = [
         "llm_requests_per_day": 500,
         "llm_requests_per_minute": 20,
         "llm_tokens_per_minute": 100000,
-        "llm_provider_access": ["claude", "gemini", "ollama", "openrouter"],
+        "llm_provider_access": ["claude", "gemini", "ollama", "openrouter", "deepseek"],
         # Pro tier: 500K tokens/month included, then pay-per-use
         "free_llm_tokens_per_month": 500000,
         "llm_input_cost_per_1k_cents": 25,   # $0.25 per 1K input tokens
@@ -211,7 +211,7 @@ DEFAULT_PLANS = [
         "llm_requests_per_day": -1,
         "llm_requests_per_minute": 60,
         "llm_tokens_per_minute": -1,  # Unlimited
-        "llm_provider_access": ["claude", "gemini", "ollama", "openrouter"],
+        "llm_provider_access": ["claude", "gemini", "ollama", "openrouter", "deepseek"],
         # Enterprise tier: 2M tokens/month included, discounted overage
         "free_llm_tokens_per_month": 2000000,
         "llm_input_cost_per_1k_cents": 15,   # $0.15 per 1K input tokens (40% discount)
@@ -243,7 +243,7 @@ DEFAULT_PLANS = [
         "llm_requests_per_day": -1,
         "llm_requests_per_minute": 30,
         "llm_tokens_per_minute": 200000,
-        "llm_provider_access": ["claude", "gemini", "ollama", "openrouter"],
+        "llm_provider_access": ["claude", "gemini", "ollama", "openrouter", "deepseek"],
         "free_llm_tokens_per_month": 0,  # No free tokens — all metered
         "llm_input_cost_per_1k_cents": 20,
         "llm_output_cost_per_1k_cents": 40,
@@ -274,7 +274,7 @@ DEFAULT_PLANS = [
         "llm_requests_per_day": -1,
         "llm_requests_per_minute": 30,
         "llm_tokens_per_minute": 200000,
-        "llm_provider_access": ["claude", "gemini", "ollama", "openrouter"],
+        "llm_provider_access": ["claude", "gemini", "ollama", "openrouter", "deepseek"],
         "free_llm_tokens_per_month": 0,
         "llm_input_cost_per_1k_cents": 20,
         "llm_output_cost_per_1k_cents": 40,
