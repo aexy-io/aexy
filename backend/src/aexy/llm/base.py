@@ -70,7 +70,7 @@ class AnalysisType(str, Enum):
 class LLMConfig(BaseModel):
     """Configuration for an LLM provider."""
 
-    provider: str = Field(description="Provider name: claude, gemini, ollama, openai, openrouter")
+    provider: str = Field(description="Provider name: claude, gemini, ollama, openai, openrouter, deepseek")
     model: str = Field(description="Model identifier")
     api_key: str | None = Field(default=None, description="API key for cloud providers")
     base_url: str | None = Field(default=None, description="Base URL for self-hosted providers")

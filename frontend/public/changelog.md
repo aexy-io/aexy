@@ -5,7 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.7.1] - 2026-03-31
+## [0.7.1] - 2026-04-14
+
+### Added
+
+#### DeepSeek as a first-class LLM provider
+Added direct DeepSeek API support alongside Claude, Gemini, Ollama, and OpenRouter. DeepSeek uses an OpenAI-compatible endpoint (`https://api.deepseek.com/chat/completions`) with models `deepseek-chat` (non-thinking DeepSeek-V3.2) and `deepseek-reasoner` (thinking DeepSeek-V3.2).
+
+- New `DeepSeekProvider` with model fallback, 429 `retry-after` handling, usage extraction
+- Wired into `LLMGateway` factory + `get_llm_gateway()` bootstrap
+- Added `DEEPSEEK_API_KEY` and `DEEPSEEK_FALLBACK_MODELS` env vars (defaults to `deepseek-reasoner`)
+- Rate-limit knobs: `DEEPSEEK_REQUESTS_PER_MINUTE`, `DEEPSEEK_REQUESTS_PER_DAY`, `DEEPSEEK_TOKENS_PER_MINUTE`
+- Billing: 28¢/M input, 42¢/M output (cache-miss rate; same for both models)
+- Plan tiers updated to include `deepseek` in `llm_provider_access`
+- Unit tests: `tests/unit/test_deepseek_provider.py` (12 tests, mocked HTTP)
+- Live compatibility harness: `scripts/check_llm_provider.py` — provider-agnostic; runs `health_check` → `call_llm` → `analyze(CODE)` → `extract_task_signals` and reports pass/fail. Use any time a provider or model is swapped.
+
+#### Onboarding: create additional workspaces after initial setup
+The sidebar "Create workspace" link routes to `/onboarding/workspace`, but the `OnboardingGuard` was redirecting already-onboarded users back to `/dashboard` — making workspace creation impossible post-onboarding.
+
+- `OnboardingGuard` now allows `/onboarding/workspace` (and `/onboarding/complete`) through for existing users
+- Workspace step clears stale localStorage-cached workspace state for already-onboarded users, so they see the "Create / Join" choice instead of "Workspace Ready"
+- After create / accept-invite, existing users route to `/dashboard` (instead of `/onboarding/connect`) and the new workspace is auto-selected via `useWorkspace.switchWorkspace()` so the sidebar updates immediately
+
+### Fixed
+
+- Hydration mismatch on `<html>` caused by the Redeviation browser extension injecting `data-redeviation-bs-uid` — added `suppressHydrationWarning` to the root layout
+
+### Changed
+
+- `docker-compose.yml` and `docker-compose.dev.yml` no longer hardcode `LLM_PROVIDER`, `LLM_MODEL`, or any `*_API_KEY`. LLM config is read from `backend/.env` by pydantic settings — single source of truth. Previously empty-string values in compose silently shadowed `.env`, breaking provider selection. Prod compose (`docker-compose.prod.yml`) continues to inject secrets from the host shell env as designed.
+
+---
 
 ### Added
 
