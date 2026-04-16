@@ -19,5 +19,6 @@ class TaskQueue:
     EMAIL = "email"
     INTEGRATIONS = "integrations"
     OPERATIONS = "operations"
+    AGENTS = "agents"
 
-    ALL = [ANALYSIS, SYNC, WORKFLOWS, EMAIL, INTEGRATIONS, OPERATIONS]
+    ALL = [ANALYSIS, SYNC, WORKFLOWS, EMAIL, INTEGRATIONS, OPERATIONS, AGENTS]

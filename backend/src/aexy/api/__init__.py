@@ -104,6 +104,9 @@ from aexy.api.workflow_events import router as workflow_events_router
 # Google Integration (Gmail & Calendar sync for CRM)
 from aexy.api.google_integration import router as google_integration_router
 from aexy.api.google_integration import callback_router as google_callback_router
+# Agent Workspaces (Canvas Framework)
+from aexy.api.agent_workspaces import router as agent_workspaces_router
+from aexy.api.agent_workspace_stream import router as agent_workspace_stream_router
 # AI Agents
 from aexy.api.agents import router as agents_router
 from aexy.api.agents import writing_style_router
@@ -286,6 +289,9 @@ api_router.include_router(workflow_events_router, tags=["workflow-events"])
 # Google Integration (Gmail & Calendar for CRM)
 api_router.include_router(google_integration_router, tags=["google-integration"])
 api_router.include_router(google_callback_router, tags=["google-integration"])
+# Agent Workspaces (Canvas Framework)
+api_router.include_router(agent_workspaces_router, tags=["agent-workspaces"])
+api_router.include_router(agent_workspace_stream_router, tags=["agent-workspace-stream"])
 # AI Agents
 api_router.include_router(agents_router, tags=["agents"])
 api_router.include_router(writing_style_router, tags=["writing-style"])

@@ -35,6 +35,7 @@ def get_all_workflows() -> list:
     from aexy.temporal.workflows.outreach_sequence import OutreachSequenceWorkflow
     from aexy.temporal.workflows.single_activity import SingleActivityWorkflow
     from aexy.temporal.workflows.sync import SyncGmailWorkflow, SyncRepositoryWorkflow
+    from aexy.temporal.workflows.agent_orchestration import AgentOrchestrationWorkflow
 
     return [
         SingleActivityWorkflow,
@@ -46,6 +47,7 @@ def get_all_workflows() -> list:
         OnboardingWorkflow,
         CleanupWorkflow,
         OutreachSequenceWorkflow,
+        AgentOrchestrationWorkflow,
     ]
 
 
@@ -249,6 +251,12 @@ def get_all_activities() -> list:
         cleanup_ip_addresses,
         purge_behavioral_events,
     )
+    from aexy.temporal.activities.agent_orchestration import (
+        plan_task,
+        execute_block,
+        create_planned_blocks,
+        synthesize_results,
+    )
 
     return [
         # Analysis
@@ -432,6 +440,11 @@ def get_all_activities() -> list:
         check_bulk_compliance_rates,
         # Platform
         handle_new_signup,
+        # Agent Orchestration
+        plan_task,
+        execute_block,
+        create_planned_blocks,
+        synthesize_results,
     ]
 
 

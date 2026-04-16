@@ -516,6 +516,13 @@ from aexy.models.gtm_seo import SEOAudit, SEOAuditPage
 from aexy.models.gtm_content import ContentAnalysis
 from aexy.models.gtm_abm import ABMTargetList, ABMAccount
 from aexy.models.gtm_webhook import GTMWebhook, GTMWebhookDelivery, GTMProviderHealthMetric
+from aexy.models.agent_workspace import (
+    AgentWorkspace,
+    AgentWorkspaceBlock,
+    AgentWorkspaceStatus,
+    BlockType as AgentBlockType,
+    BlockStatus as AgentBlockStatus,
+)
 from aexy.models.api_token import ApiToken
 from aexy.models.ask import AskConversation, AskMessage, AskConversationParticipant, AskShareLink
 from aexy.models.ai_feedback import AIFeedback
@@ -1063,6 +1070,12 @@ __all__ = [
     "AskMessage",
     "AskConversationParticipant",
     "AskShareLink",
+    # Agent Workspaces
+    "AgentWorkspace",
+    "AgentWorkspaceBlock",
+    "AgentWorkspaceStatus",
+    "AgentBlockType",
+    "AgentBlockStatus",
     # AI Feedback
     "AIFeedback",
     # LLM Prompt Log

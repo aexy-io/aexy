@@ -24,6 +24,10 @@ class AgentType(str, Enum):
     EMAIL_DRAFTER = "email_drafter"
     DATA_ENRICHMENT = "data_enrichment"
     CUSTOM = "custom"
+    ORCHESTRATOR = "orchestrator"
+    RESEARCHER = "researcher"
+    ANALYST = "analyst"
+    WRITER = "writer"
 
 
 class AgentExecutionStatus(str, Enum):
