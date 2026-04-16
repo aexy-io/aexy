@@ -35,6 +35,7 @@ import { redirect } from "next/navigation";
 import { Project, SprintListItem, SprintTask, projectTasksApi } from "@/lib/api";
 import { EpicsTab } from "./components/EpicsTab";
 import { ModuleAutomationsPanel } from "@/components/ModuleAutomationsPanel";
+import { WorkspaceTasksTab } from "@/components/planning/WorkspaceTasksTab";
 import { CreateProjectModal, type CreateProjectInput } from "@/components/projects/CreateProjectModal";
 import { cn } from "@/lib/utils";
 
@@ -518,6 +519,18 @@ function SprintsPageContent() {
             Epics
           </button>
           <button
+            onClick={() => setActiveTab("tasks")}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+              activeTab === "tasks"
+                ? "bg-primary-500 text-white shadow-lg shadow-primary-500/25"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted",
+            )}
+          >
+            <ListTodo className="h-4 w-4" />
+            All Tasks
+          </button>
+          <button
             onClick={() => setActiveTab("automations")}
             className={cn(
               "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
@@ -542,6 +555,8 @@ function SprintsPageContent() {
           />
         ) : activeTab === "automations" ? (
           <ModuleAutomationsPanel module="sprints" moduleLabel="Sprints" />
+        ) : activeTab === "tasks" ? (
+          <WorkspaceTasksTab workspaceId={currentWorkspaceId} />
         ) : (
           <EpicsTab
             workspaceId={currentWorkspaceId}

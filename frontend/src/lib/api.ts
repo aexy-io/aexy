@@ -3513,6 +3513,74 @@ export const projectTasksApi = {
 };
 
 // ============================================================================
+// Workspace-Level Tasks API (all tasks across all projects/sprints)
+// ============================================================================
+
+export interface WorkspaceTasksListParams {
+  status?: TaskStatus[];
+  status_id?: string[];
+  assignee_id?: string[];
+  priority?: TaskPriority[];
+  team_id?: string[];
+  sprint_id?: string[];
+  epic_id?: string[];
+  labels?: string[];
+  search?: string;
+  include_archived?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+export const workspaceTasksApi = {
+  /**
+   * List every task in a workspace (aggregated across all teams/sprints/backlogs).
+   * Used by the workspace-level Kanban at /sprints?tab=tasks.
+   */
+  list: async (
+    workspaceId: string,
+    params?: WorkspaceTasksListParams,
+  ): Promise<SprintTask[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/tasks`, {
+      params: {
+        ...(params?.status && { status: params.status }),
+        ...(params?.status_id && { status_id: params.status_id }),
+        ...(params?.assignee_id && { assignee_id: params.assignee_id }),
+        ...(params?.priority && { priority: params.priority }),
+        ...(params?.team_id && { team_id: params.team_id }),
+        ...(params?.sprint_id && { sprint_id: params.sprint_id }),
+        ...(params?.epic_id && { epic_id: params.epic_id }),
+        ...(params?.labels && { labels: params.labels }),
+        ...(params?.search && { search: params.search }),
+        ...(params?.include_archived !== undefined && {
+          include_archived: params.include_archived,
+        }),
+        ...(params?.limit !== undefined && { limit: params.limit }),
+        ...(params?.offset !== undefined && { offset: params.offset }),
+      },
+      // Axios default serializes arrays as `key[]=`; the FastAPI endpoint
+      // expects repeated `key=` params, so use `paramsSerializer.indexes=null`.
+      paramsSerializer: { indexes: null },
+    });
+    return response.data;
+  },
+
+  /**
+   * Update a task's status from the workspace-level Kanban (drag-drop).
+   */
+  updateStatus: async (
+    workspaceId: string,
+    taskId: string,
+    status: TaskStatus,
+  ): Promise<SprintTask> => {
+    const response = await api.patch(
+      `/workspaces/${workspaceId}/tasks/${taskId}/status`,
+      { status },
+    );
+    return response.data;
+  },
+};
+
+// ============================================================================
 // Task Configuration Types & API
 // ============================================================================
 
