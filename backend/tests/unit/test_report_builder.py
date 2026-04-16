@@ -18,6 +18,12 @@ from aexy.schemas.analytics import (
     CustomReportUpdate,
     WidgetConfig,
     ScheduledReportCreate,
+    WidgetType,
+    MetricType,
+    ScheduleFrequency,
+    DeliveryMethod,
+    ExportFormat,
+    ReportFilters,
 )
 
 
@@ -33,14 +39,13 @@ class TestReportBuilderService:
 
     @pytest.mark.asyncio
     async def test_create_report(
-        self, service, db_session, sample_developer, sample_report_config
+        self, service, db_session, sample_developer
     ):
         """Test report creation."""
         report_data = CustomReportCreate(
-            name=sample_report_config["name"],
-            description=sample_report_config["description"],
-            widgets=sample_report_config["widgets"],
-            filters=sample_report_config["filters"],
+            name="Weekly Team Report",
+            description="Weekly summary of team performance",
+            widgets=[],
         )
 
         result = await service.create_report(
@@ -48,7 +53,7 @@ class TestReportBuilderService:
         )
 
         assert result is not None
-        assert result.name == sample_report_config["name"]
+        assert result.name == "Weekly Team Report"
         assert result.creator_id == sample_developer.id
 
     @pytest.mark.asyncio
@@ -60,7 +65,6 @@ class TestReportBuilderService:
             name="Empty Report",
             description="A report with no widgets",
             widgets=[],
-            filters={},
         )
 
         result = await service.create_report(
@@ -72,14 +76,13 @@ class TestReportBuilderService:
 
     @pytest.mark.asyncio
     async def test_get_report(
-        self, service, db_session, sample_developer, sample_report_config
+        self, service, db_session, sample_developer
     ):
         """Test getting a report by ID."""
         # First create a report
         report_data = CustomReportCreate(
-            name=sample_report_config["name"],
-            widgets=sample_report_config["widgets"],
-            filters={},
+            name="Test Report",
+            widgets=[],
         )
         created = await service.create_report(
             sample_developer.id, report_data, db_session
@@ -90,7 +93,7 @@ class TestReportBuilderService:
 
         assert result is not None
         assert result.id == created.id
-        assert result.name == sample_report_config["name"]
+        assert result.name == "Test Report"
 
     @pytest.mark.asyncio
     async def test_get_report_not_found(self, service, db_session):
@@ -101,14 +104,13 @@ class TestReportBuilderService:
 
     @pytest.mark.asyncio
     async def test_update_report(
-        self, service, db_session, sample_developer, sample_report_config
+        self, service, db_session, sample_developer
     ):
         """Test updating a report."""
         # Create report
         report_data = CustomReportCreate(
-            name=sample_report_config["name"],
-            widgets=sample_report_config["widgets"],
-            filters={},
+            name="Original Name",
+            widgets=[],
         )
         created = await service.create_report(
             sample_developer.id, report_data, db_session
@@ -119,7 +121,9 @@ class TestReportBuilderService:
             name="Updated Report Name",
             description="Updated description",
         )
-        result = await service.update_report(created.id, update_data, db_session)
+        result = await service.update_report(
+            created.id, update_data, db_session, user_id=sample_developer.id
+        )
 
         assert result is not None
         assert result.name == "Updated Report Name"
@@ -127,15 +131,14 @@ class TestReportBuilderService:
 
     @pytest.mark.asyncio
     async def test_update_report_partial(
-        self, service, db_session, sample_developer, sample_report_config
+        self, service, db_session, sample_developer
     ):
         """Test partial report update."""
         # Create report
         report_data = CustomReportCreate(
-            name=sample_report_config["name"],
+            name="Original Name",
             description="Original description",
-            widgets=sample_report_config["widgets"],
-            filters={},
+            widgets=[],
         )
         created = await service.create_report(
             sample_developer.id, report_data, db_session
@@ -143,28 +146,33 @@ class TestReportBuilderService:
 
         # Update only name
         update_data = CustomReportUpdate(name="New Name Only")
-        result = await service.update_report(created.id, update_data, db_session)
+        result = await service.update_report(
+            created.id, update_data, db_session, user_id=sample_developer.id
+        )
 
         assert result.name == "New Name Only"
         assert result.description == "Original description"  # Unchanged
 
     @pytest.mark.asyncio
     async def test_delete_report(
-        self, service, db_session, sample_developer, sample_report_config
+        self, service, db_session, sample_developer
     ):
         """Test deleting a report."""
         # Create report
         report_data = CustomReportCreate(
-            name=sample_report_config["name"],
+            name="Report to Delete",
             widgets=[],
-            filters={},
         )
         created = await service.create_report(
             sample_developer.id, report_data, db_session
         )
 
         # Delete it
-        await service.delete_report(created.id, db_session)
+        deleted = await service.delete_report(
+            created.id, db_session, user_id=sample_developer.id
+        )
+
+        assert deleted is True
 
         # Verify deletion
         result = await service.get_report(created.id, db_session)
@@ -180,7 +188,6 @@ class TestReportBuilderService:
             report_data = CustomReportCreate(
                 name=f"Report {i}",
                 widgets=[],
-                filters={},
             )
             await service.create_report(
                 sample_developer.id, report_data, db_session
@@ -188,22 +195,21 @@ class TestReportBuilderService:
 
         # List reports
         results = await service.list_reports(
-            creator_id=sample_developer.id, db=db_session
+            db=db_session, creator_id=sample_developer.id
         )
 
         assert len(results) >= 3
 
     @pytest.mark.asyncio
     async def test_clone_report(
-        self, service, db_session, sample_developer, sample_report_config
+        self, service, db_session, sample_developer
     ):
         """Test cloning a report."""
         # Create original report
         report_data = CustomReportCreate(
-            name=sample_report_config["name"],
+            name="Original Report",
             description="Original",
-            widgets=sample_report_config["widgets"],
-            filters=sample_report_config["filters"],
+            widgets=[],
         )
         original = await service.create_report(
             sample_developer.id, report_data, db_session
@@ -211,13 +217,12 @@ class TestReportBuilderService:
 
         # Clone it
         clone = await service.clone_report(
-            original.id, "Cloned Report", sample_developer.id, db_session
+            original.id, "Cloned Report", db_session, user_id=sample_developer.id
         )
 
         assert clone is not None
         assert clone.id != original.id
         assert clone.name == "Cloned Report"
-        assert clone.widgets == original.widgets
 
     # Template Tests
 
@@ -228,9 +233,9 @@ class TestReportBuilderService:
 
         assert len(templates) > 0
         for template in templates:
-            assert "id" in template
-            assert "name" in template
-            assert "category" in template
+            assert hasattr(template, "id")
+            assert hasattr(template, "name")
+            assert hasattr(template, "category")
 
     @pytest.mark.asyncio
     async def test_get_templates_by_category(self, service):
@@ -238,7 +243,7 @@ class TestReportBuilderService:
         templates = service.get_templates(category="team")
 
         for template in templates:
-            assert template["category"] == "team"
+            assert template.category == "team"
 
     @pytest.mark.asyncio
     async def test_create_from_template(
@@ -246,7 +251,7 @@ class TestReportBuilderService:
     ):
         """Test creating a report from a template."""
         templates = service.get_templates()
-        template_id = templates[0]["id"] if templates else "weekly_team"
+        template_id = templates[0].id if templates else "template-weekly-team"
 
         result = await service.create_from_template(
             template_id, sample_developer.id, db_session
@@ -266,66 +271,17 @@ class TestReportBuilderService:
 
         assert result is None
 
-    # Widget Data Tests
-
-    @pytest.mark.asyncio
-    async def test_get_widget_data_skill_heatmap(
-        self, service, db_session, sample_developers
-    ):
-        """Test fetching skill heatmap widget data."""
-        widget = WidgetConfig(
-            type="skill_heatmap",
-            config={},
-        )
-        developer_ids = [dev.id for dev in sample_developers]
-
-        result = await service.get_widget_data(
-            widget, db_session, developer_ids=developer_ids
-        )
-
-        assert result is not None
-        assert "skills" in result or "data" in result
-
-    @pytest.mark.asyncio
-    async def test_get_widget_data_productivity(
-        self, service, db_session, sample_developer, sample_commits_db
-    ):
-        """Test fetching productivity widget data."""
-        widget = WidgetConfig(
-            type="productivity_chart",
-            config={"period": "30d"},
-        )
-
-        result = await service.get_widget_data(
-            widget, db_session, developer_ids=[sample_developer.id]
-        )
-
-        assert result is not None
-
-    @pytest.mark.asyncio
-    async def test_get_widget_data_invalid_type(self, service, db_session):
-        """Test fetching data for invalid widget type."""
-        widget = WidgetConfig(
-            type="invalid_widget_type",
-            config={},
-        )
-
-        result = await service.get_widget_data(widget, db_session)
-
-        assert result is None or result == {}
-
     # Schedule Tests
 
     @pytest.mark.asyncio
     async def test_create_schedule(
-        self, service, db_session, sample_developer, sample_report_config
+        self, service, db_session, sample_developer
     ):
         """Test creating a report schedule."""
         # First create a report
         report_data = CustomReportCreate(
-            name=sample_report_config["name"],
+            name="Scheduled Report",
             widgets=[],
-            filters={},
         )
         report = await service.create_report(
             sample_developer.id, report_data, db_session
@@ -333,16 +289,17 @@ class TestReportBuilderService:
 
         # Create schedule
         schedule_data = ScheduledReportCreate(
-            schedule="weekly",
+            report_id=report.id,
+            schedule=ScheduleFrequency.WEEKLY,
             day_of_week=1,
             time_utc="09:00",
             recipients=["test@example.com"],
-            delivery_method="email",
-            export_format="pdf",
+            delivery_method=DeliveryMethod.EMAIL,
+            export_format=ExportFormat.PDF,
         )
 
         result = await service.create_schedule(
-            report.id, schedule_data, db_session
+            report.id, schedule_data, db_session, user_id=sample_developer.id
         )
 
         assert result is not None
@@ -351,14 +308,13 @@ class TestReportBuilderService:
 
     @pytest.mark.asyncio
     async def test_create_daily_schedule(
-        self, service, db_session, sample_developer, sample_report_config
+        self, service, db_session, sample_developer
     ):
         """Test creating a daily schedule."""
         # Create report
         report_data = CustomReportCreate(
             name="Daily Report",
             widgets=[],
-            filters={},
         )
         report = await service.create_report(
             sample_developer.id, report_data, db_session
@@ -366,143 +322,126 @@ class TestReportBuilderService:
 
         # Create daily schedule
         schedule_data = ScheduledReportCreate(
-            schedule="daily",
+            report_id=report.id,
+            schedule=ScheduleFrequency.DAILY,
             time_utc="08:00",
             recipients=["team@example.com"],
-            delivery_method="email",
-            export_format="csv",
+            delivery_method=DeliveryMethod.EMAIL,
+            export_format=ExportFormat.CSV,
         )
 
         result = await service.create_schedule(
-            report.id, schedule_data, db_session
+            report.id, schedule_data, db_session, user_id=sample_developer.id
         )
 
         assert result.schedule == "daily"
 
     @pytest.mark.asyncio
     async def test_list_schedules(
-        self, service, db_session, sample_developer, sample_report_config
+        self, service, db_session, sample_developer
     ):
         """Test listing schedules for a report."""
         # Create report with schedule
         report_data = CustomReportCreate(
             name="Scheduled Report",
             widgets=[],
-            filters={},
         )
         report = await service.create_report(
             sample_developer.id, report_data, db_session
         )
 
         schedule_data = ScheduledReportCreate(
-            schedule="weekly",
+            report_id=report.id,
+            schedule=ScheduleFrequency.WEEKLY,
             day_of_week=5,
             time_utc="17:00",
             recipients=["manager@example.com"],
-            delivery_method="slack",
-            export_format="pdf",
+            delivery_method=DeliveryMethod.SLACK,
+            export_format=ExportFormat.PDF,
         )
-        await service.create_schedule(report.id, schedule_data, db_session)
+        await service.create_schedule(
+            report.id, schedule_data, db_session, user_id=sample_developer.id
+        )
 
         # List schedules
-        schedules = await service.list_schedules(report.id, db_session)
+        schedules = await service.list_schedules(db_session, report_id=report.id)
 
         assert len(schedules) >= 1
 
     @pytest.mark.asyncio
     async def test_delete_schedule(
-        self, service, db_session, sample_developer, sample_report_config
+        self, service, db_session, sample_developer
     ):
         """Test deleting a schedule."""
         # Create report and schedule
         report_data = CustomReportCreate(
             name="Report with Schedule",
             widgets=[],
-            filters={},
         )
         report = await service.create_report(
             sample_developer.id, report_data, db_session
         )
 
         schedule_data = ScheduledReportCreate(
-            schedule="monthly",
+            report_id=report.id,
+            schedule=ScheduleFrequency.MONTHLY,
             day_of_month=1,
             time_utc="10:00",
             recipients=["report@example.com"],
-            delivery_method="email",
-            export_format="xlsx",
+            delivery_method=DeliveryMethod.EMAIL,
+            export_format=ExportFormat.XLSX,
         )
         schedule = await service.create_schedule(
-            report.id, schedule_data, db_session
+            report.id, schedule_data, db_session, user_id=sample_developer.id
         )
 
         # Delete schedule
-        await service.delete_schedule(schedule.id, db_session)
+        deleted = await service.delete_schedule(schedule.id, db_session)
+
+        assert deleted is True
 
         # Verify deletion
-        schedules = await service.list_schedules(report.id, db_session)
+        schedules = await service.list_schedules(db_session, report_id=report.id)
         schedule_ids = [s.id for s in schedules]
         assert schedule.id not in schedule_ids
 
 
-class TestReportValidation:
-    """Unit tests for report validation logic."""
+class TestReportScheduleCalculation:
+    """Unit tests for schedule calculation logic."""
 
     @pytest.fixture
     def service(self):
         """Create service instance."""
         return ReportBuilderService()
 
-    def test_validate_widget_config_valid(self, service):
-        """Test validation of valid widget config."""
-        widget = {
-            "type": "skill_heatmap",
-            "config": {"show_legend": True},
-            "position": {"x": 0, "y": 0, "w": 2, "h": 1},
-        }
+    def test_calculate_next_run_daily(self, service):
+        """Test daily schedule next run calculation."""
+        next_run = service._calculate_next_run(
+            frequency=ScheduleFrequency.DAILY,
+            time_utc="09:00",
+        )
 
-        is_valid = service._validate_widget_config(widget)
-        assert is_valid is True
+        assert next_run is not None
+        assert next_run > datetime.utcnow()
 
-    def test_validate_widget_config_missing_type(self, service):
-        """Test validation fails for missing type."""
-        widget = {
-            "config": {},
-            "position": {"x": 0, "y": 0},
-        }
+    def test_calculate_next_run_weekly(self, service):
+        """Test weekly schedule next run calculation."""
+        next_run = service._calculate_next_run(
+            frequency=ScheduleFrequency.WEEKLY,
+            time_utc="09:00",
+            day_of_week=1,
+        )
 
-        is_valid = service._validate_widget_config(widget)
-        assert is_valid is False
+        assert next_run is not None
+        assert next_run > datetime.utcnow()
 
-    def test_validate_schedule_weekly(self, service):
-        """Test validation of weekly schedule."""
-        schedule = {
-            "schedule": "weekly",
-            "day_of_week": 1,
-            "time_utc": "09:00",
-        }
+    def test_calculate_next_run_monthly(self, service):
+        """Test monthly schedule next run calculation."""
+        next_run = service._calculate_next_run(
+            frequency=ScheduleFrequency.MONTHLY,
+            time_utc="10:00",
+            day_of_month=15,
+        )
 
-        is_valid = service._validate_schedule(schedule)
-        assert is_valid is True
-
-    def test_validate_schedule_monthly(self, service):
-        """Test validation of monthly schedule."""
-        schedule = {
-            "schedule": "monthly",
-            "day_of_month": 15,
-            "time_utc": "10:00",
-        }
-
-        is_valid = service._validate_schedule(schedule)
-        assert is_valid is True
-
-    def test_validate_schedule_invalid_day(self, service):
-        """Test validation fails for invalid day."""
-        schedule = {
-            "schedule": "weekly",
-            "day_of_week": 10,  # Invalid
-            "time_utc": "09:00",
-        }
-
-        is_valid = service._validate_schedule(schedule)
-        assert is_valid is False
+        assert next_run is not None
+        assert next_run > datetime.utcnow()

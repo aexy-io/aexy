@@ -312,7 +312,9 @@ class TestGetOrCreateByGitHub:
         )
 
         assert developer.id == existing.id
-        assert developer.github_connection is not None
+        # Re-fetch with relationships loaded to avoid MissingGreenlet
+        refetched = await service.get_by_id(developer.id)
+        assert refetched.github_connection is not None
 
     @pytest.mark.asyncio
     async def test_updates_token_on_re_auth(self, db_session):

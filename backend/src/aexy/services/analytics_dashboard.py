@@ -252,10 +252,19 @@ class AnalyticsDashboardService:
         commit_result = await db.execute(commit_stmt)
         commit_data = {str(row.period): row for row in commit_result}
 
+        # PR date grouping
+        from sqlalchemy import Integer
+        if group_by == "day":
+            pr_date_group = func.date(PullRequest.created_at)
+        elif group_by == "month":
+            pr_date_group = func.date_trunc("month", PullRequest.created_at)
+        else:
+            pr_date_group = func.date_trunc("week", PullRequest.created_at)
+
         # Get PR metrics
         pr_stmt = (
             select(
-                func.date_trunc(group_by, PullRequest.created_at).label("period"),
+                pr_date_group.label("period"),
                 func.count(PullRequest.id).label("prs_opened"),
                 func.sum(
                     func.cast(PullRequest.merged_at.isnot(None), type_=Integer)
@@ -268,16 +277,23 @@ class AnalyticsDashboardService:
                     PullRequest.created_at <= date_range.end_date,
                 )
             )
-            .group_by(func.date_trunc(group_by, PullRequest.created_at))
+            .group_by(pr_date_group)
         )
-        from sqlalchemy import Integer
         pr_result = await db.execute(pr_stmt)
         pr_data = {str(row.period): row for row in pr_result}
+
+        # Review date grouping
+        if group_by == "day":
+            review_date_group = func.date(CodeReview.submitted_at)
+        elif group_by == "month":
+            review_date_group = func.date_trunc("month", CodeReview.submitted_at)
+        else:
+            review_date_group = func.date_trunc("week", CodeReview.submitted_at)
 
         # Get review metrics
         review_stmt = (
             select(
-                func.date_trunc(group_by, CodeReview.submitted_at).label("period"),
+                review_date_group.label("period"),
                 func.count(CodeReview.id).label("reviews"),
             )
             .where(
@@ -287,7 +303,7 @@ class AnalyticsDashboardService:
                     CodeReview.submitted_at <= date_range.end_date,
                 )
             )
-            .group_by(func.date_trunc(group_by, CodeReview.submitted_at))
+            .group_by(review_date_group)
         )
         review_result = await db.execute(review_stmt)
         review_data = {str(row.period): row for row in review_result}

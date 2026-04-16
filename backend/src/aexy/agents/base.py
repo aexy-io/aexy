@@ -25,8 +25,10 @@ class AgentState(TypedDict):
     record_id: str | None
     record_data: dict
     context: dict
+    workspace_context: dict  # agent workspace context (workspace_id, block_id, etc.)
     steps: Annotated[list[dict], operator.add]  # Accumulate steps like messages
     final_output: dict | None
+    handoff_output: dict | None  # structured handoff for downstream agents
     error: str | None
 
 
@@ -380,8 +382,10 @@ IMPORTANT: You MUST use the available tools to accomplish this task. Do not just
             "record_id": record_id,
             "record_data": record_data,
             "context": context,
+            "workspace_context": {},
             "steps": [],
             "final_output": None,
+            "handoff_output": None,
             "error": None,
         }
 

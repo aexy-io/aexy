@@ -153,6 +153,12 @@ ACTIVITY_CONFIG: dict[str, dict[str, Any]] = {
     # GTM ABM
     "recalculate_abm_engagement": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=30), "heartbeat": timedelta(minutes=5)},
     "refresh_dynamic_abm_lists": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=10)},
+
+    # Agent Orchestration
+    "plan_task": {"retry": LLM_RETRY, "timeout": timedelta(minutes=10)},
+    "execute_block": {"retry": LLM_RETRY, "timeout": timedelta(minutes=30), "heartbeat": timedelta(minutes=5)},
+    "create_planned_blocks": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=2)},
+    "synthesize_results": {"retry": LLM_RETRY, "timeout": timedelta(minutes=15)},
 }
 
 DEFAULT_CONFIG = {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)}

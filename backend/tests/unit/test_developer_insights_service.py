@@ -30,7 +30,13 @@ from aexy.services.developer_insights_service import (
 # ---------------------------------------------------------------------------
 
 def _utc(*args):
-    return datetime(*args, tzinfo=timezone.utc)
+    """Create a naive UTC datetime for SQLite compatibility.
+
+    SQLite doesn't support timezone-aware datetimes natively. Using naive
+    datetimes avoids 'can't subtract offset-naive and offset-aware' errors
+    when the service does datetime arithmetic on values read back from SQLite.
+    """
+    return datetime(*args)
 
 
 @pytest_asyncio.fixture

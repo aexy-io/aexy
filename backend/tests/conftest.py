@@ -13,6 +13,19 @@ from sqlalchemy.pool import StaticPool
 from aexy.core.database import Base, get_db
 from aexy.main import app
 
+# Patch PostgreSQL-specific types to compile on SQLite (for testing)
+from sqlalchemy.dialects.sqlite.base import SQLiteTypeCompiler
+from sqlalchemy import JSON
+
+_pg_text_types = ['TSVECTOR', 'CITEXT', 'INET', 'MACADDR', 'CIDR', 'REGCLASS', 'ENUM']
+_pg_json_types = ['ARRAY', 'JSONB', 'HSTORE']
+for _t in _pg_text_types:
+    if not hasattr(SQLiteTypeCompiler, f'visit_{_t}'):
+        setattr(SQLiteTypeCompiler, f'visit_{_t}', lambda self, type_, **kw: "TEXT")
+for _t in _pg_json_types:
+    if not hasattr(SQLiteTypeCompiler, f'visit_{_t}'):
+        setattr(SQLiteTypeCompiler, f'visit_{_t}', lambda self, type_, **kw: self.visit_JSON(JSON(), **kw))
+
 
 # Test database URL (SQLite for testing)
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
@@ -228,13 +241,18 @@ async def sample_developer(db_session: AsyncSession):
     from aexy.models.developer import Developer
 
     developer = Developer(
-        github_id=12345,
-        github_username="testdev",
         name="Test Developer",
         email="testdev@example.com",
-        skills=["Python", "TypeScript", "React", "PostgreSQL"],
-        seniority_level="senior",
-        seniority_score=75,
+        skill_fingerprint={
+            "languages": [
+                {"name": "Python", "proficiency_score": 80, "commits_count": 100},
+                {"name": "TypeScript", "proficiency_score": 60, "commits_count": 50},
+                {"name": "React", "proficiency_score": 50, "commits_count": 30},
+            ],
+            "domains": [{"name": "backend", "confidence_score": 85}],
+            "frameworks": [],
+            "tools": ["PostgreSQL"],
+        },
     )
     db_session.add(developer)
     await db_session.commit()
@@ -249,36 +267,55 @@ async def sample_developers(db_session: AsyncSession):
 
     developers = [
         Developer(
-            github_id=1001,
-            github_username="dev1",
             name="Developer One",
-            skills=["Python", "FastAPI", "PostgreSQL"],
-            seniority_level="senior",
-            seniority_score=80,
+            email="dev1@example.com",
+            skill_fingerprint={
+                "languages": [
+                    {"name": "Python", "proficiency_score": 90, "commits_count": 200},
+                    {"name": "FastAPI", "proficiency_score": 70, "commits_count": 80},
+                ],
+                "domains": [{"name": "backend", "confidence_score": 85}],
+                "frameworks": [],
+                "tools": ["PostgreSQL"],
+            },
         ),
         Developer(
-            github_id=1002,
-            github_username="dev2",
             name="Developer Two",
-            skills=["TypeScript", "React", "Node.js"],
-            seniority_level="mid",
-            seniority_score=55,
+            email="dev2@example.com",
+            skill_fingerprint={
+                "languages": [
+                    {"name": "TypeScript", "proficiency_score": 85, "commits_count": 150},
+                    {"name": "React", "proficiency_score": 75, "commits_count": 100},
+                ],
+                "domains": [{"name": "frontend", "confidence_score": 80}],
+                "frameworks": [],
+                "tools": ["Node.js"],
+            },
         ),
         Developer(
-            github_id=1003,
-            github_username="dev3",
             name="Developer Three",
-            skills=["Python", "Django", "Redis"],
-            seniority_level="junior",
-            seniority_score=30,
+            email="dev3@example.com",
+            skill_fingerprint={
+                "languages": [
+                    {"name": "Python", "proficiency_score": 60, "commits_count": 80},
+                    {"name": "Django", "proficiency_score": 50, "commits_count": 40},
+                ],
+                "domains": [{"name": "backend", "confidence_score": 60}],
+                "frameworks": [],
+                "tools": ["Redis"],
+            },
         ),
         Developer(
-            github_id=1004,
-            github_username="dev4",
             name="Developer Four",
-            skills=["Go", "Kubernetes", "Docker"],
-            seniority_level="senior",
-            seniority_score=85,
+            email="dev4@example.com",
+            skill_fingerprint={
+                "languages": [
+                    {"name": "Go", "proficiency_score": 80, "commits_count": 120},
+                ],
+                "domains": [{"name": "infrastructure", "confidence_score": 85}],
+                "frameworks": [],
+                "tools": ["Kubernetes", "Docker"],
+            },
         ),
     ]
 
@@ -312,17 +349,17 @@ async def sample_team(db_session: AsyncSession, sample_developers):
 @pytest_asyncio.fixture
 async def sample_commits_db(db_session: AsyncSession, sample_developer):
     """Create sample commits in the database."""
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
     from aexy.models.activity import Commit
 
     commits = []
-    base_date = datetime.utcnow() - timedelta(days=30)
+    base_date = datetime.now(timezone.utc) - timedelta(days=30)
 
     for i in range(10):
         commit = Commit(
             sha=f"sha_{i}_{sample_developer.id}",
             developer_id=sample_developer.id,
-            repository_name="test-repo",
+            repository="test-repo",
             message=f"Commit {i}: Feature implementation",
             additions=50 + i * 10,
             deletions=10 + i * 2,
@@ -339,18 +376,18 @@ async def sample_commits_db(db_session: AsyncSession, sample_developer):
 @pytest_asyncio.fixture
 async def sample_pull_requests_db(db_session: AsyncSession, sample_developer):
     """Create sample pull requests in the database."""
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
     from aexy.models.activity import PullRequest
 
     prs = []
-    base_date = datetime.utcnow() - timedelta(days=30)
+    base_date = datetime.now(timezone.utc) - timedelta(days=30)
 
     for i in range(5):
         pr = PullRequest(
             github_id=1000 + i,
             number=i + 1,
             developer_id=sample_developer.id,
-            repository_name="test-repo",
+            repository="test-repo",
             title=f"PR {i}: Add feature",
             body=f"Description for PR {i}",
             state="merged" if i < 3 else "open",
@@ -359,6 +396,7 @@ async def sample_pull_requests_db(db_session: AsyncSession, sample_developer):
             changed_files=5 + i,
             commits_count=3 + i,
             created_at=base_date + timedelta(days=i * 5),
+            created_at_github=base_date + timedelta(days=i * 5),
             merged_at=base_date + timedelta(days=i * 5 + 2) if i < 3 else None,
         )
         db_session.add(pr)
@@ -371,17 +409,18 @@ async def sample_pull_requests_db(db_session: AsyncSession, sample_developer):
 @pytest_asyncio.fixture
 async def sample_reviews_db(db_session: AsyncSession, sample_developer, sample_pull_requests_db):
     """Create sample code reviews in the database."""
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
     from aexy.models.activity import CodeReview
 
     reviews = []
-    base_date = datetime.utcnow() - timedelta(days=25)
+    base_date = datetime.now(timezone.utc) - timedelta(days=25)
 
     for i, pr in enumerate(sample_pull_requests_db[:3]):
         review = CodeReview(
             github_id=2000 + i,
             pull_request_github_id=pr.github_id,
-            reviewer_id=sample_developer.id,
+            developer_id=sample_developer.id,
+            repository="test-repo",
             state="approved" if i % 2 == 0 else "changes_requested",
             body=f"Review comment for PR {pr.number}",
             submitted_at=base_date + timedelta(days=i * 3),

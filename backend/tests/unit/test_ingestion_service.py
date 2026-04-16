@@ -167,8 +167,27 @@ class TestCommitIngestion:
 class TestPullRequestIngestion:
     """Test pull request ingestion functionality."""
 
+    @pytest.fixture
+    async def github_developer(self, db_session):
+        """Create a developer with a GitHub connection for PR tests."""
+        from aexy.models.developer import GitHubConnection
+
+        developer = Developer(email="pruser@example.com", name="PR User")
+        db_session.add(developer)
+        await db_session.flush()
+
+        connection = GitHubConnection(
+            developer_id=developer.id,
+            github_id=123,
+            github_username="testuser",
+            access_token="token",
+        )
+        db_session.add(connection)
+        await db_session.flush()
+        return developer
+
     @pytest.mark.asyncio
-    async def test_ingest_pr_opened(self, db_session):
+    async def test_ingest_pr_opened(self, db_session, github_developer):
         """Should ingest a new pull request."""
         service = IngestionService()
 
@@ -205,7 +224,7 @@ class TestPullRequestIngestion:
         assert result.deletions == 50
 
     @pytest.mark.asyncio
-    async def test_ingest_pr_merged(self, db_session):
+    async def test_ingest_pr_merged(self, db_session, github_developer):
         """Should update PR when merged."""
         service = IngestionService()
 
@@ -248,13 +267,13 @@ class TestPullRequestIngestion:
         assert result.merged_at is not None
 
     @pytest.mark.asyncio
-    async def test_ingest_pr_extracts_skills(self, db_session):
+    async def test_ingest_pr_extracts_skills(self, db_session, github_developer):
         """Should extract detected skills from PR content."""
         service = IngestionService()
 
         pr_data = {
-            "id": 98765,
-            "number": 42,
+            "id": 98766,
+            "number": 43,
             "title": "Add Stripe payment integration",
             "body": "Implement checkout flow with OAuth authentication",
             "state": "open",
@@ -326,8 +345,27 @@ class TestPullRequestIngestion:
 class TestReviewIngestion:
     """Test code review ingestion functionality."""
 
+    @pytest.fixture
+    async def review_developer(self, db_session):
+        """Create a developer with a GitHub connection for review tests."""
+        from aexy.models.developer import GitHubConnection
+
+        developer = Developer(email="reviewer@example.com", name="Reviewer")
+        db_session.add(developer)
+        await db_session.flush()
+
+        connection = GitHubConnection(
+            developer_id=developer.id,
+            github_id=456,
+            github_username="reviewer",
+            access_token="token",
+        )
+        db_session.add(connection)
+        await db_session.flush()
+        return developer
+
     @pytest.mark.asyncio
-    async def test_ingest_review(self, db_session):
+    async def test_ingest_review(self, db_session, review_developer):
         """Should ingest a code review."""
         service = IngestionService()
 
@@ -358,12 +396,12 @@ class TestReviewIngestion:
         assert result.pull_request_github_id == 98765
 
     @pytest.mark.asyncio
-    async def test_ingest_review_with_comments(self, db_session):
+    async def test_ingest_review_with_comments(self, db_session, review_developer):
         """Should capture review comment count."""
         service = IngestionService()
 
         review_data = {
-            "id": 555,
+            "id": 556,
             "user": {"login": "reviewer", "id": 456},
             "body": "Please fix the issues mentioned in comments.",
             "state": "CHANGES_REQUESTED",
@@ -373,7 +411,7 @@ class TestReviewIngestion:
         result = await service.ingest_review(
             repository="owner/repo",
             review=review_data,
-            pull_request={"id": 98765, "number": 42},
+            pull_request={"id": 98766, "number": 43},
             sender={"login": "reviewer", "id": 456},
             db=db_session,
         )

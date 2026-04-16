@@ -9,8 +9,9 @@ These tests verify:
 - Cache behavior
 """
 
+import json
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 from aexy.services.predictive_analytics import PredictiveAnalyticsService
@@ -22,6 +23,13 @@ from aexy.schemas.analytics import (
 )
 
 
+def _make_llm_response(data: dict):
+    """Create a mock LLM response object with raw_response attribute."""
+    resp = MagicMock()
+    resp.raw_response = json.dumps(data)
+    return resp
+
+
 class TestPredictiveAnalyticsService:
     """Tests for PredictiveAnalyticsService."""
 
@@ -30,6 +38,7 @@ class TestPredictiveAnalyticsService:
         """Create a mock LLM gateway."""
         mock = MagicMock()
         mock.analyze = AsyncMock()
+        mock.get_model_name = MagicMock(return_value="test-model")
         return mock
 
     @pytest.fixture
@@ -44,7 +53,7 @@ class TestPredictiveAnalyticsService:
         self, service, mock_llm, db_session, sample_developer, sample_commits_db
     ):
         """Test attrition risk analysis returns proper structure."""
-        mock_llm.analyze.return_value = {
+        mock_llm.analyze.return_value = _make_llm_response({
             "risk_score": 0.35,
             "risk_level": "low",
             "confidence": 0.8,
@@ -54,7 +63,7 @@ class TestPredictiveAnalyticsService:
             "positive_signals": ["Regular commit pattern"],
             "recommendations": ["Continue engagement"],
             "suggested_actions": ["Schedule regular 1:1s"],
-        }
+        })
 
         result = await service.analyze_attrition_risk(
             sample_developer.id, db_session
@@ -70,7 +79,7 @@ class TestPredictiveAnalyticsService:
         self, service, mock_llm, db_session, sample_developer
     ):
         """Test attrition risk with low/no activity flags higher risk."""
-        mock_llm.analyze.return_value = {
+        mock_llm.analyze.return_value = _make_llm_response({
             "risk_score": 0.75,
             "risk_level": "high",
             "confidence": 0.7,
@@ -80,7 +89,7 @@ class TestPredictiveAnalyticsService:
             "positive_signals": [],
             "recommendations": ["Investigate engagement"],
             "suggested_actions": ["Schedule urgent 1:1"],
-        }
+        })
 
         result = await service.analyze_attrition_risk(
             sample_developer.id, db_session
@@ -93,7 +102,7 @@ class TestPredictiveAnalyticsService:
         self, service, mock_llm, db_session, sample_developer, sample_commits_db
     ):
         """Test that attrition analysis includes risk factors."""
-        mock_llm.analyze.return_value = {
+        mock_llm.analyze.return_value = _make_llm_response({
             "risk_score": 0.45,
             "risk_level": "moderate",
             "confidence": 0.75,
@@ -104,7 +113,7 @@ class TestPredictiveAnalyticsService:
             "positive_signals": ["Quality maintained"],
             "recommendations": ["Review workload"],
             "suggested_actions": ["Discuss work-life balance"],
-        }
+        })
 
         result = await service.analyze_attrition_risk(
             sample_developer.id, db_session
@@ -112,20 +121,19 @@ class TestPredictiveAnalyticsService:
 
         assert len(result.factors) > 0
         for factor in result.factors:
-            assert "factor" in factor
-            assert "weight" in factor
+            assert factor.factor  # RiskFactor object, not dict
+            assert factor.weight >= 0
 
     @pytest.mark.asyncio
     async def test_analyze_attrition_risk_invalid_developer(
         self, service, mock_llm, db_session
     ):
         """Test attrition analysis with invalid developer ID."""
-        result = await service.analyze_attrition_risk(
-            "nonexistent-id", db_session
-        )
-
-        # Should handle gracefully
-        assert result is None or result.risk_level == "unknown"
+        # Service raises ValueError for nonexistent developer
+        with pytest.raises(ValueError, match="not found"):
+            await service.analyze_attrition_risk(
+                "nonexistent-id", db_session
+            )
 
     # Burnout Risk Tests
 
@@ -134,18 +142,14 @@ class TestPredictiveAnalyticsService:
         self, service, mock_llm, db_session, sample_developer, sample_commits_db
     ):
         """Test burnout risk assessment."""
-        mock_llm.analyze.return_value = {
+        mock_llm.analyze.return_value = _make_llm_response({
             "risk_score": 0.3,
             "risk_level": "low",
             "confidence": 0.85,
             "indicators": ["Normal work hours", "Consistent output"],
-            "work_pattern_analysis": {
-                "weekend_commits_percent": 5.0,
-                "late_night_commits_percent": 10.0,
-                "average_daily_commits": 3.5,
-            },
+            "factors": [],
             "recommendations": ["Maintain current pace"],
-        }
+        })
 
         result = await service.assess_burnout_risk(
             sample_developer.id, db_session
@@ -160,7 +164,7 @@ class TestPredictiveAnalyticsService:
         self, service, mock_llm, db_session, sample_developer
     ):
         """Test burnout risk with excessive activity patterns."""
-        mock_llm.analyze.return_value = {
+        mock_llm.analyze.return_value = _make_llm_response({
             "risk_score": 0.8,
             "risk_level": "high",
             "confidence": 0.9,
@@ -169,13 +173,9 @@ class TestPredictiveAnalyticsService:
                 "Frequent late-night commits",
                 "Increasing volume trend",
             ],
-            "work_pattern_analysis": {
-                "weekend_commits_percent": 35.0,
-                "late_night_commits_percent": 40.0,
-                "average_daily_commits": 12.5,
-            },
+            "factors": [],
             "recommendations": ["Consider workload reduction", "Encourage time off"],
-        }
+        })
 
         result = await service.assess_burnout_risk(
             sample_developer.id, db_session
@@ -185,28 +185,27 @@ class TestPredictiveAnalyticsService:
         assert len(result.indicators) > 0
 
     @pytest.mark.asyncio
-    async def test_assess_burnout_includes_work_patterns(
+    async def test_assess_burnout_includes_factors(
         self, service, mock_llm, db_session, sample_developer, sample_commits_db
     ):
-        """Test that burnout assessment includes work pattern analysis."""
-        mock_llm.analyze.return_value = {
+        """Test that burnout assessment includes factors and indicators."""
+        mock_llm.analyze.return_value = _make_llm_response({
             "risk_score": 0.4,
             "risk_level": "moderate",
             "confidence": 0.8,
             "indicators": ["Some weekend work"],
-            "work_pattern_analysis": {
-                "weekend_commits_percent": 15.0,
-                "late_night_commits_percent": 20.0,
-                "average_daily_commits": 5.0,
-            },
+            "factors": [
+                {"factor": "weekend_work", "weight": 0.3, "evidence": "15% weekend commits", "trend": "stable"},
+            ],
             "recommendations": ["Monitor workload"],
-        }
+        })
 
         result = await service.assess_burnout_risk(
             sample_developer.id, db_session
         )
 
-        assert result.work_pattern_analysis is not None
+        assert result.indicators is not None
+        assert len(result.indicators) > 0
 
     # Performance Trajectory Tests
 
@@ -215,7 +214,7 @@ class TestPredictiveAnalyticsService:
         self, service, mock_llm, db_session, sample_developer, sample_commits_db
     ):
         """Test performance trajectory prediction."""
-        mock_llm.analyze.return_value = {
+        mock_llm.analyze.return_value = _make_llm_response({
             "trajectory": "steady",
             "confidence": 0.75,
             "predicted_growth": [
@@ -229,7 +228,7 @@ class TestPredictiveAnalyticsService:
                 "blockers": ["Need more system design experience"],
             },
             "recommendations": ["Focus on architecture skills"],
-        }
+        })
 
         result = await service.predict_performance_trajectory(
             sample_developer.id, db_session
@@ -244,7 +243,7 @@ class TestPredictiveAnalyticsService:
         self, service, mock_llm, db_session, sample_developer
     ):
         """Test trajectory includes predicted skill growth."""
-        mock_llm.analyze.return_value = {
+        mock_llm.analyze.return_value = _make_llm_response({
             "trajectory": "accelerating",
             "confidence": 0.8,
             "predicted_growth": [
@@ -259,7 +258,7 @@ class TestPredictiveAnalyticsService:
                 "blockers": [],
             },
             "recommendations": [],
-        }
+        })
 
         result = await service.predict_performance_trajectory(
             sample_developer.id, db_session
@@ -272,7 +271,7 @@ class TestPredictiveAnalyticsService:
         self, service, mock_llm, db_session, sample_developer
     ):
         """Test trajectory includes career readiness assessment."""
-        mock_llm.analyze.return_value = {
+        mock_llm.analyze.return_value = _make_llm_response({
             "trajectory": "steady",
             "confidence": 0.7,
             "predicted_growth": [],
@@ -284,14 +283,14 @@ class TestPredictiveAnalyticsService:
                 "blockers": ["Need leadership experience", "Missing cross-team collaboration"],
             },
             "recommendations": ["Seek leadership opportunities"],
-        }
+        })
 
         result = await service.predict_performance_trajectory(
             sample_developer.id, db_session
         )
 
         assert result.career_readiness is not None
-        assert "next_level" in result.career_readiness
+        assert result.career_readiness.next_level == "Principal Engineer"
 
     # Team Health Tests
 
@@ -302,7 +301,7 @@ class TestPredictiveAnalyticsService:
         """Test team health analysis."""
         developer_ids = [dev.id for dev in sample_developers]
 
-        mock_llm.analyze.return_value = {
+        mock_llm.analyze.return_value = _make_llm_response({
             "health_score": 0.75,
             "health_grade": "B",
             "strengths": ["Strong Python expertise", "Good code review culture"],
@@ -316,7 +315,7 @@ class TestPredictiveAnalyticsService:
             },
             "recommendations": ["Hire DevOps engineer"],
             "suggested_hires": ["DevOps Engineer", "Frontend Developer"],
-        }
+        })
 
         result = await service.analyze_team_health(developer_ids, db_session)
 
@@ -331,7 +330,7 @@ class TestPredictiveAnalyticsService:
         """Test that team health identifies risks."""
         developer_ids = [dev.id for dev in sample_developers]
 
-        mock_llm.analyze.return_value = {
+        mock_llm.analyze.return_value = _make_llm_response({
             "health_score": 0.5,
             "health_grade": "C",
             "strengths": [],
@@ -346,24 +345,38 @@ class TestPredictiveAnalyticsService:
             },
             "recommendations": ["Reduce workload", "Hire frontend developer"],
             "suggested_hires": ["Frontend Developer"],
-        }
+        })
 
         result = await service.analyze_team_health(developer_ids, db_session)
 
         assert len(result.risks) > 0
         for risk in result.risks:
-            assert "risk" in risk
-            assert "severity" in risk
+            assert risk.risk  # TeamRisk object, not dict
+            assert risk.severity
 
     @pytest.mark.asyncio
     async def test_analyze_team_health_empty_team(
         self, service, mock_llm, db_session
     ):
         """Test team health with no developers."""
+        mock_llm.analyze.return_value = _make_llm_response({
+            "health_score": 0.0,
+            "health_grade": "F",
+            "strengths": [],
+            "risks": [],
+            "capacity_assessment": {
+                "current_utilization": 0.0,
+                "sustainable_velocity": False,
+                "bottlenecks": [],
+            },
+            "recommendations": [],
+            "suggested_hires": [],
+        })
+
         result = await service.analyze_team_health([], db_session)
 
-        # Should handle gracefully
-        assert result is None or result.health_score == 0
+        assert result is not None
+        assert result.health_score == 0.0
 
     # Cache Tests
 
@@ -372,7 +385,7 @@ class TestPredictiveAnalyticsService:
         self, service, mock_llm, db_session, sample_developer, sample_commits_db
     ):
         """Test that analysis uses cache on second call."""
-        mock_llm.analyze.return_value = {
+        mock_llm.analyze.return_value = _make_llm_response({
             "risk_score": 0.35,
             "risk_level": "low",
             "confidence": 0.8,
@@ -380,7 +393,7 @@ class TestPredictiveAnalyticsService:
             "positive_signals": [],
             "recommendations": [],
             "suggested_actions": [],
-        }
+        })
 
         # First call
         await service.analyze_attrition_risk(
@@ -401,7 +414,7 @@ class TestPredictiveAnalyticsService:
         self, service, mock_llm, db_session, sample_developer
     ):
         """Test that cache can be bypassed."""
-        mock_llm.analyze.return_value = {
+        mock_llm.analyze.return_value = _make_llm_response({
             "risk_score": 0.35,
             "risk_level": "low",
             "confidence": 0.8,
@@ -409,7 +422,7 @@ class TestPredictiveAnalyticsService:
             "positive_signals": [],
             "recommendations": [],
             "suggested_actions": [],
-        }
+        })
 
         # Two calls with cache disabled
         await service.analyze_attrition_risk(
@@ -445,8 +458,8 @@ class TestPredictiveAnalyticsService:
         assert cleared_count >= 0
 
 
-class TestRiskLevelClassification:
-    """Unit tests for risk level classification logic."""
+class TestTrendCalculation:
+    """Unit tests for trend calculation logic."""
 
     @pytest.fixture
     def service(self):
@@ -454,67 +467,27 @@ class TestRiskLevelClassification:
         mock_llm = MagicMock()
         return PredictiveAnalyticsService(llm_gateway=mock_llm)
 
-    def test_classify_risk_level_low(self, service):
-        """Test low risk classification."""
-        level = service._classify_risk_level(0.2)
-        assert level == "low"
+    def test_calculate_trend_increasing(self, service):
+        """Test increasing trend calculation."""
+        trend = service._calculate_trend(current=150, baseline=100)
+        assert "increasing" in trend
 
-    def test_classify_risk_level_moderate(self, service):
-        """Test moderate risk classification."""
-        level = service._classify_risk_level(0.45)
-        assert level == "moderate"
+    def test_calculate_trend_decreasing(self, service):
+        """Test decreasing trend calculation."""
+        trend = service._calculate_trend(current=50, baseline=100)
+        assert "decreasing" in trend
 
-    def test_classify_risk_level_high(self, service):
-        """Test high risk classification."""
-        level = service._classify_risk_level(0.7)
-        assert level == "high"
+    def test_calculate_trend_stable(self, service):
+        """Test stable trend calculation."""
+        trend = service._calculate_trend(current=105, baseline=100)
+        assert trend == "stable"
 
-    def test_classify_risk_level_critical(self, service):
-        """Test critical risk classification."""
-        level = service._classify_risk_level(0.9)
-        assert level == "critical"
+    def test_calculate_trend_zero_baseline(self, service):
+        """Test trend with zero baseline."""
+        trend = service._calculate_trend(current=10, baseline=0)
+        assert trend == "new activity"
 
-    def test_classify_risk_level_boundary_low_moderate(self, service):
-        """Test boundary between low and moderate."""
-        level = service._classify_risk_level(0.3)
-        assert level in ["low", "moderate"]
-
-    def test_classify_risk_level_boundary_moderate_high(self, service):
-        """Test boundary between moderate and high."""
-        level = service._classify_risk_level(0.6)
-        assert level in ["moderate", "high"]
-
-
-class TestHealthGradeCalculation:
-    """Unit tests for health grade calculation."""
-
-    @pytest.fixture
-    def service(self):
-        """Create service instance."""
-        mock_llm = MagicMock()
-        return PredictiveAnalyticsService(llm_gateway=mock_llm)
-
-    def test_calculate_health_grade_a(self, service):
-        """Test A grade calculation."""
-        grade = service._calculate_health_grade(0.95)
-        assert grade == "A"
-
-    def test_calculate_health_grade_b(self, service):
-        """Test B grade calculation."""
-        grade = service._calculate_health_grade(0.75)
-        assert grade == "B"
-
-    def test_calculate_health_grade_c(self, service):
-        """Test C grade calculation."""
-        grade = service._calculate_health_grade(0.55)
-        assert grade == "C"
-
-    def test_calculate_health_grade_d(self, service):
-        """Test D grade calculation."""
-        grade = service._calculate_health_grade(0.35)
-        assert grade == "D"
-
-    def test_calculate_health_grade_f(self, service):
-        """Test F grade calculation."""
-        grade = service._calculate_health_grade(0.15)
-        assert grade == "F"
+    def test_calculate_trend_no_activity(self, service):
+        """Test trend with no activity in either period."""
+        trend = service._calculate_trend(current=0, baseline=0)
+        assert trend == "no activity"

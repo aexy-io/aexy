@@ -23,6 +23,9 @@ from aexy.agents.tools.enrichment_tools import (
     WebSearchTool,
 )
 from aexy.agents.tools.communication_tools import SendSlackTool, SendSMSTool
+from aexy.agents.tools.workspace_tools import CreateBlockTool, UpdateBlockTool, ReadBlockTool
+from aexy.agents.tools.analytics_tools import QuerySprintsTool, QueryTicketsTool, QueryCRMTool
+from aexy.agents.tools.document_tools import GenerateMarkdownTool, GenerateTableTool
 
 
 # Registry of available tools
@@ -45,6 +48,17 @@ TOOL_REGISTRY: dict[str, type[BaseTool]] = {
     # Communication tools
     "send_slack": SendSlackTool,
     "send_sms": SendSMSTool,
+    # Workspace tools (Agent Canvas)
+    "create_block": CreateBlockTool,
+    "update_block": UpdateBlockTool,
+    "read_block": ReadBlockTool,
+    # Analytics tools
+    "query_sprints": QuerySprintsTool,
+    "query_tickets": QueryTicketsTool,
+    "query_crm": QueryCRMTool,
+    # Document tools
+    "generate_markdown": GenerateMarkdownTool,
+    "generate_table": GenerateTableTool,
 }
 
 
@@ -211,6 +225,25 @@ class AgentBuilder:
                 max_iterations=max_iterations,
                 timeout_seconds=timeout_seconds,
             )
+        elif agent_type in ("researcher", "analyst", "writer"):
+            from aexy.agents.persona_registry import get_persona_agent
+            return get_persona_agent(
+                persona=agent_type,
+                workspace_id=self.workspace_id,
+                db=self.db,
+                model=model,
+                llm_provider=llm_provider,
+                max_iterations=max_iterations,
+                timeout_seconds=timeout_seconds,
+            )
+        elif agent_type == "orchestrator":
+            from aexy.agents.orchestrator import OrchestratorAgent
+            return OrchestratorAgent(
+                model=model,
+                llm_provider=llm_provider,
+                max_iterations=max_iterations,
+                timeout_seconds=timeout_seconds,
+            )
         else:
             # Build custom agent
             return CustomAgent(
@@ -262,4 +295,10 @@ Be thorough but efficient in your approach.
             return "enrichment"
         elif name in ["send_slack", "send_sms"]:
             return "communication"
+        elif name in ["create_block", "update_block", "read_block"]:
+            return "workspace"
+        elif name in ["query_sprints", "query_tickets", "query_crm"]:
+            return "analytics"
+        elif name in ["generate_markdown", "generate_table"]:
+            return "document"
         return "other"

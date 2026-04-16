@@ -88,6 +88,36 @@ class MockCache:
         return True
 
 
+class MockRateLimiter:
+    """Mock rate limiter for testing."""
+
+    async def check_rate_limit(self, provider, **kwargs):
+        class Result:
+            allowed = True
+            reason = None
+            retry_after = None
+            wait_seconds = 0
+        return Result()
+
+    async def record_request(self, provider, **kwargs):
+        pass
+
+    async def get_status(self, provider, **kwargs):
+        class Status:
+            provider = "mock"
+            is_limited = False
+            requests_remaining_minute = 60
+            requests_remaining_day = 1000
+            tokens_remaining_minute = 100000
+            reset_at_minute = None
+            reset_at_day = None
+            wait_seconds = 0
+            workspace_id = None
+            developer_id = None
+            source = "mock"
+        return Status()
+
+
 class TestLLMGateway:
     """Tests for LLMGateway."""
 
@@ -102,14 +132,19 @@ class TestLLMGateway:
         return MockCache()
 
     @pytest.fixture
-    def gateway(self, mock_provider):
-        """Create a gateway without cache."""
-        return LLMGateway(provider=mock_provider, cache=None)
+    def mock_rate_limiter(self):
+        """Create a mock rate limiter."""
+        return MockRateLimiter()
 
     @pytest.fixture
-    def gateway_with_cache(self, mock_provider, mock_cache):
+    def gateway(self, mock_provider, mock_rate_limiter):
+        """Create a gateway without cache."""
+        return LLMGateway(provider=mock_provider, cache=None, rate_limiter=mock_rate_limiter)
+
+    @pytest.fixture
+    def gateway_with_cache(self, mock_provider, mock_cache, mock_rate_limiter):
         """Create a gateway with cache."""
-        return LLMGateway(provider=mock_provider, cache=mock_cache)
+        return LLMGateway(provider=mock_provider, cache=mock_cache, rate_limiter=mock_rate_limiter)
 
     @pytest.mark.asyncio
     async def test_analyze_without_cache(self, gateway, mock_provider):

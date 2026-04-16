@@ -172,6 +172,7 @@ class CustomReportBase(BaseModel):
 
     name: str
     description: str | None = None
+    organization_id: str | None = None
     widgets: list[WidgetConfig] = []
     filters: ReportFilters = ReportFilters()
     layout: ReportLayout = ReportLayout()
@@ -214,7 +215,9 @@ class ReportTemplateResponse(BaseModel):
     id: str
     name: str
     description: str | None = None
-    widgets: list[WidgetConfig]
+    category: str = "general"
+    preview_widgets: list[WidgetConfig] = []
+    widget_count: int = 0
     preview_url: str | None = None
 
 

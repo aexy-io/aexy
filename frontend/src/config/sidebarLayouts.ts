@@ -64,6 +64,7 @@ import {
     HeartPulse,
     UserCheck,
     MessageCircle,
+    LayoutPanelTop,
 } from "lucide-react";
 
 export type SidebarLayoutType = "grouped" | "flat";
@@ -147,6 +148,7 @@ const uptimeItems: SidebarItemConfig[] = [
 const aiAgentsItems: SidebarItemConfig[] = [
     { href: "/agents", label: "All Agents", icon: Bot },
     { href: "/agents/new", label: "Create Agent", icon: UserPlus },
+    { href: "/agent-workspaces", label: "Workspaces", icon: LayoutPanelTop },
     { href: "/mcp", label: "MCP", icon: Plug },
 ];
 

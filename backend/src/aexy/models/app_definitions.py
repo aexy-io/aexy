@@ -351,6 +351,15 @@ APP_CATALOG: dict[str, AppConfig] = {
         "required_permission": "can_view_agents",
         "modules": {},
     },
+    "agent_workspaces": {
+        "name": "Agent Workspaces",
+        "description": "Multi-agent orchestration workspaces with block-based output",
+        "icon": "LayoutPanelTop",
+        "category": AppCategory.PRODUCTIVITY,
+        "base_route": "/agent-workspaces",
+        "required_permission": "can_view_agents",
+        "modules": {},
+    },
     "mcp": {
         "name": "MCP",
         "description": "Connect AI clients to Aexy via Model Context Protocol",
@@ -478,6 +487,7 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
             },
             "automations": {"enabled": True, "modules": {}},
             "agents": {"enabled": True, "modules": {}},
+            "agent_workspaces": {"enabled": True, "modules": {}},
             "mcp": {"enabled": True, "modules": {}},
             "tables": {"enabled": True, "modules": {}},
             # Disabled for engineering
@@ -532,6 +542,7 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
             "forms": {"enabled": True, "modules": {}},
             "automations": {"enabled": True, "modules": {}},
             "agents": {"enabled": True, "modules": {}},
+            "agent_workspaces": {"enabled": True, "modules": {}},
             "mcp": {"enabled": True, "modules": {}},
             "tables": {"enabled": False},
             # Disabled for people ops
@@ -577,6 +588,7 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
             },
             "automations": {"enabled": True, "modules": {}},
             "agents": {"enabled": True, "modules": {}},
+            "agent_workspaces": {"enabled": True, "modules": {}},
             "mcp": {"enabled": True, "modules": {}},
             "tables": {"enabled": True, "modules": {}},
             # Disabled for business
@@ -661,6 +673,7 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
             },
             "automations": {"enabled": True, "modules": {}},
             "agents": {"enabled": True, "modules": {}},
+            "agent_workspaces": {"enabled": True, "modules": {}},
             "mcp": {"enabled": True, "modules": {}},
             "tables": {"enabled": True, "modules": {}},
             "insights": {
