@@ -10,6 +10,11 @@ from aexy.models.developer import Developer, GitHubConnection, GoogleConnection
 from aexy.schemas.developer import DeveloperCreate, DeveloperUpdate
 
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 class DeveloperServiceError(Exception):
     """Base exception for developer service errors."""
 
@@ -34,6 +39,41 @@ class DeveloperService:
     def __init__(self, db: AsyncSession) -> None:
         """Initialize developer service."""
         self.db = db
+
+    async def _dispatch_signup_handler(
+        self,
+        developer: Developer,
+        signup_provider: str,
+    ) -> None:
+        """Dispatch Temporal activity to create CRM contact + start onboarding.
+
+        Never raises — signup must not fail due to post-signup automation.
+        """
+        from aexy.core.config import get_settings
+
+        settings = get_settings()
+        if not settings.platform_org_id:
+            return
+
+        try:
+            from aexy.temporal.dispatch import dispatch
+            from aexy.temporal.task_queues import TaskQueue
+            from aexy.temporal.activities.platform import HandleNewSignupInput
+
+            await dispatch(
+                "handle_new_signup",
+                HandleNewSignupInput(
+                    developer_id=str(developer.id),
+                    email=developer.email or "",
+                    name=developer.name,
+                    avatar_url=developer.avatar_url,
+                    signup_provider=signup_provider,
+                ),
+                task_queue=TaskQueue.OPERATIONS,
+                workflow_id=f"signup-{developer.id}",
+            )
+        except Exception:
+            logger.exception("Failed to dispatch signup handler (non-fatal)")
 
     async def get_by_id(self, developer_id: str) -> Developer:
         """Get developer by ID."""
@@ -254,6 +294,7 @@ class DeveloperService:
         )
 
         await self.db.refresh(developer, ["github_connection"])
+        await self._dispatch_signup_handler(developer, "github")
         return developer
 
     async def list_all(self, skip: int = 0, limit: int = 100) -> list[Developer]:
@@ -435,4 +476,5 @@ class DeveloperService:
         )
 
         await self.db.refresh(developer, ["google_connection"])
+        await self._dispatch_signup_handler(developer, "google")
         return developer

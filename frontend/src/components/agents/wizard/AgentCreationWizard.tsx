@@ -48,7 +48,7 @@ export function AgentCreationWizard({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [mentionHandle, setMentionHandle] = useState("");
-  const [llmProvider, setLlmProvider] = useState<"claude" | "gemini" | "ollama">("gemini");
+  const [llmProvider, setLlmProvider] = useState<"claude" | "gemini" | "ollama" | "openrouter">("gemini");
   const [llmModel, setLlmModel] = useState("gemini-2.0-flash");
   const [temperature, setTemperature] = useState(0.7);
   const [maxTokens, setMaxTokens] = useState(2000);

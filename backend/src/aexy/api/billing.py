@@ -3,11 +3,12 @@
 import logging
 from typing import Annotated
 
+import stripe
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from aexy.api.developers import get_current_developer_id
+from aexy.api.developers import get_current_developer, get_current_developer_id
 from aexy.core.database import get_db
 from aexy.models.billing import Subscription, SubscriptionStatus
 from aexy.models.developer import Developer
@@ -20,6 +21,7 @@ from aexy.schemas.billing import (
     CreatePortalSessionRequest,
     CreatePortalSessionResponse,
     CustomerBillingResponse,
+    EffectivePlanResponse,
     InvoiceResponse,
     LimitsUsageFeatures,
     LimitsUsageLLM,
@@ -28,9 +30,12 @@ from aexy.schemas.billing import (
     LimitsUsageResponse,
     LimitsUsageTokens,
     PlanResponse,
+    PostpaidSummaryResponse,
+    SeatSummaryResponse,
     SubscriptionResponse,
     SubscriptionStatusResponse,
     UpdatePaymentMethodRequest,
+    UpdateSeatsRequest,
     UsageEstimateResponse,
     UsageSummaryResponse,
     WebhookResponse,
@@ -108,8 +113,11 @@ async def get_subscription_status(
 
     Returns the effective plan for the developer, including workspace plan
     inheritance (all members benefit from the workspace's upgraded plan).
+    Includes billing_model, seat_summary (per-seat plans), and
+    postpaid_summary (postpaid plans) when applicable.
     """
 
+    from aexy.models.workspace import WorkspaceSubscription
     from aexy.services.limits_service import LimitsService
 
     stripe_service = StripeService(db)
@@ -126,19 +134,84 @@ async def get_subscription_status(
     customer = await stripe_service.get_customer_billing(developer_id)
 
     # Get effective plan (workspace-aware: returns highest-tier plan from any workspace membership)
-    plan = await limits_service.get_plan(developer_id)
+    effective = await limits_service.get_effective_plan(developer_id, workspace_id)
+    billing_model = effective.billing_model
 
     # Get usage summary
     usage_summary = await usage_service.get_usage_summary(developer_id)
     usage_estimate = await usage_service.estimate_monthly_cost(developer_id)
 
+    # Build seat summary if on a per-seat plan
+    seat_summary = None
+    postpaid_summary = None
+
+    if workspace_id:
+        stmt = select(WorkspaceSubscription).where(
+            WorkspaceSubscription.workspace_id == workspace_id,
+            WorkspaceSubscription.status == "active",
+        )
+        result = await db.execute(stmt)
+        ws_sub = result.scalar_one_or_none()
+
+        if ws_sub and ws_sub.billing_model == "per_seat":
+            seat_summary = SeatSummaryResponse(
+                total_seats=ws_sub.base_seats + ws_sub.additional_seats,
+                base_seats=ws_sub.base_seats,
+                additional_seats=ws_sub.additional_seats,
+                per_seat_price_cents=ws_sub.price_per_additional_seat_cents,
+                included_seats=ws_sub.base_seats,
+            )
+
+        if ws_sub and ws_sub.billing_model in ("postpaid", "flat_plus_usage"):
+            postpaid_summary = PostpaidSummaryResponse(
+                accrued_cents=ws_sub.postpaid_usage_accrued_cents,
+                estimated_total_cents=ws_sub.postpaid_usage_accrued_cents + ws_sub.base_fee_monthly_cents,
+                last_settled_at=ws_sub.postpaid_last_settled_at,
+                billing_period_start=ws_sub.current_period_start,
+                billing_period_end=ws_sub.current_period_end,
+            )
+
+    # Build PlanResponse from the effective plan data
+    plan_response = PlanResponse(
+        id=effective.plan_id,
+        name=effective.plan_name,
+        tier=effective.tier,
+        billing_model=effective.billing_model,
+        description=None,
+        price_monthly_cents=effective.price_monthly_cents,
+        max_repos=effective.max_repos,
+        max_commits_per_repo=effective.max_commits_per_repo,
+        max_prs_per_repo=effective.max_prs_per_repo,
+        sync_history_days=effective.sync_history_days,
+        llm_requests_per_day=effective.llm_requests_per_day,
+        llm_provider_access=effective.llm_provider_access,
+        free_llm_tokens_per_month=effective.free_llm_tokens_per_month,
+        llm_input_cost_per_1k_cents=effective.llm_input_cost_per_1k_cents,
+        llm_output_cost_per_1k_cents=effective.llm_output_cost_per_1k_cents,
+        enable_overage_billing=effective.enable_overage_billing,
+        enable_real_time_sync=effective.enable_real_time_sync,
+        enable_advanced_analytics=effective.enable_advanced_analytics,
+        enable_exports=effective.enable_exports,
+        enable_webhooks=effective.enable_webhooks,
+        enable_team_features=effective.enable_team_features,
+        base_fee_monthly_cents=effective.base_fee_monthly_cents,
+        per_seat_price_monthly_cents=effective.per_seat_price_monthly_cents,
+        min_seats=effective.min_seats,
+        included_seats=effective.included_seats,
+        requires_payment_method=effective.requires_payment_method,
+        payment_timing=effective.payment_timing,
+    )
+
     return SubscriptionStatusResponse(
-        has_subscription=subscription is not None or plan is not None,
+        has_subscription=subscription is not None or effective.plan_id is not None,
+        billing_model=billing_model,
         subscription=SubscriptionResponse.model_validate(subscription) if subscription else None,
-        plan=PlanResponse.model_validate(plan) if plan else None,
+        plan=plan_response,
         customer=CustomerBillingResponse.model_validate(customer) if customer else None,
         usage_summary=UsageSummaryResponse(**usage_summary),
         usage_estimate=UsageEstimateResponse(**usage_estimate),
+        seat_summary=seat_summary,
+        postpaid_summary=postpaid_summary,
     )
 
 
@@ -151,6 +224,7 @@ async def create_checkout_session(
     """Create a Stripe Checkout session for subscription.
 
     Only workspace owners or admins can upgrade a workspace plan.
+    Supports billing_model and seat_count for per-seat plans.
     """
     try:
         plan_tier = PlanTier(request.plan_tier)
@@ -160,6 +234,23 @@ async def create_checkout_session(
             detail=f"Invalid plan tier: {request.plan_tier}",
         )
 
+    # Validate billing_model if provided
+    if request.billing_model:
+        from aexy.models.plan import BillingModel
+        valid_models = {m.value for m in BillingModel} - {BillingModel.FREE.value}
+        if request.billing_model not in valid_models:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid billing model: {request.billing_model}. Must be one of: {', '.join(sorted(valid_models))}",
+            )
+
+    # Validate seat_count
+    if request.seat_count is not None and request.seat_count < 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Seat count must be at least 1",
+        )
+
     # If upgrading for a workspace, verify the user is an owner or admin
     if request.workspace_id:
         await verify_workspace_admin(db, request.workspace_id, developer_id)
@@ -167,14 +258,24 @@ async def create_checkout_session(
     stripe_service = StripeService(db)
 
     try:
+        # Determine the quantity for the checkout (seat_count for per-seat plans)
+        quantity = request.seat_count if request.seat_count else 1
+
         checkout_url = await stripe_service.create_checkout_session(
             developer_id=developer_id,
             plan_tier=plan_tier,
             success_url=request.success_url,
             cancel_url=request.cancel_url,
             workspace_id=request.workspace_id,
+            billing_model=request.billing_model,
+            seat_count=quantity,
         )
         return CreateCheckoutSessionResponse(checkout_url=checkout_url)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
     except Exception as e:
         logger.error(f"Failed to create checkout session: {e}")
         raise HTTPException(
@@ -319,6 +420,99 @@ async def cancel_subscription(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to cancel subscription",
         )
+
+
+@router.get("/effective-plan", response_model=EffectivePlanResponse)
+async def get_effective_plan(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[Developer, Depends(get_current_developer)],
+    workspace_id: str | None = None,
+) -> EffectivePlanResponse:
+    """Get the effective plan with workspace overrides applied."""
+    from aexy.services.limits_service import LimitsService
+
+    limits = LimitsService(db)
+    effective = await limits.get_effective_plan(current_user.id, workspace_id)
+
+    # EffectivePlan dataclass fields match EffectivePlanResponse fields;
+    # filter out extra fields (stripe_product_id, stripe_price_id) not in the response schema
+    response_fields = EffectivePlanResponse.model_fields.keys()
+    return EffectivePlanResponse(**{k: v for k, v in vars(effective).items() if k in response_fields})
+
+
+@router.post("/seats")
+async def update_seats(
+    data: UpdateSeatsRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[Developer, Depends(get_current_developer)],
+) -> dict:
+    """Update seat count for per-seat plans.
+
+    Only workspace owners or admins can update seats.
+    """
+    from aexy.models.workspace import WorkspaceSubscription
+
+    # Verify workspace access (owner/admin)
+    await verify_workspace_admin(db, data.workspace_id, current_user.id)
+
+    # Get workspace subscription
+    stmt = select(WorkspaceSubscription).where(
+        WorkspaceSubscription.workspace_id == data.workspace_id,
+        WorkspaceSubscription.status == "active",
+    )
+    result = await db.execute(stmt)
+    ws_sub = result.scalar_one_or_none()
+
+    if not ws_sub:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active workspace subscription found",
+        )
+
+    if ws_sub.billing_model != "per_seat":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Seat management is only available for per-seat plans",
+        )
+
+    if data.seat_count < ws_sub.base_seats:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Seat count cannot be less than the base seats ({ws_sub.base_seats})",
+        )
+
+    old_total = ws_sub.base_seats + ws_sub.additional_seats
+    new_additional = data.seat_count - ws_sub.base_seats
+
+    # Update Stripe subscription quantity if we have a Stripe subscription
+    if ws_sub.stripe_subscription_id:
+        try:
+            stripe_sub = stripe.Subscription.retrieve(ws_sub.stripe_subscription_id)
+            if stripe_sub.items.data:
+                stripe.SubscriptionItem.modify(
+                    stripe_sub.items.data[0].id,
+                    quantity=data.seat_count,
+                    proration_behavior="create_prorations",
+                )
+        except stripe.error.StripeError as e:
+            logger.error(f"Failed to update Stripe seat count: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update seat count in Stripe",
+            )
+
+    # Update local record
+    ws_sub.additional_seats = new_additional
+    await db.commit()
+
+    return {
+        "workspace_id": data.workspace_id,
+        "previous_total_seats": old_total,
+        "new_total_seats": data.seat_count,
+        "base_seats": ws_sub.base_seats,
+        "additional_seats": new_additional,
+        "per_seat_price_cents": ws_sub.price_per_additional_seat_cents,
+    }
 
 
 @router.get("/invoices", response_model=list[InvoiceResponse])

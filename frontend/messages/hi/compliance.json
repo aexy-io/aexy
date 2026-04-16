@@ -1,0 +1,74 @@
+{
+  "compliance": {
+    "title": "Compliance",
+    "description": "Compliance रिमाइंडर, दस्तावेज़, प्रशिक्षण और प्रमाणपत्र प्रबंधित करें",
+
+    "stats": {
+      "activeReminders": "सक्रिय रिमाइंडर",
+      "pending": "लंबित",
+      "overdue": "अतिदेय",
+      "completedThisWeek": "इस सप्ताह पूर्ण"
+    },
+
+    "modules": {
+      "reminders": "रिमाइंडर",
+      "remindersDescription": "Compliance प्रतिबद्धताओं, समीक्षाओं और आवर्ती कार्यों को ट्रैक करें",
+      "documentCenter": "दस्तावेज़ केंद्र",
+      "documentCenterDescription": "Compliance दस्तावेज़ अपलोड, व्यवस्थित और लिंक करें",
+      "questionnaires": "प्रश्नावली",
+      "questionnairesDescription": "Compliance प्रश्नावली इंपोर्ट और प्रबंधित करें",
+      "training": "प्रशिक्षण",
+      "trainingDescription": "अनिवार्य प्रशिक्षण कार्यक्रम और असाइनमेंट",
+      "certifications": "प्रमाणपत्र",
+      "certificationsDescription": "कर्मचारी प्रमाणपत्र और नवीनीकरण ट्रैक करें",
+      "calendar": "कैलेंडर",
+      "calendarDescription": "कैलेंडर में सभी Compliance डेडलाइन देखें"
+    },
+
+    "reminders": {
+      "title": "Compliance रिमाइंडर",
+      "active": "सक्रिय",
+      "overdueCount": "{count} अतिदेय",
+      "createReminder": "रिमाइंडर बनाएं",
+      "importReminders": "रिमाइंडर इंपोर्ट करें",
+      "allReminders": "सभी रिमाइंडर",
+      "myReminders": "मेरे रिमाइंडर",
+      "noReminders": "अभी तक कोई रिमाइंडर नहीं",
+      "noRemindersDescription": "महत्वपूर्ण डेडलाइन और आवर्ती कार्यों को ट्रैक करने के लिए Compliance रिमाइंडर बनाएं।"
+    },
+
+    "documents": {
+      "title": "Compliance दस्तावेज़",
+      "uploadDocument": "दस्तावेज़ अपलोड करें",
+      "noDocuments": "अभी तक कोई दस्तावेज़ नहीं",
+      "noDocumentsDescription": "Compliance-संबंधित दस्तावेज़ अपलोड और व्यवस्थित करें।"
+    },
+
+    "training": {
+      "title": "प्रशिक्षण कार्यक्रम",
+      "mandatory": "अनिवार्य",
+      "optional": "वैकल्पिक",
+      "completed": "पूर्ण",
+      "notStarted": "शुरू नहीं हुआ",
+      "inProgress": "प्रगति में",
+      "overdue": "अतिदेय"
+    },
+
+    "certifications": {
+      "title": "प्रमाणपत्र",
+      "valid": "वैध",
+      "expired": "समय-सीमा समाप्त",
+      "expiringSoon": "जल्दी समाप्त होने वाला",
+      "noCertifications": "अभी तक कोई प्रमाणपत्र ट्रैक नहीं किया"
+    },
+
+    "status": {
+      "active": "सक्रिय",
+      "completed": "पूर्ण",
+      "overdue": "अतिदेय",
+      "pending": "लंबित",
+      "cancelled": "रद्द",
+      "expired": "समय-सीमा समाप्त"
+    }
+  }
+}

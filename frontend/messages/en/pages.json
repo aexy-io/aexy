@@ -1,0 +1,184 @@
+{
+  "pages": {
+    "story": {
+      "badge": "Our Story",
+      "title": "Built by engineers, for engineers.",
+      "subtitle": "The story of how frustration with fragmented tools led to building something better.",
+      "beginning": {
+        "heading": "The Beginning",
+        "p1": "It started with a simple observation: engineering teams were drowning in tools. Code lived in GitHub, tasks in Jira, docs in Notion, reviews in spreadsheets, and hiring in yet another system. Every tool told a different story, and no one had the complete picture.",
+        "p2": "We watched engineering managers spend hours reconciling data across systems. We saw talented developers frustrated by endless context switching. We witnessed leadership making decisions based on incomplete information. Something had to change."
+      },
+      "quote1": "We weren't just building another tool. We were building the connective tissue that engineering organizations desperately needed.",
+      "journey": {
+        "heading": "The Journey",
+        "p1": "We started Aexy with a radical idea: what if there was one platform that understood the entire engineering organization? Not just the code, but the people, the processes, the growth, and the customers they serve.",
+        "p2": "We built it open-source because we believe transparency breeds trust. Engineering organizations shouldn't have to rely on black boxes to manage their most critical operations.",
+        "p3": "Every feature we've built comes from real pain points we've experienced ourselves. Sprint planning that actually reflects capacity. Performance reviews that feel fair. Hiring assessments based on real skills. Documentation that stays connected to the work."
+      },
+      "beliefs": {
+        "heading": "What We Believe",
+        "code": "Code is the most honest data an engineering organization produces",
+        "tools": "Great tools should empower teams, not surveil them",
+        "trust": "Transparency and trust are the foundation of high-performing teams",
+        "access": "World-class tools should be accessible to everyone, not just giants"
+      },
+      "team": {
+        "heading": "The Team",
+        "p1": "We're a small team of engineers, designers, and dreamers who believe software can be a force for positive change. We've worked at companies of all sizes and seen firsthand how the right tools can transform how teams operate.",
+        "p2": "We're building Aexy openly, transparently, and with the community. Because the best products are built together."
+      },
+      "quote2": "The future of engineering organizations is integrated, transparent, and built on trust. We're here to make that future a reality.",
+      "quote2Author": "The Aexy Team",
+      "cta": {
+        "heading": "Join us on this journey",
+        "subtitle": "Whether you're building the next big thing or optimizing your team's operations, we'd love to have you along for the ride.",
+        "getStarted": "Get Started Free",
+        "readManifesto": "Read the Manifesto"
+      }
+    },
+    "mission": {
+      "badge": "Our Mission",
+      "title": "Aexy is on a mission to bring positive change.",
+      "subtitle": "We are building world-class tools actually accessible for everyone using AI.",
+      "author": "Bhanu Pratap Chaudhary",
+      "opening": "Humanity has progressed so far, yet there are so many stories that are buried under the status quo. Aexy aims to bring about social change by enabling people to build better software & reducing the friction involved in creating world-class tools that were once only accessible to giants like Google, Microsoft, and Salesforce.",
+      "democratize": {
+        "heading": "Democratize software creation",
+        "description": "Aexy is started to challenge the existing enterprise software giants and give access to cutting-edge engineering tools in the hands of everyone. Let the ideas and innovation flow throughout Earth and let humanity progress."
+      },
+      "quote1": "World needs to be shown that good companies can be created by good people with good culture without kalanick, jobs like toxicity & negativity.",
+      "loveOverFear": {
+        "p1": "The world believes that love cannot trump over fear, history teaches us otherwise and we want to use love to transcend all color, caste, religion & gender boundaries and create a world where no kepler has to die, because no one believed in him. Aexy will create a new world of innovators.",
+        "p2": "We personally believe in no rules, apart from the laws imposed by nature, though for guiding principle we have adopted a very simple principle —",
+        "principle": "We don't make money or take advantage of people in need or suffering.",
+        "p3": "Thanks to AI, we don't want and need a lot of money to bring about change."
+      },
+      "whoWeWorkWith": {
+        "heading": "Who we work with",
+        "p1": "We plan to work with everyone who believe in this mission and are open to transparency & accountability.",
+        "p2": "This journey is not for light hearted people, as the reality might strike you that walking the right path requires a straight spine that only a few have retained. Please don't take this lightly, we are building a world of optimists, who believe the change is possible."
+      },
+      "longTermVision": {
+        "heading": "Our Long Term Vision",
+        "p1": "We are actually building the resources for the future generations, so that disadvantaged people in India & all over the world are no longer restricted by the technical challenges and lack of access to information & resources.",
+        "p2": "This is Aexy's true & bold vision, everything in between is being done to ensure Aexy is able to actually solve real problems instead of pretending to connect people while filling up their coffers at any cost.",
+        "p3": "In the meantime, we are working towards reducing barriers to entry for high-quality software development. Aexy could empower a diverse array of voices, fostering a more inclusive technology landscape."
+      },
+      "quote2": "Big tech does not have a monopoly on big software. We can build whatever we want.",
+      "quote2Author": "@awesomekling",
+      "cta": {
+        "heading": "Work at Aexy",
+        "subtitle": "Join us in building the future of engineering tools.",
+        "getStarted": "Get Started",
+        "readManifesto": "Read the Manifesto"
+      }
+    },
+    "manifesto": {
+      "badge": "Category Manifesto",
+      "title": "The Engineering OS",
+      "subtitle": "Software companies don't fail because of a lack of tools.",
+      "subtitleBold": "They fail because their tools don't agree on reality.",
+      "problem": {
+        "heading": "The Problem",
+        "description": "Modern engineering organizations run on fragments:",
+        "codeInGithub": "Code in GitHub",
+        "workInJira": "Work in Jira",
+        "docsInNotion": "Docs in Notion",
+        "reviewsInSpreadsheets": "Reviews in spreadsheets",
+        "hiringInAts": "Hiring in ATS tools",
+        "customersInCrm": "Customers in CRMs",
+        "eachTool": "Each tool tells a different story.",
+        "leadersGuess": "Leaders are forced to guess.",
+        "engineersExplain": "Engineers are forced to explain themselves.",
+        "trustErodes": "Trust erodes."
+      },
+      "lies": {
+        "heading": "The Lie We've Accepted",
+        "planning": "Planning is separate from execution",
+        "performance": "Performance is separate from work",
+        "hiring": "Hiring is separate from skills",
+        "customers": "Customers are separate from delivery",
+        "notNormal": "This fragmentation is not normal.",
+        "historicalAccident": "It's historical accident."
+      },
+      "insight": {
+        "badge": "The Insight",
+        "heading": "Code is the most honest data an engineering organization produces.",
+        "whatBuilt": "What was actually built",
+        "whoWorked": "Who worked on it",
+        "howTeams": "How teams collaborate",
+        "whereFail": "Where systems fail",
+        "whatSkills": "What skills truly exist",
+        "ignoresTruth": "Any system that ignores this truth is incomplete."
+      },
+      "engineeringOs": {
+        "heading": "The Engineering OS",
+        "newCategory": "A new category.",
+        "systemOfRecord": "System of Record",
+        "notReportingTool": "Not a reporting tool",
+        "platform": "Platform",
+        "notPointSolution": "Not a point solution",
+        "sharedReality": "Shared Reality",
+        "forAll": "For engineering, people, and leadership",
+        "connects": "It connects:",
+        "code": "Code",
+        "planning": "Planning",
+        "people": "People",
+        "growth": "Growth",
+        "customers": "Customers",
+        "allInOnePlace": "All in one place."
+      },
+      "isNot": {
+        "heading": "What the Engineering OS Is Not",
+        "notSurveillance": "Not surveillance software",
+        "notTicketing": "Not a ticketing tool with dashboards",
+        "notCrm": "Not a CRM with engineering add-ons",
+        "notSilo": "Not another SaaS silo",
+        "builtOn": "The Engineering OS is built on",
+        "trust": "trust",
+        "transparency": "transparency",
+        "truth": "truth"
+      },
+      "openSource": {
+        "heading": "Why Open Source Matters",
+        "description": "Engineering organizations don't trust black boxes — and they shouldn't.",
+        "mustBe": "That's why the Engineering OS must be:",
+        "auditable": "Auditable",
+        "forkable": "Forkable",
+        "selfHostable": "Self-hostable",
+        "communityDriven": "Community-driven",
+        "trustFoundation": "Trust is not a feature. It's the foundation."
+      },
+      "outcome": {
+        "heading": "The Outcome",
+        "planningReality": "Planning reflects reality",
+        "reviewsFair": "Reviews feel fair",
+        "hiringSkills": "Hiring is skills-based",
+        "learningContinuous": "Learning is continuous",
+        "customersConnected": "Customers stay connected to delivery",
+        "leadersSee": "Leaders see clearly",
+        "lessGuesswork": "Less guesswork.",
+        "lessPolitics": "Less politics.",
+        "moreProgress": "More progress."
+      },
+      "belief": {
+        "heading": "Our Belief",
+        "quote": "Every modern software company will eventually run on an Engineering OS.",
+        "description": "We're building Aexy to be that system — openly, transparently, and with the community."
+      },
+      "cta": {
+        "heading": "Welcome to the Engineering OS.",
+        "subtitle": "Start with open source. Build with clarity.",
+        "getStarted": "Get Started Free",
+        "viewOnGithub": "View on GitHub"
+      }
+    },
+    "changelog": {
+      "badge": "What's New",
+      "title": "Changelog",
+      "subtitle": "All notable changes to Aexy, documented.",
+      "latest": "Latest"
+    }
+  }
+}

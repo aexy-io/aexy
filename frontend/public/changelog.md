@@ -5,6 +5,108 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2026-04-14
+
+### Added
+
+#### DeepSeek as a first-class LLM provider
+Added direct DeepSeek API support alongside Claude, Gemini, Ollama, and OpenRouter. DeepSeek uses an OpenAI-compatible endpoint (`https://api.deepseek.com/chat/completions`) with models `deepseek-chat` (non-thinking DeepSeek-V3.2) and `deepseek-reasoner` (thinking DeepSeek-V3.2).
+
+- New `DeepSeekProvider` with model fallback, 429 `retry-after` handling, usage extraction
+- Wired into `LLMGateway` factory + `get_llm_gateway()` bootstrap
+- Added `DEEPSEEK_API_KEY` and `DEEPSEEK_FALLBACK_MODELS` env vars (defaults to `deepseek-reasoner`)
+- Rate-limit knobs: `DEEPSEEK_REQUESTS_PER_MINUTE`, `DEEPSEEK_REQUESTS_PER_DAY`, `DEEPSEEK_TOKENS_PER_MINUTE`
+- Billing: 28¢/M input, 42¢/M output (cache-miss rate; same for both models)
+- Plan tiers updated to include `deepseek` in `llm_provider_access`
+- Unit tests: `tests/unit/test_deepseek_provider.py` (12 tests, mocked HTTP)
+- Live compatibility harness: `scripts/check_llm_provider.py` — provider-agnostic; runs `health_check` → `call_llm` → `analyze(CODE)` → `extract_task_signals` and reports pass/fail. Use any time a provider or model is swapped.
+
+#### Onboarding: create additional workspaces after initial setup
+The sidebar "Create workspace" link routes to `/onboarding/workspace`, but the `OnboardingGuard` was redirecting already-onboarded users back to `/dashboard` — making workspace creation impossible post-onboarding.
+
+- `OnboardingGuard` now allows `/onboarding/workspace` (and `/onboarding/complete`) through for existing users
+- Workspace step clears stale localStorage-cached workspace state for already-onboarded users, so they see the "Create / Join" choice instead of "Workspace Ready"
+- After create / accept-invite, existing users route to `/dashboard` (instead of `/onboarding/connect`) and the new workspace is auto-selected via `useWorkspace.switchWorkspace()` so the sidebar updates immediately
+
+### Fixed
+
+- Hydration mismatch on `<html>` caused by the Redeviation browser extension injecting `data-redeviation-bs-uid` — added `suppressHydrationWarning` to the root layout
+
+### Changed
+
+- `docker-compose.yml` and `docker-compose.dev.yml` no longer hardcode `LLM_PROVIDER`, `LLM_MODEL`, or any `*_API_KEY`. LLM config is read from `backend/.env` by pydantic settings — single source of truth. Previously empty-string values in compose silently shadowed `.env`, breaking provider selection. Prod compose (`docker-compose.prod.yml`) continues to inject secrets from the host shell env as designed.
+
+---
+
+### Added
+
+#### Reviews UX/UI Audit & Fixes (20 issues fixed, 30 Playwright E2E tests)
+Comprehensive UX/UI audit of the Performance Reviews feature with screenshot-driven TDD fixes.
+
+- **P0 Fixes**: "Active Unknown" bug, date validation on cycle creation, disabled button tooltips, AI preview empty states, success toasts on create/delete
+- **P1 Fixes**: Styled delete confirmation modal (replaces browser `confirm()`), ARIA tab attributes (`role=tablist/tab/tabpanel`), breadcrumb navigation consistency, mobile card view for cycles DataTable, user-facing error toasts on API failures
+- **P2 Fixes**: Filter count badges on goals tabs, form label accessibility (`htmlFor`/`id`), live goal card preview on create form, `aria-label` on icon-only buttons, cycle timeline preview with phase markers, `aria-live` regions for screen readers, unified loading spinners to `primary-500`
+- **Contributions & Feedback tabs**: Wired up with real data (metrics grid, skills, AI summary, self-review responses, full COIN peer feedback)
+- **Onboarding**: Fixed checklist href, added "Create a SMART goal" item to developer/manager presets
+- **Audit doc**: `review-screenshots/REVIEW_AI_UX_AUDIT.md` with before/after screenshots
+
+#### Next.js 16 + React 19 Upgrade
+- Upgraded `next` from 14.1.0 to 16.2.1, `react`/`react-dom` to 19.x
+- Fixed JSX parse error in `CustomFieldTypeManager.tsx` (stricter parser)
+- Installed missing `@tiptap/suggestion` dependency
+- Defensive null check in `useAppAccess.ts`
+
+#### Internationalization (i18n) with next-intl
+Full i18n infrastructure with English + Hindi support across all modules.
+
+- **next-intl**: Cookie-based locale system with middleware, Zustand locale store, and language selector in sidebar
+- **20 module message files** per locale (EN + Hindi): common, reviews, sidebar, dashboard, tracking, settings, sprints, insights, crm, hiring, agents, booking, email-marketing, learning, uptime, compliance, admin, marketing, products, pages
+- **Per-module JSON files** merged at build time via `npm run i18n:merge` (auto-runs on `prebuild`)
+- **~1800+ translation keys** per locale covering all feature modules + homepage + product pages + pricing
+- **7 review pages** fully converted to `useTranslations()` — remaining pages can adopt incrementally
+- **CLAUDE.md** updated with i18n architecture docs, conventions, and how-to guides
+
+### Changed
+- `docker-compose.dev.yml` added with non-conflicting ports for parallel development
+- CORS origin added for dev port 3003
+- JSONB `server_default` syntax fix in dashboard and CRM models
+
+## [0.7.0] - 2026-03-25
+
+### Added
+
+#### OpenRouter AI Provider
+OpenRouter is now available as a first-class LLM provider, giving access to 100+ models (Claude, GPT-4o, Llama, Gemini, DeepSeek, etc.) through a single API key.
+
+- **OpenRouterProvider**: Full `LLMProvider` implementation using the OpenAI-compatible chat completions API (`POST /chat/completions`) with Bearer auth, rate limit handling (429 with `retry-after`), and health checks via `/models`
+- **Automatic model fallback**: When the primary model is rate-limited or unavailable (429/503), automatically tries the next model in a configurable fallback list — set `OPENROUTER_FALLBACK_MODELS` (comma-separated) to customize the fallback order
+- **Configuration**: `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` (default: `anthropic/claude-sonnet-4`), `OPENROUTER_FALLBACK_MODELS` (default: `google/gemini-2.0-flash,openai/gpt-4o,deepseek/deepseek-chat-v3,meta-llama/llama-3.1-70b-instruct`) env vars
+- **Rate limiting**: Per-provider Redis-backed rate limits (`OPENROUTER_REQUESTS_PER_MINUTE`, `OPENROUTER_REQUESTS_PER_DAY`, `OPENROUTER_TOKENS_PER_MINUTE`)
+- **Usage billing**: Configurable token pricing (`OPENROUTER_INPUT_PRICE_PER_MILLION`, `OPENROUTER_OUTPUT_PRICE_PER_MILLION`)
+- **Frontend**: OpenRouter added to provider selector with Globe icon, indigo theme, and 5 default models; usage page shows OpenRouter breakdown
+- **Docker**: `OPENROUTER_API_KEY` passed through in both `docker-compose.yml` and `docker-compose.prod.yml`
+
+#### Platform Organization
+Auto-CRM contact creation and onboarding drip email sequences triggered on user signup.
+
+- **PlatformService**: Creates CRM contacts and enrolls new signups into onboarding drip email workflows when `PLATFORM_ORG_ID` is configured
+- **Temporal activity**: `platform_on_signup` activity dispatched from the signup flow for async processing
+- **Configuration**: `PLATFORM_ORG_ID` env var — set to a workspace UUID to enable
+
+## [0.6.8] - 2026-03-21
+
+### Added
+
+#### Postmark Email Provider
+Postmark is now available as an email provider across all three sending paths — notification emails, campaign/workflow emails, and mailagent domain-aware sending.
+
+- **Backend EmailService**: Added `_send_via_postmark()` method, `is_postmark_configured` property, and Postmark routing in `_send_email()` — set `EMAIL_PROVIDER=postmark` to use for all notification emails
+- **Mailagent PostmarkProvider**: Full `EmailProvider` implementation with `send()`, `verify_credentials()`, and native `send_batch()` (up to 500 per call via `/email/batch`)
+- **PostmarkAccountService**: Account API client for managing sender signatures (`create`, `delete`, `list`) and domains (`verify`, `get`) using the Account API token
+- **Agent email integration**: Automatic Postmark sender signature creation when allocating agent email addresses, and cleanup on disable
+- **Message streams**: Separate transactional (`POSTMARK_TRANSACTIONAL_STREAM`, default `outbound`) and broadcast (`POSTMARK_BROADCAST_STREAM`, default `broadcast`) stream support — notification emails use transactional, campaigns use broadcast
+- **Configuration**: `POSTMARK_SERVER_TOKEN`, `POSTMARK_ACCOUNT_TOKEN`, `POSTMARK_SENDER_EMAIL`, `POSTMARK_SENDER_NAME`, `POSTMARK_TRANSACTIONAL_STREAM`, `POSTMARK_BROADCAST_STREAM` env vars in backend; `POSTMARK_SERVER_TOKEN` in mailagent
+
 ## [0.6.7] - 2026-03-01
 
 ### Added

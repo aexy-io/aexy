@@ -945,7 +945,7 @@ async def notify_leave_request_submitted(
             "end_date": end_date,
             "request_id": request_id,
             "workspace_id": workspace_id,
-            "action_url": "/leave/requests",
+            "action_url": "/leave",
         },
     )
 
@@ -970,7 +970,7 @@ async def notify_leave_request_approved(
             "end_date": end_date,
             "request_id": request_id,
             "workspace_id": workspace_id,
-            "action_url": "/leave/requests",
+            "action_url": "/leave",
         },
     )
 
@@ -995,7 +995,7 @@ async def notify_leave_request_rejected(
             "end_date": end_date,
             "request_id": request_id,
             "workspace_id": workspace_id,
-            "action_url": "/leave/requests",
+            "action_url": "/leave",
         },
     )
 
@@ -1022,7 +1022,7 @@ async def notify_leave_request_cancelled(
             "end_date": end_date,
             "request_id": request_id,
             "workspace_id": workspace_id,
-            "action_url": "/leave/requests",
+            "action_url": "/leave",
         },
     )
 

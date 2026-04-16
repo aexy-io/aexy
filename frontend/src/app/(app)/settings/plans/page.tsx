@@ -12,6 +12,9 @@ import {
   Loader2,
   CheckCircle2,
   Mail,
+  CreditCard,
+  BarChart3,
+  Clock,
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useSubscription, usePlans, useChangePlan, useCheckout } from "@/hooks/useSubscription";
@@ -20,38 +23,78 @@ import { ChangePlanModal } from "@/components/billing/ChangePlanModal";
 import { PlanComparison } from "@/components/billing/PlanComparison";
 import { PlanFeatures } from "@/lib/api";
 
-// Plan display configuration
-const planConfig = {
+// Plan display configuration — keyed by billing_model for new plans, with tier fallbacks
+const planConfig: Record<string, {
+  icon: any;
+  color: string;
+  borderColor: string;
+  textColor: string;
+  tagline: string;
+  cta: string;
+  features: string[];
+}> = {
   free: {
     icon: Github,
     color: "from-emerald-500 to-cyan-500",
     borderColor: "border-emerald-500/30",
     textColor: "text-emerald-400",
-    tagline: "Open Source",
+    tagline: "Free",
     cta: "Get Started Free",
     features: [
-      "Core Engineering OS",
-      "Developer profiles",
+      "All modules included",
+      "10 repos, 10 team members",
       "Sprint & epic planning",
-      "Basic CRM",
+      "CRM, email marketing, docs",
       "GitHub integration",
-      "Community support",
+      "Limited AI (50 req/day)",
     ],
   },
-  pro: {
+  per_seat: {
     icon: Users,
     color: "from-primary-500 to-primary-600",
     borderColor: "border-primary-500/50",
     textColor: "text-primary-400",
-    tagline: "Team",
-    cta: "Upgrade to Pro",
+    tagline: "Per Seat",
+    cta: "Upgrade",
     features: [
       "Everything in Free, plus:",
-      "Hosted cloud version",
-      "AI-powered insights",
+      "Unlimited repos & history",
+      "AI-powered insights (all providers)",
+      "500K tokens/mo included",
       "On-call scheduling",
       "Performance reviews",
-      "Advanced dashboards",
+    ],
+  },
+  flat_plus_usage: {
+    icon: BarChart3,
+    color: "from-amber-500 to-orange-500",
+    borderColor: "border-amber-500/30",
+    textColor: "text-amber-400",
+    tagline: "Flat + Usage",
+    cta: "Get Started",
+    features: [
+      "Flat monthly base fee",
+      "Unlimited seats included",
+      "Pay only for AI you use",
+      "All providers, unlimited requests",
+      "All modules & features",
+      "Ideal for variable AI usage",
+    ],
+  },
+  postpaid: {
+    icon: Clock,
+    color: "from-rose-500 to-pink-500",
+    borderColor: "border-rose-500/30",
+    textColor: "text-rose-400",
+    tagline: "Postpaid",
+    cta: "Set Up Postpaid",
+    features: [
+      "No upfront cost",
+      "Pay at end of billing period",
+      "Per-seat + AI usage billing",
+      "All providers, unlimited requests",
+      "All modules & features",
+      "Ideal for growing teams",
     ],
   },
   enterprise: {
@@ -71,6 +114,72 @@ const planConfig = {
     ],
   },
 };
+
+function getPlanConfigKey(plan: PlanFeatures): string {
+  // Use billing_model as key, fallback to tier
+  const bm = plan.billing_model;
+  if (bm && planConfig[bm]) return bm;
+  if (planConfig[plan.tier]) return plan.tier;
+  return "free";
+}
+
+function formatPlanPrice(plan: PlanFeatures, billingPeriod: "monthly" | "annual"): React.ReactNode {
+  const bm = plan.billing_model;
+
+  if (bm === "free" || (!plan.price_monthly_cents && !plan.per_seat_price_monthly_cents && !plan.base_fee_monthly_cents)) {
+    return <span className="text-3xl font-bold text-foreground">Free</span>;
+  }
+
+  if (bm === "per_seat") {
+    const price = billingPeriod === "annual"
+      ? Math.floor(plan.per_seat_price_monthly_cents * 0.83 / 100)
+      : plan.per_seat_price_monthly_cents / 100;
+    return (
+      <div className="flex items-baseline gap-1">
+        <span className="text-muted-foreground text-xl">$</span>
+        <span className="text-3xl font-bold text-foreground">{price}</span>
+        <span className="text-muted-foreground text-sm">/user/mo</span>
+      </div>
+    );
+  }
+
+  if (bm === "flat_plus_usage") {
+    const base = plan.base_fee_monthly_cents / 100;
+    return (
+      <div className="flex items-baseline gap-1">
+        <span className="text-muted-foreground text-xl">$</span>
+        <span className="text-3xl font-bold text-foreground">{base}</span>
+        <span className="text-muted-foreground text-sm">/mo + usage</span>
+      </div>
+    );
+  }
+
+  if (bm === "postpaid") {
+    if (plan.per_seat_price_monthly_cents > 0) {
+      const price = plan.per_seat_price_monthly_cents / 100;
+      return (
+        <div className="flex items-baseline gap-1">
+          <span className="text-muted-foreground text-xl">$</span>
+          <span className="text-3xl font-bold text-foreground">{price}</span>
+          <span className="text-muted-foreground text-sm">/seat + usage</span>
+        </div>
+      );
+    }
+    return <span className="text-3xl font-bold text-foreground">Pay after use</span>;
+  }
+
+  // Fallback
+  const price = billingPeriod === "annual"
+    ? Math.floor(plan.price_monthly_cents * 0.83 / 100)
+    : plan.price_monthly_cents / 100;
+  return (
+    <div className="flex items-baseline gap-1">
+      <span className="text-muted-foreground text-xl">$</span>
+      <span className="text-3xl font-bold text-foreground">{price}</span>
+      <span className="text-muted-foreground text-sm">/month</span>
+    </div>
+  );
+}
 
 export default function PlansPage() {
   const searchParams = useSearchParams();
@@ -104,8 +213,10 @@ export default function PlansPage() {
   const isLoading = subscriptionLoading || plansLoading;
 
   const handleSelectPlan = (plan: PlanFeatures) => {
-    if (plan.tier === currentTier) return;
-    if (plan.tier === "enterprise") {
+    // Check if this is the same plan+billing_model combo
+    const currentBillingModel = currentPlan?.billing_model || "free";
+    if (plan.billing_model === currentBillingModel && plan.tier === currentTier) return;
+    if (plan.tier === "enterprise" && plan.billing_model === "per_seat") {
       window.location.href = "mailto:sales@aexy.io?subject=Enterprise%20Inquiry";
       return;
     }
@@ -121,6 +232,7 @@ export default function PlansPage() {
       const result = await checkout.mutateAsync({
         planTier: selectedPlan.tier,
         workspaceId: currentWorkspaceId || undefined,
+        billingModel: selectedPlan.billing_model,
       });
       if (result.checkout_url) {
         window.location.href = result.checkout_url;
@@ -131,9 +243,14 @@ export default function PlansPage() {
     }
   };
 
+  const isCurrentPlanMatch = (plan: PlanFeatures): boolean => {
+    const currentBillingModel = currentPlan?.billing_model || "free";
+    return plan.billing_model === currentBillingModel && plan.tier === currentTier;
+  };
+
   const isUpgrade = (targetTier: string): boolean => {
-    const tierOrder = { free: 0, pro: 1, enterprise: 2 };
-    return tierOrder[targetTier as keyof typeof tierOrder] > tierOrder[currentTier as keyof typeof tierOrder];
+    const tierOrder: Record<string, number> = { free: 0, pro: 1, flat_plus_usage: 1, postpaid: 1, enterprise: 2, custom: 2 };
+    return (tierOrder[targetTier] ?? 1) > (tierOrder[currentTier] ?? 0);
   };
 
   if (isLoading) {
@@ -207,26 +324,23 @@ export default function PlansPage() {
         </div>
 
         {/* Plan Cards */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
+        <div className={`grid gap-6 mb-8 ${plans.length <= 3 ? "md:grid-cols-3" : plans.length <= 4 ? "md:grid-cols-2 lg:grid-cols-4" : "md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"}`}>
           {plans.map((plan, index) => {
-            const config = planConfig[plan.tier as keyof typeof planConfig];
+            const configKey = getPlanConfigKey(plan);
+            const config = planConfig[configKey];
             const Icon = config?.icon || Github;
-            const isCurrentPlan = plan.tier === currentTier;
-            const displayPrice = billingPeriod === "annual"
-              ? Math.floor(plan.price_monthly_cents * 0.83 / 100)
-              : plan.price_monthly_cents / 100;
-            const isCustomPrice = plan.price_monthly_cents === 0 && plan.tier === "enterprise";
+            const isCurrent = isCurrentPlanMatch(plan);
 
             return (
               <motion.div
-                key={plan.tier}
+                key={`${plan.billing_model}-${plan.tier}-${plan.id}`}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
-                className={`relative ${plan.tier === "pro" ? "md:-mt-2 md:mb-2" : ""}`}
+                className="relative"
               >
                 {/* Current Plan Badge */}
-                {isCurrentPlan && (
+                {isCurrent && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
                     <div className="px-3 py-1 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-xs font-medium rounded-full shadow-lg">
                       Current Plan
@@ -234,22 +348,11 @@ export default function PlansPage() {
                   </div>
                 )}
 
-                {/* Popular Badge */}
-                {plan.tier === "pro" && !isCurrentPlan && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-                    <div className="px-3 py-1 bg-gradient-to-r from-primary-500 to-primary-600 text-white text-xs font-medium rounded-full shadow-lg">
-                      Most Popular
-                    </div>
-                  </div>
-                )}
-
                 <div
                   className={`h-full bg-card border rounded-xl p-6 transition-all ${
-                    isCurrentPlan
+                    isCurrent
                       ? "border-emerald-500/50 shadow-lg shadow-emerald-500/10"
-                      : plan.tier === "pro"
-                      ? "border-primary-500/50"
-                      : "border-border hover:border-border"
+                      : `${config?.borderColor || "border-border"} hover:border-border`
                   }`}
                 >
                   {/* Plan Header */}
@@ -259,7 +362,7 @@ export default function PlansPage() {
                     </div>
                     <div>
                       <span className={`text-xs font-semibold tracking-wider ${config?.textColor || "text-muted-foreground"}`}>
-                        {config?.tagline?.toUpperCase() || plan.tier.toUpperCase()}
+                        {config?.tagline?.toUpperCase() || plan.billing_model?.toUpperCase()}
                       </span>
                     </div>
                   </div>
@@ -269,65 +372,38 @@ export default function PlansPage() {
 
                   {/* Price */}
                   <div className="mb-6">
-                    {isCustomPrice ? (
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-3xl font-bold text-foreground">Custom</span>
-                      </div>
-                    ) : plan.price_monthly_cents === 0 ? (
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-3xl font-bold text-foreground">Free</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-muted-foreground text-xl">$</span>
-                        <motion.span
-                          key={displayPrice}
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="text-3xl font-bold text-foreground"
-                        >
-                          {displayPrice}
-                        </motion.span>
-                        <span className="text-muted-foreground text-sm">/month</span>
-                      </div>
-                    )}
+                    {formatPlanPrice(plan, billingPeriod)}
                   </div>
 
                   {/* CTA Button */}
-                  {!isCurrentPlan && currentWorkspaceId && !isOwner ? (
+                  {!isCurrent && currentWorkspaceId && !isOwner ? (
                     <div className="w-full py-2.5 px-4 rounded-lg text-sm text-center text-slate-500 bg-slate-800 border border-slate-700">
                       Only the workspace owner can change plans
                     </div>
                   ) : (
                     <button
                       onClick={() => handleSelectPlan(plan)}
-                      disabled={isCurrentPlan || changePlan.isPending || checkout.isPending}
+                      disabled={isCurrent || changePlan.isPending || checkout.isPending}
                       className={`w-full py-2.5 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
-                        isCurrentPlan
+                        isCurrent
                           ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 cursor-default"
-                          : plan.tier === "pro"
-                          ? "bg-primary-600 hover:bg-primary-700 text-white"
-                          : plan.tier === "enterprise"
-                          ? "bg-gradient-to-r from-purple-500 to-violet-500 text-white hover:from-purple-600 hover:to-violet-600"
-                          : "bg-slate-700 hover:bg-slate-600 text-white"
+                          : `bg-gradient-to-r ${config?.color || "from-slate-600 to-slate-700"} text-white hover:opacity-90`
                       } disabled:opacity-50`}
                     >
-                      {(changePlan.isPending || checkout.isPending) && selectedPlan?.tier === plan.tier ? (
+                      {(changePlan.isPending || checkout.isPending) && selectedPlan?.id === plan.id ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : isCurrentPlan ? (
+                      ) : isCurrent ? (
                         <>
                           <CheckCircle2 className="h-4 w-4" />
                           Current Plan
                         </>
-                      ) : plan.tier === "enterprise" ? (
+                      ) : plan.tier === "enterprise" && plan.billing_model === "per_seat" ? (
                         <>
                           <Mail className="h-4 w-4" />
                           Contact Sales
                         </>
-                      ) : isUpgrade(plan.tier) ? (
-                        `Upgrade to ${plan.name}`
                       ) : (
-                        `Switch to ${plan.name}`
+                        config?.cta || `Switch to ${plan.name}`
                       )}
                     </button>
                   )}

@@ -1,0 +1,89 @@
+{
+  "emailMarketing": {
+    "title": "Email Marketing",
+    "description": "Campaigns, Templates, और Analytics",
+    "newCampaign": "नया Campaign",
+    "noWorkspace": "कोई Workspace चयनित नहीं",
+    "noWorkspaceDescription": "Email Marketing देखने के लिए कृपया एक Workspace चुनें।",
+
+    "tabs": {
+      "campaigns": "Campaigns",
+      "templates": "Templates",
+      "analytics": "Analytics",
+      "infrastructure": "Infrastructure",
+      "automations": "Automations"
+    },
+
+    "stats": {
+      "totalSent": "कुल भेजे गए",
+      "avgOpenRate": "औसत Open Rate",
+      "avgClickRate": "औसत Click Rate",
+      "activeCampaigns": "सक्रिय Campaigns"
+    },
+
+    "campaigns": {
+      "title": "हाल के Campaigns",
+      "viewAll": "सभी देखें",
+      "campaign": "Campaign",
+      "status": "स्थिति",
+      "sent": "भेजे गए",
+      "openRate": "Open Rate",
+      "clickRate": "Click Rate",
+      "noCampaignsYet": "अभी तक कोई Campaign नहीं",
+      "noCampaignsDescription": "लक्षित संदेशों से अपने दर्शकों को जोड़ने के लिए Email Campaign बनाएं।",
+      "createCampaign": "Campaign बनाएं",
+      "failedToLoad": "Campaigns लोड करने में विफल"
+    },
+
+    "templates": {
+      "title": "Email Templates",
+      "newTemplate": "नया Template",
+      "noTemplatesYet": "अभी तक कोई Template नहीं",
+      "noTemplatesDescription": "Campaign निर्माण को तेज़ करने के लिए पुनः उपयोग योग्य Email Templates डिज़ाइन करें।",
+      "createTemplate": "Template बनाएं",
+      "lastEdited": "अंतिम बार संपादित {date}",
+      "failedToLoad": "Templates लोड करने में विफल"
+    },
+
+    "analytics": {
+      "performanceOverview": "प्रदर्शन अवलोकन (पिछले 30 दिन)",
+      "emailsSent": "भेजे गए Emails",
+      "opens": "खोले गए",
+      "clicks": "क्लिक",
+      "bounces": "Bounces",
+      "campaigns": "Campaigns",
+      "noAnalyticsData": "कोई Analytics डेटा उपलब्ध नहीं",
+      "bestSendTimes": "सर्वश्रेष्ठ भेजने के समय",
+      "notEnoughData": "अभी पर्याप्त डेटा नहीं",
+      "openRateLabel": "{rate}% Open Rate",
+      "topPerforming": "शीर्ष प्रदर्शन करने वाले Campaigns",
+      "noCampaignData": "अभी तक कोई Campaign डेटा नहीं",
+      "clicksLabel": "{count} क्लिक",
+      "failedToLoad": "Analytics लोड करने में विफल"
+    },
+
+    "infrastructure": {
+      "sendingDomains": "Sending Domains",
+      "emailProviders": "Email Providers",
+      "subscriberOverview": "Subscriber अवलोकन",
+      "noDomainsConfigured": "कोई Sending Domain कॉन्फ़िगर नहीं",
+      "noProvidersConfigured": "कोई Email Provider कॉन्फ़िगर नहीं",
+      "connected": "कनेक्टेड",
+      "inactive": "निष्क्रिय",
+      "activeSubscribers": "सक्रिय Subscribers",
+      "unsubscribed": "Unsubscribe किया (30 दिन)",
+      "bounceRate": "Bounce दर",
+      "failedToLoadDomains": "Domains लोड करने में विफल",
+      "failedToLoadProviders": "Providers लोड करने में विफल"
+    },
+
+    "status": {
+      "draft": "ड्राफ़्ट",
+      "scheduled": "शेड्यूल किया गया",
+      "sending": "भेजा जा रहा है",
+      "sent": "भेज दिया गया",
+      "paused": "रोका गया",
+      "cancelled": "रद्द किया गया"
+    }
+  }
+}

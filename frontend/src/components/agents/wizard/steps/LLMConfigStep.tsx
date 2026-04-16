@@ -5,11 +5,11 @@ import { HelpTooltip } from "@/components/ui/tooltip";
 import { LLMProviderSelector } from "@/components/agents/shared";
 
 interface LLMConfigStepProps {
-  provider: "claude" | "gemini" | "ollama";
+  provider: "claude" | "gemini" | "ollama" | "openrouter";
   model: string;
   temperature: number;
   maxTokens: number;
-  onProviderChange: (provider: "claude" | "gemini" | "ollama") => void;
+  onProviderChange: (provider: "claude" | "gemini" | "ollama" | "openrouter") => void;
   onModelChange: (model: string) => void;
   onTemperatureChange: (temp: number) => void;
   onMaxTokensChange: (tokens: number) => void;

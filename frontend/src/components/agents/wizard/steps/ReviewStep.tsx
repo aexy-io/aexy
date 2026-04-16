@@ -15,7 +15,7 @@ interface AgentConfig {
   name: string;
   description: string;
   mentionHandle: string;
-  llmProvider: "claude" | "gemini" | "ollama";
+  llmProvider: "claude" | "gemini" | "ollama" | "openrouter";
   llmModel: string;
   temperature: number;
   maxTokens: number;

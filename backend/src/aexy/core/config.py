@@ -55,7 +55,7 @@ class LLMSettings(BaseSettings):
     # Provider selection (switchable)
     llm_provider: str = Field(
         default="claude",
-        description="LLM provider: claude, ollama, openai",
+        description="LLM provider: claude, gemini, ollama, openai, openrouter, deepseek",
         validation_alias="LLM_PROVIDER",
     )
     llm_model: str = Field(
@@ -105,6 +105,35 @@ class LLMSettings(BaseSettings):
         default="gemini-2.0-flash",
         description="Gemini model name",
         validation_alias="GEMINI_MODEL",
+    )
+
+    # OpenRouter settings (API aggregator for 100+ models)
+    openrouter_api_key: str = Field(
+        default="",
+        description="OpenRouter API key",
+        validation_alias="OPENROUTER_API_KEY",
+    )
+    openrouter_model: str = Field(
+        default="anthropic/claude-sonnet-4",
+        description="OpenRouter model name (e.g. anthropic/claude-sonnet-4, openai/gpt-4o)",
+        validation_alias="OPENROUTER_MODEL",
+    )
+    openrouter_fallback_models: str = Field(
+        default="google/gemini-2.0-flash,openai/gpt-4o,deepseek/deepseek-chat-v3,meta-llama/llama-3.1-70b-instruct",
+        description="Comma-separated list of fallback models when primary is unavailable",
+        validation_alias="OPENROUTER_FALLBACK_MODELS",
+    )
+
+    # DeepSeek settings (direct DeepSeek API, OpenAI-compatible)
+    deepseek_api_key: str = Field(
+        default="",
+        description="DeepSeek API key",
+        validation_alias="DEEPSEEK_API_KEY",
+    )
+    deepseek_fallback_models: str = Field(
+        default="deepseek-reasoner",
+        description="Comma-separated list of fallback DeepSeek models",
+        validation_alias="DEEPSEEK_FALLBACK_MODELS",
     )
 
     # Processing mode (configurable per billing plan)
@@ -194,6 +223,38 @@ class LLMSettings(BaseSettings):
         validation_alias="OLLAMA_TOKENS_PER_MINUTE",
     )
 
+    openrouter_requests_per_minute: int = Field(
+        default=60,
+        description="OpenRouter requests per minute",
+        validation_alias="OPENROUTER_REQUESTS_PER_MINUTE",
+    )
+    openrouter_requests_per_day: int = Field(
+        default=-1,
+        description="OpenRouter requests per day (-1 = unlimited)",
+        validation_alias="OPENROUTER_REQUESTS_PER_DAY",
+    )
+    openrouter_tokens_per_minute: int = Field(
+        default=100000,
+        description="OpenRouter tokens per minute",
+        validation_alias="OPENROUTER_TOKENS_PER_MINUTE",
+    )
+
+    deepseek_requests_per_minute: int = Field(
+        default=60,
+        description="DeepSeek requests per minute",
+        validation_alias="DEEPSEEK_REQUESTS_PER_MINUTE",
+    )
+    deepseek_requests_per_day: int = Field(
+        default=-1,
+        description="DeepSeek requests per day (-1 = unlimited)",
+        validation_alias="DEEPSEEK_REQUESTS_PER_DAY",
+    )
+    deepseek_tokens_per_minute: int = Field(
+        default=100000,
+        description="DeepSeek tokens per minute",
+        validation_alias="DEEPSEEK_TOKENS_PER_MINUTE",
+    )
+
     # Global rate limiting settings
     rate_limit_enabled: bool = Field(
         default=True,
@@ -223,6 +284,16 @@ class LLMSettings(BaseSettings):
                 requests_per_minute=self.ollama_requests_per_minute,
                 requests_per_day=self.ollama_requests_per_day,
                 tokens_per_minute=self.ollama_tokens_per_minute,
+            ),
+            "openrouter": ProviderRateLimitSettings(
+                requests_per_minute=self.openrouter_requests_per_minute,
+                requests_per_day=self.openrouter_requests_per_day,
+                tokens_per_minute=self.openrouter_tokens_per_minute,
+            ),
+            "deepseek": ProviderRateLimitSettings(
+                requests_per_minute=self.deepseek_requests_per_minute,
+                requests_per_day=self.deepseek_requests_per_day,
+                tokens_per_minute=self.deepseek_tokens_per_minute,
             ),
         }
         return limits_map.get(provider, ProviderRateLimitSettings())
@@ -326,6 +397,22 @@ class Settings(BaseSettings):
         default=30.0,  # $0.30 per 1M output tokens for Gemini Flash
         description="Gemini output token price per million tokens (cents)",
     )
+    openrouter_input_price_per_million: float = Field(
+        default=300.0,  # $3.00 per 1M input tokens (default model: Claude Sonnet via OpenRouter)
+        description="OpenRouter input token price per million tokens (cents)",
+    )
+    openrouter_output_price_per_million: float = Field(
+        default=1500.0,  # $15.00 per 1M output tokens (default model: Claude Sonnet via OpenRouter)
+        description="OpenRouter output token price per million tokens (cents)",
+    )
+    deepseek_input_price_per_million: float = Field(
+        default=28.0,  # $0.28 per 1M input tokens (cache miss; same for deepseek-chat and deepseek-reasoner)
+        description="DeepSeek input token price per million tokens (cents)",
+    )
+    deepseek_output_price_per_million: float = Field(
+        default=42.0,  # $0.42 per 1M output tokens (same for deepseek-chat and deepseek-reasoner)
+        description="DeepSeek output token price per million tokens (cents)",
+    )
 
     # Redis (for caching and job queue)
     redis_url: str = Field(
@@ -372,8 +459,40 @@ class Settings(BaseSettings):
     )
     email_provider: str = Field(
         default="ses",
-        description="Email provider to use: 'ses' for AWS SES or 'smtp' for SMTP",
+        description="Email provider to use: 'ses', 'smtp', or 'postmark'",
         validation_alias="EMAIL_PROVIDER",
+    )
+
+    # Postmark Settings
+    postmark_server_token: str = Field(
+        default="",
+        description="Postmark Server API token (for sending emails)",
+        validation_alias="POSTMARK_SERVER_TOKEN",
+    )
+    postmark_account_token: str = Field(
+        default="",
+        description="Postmark Account API token (for domain/signature management)",
+        validation_alias="POSTMARK_ACCOUNT_TOKEN",
+    )
+    postmark_sender_email: str = Field(
+        default="",
+        description="Postmark sender email (falls back to ses_sender_email if not set)",
+        validation_alias="POSTMARK_SENDER_EMAIL",
+    )
+    postmark_sender_name: str = Field(
+        default="",
+        description="Postmark sender display name (falls back to ses_sender_name if not set)",
+        validation_alias="POSTMARK_SENDER_NAME",
+    )
+    postmark_transactional_stream: str = Field(
+        default="outbound",
+        description="Postmark message stream for transactional emails (notifications, password resets)",
+        validation_alias="POSTMARK_TRANSACTIONAL_STREAM",
+    )
+    postmark_broadcast_stream: str = Field(
+        default="broadcast",
+        description="Postmark message stream for broadcast emails (campaigns, newsletters)",
+        validation_alias="POSTMARK_BROADCAST_STREAM",
     )
 
     # SMTP Settings (used when email_provider='smtp')
@@ -504,6 +623,13 @@ class Settings(BaseSettings):
     anthropic_api_key: str = Field(
         default="",
         description="Anthropic API key for Claude (used by AI agents)",
+    )
+
+    # Platform Organization
+    platform_org_id: str = Field(
+        default="",
+        description="Workspace ID of the platform organization (for auto-CRM contact and onboarding emails on signup)",
+        validation_alias="PLATFORM_ORG_ID",
     )
 
     # Platform Admin Configuration

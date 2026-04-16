@@ -88,6 +88,8 @@ ACTIVITY_CONFIG: dict[str, dict[str, Any]] = {
     # Medium activities
     "send_campaign": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=30)},
     "execute_agent": {"retry": LLM_RETRY, "timeout": timedelta(minutes=10)},
+    "process_agent_chat_mention": {"retry": LLM_RETRY, "timeout": timedelta(minutes=10)},
+    "process_chat_all_mention": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)},
     "execute_workflow_action": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)},
 
     # Reminders (on-demand)
@@ -159,6 +161,9 @@ ACTIVITY_CONFIG: dict[str, dict[str, Any]] = {
     "execute_block": {"retry": LLM_RETRY, "timeout": timedelta(minutes=30), "heartbeat": timedelta(minutes=5)},
     "create_planned_blocks": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=2)},
     "synthesize_results": {"retry": LLM_RETRY, "timeout": timedelta(minutes=15)},
+
+    # Platform signup
+    "handle_new_signup": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)},
 }
 
 DEFAULT_CONFIG = {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)}

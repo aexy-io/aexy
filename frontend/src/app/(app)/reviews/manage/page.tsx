@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/useAuth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -87,6 +88,9 @@ export default function ReviewsManagePage() {
   const { reviews, isLoading: reviewsLoading } = useManagerReviews(managerId);
   const { cycles, isLoading: cyclesLoading } = useReviewCycles(currentWorkspaceId);
 
+  const t = useTranslations("reviews.manage");
+  const tc = useTranslations("common");
+
   const [activeTab, setActiveTab] = useState<"overview" | "actionables" | "suggestions">("overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -107,8 +111,8 @@ export default function ReviewsManagePage() {
         completedGoals: 0,
         pendingFeedback: 0,
         lastActivity: member.joined_at
-          ? new Date(member.joined_at).toLocaleDateString()
-          : "Unknown",
+          ? new Date(member.joined_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+          : null,
       };
     });
   }, [members, reviews]);
@@ -249,9 +253,9 @@ export default function ReviewsManagePage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Review Management</h1>
+            <h1 className="text-3xl font-bold text-foreground">{t("title")}</h1>
             <p className="text-muted-foreground mt-1">
-              Monitor team reviews, track deliverables, and manage goals
+              {t("description")}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -260,11 +264,11 @@ export default function ReviewsManagePage() {
               className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-muted text-foreground rounded-lg transition text-sm"
             >
               <Calendar className="h-4 w-4" />
-              Review Cycles
+              {t("reviewCycles")}
             </Link>
             <button className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition text-sm font-medium">
               <FileText className="h-4 w-4" />
-              Export Report
+              {t("exportReport")}
             </button>
           </div>
         </div>
@@ -276,7 +280,7 @@ export default function ReviewsManagePage() {
               <div className="p-2 bg-blue-500/10 rounded-lg">
                 <Users className="w-5 h-5 text-blue-400" />
               </div>
-              <span className="text-muted-foreground text-sm">Team Members</span>
+              <span className="text-muted-foreground text-sm">{t("teamMembers")}</span>
             </div>
             <p className="text-2xl font-bold text-foreground">{teamMembers.length}</p>
           </div>
@@ -285,7 +289,7 @@ export default function ReviewsManagePage() {
               <div className="p-2 bg-emerald-500/10 rounded-lg">
                 <CheckCircle className="w-5 h-5 text-emerald-400" />
               </div>
-              <span className="text-muted-foreground text-sm">Completed</span>
+              <span className="text-muted-foreground text-sm">{t("completed")}</span>
             </div>
             <p className="text-2xl font-bold text-foreground">
               {teamMembers.filter(m => m.reviewStatus === "completed").length}
@@ -296,7 +300,7 @@ export default function ReviewsManagePage() {
               <div className="p-2 bg-amber-500/10 rounded-lg">
                 <Clock className="w-5 h-5 text-amber-400" />
               </div>
-              <span className="text-muted-foreground text-sm">In Progress</span>
+              <span className="text-muted-foreground text-sm">{t("inProgress")}</span>
             </div>
             <p className="text-2xl font-bold text-foreground">
               {teamMembers.filter(m => ["self_review_submitted", "peer_review_in_progress", "manager_review_in_progress"].includes(m.reviewStatus)).length}
@@ -307,7 +311,7 @@ export default function ReviewsManagePage() {
               <div className="p-2 bg-red-500/10 rounded-lg">
                 <AlertTriangle className="w-5 h-5 text-red-400" />
               </div>
-              <span className="text-muted-foreground text-sm">Action Needed</span>
+              <span className="text-muted-foreground text-sm">{t("actionNeeded")}</span>
             </div>
             <p className="text-2xl font-bold text-foreground">{actionables.length}</p>
           </div>
@@ -316,21 +320,23 @@ export default function ReviewsManagePage() {
               <div className="p-2 bg-purple-500/10 rounded-lg">
                 <Lightbulb className="w-5 h-5 text-purple-400" />
               </div>
-              <span className="text-muted-foreground text-sm">Suggestions</span>
+              <span className="text-muted-foreground text-sm">{t("suggestions")}</span>
             </div>
             <p className="text-2xl font-bold text-foreground">{activeSuggestions.length}</p>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 bg-muted p-1 rounded-lg w-fit">
+        <div role="tablist" className="flex gap-2 mb-6 bg-muted p-1 rounded-lg w-fit">
           {[
-            { key: "overview", label: "Team Overview", icon: Users },
-            { key: "actionables", label: "Actionables", icon: AlertCircle, count: actionables.length },
-            { key: "suggestions", label: "GitHub Suggestions", icon: Lightbulb, count: activeSuggestions.length },
+            { key: "overview", label: t("teamOverview"), icon: Users },
+            { key: "actionables", label: t("actionables"), icon: AlertCircle, count: actionables.length },
+            { key: "suggestions", label: t("githubSuggestions"), icon: Lightbulb, count: activeSuggestions.length },
           ].map((tab) => (
             <button
               key={tab.key}
+              role="tab"
+              aria-selected={activeTab === tab.key}
               onClick={() => setActiveTab(tab.key as typeof activeTab)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
                 activeTab === tab.key
@@ -353,13 +359,13 @@ export default function ReviewsManagePage() {
 
         {/* Tab Content */}
         {activeTab === "overview" && (
-          <div className="space-y-6">
+          <div role="tabpanel" className="space-y-6">
             {/* Filters */}
             <div className="flex items-center gap-4">
               <SearchInput
                 value={searchQuery}
                 onChange={setSearchQuery}
-                placeholder="Search team members..."
+                placeholder={t("searchTeamMembers")}
                 wrapperClassName="flex-1"
               />
               <select
@@ -382,7 +388,7 @@ export default function ReviewsManagePage() {
                 return (
                   <div
                     key={member.id}
-                    className="bg-muted rounded-xl border border-border p-5 hover:border-border transition"
+                    data-testid="member-card" className="bg-muted rounded-xl border border-border p-5 hover:border-border transition"
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3">
@@ -417,16 +423,18 @@ export default function ReviewsManagePage() {
                     </div>
 
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-border">
-                      <span className="text-muted-foreground text-xs">Active {member.lastActivity}</span>
+                      <span className="text-muted-foreground text-xs" data-testid="member-activity">
+                        {member.lastActivity ? `Joined ${member.lastActivity}` : t("recentlyJoined")}
+                      </span>
                       <div className="flex items-center gap-2">
-                        <button className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition">
+                        <button aria-label="Preview member" className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition">
                           <Eye className="h-4 w-4" />
                         </button>
                         <Link
                           href={`/reviews/manage/${member.id}`}
                           className="flex items-center gap-1 px-3 py-1.5 bg-accent hover:bg-muted text-foreground rounded-lg text-sm transition"
                         >
-                          View Details
+                          {tc("viewDetails")}
                           <ChevronRight className="h-4 w-4" />
                         </Link>
                       </div>
@@ -439,7 +447,7 @@ export default function ReviewsManagePage() {
         )}
 
         {activeTab === "actionables" && (
-          <div className="space-y-4">
+          <div role="tabpanel" className="space-y-4">
             {actionables.length > 0 ? (
               <>
                 <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-6">
@@ -514,9 +522,9 @@ export default function ReviewsManagePage() {
                 <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircle className="w-8 h-8 text-emerald-400" />
                 </div>
-                <h3 className="text-lg font-medium text-foreground mb-2">All caught up!</h3>
+                <h3 className="text-lg font-medium text-foreground mb-2">{t("allCaughtUp")}</h3>
                 <p className="text-muted-foreground text-sm">
-                  No pending actions at the moment. Check back later or view team overview.
+                  {t("allCaughtUpDesc")}
                 </p>
               </div>
             )}
@@ -524,15 +532,15 @@ export default function ReviewsManagePage() {
         )}
 
         {activeTab === "suggestions" && (
-          <div className="space-y-6">
+          <div role="tabpanel" className="space-y-6">
             {/* Info Banner */}
             <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4">
               <div className="flex items-center gap-3">
                 <Sparkles className="h-5 w-5 text-purple-400" />
                 <div>
-                  <h3 className="text-purple-400 font-medium">AI-Powered Goal Suggestions</h3>
+                  <h3 className="text-purple-400 font-medium">{t("aiSuggestionsBanner")}</h3>
                   <p className="text-purple-400/70 text-sm">
-                    Based on GitHub activity, PR patterns, and project management data. Convert to goals or discard.
+                    {t("aiSuggestionsDesc")}
                   </p>
                 </div>
               </div>
@@ -543,9 +551,9 @@ export default function ReviewsManagePage() {
                 <div className="w-16 h-16 bg-purple-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Lightbulb className="w-8 h-8 text-purple-400" />
                 </div>
-                <h3 className="text-lg font-medium text-foreground mb-2">No suggestions yet</h3>
+                <h3 className="text-lg font-medium text-foreground mb-2">{t("noSuggestions")}</h3>
                 <p className="text-muted-foreground text-sm max-w-md mx-auto">
-                  Goal suggestions will appear here as we analyze GitHub activity and project management data from your team.
+                  {t("noSuggestionsDesc")}
                 </p>
               </div>
             ) : (
@@ -647,14 +655,14 @@ export default function ReviewsManagePage() {
                             className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg text-sm font-medium transition"
                           >
                             <Plus className="h-4 w-4" />
-                            Convert to Goal
+                            {t("convertToGoal")}
                           </Link>
                           <Link
                             href={`/reviews/manage/${suggestion.memberId}`}
                             className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-muted text-foreground rounded-lg text-sm transition"
                           >
                             <Eye className="h-4 w-4" />
-                            View Member
+                            {t("viewMember")}
                           </Link>
                           <button
                             onClick={(e) => {
@@ -664,7 +672,7 @@ export default function ReviewsManagePage() {
                             className="flex items-center gap-2 px-4 py-2 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-lg text-sm transition"
                           >
                             <X className="h-4 w-4" />
-                            Discard
+                            {t("discard")}
                           </button>
                         </div>
                       </div>

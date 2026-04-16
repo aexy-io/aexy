@@ -16,6 +16,9 @@ import {
 
 /**
  * Hook to check if the current user is a platform admin.
+ *
+ * Admin requires both: email in ADMIN_EMAILS + membership in platform org.
+ * Returns platformOrgId so the frontend can enforce workspace context.
  */
 export function useAdmin() {
   const { user, isLoading: isAuthLoading } = useAuth();
@@ -34,6 +37,7 @@ export function useAdmin() {
 
   return {
     isAdmin: adminCheck?.is_admin ?? false,
+    platformOrgId: adminCheck?.platform_org_id ?? null,
     isLoading: isAuthLoading || isCheckLoading,
     error,
   };

@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/sheet";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useAdmin } from "@/hooks/useAdmin";
 import { SettingsSidebar } from "./SettingsSidebar";
 import { SettingsSearch } from "./SettingsSearch";
 
@@ -23,6 +24,7 @@ export function SettingsShell({ children }: SettingsShellProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const { currentWorkspaceId, currentWorkspace } = useWorkspace();
   const { isEnterprise } = useSubscription(currentWorkspaceId);
+  const { isAdmin: isPlatformAdmin } = useAdmin();
 
   const developerId =
     typeof window !== "undefined"
@@ -31,7 +33,8 @@ export function SettingsShell({ children }: SettingsShellProps) {
   const member = currentWorkspace?.members?.find(
     (m) => m.developer_id === developerId
   );
-  const isAdmin = member?.role === "owner" || member?.role === "admin";
+  // Admin access = workspace owner/admin OR platform admin (email + platform org member)
+  const isAdmin = member?.role === "owner" || member?.role === "admin" || isPlatformAdmin;
 
   return (
     <div className="min-h-screen bg-background">

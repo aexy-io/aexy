@@ -19,6 +19,8 @@ import {
   KeyRound,
   Activity,
   Bell,
+  Settings2,
+  Receipt,
   type LucideIcon,
 } from "lucide-react";
 
@@ -257,6 +259,24 @@ export const settingsNavigation: SettingsNavCategory[] = [
         description: "Manage which apps and modules each member can access",
         adminOnly: true,
         keywords: ["access", "control", "permission", "app", "module", "matrix"],
+      },
+      {
+        id: "plan-overrides",
+        label: "Plan Overrides",
+        href: "/settings/plan-overrides",
+        icon: Settings2,
+        description: "Configure custom pricing, limits, and billing models per workspace",
+        adminOnly: true,
+        keywords: ["plan", "override", "custom", "pricing", "discount", "admin", "billing model"],
+      },
+      {
+        id: "admin-invoices",
+        label: "Invoices",
+        href: "/settings/admin-invoices",
+        icon: Receipt,
+        description: "Create, manage, and reconcile invoices for B2B customers",
+        adminOnly: true,
+        keywords: ["invoice", "billing", "payment", "bank transfer", "manual", "reconcile"],
       },
     ],
   },

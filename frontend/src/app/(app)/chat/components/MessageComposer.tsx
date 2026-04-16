@@ -1,12 +1,8 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { Send, Smile, Paperclip, X, Image, FileText, AlertCircle, Loader2 } from "lucide-react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { Send, Smile, Paperclip, X, FileText, AlertCircle, Loader2, Bot, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useMention, MentionItem } from "@/hooks/useMention";
-import { useWorkspaceMembers } from "@/hooks/useWorkspace";
-import { useAgents } from "@/hooks/useAgents";
-import { MentionDropdown } from "./MentionDropdown";
 
 // Common emoji categories
 const EMOJI_GROUPS = [
@@ -19,6 +15,33 @@ export interface PendingFile {
   file: File;
   preview?: string;
   uploading?: boolean;
+}
+
+interface MentionableUser {
+  id: string;
+  name: string;
+  avatar_url?: string | null;
+}
+
+interface MentionableAgent {
+  id: string;
+  name: string;
+  mention_handle: string;
+}
+
+interface MentionableSpecial {
+  id: string;
+  name: string;
+  description: string;
+}
+
+interface MentionItem {
+  type: "user" | "agent" | "special";
+  id: string;
+  name: string;
+  avatar_url?: string | null;
+  mention_handle?: string;
+  description?: string;
 }
 
 interface MessageComposerProps {
@@ -61,42 +84,18 @@ export function MessageComposer({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const emojiRef = useRef<HTMLDivElement>(null);
 
-  // Mention support
-  const mention = useMention();
-  const { members: membersData } = useWorkspaceMembers(workspaceId ?? null);
-  const { agents: agentsData } = useAgents(workspaceId ?? null, { isActive: true });
-
-  const mentionItems = useMemo(() => {
-    const query = mention.mentionQuery.toLowerCase();
-    const people: MentionItem[] = (membersData ?? [])
-      .filter((m) => m.status === "active" && m.developer_name)
-      .filter((m) => !query || m.developer_name!.toLowerCase().includes(query))
-      .slice(0, 6)
-      .map((m) => ({
-        id: m.developer_id,
-        name: m.developer_name!,
-        type: "user" as const,
-        avatarUrl: m.developer_avatar_url,
-      }));
-
-    const agentItems: MentionItem[] = (agentsData ?? [])
-      .filter((a) => {
-        if (!query) return true;
-        return (
-          a.name.toLowerCase().includes(query) ||
-          (a.mention_handle && a.mention_handle.toLowerCase().includes(query))
-        );
-      })
-      .slice(0, 4)
-      .map((a) => ({
-        id: a.id,
-        name: a.name,
-        type: "agent" as const,
-        handle: a.mention_handle,
-      }));
-
-    return [...people, ...agentItems];
-  }, [membersData, agentsData, mention.mentionQuery]);
+  // Mention autocomplete state
+  const [showMentions, setShowMentions] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState("");
+  const [mentionStartPos, setMentionStartPos] = useState(-1);
+  const [mentionItems, setMentionItems] = useState<MentionItem[]>([]);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const [mentionLoading, setMentionLoading] = useState(false);
+  const mentionRef = useRef<HTMLDivElement>(null);
+  const mentionFetchRef = useRef<ReturnType<typeof setTimeout>>();
+  // Track inserted mentions: unique placeholder token -> { displayText, markdown }
+  const mentionCounterRef = useRef(0);
+  const mentionsMapRef = useRef<Map<string, { display: string; markdown: string }>>(new Map());
 
   // Close emoji picker on click outside
   useEffect(() => {
@@ -110,6 +109,18 @@ export function MessageComposer({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showEmoji]);
 
+  // Close mention popup on click outside
+  useEffect(() => {
+    if (!showMentions) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (mentionRef.current && !mentionRef.current.contains(e.target as Node)) {
+        setShowMentions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showMentions]);
+
   // Cleanup Object URLs and typing timeout on unmount
   const pendingFilesRef = useRef(pendingFiles);
   pendingFilesRef.current = pendingFiles;
@@ -120,8 +131,50 @@ export function MessageComposer({
         if (pf.preview) URL.revokeObjectURL(pf.preview);
       });
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      if (mentionFetchRef.current) clearTimeout(mentionFetchRef.current);
     };
   }, []);
+
+  // Fetch mentionables when query changes
+  useEffect(() => {
+    if (!showMentions || !workspaceId) return;
+    if (mentionFetchRef.current) clearTimeout(mentionFetchRef.current);
+
+    mentionFetchRef.current = setTimeout(async () => {
+      setMentionLoading(true);
+      try {
+        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+        const res = await fetch(
+          `${apiUrl}/workspaces/${workspaceId}/chat/mentionables?q=${encodeURIComponent(mentionQuery)}`,
+          { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+        );
+        if (!res.ok) throw new Error("Failed to fetch");
+        const data = await res.json();
+
+        const items: MentionItem[] = [];
+        // Special entries first
+        for (const s of (data.special || []) as MentionableSpecial[]) {
+          items.push({ type: "special", id: s.id, name: s.name, description: s.description });
+        }
+        // Users
+        for (const u of (data.users || []) as MentionableUser[]) {
+          items.push({ type: "user", id: u.id, name: u.name, avatar_url: u.avatar_url });
+        }
+        // Agents
+        for (const a of (data.agents || []) as MentionableAgent[]) {
+          items.push({ type: "agent", id: a.id, name: a.name, mention_handle: a.mention_handle });
+        }
+
+        setMentionItems(items);
+        setMentionIndex(0);
+      } catch {
+        setMentionItems([]);
+      } finally {
+        setMentionLoading(false);
+      }
+    }, 200);
+  }, [showMentions, mentionQuery, workspaceId]);
 
   const handleTyping = useCallback(() => {
     if (!isTypingRef.current) {
@@ -134,6 +187,73 @@ export function MessageComposer({
       onStopTyping?.();
     }, 3000);
   }, [onTyping, onStopTyping]);
+
+  // Check for @ trigger in text
+  const checkMentionTrigger = useCallback((text: string, cursorPos: number) => {
+    if (!workspaceId) return;
+
+    // Look backward from cursor for @ that starts a mention
+    let i = cursorPos - 1;
+    while (i >= 0 && text[i] !== "@" && text[i] !== " " && text[i] !== "\n") {
+      i--;
+    }
+
+    if (i >= 0 && text[i] === "@") {
+      // @ must be at start of text or preceded by whitespace
+      if (i === 0 || text[i - 1] === " " || text[i - 1] === "\n") {
+        const query = text.slice(i + 1, cursorPos);
+
+        // Don't re-trigger if cursor is inside or right after a completed mention
+        // (check if the text from @ contains a mention placeholder token)
+        const textFromAt = text.slice(i, cursorPos + 20);
+        if (/\u200B<<mention:\d+>>\u200B/.test(textFromAt)) {
+          setShowMentions(false);
+          return;
+        }
+
+        setMentionStartPos(i);
+        setMentionQuery(query);
+        setShowMentions(true);
+        return;
+      }
+    }
+
+    setShowMentions(false);
+  }, [workspaceId]);
+
+  const insertMention = useCallback((item: MentionItem) => {
+    const textarea = textareaRef.current;
+    if (!textarea || mentionStartPos < 0) return;
+
+    // Generate a unique placeholder token that won't appear in normal text
+    const token = `\u200B<<mention:${mentionCounterRef.current++}>>\u200B`;
+    const displayText = `@${item.name}`;
+    // Full markdown sent to backend
+    let mentionMarkdown: string;
+    if (item.type === "special") {
+      mentionMarkdown = `@[${item.name}](mention:all)`;
+    } else if (item.type === "agent") {
+      mentionMarkdown = `@[${item.name}](mention:agent:${item.id})`;
+    } else {
+      mentionMarkdown = `@[${item.name}](mention:user:${item.id})`;
+    }
+
+    // Track: placeholder token -> { displayText, markdown }
+    mentionsMapRef.current.set(token, { display: displayText, markdown: mentionMarkdown });
+
+    const cursorPos = textarea.selectionStart;
+    // Insert the display text + hidden token suffix so we can find it on send
+    const insertText = displayText + token + " ";
+    const newContent = content.slice(0, mentionStartPos) + insertText + content.slice(cursorPos);
+    setContent(newContent);
+    setShowMentions(false);
+
+    const newCursorPos = mentionStartPos + insertText.length;
+    setTimeout(() => {
+      textarea.selectionStart = textarea.selectionEnd = newCursorPos;
+      textarea.focus();
+    }, 0);
+  }, [content, mentionStartPos]);
 
   const handleSend = async () => {
     const trimmed = content.trim();
@@ -174,10 +294,22 @@ export function MessageComposer({
 
     if (!finalContent) return;
 
+    // Reconstruct mention markdown: replace "displayText + token" with markdown
+    if (mentionsMapRef.current.size > 0) {
+      for (const [token, { display, markdown }] of mentionsMapRef.current.entries()) {
+        // The textarea contains "displayText + token", replace with the markdown form
+        finalContent = finalContent.split(display + token).join(markdown);
+      }
+      // Clean up any orphaned zero-width tokens that might remain
+      finalContent = finalContent.replace(/\u200B<<mention:\d+>>\u200B/g, "");
+    }
+
     onSend(finalContent, attachments);
     setContent("");
     setPendingFiles([]);
     setIsExpanded(false);
+    setShowMentions(false);
+    mentionsMapRef.current.clear();
     if (isTypingRef.current) {
       isTypingRef.current = false;
       onStopTyping?.();
@@ -190,17 +322,30 @@ export function MessageComposer({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Let mention handle keys first (arrows, enter, tab, escape)
-    if (mention.mentionActive) {
-      const consumed = mention.handleKeyDown(e, mentionItems.length);
-      if (consumed) {
-        // If Enter/Tab was pressed, select the current mention item
-        if ((e.key === "Enter" || e.key === "Tab") && mentionItems[mention.mentionIndex]) {
-          mention.selectMention(mentionItems[mention.mentionIndex], textareaRef, content, setContent);
-        }
+    // Mention popup keyboard navigation
+    if (showMentions && mentionItems.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setMentionIndex((prev) => (prev + 1) % mentionItems.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setMentionIndex((prev) => (prev - 1 + mentionItems.length) % mentionItems.length);
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        insertMention(mentionItems[mentionIndex]);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setShowMentions(false);
         return;
       }
     }
+
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -363,48 +508,97 @@ export function MessageComposer({
             className="hidden"
           />
 
-          {/* Textarea + Mention dropdown */}
+          {/* Textarea with mention popup */}
           <div className="relative flex-1">
-            {mention.mentionActive && mentionItems.length > 0 && (
-              <MentionDropdown
-                items={mentionItems}
-                activeIndex={mention.mentionIndex}
-                onSelect={(item) => mention.selectMention(item, textareaRef, content, setContent)}
-                onDismiss={mention.dismiss}
-              />
+            {/* Mention autocomplete popup */}
+            {showMentions && (mentionItems.length > 0 || mentionLoading) && (
+              <div
+                ref={mentionRef}
+                className="absolute bottom-full left-0 right-0 mb-1 bg-popover border border-border rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto"
+              >
+                {mentionLoading && mentionItems.length === 0 ? (
+                  <div className="flex items-center justify-center py-3">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  mentionItems.map((item, idx) => (
+                    <button
+                      key={`${item.type}-${item.id}`}
+                      className={cn(
+                        "flex items-center gap-2 w-full px-3 py-1.5 text-sm text-left hover:bg-accent transition-colors",
+                        idx === mentionIndex && "bg-accent"
+                      )}
+                      onMouseDown={(e) => {
+                        e.preventDefault(); // Prevent textarea blur
+                        insertMention(item);
+                      }}
+                      onMouseEnter={() => setMentionIndex(idx)}
+                    >
+                      {item.type === "special" ? (
+                        <Users className="h-4 w-4 text-primary flex-shrink-0" />
+                      ) : item.type === "agent" ? (
+                        <Bot className="h-4 w-4 text-primary flex-shrink-0" />
+                      ) : item.avatar_url ? (
+                        <img src={item.avatar_url} alt="" className="h-5 w-5 rounded-full flex-shrink-0" />
+                      ) : (
+                        <div className="h-5 w-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-medium flex-shrink-0">
+                          {item.name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <span className="truncate">
+                        @{item.name}
+                      </span>
+                      {item.type === "special" && item.description && (
+                        <span className="text-xs text-muted-foreground ml-auto flex-shrink-0">{item.description}</span>
+                      )}
+                      {item.type === "agent" && (
+                        <span className="text-xs text-muted-foreground ml-auto flex-shrink-0">AI Agent</span>
+                      )}
+                    </button>
+                  ))
+                )}
+              </div>
             )}
-          <textarea
-            ref={textareaRef}
-            value={content}
-            onChange={(e) => {
-              const val = e.target.value;
-              setContent(val);
-              handleTyping();
-              // Track mention trigger
-              const cursorPos = e.target.selectionStart;
-              mention.handleChange(cursorPos, val);
-              if (compact) {
-                const lines = val.split("\n").length;
-                // Expand for long wrapped text or multiple newlines; use hysteresis to prevent oscillation
-                if (!isExpanded && (val.length > 60 || lines > 2)) {
-                  setIsExpanded(true);
-                } else if (isExpanded && val.length <= 30 && lines <= 2) {
-                  setIsExpanded(false);
+
+            <textarea
+              ref={textareaRef}
+              value={content}
+              onChange={(e) => {
+                const val = e.target.value;
+                setContent(val);
+                handleTyping();
+
+                // Check for mention trigger
+                const cursorPos = e.target.selectionStart;
+                checkMentionTrigger(val, cursorPos);
+
+                if (compact) {
+                  const lines = val.split("\n").length;
+                  // Expand for long wrapped text or multiple newlines; use hysteresis to prevent oscillation
+                  if (!isExpanded && (val.length > 60 || lines > 2)) {
+                    setIsExpanded(true);
+                  } else if (isExpanded && val.length <= 30 && lines <= 2) {
+                    setIsExpanded(false);
+                  }
                 }
-              }
-            }}
-            onKeyDown={handleKeyDown}
-            placeholder={placeholder}
-            disabled={disabled}
-            rows={1}
-            className="w-full resize-none bg-accent/50 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary/50 min-h-[38px] max-h-[120px]"
-            style={{ height: "auto" }}
-            onInput={(e) => {
-              const target = e.target as HTMLTextAreaElement;
-              target.style.height = "auto";
-              target.style.height = Math.min(target.scrollHeight, 120) + "px";
-            }}
-          />
+              }}
+              onKeyDown={handleKeyDown}
+              onClick={(e) => {
+                // Re-check mention trigger on click (cursor position change)
+                const target = e.target as HTMLTextAreaElement;
+                checkMentionTrigger(content, target.selectionStart);
+              }}
+              placeholder={placeholder}
+              disabled={disabled}
+              rows={1}
+              className="w-full resize-none bg-accent/50 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary/50 min-h-[38px] max-h-[120px]"
+              style={{ height: "auto" }}
+              onInput={(e) => {
+                const target = e.target as HTMLTextAreaElement;
+                target.style.height = "auto";
+                target.style.height = Math.min(target.scrollHeight, 120) + "px";
+              }}
+            />
           </div>
 
           {/* Send button */}

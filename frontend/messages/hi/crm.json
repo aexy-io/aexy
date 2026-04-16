@@ -1,0 +1,192 @@
+{
+  "crm": {
+    "title": "CRM",
+    "description": "अपने संपर्क, कंपनियां और सौदे प्रबंधित करें",
+
+    "objects": {
+      "company": "कंपनी",
+      "companies": "कंपनियां",
+      "person": "व्यक्ति",
+      "people": "लोग",
+      "deal": "सौदा",
+      "deals": "सौदे",
+      "custom": "कस्टम",
+      "standardObjects": "मानक ऑब्जेक्ट",
+      "customObjects": "कस्टम ऑब्जेक्ट",
+      "records": "रिकॉर्ड",
+      "attributes": "विशेषताएं"
+    },
+
+    "actions": {
+      "newObject": "नया ऑब्जेक्ट",
+      "automations": "स्वचालन",
+      "settings": "सेटिंग्स",
+      "startSetup": "सेटअप शुरू करें",
+      "refreshCounts": "रिकॉर्ड गणना रीफ़्रेश करें",
+      "filter": "फ़िल्टर",
+      "connect": "कनेक्ट करें",
+      "manage": "प्रबंधित करें",
+      "syncNow": "अभी सिंक करें",
+      "connectGmail": "Gmail कनेक्ट करें",
+      "connectCalendar": "कैलेंडर कनेक्ट करें",
+      "linkToRecord": "रिकॉर्ड से लिंक करें",
+      "reply": "उत्तर दें",
+      "send": "भेजें",
+      "dismiss": "खारिज करें",
+      "reconnectGoogle": "Google पुनः कनेक्ट करें",
+      "previous": "पिछला",
+      "next": "अगला"
+    },
+
+    "createObject": {
+      "title": "कस्टम ऑब्जेक्ट बनाएं",
+      "nameSingular": "नाम (एकवचन)",
+      "namePlural": "नाम (बहुवचन)",
+      "descriptionOptional": "विवरण (वैकल्पिक)",
+      "placeholderSingular": "जैसे, प्रोजेक्ट",
+      "placeholderPlural": "जैसे, प्रोजेक्ट्स",
+      "placeholderDescription": "यह ऑब्जेक्ट किसके लिए उपयोग होता है?",
+      "creating": "बनाया जा रहा है...",
+      "create": "बनाएं"
+    },
+
+    "createRecord": {
+      "title": "{objectName} बनाएं",
+      "creating": "बनाया जा रहा है...",
+      "create": "बनाएं"
+    },
+
+    "empty": {
+      "welcomeTitle": "CRM में आपका स्वागत है",
+      "welcomeDescription": "अपना CRM सेटअप करके शुरू करें। एक टेम्पलेट चुनें और अपना कार्यस्थल कॉन्फ़िगर करें।",
+      "objectNotFound": "ऑब्जेक्ट नहीं मिला",
+      "objectNotFoundDescription": "जिस ऑब्जेक्ट को आप ढूंढ रहे हैं वह मौजूद नहीं है।",
+      "goBackToCRM": "CRM पर वापस जाएं",
+      "noRecordsMatch": "कोई रिकॉर्ड आपकी खोज से मेल नहीं खाता",
+      "noRecordsYet": "अभी तक कोई {objectName} नहीं"
+    },
+
+    "quickAccess": {
+      "inbox": "इनबॉक्स",
+      "inboxDescription": "सिंक किए गए ईमेल देखें और रिकॉर्ड से लिंक करें",
+      "calendar": "कैलेंडर",
+      "calendarDescription": "बैठकें देखें और इवेंट शेड्यूल करें",
+      "activities": "गतिविधियां",
+      "activitiesDescription": "सभी इंटरैक्शन और कार्यों को ट्रैक करें",
+      "integrations": "इंटीग्रेशन",
+      "integrationsDescription": "Google, Slack और अन्य कनेक्ट करें"
+    },
+
+    "google": {
+      "connectTitle": "Google कनेक्ट करें",
+      "connectDescription": "अपने CRM को समृद्ध करने के लिए ईमेल और कैलेंडर इवेंट सिंक करें",
+      "connectedTitle": "Google कनेक्टेड",
+      "gmailSynced": "Gmail सिंक किया गया",
+      "calendarSynced": "कैलेंडर सिंक किया गया"
+    },
+
+    "inbox": {
+      "title": "इनबॉक्स",
+      "searchEmails": "ईमेल खोजें...",
+      "noSubject": "(कोई विषय नहीं)",
+      "noEmailsFound": "कोई ईमेल नहीं मिला",
+      "noMessageContent": "कोई संदेश सामग्री नहीं",
+      "loadingEmailContent": "ईमेल सामग्री लोड हो रही है...",
+      "selectAnEmail": "देखने के लिए एक ईमेल चुनें",
+      "noEmailsSyncedTitle": "अभी तक कोई ईमेल सिंक नहीं हुआ",
+      "noEmailsSyncedDescription": "यहां ईमेल देखने और उन्हें संपर्कों से स्वचालित रूप से लिंक करने के लिए अपना Gmail सिंक करें।",
+      "connectEmailTitle": "अपना ईमेल कनेक्ट करें",
+      "connectEmailDescription": "ईमेल और कैलेंडर इवेंट सिंक करने के लिए अपना Google अकाउंट कनेक्ट करें।",
+      "labels": "लेबल",
+      "replyingTo": "{name} को उत्तर दे रहे हैं",
+      "writeReply": "अपना उत्तर लिखें...",
+      "syncing": "सिंक हो रहा है...",
+      "sync": "सिंक",
+      "startingSync": "सिंक शुरू हो रहा है...",
+      "back": "वापस"
+    },
+
+    "calendar": {
+      "title": "कैलेंडर",
+      "today": "आज",
+      "month": "महीना",
+      "week": "सप्ताह",
+      "day": "दिन",
+      "allDay": "पूरा दिन",
+      "noEventsScheduled": "इस दिन कोई इवेंट शेड्यूल नहीं है",
+      "noEventsSyncedTitle": "अभी तक कोई इवेंट सिंक नहीं हुआ",
+      "noEventsSyncedDescription": "यहां इवेंट देखने और उन्हें संपर्कों से लिंक करने के लिए अपना Google कैलेंडर सिंक करें।",
+      "connectCalendarTitle": "अपना कैलेंडर कनेक्ट करें",
+      "connectCalendarDescription": "कैलेंडर इवेंट सिंक करने के लिए अपना Google अकाउंट कनेक्ट करें।",
+      "joinMeeting": "मीटिंग में शामिल हों",
+      "close": "बंद करें",
+      "weekViewComingSoon": "सप्ताह दृश्य जल्द आ रहा है"
+    },
+
+    "activities": {
+      "title": "गतिविधियां",
+      "searchActivities": "गतिविधियां खोजें...",
+      "refresh": "रीफ़्रेश",
+      "noMatchingActivities": "कोई मेल खाती गतिविधि नहीं",
+      "adjustFiltersMessage": "अपनी खोज या फ़िल्टर समायोजित करने का प्रयास करें।",
+      "noActivitiesYetTitle": "अभी तक कोई गतिविधि नहीं",
+      "noActivitiesYetDescription": "जैसे-जैसे आप CRM में संपर्कों, सौदों और रिकॉर्ड के साथ इंटरैक्ट करेंगे, गतिविधियां दिखाई देंगी।",
+      "activity": "गतिविधि",
+      "activities_plural": "गतिविधियां"
+    },
+
+    "activityTypes": {
+      "all": "सभी",
+      "emails": "ईमेल",
+      "meetings": "बैठकें",
+      "calls": "कॉल",
+      "notes": "नोट्स",
+      "tasks": "कार्य",
+      "created": "बनाया गया",
+      "updated": "अपडेट किया गया",
+      "deleted": "हटाया गया",
+      "viewed": "देखा गया",
+      "linked": "लिंक किया गया"
+    },
+
+    "pipeline": {
+      "searchObjects": "ऑब्जेक्ट खोजें...",
+      "table": "तालिका",
+      "board": "बोर्ड",
+      "deleteConfirm": "क्या आप वाकई इस रिकॉर्ड को हटाना चाहते हैं?",
+      "bulkDeleteConfirm": "क्या आप वाकई {count} रिकॉर्ड हटाना चाहते हैं?"
+    },
+
+    "views": {
+      "grid": "ग्रिड",
+      "list": "सूची"
+    },
+
+    "linkRecord": {
+      "title": "रिकॉर्ड से लिंक करें",
+      "person": "व्यक्ति",
+      "company": "कंपनी",
+      "searchPeople": "लोगों को खोजें...",
+      "searchCompanies": "कंपनियां खोजें...",
+      "searchPrompt": "इस ईमेल को लिंक करने के लिए एक {type} रिकॉर्ड खोजें।",
+      "linkedNote": "लिंक किए गए ईमेल रिकॉर्ड की गतिविधि टाइमलाइन में दिखाई देंगे।"
+    },
+
+    "errors": {
+      "failedToLoadEmails": "ईमेल लोड करने में विफल",
+      "failedToSyncEmails": "ईमेल सिंक करने में विफल। कृपया पुनः प्रयास करें।",
+      "failedToLoadCalendar": "कैलेंडर इवेंट लोड करने में विफल",
+      "failedToSyncCalendar": "कैलेंडर सिंक करने में विफल। कृपया पुनः प्रयास करें।",
+      "permissionsNeeded": "Gmail अनुमतियां अपर्याप्त हैं। कृपया पूर्ण एक्सेस के साथ पुनः कनेक्ट करें।",
+      "calendarPermissionsNeeded": "कैलेंडर अनुमतियां अपर्याप्त हैं। कृपया पूर्ण एक्सेस के साथ पुनः कनेक्ट करें।",
+      "syncTimedOut": "सिंक का समय समाप्त हो गया। कृपया पुनः प्रयास करें।",
+      "failedToCheckSync": "सिंक स्थिति जांचने में विफल। कृपया पेज रीफ़्रेश करें।"
+    },
+
+    "search": {
+      "objects": "ऑब्जेक्ट खोजें...",
+      "emails": "ईमेल खोजें...",
+      "records": "{objectName} खोजें..."
+    }
+  }
+}

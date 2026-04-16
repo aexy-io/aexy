@@ -101,6 +101,8 @@ def get_all_activities() -> list:
     from aexy.temporal.activities.integrations import (
         deliver_webhook,
         execute_agent,
+        process_agent_chat_mention,
+        process_chat_all_mention,
         retry_webhook_delivery,
         send_crm_email,
         send_slack_dm,
@@ -184,6 +186,7 @@ def get_all_activities() -> list:
         cleanup_old_executions,
         execute_workflow_action,
     )
+    from aexy.temporal.activities.platform import handle_new_signup
     from aexy.temporal.activities.gtm import (
         identify_visitor_session,
         process_visitor_events,
@@ -293,6 +296,8 @@ def get_all_activities() -> list:
         deliver_webhook,
         retry_webhook_delivery,
         execute_agent,
+        process_agent_chat_mention,
+        process_chat_all_mention,
         send_crm_email,
         # Google Sync
         sync_gmail,
@@ -387,6 +392,8 @@ def get_all_activities() -> list:
         execute_block,
         create_planned_blocks,
         synthesize_results,
+        # Platform
+        handle_new_signup,
     ]
 
 

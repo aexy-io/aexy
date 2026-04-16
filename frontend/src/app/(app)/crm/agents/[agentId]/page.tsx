@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 
 interface Props {
-  params: { agentId: string };
+  params: Promise<{ agentId: string }>;
 }
 
-export default function CRMAgentDetailRedirect({ params }: Props) {
-  redirect(`/agents/${params.agentId}`);
+export default async function CRMAgentDetailRedirect({ params }: Props) {
+  const { agentId } = await params;
+  redirect(`/agents/${agentId}`);
 }

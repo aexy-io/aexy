@@ -10,10 +10,12 @@ interface UpgradeBannerProps {
   trigger:
     | "repo_limit"
     | "ai_limit"
+    | "token_limit"
     | "automation_limit"
     | "member_limit"
     | "module_limit"
     | "export_limit"
+    | "ai_provider"
     | "generic";
   /** Current usage count */
   current?: number;
@@ -30,13 +32,18 @@ interface UpgradeBannerProps {
 const TRIGGER_MESSAGES: Record<string, { title: string; description: string; cta: string }> = {
   repo_limit: {
     title: "Repository limit reached",
-    description: "Upgrade to connect unlimited repositories and unlock full codebase analysis.",
+    description: "Upgrade to connect more repositories and unlock full codebase analysis.",
     cta: "Upgrade for more repos",
   },
   ai_limit: {
     title: "AI request limit reached",
-    description: "You've used all your daily AI-powered insights. Upgrade for 10x more.",
+    description: "You've used all your daily AI-powered insights. Upgrade for unlimited AI requests.",
     cta: "Upgrade for more AI",
+  },
+  token_limit: {
+    title: "AI token limit reached",
+    description: "Your monthly AI token allocation is used up. Upgrade for more tokens or pay-per-use.",
+    cta: "Upgrade for more tokens",
   },
   automation_limit: {
     title: "Automation run limit approaching",
@@ -45,8 +52,8 @@ const TRIGGER_MESSAGES: Record<string, { title: string; description: string; cta
   },
   member_limit: {
     title: "Team member limit reached",
-    description: "Add unlimited team members with a Pro subscription.",
-    cta: "Upgrade for unlimited members",
+    description: "Upgrade to add more team members to your workspace.",
+    cta: "Upgrade for more members",
   },
   module_limit: {
     title: "Unlock more modules",
@@ -58,9 +65,14 @@ const TRIGGER_MESSAGES: Record<string, { title: string; description: string; cta
     description: "Upgrade to export unlimited data in any format.",
     cta: "Upgrade for exports",
   },
+  ai_provider: {
+    title: "Premium AI providers available",
+    description: "Upgrade to access Claude, Gemini, and other premium AI providers for better analysis.",
+    cta: "Upgrade for AI providers",
+  },
   generic: {
-    title: "Unlock more with Pro",
-    description: "Get advanced analytics, unlimited AI requests, and team features.",
+    title: "Unlock more with a paid plan",
+    description: "Get unlimited AI, more repos, and premium features. Choose per-seat, flat+usage, or postpaid billing.",
     cta: "See plans",
   },
 };

@@ -1,0 +1,158 @@
+{
+  "insights": {
+    "title": "टीम इनसाइट्स",
+    "description": "टीम वेलोसिटी, दक्षता और वर्कलोड वितरण का मेट्रिक्स-आधारित दृश्य",
+
+    "period": {
+      "weekly": "साप्ताहिक",
+      "monthly": "मासिक",
+      "sprint": "Sprint"
+    },
+
+    "nav": {
+      "compare": "तुलना",
+      "allocations": "आवंटन",
+      "alerts": "अलर्ट",
+      "executive": "एक्ज़ीक्यूटिव",
+      "capacity": "क्षमता",
+      "aiInsights": "AI इनसाइट्स",
+      "myInsights": "मेरे इनसाइट्स",
+      "repositories": "रिपॉज़िटरीज़",
+      "leaderboard": "लीडरबोर्ड",
+      "syncStatus": "सिंक स्थिति"
+    },
+
+    "actions": {
+      "generateSnapshots": "स्नैपशॉट बनाएं",
+      "generating": "बनाया जा रहा है...",
+      "refresh": "रिफ्रेश",
+      "viewAll": "सभी देखें",
+      "details": "विवरण",
+      "installGitHubApp": "GitHub App इंस्टॉल करें",
+      "goToRepoSettings": "रिपॉज़िटरी सेटिंग्स पर जाएं",
+      "selectRepositories": "रिपॉज़िटरीज़ चुनें"
+    },
+
+    "stats": {
+      "teamSize": "टीम का आकार",
+      "commits": "Commits",
+      "prsMerged": "मर्ज किए गए PR",
+      "reviews": "समीक्षाएं",
+      "linesChanged": "बदली गई लाइनें",
+      "workloadEquality": "वर्कलोड समानता",
+      "perMember": "{value}/सदस्य"
+    },
+
+    "gini": {
+      "veryEqual": "बहुत समान",
+      "balanced": "संतुलित",
+      "moderate": "मध्यम",
+      "unequal": "असमान"
+    },
+
+    "chart": {
+      "workloadDistribution": "वर्कलोड वितरण",
+      "noWorkloadData": "कोई वर्कलोड डेटा उपलब्ध नहीं",
+      "topContributor": "शीर्ष योगदानकर्ता: {percent}% कार्य",
+      "giniLabel": "जीनी: {value}",
+      "commits": "Commits",
+      "prs": "PRs",
+      "reviews": "समीक्षाएं"
+    },
+
+    "leaderboard": {
+      "title": "लीडरबोर्ड",
+      "description": "रैंक किए गए डेवलपर मेट्रिक्स",
+      "topContributors": "शीर्ष योगदानकर्ता",
+      "noData": "कोई लीडरबोर्ड डेटा नहीं",
+      "noDataFull": "कोई लीडरबोर्ड डेटा उपलब्ध नहीं। पहले स्नैपशॉट बनाएं।",
+      "metrics": {
+        "commits": "Commits",
+        "prsMerged": "मर्ज किए गए PR",
+        "reviews": "समीक्षाएं",
+        "linesChanged": "बदली गई लाइनें"
+      }
+    },
+
+    "developer": {
+      "title": "डेवलपर",
+      "summary": "डेवलपर सारांश",
+      "bottleneck": "बॉटलनेक",
+      "noData": "कोई डेवलपर डेटा नहीं",
+      "noDataDesc": "डेवलपर मेट्रिक्स देखने के लिए स्नैपशॉट बनाएं।"
+    },
+
+    "table": {
+      "developer": "डेवलपर",
+      "commits": "Commits",
+      "prsMerged": "मर्ज किए गए PR",
+      "linesChanged": "बदली गई लाइनें",
+      "reviewsGiven": "दी गई समीक्षाएं"
+    },
+
+    "syncStatus": {
+      "title": "सिंक स्थिति",
+      "description": "प्रति डेवलपर और रिपॉज़िटरी डेटा सिंक स्थिति",
+      "developers": "{count} डेवलपर्स",
+      "reposEnabled": "{count} रिपो सक्रिय",
+      "failed": "{count} विफल",
+      "external": "बाहरी",
+      "noRepositoriesLinked": "कोई रिपॉज़िटरी लिंक नहीं।",
+      "noDevelopers": "इस वर्कस्पेस में कोई डेवलपर नहीं मिला।",
+      "statuses": {
+        "synced": "सिंक्ड",
+        "syncing": "सिंक हो रहा है",
+        "failed": "विफल",
+        "pending": "लंबित"
+      },
+      "columns": {
+        "repository": "रिपॉज़िटरी",
+        "disabled": "(अक्षम)",
+        "status": "स्थिति",
+        "commits": "Commits",
+        "prs": "PRs",
+        "reviews": "समीक्षाएं",
+        "lastSync": "अंतिम सिंक",
+        "never": "कभी नहीं"
+      }
+    },
+
+    "github": {
+      "connectTitle": "अपना GitHub अकाउंट कनेक्ट करें",
+      "connectDesc": "अपनी रिपॉज़िटरीज़ तक पहुंच प्रदान करने के लिए Aexy GitHub App इंस्टॉल करें। टीम इनसाइट्स, वेलोसिटी मेट्रिक्स और वर्कलोड विश्लेषण बनाने के लिए यह आवश्यक है।",
+      "noReposTitle": "कोई रिपॉज़िटरी सक्रिय नहीं",
+      "noReposDesc": "आपकी GitHub App कनेक्ट है लेकिन आपने अभी तक कोई रिपॉज़िटरी सक्रिय नहीं की। टीम वेलोसिटी, दक्षता और वर्कलोड वितरण देखने के लिए कम से कम एक रिपॉज़िटरी सक्रिय करें।"
+    },
+
+    "empty": {
+      "noData": "अभी कोई इनसाइट्स डेटा नहीं। मेट्रिक्स गणना करने के लिए \"स्नैपशॉट बनाएं\" पर क्लिक करें।",
+      "failedToGenerate": "स्नैपशॉट बनाने में विफल। कृपया पुनः प्रयास करें।"
+    },
+
+    "ai": {
+      "title": "AI इनसाइट्स",
+      "teamNarrative": "टीम नैरेटिव",
+      "teamNarrativeDesc": "टीम मेट्रिक्स का AI-जनित सारांश",
+      "sprintRetro": "Sprint रेट्रो",
+      "sprintRetroDesc": "AI-संचालित रेट्रोस्पेक्टिव इनसाइट्स",
+      "trajectory": "ट्रैजेक्टरी",
+      "trajectoryDesc": "टीम प्रदर्शन ट्रैजेक्टरी पूर्वानुमान",
+      "rootCause": "मूल कारण",
+      "rootCauseDesc": "विश्लेषण करें कि मेट्रिक्स क्यों बदले",
+      "teamComposition": "टीम संरचना",
+      "teamCompositionDesc": "टीम संरचना के लिए सिफारिशें",
+      "hiringForecast": "भर्ती पूर्वानुमान",
+      "hiringForecastDesc": "अगली भर्ती कब करें"
+    },
+
+    "myInsights": {
+      "title": "मेरे इनसाइट्स",
+      "description": "आपके व्यक्तिगत डेवलपर मेट्रिक्स और स्वास्थ्य स्कोर"
+    },
+
+    "repositories": {
+      "title": "रिपॉज़िटरीज़",
+      "description": "रिपॉज़िटरी-स्तरीय इनसाइट्स और गतिविधि मेट्रिक्स"
+    }
+  }
+}

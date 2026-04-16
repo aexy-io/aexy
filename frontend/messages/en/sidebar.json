@@ -1,0 +1,45 @@
+{
+  "sidebar": {
+    "sections": {
+      "ai": "AI",
+      "engineering": "Engineering",
+      "compliance": "Compliance",
+      "people": "People",
+      "business": "Business",
+      "knowledge": "Knowledge",
+      "favorites": "Favorites"
+    },
+    "items": {
+      "dashboard": "Dashboard",
+      "activity": "Activity",
+      "chat": "Chat",
+      "aiAgents": "AI Agents",
+      "automations": "Automations",
+      "templates": "Templates",
+      "tracking": "Tracking",
+      "planning": "Planning",
+      "tickets": "Tickets",
+      "uptime": "Uptime",
+      "reviews": "Reviews",
+      "leave": "Leave",
+      "learning": "Learning",
+      "docs": "Docs",
+      "tables": "Tables",
+      "forms": "Forms",
+      "reports": "Reports",
+      "crm": "CRM",
+      "booking": "Booking",
+      "emailMarketing": "Email",
+      "gtm": "GTM",
+      "insights": "Insights",
+      "hiring": "Hiring",
+      "compliance": "Compliance",
+      "reminders": "Reminders",
+      "settings": "Settings",
+      "logout": "Logout",
+      "discoverMore": "Discover more",
+      "pinToFavorites": "Pin to favorites",
+      "removeFromFavorites": "Remove"
+    }
+  }
+}

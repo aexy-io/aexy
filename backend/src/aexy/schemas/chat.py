@@ -113,6 +113,7 @@ class SenderInfo(BaseModel):
     id: str
     name: str | None = None
     avatar_url: str | None = None
+    is_agent: bool = False
 
 
 class MessageResponse(BaseModel):

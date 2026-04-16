@@ -1,0 +1,86 @@
+{
+  "admin": {
+    "title": "Admin Dashboard",
+    "description": "प्लेटफ़ॉर्म-व्यापी निगरानी और प्रबंधन",
+    "failedToLoadStats": "Dashboard आंकड़े लोड करने में विफल",
+
+    "stats": {
+      "totalWorkspaces": "कुल Workspaces",
+      "totalUsers": "कुल उपयोगकर्ता",
+      "emailsSent": "भेजे गए Emails",
+      "notifications": "सूचनाएं",
+      "todayCount": "आज {count}"
+    },
+
+    "email": {
+      "deliveryRate": "Email Delivery Rate (30 दिन)",
+      "sentToday": "आज भेजे गए",
+      "thisWeek": "इस सप्ताह",
+      "failedToday": "आज विफल",
+      "activeWorkspaces30d": "सक्रिय Workspaces (30 दिन)",
+      "emailDelivery": "Email Delivery",
+      "recentFailedEmails": "हाल के विफल Emails",
+      "viewAll": "सभी देखें",
+      "noFailedEmails": "कोई विफल Email नहीं"
+    },
+
+    "quickLinks": {
+      "emailDelivery": "Email Delivery",
+      "notifications": "सूचनाएं",
+      "workspaces": "Workspaces",
+      "users": "उपयोगकर्ता"
+    },
+
+    "users": {
+      "title": "उपयोगकर्ता",
+      "totalUsers": "कुल उपयोगकर्ता",
+      "manageUsers": "उपयोगकर्ता प्रबंधित करें"
+    },
+
+    "workspaces": {
+      "title": "Workspaces",
+      "totalWorkspaces": "कुल Workspaces",
+      "manageWorkspaces": "Workspaces प्रबंधित करें"
+    },
+
+    "aiBenchmarking": {
+      "title": "AI Benchmarking",
+      "description": "Ask AI, Agents और Automations की प्रदर्शन मेट्रिक्स",
+      "failedToLoad": "Benchmarking डेटा लोड करने में विफल",
+      "askAi": "Ask AI",
+      "agentExecutions": "Agent Executions",
+      "automationRuns": "Automation Runs",
+      "feedbackScore": "Feedback Score",
+      "messages": "संदेश",
+      "avgLatency": "औसत",
+      "successRate": "{rate}% सफलता",
+      "noData": "कोई डेटा नहीं",
+      "thumbsUp": "Thumbs Up",
+      "thumbsDown": "Thumbs Down",
+      "volumeTrend": "Volume Trend",
+      "tokenUsage": "Token Usage",
+      "feedbackDistribution": "Feedback Distribution"
+    },
+
+    "status": {
+      "sent": "भेजा गया",
+      "delivered": "डिलीवर किया गया",
+      "failed": "विफल",
+      "bounced": "Bounced",
+      "pending": "लंबित"
+    },
+
+    "timeRange": {
+      "7days": "7 दिन",
+      "30days": "30 दिन",
+      "90days": "90 दिन"
+    },
+
+    "groupBy": {
+      "hour": "घंटा",
+      "day": "दिन",
+      "week": "सप्ताह",
+      "month": "महीना"
+    }
+  }
+}

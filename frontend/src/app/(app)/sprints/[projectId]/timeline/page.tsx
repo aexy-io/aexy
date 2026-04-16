@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
+import { use, useState, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
@@ -188,9 +188,9 @@ function EpicSwimlane({
 export default function TimelinePage({
   params,
 }: {
-  params: { projectId: string };
+  params: Promise<{ projectId: string }>;
 }) {
-  const { projectId } = params;
+  const { projectId } = use(params);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const { isAuthenticated, isLoading: authLoading } = useAuth();

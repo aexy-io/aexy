@@ -304,10 +304,10 @@ function FieldTypeCard({
           </span>
         </div>
         <div className="text-xs text-muted-foreground mt-0.5">
-          Based on {baseLabel}
-          {fieldType.default_variant && ` \u00b7 ${fieldType.default_variant}`}
+          <span>Based on {baseLabel}</span>
+          {fieldType.default_variant && <span>{` \u00b7 ${fieldType.default_variant}`}</span>}
           {fieldType.preset_options && fieldType.preset_options.length > 0 && (
-            <span> \u00b7 {fieldType.preset_options.length} options</span>
+            <span>{` \u00b7 ${fieldType.preset_options.length} options`}</span>
           )}
         </div>
       </div>

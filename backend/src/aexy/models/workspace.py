@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from aexy.core.database import Base
@@ -136,6 +136,13 @@ class Workspace(Base):
         back_populates="workspace",
         uselist=False,
         cascade="all, delete-orphan",
+    )
+    plan_override: Mapped["WorkspacePlanOverride | None"] = relationship(
+        "WorkspacePlanOverride",
+        back_populates="workspace",
+        uselist=False,
+        cascade="all, delete-orphan",
+        lazy="select",
     )
 
 
@@ -269,11 +276,40 @@ class WorkspaceSubscription(Base):
     )
     stripe_price_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
+    # Billing model for this subscription
+    billing_model: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="per_seat"
+    )  # "per_seat" | "flat_plus_usage" | "postpaid"
+
     # Seat-based pricing
     base_seats: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
     additional_seats: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     price_per_additional_seat_cents: Mapped[int] = mapped_column(
         Integer, default=1000, nullable=False  # $10 per seat default
+    )
+
+    # Flat base fee (for flat_plus_usage model)
+    base_fee_monthly_cents: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    # Metered usage Stripe subscription item (for flat_plus_usage and postpaid)
+    usage_subscription_item_id: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
+
+    # Payment timing
+    payment_timing: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="prepaid"
+    )  # "prepaid" | "postpaid"
+
+    # Postpaid tracking
+    postpaid_usage_accrued_cents: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    postpaid_last_settled_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    # Preferred payment method: "stripe" | "bank_transfer"
+    preferred_payment_method: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="stripe"
     )
 
     # Status
@@ -379,4 +415,98 @@ class WorkspacePendingInvite(Base):
 
     __table_args__ = (
         UniqueConstraint("workspace_id", "email", name="uq_workspace_pending_invite"),
+    )
+
+
+class WorkspacePlanOverride(Base):
+    """Per-workspace plan overrides. Non-null fields override the base plan."""
+
+    __tablename__ = "workspace_plan_overrides"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    workspace_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        unique=True,
+        nullable=False,
+        index=True,
+    )
+
+    # Billing model override
+    billing_model: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    # Pricing overrides (all nullable — null means use plan default)
+    price_monthly_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    base_fee_monthly_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    per_seat_price_monthly_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    min_seats: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    included_seats: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Sync limit overrides
+    max_repos: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_commits_per_repo: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_prs_per_repo: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    sync_history_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # LLM limit overrides
+    llm_requests_per_day: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    llm_requests_per_minute: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    llm_tokens_per_minute: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    llm_provider_access: Mapped[list[str] | None] = mapped_column(
+        ARRAY(String), nullable=True
+    )
+    free_llm_tokens_per_month: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    llm_input_cost_per_1k_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    llm_output_cost_per_1k_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    enable_overage_billing: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+
+    # Feature flag overrides
+    enable_real_time_sync: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    enable_advanced_analytics: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    enable_exports: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    enable_webhooks: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    enable_team_features: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+
+    # Payment timing override
+    payment_timing: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    requires_payment_method: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+
+    # Stripe overrides (custom Stripe product/price for this org)
+    stripe_product_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    stripe_price_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # Net terms and payment method
+    days_until_due: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    preferred_payment_method: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    # Discount
+    discount_percent: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    discount_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Admin notes
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    configured_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    # Relationship
+    workspace: Mapped["Workspace"] = relationship(
+        "Workspace",
+        back_populates="plan_override",
+        lazy="select",
     )

@@ -1,0 +1,60 @@
+{
+  "uptime": {
+    "title": "Uptime Monitoring",
+    "description": "अपने Endpoints की निगरानी करें और Incidents ट्रैक करें",
+    "newMonitor": "नया Monitor",
+
+    "stats": {
+      "monitorsUp": "Monitors चालू",
+      "monitorsDown": "Monitors बंद",
+      "activeIncidents": "सक्रिय Incidents",
+      "incidents24h": "Incidents (24 घंटे)",
+      "avgUptime24h": "औसत Uptime (24 घंटे)"
+    },
+
+    "monitors": {
+      "title": "Monitors",
+      "viewAll": "सभी देखें",
+      "allMonitors": "सभी Monitors",
+      "createMonitor": "Monitor बनाएं",
+      "noMonitorsYet": "अभी तक कोई Monitor नहीं",
+      "noMonitorsDescription": "अपनी सेवाओं की स्थिति और उपलब्धता ट्रैक करने के लिए Uptime Monitor सेट करें।",
+      "checkType": {
+        "http": "HTTP",
+        "tcp": "TCP",
+        "websocket": "WebSocket"
+      }
+    },
+
+    "incidents": {
+      "title": "सक्रिय Incidents",
+      "viewAll": "सभी देखें",
+      "incidentHistory": "Incident इतिहास",
+      "allSystemsOperational": "सभी सिस्टम सामान्य",
+      "unknownMonitor": "अज्ञात Monitor",
+      "duration": "अवधि: {duration}"
+    },
+
+    "history": {
+      "title": "Check इतिहास"
+    },
+
+    "status": {
+      "up": "चालू",
+      "down": "बंद",
+      "degraded": "धीमा",
+      "paused": "रोका गया",
+      "pending": "लंबित",
+      "ongoing": "जारी",
+      "resolved": "हल किया गया",
+      "acknowledged": "स्वीकृत"
+    },
+
+    "quickLinks": {
+      "title": "त्वरित लिंक",
+      "allMonitors": "सभी Monitors",
+      "incidentHistory": "Incident इतिहास",
+      "checkHistory": "Check इतिहास"
+    }
+  }
+}

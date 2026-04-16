@@ -1,0 +1,209 @@
+{
+  "hiring": {
+    "title": "भर्ती",
+    "description": "मूल्यांकन, उम्मीदवारों और भर्ती इंटेलिजेंस को प्रबंधित करें",
+
+    "dashboard": {
+      "title": "भर्ती Dashboard",
+      "openPositions": "खुली पदें",
+      "activeHiringRequirements": "सक्रिय भर्ती आवश्यकताएं",
+      "totalCandidates": "कुल उम्मीदवार",
+      "acrossAllAssessments": "सभी मूल्यांकनों में",
+      "completed": "पूर्ण",
+      "assessmentCompletions": "मूल्यांकन पूर्णताएं",
+      "completionRate": "पूर्णता दर",
+      "ofInvitedCandidates": "आमंत्रित उम्मीदवारों में से",
+      "createAssessment": "मूल्यांकन बनाएं",
+      "buildNewAssessment": "एक नया तकनीकी मूल्यांकन बनाएं",
+      "viewAnalytics": "Analytics देखें",
+      "skillGapsHiringIntelligence": "कौशल अंतर और भर्ती इंटेलिजेंस",
+      "recentAssessments": "हाल के मूल्यांकन",
+      "noAssessmentsYet": "अभी तक कोई मूल्यांकन नहीं",
+      "createYourFirstAssessment": "अपना पहला मूल्यांकन बनाएं",
+      "noOpenPositions": "कोई खुली पद नहीं",
+      "createHiringRequirement": "भर्ती आवश्यकता बनाएं",
+      "hiringFunnel": "भर्ती Funnel",
+      "viewDetailedAnalytics": "विस्तृत Analytics देखें",
+      "candidates": "उम्मीदवार"
+    },
+
+    "stages": {
+      "applied": "आवेदित",
+      "screening": "स्क्रीनिंग",
+      "assessment": "मूल्यांकन",
+      "interview": "साक्षात्कार",
+      "offer": "ऑफ़र",
+      "hired": "नियुक्त",
+      "rejected": "अस्वीकृत",
+      "allStages": "सभी चरण"
+    },
+
+    "candidates": {
+      "title": "उम्मीदवार Pipeline",
+      "candidatesInPipeline": "Pipeline में {count} उम्मीदवार",
+      "addCandidate": "उम्मीदवार जोड़ें",
+      "searchCandidates": "उम्मीदवार खोजें...",
+      "allSources": "सभी स्रोत",
+      "noCandidates": "कोई उम्मीदवार नहीं",
+      "noCandidatesYetTitle": "अभी तक कोई उम्मीदवार नहीं",
+      "noCandidatesYetDescription": "मूल्यांकन के माध्यम से उनकी प्रगति को ट्रैक करने के लिए अपनी भर्ती Pipeline में उम्मीदवार जोड़ें।",
+      "noCandidatesMatchFilters": "कोई उम्मीदवार आपके फ़िल्टर से मेल नहीं खाता",
+      "errorLoadingTitle": "उम्मीदवार लोड करने में त्रुटि",
+      "viewProfile": "प्रोफ़ाइल देखें",
+      "sendEmail": "ईमेल भेजें",
+      "sendAssessment": "मूल्यांकन भेजें",
+      "scheduleInterview": "साक्षात्कार शेड्यूल करें",
+      "reject": "अस्वीकार करें",
+      "name": "नाम",
+      "email": "ईमेल",
+      "role": "भूमिका",
+      "source": "स्रोत",
+      "score": "स्कोर",
+      "stage": "चरण",
+      "applied": "आवेदन",
+      "candidate": "उम्मीदवार"
+    },
+
+    "assessments": {
+      "title": "मूल्यांकन",
+      "description": "उम्मीदवारों के लिए तकनीकी मूल्यांकन बनाएं और प्रबंधित करें",
+      "createAssessment": "मूल्यांकन बनाएं",
+      "searchAssessments": "मूल्यांकन खोजें...",
+      "allStatus": "सभी स्थिति",
+      "noAssessmentsYet": "अभी तक कोई मूल्यांकन नहीं",
+      "noAssessmentsDescription": "उम्मीदवारों का मूल्यांकन शुरू करने के लिए अपना पहला मूल्यांकन बनाएं",
+      "showingOf": "{total} में से {shown} मूल्यांकन दिखा रहे हैं",
+      "createNew": "नया मूल्यांकन बनाएं",
+      "assessmentTitle": "मूल्यांकन शीर्षक",
+      "titlePlaceholder": "जैसे, सीनियर सॉफ्टवेयर इंजीनियर मूल्यांकन",
+      "continueEditing": "संपादन जारी रखें",
+      "viewDetails": "विवरण देखें",
+      "viewReport": "रिपोर्ट देखें",
+      "clone": "क्लोन",
+      "fromLastMonth": "पिछले महीने से"
+    },
+
+    "assessmentStatus": {
+      "draft": "ड्राफ्ट",
+      "active": "सक्रिय",
+      "completed": "पूर्ण",
+      "archived": "संग्रहीत"
+    },
+
+    "assessmentMetrics": {
+      "totalCandidates": "कुल उम्मीदवार",
+      "totalTests": "कुल परीक्षण",
+      "uniqueAttempts": "अद्वितीय प्रयास",
+      "attemptRate": "प्रयास दर",
+      "questions": "प्रश्न",
+      "duration": "अवधि",
+      "avgScore": "औसत स्कोर"
+    },
+
+    "questions": {
+      "title": "प्रश्न बैंक",
+      "description": "अपने संगठन के सभी मूल्यांकन प्रश्नों को देखें और प्रबंधित करें",
+      "backToAssessments": "मूल्यांकन पर वापस जाएं",
+      "searchQuestions": "प्रश्न खोजें...",
+      "allAssessments": "सभी मूल्यांकन",
+      "allTypes": "सभी प्रकार",
+      "allDifficulties": "सभी कठिनाई",
+      "showDeleted": "हटाए गए दिखाएं",
+      "noQuestionsFound": "कोई प्रश्न नहीं मिला",
+      "adjustFilters": "अपने फ़िल्टर समायोजित करने का प्रयास करें",
+      "noQuestionsYetTitle": "अभी तक कोई प्रश्न नहीं",
+      "noQuestionsYetDescription": "मूल्यांकन के लिए प्रश्न बैंक बनाएं। कोडिंग चुनौतियां, बहुविकल्पीय या मुक्त-पाठ प्रश्न बनाएं।",
+      "goToAssessments": "मूल्यांकन पर जाएं",
+      "totalQuestions": "कुल प्रश्न",
+      "avgScore": "औसत स्कोर",
+      "avgTime": "औसत समय",
+      "aiGenerated": "AI द्वारा निर्मित",
+      "question": "प्रश्न",
+      "type": "प्रकार",
+      "difficulty": "कठिनाई",
+      "attempts": "प्रयास",
+      "actions": "क्रियाएं",
+      "viewDetails": "विवरण देखें",
+      "duplicate": "डुप्लिकेट",
+      "restore": "पुनर्स्थापित करें",
+      "selected": "{count} प्रश्न चयनित",
+      "clear": "साफ़ करें",
+      "deleteSelected": "चयनित हटाएं",
+      "showingRange": "{total} में से {start} से {end} प्रश्न दिखा रहे हैं",
+      "page": "पृष्ठ {current} / {total}"
+    },
+
+    "questionTypes": {
+      "mcq": "बहुविकल्पीय",
+      "coding": "कोडिंग",
+      "shortAnswer": "लघु उत्तर",
+      "essay": "निबंध",
+      "audio": "ऑडियो"
+    },
+
+    "difficulty": {
+      "easy": "आसान",
+      "medium": "मध्यम",
+      "hard": "कठिन"
+    },
+
+    "templates": {
+      "title": "भर्ती टेम्पलेट",
+      "templatesAvailable": "{count} टेम्पलेट उपलब्ध",
+      "createTemplate": "टेम्पलेट बनाएं",
+      "searchTemplates": "टेम्पलेट खोजें...",
+      "all": "सभी",
+      "templateType": "टेम्पलेट प्रकार",
+      "templateName": "टेम्पलेट नाम",
+      "templateNamePlaceholder": "जैसे, सीनियर इंजीनियर JD",
+      "templateDescription": "विवरण",
+      "templateDescriptionPlaceholder": "इस टेम्पलेट का संक्षिप्त विवरण...",
+      "noTemplatesFound": "कोई टेम्पलेट नहीं मिला",
+      "adjustSearchOrFilters": "अपनी खोज या फ़िल्टर समायोजित करने का प्रयास करें",
+      "noTemplatesYetTitle": "अभी तक कोई मूल्यांकन टेम्पलेट नहीं",
+      "noTemplatesYetDescription": "अपनी भर्ती प्रक्रिया को तेज़ करने के लिए पुन: प्रयोज्य मूल्यांकन टेम्पलेट बनाएं।",
+      "loadingTemplates": "टेम्पलेट लोड हो रहे हैं..."
+    },
+
+    "templateTypes": {
+      "jd": "जॉब विवरण",
+      "rubric": "साक्षात्कार रूब्रिक",
+      "email": "ईमेल टेम्पलेट"
+    },
+
+    "analytics": {
+      "title": "भर्ती Analytics",
+      "codeIntelligence": "कोड इंटेलिजेंस",
+      "hiringFunnel": "भर्ती Funnel",
+      "performance": "प्रदर्शन",
+      "generateJD": "JD बनाएं",
+      "generateRubric": "रूब्रिक बनाएं",
+      "analyzeGaps": "अंतर विश्लेषण करें",
+      "pipelineMetrics": "Pipeline मेट्रिक्स",
+      "timeToHire": "भर्ती समय",
+      "costPerHire": "प्रति भर्ती लागत",
+      "offerAcceptRate": "ऑफ़र स्वीकृति दर"
+    },
+
+    "priority": {
+      "critical": "अत्यावश्यक",
+      "high": "उच्च",
+      "medium": "मध्यम",
+      "low": "कम"
+    },
+
+    "deleteConfirm": {
+      "questionHasSubmissions": "प्रश्न में सबमिशन हैं",
+      "questionSubmissionsWarning": "इस प्रश्न में उम्मीदवारों के मौजूदा सबमिशन हैं। इसे हटाने से उनके मूल्यांकन रिकॉर्ड प्रभावित होंगे। क्या आप आगे बढ़ना चाहते हैं?",
+      "deleteAnyway": "फिर भी हटाएं",
+      "deleting": "हटाया जा रहा है...",
+      "deleteAssessmentConfirm": "क्या आप वाकई इस मूल्यांकन को हटाना चाहते हैं?"
+    },
+
+    "empty": {
+      "workspaceRequired": "कार्यस्थल आवश्यक",
+      "workspaceRequiredDescription": "भर्ती इंटेलिजेंस का उपयोग शुरू करने के लिए पहले एक कार्यस्थल बनाएं।",
+      "createWorkspace": "कार्यस्थल बनाएं"
+    }
+  }
+}

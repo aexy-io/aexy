@@ -1,0 +1,567 @@
+{
+  "marketing": {
+    "home": {
+      "nav": {
+        "products": "Products",
+        "solutions": "Solutions",
+        "ourStory": "Our Story",
+        "mission": "Mission",
+        "engineeringOS": "Engineering OS",
+        "pricing": "Pricing",
+        "github": "GitHub",
+        "signIn": "Sign In",
+        "signInWithGitHub": "Sign In with GitHub",
+        "getStarted": "Get Started",
+        "menu": "Menu",
+        "viewAllProducts": "View all products"
+      },
+      "badge": {
+        "openSource": "Open Source"
+      },
+      "headline": "The open-source operating system for engineering organizations",
+      "subheadline": "Understand your team. Optimize operations. Build talent. All in one platform. All transparent.",
+      "cta": {
+        "continueWithGoogle": "Continue with Google",
+        "continueWithGitHub": "Continue with GitHub",
+        "readOurStory": "Read our story"
+      },
+      "trustIndicators": {
+        "noCreditCard": "No credit card required",
+        "selfHostFree": "Self-host free",
+        "soc2": "SOC 2 certified"
+      },
+      "floatingBadges": {
+        "commitsSynced": "3 commits synced",
+        "skillsAnalyzed": "Skills analyzed",
+        "emailsSynced": "12 emails synced"
+      },
+      "trustedBy": "Trusted by engineering teams at",
+      "trustedCompanies": ["Acme Corp", "TechStart", "GlobalSys", "FutureNet", "DataFlow", "CloudScale"],
+      "pillars": {
+        "headline": "One platform. Four pillars. Complete visibility.",
+        "subheadline": "Everything you need to run a world-class engineering organization. Start with one pillar, expand to all four.",
+        "understand": {
+          "label": "UNDERSTAND",
+          "title": "Intelligence",
+          "description": "Know your engineering organization. See team health, predict risks, and make data-driven decisions.",
+          "features": [
+            "Developer profiles & skills",
+            "Team health analytics",
+            "Attrition & burnout prediction",
+            "Custom dashboards & reports"
+          ],
+          "link": "Explore Intelligence"
+        },
+        "optimize": {
+          "label": "OPTIMIZE",
+          "title": "Operations",
+          "description": "Run engineering efficiently. Better planning, smarter assignments, less overhead.",
+          "features": [
+            "AI-powered task matching",
+            "Sprint planning & velocity",
+            "On-call management",
+            "Ticketing & escalations"
+          ],
+          "link": "Explore Operations"
+        },
+        "build": {
+          "label": "BUILD",
+          "title": "Talent",
+          "description": "Hire and grow the best engineers. Better assessments, personalized development, retained talent.",
+          "features": [
+            "AI technical assessments",
+            "Job description generator",
+            "Learning paths & skill gaps",
+            "Career growth tracking"
+          ],
+          "link": "Explore Talent"
+        },
+        "connect": {
+          "label": "CONNECT",
+          "title": "Relationships",
+          "description": "Manage all your business relationships. CRM, GTM intelligence, email marketing, calendar integration.",
+          "features": [
+            "Visitor identification & lead scoring",
+            "Contact management & CRM",
+            "Email campaigns & automation",
+            "Pluggable provider registry (10 slots)"
+          ],
+          "links": {
+            "gtmIntelligence": "GTM Intelligence",
+            "emailMarketing": "Email Marketing"
+          }
+        }
+      },
+      "whyOpenSource": {
+        "badge": "Open Source",
+        "headline": "Why we're open source",
+        "subheadline": "Developer analytics tools have a surveillance problem. We solved it by making everything transparent.",
+        "transparent": {
+          "title": "Transparent",
+          "description": "Every algorithm is open-source. Audit the code anytime. Your developers will trust metrics they can verify."
+        },
+        "noVendorLockin": {
+          "title": "No Vendor Lock-in",
+          "description": "Export everything. Self-host anytime. No hostage situations. We earn your business by being better, not by trapping you."
+        },
+        "communityDriven": {
+          "title": "Community Driven",
+          "description": "Active development. Regular releases. Features you actually need. Join the community shaping the future of engineering intelligence."
+        },
+        "viewOnGitHub": "View on GitHub",
+        "readOurStory": "Read Our Story"
+      },
+      "features": {
+        "badge": "Feature Deep Dive",
+        "headline": "Everything you need to run engineering",
+        "subheadline": "Explore the full capabilities across all three pillars of the Engineering OS.",
+        "aiProfiles": {
+          "badge": "AI-POWERED",
+          "title": "AI Developer Profiles",
+          "description": "Automatic skill extraction from commits and PRs. Know your team's expertise in TypeScript, React, Python, and 50+ technologies.",
+          "moreSkills": "+44 more"
+        },
+        "epicTracking": {
+          "badge": "NEW",
+          "title": "Epic & Initiative Tracking",
+          "description": "Create epics spanning multiple sprints. Link tasks from Jira, Linear, or GitHub Issues."
+        },
+        "sprintPlanning": {
+          "title": "Smart Sprint Planning",
+          "description": "Visual kanban with AI-powered capacity planning and task suggestions."
+        },
+        "taskMatching": {
+          "badge": "AI-POWERED",
+          "title": "Intelligent Task Matching",
+          "description": "AI matches tasks to developers based on skills and workload."
+        },
+        "learningPaths": {
+          "title": "Learning Paths",
+          "description": "Personalized growth with gamified progress and achievement badges."
+        },
+        "onCall": {
+          "badge": "NEW",
+          "title": "On-Call Scheduling",
+          "description": "Flexible on-call rotations with Google Calendar sync. Self-service swaps and real-time notifications.",
+          "features": [
+            "Custom schedules per team",
+            "Google Calendar sync",
+            "Self-service shift swaps"
+          ]
+        },
+        "performanceReviews": {
+          "badge": "NEW",
+          "title": "360° Performance Reviews",
+          "description": "SMART goals with auto-linked GitHub contributions. Anonymous peer feedback with COIN framework.",
+          "features": [
+            "Auto-generated contribution summaries",
+            "Anonymous 360° feedback",
+            "SMART goal tracking with OKRs"
+          ]
+        },
+        "aiReview": {
+          "badge": "AI-POWERED",
+          "title": "AI Review Intelligence",
+          "description": "LLM-powered insights that synthesize your GitHub activity into compelling review narratives.",
+          "sampleQuote": "Led 3 major feature implementations with 98% test coverage. Strong collaboration..."
+        },
+        "crmInbox": {
+          "badge": "NEW",
+          "title": "CRM Inbox",
+          "description": "Gmail sync with automatic contact linking. Reply to emails, track threads, and link to deals.",
+          "features": [
+            "Auto-sync Gmail messages",
+            "Link emails to contacts & deals",
+            "Reply directly from CRM"
+          ]
+        },
+        "contactManagement": {
+          "badge": "AI-POWERED",
+          "title": "Contact Management",
+          "description": "Companies, people, and deals. AI extracts info from email signatures."
+        },
+        "calendarSync": {
+          "title": "Calendar Sync",
+          "description": "Google Calendar integration. Events link to contacts and deals automatically."
+        },
+        "emailIntelligence": {
+          "badge": "AI-POWERED",
+          "title": "Email Intelligence",
+          "description": "AI extracts contacts, classifies leads, and enriches records from signatures."
+        },
+        "gtmIntelligence": {
+          "badge": "NEW",
+          "title": "GTM Intelligence",
+          "description": "Identify anonymous website visitors, score leads automatically, and route hot prospects to sales with pluggable providers.",
+          "features": [
+            "IP-to-company visitor identification",
+            "Multi-factor lead scoring (0-100)",
+            "10-slot hot-swappable provider registry"
+          ]
+        },
+        "aiAgents": {
+          "badge": "NEW",
+          "title": "AI Agents",
+          "description": "Deploy intelligent agents that handle email responses, CRM updates, and workflow automation with configurable tools and confidence thresholds.",
+          "features": [
+            "Support, Sales & Custom agents",
+            "Multi-LLM support (Claude, Gemini)",
+            "Human-in-the-loop approval"
+          ]
+        },
+        "uptimeMonitoring": {
+          "badge": "NEW",
+          "title": "Uptime Monitoring",
+          "description": "Monitor your endpoints with configurable intervals. Get notified instantly when services go down.",
+          "features": [
+            "HTTP/HTTPS endpoint checks",
+            "Configurable check intervals",
+            "Incident history & reporting"
+          ]
+        },
+        "teamAnalytics": {
+          "title": "Team Analytics",
+          "description": "Velocity tracking, contribution insights, and collaboration patterns. Real-time dashboards for engineering leaders."
+        }
+      },
+      "integrations": {
+        "badge": "Automated Sync",
+        "headline": "Seamless Integrations",
+        "subheadline": "Connect once, sync forever. Your commits automatically update tasks, epics, and sprints.",
+        "github": {
+          "title": "GitHub",
+          "description": "Auto-analyze commits, PRs, and code reviews. Build rich developer profiles.",
+          "features": ["Commit analysis", "PR tracking", "Code review insights", "Skill extraction"]
+        },
+        "google": {
+          "title": "Google",
+          "description": "Gmail and Calendar sync. Auto-link emails to contacts and sync events.",
+          "features": ["Gmail sync", "Calendar sync", "Contact enrichment", "Event tracking"]
+        },
+        "jira": {
+          "title": "Jira",
+          "description": "Two-way sync with Jira. Import issues, update status, link PRs to tickets.",
+          "features": ["Issue import", "Status sync", "Epic tracking", "Sprint mapping"]
+        },
+        "linear": {
+          "title": "Linear",
+          "description": "Native Linear integration. Auto-close issues, sync projects, track cycles.",
+          "features": ["Auto-close issues", "Project sync", "Cycle mapping", "Priority sync"]
+        },
+        "syncFlow": {
+          "title": "How Auto-Sync Works",
+          "steps": [
+            { "label": "Push Code", "desc": "Commit or merge PR" },
+            { "label": "AI Analyzes", "desc": "Skills extracted" },
+            { "label": "Auto-Sync", "desc": "Tools updated" },
+            { "label": "Done!", "desc": "Tasks complete" }
+          ]
+        }
+      },
+      "howItWorks": {
+        "headline": "Get Started in 2 Minutes",
+        "subheadline": "No complex setup. Just connect and go.",
+        "steps": [
+          { "num": "1", "title": "Connect GitHub", "desc": "One-click OAuth" },
+          { "num": "2", "title": "Link Jira/Linear", "desc": "Optional integrations" },
+          { "num": "3", "title": "Auto-Profile", "desc": "AI builds profiles" },
+          { "num": "4", "title": "Start Planning", "desc": "Create sprints" }
+        ]
+      },
+      "stats": [
+        { "num": "50%", "label": "Faster Planning" },
+        { "num": "2x", "label": "Better Matching" },
+        { "num": "100%", "label": "Sync Accuracy" },
+        { "num": "30%", "label": "Velocity Boost" }
+      ],
+      "testimonials": {
+        "headline": "Loved by Engineering Teams",
+        "subheadline": "Join hundreds of high-performing organizations building with Aexy.",
+        "items": [
+          {
+            "quote": "Aexy completely transformed how we manage our engineering sprints. The AI insights are scary accurate.",
+            "author": "Sarah Chen",
+            "role": "CTO at TechStart",
+            "avatar": "SC"
+          },
+          {
+            "quote": "Finally, a tool that understands developers. No more micromanagement, just clear visibility and better code.",
+            "author": "Michael Ross",
+            "role": "VP Engineering at CloudScale",
+            "avatar": "MR"
+          },
+          {
+            "quote": "The on-call scheduling and Jira sync saved us 10+ hours a week. It pays for itself instantly.",
+            "author": "Jessica Wu",
+            "role": "Engineering Manager at DataFlow",
+            "avatar": "JW"
+          }
+        ]
+      },
+      "faq": {
+        "headline": "Frequently Asked Questions",
+        "subheadline": "Everything you need to know about Aexy.",
+        "items": [
+          {
+            "question": "Is Aexy really open source?",
+            "answer": "Yes! The core platform is 100% open source under the MIT license. You can host it yourself for free, forever."
+          },
+          {
+            "question": "How does the AI profiling work?",
+            "answer": "Our AI analyzes your public (and private, if connected) GitHub activity to identify languages, frameworks, and code patterns you use most, building a dynamic skills profile."
+          },
+          {
+            "question": "Can I import data from Jira?",
+            "answer": "Absolutely. We offer a one-click import for Jira projects, epics, and tickets. We also support two-way sync so your data is always fresh."
+          },
+          {
+            "question": "Is my data secure?",
+            "answer": "Security is our top priority. We are SOC 2 Type II certified. We process data in short-lived encrypted containers and never train our models on your proprietary code without explicit opt-in."
+          },
+          {
+            "question": "What are AI Agents?",
+            "answer": "AI Agents are intelligent automation assistants that handle tasks like email responses, CRM updates, and workflow automation. They support multiple LLM providers (Claude, Gemini) and include human-in-the-loop approval for sensitive actions. Create custom agents for support, sales, scheduling, and more."
+          }
+        ]
+      },
+      "finalCta": {
+        "headline": "Ready to run your Engineering OS?",
+        "subheadline": "Understand your team. Optimize operations. Build talent.",
+        "continueWithGoogle": "Continue with Google",
+        "continueWithGitHub": "Continue with GitHub",
+        "noCreditCard": "No credit card required · 14-day free trial"
+      },
+      "footer": {
+        "tagline": "The open-source operating system for engineering organizations.",
+        "sections": {
+          "products": {
+            "title": "Products",
+            "links": {
+              "activityTracking": "Activity Tracking",
+              "sprintPlanning": "Sprint Planning",
+              "ticketing": "Ticketing",
+              "reviews": "Reviews",
+              "learning": "Learning",
+              "hiring": "Hiring",
+              "crm": "CRM",
+              "aiAgents": "AI Agents",
+              "uptime": "Uptime"
+            }
+          },
+          "solutions": {
+            "title": "Solutions",
+            "links": {
+              "forManagers": "For Managers",
+              "forDevelopers": "For Developers",
+              "forCTOs": "For CTOs",
+              "forHR": "For HR"
+            }
+          },
+          "resources": {
+            "title": "Resources",
+            "links": {
+              "ourStory": "Our Story",
+              "mission": "Mission",
+              "engineeringOS": "Engineering OS",
+              "pricing": "Pricing",
+              "github": "GitHub"
+            }
+          },
+          "company": {
+            "title": "Company",
+            "links": {
+              "about": "About",
+              "blog": "Blog",
+              "careers": "Careers",
+              "contact": "Contact"
+            }
+          }
+        },
+        "copyright": "© 2025 Aexy. All rights reserved.",
+        "legal": {
+          "privacyPolicy": "Privacy Policy",
+          "termsOfService": "Terms of Service",
+          "security": "Security"
+        }
+      },
+      "productLinks": {
+        "activityTracking": { "label": "Activity Tracking", "desc": "Real-time team visibility" },
+        "sprintPlanning": { "label": "Sprint Planning", "desc": "AI-powered capacity planning" },
+        "ticketing": { "label": "Ticketing", "desc": "Keyboard-first issue tracking" },
+        "forms": { "label": "Forms", "desc": "Drag-and-drop form builder" },
+        "documentation": { "label": "Documentation", "desc": "Connected team knowledge" },
+        "performanceReviews": { "label": "Performance Reviews", "desc": "360° feedback & SMART goals" },
+        "learningDev": { "label": "Learning & Dev", "desc": "Personalized skill growth" },
+        "technicalHiring": { "label": "Technical Hiring", "desc": "AI-powered assessments" },
+        "crm": { "label": "CRM", "desc": "Relationship management" },
+        "emailMarketing": { "label": "Email Marketing", "desc": "Campaigns & automation" },
+        "aiAgents": { "label": "AI Agents", "desc": "Intelligent automation" },
+        "uptimeMonitoring": { "label": "Uptime Monitoring", "desc": "Endpoint health & incidents" },
+        "complianceReminders": { "label": "Compliance Reminders", "desc": "Track recurring commitments" },
+        "gtmIntelligence": { "label": "GTM Intelligence", "desc": "Visitor ID & lead scoring" }
+      },
+      "solutionLinks": {
+        "engineeringManagers": { "label": "Engineering Managers", "desc": "Visibility & planning tools" },
+        "developers": { "label": "Developers", "desc": "No surveillance, just growth" },
+        "ctosVps": { "label": "CTOs & VPs", "desc": "Scale with confidence" },
+        "hrPeopleOps": { "label": "HR & People Ops", "desc": "Hiring, reviews & L&D" }
+      },
+      "dashboardPreview": {
+        "dashboard": "Dashboard",
+        "sprints": "Sprints",
+        "epics": "Epics",
+        "janeDeveloper": "Jane Developer",
+        "seniorEngineer": "Senior Engineer",
+        "sprint24": "Sprint 24",
+        "active": "Active",
+        "apiIntegration": "API Integration",
+        "dashboardUI": "Dashboard UI",
+        "testing": "Testing",
+        "progress": "Progress",
+        "recentSyncs": "Recent Syncs",
+        "syncItems": [
+          { "platform": "GitHub", "action": "3 commits synced", "time": "2m ago" },
+          { "platform": "Gmail", "action": "12 emails synced", "time": "3m ago" },
+          { "platform": "Jira", "action": "PROJ-123 updated", "time": "5m ago" },
+          { "platform": "Calendar", "action": "2 events added", "time": "8m ago" }
+        ]
+      }
+    },
+    "pricing": {
+      "hero": {
+        "badge": {
+          "openSource": "Open Source",
+          "selfHostFree": "Self-host free"
+        },
+        "headline": "Simple pricing for the Engineering OS",
+        "subheadline": "Start open source. Scale with confidence. Pay only when your organization needs more."
+      },
+      "philosophy": {
+        "headline": "Built open. Priced fair. No lock-in.",
+        "description": "Aexy is open source by default. You can self-host, audit the code, and export your data anytime. We earn your business by being valuable - not by trapping you."
+      },
+      "labels": {
+        "whatYouGet": "WHAT YOU GET",
+        "bestFor": "BEST FOR",
+        "mostPopular": "Most Popular",
+        "currentPlan": "Current Plan",
+        "custom": "Custom",
+        "forever": "forever",
+        "perUserPerMonth": "/ user / month",
+        "pricing": "pricing"
+      },
+      "plans": {
+        "free": {
+          "name": "Free",
+          "tagline": "Open Source",
+          "description": "For individuals, small teams, and evaluation",
+          "priceLabel": "forever",
+          "features": [
+            "Core Engineering OS (open source)",
+            "Developer profiles & skill analysis",
+            "Sprint & epic planning",
+            "Tickets & task tracking",
+            "Docs & forms",
+            "Basic CRM (contacts & relationships)",
+            "GitHub integration",
+            "Community support",
+            "Self-hosting"
+          ],
+          "bestFor": ["Indie devs", "Early-stage startups", "OSS-first teams"],
+          "cta": "Get Started Free"
+        },
+        "team": {
+          "name": "Team",
+          "tagline": "Cloud",
+          "description": "For growing teams that want speed without ops overhead",
+          "priceLabel": "/ user / month",
+          "features": [
+            "Everything in Free, plus:",
+            "Hosted cloud version",
+            "AI-powered insights & summaries",
+            "On-call scheduling & rotations",
+            "Performance reviews & feedback",
+            "Learning paths & skill gaps",
+            "Gmail & Calendar sync",
+            "Advanced dashboards",
+            "Email support"
+          ],
+          "bestFor": ["Startups", "Product teams", "Engineering orgs (10-100)"],
+          "cta": "Start 14-Day Free Trial"
+        },
+        "enterprise": {
+          "name": "Enterprise",
+          "tagline": "Engineering OS at Scale",
+          "description": "For organizations running critical engineering operations",
+          "priceLabel": "pricing",
+          "features": [
+            "Everything in Team, plus:",
+            "Advanced security & compliance",
+            "SSO & SCIM",
+            "Audit logs",
+            "Custom data retention",
+            "Dedicated support & SLA",
+            "Private cloud / VPC deployment",
+            "Priority roadmap input"
+          ],
+          "bestFor": ["Scaleups", "Enterprises", "Regulated industries"],
+          "cta": "Talk to Sales"
+        }
+      },
+      "comparison": {
+        "headline": "Replace tool sprawl, not just one tool",
+        "tableHeaders": {
+          "youNeed": "You need",
+          "withAexy": "With Aexy"
+        },
+        "items": [
+          { "need": "Jira + GitHub + Notion", "aexy": "Built-in" },
+          { "need": "CRM disconnected from delivery", "aexy": "Connected by default" },
+          { "need": "Manual performance reviews", "aexy": "Auto-generated" },
+          { "need": "Hiring based on resumes", "aexy": "Skills from real code" },
+          { "need": "On-call chaos", "aexy": "Structured & humane" }
+        ]
+      },
+      "faq": {
+        "headline": "Frequently Asked Questions",
+        "items": [
+          {
+            "question": "Is Aexy really open source?",
+            "answer": "Yes. The core platform is fully open source. You can audit, fork, or self-host it anytime."
+          },
+          {
+            "question": "Can we self-host on paid plans?",
+            "answer": "Yes. Paid plans unlock features - not control over your data."
+          },
+          {
+            "question": "Is this a CRM?",
+            "answer": "It includes CRM - but Aexy is not a sales-only CRM. It's an operating system connecting execution, people, and relationships."
+          },
+          {
+            "question": "What happens if we leave?",
+            "answer": "You export everything. No lock-in. Ever."
+          },
+          {
+            "question": "Can I switch plans anytime?",
+            "answer": "Yes! You can upgrade or downgrade your plan at any time. Changes take effect immediately, and we'll prorate your billing."
+          },
+          {
+            "question": "Is there a free trial?",
+            "answer": "Yes! Team plans come with a 14-day free trial. No credit card required to start."
+          }
+        ]
+      },
+      "finalCta": {
+        "headline": "Start with open source. Grow into your Engineering OS.",
+        "subheadline": "Join thousands of engineering teams building better software with Aexy.",
+        "getStartedFree": "Get Started Free",
+        "viewOnGitHub": "View on GitHub"
+      },
+      "errors": {
+        "checkoutError": "Checkout Error",
+        "checkoutFailed": "Failed to start checkout. Please try again.",
+        "close": "Close"
+      }
+    }
+  }
+}

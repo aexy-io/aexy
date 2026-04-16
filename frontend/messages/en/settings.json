@@ -1,0 +1,470 @@
+{
+  "settings": {
+    "appearance": {
+      "title": "Appearance",
+      "description": "Customize how the application looks",
+      "theme": {
+        "title": "Theme",
+        "description": "Choose your preferred color scheme",
+        "dark": "Dark",
+        "darkDescription": "Dark background with light text",
+        "light": "Light",
+        "lightDescription": "Light background with dark text",
+        "system": "System",
+        "systemDescription": "Automatically match your system settings",
+        "usingSystemMode": "Currently using {mode} mode based on your system settings.",
+        "autoSaveNote": "Changes are saved automatically and will take effect immediately."
+      },
+      "sidebarLayout": {
+        "title": "Sidebar Layout",
+        "description": "Choose how navigation items are organized in the sidebar",
+        "grouped": "Grouped",
+        "groupedDescription": "Items organized by functional areas (Engineering, People, Business, Knowledge)",
+        "flat": "Flat",
+        "flatDescription": "All features at the top level for quick access",
+        "preview": "Preview"
+      }
+    },
+    "organization": {
+      "title": "Organization Settings",
+      "description": "Manage your workspace and team members",
+      "workspaces": {
+        "title": "Workspaces",
+        "newWorkspace": "New Workspace",
+        "noWorkspacesTitle": "No workspaces yet",
+        "noWorkspacesDescription": "Create your first workspace to start managing your team.",
+        "createWorkspace": "Create Workspace",
+        "members": "{count} members",
+        "projects": "{count} projects",
+        "noDescription": "No description",
+        "githubLinked": "GitHub Linked",
+        "internal": "Internal"
+      },
+      "createWorkspaceModal": {
+        "title": "Create Workspace",
+        "nameLabel": "Workspace Name",
+        "namePlaceholder": "My Team",
+        "descriptionLabel": "Description (optional)",
+        "descriptionPlaceholder": "What is this workspace for?",
+        "typeLabel": "Type",
+        "internalType": "Internal",
+        "internalDescription": "Manual member management",
+        "githubLinkedType": "GitHub Linked",
+        "githubLinkedDescription": "Sync from GitHub org",
+        "githubOrgLabel": "GitHub Organization",
+        "githubOrgPlaceholder": "Select an organization...",
+        "creating": "Creating...",
+        "nameRequired": "Workspace name is required"
+      },
+      "members": {
+        "title": "Team Members",
+        "count": "{count} members",
+        "inviteMember": "Invite Member",
+        "noMembers": "No members found",
+        "you": "(you)",
+        "changeRole": "Change Role",
+        "removeFromWorkspace": "Remove from workspace",
+        "resendInvite": "Resend Invite",
+        "resending": "Resending..."
+      },
+      "roles": {
+        "owner": "Owner",
+        "ownerDescription": "Full access, can delete workspace",
+        "admin": "Admin",
+        "adminDescription": "Can manage members and settings",
+        "member": "Member",
+        "memberDescription": "Can view and contribute",
+        "viewer": "Viewer",
+        "viewerDescription": "Read-only access"
+      },
+      "inviteModal": {
+        "title": "Invite Team Member",
+        "emailLabel": "Email Address",
+        "emailPlaceholder": "colleague@company.com",
+        "roleLabel": "Role",
+        "emailRequired": "Email is required",
+        "inviting": "Inviting...",
+        "sendInvite": "Send Invite"
+      },
+      "pendingInvites": {
+        "title": "Pending Invitations",
+        "count": "{count} pending",
+        "pending": "Pending",
+        "expired": "Expired",
+        "expires": "Expires {date}",
+        "noExpiry": "No expiry",
+        "invitedBy": "Invited by {name}",
+        "revokeInvite": "Revoke invite",
+        "resendInvite": "Resend invite"
+      },
+      "seatUsage": {
+        "title": "Seats Used",
+        "count": "{used} / {total}"
+      },
+      "appSettings": {
+        "title": "App Settings",
+        "description": "Enable or disable apps for your workspace",
+        "ownerOnly": "Only the workspace owner can change app settings."
+      },
+      "quickLinks": {
+        "projects": "Projects",
+        "manageProjects": "Manage projects",
+        "repositories": "Repositories",
+        "manageRepos": "Manage repos",
+        "billing": "Billing",
+        "comingSoon": "Coming soon"
+      },
+      "toasts": {
+        "inviteResent": "Invitation resent to {email}",
+        "failedUpdateOrg": "Failed to update organization"
+      }
+    },
+    "billing": {
+      "title": "Billing & Usage",
+      "description": "Manage your subscription, track usage, and view invoices",
+      "successMessage": "Subscription activated successfully! Thank you for upgrading.",
+      "plan": {
+        "title": "{name} Plan",
+        "free": "Free",
+        "personal": "Personal",
+        "perUserPerMonth": "/user/mo",
+        "perMonth": "/month",
+        "plusUsage": "/mo + usage",
+        "payAfterUse": "Pay after use",
+        "billing": "{model} billing"
+      },
+      "subscription": {
+        "status": "Status",
+        "currentPeriod": "Current Period",
+        "nextBilling": "Next Billing",
+        "managedByOwner": "Your workspace is on the {plan} plan. Billing is managed by the workspace owner.",
+        "freePlanMessage": "You're on the free plan with access to all modules. Upgrade for more AI, repos, and team capacity.",
+        "seePlans": "See Plans",
+        "comparePlans": "Compare plans",
+        "upgradePrompt": "Upgrade for more AI and capacity",
+        "billingOptions": "Choose per-seat, flat+usage, or postpaid billing"
+      },
+      "seats": {
+        "title": "Seat Management",
+        "totalSeats": "Total Seats",
+        "baseSeats": "Base Seats",
+        "additionalSeats": "Additional Seats",
+        "perSeatPrice": "Per Seat Price"
+      },
+      "billingBreakdown": {
+        "title": "Billing Breakdown",
+        "baseFee": "Base Fee",
+        "fixedMonthly": "Fixed monthly charge",
+        "aiUsage": "AI Usage",
+        "metered": "Metered"
+      },
+      "postpaid": {
+        "title": "Postpaid Billing",
+        "accruedThisPeriod": "Accrued This Period",
+        "estimatedTotal": "Estimated Total",
+        "lastSettled": "Last Settled",
+        "notYet": "Not yet",
+        "invoiceNote": "You'll be invoiced at the end of each billing period. Payment is collected after usage."
+      },
+      "usage": {
+        "title": "Current Usage"
+      },
+      "planFeatures": {
+        "title": "Plan Features",
+        "unlimited": "Unlimited",
+        "repositories": "{count} repositories",
+        "syncHistory": "{count} days sync history",
+        "unlimitedSyncHistory": "Unlimited sync history",
+        "aiRequests": "{count} AI requests/day",
+        "unlimitedAiRequests": "Unlimited AI requests/day",
+        "realTimeSync": "Real-time sync",
+        "advancedAnalytics": "Advanced analytics",
+        "teamFeatures": "Team features",
+        "dataExports": "Data exports",
+        "webhooks": "Webhooks"
+      },
+      "paymentMethod": {
+        "title": "Payment Method",
+        "managedViaStripe": "Managed via Stripe",
+        "updatePrompt": "Click \"Manage Billing\" to update your payment method",
+        "noPaymentMethod": "No payment method on file"
+      },
+      "actions": {
+        "manageBilling": "Manage Billing",
+        "changePlan": "Change Plan",
+        "upgradePlan": "Upgrade Plan"
+      },
+      "help": {
+        "needHelp": "Need help with billing?",
+        "contactSupport": "Contact our billing support"
+      },
+      "toasts": {
+        "portalFailed": "Failed to open billing portal. Please try again."
+      }
+    },
+    "repositories": {
+      "title": "Repository Settings",
+      "description": "Manage which repositories are synced and analyzed",
+      "stats": {
+        "enabledCount": "{enabled} / {total}",
+        "repositoriesEnabled": "repositories enabled"
+      },
+      "actions": {
+        "manageAccess": "Manage access",
+        "refreshFromGithub": "Refresh from GitHub",
+        "startSync": "Start sync",
+        "syncAll": "Sync all",
+        "reconnectGithub": "Reconnect GitHub",
+        "installGithubApp": "Install GitHub App",
+        "manageAccessOnGithub": "Manage access on GitHub"
+      },
+      "sections": {
+        "connectedRepos": "Connected Repositories",
+        "reposBeingAnalyzed": "{count} repositories being analyzed",
+        "personalRepos": "Personal Repositories",
+        "reposAvailable": "{count} repositories available",
+        "organizations": "Organizations",
+        "orgReposEnabled": "{enabled} of {total} repositories enabled"
+      },
+      "syncStatus": {
+        "pending": "Pending",
+        "syncing": "Syncing",
+        "synced": "Synced",
+        "failed": "Failed"
+      },
+      "webhookStatus": {
+        "none": "No webhook",
+        "pending": "Webhook pending",
+        "active": "Webhook active",
+        "failed": "Webhook failed"
+      },
+      "emptyStates": {
+        "noInstallationTitle": "GitHub App Not Installed",
+        "noInstallationDescription": "Install the Aexy GitHub App to grant access to your repositories. This allows us to analyze your code contributions.",
+        "installUrlMissing": "GitHub App install URL not configured. Please contact support.",
+        "noReposTitle": "No repositories found",
+        "noReposDescription": "We couldn't find any repositories. Try refreshing from GitHub or check your app installation permissions."
+      },
+      "githubError": {
+        "title": "GitHub connection needs re-authentication",
+        "defaultMessage": "Your GitHub token has expired or been revoked. Syncing is paused until you reconnect."
+      },
+      "syncSettings": {
+        "title": "Sync Settings",
+        "autoSync": "Auto-sync",
+        "autoSyncDescription": "Automatically sync enabled repositories on a schedule",
+        "syncFrequency": "Sync frequency",
+        "syncFrequencyDescription": "How often to sync commits, PRs, and reviews",
+        "every30m": "Every 30 minutes",
+        "every1h": "Every hour",
+        "every6h": "Every 6 hours",
+        "every12h": "Every 12 hours",
+        "onceADay": "Once a day",
+        "syncAllRepos": "Sync all repositories",
+        "syncAllDescription": "Trigger a manual sync for all {count} enabled {repoWord}",
+        "realTimeWebhooks": "Real-time webhooks",
+        "realTimeWebhooksDescription": "Push events, pull requests, and reviews are synced in real-time via GitHub webhooks"
+      },
+      "toasts": {
+        "failedUpdateOrg": "Failed to update organization",
+        "failedUpdateRepo": "Failed to update repository",
+        "failedStartSync": "Failed to start sync",
+        "failedAutoSync": "Failed to update auto-sync",
+        "failedSyncFrequency": "Failed to update sync frequency"
+      }
+    },
+    "integrations": {
+      "title": "Integrations",
+      "description": "Connect Jira, Linear, Slack, and other external tools",
+      "status": {
+        "connected": "Connected",
+        "notConnected": "Not Connected"
+      },
+      "noWorkspace": {
+        "title": "No Workspace",
+        "description": "Create a workspace first to configure integrations.",
+        "goToOrgSettings": "Go to Organization Settings"
+      },
+      "tabs": {
+        "github": "GitHub",
+        "jira": "Jira",
+        "linear": "Linear",
+        "slack": "Slack"
+      },
+      "github": {
+        "title": "GitHub",
+        "description": "GitHub is connected via your account login",
+        "connectedAs": "Connected as {name}",
+        "manageRepositories": "Manage Repositories",
+        "needsReauth": "GitHub connection needs re-authentication",
+        "tokenExpired": "Your GitHub token has expired or been revoked.",
+        "reconnect": "Reconnect GitHub"
+      },
+      "jira": {
+        "title": "Jira",
+        "description": "Import and sync issues from Jira",
+        "siteUrlLabel": "Jira Site URL",
+        "siteUrlPlaceholder": "https://your-company.atlassian.net",
+        "emailLabel": "Email",
+        "emailPlaceholder": "your-email@company.com",
+        "apiTokenLabel": "API Token",
+        "getToken": "Get token",
+        "apiTokenPlaceholder": "Your Jira API token",
+        "contactAdmin": "Contact an admin to configure Jira integration."
+      },
+      "linear": {
+        "title": "Linear",
+        "description": "Import and sync issues from Linear",
+        "apiKeyLabel": "Linear API Key",
+        "getKey": "Get key",
+        "apiKeyPlaceholder": "lin_api_...",
+        "apiKeyHint": "Create a personal API key in Linear Settings > API",
+        "contactAdmin": "Contact an admin to configure Linear integration."
+      },
+      "connection": {
+        "testConnection": "Test Connection",
+        "testing": "Testing...",
+        "connect": "Connect",
+        "connecting": "Connecting...",
+        "disconnect": "Disconnect",
+        "connectionSuccessful": "Connection successful! You can now connect.",
+        "connectionTestFailed": "Connection test failed",
+        "connectionFailed": "Connection failed",
+        "allFieldsRequired": "All fields are required",
+        "apiKeyRequired": "API key is required"
+      },
+      "connectedIntegration": {
+        "autoSyncEnabled": "Auto-sync enabled",
+        "lastSynced": "Last synced: {date}",
+        "syncNow": "Sync Now",
+        "syncing": "Syncing..."
+      },
+      "statusMapping": {
+        "title": "Status Mapping",
+        "description": "Map {name} statuses to your workspace statuses",
+        "selectStatus": "Select status...",
+        "noStatuses": "No statuses found. Connect to {name} first.",
+        "save": "Save"
+      },
+      "slack": {
+        "title": "Slack",
+        "description": "Connect Slack for standups, blockers, and team updates",
+        "connectDescription": "Connect your Slack workspace to enable slash commands for standups, task updates, and blocker reporting directly from Slack.",
+        "addToSlack": "Add to Slack",
+        "contactAdmin": "Contact an admin to configure Slack integration.",
+        "slackWorkspace": "Slack Workspace",
+        "team": "Team: {id}",
+        "syncChannels": "Sync Channels",
+        "autoMapUsers": "Auto-Map Users",
+        "mappedUsers": "Mapped {count} users",
+        "defaultNotificationChannel": "Default Notification Channel",
+        "defaultChannelDescription": "Choose where Slack notifications are sent by default. Per-category overrides can be set in notification settings.",
+        "directMessageDefault": "Direct message (default)",
+        "defaultChannelUpdated": "Default channel updated",
+        "resetToDirectMessages": "Reset to direct messages",
+        "failedUpdateChannel": "Failed to update default channel",
+        "configuredChannels": "Configured Channels",
+        "configuredChannelsDescription": "Select channels to monitor for standups and task updates",
+        "addChannel": "Add Channel",
+        "standups": "Standups",
+        "blockers": "Blockers",
+        "noChannelsConfigured": "No channels configured yet",
+        "addChannelsToStart": "Add channels to start monitoring",
+        "importHistory": "Import History",
+        "importDescription": "Import existing messages from Slack channels to populate standups and activity",
+        "daysBack": "Days back:",
+        "importMessages": "Import Messages",
+        "importing": "Importing...",
+        "selectChannel": "Select Channel",
+        "chooseChannel": "Choose a channel..."
+      },
+      "toasts": {
+        "failedUpdateOrg": "Failed to update organization"
+      }
+    },
+    "notifications": {
+      "title": "Notifications",
+      "description": "Choose how and when you want to be notified",
+      "channels": {
+        "title": "Notification Channels",
+        "inApp": "In-App",
+        "email": "Email",
+        "slack": "Slack",
+        "push": "Push",
+        "webPush": "Web Push",
+        "alwaysOn": "Always on",
+        "connected": "Connected",
+        "viaWorkspace": "Via workspace integration",
+        "notSupported": "Not supported",
+        "blockedInBrowser": "Blocked in browser",
+        "enable": "Enable",
+        "disable": "Disable"
+      },
+      "categories": {
+        "reviews_and_goals": "Reviews & Goals",
+        "reviews_and_goalsDescription": "Performance reviews, peer feedback, and goal tracking",
+        "reminders": "Reminders",
+        "remindersDescription": "Deadlines, due dates, and task reminders",
+        "on_call": "On-Call",
+        "on_callDescription": "Shift schedules, swaps, and on-call alerts",
+        "workspace": "Workspace",
+        "workspaceDescription": "Workspace invitations and team membership",
+        "mentions": "Mentions",
+        "mentionsDescription": "When you're @mentioned in tasks or comments",
+        "billing_and_usage": "Billing & Usage",
+        "billing_and_usageDescription": "Resource usage alerts and limits",
+        "insights": "Insights",
+        "insightsDescription": "Metric warnings and critical alerts",
+        "leave": "Leave",
+        "leaveDescription": "Leave requests and approvals",
+        "app_access": "App Access",
+        "app_accessDescription": "Application access requests and approvals",
+        "agents": "Agents",
+        "agentsDescription": "AI agent invocations and status updates",
+        "uptime": "Uptime",
+        "uptimeDescription": "Service monitoring incidents and recovery alerts",
+        "learning": "Learning",
+        "learningDescription": "Learning goals, approvals, and activity completion",
+        "forms": "Forms",
+        "formsDescription": "Form submissions and processing status",
+        "campaigns": "Campaigns",
+        "campaignsDescription": "Email campaign scheduling and delivery",
+        "automations": "Automations",
+        "automationsDescription": "Automation run status and failures",
+        "hiring": "Hiring",
+        "hiringDescription": "Assessments, invitations, and candidate updates",
+        "gtm": "GTM",
+        "gtmDescription": "Go-to-market alerts and pipeline events",
+        "documents": "Documents",
+        "documentsDescription": "Document sharing, mentions, and comments",
+        "chat": "Chat",
+        "chatDescription": "Chat mentions and AI conversation sharing"
+      },
+      "categoryToggle": {
+        "allInCategory": "All in category",
+        "events": "{count} events"
+      },
+      "slackChannel": {
+        "label": "Slack channel:",
+        "dmDefault": "DM (default)"
+      },
+      "emptyState": {
+        "noTypes": "No notification types available yet. Notifications will appear here as you use more features."
+      },
+      "toasts": {
+        "preferenceUpdated": "Preference updated",
+        "failedUpdate": "Failed to update preference",
+        "categoryUpdated": "Category preference updated",
+        "failedCategoryUpdate": "Failed to update category preference",
+        "slackRouted": "Slack routed to #{channel}",
+        "slackResetToDm": "Reset to DM",
+        "failedSlackChannel": "Failed to update Slack channel",
+        "webPushDisabled": "Web push disabled",
+        "failedDisablePush": "Failed to disable web push",
+        "webPushEnabled": "Web push enabled",
+        "pushBlockedInBrowser": "Notifications are blocked in your browser settings",
+        "failedEnablePush": "Failed to enable web push"
+      }
+    }
+  }
+}

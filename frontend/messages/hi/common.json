@@ -1,0 +1,33 @@
+{
+  "common": {
+    "loading": "लोड हो रहा है...",
+    "cancel": "रद्द करें",
+    "save": "सहेजें",
+    "delete": "हटाएं",
+    "confirm": "पुष्टि करें",
+    "search": "खोजें",
+    "create": "बनाएं",
+    "edit": "संपादित करें",
+    "viewAll": "सभी देखें",
+    "viewDetails": "विवरण देखें",
+    "goBack": "वापस जाएं",
+    "tryAgain": "पुनः प्रयास करें",
+    "noResults": "कोई परिणाम नहीं मिला",
+    "error": "एक त्रुटि हुई",
+    "success": "सफल",
+    "status": {
+      "active": "सक्रिय",
+      "completed": "पूर्ण",
+      "pending": "लंबित",
+      "draft": "ड्राफ्ट",
+      "cancelled": "रद्द",
+      "inProgress": "प्रगति में"
+    },
+    "priority": {
+      "critical": "अत्यावश्यक",
+      "high": "उच्च",
+      "medium": "मध्यम",
+      "low": "निम्न"
+    }
+  }
+}

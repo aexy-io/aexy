@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { use, useMemo } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -96,9 +96,9 @@ function StatCard({ title, value, subtitle, icon, trend, trendValue, color = "de
 export default function SprintAnalyticsPage({
   params,
 }: {
-  params: { projectId: string; sprintId: string };
+  params: Promise<{ projectId: string; sprintId: string }>;
 }) {
-  const { projectId, sprintId } = params;
+  const { projectId, sprintId } = use(params);
 
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { currentWorkspaceId, currentWorkspaceLoading } = useWorkspace();

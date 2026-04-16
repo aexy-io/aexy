@@ -86,10 +86,6 @@ services:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/aexy
       - REDIS_URL=redis://redis:6379/0
       - TEMPORAL_ADDRESS=temporal:7233
-      - LLM_PROVIDER=gemini
-      - LLM_MODEL=gemini-2.0-flash
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-your-gemini-api-key}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
       - S3_ENDPOINT_URL=http://rustfs:9000
       - S3_ACCESS_KEY_ID=${RUSTFS_ROOT_USER:-aexy-admin}
@@ -97,6 +93,10 @@ services:
       - S3_BUCKET_NAME=aexy-storage
       - S3_REGION=us-east-1
       - S3_PUBLIC_ENDPOINT_URL=http://localhost:9000
+      - PLATFORM_ORG_ID=${PLATFORM_ORG_ID:-}
+    # LLM provider configuration (LLM_PROVIDER, LLM_MODEL, *_API_KEY, etc.)
+    # is read from backend/.env by pydantic settings — do not duplicate here
+    # or the compose values (often empty strings) will shadow the .env file.
     depends_on:
       postgres:
         condition: service_healthy
@@ -119,9 +119,6 @@ services:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/aexy
       - REDIS_URL=redis://redis:6379/0
       - TEMPORAL_ADDRESS=temporal:7233
-      - LLM_PROVIDER=gemini
-      - LLM_MODEL=gemini-2.0-flash
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-your-gemini-api-key}
       - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
       - S3_ENDPOINT_URL=http://rustfs:9000
       - S3_ACCESS_KEY_ID=${RUSTFS_ROOT_USER:-aexy-admin}
@@ -129,6 +126,7 @@ services:
       - S3_BUCKET_NAME=aexy-storage
       - S3_REGION=us-east-1
       - S3_PUBLIC_ENDPOINT_URL=http://localhost:9000
+      - PLATFORM_ORG_ID=${PLATFORM_ORG_ID:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -178,6 +176,7 @@ services:
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
       - AWS_REGION=${AWS_REGION:-us-east-1}
+      - POSTMARK_SERVER_TOKEN=${POSTMARK_SERVER_TOKEN:-}
       - BACKEND_URL=http://aexy-backend:8000
     depends_on:
       postgres:

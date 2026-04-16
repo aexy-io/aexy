@@ -1,0 +1,470 @@
+{
+  "settings": {
+    "appearance": {
+      "title": "दिखावट",
+      "description": "एप्लिकेशन की दिखावट को कस्टमाइज़ करें",
+      "theme": {
+        "title": "थीम",
+        "description": "अपनी पसंदीदा रंग योजना चुनें",
+        "dark": "डार्क",
+        "darkDescription": "हल्के टेक्स्ट के साथ गहरी पृष्ठभूमि",
+        "light": "लाइट",
+        "lightDescription": "गहरे टेक्स्ट के साथ हल्की पृष्ठभूमि",
+        "system": "सिस्टम",
+        "systemDescription": "अपने सिस्टम सेटिंग्स के अनुसार स्वचालित रूप से मिलाएं",
+        "usingSystemMode": "वर्तमान में आपकी सिस्टम सेटिंग्स के आधार पर {mode} मोड का उपयोग हो रहा है।",
+        "autoSaveNote": "बदलाव स्वचालित रूप से सहेजे जाते हैं और तुरंत प्रभावी होते हैं।"
+      },
+      "sidebarLayout": {
+        "title": "साइडबार लेआउट",
+        "description": "साइडबार में नेविगेशन आइटम कैसे व्यवस्थित हों, यह चुनें",
+        "grouped": "समूहित",
+        "groupedDescription": "कार्यात्मक क्षेत्रों के अनुसार व्यवस्थित (Engineering, People, Business, Knowledge)",
+        "flat": "सपाट",
+        "flatDescription": "त्वरित पहुँच के लिए सभी सुविधाएँ शीर्ष स्तर पर",
+        "preview": "पूर्वावलोकन"
+      }
+    },
+    "organization": {
+      "title": "संगठन सेटिंग्स",
+      "description": "अपने वर्कस्पेस और टीम सदस्यों को प्रबंधित करें",
+      "workspaces": {
+        "title": "वर्कस्पेस",
+        "newWorkspace": "नया वर्कस्पेस",
+        "noWorkspacesTitle": "अभी तक कोई वर्कस्पेस नहीं",
+        "noWorkspacesDescription": "अपनी टीम को प्रबंधित करने के लिए अपना पहला वर्कस्पेस बनाएं।",
+        "createWorkspace": "वर्कस्पेस बनाएं",
+        "members": "{count} सदस्य",
+        "projects": "{count} प्रोजेक्ट",
+        "noDescription": "कोई विवरण नहीं",
+        "githubLinked": "GitHub से जुड़ा",
+        "internal": "आंतरिक"
+      },
+      "createWorkspaceModal": {
+        "title": "वर्कस्पेस बनाएं",
+        "nameLabel": "वर्कस्पेस का नाम",
+        "namePlaceholder": "मेरी टीम",
+        "descriptionLabel": "विवरण (वैकल्पिक)",
+        "descriptionPlaceholder": "यह वर्कस्पेस किसके लिए है?",
+        "typeLabel": "प्रकार",
+        "internalType": "आंतरिक",
+        "internalDescription": "मैन्युअल सदस्य प्रबंधन",
+        "githubLinkedType": "GitHub से जुड़ा",
+        "githubLinkedDescription": "GitHub org से सिंक करें",
+        "githubOrgLabel": "GitHub संगठन",
+        "githubOrgPlaceholder": "एक संगठन चुनें...",
+        "creating": "बना रहे हैं...",
+        "nameRequired": "वर्कस्पेस का नाम आवश्यक है"
+      },
+      "members": {
+        "title": "टीम सदस्य",
+        "count": "{count} सदस्य",
+        "inviteMember": "सदस्य आमंत्रित करें",
+        "noMembers": "कोई सदस्य नहीं मिला",
+        "you": "(आप)",
+        "changeRole": "भूमिका बदलें",
+        "removeFromWorkspace": "वर्कस्पेस से हटाएं",
+        "resendInvite": "आमंत्रण पुनः भेजें",
+        "resending": "पुनः भेज रहे हैं..."
+      },
+      "roles": {
+        "owner": "स्वामी",
+        "ownerDescription": "पूर्ण पहुँच, वर्कस्पेस हटा सकते हैं",
+        "admin": "व्यवस्थापक",
+        "adminDescription": "सदस्यों और सेटिंग्स का प्रबंधन कर सकते हैं",
+        "member": "सदस्य",
+        "memberDescription": "देख सकते हैं और योगदान कर सकते हैं",
+        "viewer": "दर्शक",
+        "viewerDescription": "केवल पढ़ने की पहुँच"
+      },
+      "inviteModal": {
+        "title": "टीम सदस्य आमंत्रित करें",
+        "emailLabel": "ईमेल पता",
+        "emailPlaceholder": "colleague@company.com",
+        "roleLabel": "भूमिका",
+        "emailRequired": "ईमेल आवश्यक है",
+        "inviting": "आमंत्रित कर रहे हैं...",
+        "sendInvite": "आमंत्रण भेजें"
+      },
+      "pendingInvites": {
+        "title": "लंबित आमंत्रण",
+        "count": "{count} लंबित",
+        "pending": "लंबित",
+        "expired": "समाप्त",
+        "expires": "{date} को समाप्त होगा",
+        "noExpiry": "कोई समाप्ति नहीं",
+        "invitedBy": "{name} द्वारा आमंत्रित",
+        "revokeInvite": "आमंत्रण रद्द करें",
+        "resendInvite": "आमंत्रण पुनः भेजें"
+      },
+      "seatUsage": {
+        "title": "सीटें उपयोग में",
+        "count": "{used} / {total}"
+      },
+      "appSettings": {
+        "title": "ऐप सेटिंग्स",
+        "description": "अपने वर्कस्पेस के लिए ऐप्स सक्षम या अक्षम करें",
+        "ownerOnly": "केवल वर्कस्पेस का स्वामी ऐप सेटिंग्स बदल सकता है।"
+      },
+      "quickLinks": {
+        "projects": "प्रोजेक्ट",
+        "manageProjects": "प्रोजेक्ट प्रबंधित करें",
+        "repositories": "रिपॉज़िटरी",
+        "manageRepos": "रिपॉज़िटरी प्रबंधित करें",
+        "billing": "बिलिंग",
+        "comingSoon": "जल्द आ रहा है"
+      },
+      "toasts": {
+        "inviteResent": "{email} को आमंत्रण पुनः भेजा गया",
+        "failedUpdateOrg": "संगठन अपडेट करने में विफल"
+      }
+    },
+    "billing": {
+      "title": "बिलिंग और उपयोग",
+      "description": "अपनी सदस्यता प्रबंधित करें, उपयोग ट्रैक करें, और चालान देखें",
+      "successMessage": "सदस्यता सफलतापूर्वक सक्रिय हो गई! अपग्रेड करने के लिए धन्यवाद।",
+      "plan": {
+        "title": "{name} प्लान",
+        "free": "फ्री",
+        "personal": "व्यक्तिगत",
+        "perUserPerMonth": "/उपयोगकर्ता/माह",
+        "perMonth": "/माह",
+        "plusUsage": "/माह + उपयोग",
+        "payAfterUse": "उपयोग के बाद भुगतान करें",
+        "billing": "{model} बिलिंग"
+      },
+      "subscription": {
+        "status": "स्थिति",
+        "currentPeriod": "वर्तमान अवधि",
+        "nextBilling": "अगली बिलिंग",
+        "managedByOwner": "आपका वर्कस्पेस {plan} प्लान पर है। बिलिंग वर्कस्पेस के स्वामी द्वारा प्रबंधित होती है।",
+        "freePlanMessage": "आप फ्री प्लान पर हैं जिसमें सभी मॉड्यूल तक पहुँच है। अधिक AI, रिपॉज़िटरी, और टीम क्षमता के लिए अपग्रेड करें।",
+        "seePlans": "प्लान देखें",
+        "comparePlans": "प्लान की तुलना करें",
+        "upgradePrompt": "अधिक AI और क्षमता के लिए अपग्रेड करें",
+        "billingOptions": "प्रति-सीट, फ्लैट+उपयोग, या पोस्टपेड बिलिंग चुनें"
+      },
+      "seats": {
+        "title": "सीट प्रबंधन",
+        "totalSeats": "कुल सीटें",
+        "baseSeats": "बेस सीटें",
+        "additionalSeats": "अतिरिक्त सीटें",
+        "perSeatPrice": "प्रति सीट मूल्य"
+      },
+      "billingBreakdown": {
+        "title": "बिलिंग विवरण",
+        "baseFee": "बेस शुल्क",
+        "fixedMonthly": "निश्चित मासिक शुल्क",
+        "aiUsage": "AI उपयोग",
+        "metered": "मीटर्ड"
+      },
+      "postpaid": {
+        "title": "पोस्टपेड बिलिंग",
+        "accruedThisPeriod": "इस अवधि में अर्जित",
+        "estimatedTotal": "अनुमानित कुल",
+        "lastSettled": "अंतिम निपटान",
+        "notYet": "अभी तक नहीं",
+        "invoiceNote": "प्रत्येक बिलिंग अवधि के अंत में आपको चालान भेजा जाएगा। उपयोग के बाद भुगतान एकत्र किया जाता है।"
+      },
+      "usage": {
+        "title": "वर्तमान उपयोग"
+      },
+      "planFeatures": {
+        "title": "प्लान सुविधाएँ",
+        "unlimited": "असीमित",
+        "repositories": "{count} रिपॉज़िटरी",
+        "syncHistory": "{count} दिन सिंक इतिहास",
+        "unlimitedSyncHistory": "असीमित सिंक इतिहास",
+        "aiRequests": "{count} AI अनुरोध/दिन",
+        "unlimitedAiRequests": "असीमित AI अनुरोध/दिन",
+        "realTimeSync": "रीयल-टाइम सिंक",
+        "advancedAnalytics": "उन्नत एनालिटिक्स",
+        "teamFeatures": "टीम सुविधाएँ",
+        "dataExports": "डेटा एक्सपोर्ट",
+        "webhooks": "Webhooks"
+      },
+      "paymentMethod": {
+        "title": "भुगतान विधि",
+        "managedViaStripe": "Stripe के माध्यम से प्रबंधित",
+        "updatePrompt": "अपनी भुगतान विधि अपडेट करने के लिए \"बिलिंग प्रबंधित करें\" पर क्लिक करें",
+        "noPaymentMethod": "कोई भुगतान विधि दर्ज नहीं है"
+      },
+      "actions": {
+        "manageBilling": "बिलिंग प्रबंधित करें",
+        "changePlan": "प्लान बदलें",
+        "upgradePlan": "प्लान अपग्रेड करें"
+      },
+      "help": {
+        "needHelp": "बिलिंग में सहायता चाहिए?",
+        "contactSupport": "हमारी बिलिंग सहायता से संपर्क करें"
+      },
+      "toasts": {
+        "portalFailed": "बिलिंग पोर्टल खोलने में विफल। कृपया पुनः प्रयास करें।"
+      }
+    },
+    "repositories": {
+      "title": "रिपॉज़िटरी सेटिंग्स",
+      "description": "प्रबंधित करें कि कौन सी रिपॉज़िटरी सिंक और विश्लेषित हों",
+      "stats": {
+        "enabledCount": "{enabled} / {total}",
+        "repositoriesEnabled": "रिपॉज़िटरी सक्षम"
+      },
+      "actions": {
+        "manageAccess": "पहुँच प्रबंधित करें",
+        "refreshFromGithub": "GitHub से रिफ्रेश करें",
+        "startSync": "सिंक शुरू करें",
+        "syncAll": "सभी सिंक करें",
+        "reconnectGithub": "GitHub पुनः कनेक्ट करें",
+        "installGithubApp": "GitHub App इंस्टॉल करें",
+        "manageAccessOnGithub": "GitHub पर पहुँच प्रबंधित करें"
+      },
+      "sections": {
+        "connectedRepos": "कनेक्टेड रिपॉज़िटरी",
+        "reposBeingAnalyzed": "{count} रिपॉज़िटरी का विश्लेषण हो रहा है",
+        "personalRepos": "व्यक्तिगत रिपॉज़िटरी",
+        "reposAvailable": "{count} रिपॉज़िटरी उपलब्ध",
+        "organizations": "संगठन",
+        "orgReposEnabled": "{total} में से {enabled} रिपॉज़िटरी सक्षम"
+      },
+      "syncStatus": {
+        "pending": "लंबित",
+        "syncing": "सिंक हो रहा है",
+        "synced": "सिंक हुआ",
+        "failed": "विफल"
+      },
+      "webhookStatus": {
+        "none": "कोई webhook नहीं",
+        "pending": "Webhook लंबित",
+        "active": "Webhook सक्रिय",
+        "failed": "Webhook विफल"
+      },
+      "emptyStates": {
+        "noInstallationTitle": "GitHub App इंस्टॉल नहीं है",
+        "noInstallationDescription": "अपनी रिपॉज़िटरी तक पहुँच प्रदान करने के लिए Aexy GitHub App इंस्टॉल करें। इससे हम आपके कोड योगदानों का विश्लेषण कर सकते हैं।",
+        "installUrlMissing": "GitHub App इंस्टॉल URL कॉन्फ़िगर नहीं है। कृपया सहायता से संपर्क करें।",
+        "noReposTitle": "कोई रिपॉज़िटरी नहीं मिली",
+        "noReposDescription": "हम कोई रिपॉज़िटरी नहीं खोज पाए। GitHub से रिफ्रेश करें या अपनी ऐप इंस्टॉलेशन अनुमतियाँ जाँचें।"
+      },
+      "githubError": {
+        "title": "GitHub कनेक्शन को पुनः प्रमाणीकरण की आवश्यकता है",
+        "defaultMessage": "आपका GitHub टोकन समाप्त हो गया है या रद्द कर दिया गया है। पुनः कनेक्ट करने तक सिंक रुका हुआ है।"
+      },
+      "syncSettings": {
+        "title": "सिंक सेटिंग्स",
+        "autoSync": "ऑटो-सिंक",
+        "autoSyncDescription": "सक्षम रिपॉज़िटरी को एक शेड्यूल पर स्वचालित रूप से सिंक करें",
+        "syncFrequency": "सिंक आवृत्ति",
+        "syncFrequencyDescription": "कमिट, PR और रिव्यू कितनी बार सिंक करें",
+        "every30m": "हर 30 मिनट",
+        "every1h": "हर घंटे",
+        "every6h": "हर 6 घंटे",
+        "every12h": "हर 12 घंटे",
+        "onceADay": "दिन में एक बार",
+        "syncAllRepos": "सभी रिपॉज़िटरी सिंक करें",
+        "syncAllDescription": "सभी {count} सक्षम {repoWord} के लिए मैन्युअल सिंक शुरू करें",
+        "realTimeWebhooks": "रीयल-टाइम webhooks",
+        "realTimeWebhooksDescription": "Push इवेंट, pull request और रिव्यू GitHub webhooks के माध्यम से रीयल-टाइम में सिंक होते हैं"
+      },
+      "toasts": {
+        "failedUpdateOrg": "संगठन अपडेट करने में विफल",
+        "failedUpdateRepo": "रिपॉज़िटरी अपडेट करने में विफल",
+        "failedStartSync": "सिंक शुरू करने में विफल",
+        "failedAutoSync": "ऑटो-सिंक अपडेट करने में विफल",
+        "failedSyncFrequency": "सिंक आवृत्ति अपडेट करने में विफल"
+      }
+    },
+    "integrations": {
+      "title": "इंटीग्रेशन",
+      "description": "Jira, Linear, Slack, और अन्य बाहरी टूल कनेक्ट करें",
+      "status": {
+        "connected": "कनेक्टेड",
+        "notConnected": "कनेक्ट नहीं"
+      },
+      "noWorkspace": {
+        "title": "कोई वर्कस्पेस नहीं",
+        "description": "इंटीग्रेशन कॉन्फ़िगर करने के लिए पहले एक वर्कस्पेस बनाएं।",
+        "goToOrgSettings": "संगठन सेटिंग्स पर जाएं"
+      },
+      "tabs": {
+        "github": "GitHub",
+        "jira": "Jira",
+        "linear": "Linear",
+        "slack": "Slack"
+      },
+      "github": {
+        "title": "GitHub",
+        "description": "GitHub आपके अकाउंट लॉगिन से कनेक्ट है",
+        "connectedAs": "{name} के रूप में कनेक्टेड",
+        "manageRepositories": "रिपॉज़िटरी प्रबंधित करें",
+        "needsReauth": "GitHub कनेक्शन को पुनः प्रमाणीकरण की आवश्यकता है",
+        "tokenExpired": "आपका GitHub टोकन समाप्त हो गया है या रद्द कर दिया गया है।",
+        "reconnect": "GitHub पुनः कनेक्ट करें"
+      },
+      "jira": {
+        "title": "Jira",
+        "description": "Jira से इश्यू इम्पोर्ट और सिंक करें",
+        "siteUrlLabel": "Jira साइट URL",
+        "siteUrlPlaceholder": "https://your-company.atlassian.net",
+        "emailLabel": "ईमेल",
+        "emailPlaceholder": "your-email@company.com",
+        "apiTokenLabel": "API Token",
+        "getToken": "Token प्राप्त करें",
+        "apiTokenPlaceholder": "आपका Jira API token",
+        "contactAdmin": "Jira इंटीग्रेशन कॉन्फ़िगर करने के लिए एक व्यवस्थापक से संपर्क करें।"
+      },
+      "linear": {
+        "title": "Linear",
+        "description": "Linear से इश्यू इम्पोर्ट और सिंक करें",
+        "apiKeyLabel": "Linear API Key",
+        "getKey": "Key प्राप्त करें",
+        "apiKeyPlaceholder": "lin_api_...",
+        "apiKeyHint": "Linear Settings > API में एक personal API key बनाएं",
+        "contactAdmin": "Linear इंटीग्रेशन कॉन्फ़िगर करने के लिए एक व्यवस्थापक से संपर्क करें।"
+      },
+      "connection": {
+        "testConnection": "कनेक्शन टेस्ट करें",
+        "testing": "टेस्ट हो रहा है...",
+        "connect": "कनेक्ट करें",
+        "connecting": "कनेक्ट हो रहा है...",
+        "disconnect": "डिस्कनेक्ट करें",
+        "connectionSuccessful": "कनेक्शन सफल! अब आप कनेक्ट कर सकते हैं।",
+        "connectionTestFailed": "कनेक्शन टेस्ट विफल",
+        "connectionFailed": "कनेक्शन विफल",
+        "allFieldsRequired": "सभी फ़ील्ड आवश्यक हैं",
+        "apiKeyRequired": "API key आवश्यक है"
+      },
+      "connectedIntegration": {
+        "autoSyncEnabled": "ऑटो-सिंक सक्षम",
+        "lastSynced": "अंतिम सिंक: {date}",
+        "syncNow": "अभी सिंक करें",
+        "syncing": "सिंक हो रहा है..."
+      },
+      "statusMapping": {
+        "title": "स्थिति मैपिंग",
+        "description": "{name} स्थितियों को अपने वर्कस्पेस स्थितियों से मैप करें",
+        "selectStatus": "स्थिति चुनें...",
+        "noStatuses": "कोई स्थिति नहीं मिली। पहले {name} से कनेक्ट करें।",
+        "save": "सहेजें"
+      },
+      "slack": {
+        "title": "Slack",
+        "description": "स्टैंडअप, ब्लॉकर्स और टीम अपडेट के लिए Slack कनेक्ट करें",
+        "connectDescription": "स्टैंडअप, टास्क अपडेट और ब्लॉकर रिपोर्टिंग के लिए स्लैश कमांड सक्षम करने हेतु अपना Slack वर्कस्पेस कनेक्ट करें।",
+        "addToSlack": "Slack में जोड़ें",
+        "contactAdmin": "Slack इंटीग्रेशन कॉन्फ़िगर करने के लिए एक व्यवस्थापक से संपर्क करें।",
+        "slackWorkspace": "Slack वर्कस्पेस",
+        "team": "टीम: {id}",
+        "syncChannels": "चैनल सिंक करें",
+        "autoMapUsers": "उपयोगकर्ता ऑटो-मैप करें",
+        "mappedUsers": "{count} उपयोगकर्ता मैप किए गए",
+        "defaultNotificationChannel": "डिफ़ॉल्ट सूचना चैनल",
+        "defaultChannelDescription": "चुनें कि Slack सूचनाएँ डिफ़ॉल्ट रूप से कहाँ भेजी जाएं। प्रति-श्रेणी ओवरराइड सूचना सेटिंग्स में सेट किए जा सकते हैं।",
+        "directMessageDefault": "डायरेक्ट मैसेज (डिफ़ॉल्ट)",
+        "defaultChannelUpdated": "डिफ़ॉल्ट चैनल अपडेट हुआ",
+        "resetToDirectMessages": "डायरेक्ट मैसेज पर रीसेट",
+        "failedUpdateChannel": "डिफ़ॉल्ट चैनल अपडेट करने में विफल",
+        "configuredChannels": "कॉन्फ़िगर्ड चैनल",
+        "configuredChannelsDescription": "स्टैंडअप और टास्क अपडेट के लिए मॉनिटर करने हेतु चैनल चुनें",
+        "addChannel": "चैनल जोड़ें",
+        "standups": "स्टैंडअप",
+        "blockers": "ब्लॉकर्स",
+        "noChannelsConfigured": "अभी तक कोई चैनल कॉन्फ़िगर नहीं है",
+        "addChannelsToStart": "मॉनिटरिंग शुरू करने के लिए चैनल जोड़ें",
+        "importHistory": "इतिहास इम्पोर्ट करें",
+        "importDescription": "स्टैंडअप और गतिविधि भरने के लिए Slack चैनलों से मौजूदा संदेश इम्पोर्ट करें",
+        "daysBack": "कितने दिन पीछे:",
+        "importMessages": "संदेश इम्पोर्ट करें",
+        "importing": "इम्पोर्ट हो रहा है...",
+        "selectChannel": "चैनल चुनें",
+        "chooseChannel": "एक चैनल चुनें..."
+      },
+      "toasts": {
+        "failedUpdateOrg": "संगठन अपडेट करने में विफल"
+      }
+    },
+    "notifications": {
+      "title": "सूचनाएँ",
+      "description": "चुनें कि आपको कैसे और कब सूचित किया जाए",
+      "channels": {
+        "title": "सूचना चैनल",
+        "inApp": "इन-ऐप",
+        "email": "ईमेल",
+        "slack": "Slack",
+        "push": "पुश",
+        "webPush": "वेब पुश",
+        "alwaysOn": "हमेशा चालू",
+        "connected": "कनेक्टेड",
+        "viaWorkspace": "वर्कस्पेस इंटीग्रेशन से",
+        "notSupported": "समर्थित नहीं",
+        "blockedInBrowser": "ब्राउज़र में अवरुद्ध",
+        "enable": "सक्षम करें",
+        "disable": "अक्षम करें"
+      },
+      "categories": {
+        "reviews_and_goals": "रिव्यू और लक्ष्य",
+        "reviews_and_goalsDescription": "प्रदर्शन रिव्यू, सहकर्मी फ़ीडबैक, और लक्ष्य ट्रैकिंग",
+        "reminders": "रिमाइंडर",
+        "remindersDescription": "डेडलाइन, नियत तिथियाँ, और टास्क रिमाइंडर",
+        "on_call": "ऑन-कॉल",
+        "on_callDescription": "शिफ्ट शेड्यूल, स्वैप, और ऑन-कॉल अलर्ट",
+        "workspace": "वर्कस्पेस",
+        "workspaceDescription": "वर्कस्पेस आमंत्रण और टीम सदस्यता",
+        "mentions": "मेंशन",
+        "mentionsDescription": "जब आपको टास्क या टिप्पणियों में @मेंशन किया जाए",
+        "billing_and_usage": "बिलिंग और उपयोग",
+        "billing_and_usageDescription": "संसाधन उपयोग अलर्ट और सीमाएँ",
+        "insights": "इनसाइट्स",
+        "insightsDescription": "मेट्रिक चेतावनियाँ और गंभीर अलर्ट",
+        "leave": "छुट्टी",
+        "leaveDescription": "छुट्टी अनुरोध और अनुमोदन",
+        "app_access": "ऐप पहुँच",
+        "app_accessDescription": "एप्लिकेशन पहुँच अनुरोध और अनुमोदन",
+        "agents": "एजेंट",
+        "agentsDescription": "AI एजेंट इनवोकेशन और स्थिति अपडेट",
+        "uptime": "अपटाइम",
+        "uptimeDescription": "सर्विस मॉनिटरिंग इंसिडेंट और रिकवरी अलर्ट",
+        "learning": "लर्निंग",
+        "learningDescription": "लर्निंग लक्ष्य, अनुमोदन, और गतिविधि पूर्णता",
+        "forms": "फ़ॉर्म",
+        "formsDescription": "फ़ॉर्म सबमिशन और प्रोसेसिंग स्थिति",
+        "campaigns": "कैम्पेन",
+        "campaignsDescription": "ईमेल कैम्पेन शेड्यूलिंग और डिलीवरी",
+        "automations": "ऑटोमेशन",
+        "automationsDescription": "ऑटोमेशन रन स्थिति और विफलताएँ",
+        "hiring": "हायरिंग",
+        "hiringDescription": "असेसमेंट, आमंत्रण, और कैंडिडेट अपडेट",
+        "gtm": "GTM",
+        "gtmDescription": "Go-to-market अलर्ट और पाइपलाइन इवेंट",
+        "documents": "दस्तावेज़",
+        "documentsDescription": "दस्तावेज़ शेयरिंग, मेंशन, और टिप्पणियाँ",
+        "chat": "चैट",
+        "chatDescription": "चैट मेंशन और AI वार्तालाप शेयरिंग"
+      },
+      "categoryToggle": {
+        "allInCategory": "श्रेणी में सभी",
+        "events": "{count} इवेंट"
+      },
+      "slackChannel": {
+        "label": "Slack चैनल:",
+        "dmDefault": "DM (डिफ़ॉल्ट)"
+      },
+      "emptyState": {
+        "noTypes": "अभी तक कोई सूचना प्रकार उपलब्ध नहीं है। जैसे-जैसे आप अधिक सुविधाओं का उपयोग करेंगे, सूचनाएँ यहाँ दिखाई देंगी।"
+      },
+      "toasts": {
+        "preferenceUpdated": "प्राथमिकता अपडेट हुई",
+        "failedUpdate": "प्राथमिकता अपडेट करने में विफल",
+        "categoryUpdated": "श्रेणी प्राथमिकता अपडेट हुई",
+        "failedCategoryUpdate": "श्रेणी प्राथमिकता अपडेट करने में विफल",
+        "slackRouted": "Slack #{channel} पर रूट किया गया",
+        "slackResetToDm": "DM पर रीसेट किया गया",
+        "failedSlackChannel": "Slack चैनल अपडेट करने में विफल",
+        "webPushDisabled": "वेब पुश अक्षम किया गया",
+        "failedDisablePush": "वेब पुश अक्षम करने में विफल",
+        "webPushEnabled": "वेब पुश सक्षम किया गया",
+        "pushBlockedInBrowser": "आपकी ब्राउज़र सेटिंग्स में सूचनाएँ अवरुद्ध हैं",
+        "failedEnablePush": "वेब पुश सक्षम करने में विफल"
+      }
+    }
+  }
+}

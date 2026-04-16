@@ -1,0 +1,70 @@
+{
+  "booking": {
+    "title": "बुकिंग",
+    "description": "अपने Event Types, उपलब्धता और बुकिंग प्रबंधित करें",
+
+    "stats": {
+      "totalBookings": "कुल बुकिंग",
+      "confirmed": "पुष्टि की गई",
+      "completionRate": "पूर्णता दर",
+      "noShowRate": "अनुपस्थिति दर"
+    },
+
+    "eventTypes": {
+      "title": "Event Types",
+      "viewAll": "सभी देखें",
+      "noEventTypesYet": "अभी तक कोई Event Type नहीं",
+      "noEventTypesDescription": "बुकिंग स्वीकार करने के लिए अपना पहला Event Type बनाएं",
+      "createEventType": "Event Type बनाएं",
+      "newEventType": "नया Event Type",
+      "duration": "{minutes} मिनट",
+      "team": "टीम",
+      "copyBookingLink": "बुकिंग लिंक कॉपी करें",
+      "bookingLinkCopied": "बुकिंग लिंक कॉपी हो गया!",
+      "activated": "Event Type सक्रिय किया गया",
+      "deactivated": "Event Type निष्क्रिय किया गया",
+      "duplicated": "Event Type डुप्लिकेट किया गया",
+      "failedToLoad": "Event Types लोड करने में विफल"
+    },
+
+    "upcomingBookings": {
+      "title": "आगामी बुकिंग",
+      "noUpcoming": "कोई आगामी बुकिंग नहीं",
+      "joinMeeting": "मीटिंग में शामिल हों",
+      "today": "आज",
+      "tomorrow": "कल"
+    },
+
+    "availability": {
+      "title": "उपलब्धता",
+      "manageAvailability": "उपलब्धता प्रबंधित करें",
+      "weeklyHours": "साप्ताहिक घंटे",
+      "dateOverrides": "तिथि अपवाद",
+      "timezone": "समय क्षेत्र",
+      "saveChanges": "परिवर्तन सहेजें",
+      "addOverride": "अपवाद जोड़ें",
+      "noOverrides": "कोई तिथि अपवाद नहीं"
+    },
+
+    "calendars": {
+      "title": "Calendar कनेक्शन",
+      "connectCalendar": "Calendar कनेक्ट करें",
+      "connected": "कनेक्टेड",
+      "disconnected": "डिस्कनेक्टेड"
+    },
+
+    "quickLinks": {
+      "title": "त्वरित लिंक",
+      "calendarConnections": "Calendar कनेक्शन",
+      "manageAvailability": "उपलब्धता प्रबंधित करें"
+    },
+
+    "locations": {
+      "zoom": "Zoom",
+      "googleMeet": "Google Meet",
+      "microsoftTeams": "Microsoft Teams",
+      "phone": "फ़ोन",
+      "inPerson": "व्यक्तिगत रूप से"
+    }
+  }
+}

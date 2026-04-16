@@ -185,6 +185,96 @@ Auth token stored in localStorage under key `token`. Data fetching via React Que
 - `backend/.env` — DATABASE_URL, REDIS_URL, TEMPORAL_ADDRESS, SECRET_KEY, LLM API keys
 - `frontend/.env` — NEXT_PUBLIC_API_URL (default: `http://localhost:8000/api/v1`)
 
+## Internationalization (i18n)
+
+The frontend uses **next-intl** for internationalization with a cookie-based locale system.
+
+### Architecture
+- **Library**: `next-intl` (App Router integration)
+- **Locale storage**: `NEXT_LOCALE` cookie (set by client, read by middleware)
+- **Supported locales**: `en` (English), `hi` (Hindi)
+- **Default locale**: `en`
+- **Message files**: Single JSON file per locale at `frontend/messages/{locale}.json`
+- **No URL prefix**: URLs stay clean (`/dashboard`, not `/en/dashboard`)
+
+### Key Files
+- `frontend/messages/en/*.json` — English translations (one file per module)
+- `frontend/messages/hi/*.json` — Hindi translations (one file per module)
+- `frontend/messages/en.json` — Merged English (auto-generated, do not hand-edit)
+- `frontend/messages/hi.json` — Merged Hindi (auto-generated, do not hand-edit)
+- `frontend/scripts/merge-messages.js` — Merge script (runs automatically via `prebuild`)
+- `frontend/src/i18n/request.ts` — Server-side config (reads locale from cookie)
+- `frontend/src/middleware.ts` — Sets `x-locale` header from cookie
+- `frontend/src/stores/localeStore.ts` — Zustand store for locale preference
+- `frontend/src/components/LocaleSelector.tsx` — Language dropdown component
+- `frontend/src/app/providers.tsx` — `NextIntlClientProvider` wrapper
+- `frontend/src/app/layout.tsx` — Loads messages, passes to providers
+
+### Adding Translations to a New Component
+
+```tsx
+"use client";
+import { useTranslations } from "next-intl";
+
+export default function MyPage() {
+  const t = useTranslations("myNamespace");
+  // For shared strings (Cancel, Save, Loading, etc.):
+  const tc = useTranslations("common");
+
+  return (
+    <h1>{t("title")}</h1>
+    <button>{tc("save")}</button>
+  );
+}
+```
+
+Then add the keys to both `messages/en.json` and `messages/hi.json`:
+```json
+{
+  "myNamespace": {
+    "title": "My Page Title"
+  }
+}
+```
+
+### Message File Structure
+Each module has its own JSON file per locale. At build time, they're merged into a single file:
+```
+messages/
+  en/
+    common.json        # { "common": { "save": "Save", ... } }
+    reviews.json       # { "reviews": { "title": "Performance Reviews", ... } }
+    sidebar.json       # { "sidebar": { "items": { ... } } }
+    settings.json      # { "settings": { ... } }
+  hi/
+    common.json        # Same keys, Hindi values
+    reviews.json
+    sidebar.json
+    settings.json
+  en.json              # Auto-merged (do not edit)
+  hi.json              # Auto-merged (do not edit)
+```
+
+**Adding a new module's translations:**
+1. Create `messages/en/mymodule.json` with `{ "myModule": { ... } }`
+2. Create `messages/hi/mymodule.json` with the same keys, Hindi values
+3. Run `npm run i18n:merge` (or it runs automatically on `npm run build`)
+```
+
+### Adding a New Locale
+1. Copy `messages/en.json` to `messages/{locale}.json`
+2. Translate all values (keep keys identical)
+3. Add the locale to `SUPPORTED_LOCALES` in `stores/localeStore.ts`
+4. Add the locale label to `LOCALE_LABELS` in `stores/localeStore.ts`
+5. Add the locale to `SUPPORTED_LOCALES` array in `middleware.ts` and `i18n/request.ts`
+
+### Conventions
+- Use `useTranslations("namespace")` — namespace matches the feature module name
+- Use `useTranslations("common")` for shared strings (Cancel, Save, Delete, status labels)
+- Keep technical terms in English in Hindi translations (API, GitHub, PR, Sprint, etc.)
+- Placeholders use ICU format: `{count}`, `{name}`, `{date}`
+- All user-facing strings in new components MUST use `useTranslations()` — no hardcoded English
+
 ## Important Gotchas
 
 - **`expire_on_commit=False`** on the async session maker — ORM objects remain usable after commit without re-fetching.

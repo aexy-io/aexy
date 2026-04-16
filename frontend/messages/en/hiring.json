@@ -1,0 +1,209 @@
+{
+  "hiring": {
+    "title": "Hiring",
+    "description": "Manage assessments, candidates, and hiring intelligence",
+
+    "dashboard": {
+      "title": "Hiring Dashboard",
+      "openPositions": "Open Positions",
+      "activeHiringRequirements": "Active hiring requirements",
+      "totalCandidates": "Total Candidates",
+      "acrossAllAssessments": "Across all assessments",
+      "completed": "Completed",
+      "assessmentCompletions": "Assessment completions",
+      "completionRate": "Completion Rate",
+      "ofInvitedCandidates": "Of invited candidates",
+      "createAssessment": "Create Assessment",
+      "buildNewAssessment": "Build a new technical assessment",
+      "viewAnalytics": "View Analytics",
+      "skillGapsHiringIntelligence": "Skill gaps & hiring intelligence",
+      "recentAssessments": "Recent Assessments",
+      "noAssessmentsYet": "No assessments yet",
+      "createYourFirstAssessment": "Create your first assessment",
+      "noOpenPositions": "No open positions",
+      "createHiringRequirement": "Create a hiring requirement",
+      "hiringFunnel": "Hiring Funnel",
+      "viewDetailedAnalytics": "View detailed analytics",
+      "candidates": "candidates"
+    },
+
+    "stages": {
+      "applied": "Applied",
+      "screening": "Screening",
+      "assessment": "Assessment",
+      "interview": "Interview",
+      "offer": "Offer",
+      "hired": "Hired",
+      "rejected": "Rejected",
+      "allStages": "All Stages"
+    },
+
+    "candidates": {
+      "title": "Candidate Pipeline",
+      "candidatesInPipeline": "{count} candidates in pipeline",
+      "addCandidate": "Add Candidate",
+      "searchCandidates": "Search candidates...",
+      "allSources": "All Sources",
+      "noCandidates": "No candidates",
+      "noCandidatesYetTitle": "No candidates yet",
+      "noCandidatesYetDescription": "Add candidates to your hiring pipeline to track their progress through assessments.",
+      "noCandidatesMatchFilters": "No candidates match your filters",
+      "errorLoadingTitle": "Error Loading Candidates",
+      "viewProfile": "View Profile",
+      "sendEmail": "Send Email",
+      "sendAssessment": "Send Assessment",
+      "scheduleInterview": "Schedule Interview",
+      "reject": "Reject",
+      "name": "Name",
+      "email": "Email",
+      "role": "Role",
+      "source": "Source",
+      "score": "Score",
+      "stage": "Stage",
+      "applied": "Applied",
+      "candidate": "Candidate"
+    },
+
+    "assessments": {
+      "title": "Assessments",
+      "description": "Create and manage technical assessments for candidates",
+      "createAssessment": "Create Assessment",
+      "searchAssessments": "Search assessments...",
+      "allStatus": "All Status",
+      "noAssessmentsYet": "No assessments yet",
+      "noAssessmentsDescription": "Create your first assessment to start evaluating candidates",
+      "showingOf": "Showing {shown} of {total} assessments",
+      "createNew": "Create New Assessment",
+      "assessmentTitle": "Assessment Title",
+      "titlePlaceholder": "e.g., Senior Software Engineer Assessment",
+      "continueEditing": "Continue Editing",
+      "viewDetails": "View Details",
+      "viewReport": "View Report",
+      "clone": "Clone",
+      "fromLastMonth": "from last month"
+    },
+
+    "assessmentStatus": {
+      "draft": "Draft",
+      "active": "Active",
+      "completed": "Completed",
+      "archived": "Archived"
+    },
+
+    "assessmentMetrics": {
+      "totalCandidates": "Total Candidates",
+      "totalTests": "Total Tests",
+      "uniqueAttempts": "Unique Attempts",
+      "attemptRate": "Attempt Rate",
+      "questions": "Questions",
+      "duration": "Duration",
+      "avgScore": "Avg Score"
+    },
+
+    "questions": {
+      "title": "Question Bank",
+      "description": "View and manage all assessment questions across your organization",
+      "backToAssessments": "Back to Assessments",
+      "searchQuestions": "Search questions...",
+      "allAssessments": "All Assessments",
+      "allTypes": "All Types",
+      "allDifficulties": "All Difficulties",
+      "showDeleted": "Show Deleted",
+      "noQuestionsFound": "No questions found",
+      "adjustFilters": "Try adjusting your filters",
+      "noQuestionsYetTitle": "No questions yet",
+      "noQuestionsYetDescription": "Build a question bank for assessments. Create coding challenges, multiple choice, or free-text questions.",
+      "goToAssessments": "Go to Assessments",
+      "totalQuestions": "Total Questions",
+      "avgScore": "Avg Score",
+      "avgTime": "Avg Time",
+      "aiGenerated": "AI Generated",
+      "question": "Question",
+      "type": "Type",
+      "difficulty": "Difficulty",
+      "attempts": "Attempts",
+      "actions": "Actions",
+      "viewDetails": "View Details",
+      "duplicate": "Duplicate",
+      "restore": "Restore",
+      "selected": "{count} question(s) selected",
+      "clear": "Clear",
+      "deleteSelected": "Delete Selected",
+      "showingRange": "Showing {start} to {end} of {total} questions",
+      "page": "Page {current} of {total}"
+    },
+
+    "questionTypes": {
+      "mcq": "Multiple Choice",
+      "coding": "Coding",
+      "shortAnswer": "Short Answer",
+      "essay": "Essay",
+      "audio": "Audio"
+    },
+
+    "difficulty": {
+      "easy": "Easy",
+      "medium": "Medium",
+      "hard": "Hard"
+    },
+
+    "templates": {
+      "title": "Hiring Templates",
+      "templatesAvailable": "{count} templates available",
+      "createTemplate": "Create Template",
+      "searchTemplates": "Search templates...",
+      "all": "All",
+      "templateType": "Template Type",
+      "templateName": "Template Name",
+      "templateNamePlaceholder": "e.g., Senior Engineer JD",
+      "templateDescription": "Description",
+      "templateDescriptionPlaceholder": "Brief description of this template...",
+      "noTemplatesFound": "No templates found",
+      "adjustSearchOrFilters": "Try adjusting your search or filters",
+      "noTemplatesYetTitle": "No assessment templates yet",
+      "noTemplatesYetDescription": "Create reusable assessment templates to speed up your hiring process.",
+      "loadingTemplates": "Loading templates..."
+    },
+
+    "templateTypes": {
+      "jd": "Job Description",
+      "rubric": "Interview Rubric",
+      "email": "Email Template"
+    },
+
+    "analytics": {
+      "title": "Hiring Analytics",
+      "codeIntelligence": "Code Intelligence",
+      "hiringFunnel": "Hiring Funnel",
+      "performance": "Performance",
+      "generateJD": "Generate JD",
+      "generateRubric": "Generate Rubric",
+      "analyzeGaps": "Analyze Gaps",
+      "pipelineMetrics": "Pipeline Metrics",
+      "timeToHire": "Time to Hire",
+      "costPerHire": "Cost per Hire",
+      "offerAcceptRate": "Offer Accept Rate"
+    },
+
+    "priority": {
+      "critical": "Critical",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+
+    "deleteConfirm": {
+      "questionHasSubmissions": "Question Has Submissions",
+      "questionSubmissionsWarning": "This question has existing submissions from candidates. Deleting it will affect their assessment records. Are you sure you want to proceed?",
+      "deleteAnyway": "Delete Anyway",
+      "deleting": "Deleting...",
+      "deleteAssessmentConfirm": "Are you sure you want to delete this assessment?"
+    },
+
+    "empty": {
+      "workspaceRequired": "Workspace Required",
+      "workspaceRequiredDescription": "Create a workspace first to start using Hiring Intelligence.",
+      "createWorkspace": "Create Workspace"
+    }
+  }
+}
