@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.2] - 2026-04-16
+
+### Added
+
+#### Agent Workspace Canvas — orchestrated multi-agent execution
+A new "Agent Workspaces" module that decomposes a user task into a DAG of typed blocks executed by specialized agent personas (researcher / analyst / writer) under a Temporal orchestration workflow, with a live block tree in the UI.
+
+- **Data model**: `agent_workspaces` + `agent_workspace_blocks` tables (SQL migration in `scripts/migrate_agent_workspaces.sql`). Block types: markdown, json, table, image, pdf, text, code, handoff, human_input, web_page. Block statuses: pending, running, completed, failed, waiting_human.
+- **Orchestrator agent**: decomposes a task into 3-10 parallel groups with per-block persona assignment and a `create_block_plan` tool that the LLM must call.
+- **Personas**: `ResearcherAgent` (web search + source tracking), `AnalystAgent` (metrics/tables), `WriterAgent` (synthesis), registered via `agents/persona_registry.py` and dispatched from `AgentBuilder`.
+- **Workspace tools for agents**: `CreateBlockTool`, `UpdateBlockTool`, `ReadBlockTool`, `QuerySprintsTool`, `QueryTicketsTool`, `QueryCRMTool`, `GenerateMarkdownTool`, `GenerateTableTool` — agents write their outputs as blocks.
+- **Temporal workflow** (`AgentOrchestrationWorkflow` on the `agents` task queue): plan → create blocks → execute blocks in parallel groups → synthesize final summary. Supports signals for `pause`, `resume`, `cancel`, `on_human_response`, `retry_block`, with `human_input` blocks waiting up to 24h via `workflow.wait_condition`.
+- **Activities**: `plan_task`, `execute_block`, `create_planned_blocks`, `synthesize_results` (all registered in `temporal/dispatch.py` with LLM_RETRY / STANDARD_RETRY policies).
+- **REST API** under `/api/v1/workspaces/{workspace_id}/agent-workspaces`: workspace CRUD, block CRUD, block tree, file upload, run, pause/resume, retry, human response.
+- **SSE streaming** at `…/stream` backed by Redis pub/sub — `block_created`, `block_updated`, `workspace_status` events, with 15s keepalive and query-string token auth (EventSource can't set headers).
+- **Multi-model ensemble runner** (`agents/ensemble.py`): runs the same prompt across Claude + Gemini in parallel and picks `best_of` via a judge model or `synthesize`s the outputs.
+- **Model selector** (`agents/model_selector.py`): chooses the model per persona/task using the current `claude-opus-4-6` / `claude-sonnet-4-6` / `claude-haiku-4-5-20251001` defaults.
+- **Frontend** (`/agent-workspaces`): list + detail + new pages, block tree with 9 per-type renderers (markdown, json, table, image, pdf, code, handoff, human_input), live progress bar, run / pause / resume / retry controls, and a React Query + SSE hook (`useWorkspaceStream`) that invalidates caches on every block update.
+- **Cross-module integration**: `WorkspaceIntegrationService.create_from_module(...)` lets any module (CRM, sprints, analytics, …) spawn a workspace with optional `auto_run`.
+- **Registered** in both `backend/models/app_definitions.py` and `frontend/config/appDefinitions.ts` with the `LayoutPanelTop` icon; added to the engineering / people-ops / business / full system bundles and the AI Agents sidebar group.
+
+### Fixed
+
+- **`WorkspaceUpdate.temporal_workflow_id`** was missing from the schema, so Pydantic v2 silently dropped it when `OrchestrationService` tried to persist the workflow ID — breaking pause/resume/retry and HITL signaling. Now declared.
+- **SSE authentication**: endpoint accepts `?token=` (EventSource has no way to set `Authorization`) and verifies workspace membership before streaming.
+- **`AgentWorkspaceStatus.PAUSED`** added to the enum and `WorkspaceUpdate` Literal; service no longer writes an undeclared status value.
+- **DAG cycle validation** on block creation previously returned early because `block_id` was `None` — now runs with the new block's id.
+- **Authorization**: every agent-workspace endpoint calls `_verify_workspace_access` so a developer can't act on another workspace's agent canvases.
+- **Deprecated model IDs** (`claude-3-{opus,sonnet}-20240229`) replaced with the current `claude-{opus,sonnet}-4-6` / `claude-haiku-4-5-20251001` across the orchestrator, ensemble, personas, model selector, and workflow defaults.
+- **Silent `except Exception: pass`** on Temporal signal calls replaced with `logger.exception` so signal failures are diagnosable.
+- **Redis pub/sub**: single process-wide pooled client instead of a fresh TCP/auth round-trip per publish; SSE subscriber yields periodic `: keepalive` comments so disconnects are detected between messages.
+- **Analytics dashboard date grouping**: `func.date_trunc("day", …)` rejected by Postgres — now conditional on `group_by` (`date()` for day, `date_trunc` for week/month).
+
+### Changed
+
+- `CustomReportBase` gained `organization_id`; `ReportTemplateResponse` reshaped to `preview_widgets` + `widget_count` + `category`.
+- Test fixtures (`backend/tests/conftest.py`) updated for current schema (`skill_fingerprint` instead of `skills`/`seniority_level`/`github_id`, `repository` instead of `repository_name`, `CodeReview.developer_id`), with SQLite compiler shims for PostgreSQL-only types (`JSONB`, `TSVECTOR`, `CITEXT`, `INET`, `ARRAY`, etc.) so unit tests can run against the in-memory SQLite database.
+- New Temporal task queue `agents` added to `TaskQueue.ALL`.
+- `AgentType` enum extended with `ORCHESTRATOR`, `RESEARCHER`, `ANALYST`, `WRITER`.
+
 ## [0.7.1] - 2026-04-14
 
 ### Added
