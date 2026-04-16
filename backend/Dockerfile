@@ -27,4 +27,4 @@ ENV PYTHONPATH=/app/src
 USER aexy
 
 # Default command (can be overridden)
-CMD ["uvicorn", "aexy.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "aexy.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips=*"]
