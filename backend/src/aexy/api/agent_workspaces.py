@@ -61,7 +61,7 @@ async def _signal_workflow(workflow_id: str, signal: str, *args) -> None:
 # ── Workspace endpoints ───────────────────────────────────────────
 
 
-@router.post("/", response_model=WorkspaceResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=WorkspaceResponse, status_code=status.HTTP_201_CREATED)
 async def create_agent_workspace(
     workspace_id: str,
     data: WorkspaceCreate,
@@ -75,7 +75,7 @@ async def create_agent_workspace(
     return WorkspaceResponse.model_validate(ws)
 
 
-@router.get("/", response_model=list[WorkspaceListResponse])
+@router.get("", response_model=list[WorkspaceListResponse])
 async def list_agent_workspaces(
     workspace_id: str,
     status_filter: str | None = None,

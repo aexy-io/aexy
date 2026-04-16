@@ -15,7 +15,7 @@ from aexy.services.api_token_service import ApiTokenService
 router = APIRouter(prefix="/developers/me/api-tokens")
 
 
-@router.post("/", response_model=ApiTokenCreatedResponse, status_code=201)
+@router.post("", response_model=ApiTokenCreatedResponse, status_code=201)
 async def create_api_token(
     data: ApiTokenCreate,
     developer_id: str = Depends(get_current_developer_id),
@@ -28,7 +28,7 @@ async def create_api_token(
     return ApiTokenCreatedResponse(**base.model_dump(), token=raw_token)
 
 
-@router.get("/", response_model=list[ApiTokenResponse])
+@router.get("", response_model=list[ApiTokenResponse])
 async def list_api_tokens(
     developer_id: str = Depends(get_current_developer_id),
     db: AsyncSession = Depends(get_db),
