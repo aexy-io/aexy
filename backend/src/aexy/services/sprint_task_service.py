@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -193,6 +193,81 @@ class SprintTaskService:
         stmt = stmt.order_by(SprintTask.priority.desc(), SprintTask.created_at)
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
+
+    async def get_workspace_tasks(
+        self,
+        workspace_id: str,
+        *,
+        status: list[str] | None = None,
+        status_id: list[str] | None = None,
+        assignee_ids: list[str] | None = None,
+        priorities: list[str] | None = None,
+        team_ids: list[str] | None = None,
+        sprint_ids: list[str] | None = None,
+        epic_ids: list[str] | None = None,
+        labels: list[str] | None = None,
+        search: str | None = None,
+        include_archived: bool = False,
+        limit: int = 500,
+        offset: int = 0,
+    ) -> list[SprintTask]:
+        """Get all tasks across every team/sprint in a workspace.
+
+        SprintTask has a denormalized workspace_id column so this is a single
+        indexed scan with no joins required. Filters are applied server-side;
+        callers can layer additional client-side filtering on top.
+        """
+        stmt = (
+            select(SprintTask)
+            .where(SprintTask.workspace_id == workspace_id)
+            .options(
+                selectinload(SprintTask.assignee),
+                selectinload(SprintTask.sprint),
+                selectinload(SprintTask.team),
+                selectinload(SprintTask.subtasks),
+            )
+        )
+
+        if not include_archived:
+            stmt = stmt.where(SprintTask.is_archived.is_(False))
+        if status:
+            stmt = stmt.where(SprintTask.status.in_(status))
+        if status_id:
+            stmt = stmt.where(SprintTask.status_id.in_(status_id))
+        if assignee_ids:
+            stmt = stmt.where(SprintTask.assignee_id.in_(assignee_ids))
+        if priorities:
+            stmt = stmt.where(SprintTask.priority.in_(priorities))
+        if team_ids:
+            stmt = stmt.where(SprintTask.team_id.in_(team_ids))
+        if sprint_ids:
+            stmt = stmt.where(SprintTask.sprint_id.in_(sprint_ids))
+        if epic_ids:
+            stmt = stmt.where(SprintTask.epic_id.in_(epic_ids))
+        if search:
+            like = f"%{search}%"
+            stmt = stmt.where(
+                or_(
+                    SprintTask.title.ilike(like),
+                    SprintTask.description.ilike(like),
+                )
+            )
+
+        stmt = (
+            stmt.order_by(SprintTask.priority.desc(), SprintTask.created_at)
+            .limit(limit)
+            .offset(offset)
+        )
+        result = await self.db.execute(stmt)
+        tasks = list(result.scalars().all())
+
+        # Label filtering: JSONB ?| operator is Postgres-only, so filter in
+        # Python to stay compatible with SQLite tests.
+        if labels:
+            label_set = set(labels)
+            tasks = [t for t in tasks if set(t.labels or []) & label_set]
+
+        return tasks
 
     async def get_tasks_by_assignee(
         self,

@@ -58,10 +58,11 @@ const STATUS_QUICK_ACTIONS: { status: TaskStatus; icon: React.ReactNode; label: 
 ];
 
 interface TaskCardPremiumProps {
-  task: SprintTask & { sprint_name?: string };
+  task: SprintTask & { sprint_name?: string; team_name?: string };
   isDragging?: boolean;
   isSelected?: boolean;
   showSprintBadge?: boolean;
+  showTeamBadge?: boolean;
   onDelete?: (taskId: string) => void;
   onClick?: (task: SprintTask) => void;
   onSelect?: (taskId: string) => void;
@@ -79,6 +80,7 @@ export function TaskCardPremium({
   isDragging,
   isSelected,
   showSprintBadge = false,
+  showTeamBadge = false,
   onDelete,
   onClick,
   onSelect,
@@ -204,6 +206,11 @@ export function TaskCardPremium({
           {showSprintBadge && task.sprint_name && (
             <Badge variant="info" size="sm">
               {task.sprint_name}
+            </Badge>
+          )}
+          {showTeamBadge && task.team_name && (
+            <Badge variant="default" size="sm">
+              {task.team_name}
             </Badge>
           )}
         </div>
