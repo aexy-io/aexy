@@ -6,6 +6,7 @@
     "tabs": {
       "projects": "प्रोजेक्ट्स",
       "epics": "Epics",
+      "allTasks": "सभी कार्य",
       "automations": "ऑटोमेशन"
     },
 
@@ -162,6 +163,26 @@
       "high": "उच्च",
       "medium": "मध्यम",
       "low": "निम्न"
+    },
+
+    "workspaceTasks": {
+      "searchPlaceholder": "कार्य खोजें...",
+      "assignee": "असाइनी",
+      "priority": "प्राथमिकता",
+      "project": "प्रोजेक्ट",
+      "sprint": "Sprint",
+      "noOptions": "कोई विकल्प नहीं",
+      "clearAll": "सभी साफ़ करें",
+      "taskCount": "{count} कार्य",
+      "taskCountPlural": "{count} कार्य",
+      "dropTasksHere": "कार्य यहाँ छोड़ें",
+      "noWorkspace": "कोई वर्कस्पेस नहीं चुना गया।",
+      "noTasksFound": "कोई कार्य नहीं मिला",
+      "noTasksHintFiltered": "और कार्य देखने के लिए फ़िल्टर साफ़ करें।",
+      "noTasksHintEmpty": "कार्य यहाँ देखने के लिए प्रोजेक्ट बनाएं और कार्य जोड़ें।",
+      "clearFilters": "फ़िल्टर साफ़ करें",
+      "goToProjects": "प्रोजेक्ट्स पर जाएं",
+      "truncatedNotice": "पहले {limit} कार्य दिखाए जा रहे हैं। दृश्य सीमित करने के लिए फ़िल्टर का उपयोग करें।"
     }
   }
 }

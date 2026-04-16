@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { AnimatePresence } from "framer-motion";
 import {
   DndContext,
@@ -31,7 +33,6 @@ import { Badge } from "@/components/ui/premium-card";
 import { TaskCardPremium } from "@/components/planning/TaskCardPremium";
 import {
   useWorkspaceTasks,
-  WorkspaceBoardFilters,
   WorkspaceTaskWithMeta,
 } from "@/hooks/useWorkspaceTasks";
 import {
@@ -47,19 +48,21 @@ interface WorkspaceTasksTabProps {
 
 const STATUSES: TaskStatus[] = ["backlog", "todo", "in_progress", "review", "done"];
 
-const STATUS_LABEL: Record<TaskStatus, string> = {
-  backlog: "Backlog",
-  todo: "To Do",
-  in_progress: "In Progress",
-  review: "Review",
-  done: "Done",
+// Maps a TaskStatus slug to the i18n key used in `sprints.taskStatus.*`. Keeps
+// the translation lookup data-driven so labels switch with the active locale.
+const STATUS_I18N_KEY: Record<TaskStatus, string> = {
+  backlog: "backlog",
+  todo: "todo",
+  in_progress: "inProgress",
+  review: "review",
+  done: "done",
 };
 
-const PRIORITY_OPTIONS: { value: TaskPriority; label: string; color: string }[] = [
-  { value: "critical", label: "Critical", color: "bg-red-500" },
-  { value: "high", label: "High", color: "bg-orange-500" },
-  { value: "medium", label: "Medium", color: "bg-yellow-500" },
-  { value: "low", label: "Low", color: "bg-muted-foreground" },
+const PRIORITY_OPTIONS: { value: TaskPriority; color: string }[] = [
+  { value: "critical", color: "bg-red-500" },
+  { value: "high", color: "bg-orange-500" },
+  { value: "medium", color: "bg-yellow-500" },
+  { value: "low", color: "bg-muted-foreground" },
 ];
 
 /**
@@ -72,12 +75,14 @@ function MultiSelectDropdown({
   options,
   selected,
   onChange,
+  emptyLabel,
 }: {
   label: string;
   icon: React.ReactNode;
   options: { id: string; name: string; avatar?: string }[];
   selected: string[];
   onChange: (next: string[]) => void;
+  emptyLabel: string;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -112,7 +117,7 @@ function MultiSelectDropdown({
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute left-0 top-full mt-1 z-50 min-w-[220px] max-h-64 overflow-y-auto bg-muted/95 backdrop-blur-xl border border-border rounded-lg shadow-xl py-1">
             {options.length === 0 ? (
-              <div className="px-3 py-2 text-sm text-muted-foreground">No options</div>
+              <div className="px-3 py-2 text-sm text-muted-foreground">{emptyLabel}</div>
             ) : (
               options.map((o) => (
                 <button
@@ -164,9 +169,13 @@ function MultiSelectDropdown({
 function PriorityDropdown({
   selected,
   onChange,
+  buttonLabel,
+  optionLabels,
 }: {
   selected: TaskPriority[];
   onChange: (next: TaskPriority[]) => void;
+  buttonLabel: string;
+  optionLabels: Record<TaskPriority, string>;
 }) {
   const [open, setOpen] = useState(false);
   const toggle = (p: TaskPriority) =>
@@ -185,7 +194,7 @@ function PriorityDropdown({
         )}
       >
         <AlertCircle className="h-4 w-4" />
-        <span>Priority</span>
+        <span>{buttonLabel}</span>
         {selected.length > 0 && (
           <Badge variant="info" size="sm">
             {selected.length}
@@ -225,7 +234,7 @@ function PriorityDropdown({
                   )}
                 </div>
                 <div className={cn("w-2 h-2 rounded-full", o.color)} />
-                <span className="text-foreground">{o.label}</span>
+                <span className="text-foreground">{optionLabels[o.value]}</span>
               </button>
             ))}
           </div>
@@ -241,10 +250,14 @@ function PriorityDropdown({
  */
 function KanbanColumn({
   status,
+  label,
+  emptyLabel,
   tasks,
   onTaskClick,
 }: {
   status: TaskStatus;
+  label: string;
+  emptyLabel: string;
   tasks: WorkspaceTaskWithMeta[];
   onTaskClick: (task: SprintTask) => void;
 }) {
@@ -263,7 +276,7 @@ function KanbanColumn({
     >
       <div className="flex items-center justify-between px-3 py-3 border-b border-border/30">
         <div className="flex items-center gap-2">
-          <h3 className={cn("font-medium text-sm", tone.text)}>{STATUS_LABEL[status]}</h3>
+          <h3 className={cn("font-medium text-sm", tone.text)}>{label}</h3>
           <Badge variant="default" size="sm">
             {tasks.length}
           </Badge>
@@ -287,7 +300,7 @@ function KanbanColumn({
           </AnimatePresence>
           {tasks.length === 0 && (
             <div className="text-center py-8 text-muted-foreground text-sm">
-              Drop tasks here
+              {emptyLabel}
             </div>
           )}
         </div>
@@ -297,6 +310,11 @@ function KanbanColumn({
 }
 
 export function WorkspaceTasksTab({ workspaceId }: WorkspaceTasksTabProps) {
+  const t = useTranslations("sprints.workspaceTasks");
+  const tStatus = useTranslations("sprints.taskStatus");
+  const tPriority = useTranslations("sprints.priority");
+  const router = useRouter();
+
   const {
     filteredTasks,
     tasksByStatus,
@@ -307,7 +325,29 @@ export function WorkspaceTasksTab({ workspaceId }: WorkspaceTasksTabProps) {
     filterOptions,
     isLoading,
     updateTaskStatus,
+    truncated,
   } = useWorkspaceTasks(workspaceId);
+
+  // Precompute localized labels so we pass plain strings down to dumb children.
+  const statusLabel = useMemo<Record<TaskStatus, string>>(
+    () => ({
+      backlog: tStatus(STATUS_I18N_KEY.backlog),
+      todo: tStatus(STATUS_I18N_KEY.todo),
+      in_progress: tStatus(STATUS_I18N_KEY.in_progress),
+      review: tStatus(STATUS_I18N_KEY.review),
+      done: tStatus(STATUS_I18N_KEY.done),
+    }),
+    [tStatus],
+  );
+  const priorityLabel = useMemo<Record<TaskPriority, string>>(
+    () => ({
+      critical: tPriority("critical"),
+      high: tPriority("high"),
+      medium: tPriority("medium"),
+      low: tPriority("low"),
+    }),
+    [tPriority],
+  );
 
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -349,17 +389,17 @@ export function WorkspaceTasksTab({ workspaceId }: WorkspaceTasksTabProps) {
 
   const handleTaskClick = (task: SprintTask) => {
     // For v1, link to the task's project board where the user can edit it
-    // — avoids duplicating the full task detail modal here.
+    // — avoids duplicating the full task detail modal here. Use the Next.js
+    // router so this stays a client-side transition (no full reload).
     if (task.team_id) {
-      // Next.js link handled by <Link> below; here we use window.location for the callback.
-      window.location.href = `/sprints/${task.team_id}/board?task=${task.id}`;
+      router.push(`/sprints/${task.team_id}/board?task=${task.id}`);
     }
   };
 
   if (!workspaceId) {
     return (
       <div className="text-center py-20 text-muted-foreground">
-        No workspace selected.
+        {t("noWorkspace")}
       </div>
     );
   }
@@ -372,7 +412,7 @@ export function WorkspaceTasksTab({ workspaceId }: WorkspaceTasksTabProps) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search tasks..."
+            placeholder={t("searchPlaceholder")}
             value={filters.search}
             onChange={(e) => updateFilters({ search: e.target.value })}
             className="w-full pl-9 pr-4 py-1.5 bg-muted border border-border rounded-lg text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500 transition-colors"
@@ -388,33 +428,38 @@ export function WorkspaceTasksTab({ workspaceId }: WorkspaceTasksTabProps) {
         </div>
 
         <MultiSelectDropdown
-          label="Assignee"
+          label={t("assignee")}
           icon={<User className="h-4 w-4" />}
           options={filterOptions.assignees}
           selected={filters.assignees}
           onChange={(selected) => updateFilters({ assignees: selected })}
+          emptyLabel={t("noOptions")}
         />
 
         <PriorityDropdown
           selected={filters.priorities}
           onChange={(priorities) => updateFilters({ priorities })}
+          buttonLabel={t("priority")}
+          optionLabels={priorityLabel}
         />
 
         <MultiSelectDropdown
-          label="Project"
+          label={t("project")}
           icon={<Folder className="h-4 w-4" />}
-          options={filterOptions.teams.map((t) => ({ id: t.id, name: t.name }))}
+          options={filterOptions.teams.map((tm) => ({ id: tm.id, name: tm.name }))}
           selected={filters.teams}
           onChange={(teams) => updateFilters({ teams })}
+          emptyLabel={t("noOptions")}
         />
 
         {filterOptions.sprints.length > 0 && (
           <MultiSelectDropdown
-            label="Sprint"
+            label={t("sprint")}
             icon={<Layers className="h-4 w-4" />}
             options={filterOptions.sprints.map((s) => ({ id: s.id, name: s.name }))}
             selected={filters.sprints}
             onChange={(sprints) => updateFilters({ sprints })}
+            emptyLabel={t("noOptions")}
           />
         )}
 
@@ -424,15 +469,24 @@ export function WorkspaceTasksTab({ workspaceId }: WorkspaceTasksTabProps) {
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <X className="h-3.5 w-3.5" />
-            Clear all
+            {t("clearAll")}
           </button>
         )}
 
         <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
           <Filter className="h-3.5 w-3.5" />
-          {filteredTasks.length} task{filteredTasks.length === 1 ? "" : "s"}
+          {filteredTasks.length === 1
+            ? t("taskCount", { count: filteredTasks.length })
+            : t("taskCountPlural", { count: filteredTasks.length })}
         </div>
       </div>
+
+      {truncated && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+          <span>{t("truncatedNotice", { limit: 1000 })}</span>
+        </div>
+      )}
 
       {/* Kanban */}
       {isLoading ? (
@@ -443,25 +497,25 @@ export function WorkspaceTasksTab({ workspaceId }: WorkspaceTasksTabProps) {
         </div>
       ) : filteredTasks.length === 0 ? (
         <div className="text-center py-20 bg-muted/30 rounded-xl border border-dashed border-border">
-          <h3 className="text-foreground font-medium mb-2">No tasks found</h3>
+          <h3 className="text-foreground font-medium mb-2">{t("noTasksFound")}</h3>
           <p className="text-muted-foreground text-sm mb-4">
             {hasActiveFilters
-              ? "Try clearing filters to see more tasks."
-              : "Create a project and add tasks to see them here."}
+              ? t("noTasksHintFiltered")
+              : t("noTasksHintEmpty")}
           </p>
           {hasActiveFilters ? (
             <button
               onClick={clearFilters}
               className="px-4 py-2 bg-primary-500 hover:bg-primary-400 text-white rounded-lg text-sm"
             >
-              Clear filters
+              {t("clearFilters")}
             </button>
           ) : (
             <Link
               href="/sprints"
               className="inline-block px-4 py-2 bg-primary-500 hover:bg-primary-400 text-white rounded-lg text-sm"
             >
-              Go to Projects
+              {t("goToProjects")}
             </Link>
           )}
         </div>
@@ -477,6 +531,8 @@ export function WorkspaceTasksTab({ workspaceId }: WorkspaceTasksTabProps) {
               <KanbanColumn
                 key={status}
                 status={status}
+                label={statusLabel[status]}
+                emptyLabel={t("dropTasksHere")}
                 tasks={tasksByStatus[status]}
                 onTaskClick={handleTaskClick}
               />
@@ -500,5 +556,3 @@ export function WorkspaceTasksTab({ workspaceId }: WorkspaceTasksTabProps) {
   );
 }
 
-// Suppress unused-import warning for WorkspaceBoardFilters (re-exported for consumers).
-export type { WorkspaceBoardFilters };

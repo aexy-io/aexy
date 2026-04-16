@@ -6,13 +6,14 @@ import { useCallback, useMemo, useState } from "react";
 import {
   workspaceTasksApi,
   sprintApi,
-  projectApi,
+  epicApi,
   SprintTask,
   SprintListItem,
   TaskStatus,
   TaskPriority,
-  Project,
+  EpicListItem,
 } from "@/lib/api";
+import { useProjects } from "@/hooks/useProjects";
 
 export interface WorkspaceBoardFilters {
   assignees: string[];
@@ -53,16 +54,17 @@ export function useWorkspaceTasks(workspaceId: string | null) {
   const [filters, setFilters] = useState<WorkspaceBoardFilters>(EMPTY_FILTERS);
 
   // 1. All projects in the workspace (for team filter + card badges).
-  const { data: projectsResp, isLoading: projectsLoading } = useQuery({
-    queryKey: ["projects", workspaceId],
-    queryFn: () => projectApi.list(workspaceId!),
-    enabled: !!workspaceId,
-  });
-  const projects: Project[] = projectsResp?.projects || [];
+  // Reuse the shared hook so the projects cache is de-duplicated with the rest
+  // of the app (same query key shape: ["projects", workspaceId, status]).
+  const { projects, isLoading: projectsLoading } = useProjects(workspaceId);
+
+  // Stable list of project ids so the sprints query key is referentially stable
+  // (derived from the cached projects list rather than a fresh array every render).
+  const projectIds = useMemo(() => projects.map((p) => p.id).sort(), [projects]);
 
   // 2. All sprints across every project — fetched in parallel once we have projects.
   const { data: allSprints, isLoading: sprintsLoading } = useQuery({
-    queryKey: ["workspaceSprints", workspaceId, projects.map((p) => p.id)],
+    queryKey: ["workspaceSprints", workspaceId, projectIds],
     queryFn: async () => {
       if (!workspaceId || projects.length === 0) return [] as SprintListItem[];
       const results = await Promise.all(
@@ -75,12 +77,24 @@ export function useWorkspaceTasks(workspaceId: string | null) {
     enabled: !!workspaceId && !projectsLoading,
   });
 
-  // 3. All tasks in the workspace — server-side scoped to workspace_id.
-  const { data: tasksRaw, isLoading: tasksLoading } = useQuery({
-    queryKey: ["workspaceTasks", workspaceId],
-    queryFn: () => workspaceTasksApi.list(workspaceId!),
+  // 3. Epics across the workspace — needed so the Epic filter shows real titles
+  // (not UUIDs). Cheap endpoint that returns a flat list.
+  const { data: allEpics } = useQuery({
+    queryKey: ["epics", workspaceId, { include_archived: false }],
+    queryFn: () => epicApi.list(workspaceId!, { include_archived: false, limit: 500 }),
     enabled: !!workspaceId,
   });
+
+  // 4. All tasks in the workspace — server-side scoped to workspace_id. Ask
+  // for the backend's max (1000) so the board doesn't silently truncate at the
+  // default 500 in workspaces with a lot of tasks.
+  const { data: tasksRaw, isLoading: tasksLoading } = useQuery({
+    queryKey: ["workspaceTasks", workspaceId],
+    queryFn: () => workspaceTasksApi.list(workspaceId!, { limit: 1000 }),
+    enabled: !!workspaceId,
+  });
+
+  const truncated = (tasksRaw?.length ?? 0) >= 1000;
 
   // Build lookup maps for joining sprint/team metadata onto each task.
   const sprintMap = useMemo(() => {
@@ -90,10 +104,16 @@ export function useWorkspaceTasks(workspaceId: string | null) {
   }, [allSprints]);
 
   const projectMap = useMemo(() => {
-    const m = new Map<string, Project>();
+    const m = new Map<string, (typeof projects)[number]>();
     projects.forEach((p) => m.set(p.id, p));
     return m;
   }, [projects]);
+
+  const epicMap = useMemo(() => {
+    const m = new Map<string, EpicListItem>();
+    (allEpics || []).forEach((e) => m.set(e.id, e));
+    return m;
+  }, [allEpics]);
 
   const tasks: WorkspaceTaskWithMeta[] = useMemo(() => {
     if (!tasksRaw) return [];
@@ -181,7 +201,12 @@ export function useWorkspaceTasks(workspaceId: string | null) {
         });
       }
       task.labels?.forEach((l) => labels.add(l));
-      if (task.epic_id) epics.set(task.epic_id, task.epic_id);
+      if (task.epic_id) {
+        // Prefer the real epic title; fall back to the id if the epic list
+        // hasn't loaded yet (or references a deleted epic).
+        const epic = epicMap.get(task.epic_id);
+        epics.set(task.epic_id, epic?.title || task.epic_id);
+      }
       if (task.story_points != null) storyPointsSet.add(task.story_points);
     });
 
@@ -193,7 +218,7 @@ export function useWorkspaceTasks(workspaceId: string | null) {
       teams: projects.map((p) => ({ id: p.id, name: p.name, color: p.color, icon: p.icon })),
       storyPoints: Array.from(storyPointsSet).sort((a, b) => a - b),
     };
-  }, [tasks, allSprints, projects]);
+  }, [tasks, allSprints, projects, epicMap]);
 
   // Status update mutation — used by drag-drop in the Kanban.
   const updateStatusMutation = useMutation({
@@ -261,5 +286,6 @@ export function useWorkspaceTasks(workspaceId: string | null) {
     isLoading: tasksLoading || projectsLoading || sprintsLoading,
     updateTaskStatus: updateStatusMutation.mutateAsync,
     isUpdatingStatus: updateStatusMutation.isPending,
+    truncated,
   };
 }

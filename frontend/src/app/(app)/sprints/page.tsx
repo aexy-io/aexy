@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
@@ -373,6 +374,7 @@ function SprintsContent({
 }
 
 function SprintsPageContent() {
+  const tTabs = useTranslations("sprints.tabs");
   const { user, isLoading: authLoading, isAuthenticated, logout } = useAuth();
   const {
     currentWorkspaceId,
@@ -528,7 +530,7 @@ function SprintsPageContent() {
             )}
           >
             <ListTodo className="h-4 w-4" />
-            All Tasks
+            {tTabs("allTasks")}
           </button>
           <button
             onClick={() => setActiveTab("automations")}

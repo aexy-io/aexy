@@ -88,7 +88,10 @@ async def update_workspace_task_status(
             detail="Task not found",
         )
 
-    updated = await task_service.update_task(task_id, status=data.status)
+    # Use update_task_status (not update_task) so the unified activity log
+    # gets a `status_changed`/`resolved` entry — matches the sprint-scoped
+    # PATCH endpoint's behavior.
+    updated = await task_service.update_task_status(task_id, data.status)
     if not updated:
         raise HTTPException(
             status_code=http_status.HTTP_404_NOT_FOUND,

@@ -6,6 +6,7 @@
     "tabs": {
       "projects": "Projects",
       "epics": "Epics",
+      "allTasks": "All Tasks",
       "automations": "Automations"
     },
 
@@ -162,6 +163,26 @@
       "high": "High",
       "medium": "Medium",
       "low": "Low"
+    },
+
+    "workspaceTasks": {
+      "searchPlaceholder": "Search tasks...",
+      "assignee": "Assignee",
+      "priority": "Priority",
+      "project": "Project",
+      "sprint": "Sprint",
+      "noOptions": "No options",
+      "clearAll": "Clear all",
+      "taskCount": "{count} task",
+      "taskCountPlural": "{count} tasks",
+      "dropTasksHere": "Drop tasks here",
+      "noWorkspace": "No workspace selected.",
+      "noTasksFound": "No tasks found",
+      "noTasksHintFiltered": "Try clearing filters to see more tasks.",
+      "noTasksHintEmpty": "Create a project and add tasks to see them here.",
+      "clearFilters": "Clear filters",
+      "goToProjects": "Go to Projects",
+      "truncatedNotice": "Showing the first {limit} tasks. Use filters to narrow the view."
     }
   }
 }
