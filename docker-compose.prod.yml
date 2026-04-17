@@ -154,7 +154,7 @@ services:
         condition: service_healthy
       temporal:
         condition: service_started
-    command: uvicorn aexy.main:app --host 0.0.0.0 --port 8000 --workers 4
+    command: uvicorn aexy.main:app --host 0.0.0.0 --port 8000 --workers 4 --proxy-headers --forwarded-allow-ips=*
     networks:
       - aexy-network
     expose:

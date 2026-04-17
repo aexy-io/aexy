@@ -3,7 +3,7 @@
 import { memo } from "react";
 import { ChatMessage } from "@/lib/api";
 import { formatDistanceToNow } from "date-fns";
-import { Reply, FileText, Download } from "lucide-react";
+import { Reply, FileText, Download, Bot } from "lucide-react";
 
 interface MessageItemProps {
   message: ChatMessage;
@@ -20,10 +20,11 @@ function isSafeUrl(url: string): boolean {
   }
 }
 
-// Parse markdown-style images ![alt](url) and links [text](url) from content
+// Parse markdown-style images ![alt](url), links [text](url), and @mentions from content
 function renderContent(content: string) {
   const parts: React.ReactNode[] = [];
-  const regex = /(!?\[([^\]]*)\]\(([^)]+)\))/g;
+  // Combined regex: mentions @[Name](mention:type:id) OR images/links ![alt](url) / [text](url)
+  const regex = /(@\[([^\]]+)\]\(mention:(user|agent|all):?([^)]*)\))|(!?\[([^\]]*)\]\(([^)]+)\))/g;
   let lastIndex = 0;
   let match;
 
@@ -33,47 +34,90 @@ function renderContent(content: string) {
       parts.push(content.slice(lastIndex, match.index));
     }
 
-    const [fullMatch, , alt, url] = match;
-    const isImage = fullMatch.startsWith("!");
+    if (match[1]) {
+      // Mention match: @[Name](mention:type:id)
+      const displayName = match[2];
+      const mentionType = match[3]; // "user" | "agent" | "all"
+      const mentionId = match[4];
 
-    // Skip rendering unsafe URLs (javascript:, data:, etc.)
-    if (!isSafeUrl(url)) {
-      parts.push(fullMatch);
-      lastIndex = match.index + fullMatch.length;
-      continue;
-    }
-
-    if (isImage) {
-      // Render inline image
-      parts.push(
-        <div key={match.index} className="mt-1.5 mb-1">
-          <img
-            src={url}
-            alt={alt}
-            className="max-w-xs max-h-64 rounded-lg border border-border cursor-pointer"
-            onClick={() => window.open(url, "_blank")}
-          />
-          {alt && <span className="text-xs text-muted-foreground block mt-0.5">{alt}</span>}
-        </div>
-      );
+      if (mentionType === "agent" && mentionId) {
+        parts.push(
+          <a
+            key={match.index}
+            href={`/agents/${mentionId}`}
+            className="inline-flex items-center gap-0.5 bg-primary/15 text-primary rounded px-1 font-medium hover:bg-primary/25 transition-colors cursor-pointer"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Bot className="h-3 w-3" />
+            @{displayName}
+          </a>
+        );
+      } else if (mentionType === "all") {
+        parts.push(
+          <span
+            key={match.index}
+            className="bg-primary/15 text-primary rounded px-1 font-bold"
+          >
+            @{displayName}
+          </span>
+        );
+      } else {
+        // User mention
+        parts.push(
+          <span
+            key={match.index}
+            className="bg-primary/15 text-primary rounded px-1 font-medium"
+          >
+            @{displayName}
+          </span>
+        );
+      }
     } else {
-      // Render file link
-      parts.push(
-        <a
-          key={match.index}
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 px-2 py-1 my-0.5 rounded bg-accent/50 hover:bg-accent text-sm text-primary transition-colors"
-        >
-          <FileText className="h-3.5 w-3.5" />
-          <span>{alt || "Download file"}</span>
-          <Download className="h-3 w-3 opacity-50" />
-        </a>
-      );
+      // Image or link match
+      const fullMatch = match[5];
+      const alt = match[6];
+      const url = match[7];
+      const isImage = fullMatch.startsWith("!");
+
+      // Skip rendering unsafe URLs (javascript:, data:, etc.)
+      if (!isSafeUrl(url)) {
+        parts.push(match[0]);
+        lastIndex = match.index + match[0].length;
+        continue;
+      }
+
+      if (isImage) {
+        // Render inline image
+        parts.push(
+          <div key={match.index} className="mt-1.5 mb-1">
+            <img
+              src={url}
+              alt={alt}
+              className="max-w-xs max-h-64 rounded-lg border border-border cursor-pointer"
+              onClick={() => window.open(url, "_blank")}
+            />
+            {alt && <span className="text-xs text-muted-foreground block mt-0.5">{alt}</span>}
+          </div>
+        );
+      } else {
+        // Render file link
+        parts.push(
+          <a
+            key={match.index}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-2 py-1 my-0.5 rounded bg-accent/50 hover:bg-accent text-sm text-primary transition-colors"
+          >
+            <FileText className="h-3.5 w-3.5" />
+            <span>{alt || "Download file"}</span>
+            <Download className="h-3 w-3 opacity-50" />
+          </a>
+        );
+      }
     }
 
-    lastIndex = match.index + fullMatch.length;
+    lastIndex = match.index + match[0].length;
   }
 
   // Remaining text after last match
@@ -87,6 +131,7 @@ function renderContent(content: string) {
 export const MessageItem = memo(function MessageItem({ message, onReply, compact }: MessageItemProps) {
   const time = formatDistanceToNow(new Date(message.created_at), { addSuffix: true });
   const senderName = message.sender?.name || "Unknown";
+  const isAgent = !!(message.sender as Record<string, unknown>)?.is_agent;
   const initials = senderName
     .split(" ")
     .map((w) => w[0])
@@ -106,7 +151,11 @@ export const MessageItem = memo(function MessageItem({ message, onReply, compact
     <div className={`group flex hover:bg-accent/50 transition-colors ${compact ? "gap-2 px-2 py-1" : "gap-3 px-4 py-2"}`}>
       {/* Avatar */}
       <div className="flex-shrink-0">
-        {message.sender?.avatar_url ? (
+        {isAgent ? (
+          <div className={`rounded-full bg-primary/15 text-primary flex items-center justify-center ${compact ? "h-6 w-6" : "h-8 w-8"}`}>
+            <Bot className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
+          </div>
+        ) : message.sender?.avatar_url ? (
           <img
             src={message.sender.avatar_url}
             alt={senderName}
@@ -122,7 +171,10 @@ export const MessageItem = memo(function MessageItem({ message, onReply, compact
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2">
-          <span className={compact ? "font-semibold text-xs" : "font-semibold text-sm"}>{senderName}</span>
+          <span className={compact ? "font-semibold text-xs" : "font-semibold text-sm"}>
+            {isAgent && <Bot className="h-3 w-3 inline mr-1" />}
+            {senderName}
+          </span>
           <span className={compact ? "text-[10px] text-muted-foreground" : "text-xs text-muted-foreground"}>{time}</span>
           {message.is_edited && (
             <span className={compact ? "text-[10px] text-muted-foreground" : "text-xs text-muted-foreground"}>(edited)</span>
