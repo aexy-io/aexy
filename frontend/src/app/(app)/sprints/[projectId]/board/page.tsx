@@ -886,6 +886,15 @@ interface EditTaskModalProps {
 }
 
 function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints, epics, users }: EditTaskModalProps) {
+  // Close on escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   const CACHE_KEY = `task_draft_${task.id}`;
 
   // Try to restore cached state
@@ -925,6 +934,8 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showRestoredNotice, setShowRestoredNotice] = useState(!!cachedState);
+  const [isMouseDown, setIsMouseDown] = useState(false);
+  const [modalContentRef, setModalContentRef] = useState<HTMLDivElement | null>(null);
   const editorRef = useRef<TaskDescriptionEditorRef>(null);
 
   // Cache form state when values change
@@ -1065,13 +1076,38 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
     }
   };
 
+  // Handle click outside modal
+  useEffect(() => {
+    const handleMouseDown = (e: MouseEvent) => {
+      if (modalContentRef && !modalContentRef.contains(e.target as Node)) {
+        setIsMouseDown(true);
+      } else {
+        setIsMouseDown(false);
+      }
+    };
+
+    const handleMouseUp = (e: MouseEvent) => {
+      if (isMouseDown && modalContentRef && !modalContentRef.contains(e.target as Node)) {
+        onClose();
+      }
+      setIsMouseDown(false);
+    };
+
+    document.addEventListener("mousedown", handleMouseDown);
+    document.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      document.removeEventListener("mousedown", handleMouseDown);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isMouseDown, modalContentRef, onClose]);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start justify-center z-50 overflow-y-auto py-10"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -1079,6 +1115,7 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         className="bg-muted border border-border rounded-xl w-full max-w-4xl shadow-2xl"
         onClick={(e) => e.stopPropagation()}
+        ref={setModalContentRef}
       >
         {/* Header */}
         <div className="flex items-start justify-between p-4 border-b border-border">
