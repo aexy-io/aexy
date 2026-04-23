@@ -139,6 +139,8 @@ from aexy.api.booking import calendar_callback_booking_router
 from aexy.api.uptime import router as uptime_router
 # GitHub Intelligence
 from aexy.api.intelligence import router as intelligence_router
+# GitHub PR Integration
+from aexy.api.github_pr_integration import router as github_pr_integration_router
 # Developer Insights
 from aexy.api.developer_insights import router as developer_insights_router
 # Recurring Reminders
@@ -313,6 +315,8 @@ api_router.include_router(calendar_callback_booking_router, tags=["booking-calen
 api_router.include_router(uptime_router, tags=["uptime"])
 # GitHub Intelligence
 api_router.include_router(intelligence_router, tags=["intelligence"])
+# GitHub PR Integration
+api_router.include_router(github_pr_integration_router, prefix="/workspaces/{workspace_id}/github", tags=["github-pr-integration"])
 # Developer Insights
 api_router.include_router(developer_insights_router, tags=["developer-insights"])
 # Recurring Reminders

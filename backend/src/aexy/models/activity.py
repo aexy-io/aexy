@@ -95,6 +95,17 @@ class PullRequest(Base):
     # Detected skills/technologies
     detected_skills: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
 
+    # AI analysis fields
+    ai_tags: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+    ai_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ai_analysis: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+    # PR-Issue linking fields
+    link_status: Mapped[str] = mapped_column(String(50), default="unlinked")
+    issue_number: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    issue_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    linked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
     # Timestamps
     created_at_github: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at_github: Mapped[datetime | None] = mapped_column(
@@ -109,6 +120,35 @@ class PullRequest(Base):
         DateTime(timezone=True),
         nullable=True,
     )
+
+
+class PRAgentInteraction(Base):
+    """Track AI agent decisions and interactions with PRs."""
+
+    __tablename__ = "pr_agent_interactions"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    pr_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pull_requests.id", ondelete="CASCADE"),
+        index=True,
+    )
+    agent_action: Mapped[str] = mapped_column(String(100), nullable=False)
+    agent_decision: Mapped[str] = mapped_column(Text, nullable=False)
+    confidence_score: Mapped[float] = mapped_column(Float, nullable=False)
+    requires_approval: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    # Relationship
+    pr: Mapped["PullRequest"] = relationship("PullRequest", back_populates="agent_interactions")
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

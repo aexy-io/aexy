@@ -3346,6 +3346,84 @@ export const sprintApi = {
 };
 
 // ============================================================================
+// GitHub PR Integration API
+// ============================================================================
+
+export interface PullRequest {
+  id: string;
+  number: number;
+  title: string;
+  description: string | null;
+  state: string;
+  repository: string;
+  additions: number;
+  deletions: number;
+  files_changed: number;
+  commits_count: number;
+  comments_count: number;
+  ai_tags?: string[];
+  ai_summary?: string | null;
+  ai_analysis?: Record<string, unknown> | null;
+  link_status: string;
+  issue_number?: number | null;
+  issue_url?: string | null;
+  linked_at?: string | null;
+}
+
+export interface PRAgentInteraction {
+  id: string;
+  pr_id: string;
+  agent_action: string;
+  agent_decision: string;
+  confidence_score: number;
+  requires_approval: boolean;
+  created_at: string;
+}
+
+export interface PRAnalysisResponse {
+  pr: PullRequest;
+  ai_tags: string[];
+  ai_summary: string | null;
+  ai_analysis: Record<string, unknown> | null;
+  link_status: string;
+  issue_number: number | null;
+  issue_url: string | null;
+  linked_at: string | null;
+  interactions: PRAgentInteraction[];
+}
+
+export const githubPrApi = {
+  linkPR: async (workspaceId: string, prId: string, data: { task_id: string; link_type: string }) => {
+    const response = await api.post(`/workspaces/${workspaceId}/github/prs/${prId}/link`, data);
+    return response.data;
+  },
+
+  autoTagPR: async (workspaceId: string, prId: string, data: { force?: boolean; options?: Record<string, unknown> }) => {
+    const response = await api.post(`/workspaces/${workspaceId}/github/prs/${prId}/auto-tag`, data);
+    return response.data;
+  },
+
+  createIssueFromPR: async (workspaceId: string, prId: string, data: {
+    title_override?: string;
+    description_override?: string;
+    task_id?: string
+  }) => {
+    const response = await api.post(`/workspaces/${workspaceId}/github/prs/${prId}/create-issue`, data);
+    return response.data;
+  },
+
+  getPRAnalysis: async (workspaceId: string, prId: string): Promise<PRAnalysisResponse> => {
+    const response = await api.get(`/workspaces/${workspaceId}/github/prs/${prId}/analysis`);
+    return response.data;
+  },
+
+  listPRs: async (workspaceId: string, filters?: { repository_id?: string; state?: string; linked?: boolean }) => {
+    const response = await api.get(`/workspaces/${workspaceId}/github/prs`, { params: filters });
+    return response.data;
+  },
+};
+
+// ============================================================================
 // Task Templates API (workspace-scoped task templates)
 // ============================================================================
 
