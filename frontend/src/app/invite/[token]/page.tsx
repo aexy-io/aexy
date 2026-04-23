@@ -12,6 +12,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { workspaceApi, developerApi, InviteInfo } from "@/lib/api";
+import { useWorkspace } from "@/hooks/useWorkspace";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -19,6 +20,7 @@ export default function AcceptInvitePage() {
   const router = useRouter();
   const params = useParams();
   const token = params.token as string;
+  const { switchWorkspace } = useWorkspace();
 
   const [loading, setLoading] = useState(true);
   const [accepting, setAccepting] = useState(false);
@@ -83,6 +85,8 @@ export default function AcceptInvitePage() {
         name: result.workspace_name,
         slug: result.workspace_slug,
       });
+      // Switch to the newly accepted workspace
+      switchWorkspace(result.workspace_id);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
       setError(error.response?.data?.detail || "Failed to accept invite. Please try again.");
@@ -94,14 +98,13 @@ export default function AcceptInvitePage() {
   const handleLoginAndAccept = () => {
     // Store the invite token to accept after login
     localStorage.setItem("pendingInviteToken", token);
-    // Redirect to login
-    window.location.href = `${API_BASE_URL}/auth/google/login?redirect=/invite/${token}`;
+    // Redirect to Google login (will auto-redirect back to this page after login)
+    window.location.href = `${API_BASE_URL}/auth/google/login`;
   };
 
   const goToWorkspace = () => {
-    if (acceptedWorkspace) {
-      router.push(`/dashboard?workspace=${acceptedWorkspace.slug}`);
-    }
+    // Workspace is already set via switchWorkspace in handleAcceptInvite
+    router.push("/dashboard");
   };
 
   if (loading) {

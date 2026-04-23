@@ -60,6 +60,14 @@ export function useSetToken() {
     queryClient.invalidateQueries({ queryKey: ["currentUser"] });
 
     try {
+      // Check if there's a pending invite token that needs to be handled
+      const pendingInviteToken = localStorage.getItem("pendingInviteToken");
+      if (pendingInviteToken) {
+        localStorage.removeItem("pendingInviteToken");
+        router.push(`/invite/${pendingInviteToken}`);
+        return;
+      }
+
       // Check if onboarding is complete
       const status = await repositoriesApi.getOnboardingStatus();
       if (status.completed) {
