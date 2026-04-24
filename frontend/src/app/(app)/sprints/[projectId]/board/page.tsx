@@ -934,6 +934,7 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showRestoredNotice, setShowRestoredNotice] = useState(!!cachedState);
+  const [showPRLink, setShowPRLink] = useState(false);
   const editorRef = useRef<TaskDescriptionEditorRef>(null);
 
   // Cache form state when values change
@@ -1058,6 +1059,47 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
       onClose();
     } catch (err) {
       console.error("Failed to delete:", err);
+    }
+  };
+
+  // Handle GitHub PR linking
+  const handleLinkPR = async (prData: { pr_id: string; pr_url: string; title: string; state: string; repository: string }) => {
+    try {
+      // This would be implemented with actual GitHub PR API call
+      // For now, we'll simulate it
+      console.log("Linking PR:", prData);
+
+      // Update task with PR reference
+      // This would use the githubPrApi.linkPR endpoint
+      await onUpdate({
+        taskId: task.id,
+        sprintId: task.sprint_id || null,
+        updates: {
+          // Add PR reference to task
+          pr_references: [...((task as any).pr_references || []), prData],
+        },
+      });
+
+      setShowPRLink(false);
+    } catch (err) {
+      console.error("Failed to link PR:", err);
+    }
+  };
+
+  const handleUnlinkPR = async (prId: string) => {
+    try {
+      // Remove PR reference from task
+      const updatedPRs = ((task as any).pr_references || []).filter((pr: any) => pr.pr_id !== prId);
+
+      await onUpdate({
+        taskId: task.id,
+        sprintId: task.sprint_id || null,
+        updates: {
+          pr_references: updatedPRs,
+        },
+      });
+    } catch (err) {
+      console.error("Failed to unlink PR:", err);
     }
   };
 
@@ -1270,6 +1312,47 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
                 />
                 <span className="text-xs text-muted-foreground">Contributes to Sprint Goal</span>
               </label>
+            </div>
+
+            {/* GitHub PR Links */}
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">
+                GitHub PR Links
+                <span className="text-muted-foreground font-normal ml-2">Manage related PRs</span>
+              </label>
+              <button
+                onClick={() => setShowPRLink(true)}
+                disabled={isUpdating}
+                className="w-full px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition flex items-center gap-2"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Link GitHub PR
+              </button>
+              {/* Display linked PRs */}
+              {(task as any).pr_references?.map((pr: any) => (
+                <div key={pr.pr_id} className="flex items-center gap-2 p-2 bg-muted/30 rounded mb-2">
+                  <div className="flex items-center gap-2 flex-1">
+                    <span className={`text-xs px-2 py-1 rounded ${pr.state === 'open' ? 'bg-green-500/20 text-green-400' : pr.state === 'merged' ? 'bg-purple-500/20 text-purple-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                      {pr.state}
+                    </span>
+                    <a href={pr.pr_url} target="_blank" className="text-sm text-foreground hover:underline truncate">
+                      {pr.repository} #{pr.pr_number}
+                    </a>
+                    {pr.title && (
+                      <span className="text-xs text-muted-foreground truncate ml-2">
+                        - {pr.title}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => handleUnlinkPR(pr.pr_id)}
+                    disabled={isUpdating}
+                    className="text-muted-foreground hover:text-foreground hover:bg-accent p-1 rounded transition"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
             </div>
 
             {/* Archive button */}
