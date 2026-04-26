@@ -304,14 +304,14 @@ export const TaskDescriptionEditor = forwardRef<
   }));
 
   return (
-    <div className={cn("relative rounded-lg border border-border bg-muted/50", className)}>
+    <div className={cn("relative overflow-hidden rounded-xl border border-border bg-background/70 shadow-inner ring-1 ring-white/5", className)}>
       {/* Mode toggle */}
       {!readOnly && (
-        <div className="flex justify-end px-2 pt-1.5">
+        <div className="flex justify-end border-b border-border/60 bg-muted/30 px-2 py-1.5">
           <button
             type="button"
             onClick={handleModeToggle}
-            className="flex items-center gap-1 px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground bg-muted hover:bg-accent rounded transition-colors"
+            className="flex items-center gap-1 rounded-md border border-border bg-background/70 px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             {editorMode === "rich" ? (
               <>
@@ -333,19 +333,19 @@ export const TaskDescriptionEditor = forwardRef<
         <EditorContent
           editor={editor}
           className={cn(
-            "px-3 py-2",
+            "px-4 py-3",
             "[&_.ProseMirror]:text-foreground [&_.ProseMirror]:text-sm",
             "[&_.ProseMirror]:leading-relaxed"
           )}
         />
       </div>
       {editorMode === "markdown" && (
-        <div className="px-3 py-2">
+        <div className="px-4 py-3">
           <textarea
             value={markdownContent}
             onChange={handleMarkdownChange}
             placeholder="Write in Markdown..."
-            className="w-full bg-transparent border-none outline-none text-foreground font-mono text-sm leading-relaxed resize-y placeholder-muted-foreground"
+            className="w-full resize-y border-none bg-transparent font-mono text-sm leading-relaxed text-foreground outline-none placeholder-muted-foreground"
             style={{ minHeight: minHeight }}
             spellCheck={false}
           />

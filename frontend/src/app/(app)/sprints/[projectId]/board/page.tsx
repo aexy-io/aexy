@@ -2,7 +2,7 @@
 
 import { use, useState, useMemo, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutGrid,
@@ -30,6 +30,9 @@ import {
   Users2,
   Gauge,
   ArrowRightLeft,
+  Pencil,
+  GitPullRequest,
+  AlertTriangle,
 } from "lucide-react";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
@@ -876,6 +879,7 @@ interface EditTaskModalProps {
       contributes_to_goal?: boolean;
       mentioned_user_ids?: string[];
       mentioned_file_paths?: string[];
+      pr_references?: unknown[];
     };
   }) => Promise<SprintTask>;
   onDelete: (data: { sprintId: string | null; taskId: string }) => Promise<void>;
@@ -886,15 +890,6 @@ interface EditTaskModalProps {
 }
 
 function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints, epics, users }: EditTaskModalProps) {
-  // Close on escape key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
-
   const CACHE_KEY = `task_draft_${task.id}`;
 
   // Try to restore cached state
@@ -934,7 +929,7 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showRestoredNotice, setShowRestoredNotice] = useState(!!cachedState);
-  const [showPRLink, setShowPRLink] = useState(false);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const editorRef = useRef<TaskDescriptionEditorRef>(null);
 
   // Cache form state when values change
@@ -1049,6 +1044,24 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
     onClose();
   };
 
+  const handleRequestClose = useCallback(() => {
+    if (hasChanges) {
+      setShowCloseConfirm(true);
+      return;
+    }
+
+    onClose();
+  }, [hasChanges, onClose]);
+
+  // Close on escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleRequestClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleRequestClose]);
+
   const handleDelete = async () => {
     try {
       await onDelete({
@@ -1059,30 +1072,6 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
       onClose();
     } catch (err) {
       console.error("Failed to delete:", err);
-    }
-  };
-
-  // Handle GitHub PR linking
-  const handleLinkPR = async (prData: { pr_id: string; pr_url: string; title: string; state: string; repository: string }) => {
-    try {
-      // This would be implemented with actual GitHub PR API call
-      // For now, we'll simulate it
-      console.log("Linking PR:", prData);
-
-      // Update task with PR reference
-      // This would use the githubPrApi.linkPR endpoint
-      await onUpdate({
-        taskId: task.id,
-        sprintId: task.sprint_id || null,
-        updates: {
-          // Add PR reference to task
-          pr_references: [...((task as any).pr_references || []), prData],
-        },
-      });
-
-      setShowPRLink(false);
-    } catch (err) {
-      console.error("Failed to link PR:", err);
     }
   };
 
@@ -1103,116 +1092,190 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
     }
   };
 
-  const handleQuickStatusChange = async (newStatus: TaskStatus) => {
-    try {
-      await onUpdate({
-        taskId: task.id,
-        sprintId: task.sprint_id || null,
-        updates: { status: newStatus },
-      });
-      setStatus(newStatus);
-    } catch (err) {
-      console.error("Failed to update status:", err);
-    }
+  const handleStatusChange = (newStatus: TaskStatus) => {
+    setStatus(newStatus);
   };
+
+  const selectedSprintName = task.sprint_id
+    ? sprints.find((s) => s.id === task.sprint_id)?.name || "Sprint"
+    : "Project Backlog";
+
+  const linkedPRs = ((task as any).pr_references || []) as Array<{
+    pr_id: string;
+    pr_url: string;
+    pr_number?: string | number;
+    title?: string;
+    state?: string;
+    repository?: string;
+  }>;
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start justify-center z-50 overflow-y-auto py-10"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 px-3 py-4 backdrop-blur-sm sm:px-6 sm:py-8"
+      onClick={(e) => e.target === e.currentTarget && handleRequestClose()}
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-muted border border-border rounded-xl w-full max-w-4xl shadow-2xl"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="task-modal-title"
+        aria-describedby="task-modal-meta"
+        className="relative flex max-h-[calc(100vh-2rem)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-background/95 shadow-2xl shadow-black/40 ring-1 ring-white/5"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-start justify-between p-4 border-b border-border">
-          <div className="flex-1 mr-4">
-            {isEditingTitle ? (
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                onBlur={() => setIsEditingTitle(false)}
-                onKeyDown={(e) => e.key === "Enter" && setIsEditingTitle(false)}
-                autoFocus
-                className="w-full text-xl font-semibold bg-background/50 border border-border rounded px-2 py-1 text-foreground focus:outline-none focus:border-primary-500"
-              />
-            ) : (
-              <h2
-                onClick={() => setIsEditingTitle(true)}
-                className="text-xl font-semibold text-foreground cursor-pointer hover:bg-accent/50 rounded px-2 py-1 -mx-2"
-              >
-                {title}
-              </h2>
-            )}
-            <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
-              {task.sprint_id ? (
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-green-500" />
-                  {sprints.find(s => s.id === task.sprint_id)?.name || "Sprint"}
-                </span>
+        <div className="border-b border-border bg-gradient-to-r from-background via-muted/70 to-background px-5 py-4 sm:px-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              {isEditingTitle ? (
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  onBlur={() => setIsEditingTitle(false)}
+                  onKeyDown={(e) => e.key === "Enter" && setIsEditingTitle(false)}
+                  autoFocus
+                  className="w-full rounded-lg border border-primary-500/40 bg-background/70 px-3 py-2 text-xl font-semibold text-foreground shadow-inner focus:border-primary-400 focus:outline-none"
+                />
               ) : (
-                <span className="text-muted-foreground">Project Backlog</span>
+                <button
+                  type="button"
+                  id="task-modal-title"
+                  onClick={() => setIsEditingTitle(true)}
+                  className="-mx-2 flex max-w-full items-start gap-2 rounded-lg px-2 py-1 text-left text-xl font-semibold text-foreground transition hover:bg-accent/60 focus:bg-accent/60 focus:outline-none"
+                >
+                  <span className="min-w-0 break-words">{title}</span>
+                  <Pencil className="mt-1 h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                </button>
               )}
-              <span>•</span>
-              <span>Created {new Date(task.created_at).toLocaleDateString()}</span>
+              <div id="task-modal-meta" className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-2.5 py-1">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                  {selectedSprintName}
+                </span>
+                <span>•</span>
+                <span>Created {new Date(task.created_at).toLocaleDateString()}</span>
+                {hasChanges && (
+                  <>
+                    <span>•</span>
+                    <span className="text-amber-400">Unsaved changes</span>
+                  </>
+                )}
+              </div>
             </div>
+            <button
+              type="button"
+              aria-label="Close task modal"
+              onClick={handleRequestClose}
+              className="rounded-lg p-2 text-muted-foreground transition hover:bg-accent hover:text-foreground focus:bg-accent focus:text-foreground focus:outline-none"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
-          >
-            <X className="h-5 w-5" />
-          </button>
         </div>
 
-        <div className="flex">
+        <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_20rem]">
           {/* Main content */}
-          <div className="flex-1 p-4 space-y-4">
+          <div className="space-y-5 p-5 sm:p-6">
             {/* Quick status buttons */}
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Status</label>
+            <section className="rounded-xl border border-border bg-muted/30 p-3">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Status</label>
+                <span className="text-xs text-muted-foreground">Saved with the rest of the task</span>
+              </div>
               <div className="flex flex-wrap gap-2">
                 {(Object.keys(STATUS_CONFIG) as TaskStatus[]).map((s) => (
                   <button
                     key={s}
-                    onClick={() => handleQuickStatusChange(s)}
+                    type="button"
+                    onClick={() => handleStatusChange(s)}
                     disabled={isUpdating}
                     className={cn(
-                      "px-3 py-1.5 rounded-lg text-sm font-medium transition-all",
+                      "rounded-lg px-3 py-2 text-sm font-medium transition-all",
                       status === s
-                        ? `${STATUS_CONFIG[s].bgColor} ${STATUS_CONFIG[s].color} ring-2 ring-offset-2 ring-offset-slate-800 ring-current`
-                        : "bg-accent/50 text-muted-foreground hover:bg-accent hover:text-foreground"
+                        ? `${STATUS_CONFIG[s].bgColor} ${STATUS_CONFIG[s].color} shadow-sm ring-1 ring-current`
+                        : "bg-background/70 text-muted-foreground hover:bg-accent hover:text-foreground"
                     )}
                   >
                     {STATUS_CONFIG[s].label}
                   </button>
                 ))}
               </div>
-            </div>
+            </section>
 
             {/* Description with mentions */}
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">
-                Description
-                <span className="text-muted-foreground font-normal ml-2">Use @ to mention</span>
-              </label>
+            <section>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Description
+                </label>
+                <span className="text-xs text-muted-foreground">Use @ to mention</span>
+              </div>
               <TaskDescriptionEditor
                 ref={editorRef}
                 content={descriptionJson}
                 onChange={handleDescriptionChange}
                 placeholder="Add more details... Use @ to mention team members"
                 users={users}
-                minHeight="200px"
+                minHeight="260px"
               />
-            </div>
+            </section>
+
+            {/* GitHub PR Links */}
+            <section className="rounded-xl border border-border bg-muted/30 p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <GitPullRequest className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-sm font-medium text-foreground">GitHub PRs</h3>
+                </div>
+                <button
+                  type="button"
+                  disabled
+                  className="inline-flex items-center gap-2 rounded-lg border border-border bg-background/40 px-3 py-1.5 text-sm text-muted-foreground opacity-70"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Coming soon
+                </button>
+              </div>
+              {linkedPRs.length > 0 ? (
+                <div className="space-y-2">
+                  {linkedPRs.map((pr) => (
+                    <div key={pr.pr_id} className="flex items-center gap-3 rounded-lg border border-border bg-background/60 p-3">
+                      <span className={cn(
+                        "rounded-full px-2 py-0.5 text-xs",
+                        pr.state === "open"
+                          ? "bg-emerald-500/15 text-emerald-400"
+                          : pr.state === "merged"
+                            ? "bg-violet-500/15 text-violet-300"
+                            : "bg-muted text-muted-foreground"
+                      )}>
+                        {pr.state || "linked"}
+                      </span>
+                      <a href={pr.pr_url} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate text-sm text-foreground hover:underline">
+                        {pr.repository} {pr.pr_number ? `#${pr.pr_number}` : ""}
+                        {pr.title ? ` - ${pr.title}` : ""}
+                      </a>
+                      <button
+                        type="button"
+                        aria-label="Unlink pull request"
+                        onClick={() => handleUnlinkPR(pr.pr_id)}
+                        disabled={isUpdating}
+                        className="rounded p-1 text-muted-foreground transition hover:bg-accent hover:text-foreground"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No pull requests linked.</p>
+              )}
+            </section>
 
             {/* Error */}
             {error && (
@@ -1223,7 +1286,11 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
           </div>
 
           {/* Sidebar */}
-          <div className="w-48 border-l border-border p-4 space-y-4 bg-muted/50">
+          <aside className="space-y-5 border-t border-border bg-muted/40 p-5 sm:p-6 lg:border-l lg:border-t-0">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Properties</h3>
+              <p className="mt-1 text-xs text-muted-foreground">Changes are applied when you save.</p>
+            </div>
             {/* Priority */}
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Priority</label>
@@ -1314,47 +1381,6 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
               </label>
             </div>
 
-            {/* GitHub PR Links */}
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">
-                GitHub PR Links
-                <span className="text-muted-foreground font-normal ml-2">Manage related PRs</span>
-              </label>
-              <button
-                onClick={() => setShowPRLink(true)}
-                disabled={isUpdating}
-                className="w-full px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition flex items-center gap-2"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Link GitHub PR
-              </button>
-              {/* Display linked PRs */}
-              {(task as any).pr_references?.map((pr: any) => (
-                <div key={pr.pr_id} className="flex items-center gap-2 p-2 bg-muted/30 rounded mb-2">
-                  <div className="flex items-center gap-2 flex-1">
-                    <span className={`text-xs px-2 py-1 rounded ${pr.state === 'open' ? 'bg-green-500/20 text-green-400' : pr.state === 'merged' ? 'bg-purple-500/20 text-purple-400' : 'bg-gray-500/20 text-gray-400'}`}>
-                      {pr.state}
-                    </span>
-                    <a href={pr.pr_url} target="_blank" className="text-sm text-foreground hover:underline truncate">
-                      {pr.repository} #{pr.pr_number}
-                    </a>
-                    {pr.title && (
-                      <span className="text-xs text-muted-foreground truncate ml-2">
-                        - {pr.title}
-                      </span>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => handleUnlinkPR(pr.pr_id)}
-                    disabled={isUpdating}
-                    className="text-muted-foreground hover:text-foreground hover:bg-accent p-1 rounded transition"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              ))}
-            </div>
-
             {/* Archive button */}
             <div className="pt-4 border-t border-border">
               {showDeleteConfirm ? (
@@ -1377,6 +1403,7 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
                 </div>
               ) : (
                 <button
+                  type="button"
                   onClick={() => setShowDeleteConfirm(true)}
                   className="w-full px-2 py-1.5 text-amber-400 hover:bg-amber-500/10 rounded text-sm transition"
                 >
@@ -1384,7 +1411,7 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
                 </button>
               )}
             </div>
-          </div>
+          </aside>
         </div>
 
         {/* Restored from draft notice */}
@@ -1401,22 +1428,71 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
         )}
 
         {/* Footer */}
-        {hasChanges && (
-          <div className="flex justify-end gap-3 p-4 border-t border-border bg-muted/80">
+        <div className="sticky bottom-0 flex flex-col gap-3 border-t border-border bg-background/95 p-4 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-sm text-muted-foreground">
+            {hasChanges ? "Review and save your changes." : "No unsaved changes."}
+          </div>
+          <div className="flex justify-end gap-3">
             <button
+              type="button"
               onClick={handleDiscard}
+              disabled={!hasChanges || isUpdating}
               className="px-4 py-2 text-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
             >
               Discard
             </button>
             <button
+              type="button"
               onClick={handleSave}
-              disabled={isUpdating}
+              disabled={!hasChanges || isUpdating}
               className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg disabled:opacity-50 transition"
             >
               {isUpdating && <Loader2 className="h-4 w-4 animate-spin" />}
               {isUpdating ? "Saving..." : "Save Changes"}
             </button>
+          </div>
+        </div>
+
+        {showCloseConfirm && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-xl border border-border bg-background p-5 shadow-2xl">
+              <div className="flex gap-3">
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-amber-400">
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-foreground">Unsaved changes</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Save your edits before closing, or discard them and close the task.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowCloseConfirm(false)}
+                  className="rounded-lg px-4 py-2 text-sm text-foreground transition hover:bg-accent"
+                >
+                  Keep editing
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDiscard}
+                  className="rounded-lg px-4 py-2 text-sm text-amber-300 transition hover:bg-amber-500/10"
+                >
+                  Discard
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={isUpdating}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm text-white transition hover:bg-primary-700 disabled:opacity-50"
+                >
+                  {isUpdating && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Save
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </motion.div>
@@ -1431,6 +1507,7 @@ export default function ProjectBoardPage({
 }) {
   const { projectId } = use(params);
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -1553,17 +1630,38 @@ export default function ProjectBoardPage({
   }, [updateView]);
 
   const [selectedTask, setSelectedTask] = useState<SprintTask | null>(null);
+  const dismissedTaskIdFromUrlRef = useRef<string | null>(null);
 
   // Auto-open task from URL query parameter (e.g. notification deep links)
   const taskIdFromUrl = searchParams.get("task");
   useEffect(() => {
-    if (taskIdFromUrl && filteredTasks.length > 0 && !selectedTask) {
+    if (!taskIdFromUrl) {
+      dismissedTaskIdFromUrlRef.current = null;
+      return;
+    }
+
+    if (dismissedTaskIdFromUrlRef.current === taskIdFromUrl || selectedTask) {
+      return;
+    }
+
+    if (filteredTasks.length > 0) {
       const task = filteredTasks.find((t) => t.id === taskIdFromUrl);
-      if (task) {
-        setSelectedTask(task);
-      }
+      if (task) setSelectedTask(task);
     }
   }, [taskIdFromUrl, filteredTasks, selectedTask]);
+
+  const handleCloseTaskModal = useCallback(() => {
+    setSelectedTask(null);
+
+    if (!taskIdFromUrl) return;
+
+    dismissedTaskIdFromUrlRef.current = taskIdFromUrl;
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("task");
+    const queryString = params.toString();
+
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+  }, [pathname, router, searchParams, taskIdFromUrl]);
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [collapsedSprints, setCollapsedSprints] = useState<Set<string>>(new Set());
@@ -2537,7 +2635,7 @@ export default function ProjectBoardPage({
         {selectedTask && (
           <EditTaskModal
             task={selectedTask}
-            onClose={() => setSelectedTask(null)}
+            onClose={handleCloseTaskModal}
             onUpdate={updateTask}
             onDelete={archiveTask}
             isUpdating={isUpdatingTask}
