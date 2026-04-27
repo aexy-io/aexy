@@ -5,6 +5,62 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.3] - 2026-04-27
+
+### Added
+
+#### Task modal GitHub PR linking
+Task modals now link to real synced GitHub pull requests instead of the
+old placeholder `pr_references` field.
+
+- Added sprint task API endpoints to search workspace pull requests, list
+  task GitHub links, manually link a PR, and unlink an existing PR.
+- The task modal now shows linked PRs with repository, number, title,
+  state, and outbound GitHub links.
+- Added a searchable PR picker with explicit link/unlink actions and
+  loading/error feedback through React Query mutations.
+- Added Playwright coverage for opening a task modal from a board deep
+  link, displaying existing PR links, linking a synced PR, and unlinking
+  an existing PR.
+
+#### Task modal GitHub issue linking
+Tasks can now connect to GitHub issues from the project board.
+
+- Added GitHub issue link metadata to `task_github_links` with repository,
+  issue number, title, state, and URL.
+- Added issue search/link/unlink APIs for both sprint tasks and project
+  backlog tasks.
+- Added GitHub issue repository context APIs so task modals can explain
+  which repo will be used for bare `#123` references.
+- Added task title/description auto-linking for explicit `owner/repo#123`
+  references and GitHub issue URLs. Bare `#123` links only when the
+  project has a single imported GitHub issue repository.
+- The task modal now shows linked GitHub issues separately from PRs and
+  supports manual issue linking from imported GitHub issues.
+- The task modal now supports manual repo override for cross-repo issue
+  links using `owner/repo`, `#123`, `owner/repo#123`, or full GitHub
+  issue URLs.
+- Extended Playwright coverage to verify auto-linked issues, manual issue
+  linking, cross-repo issue override, and issue unlinking.
+
+### Fixed
+
+#### Task modal close behaviour on deep links
+Closing a task modal opened from `/sprints/{projectId}/board?task=...`
+now removes only the `task` query parameter and prevents the modal from
+immediately reopening while the route updates. The same modal path is
+used from the board and deep-link entry points.
+
+### Changed
+
+#### Task modal polish
+Refined the task modal into a wider, more deliberate editing surface:
+status changes are saved explicitly, unsaved edits prompt before closing,
+dialog accessibility metadata was added, and the GitHub PR section now
+lives in the main task content area.
+
+---
+
 ## [0.7.2] - 2026-04-14
 
 ### Added

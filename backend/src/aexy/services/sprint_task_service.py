@@ -19,6 +19,7 @@ from aexy.services.notification_service import (
     notify_mention,
     _get_text_snippet,
 )
+from aexy.services.github_task_sync_service import GitHubTaskSyncService
 
 
 class SprintTaskService:
@@ -93,6 +94,7 @@ class SprintTaskService:
         )
         self.db.add(task)
         await self.db.flush()
+        await GitHubTaskSyncService(self.db).auto_link_issue_references(task)
 
         # Re-fetch with relationships loaded to avoid lazy loading issues
         stmt = (
@@ -356,6 +358,7 @@ class SprintTaskService:
             task.contributes_to_goal = contributes_to_goal
 
         await self.db.flush()
+        await GitHubTaskSyncService(self.db).auto_link_issue_references(task)
 
         # Re-fetch with relationships loaded
         return await self.get_task(task_id)

@@ -37,6 +37,7 @@ class TaskReference:
     source: TaskReferenceSource  # Detected source system
     matched_text: str  # The original matched text
     project_key: str | None = None  # For Jira/Linear: the project/team prefix
+    repository: str | None = None  # For GitHub: owner/repo when explicitly provided
 
 
 class TaskReferenceParser:
@@ -66,6 +67,18 @@ class TaskReferenceParser:
     # Pattern for GitHub-style issue references: #123
     GITHUB_ISSUE_PATTERN = re.compile(
         r"(?:^|[\s\(\[\{])#(\d+)(?:$|[\s\)\]\}\.,;:])",
+        re.IGNORECASE
+    )
+
+    # Pattern for explicit GitHub issue refs: owner/repo#123
+    REPO_GITHUB_ISSUE_PATTERN = re.compile(
+        r"(?<![\w.-])([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)#(\d+)\b",
+        re.IGNORECASE
+    )
+
+    # Pattern for GitHub issue URLs.
+    GITHUB_ISSUE_URL_PATTERN = re.compile(
+        r"https?://github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/issues/(\d+)\b",
         re.IGNORECASE
     )
 
@@ -135,6 +148,11 @@ class TaskReferenceParser:
         references.extend(self._parse_reference_github(text, seen_identifiers))
         references.extend(self._parse_reference_project(text, seen_identifiers))
 
+        # Check explicit GitHub issue patterns before standalone #123 so
+        # owner/repo#123 can carry repository context.
+        references.extend(self._parse_repo_github(text, seen_identifiers))
+        references.extend(self._parse_github_issue_urls(text, seen_identifiers))
+
         # Check standalone patterns (default to refs type)
         references.extend(self._parse_standalone_github(text, seen_identifiers))
         references.extend(self._parse_standalone_project(text, seen_identifiers))
@@ -142,6 +160,52 @@ class TaskReferenceParser:
         references.extend(self._parse_task_prefix(text, seen_identifiers))
 
         return references
+
+    def _parse_repo_github(
+        self, text: str, seen: set[str]
+    ) -> list[TaskReference]:
+        """Parse explicit owner/repo#123 GitHub issue references."""
+        refs = []
+        for match in self.REPO_GITHUB_ISSUE_PATTERN.finditer(text):
+            repository = match.group(1)
+            issue_num = match.group(2)
+            identifier = f"{repository.lower()}#{issue_num}"
+
+            if identifier in seen:
+                continue
+            seen.add(identifier)
+
+            refs.append(TaskReference(
+                identifier=issue_num,
+                reference_type=ReferenceType.REFS,
+                source=TaskReferenceSource.GITHUB_ISSUE,
+                matched_text=match.group(0).strip(),
+                repository=repository,
+            ))
+        return refs
+
+    def _parse_github_issue_urls(
+        self, text: str, seen: set[str]
+    ) -> list[TaskReference]:
+        """Parse full GitHub issue URLs."""
+        refs = []
+        for match in self.GITHUB_ISSUE_URL_PATTERN.finditer(text):
+            repository = match.group(1)
+            issue_num = match.group(2)
+            identifier = f"{repository.lower()}#{issue_num}"
+
+            if identifier in seen:
+                continue
+            seen.add(identifier)
+
+            refs.append(TaskReference(
+                identifier=issue_num,
+                reference_type=ReferenceType.REFS,
+                source=TaskReferenceSource.GITHUB_ISSUE,
+                matched_text=match.group(0).strip(),
+                repository=repository,
+            ))
+        return refs
 
     def _parse_closing_github(
         self, text: str, seen: set[str]

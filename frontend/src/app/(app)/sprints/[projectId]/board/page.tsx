@@ -31,6 +31,7 @@ import {
   Gauge,
   ArrowRightLeft,
   Pencil,
+  GitBranch,
   GitPullRequest,
   AlertTriangle,
 } from "lucide-react";
@@ -57,7 +58,7 @@ import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import { useProjectBoard, BoardViewMode, useBoardSelection } from "@/hooks/useProjectBoard";
 import { useEpics } from "@/hooks/useEpics";
 import { useProject } from "@/hooks/useProjects";
-import { SprintTask, TaskStatus, TaskPriority, SprintListItem, EpicListItem, sprintApi, TaskTemplate, taskTemplatesApi } from "@/lib/api";
+import { SprintTask, TaskStatus, TaskPriority, SprintListItem, EpicListItem, sprintApi, projectTasksApi, TaskTemplate, taskTemplatesApi } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { TaskCardPremium, TaskCardSkeleton } from "@/components/planning/TaskCardPremium";
 import { FilterBar } from "@/components/planning/FilterBar";
@@ -879,7 +880,6 @@ interface EditTaskModalProps {
       contributes_to_goal?: boolean;
       mentioned_user_ids?: string[];
       mentioned_file_paths?: string[];
-      pr_references?: unknown[];
     };
   }) => Promise<SprintTask>;
   onDelete: (data: { sprintId: string | null; taskId: string }) => Promise<void>;
@@ -890,6 +890,7 @@ interface EditTaskModalProps {
 }
 
 function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints, epics, users }: EditTaskModalProps) {
+  const queryClient = useQueryClient();
   const CACHE_KEY = `task_draft_${task.id}`;
 
   // Try to restore cached state
@@ -930,6 +931,12 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showRestoredNotice, setShowRestoredNotice] = useState(!!cachedState);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  const [prSearch, setPrSearch] = useState("");
+  const [selectedPrId, setSelectedPrId] = useState("");
+  const [issueSearch, setIssueSearch] = useState("");
+  const [selectedIssueKey, setSelectedIssueKey] = useState("");
+  const [manualIssueRef, setManualIssueRef] = useState("");
+  const [manualIssueRepository, setManualIssueRepository] = useState("");
   const editorRef = useRef<TaskDescriptionEditorRef>(null);
 
   // Cache form state when values change
@@ -1075,39 +1082,170 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
     }
   };
 
-  const handleUnlinkPR = async (prId: string) => {
-    try {
-      // Remove PR reference from task
-      const updatedPRs = ((task as any).pr_references || []).filter((pr: any) => pr.pr_id !== prId);
-
-      await onUpdate({
-        taskId: task.id,
-        sprintId: task.sprint_id || null,
-        updates: {
-          pr_references: updatedPRs,
-        },
-      });
-    } catch (err) {
-      console.error("Failed to unlink PR:", err);
-    }
-  };
-
   const handleStatusChange = (newStatus: TaskStatus) => {
     setStatus(newStatus);
+  };
+
+  const githubLinksQueryKey = ["taskGithubLinks", task.sprint_id, task.team_id, task.id];
+  const pullRequestsQueryKey = ["taskLinkPullRequests", task.sprint_id, prSearch];
+  const githubIssuesQueryKey = ["taskLinkGitHubIssues", task.sprint_id, task.team_id, issueSearch];
+  const issueRepositoryContextQueryKey = ["taskGitHubIssueRepositories", task.sprint_id, task.team_id, task.id];
+  const canUseProjectGitHubLinks = !!task.team_id;
+
+  const { data: githubLinks = [], isLoading: isLoadingGithubLinks } = useQuery({
+    queryKey: githubLinksQueryKey,
+    queryFn: () => task.sprint_id
+      ? sprintApi.getTaskGitHubLinks(task.sprint_id, task.id)
+      : projectTasksApi.getTaskGitHubLinks(task.team_id!, task.id),
+    enabled: !!task.sprint_id || canUseProjectGitHubLinks,
+  });
+
+  const { data: pullRequests = [], isLoading: isLoadingPullRequests } = useQuery({
+    queryKey: pullRequestsQueryKey,
+    queryFn: () => sprintApi.searchPullRequests(task.sprint_id!, prSearch),
+    enabled: !!task.sprint_id,
+  });
+
+  const { data: githubIssues = [], isLoading: isLoadingGithubIssues } = useQuery({
+    queryKey: githubIssuesQueryKey,
+    queryFn: () => task.sprint_id
+      ? sprintApi.searchGitHubIssues(task.sprint_id, issueSearch)
+      : projectTasksApi.searchGitHubIssues(task.team_id!, issueSearch),
+    enabled: !!task.sprint_id || canUseProjectGitHubLinks,
+  });
+
+  const { data: issueRepositoryContext } = useQuery({
+    queryKey: issueRepositoryContextQueryKey,
+    queryFn: () => task.sprint_id
+      ? sprintApi.getGitHubIssueRepositoryContext(task.sprint_id, task.id)
+      : projectTasksApi.getGitHubIssueRepositoryContext(task.team_id!, task.id),
+    enabled: !!task.sprint_id || canUseProjectGitHubLinks,
+  });
+
+  const linkPullRequestMutation = useMutation({
+    mutationFn: (pullRequestId: string) => sprintApi.linkPullRequest(task.sprint_id!, task.id, pullRequestId),
+    onSuccess: () => {
+      setSelectedPrId("");
+      queryClient.invalidateQueries({ queryKey: githubLinksQueryKey });
+      toast.success("Pull request linked");
+    },
+    onError: () => {
+      toast.error("Failed to link pull request");
+    },
+  });
+
+  const unlinkGitHubLinkMutation = useMutation({
+    mutationFn: (linkId: string) => task.sprint_id
+      ? sprintApi.unlinkGitHubLink(task.sprint_id, task.id, linkId)
+      : projectTasksApi.unlinkGitHubLink(task.team_id!, task.id, linkId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: githubLinksQueryKey });
+      toast.success("GitHub link removed");
+    },
+    onError: () => {
+      toast.error("Failed to remove GitHub link");
+    },
+  });
+
+  const linkGitHubIssueMutation = useMutation({
+    mutationFn: (payload: { repository: string; issue_number: number; title?: string | null; state?: string | null; url?: string | null }) => {
+      return task.sprint_id
+        ? sprintApi.linkGitHubIssue(task.sprint_id, task.id, payload)
+        : projectTasksApi.linkGitHubIssue(task.team_id!, task.id, payload);
+    },
+    onSuccess: () => {
+      setSelectedIssueKey("");
+      setManualIssueRef("");
+      queryClient.invalidateQueries({ queryKey: githubLinksQueryKey });
+      toast.success("GitHub issue linked");
+    },
+    onError: (err: unknown) => {
+      const message = err instanceof Error ? err.message : "Failed to link GitHub issue";
+      toast.error(message);
+    },
+  });
+
+  const inferredIssueRepository = issueRepositoryContext?.inferred_repository || null;
+  const knownIssueRepositories = issueRepositoryContext?.repositories ?? [];
+  const selectedManualRepository = manualIssueRepository.trim() || inferredIssueRepository || "";
+
+  const parseManualIssueReference = useCallback((value: string, fallbackRepository: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return { error: "Enter an issue number, owner/repo#123, or GitHub issue URL." };
+
+    const urlMatch = trimmed.match(/^https?:\/\/github\.com\/([^/\s]+\/[^/\s]+)\/issues\/(\d+)(?:[/?#].*)?$/i);
+    if (urlMatch) {
+      return { repository: urlMatch[1], issueNumber: Number(urlMatch[2]), url: trimmed };
+    }
+
+    const repoRefMatch = trimmed.match(/^([^/\s#]+\/[^/\s#]+)#(\d+)$/);
+    if (repoRefMatch) {
+      return { repository: repoRefMatch[1], issueNumber: Number(repoRefMatch[2]) };
+    }
+
+    const numberMatch = trimmed.match(/^#?(\d+)$/);
+    if (numberMatch) {
+      if (!fallbackRepository) {
+        return { error: "Choose a repository or use owner/repo#123." };
+      }
+      return { repository: fallbackRepository, issueNumber: Number(numberMatch[1]) };
+    }
+
+    return { error: "Use #123, owner/repo#123, or a GitHub issue URL." };
+  }, []);
+
+  const handleSelectedIssueLink = () => {
+    const issue = githubIssues.find((item) => `${item.repository}#${item.number}` === selectedIssueKey);
+    if (!issue) {
+      toast.error("Select a GitHub issue to link");
+      return;
+    }
+    linkGitHubIssueMutation.mutate({
+      repository: issue.repository,
+      issue_number: issue.number,
+      title: issue.title,
+      state: issue.state,
+      url: issue.url,
+    });
+  };
+
+  const handleManualIssueLink = () => {
+    const parsed = parseManualIssueReference(manualIssueRef, selectedManualRepository);
+    if ("error" in parsed) {
+      toast.error(parsed.error);
+      return;
+    }
+
+    linkGitHubIssueMutation.mutate({
+      repository: parsed.repository,
+      issue_number: parsed.issueNumber,
+      url: parsed.url,
+    });
   };
 
   const selectedSprintName = task.sprint_id
     ? sprints.find((s) => s.id === task.sprint_id)?.name || "Sprint"
     : "Project Backlog";
 
-  const linkedPRs = ((task as any).pr_references || []) as Array<{
-    pr_id: string;
-    pr_url: string;
-    pr_number?: string | number;
-    title?: string;
-    state?: string;
-    repository?: string;
-  }>;
+  const linkedPullRequestIds = new Set(
+    githubLinks
+      .map((link) => link.pull_request?.id)
+      .filter((id): id is string => Boolean(id))
+  );
+  const availablePullRequests = pullRequests.filter((pr) => !linkedPullRequestIds.has(pr.id));
+  const linkedIssueKeys = new Set(
+    githubLinks
+      .map((link) => link.github_issue ? `${link.github_issue.repository}#${link.github_issue.number}` : null)
+      .filter((key): key is string => Boolean(key))
+  );
+  const availableGitHubIssues = githubIssues.filter((issue) => !linkedIssueKeys.has(`${issue.repository}#${issue.number}`));
+  const pullRequestLinks = githubLinks.filter((link) => link.link_type === "pull_request");
+  const issueLinks = githubLinks.filter((link) => link.link_type === "github_issue");
+  const issueRepositoryLabel = inferredIssueRepository
+    ? `Bare #123 links use ${inferredIssueRepository}`
+    : knownIssueRepositories.length > 1
+      ? "Multiple repos detected. Pick a repo or use owner/repo#123."
+      : "Use owner/repo#123 or paste a GitHub issue URL.";
 
   return (
     <motion.div
@@ -1228,52 +1366,257 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
 
             {/* GitHub PR Links */}
             <section className="rounded-xl border border-border bg-muted/30 p-4">
-              <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
                   <GitPullRequest className="h-4 w-4 text-muted-foreground" />
                   <h3 className="text-sm font-medium text-foreground">GitHub PRs</h3>
                 </div>
-                <button
-                  type="button"
-                  disabled
-                  className="inline-flex items-center gap-2 rounded-lg border border-border bg-background/40 px-3 py-1.5 text-sm text-muted-foreground opacity-70"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Coming soon
-                </button>
+                {task.sprint_id && (
+                  <div className="flex flex-col gap-2 sm:min-w-[22rem] sm:flex-row">
+                    <input
+                      type="search"
+                      value={prSearch}
+                      onChange={(e) => setPrSearch(e.target.value)}
+                      placeholder="Search synced PRs..."
+                      className="min-w-0 flex-1 rounded-lg border border-border bg-background/70 px-3 py-2 text-sm text-foreground placeholder-muted-foreground focus:border-primary-500 focus:outline-none"
+                    />
+                    <select
+                      aria-label="Select pull request"
+                      value={selectedPrId}
+                      onChange={(e) => setSelectedPrId(e.target.value)}
+                      className="min-w-0 rounded-lg border border-border bg-background/70 px-3 py-2 text-sm text-foreground focus:border-primary-500 focus:outline-none sm:w-48"
+                    >
+                      <option value="">
+                        {isLoadingPullRequests ? "Loading..." : "Select PR"}
+                      </option>
+                      {availablePullRequests.map((pr) => (
+                        <option key={pr.id} value={pr.id}>
+                          {pr.repository} #{pr.number}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => selectedPrId && linkPullRequestMutation.mutate(selectedPrId)}
+                      disabled={!selectedPrId || linkPullRequestMutation.isPending}
+                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-3 py-2 text-sm text-white transition hover:bg-primary-700 disabled:opacity-50"
+                    >
+                      {linkPullRequestMutation.isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Plus className="h-3.5 w-3.5" />
+                      )}
+                      Link
+                    </button>
+                  </div>
+                )}
               </div>
-              {linkedPRs.length > 0 ? (
+              {!task.sprint_id ? (
+                <p className="text-sm text-muted-foreground">Move this backlog task into a sprint before linking pull requests.</p>
+              ) : isLoadingGithubLinks ? (
+                <p className="text-sm text-muted-foreground">Loading linked pull requests...</p>
+              ) : pullRequestLinks.length > 0 ? (
                 <div className="space-y-2">
-                  {linkedPRs.map((pr) => (
-                    <div key={pr.pr_id} className="flex items-center gap-3 rounded-lg border border-border bg-background/60 p-3">
-                      <span className={cn(
-                        "rounded-full px-2 py-0.5 text-xs",
-                        pr.state === "open"
-                          ? "bg-emerald-500/15 text-emerald-400"
-                          : pr.state === "merged"
-                            ? "bg-violet-500/15 text-violet-300"
-                            : "bg-muted text-muted-foreground"
-                      )}>
-                        {pr.state || "linked"}
-                      </span>
-                      <a href={pr.pr_url} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate text-sm text-foreground hover:underline">
-                        {pr.repository} {pr.pr_number ? `#${pr.pr_number}` : ""}
-                        {pr.title ? ` - ${pr.title}` : ""}
-                      </a>
-                      <button
-                        type="button"
-                        aria-label="Unlink pull request"
-                        onClick={() => handleUnlinkPR(pr.pr_id)}
-                        disabled={isUpdating}
-                        className="rounded p-1 text-muted-foreground transition hover:bg-accent hover:text-foreground"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ))}
+                  {pullRequestLinks.map((link) => {
+                    const pr = link.pull_request;
+                    if (!pr) return null;
+
+                    return (
+                      <div key={link.id} className="flex items-center gap-3 rounded-lg border border-border bg-background/60 p-3">
+                        <span className={cn(
+                          "rounded-full px-2 py-0.5 text-xs",
+                          pr.state === "open"
+                            ? "bg-emerald-500/15 text-emerald-400"
+                            : pr.state === "merged"
+                              ? "bg-violet-500/15 text-violet-300"
+                              : "bg-muted text-muted-foreground"
+                        )}>
+                          {pr.state || "linked"}
+                        </span>
+                        <a
+                          href={pr.url || "#"}
+                          target={pr.url ? "_blank" : undefined}
+                          rel={pr.url ? "noreferrer" : undefined}
+                          className="min-w-0 flex-1 truncate text-sm text-foreground hover:underline"
+                        >
+                          {pr.repository} #{pr.number}
+                          {pr.title ? ` - ${pr.title}` : ""}
+                        </a>
+                        <button
+                          type="button"
+                          aria-label="Unlink pull request"
+                          onClick={() => unlinkGitHubLinkMutation.mutate(link.id)}
+                          disabled={unlinkGitHubLinkMutation.isPending}
+                          className="rounded p-1 text-muted-foreground transition hover:bg-accent hover:text-foreground"
+                        >
+                          {unlinkGitHubLinkMutation.isPending ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <X className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">No pull requests linked.</p>
+              )}
+            </section>
+
+            {/* GitHub Issue Links */}
+            <section className="rounded-xl border border-border bg-muted/30 p-4">
+              <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2">
+                  <GitBranch className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-sm font-medium text-foreground">GitHub Issues</h3>
+                </div>
+                {canUseProjectGitHubLinks && (
+                  <div className="flex flex-col gap-2 sm:min-w-[22rem] sm:flex-row">
+                    <input
+                      type="search"
+                      value={issueSearch}
+                      onChange={(e) => setIssueSearch(e.target.value)}
+                      placeholder="Search imported issues..."
+                      className="min-w-0 flex-1 rounded-lg border border-border bg-background/70 px-3 py-2 text-sm text-foreground placeholder-muted-foreground focus:border-primary-500 focus:outline-none"
+                    />
+                    <select
+                      aria-label="Select GitHub issue"
+                      value={selectedIssueKey}
+                      onChange={(e) => setSelectedIssueKey(e.target.value)}
+                      className="min-w-0 rounded-lg border border-border bg-background/70 px-3 py-2 text-sm text-foreground focus:border-primary-500 focus:outline-none sm:w-48"
+                    >
+                      <option value="">
+                        {isLoadingGithubIssues ? "Loading..." : "Select issue"}
+                      </option>
+                      {availableGitHubIssues.map((issue) => (
+                        <option key={`${issue.repository}#${issue.number}`} value={`${issue.repository}#${issue.number}`}>
+                          {issue.repository} #{issue.number}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={handleSelectedIssueLink}
+                      disabled={!selectedIssueKey || linkGitHubIssueMutation.isPending}
+                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-3 py-2 text-sm text-white transition hover:bg-primary-700 disabled:opacity-50"
+                    >
+                      {linkGitHubIssueMutation.isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Plus className="h-3.5 w-3.5" />
+                      )}
+                      Link
+                    </button>
+                  </div>
+                )}
+              </div>
+              {canUseProjectGitHubLinks && (
+                <div className="mb-3 rounded-lg border border-border bg-background/50 p-3">
+                  <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1">
+                      <GitBranch className="h-3 w-3" />
+                      {issueRepositoryLabel}
+                    </span>
+                    {knownIssueRepositories.length > 0 && (
+                      <span>{knownIssueRepositories.length} imported repo{knownIssueRepositories.length === 1 ? "" : "s"}</span>
+                    )}
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.2fr)_auto]">
+                    <div>
+                      <label className="sr-only" htmlFor="manual-github-issue-repo">GitHub issue repository</label>
+                      <input
+                        id="manual-github-issue-repo"
+                        type="text"
+                        list="github-issue-repositories"
+                        value={manualIssueRepository}
+                        onChange={(e) => setManualIssueRepository(e.target.value)}
+                        placeholder={inferredIssueRepository || "owner/repo"}
+                        className="w-full rounded-lg border border-border bg-background/70 px-3 py-2 text-sm text-foreground placeholder-muted-foreground focus:border-primary-500 focus:outline-none"
+                      />
+                      <datalist id="github-issue-repositories">
+                        {knownIssueRepositories.map((repository) => (
+                          <option key={repository} value={repository} />
+                        ))}
+                      </datalist>
+                    </div>
+                    <div>
+                      <label className="sr-only" htmlFor="manual-github-issue-ref">GitHub issue reference</label>
+                      <input
+                        id="manual-github-issue-ref"
+                        type="text"
+                        value={manualIssueRef}
+                        onChange={(e) => setManualIssueRef(e.target.value)}
+                        placeholder="#123, owner/repo#123, or issue URL"
+                        className="w-full rounded-lg border border-border bg-background/70 px-3 py-2 text-sm text-foreground placeholder-muted-foreground focus:border-primary-500 focus:outline-none"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleManualIssueLink}
+                      disabled={!manualIssueRef.trim() || linkGitHubIssueMutation.isPending}
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-primary-500/40 bg-primary-500/10 px-3 py-2 text-sm font-medium text-primary-200 transition hover:bg-primary-500/20 disabled:opacity-50"
+                    >
+                      {linkGitHubIssueMutation.isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Plus className="h-3.5 w-3.5" />
+                      )}
+                      Link issue
+                    </button>
+                  </div>
+                </div>
+              )}
+              {!canUseProjectGitHubLinks ? (
+                <p className="text-sm text-muted-foreground">Assign this task to a project before linking GitHub issues.</p>
+              ) : isLoadingGithubLinks ? (
+                <p className="text-sm text-muted-foreground">Loading linked GitHub issues...</p>
+              ) : issueLinks.length > 0 ? (
+                <div className="space-y-2">
+                  {issueLinks.map((link) => {
+                    const issue = link.github_issue;
+                    if (!issue) return null;
+
+                    return (
+                      <div key={link.id} className="flex items-center gap-3 rounded-lg border border-border bg-background/60 p-3">
+                        <span className={cn(
+                          "rounded-full px-2 py-0.5 text-xs",
+                          issue.state === "open" || issue.state === "todo" || issue.state === "in_progress"
+                            ? "bg-emerald-500/15 text-emerald-400"
+                            : issue.state === "done" || issue.state === "closed"
+                              ? "bg-violet-500/15 text-violet-300"
+                              : "bg-muted text-muted-foreground"
+                        )}>
+                          {issue.state || "linked"}
+                        </span>
+                        <a
+                          href={issue.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="min-w-0 flex-1 truncate text-sm text-foreground hover:underline"
+                        >
+                          {issue.repository} #{issue.number}
+                          {issue.title ? ` - ${issue.title}` : ""}
+                        </a>
+                        <button
+                          type="button"
+                          aria-label="Unlink GitHub issue"
+                          onClick={() => unlinkGitHubLinkMutation.mutate(link.id)}
+                          disabled={unlinkGitHubLinkMutation.isPending}
+                          className="rounded p-1 text-muted-foreground transition hover:bg-accent hover:text-foreground"
+                        >
+                          {unlinkGitHubLinkMutation.isPending ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <X className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No GitHub issues linked.</p>
               )}
             </section>
 

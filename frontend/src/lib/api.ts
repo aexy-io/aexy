@@ -2391,6 +2391,38 @@ export interface SprintTask {
   updated_at: string;
 }
 
+export interface PullRequestSummary {
+  id: string;
+  github_id: number;
+  number: number;
+  repository: string;
+  title: string;
+  state: string;
+  url: string | null;
+}
+
+export interface GitHubIssueSummary {
+  repository: string;
+  number: number;
+  title: string | null;
+  state: string | null;
+  url: string;
+}
+
+export interface GitHubIssueRepositoryContext {
+  repositories: string[];
+  inferred_repository: string | null;
+}
+
+export interface TaskGitHubLink {
+  id: string;
+  link_type: "pull_request" | "commit" | "github_issue";
+  is_auto_linked: boolean;
+  created_at: string;
+  pull_request: PullRequestSummary | null;
+  github_issue: GitHubIssueSummary | null;
+}
+
 export interface TaskTemplate {
   id: string;
   workspace_id: string;
@@ -3059,6 +3091,54 @@ export const sprintApi = {
     return response.data;
   },
 
+  searchPullRequests: async (sprintId: string, query?: string): Promise<PullRequestSummary[]> => {
+    const response = await api.get(`/sprints/${sprintId}/tasks/github/pull-requests`, {
+      params: {
+        ...(query && { query }),
+      },
+    });
+    return response.data;
+  },
+
+  searchGitHubIssues: async (sprintId: string, query?: string): Promise<GitHubIssueSummary[]> => {
+    const response = await api.get(`/sprints/${sprintId}/tasks/github/issues`, {
+      params: {
+        ...(query && { query }),
+      },
+    });
+    return response.data;
+  },
+
+  getTaskGitHubLinks: async (sprintId: string, taskId: string): Promise<TaskGitHubLink[]> => {
+    const response = await api.get(`/sprints/${sprintId}/tasks/${taskId}/github-links`);
+    return response.data;
+  },
+
+  getGitHubIssueRepositoryContext: async (sprintId: string, taskId: string): Promise<GitHubIssueRepositoryContext> => {
+    const response = await api.get(`/sprints/${sprintId}/tasks/${taskId}/github-links/issue-repositories`);
+    return response.data;
+  },
+
+  linkPullRequest: async (sprintId: string, taskId: string, pullRequestId: string): Promise<TaskGitHubLink> => {
+    const response = await api.post(`/sprints/${sprintId}/tasks/${taskId}/github-links/pull-requests`, {
+      pull_request_id: pullRequestId,
+    });
+    return response.data;
+  },
+
+  linkGitHubIssue: async (
+    sprintId: string,
+    taskId: string,
+    issue: { repository?: string; issue_number: number; title?: string | null; state?: string | null; url?: string | null }
+  ): Promise<TaskGitHubLink> => {
+    const response = await api.post(`/sprints/${sprintId}/tasks/${taskId}/github-links/issues`, issue);
+    return response.data;
+  },
+
+  unlinkGitHubLink: async (sprintId: string, taskId: string, linkId: string): Promise<void> => {
+    await api.delete(`/sprints/${sprintId}/tasks/${taskId}/github-links/${linkId}`);
+  },
+
   // Activity Log
   getTaskActivities: async (sprintId: string, taskId: string, limit = 50, offset = 0): Promise<TaskActivityList> => {
     const response = await api.get(`/sprints/${sprintId}/tasks/${taskId}/activities`, {
@@ -3509,6 +3589,38 @@ export const projectTasksApi = {
   unarchive: async (teamId: string, taskId: string): Promise<SprintTask> => {
     const response = await api.post(`/teams/${teamId}/tasks/${taskId}/unarchive`);
     return response.data;
+  },
+
+  searchGitHubIssues: async (teamId: string, query?: string): Promise<GitHubIssueSummary[]> => {
+    const response = await api.get(`/teams/${teamId}/tasks/github/issues`, {
+      params: {
+        ...(query && { query }),
+      },
+    });
+    return response.data;
+  },
+
+  getTaskGitHubLinks: async (teamId: string, taskId: string): Promise<TaskGitHubLink[]> => {
+    const response = await api.get(`/teams/${teamId}/tasks/${taskId}/github-links`);
+    return response.data;
+  },
+
+  getGitHubIssueRepositoryContext: async (teamId: string, taskId: string): Promise<GitHubIssueRepositoryContext> => {
+    const response = await api.get(`/teams/${teamId}/tasks/${taskId}/github-links/issue-repositories`);
+    return response.data;
+  },
+
+  linkGitHubIssue: async (
+    teamId: string,
+    taskId: string,
+    issue: { repository?: string; issue_number: number; title?: string | null; state?: string | null; url?: string | null }
+  ): Promise<TaskGitHubLink> => {
+    const response = await api.post(`/teams/${teamId}/tasks/${taskId}/github-links/issues`, issue);
+    return response.data;
+  },
+
+  unlinkGitHubLink: async (teamId: string, taskId: string, linkId: string): Promise<void> => {
+    await api.delete(`/teams/${teamId}/tasks/${taskId}/github-links/${linkId}`);
   },
 };
 

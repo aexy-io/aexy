@@ -6,14 +6,15 @@ These tasks can be in the project backlog and optionally assigned to sprints lat
 
 from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from pydantic import BaseModel, Field
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from aexy.core.database import get_db
 from aexy.api.developers import get_current_developer
 from aexy.models.developer import Developer
-from aexy.models.sprint import SprintTask
+from aexy.models.sprint import SprintTask, TaskGitHubLink
 from aexy.models.notification import NotificationEventType
 from aexy.schemas.sprint import (
     ProjectTaskCreate,
@@ -25,8 +26,61 @@ from aexy.schemas.sprint import (
 from aexy.services.workspace_service import WorkspaceService
 from aexy.services.notification_service import NotificationService
 from aexy.services.activity_logger import log_activity
+from aexy.services.github_task_sync_service import GitHubTaskSyncService
 
 router = APIRouter(prefix="/teams/{team_id}/tasks", tags=["Project Tasks"])
+
+
+class GitHubIssueSummary(BaseModel):
+    repository: str
+    number: int
+    title: str | None = None
+    state: str | None = None
+    url: str
+
+
+class GitHubIssueRepositoryContext(BaseModel):
+    repositories: list[str]
+    inferred_repository: str | None = None
+
+
+class ProjectTaskGitHubLinkResponse(BaseModel):
+    id: str
+    link_type: str
+    is_auto_linked: bool
+    created_at: str
+    github_issue: GitHubIssueSummary | None = None
+
+
+class GitHubIssueLinkCreate(BaseModel):
+    repository: str | None = None
+    issue_number: int = Field(..., gt=0)
+    title: str | None = None
+    state: str | None = None
+    url: str | None = None
+
+
+def github_issue_to_summary(link: TaskGitHubLink) -> GitHubIssueSummary | None:
+    if not link.github_issue_repository or not link.github_issue_number:
+        return None
+    return GitHubIssueSummary(
+        repository=link.github_issue_repository,
+        number=link.github_issue_number,
+        title=link.github_issue_title,
+        state=link.github_issue_state,
+        url=link.github_issue_url
+        or GitHubTaskSyncService.issue_url(link.github_issue_repository, link.github_issue_number),
+    )
+
+
+def github_link_to_response(link: TaskGitHubLink) -> ProjectTaskGitHubLinkResponse:
+    return ProjectTaskGitHubLinkResponse(
+        id=str(link.id),
+        link_type=link.link_type,
+        is_auto_linked=link.is_auto_linked,
+        created_at=link.created_at.isoformat(),
+        github_issue=github_issue_to_summary(link),
+    )
 
 
 def task_to_response(task) -> SprintTaskResponse:
@@ -199,6 +253,7 @@ async def create_project_task(
 
     db.add(task)
     await db.flush()
+    await GitHubTaskSyncService(db).auto_link_issue_references(task)
 
     await log_activity(
         db,
@@ -308,6 +363,8 @@ async def update_task(
     if data.mentioned_file_paths is not None:
         task.mentioned_file_paths = data.mentioned_file_paths
 
+    await GitHubTaskSyncService(db).auto_link_issue_references(task)
+
     if task.workspace_id:
         await log_activity(
             db,
@@ -335,6 +392,150 @@ async def update_task(
             )
 
     return task_to_response(task)
+
+
+@router.get("/github/issues", response_model=list[GitHubIssueSummary])
+async def search_project_github_issues(
+    team_id: str,
+    query: str | None = None,
+    limit: int = 20,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Search imported GitHub issues for manual project task linking."""
+    await get_team_and_check_permission(team_id, current_user, db, "viewer")
+    service = GitHubTaskSyncService(db)
+    issues = await service.search_imported_issues(
+        team_id=team_id,
+        query=query,
+        limit=min(max(limit, 1), 50),
+    )
+    summaries: list[GitHubIssueSummary] = []
+    for issue in issues:
+        repository = service.repository_from_issue_url(issue.source_url)
+        number = service.issue_number_from_issue_url(issue.source_url)
+        if not repository or not number:
+            continue
+        summaries.append(
+            GitHubIssueSummary(
+                repository=repository,
+                number=number,
+                title=issue.title,
+                state=issue.status,
+                url=issue.source_url or service.issue_url(repository, number),
+            )
+        )
+    return summaries
+
+
+@router.get("/{task_id}/github-links", response_model=list[ProjectTaskGitHubLinkResponse])
+async def list_project_task_github_links(
+    team_id: str,
+    task_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """List GitHub issue links for a project-level task."""
+    await get_team_and_check_permission(team_id, current_user, db, "viewer")
+    task = await db.get(SprintTask, task_id)
+    if not task or str(task.team_id) != team_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+
+    service = GitHubTaskSyncService(db)
+    links = await service.get_task_links(task_id)
+    return [github_link_to_response(link) for link in links if link.link_type == "github_issue"]
+
+
+@router.get("/{task_id}/github-links/issue-repositories", response_model=GitHubIssueRepositoryContext)
+async def get_project_task_github_issue_repository_context(
+    team_id: str,
+    task_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return GitHub issue repository context for project-level task linking."""
+    await get_team_and_check_permission(team_id, current_user, db, "viewer")
+    task = await db.get(SprintTask, task_id)
+    if not task or str(task.team_id) != team_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+
+    service = GitHubTaskSyncService(db)
+    return GitHubIssueRepositoryContext(
+        repositories=await service.get_project_issue_repositories(team_id),
+        inferred_repository=await service.infer_repository_for_task(task),
+    )
+
+
+@router.post("/{task_id}/github-links/issues", response_model=ProjectTaskGitHubLinkResponse, status_code=status.HTTP_201_CREATED)
+async def link_github_issue_to_project_task(
+    team_id: str,
+    task_id: str,
+    data: GitHubIssueLinkCreate,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Manually link a GitHub issue to a project-level task."""
+    await get_team_and_check_permission(team_id, current_user, db, "member")
+    task = await db.get(SprintTask, task_id)
+    if not task or str(task.team_id) != team_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+
+    service = GitHubTaskSyncService(db)
+    repository = data.repository or await service.infer_repository_for_task(task)
+    if not repository:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Repository is required when the project has no single GitHub issue repository",
+        )
+
+    link = await service.link_issue_manually(
+        task_id,
+        repository,
+        data.issue_number,
+        title=data.title,
+        state=data.state,
+        url=data.url,
+    )
+    if not link:
+        existing_stmt = select(TaskGitHubLink).where(
+            and_(
+                TaskGitHubLink.task_id == task_id,
+                TaskGitHubLink.github_issue_repository == repository,
+                TaskGitHubLink.github_issue_number == data.issue_number,
+            )
+        )
+        existing_result = await db.execute(existing_stmt)
+        link = existing_result.scalar_one_or_none()
+        if not link:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unable to link GitHub issue")
+
+    await db.commit()
+    await db.refresh(link)
+    return github_link_to_response(link)
+
+
+@router.delete("/{task_id}/github-links/{link_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def unlink_project_task_github_link(
+    team_id: str,
+    task_id: str,
+    link_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Remove a GitHub issue link from a project-level task."""
+    await get_team_and_check_permission(team_id, current_user, db, "member")
+    task = await db.get(SprintTask, task_id)
+    if not task or str(task.team_id) != team_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+
+    link = await db.get(TaskGitHubLink, link_id)
+    if not link or str(link.task_id) != task_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="GitHub link not found")
+
+    removed = await GitHubTaskSyncService(db).remove_link(link_id)
+    if not removed:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="GitHub link not found")
+    await db.commit()
 
 
 @router.patch("/{task_id}/status", response_model=SprintTaskResponse)

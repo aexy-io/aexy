@@ -700,10 +700,11 @@ class SprintRetrospective(Base):
 
 
 class TaskGitHubLink(Base):
-    """Links between sprint tasks and GitHub activity (commits, PRs).
+    """Links between sprint tasks and GitHub activity (commits, PRs, issues).
 
-    This junction table enables tracking which commits and PRs are related
-    to a task, either through automatic reference parsing or manual linking.
+    This junction table enables tracking which commits, PRs, and issues are
+    related to a task, either through automatic reference parsing or manual
+    linking.
     """
 
     __tablename__ = "task_github_links"
@@ -723,7 +724,7 @@ class TaskGitHubLink(Base):
     # Link type and references
     link_type: Mapped[str] = mapped_column(
         String(50), nullable=False
-    )  # "commit" | "pull_request"
+    )  # "commit" | "pull_request" | "github_issue"
 
     commit_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False),
@@ -737,6 +738,15 @@ class TaskGitHubLink(Base):
         nullable=True,
         index=True,
     )
+    github_issue_repository: Mapped[str | None] = mapped_column(
+        String(255), nullable=True, index=True
+    )
+    github_issue_number: Mapped[int | None] = mapped_column(
+        Integer, nullable=True, index=True
+    )
+    github_issue_title: Mapped[str | None] = mapped_column(Text, nullable=True)
+    github_issue_state: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    github_issue_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     # Reference parsing metadata
     reference_text: Mapped[str | None] = mapped_column(
@@ -777,6 +787,12 @@ class TaskGitHubLink(Base):
         # Prevent duplicate links
         UniqueConstraint("task_id", "commit_id", name="uq_task_commit_link"),
         UniqueConstraint("task_id", "pull_request_id", name="uq_task_pr_link"),
+        UniqueConstraint(
+            "task_id",
+            "github_issue_repository",
+            "github_issue_number",
+            name="uq_task_github_issue_link",
+        ),
     )
 
 
