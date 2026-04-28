@@ -354,19 +354,19 @@ export function LandingFooter() {
           <div>
             <h4 className="text-white font-semibold mb-4">Company</h4>
             <ul className="space-y-2 text-white/40 text-sm">
-              <li><Link href="/mission" className="hover:text-white transition">About</Link></li>
-              <li><Link href="#" className="hover:text-white transition">Blog</Link></li>
-              <li><Link href="#" className="hover:text-white transition">Careers</Link></li>
-              <li><Link href="#" className="hover:text-white transition">Contact</Link></li>
+              <li><Link href="/about" className="hover:text-white transition">About</Link></li>
+              <li><Link href="/blog" className="hover:text-white transition">Blog</Link></li>
+              <li><Link href="/careers" className="hover:text-white transition">Careers</Link></li>
+              <li><Link href="/contact" className="hover:text-white transition">Contact</Link></li>
             </ul>
           </div>
         </div>
         <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-white/40 text-sm">&copy; 2025 Aexy. All rights reserved.</p>
           <div className="flex items-center gap-6 text-white/40 text-sm">
-            <Link href="#" className="hover:text-white transition">Privacy Policy</Link>
-            <Link href="#" className="hover:text-white transition">Terms of Service</Link>
-            <Link href="#" className="hover:text-white transition">Security</Link>
+            <Link href="/privacy" className="hover:text-white transition">Privacy Policy</Link>
+            <Link href="/terms" className="hover:text-white transition">Terms of Service</Link>
+            <Link href="/security" className="hover:text-white transition">Security</Link>
           </div>
         </div>
       </div>

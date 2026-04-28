@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   GitBranch,
   Users,
-  TrendingUp,
   Target,
   Zap,
   BarChart3,
@@ -78,31 +77,6 @@ const solutionLinks = [
   { href: "/for/developers", label: "Developers", icon: Code2, desc: "No surveillance, just growth", color: "from-emerald-500 to-teal-500" },
   { href: "/for/engineering-leaders", label: "CTOs & VPs", icon: Briefcase, desc: "Scale with confidence", color: "from-purple-500 to-violet-500" },
   { href: "/for/people-ops", label: "HR & People Ops", icon: Heart, desc: "Hiring, reviews & L&D", color: "from-rose-500 to-pink-500" },
-];
-
-const TRUSTED_COMPANIES = [
-  "Acme Corp", "TechStart", "GlobalSys", "FutureNet", "DataFlow", "CloudScale"
-];
-
-const TESTIMONIALS = [
-  {
-    quote: "Aexy completely transformed how we manage our engineering sprints. The AI insights are scary accurate.",
-    author: "Sarah Chen",
-    role: "CTO at TechStart",
-    avatar: "SC"
-  },
-  {
-    quote: "Finally, a tool that understands developers. No more micromanagement, just clear visibility and better code.",
-    author: "Michael Ross",
-    role: "VP Engineering at CloudScale",
-    avatar: "MR"
-  },
-  {
-    quote: "The on-call scheduling and Jira sync saved us 10+ hours a week. It pays for itself instantly.",
-    author: "Jessica Wu",
-    role: "Engineering Manager at DataFlow",
-    avatar: "JW"
-  }
 ];
 
 const FAQS = [
@@ -406,60 +380,66 @@ export default function Home() {
             </div>
 
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-8 leading-[1.1] tracking-tight">
-              The open-source
-              <br />
+              One{" "}
               <span className="relative">
                 <span className="bg-gradient-to-r from-primary-400 via-purple-400 to-emerald-400 bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
-                  operating system
+                  open-source platform
                 </span>
               </span>
               <br />
-              for engineering organizations
+              to run your engineering org.
             </h1>
 
             <p className="text-xl text-white/50 max-w-2xl mx-auto mb-10 leading-relaxed">
-              Understand your team. Optimize operations. Build talent.
-              <br />
-              All in one platform. All transparent.
+              Sprint planning, performance reviews, hiring, and CRM —
+              connected to the GitHub activity your team already produces.
             </p>
 
-            <div className="flex flex-col sm:flex-row justify-center gap-4 mb-8">
+            <div className="flex flex-col sm:flex-row justify-center gap-4 mb-6">
               <a
                 href={googleLoginUrl}
                 className="group relative overflow-hidden bg-white text-black px-8 py-4 rounded-full text-lg font-semibold transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(255,255,255,0.3)] flex items-center justify-center gap-3"
               >
                 <GoogleIcon />
-                Continue with Google
+                Start free with Google
                 <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
               </a>
               <a
-                href={microsoftLoginUrl}
-                className="group bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-3"
-              >
-                <MicrosoftIcon />
-                Continue with Microsoft
-              </a>
-              <a
-                href={githubLoginUrl}
+                href="https://github.com/aexy-io/aexy"
                 className="group bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-3"
               >
                 <SiGithub className="h-5 w-5" />
-                Continue with GitHub
+                View on GitHub
               </a>
             </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 sm:gap-8 text-xs sm:text-sm text-white/40">
+            <div className="flex flex-col items-center gap-3 text-sm text-white/50 mb-2">
+              <div className="flex items-center gap-3 text-white/40 text-xs">
+                <span>or continue with</span>
+                <a href={microsoftLoginUrl} className="hover:text-white transition flex items-center gap-1.5">
+                  <MicrosoftIcon />
+                  Microsoft
+                </a>
+                <span className="text-white/20">·</span>
+                <a href={githubLoginUrl} className="hover:text-white transition flex items-center gap-1.5">
+                  <SiGithub className="h-3.5 w-3.5" />
+                  GitHub
+                </a>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 sm:gap-8 text-xs sm:text-sm text-white/40 mt-4">
+              <span className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                Self-host free, forever
+              </span>
+              <span className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                Cloud from $24/user/mo
+              </span>
               <span className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                 No credit card required
-              </span>
-              <span className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                Self-host free
-              </span>
-              <span className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                SOC 2 certified
               </span>
             </div>
 
@@ -501,39 +481,6 @@ export default function Home() {
               </div>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* Trusted By Section - Marquee */}
-      <section className="py-12 border-y border-white/5 bg-white/[0.02] overflow-hidden">
-        <div className="max-w-7xl mx-auto px-6 mb-8">
-          <p className="text-center text-sm text-white/40 font-medium uppercase tracking-wider">Trusted by engineering teams at</p>
-        </div>
-
-        <div className="relative flex overflow-hidden group">
-          <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-[#0a0a0f] to-transparent z-10" />
-          <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-[#0a0a0f] to-transparent z-10" />
-
-          <motion.div
-            className="flex gap-16 whitespace-nowrap"
-            animate={{ x: "-50%" }}
-            transition={{
-              repeat: Infinity,
-              ease: "linear",
-              duration: 30,
-              repeatType: "loop"
-            }}
-          >
-            {[...TRUSTED_COMPANIES, ...TRUSTED_COMPANIES, ...TRUSTED_COMPANIES].map((company, i) => (
-              <div
-                key={`${company}-${i}`}
-                className="text-xl font-bold text-white/30 flex items-center gap-2 hover:text-white/60 transition-colors cursor-default"
-              >
-                <div className="w-6 h-6 bg-current rounded-full opacity-50" />
-                {company}
-              </div>
-            ))}
-          </motion.div>
         </div>
       </section>
 
@@ -908,22 +855,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Learning Paths */}
-            <div className="col-span-12 md:col-span-4 group">
-              <div className="relative h-full overflow-hidden rounded-3xl bg-gradient-to-br from-rose-500/10 via-red-500/5 to-transparent border border-white/10 p-8 hover:border-rose-500/30 transition-all duration-500">
-                <div className="absolute top-0 left-0 w-40 h-40 bg-rose-500/20 rounded-full blur-3xl group-hover:bg-rose-500/30 transition-all duration-500" />
-                <div className="relative">
-                  <div className="p-3 bg-gradient-to-br from-rose-500 to-red-500 rounded-2xl shadow-lg shadow-rose-500/25 w-fit mb-4">
-                    <GraduationCap className="h-6 w-6 text-white" />
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-2">Learning Paths</h3>
-                  <p className="text-white/50 text-sm">
-                    Personalized growth with gamified progress and achievement badges.
-                  </p>
-                </div>
-              </div>
-            </div>
-
             {/* On-Call Scheduling - Medium card */}
             <div className="col-span-12 md:col-span-6 group">
               <div className="relative h-full overflow-hidden rounded-3xl bg-gradient-to-br from-green-500/10 via-emerald-500/5 to-transparent border border-white/10 p-8 hover:border-green-500/30 transition-all duration-500">
@@ -1057,64 +988,6 @@ export default function Home() {
                       Reply directly from CRM
                     </div>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Contact Management */}
-            <div className="col-span-12 md:col-span-4 group">
-              <div className="relative h-full overflow-hidden rounded-3xl bg-gradient-to-br from-pink-500/10 via-rose-500/5 to-transparent border border-white/10 p-8 hover:border-pink-500/30 transition-all duration-500">
-                <div className="absolute bottom-0 right-0 w-40 h-40 bg-pink-500/20 rounded-full blur-3xl group-hover:bg-pink-500/30 transition-all duration-500" />
-                <div className="relative">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="p-3 bg-gradient-to-br from-pink-500 to-rose-500 rounded-2xl shadow-lg shadow-pink-500/25">
-                      <Building2 className="h-6 w-6 text-white" />
-                    </div>
-                    <span className="px-3 py-1 bg-blue-500/20 text-blue-400 text-xs font-semibold rounded-full border border-blue-500/20">
-                      AI-POWERED
-                    </span>
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-2">Contact Management</h3>
-                  <p className="text-white/50 text-sm">
-                    Companies, people, and deals. AI extracts info from email signatures.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Calendar Sync */}
-            <div className="col-span-12 md:col-span-4 group">
-              <div className="relative h-full overflow-hidden rounded-3xl bg-gradient-to-br from-sky-500/10 via-blue-500/5 to-transparent border border-white/10 p-8 hover:border-sky-500/30 transition-all duration-500">
-                <div className="absolute top-0 left-0 w-40 h-40 bg-sky-500/20 rounded-full blur-3xl group-hover:bg-sky-500/30 transition-all duration-500" />
-                <div className="relative">
-                  <div className="p-3 bg-gradient-to-br from-sky-500 to-blue-500 rounded-2xl shadow-lg shadow-sky-500/25 w-fit mb-4">
-                    <Calendar className="h-6 w-6 text-white" />
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-2">Calendar Sync</h3>
-                  <p className="text-white/50 text-sm">
-                    Google Calendar integration. Events link to contacts and deals automatically.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Email Intelligence */}
-            <div className="col-span-12 md:col-span-4 group">
-              <div className="relative h-full overflow-hidden rounded-3xl bg-gradient-to-br from-lime-500/10 via-green-500/5 to-transparent border border-white/10 p-8 hover:border-lime-500/30 transition-all duration-500">
-                <div className="absolute bottom-0 left-0 w-40 h-40 bg-lime-500/20 rounded-full blur-3xl group-hover:bg-lime-500/30 transition-all duration-500" />
-                <div className="relative">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="p-3 bg-gradient-to-br from-lime-500 to-green-500 rounded-2xl shadow-lg shadow-lime-500/25">
-                      <Mail className="h-6 w-6 text-white" />
-                    </div>
-                    <span className="px-3 py-1 bg-blue-500/20 text-blue-400 text-xs font-semibold rounded-full border border-blue-500/20">
-                      AI-POWERED
-                    </span>
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-2">Email Intelligence</h3>
-                  <p className="text-white/50 text-sm">
-                    AI extracts contacts, classifies leads, and enriches records from signatures.
-                  </p>
                 </div>
               </div>
             </div>
@@ -1359,78 +1232,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Stats */}
-      <section className="py-24 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-primary-500/20 via-purple-500/20 to-emerald-500/20 rounded-3xl blur-2xl" />
-            <div className="relative bg-gradient-to-r from-white/10 to-white/5 backdrop-blur-sm rounded-3xl p-12 border border-white/10">
-              <div className="grid md:grid-cols-4 gap-8 text-center">
-                {[
-                  { num: "50%", label: "Faster Planning", icon: <Zap /> },
-                  { num: "2x", label: "Better Matching", icon: <Target /> },
-                  { num: "100%", label: "Sync Accuracy", icon: <RefreshCw /> },
-                  { num: "30%", label: "Velocity Boost", icon: <TrendingUp /> },
-                ].map((stat, i) => (
-                  <div key={i} className="group">
-                    <div className="flex justify-center mb-3 text-primary-400 group-hover:scale-110 transition-transform">
-                      {stat.icon}
-                    </div>
-                    <div className="text-5xl font-bold text-white mb-2 bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">
-                      {stat.num}
-                    </div>
-                    <div className="text-white/50">{stat.label}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="py-24 px-6 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary-500/5 to-transparent opacity-50" />
-        <div className="max-w-7xl mx-auto relative">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
-              Loved by Engineering Teams
-            </h2>
-            <p className="text-white/50 text-lg">
-              Join hundreds of high-performing organizations building with Aexy.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {TESTIMONIALS.map((t, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                viewport={{ once: true }}
-                whileHover={{ y: -5 }}
-                className="relative bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-3xl transition-all duration-300 group hover:border-white/20 hover:bg-white/[0.07] hover:shadow-2xl hover:shadow-primary-500/10"
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                <div className="relative">
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                      {t.avatar}
-                    </div>
-                    <div>
-                      <div className="text-white font-semibold">{t.author}</div>
-                      <div className="text-white/40 text-sm">{t.role}</div>
-                    </div>
-                  </div>
-                  <p className="text-white/80 leading-relaxed text-sm">"{t.quote}"</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* FAQ Section */}
       <section className="py-24 px-6 relative">
         <div className="max-w-3xl mx-auto">
@@ -1493,7 +1294,7 @@ export default function Home() {
                 </div>
 
                 <p className="text-white/40 text-sm">
-                  No credit card required · 14-day free trial
+                  Self-host free, forever · 14-day cloud trial · No credit card required
                 </p>
               </div>
             </div>
@@ -1518,21 +1319,6 @@ export default function Home() {
               <div className="flex items-center gap-3">
                 <a href="https://github.com/aexy-io/aexy" className="p-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition">
                   <SiGithub className="h-4 w-4 text-white/60" />
-                </a>
-                <a href="#" className="p-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition">
-                  <svg className="h-4 w-4 text-white/60" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                  </svg>
-                </a>
-                <a href="#" className="p-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition">
-                  <svg className="h-4 w-4 text-white/60" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M20.317 4.492c-1.53-.69-3.17-1.2-4.885-1.49a.075.075 0 0 0-.079.037c-.21.369-.444.85-.608 1.23a18.566 18.566 0 0 0-5.487 0 12.36 12.36 0 0 0-.617-1.23A.077.077 0 0 0 8.562 3c-1.714.29-3.354.8-4.885 1.491a.07.07 0 0 0-.032.027C.533 9.093-.32 13.555.099 17.961a.08.08 0 0 0 .031.055 20.03 20.03 0 0 0 5.993 2.98.078.078 0 0 0 .084-.026c.462-.62.874-1.275 1.226-1.963.021-.04.001-.088-.041-.104a13.201 13.201 0 0 1-1.872-.878.075.075 0 0 1-.008-.125c.126-.093.252-.19.372-.287a.075.075 0 0 1 .078-.01c3.927 1.764 8.18 1.764 12.061 0a.075.075 0 0 1 .079.009c.12.098.245.195.372.288a.075.075 0 0 1-.006.125c-.598.344-1.22.635-1.873.877a.075.075 0 0 0-.041.105c.36.687.772 1.341 1.225 1.962a.077.077 0 0 0 .084.028 19.963 19.963 0 0 0 6.002-2.981.076.076 0 0 0 .032-.054c.5-5.094-.838-9.52-3.549-13.442a.06.06 0 0 0-.031-.028zM8.02 15.278c-1.182 0-2.157-1.069-2.157-2.38 0-1.312.956-2.38 2.157-2.38 1.21 0 2.176 1.077 2.157 2.38 0 1.312-.956 2.38-2.157 2.38zm7.975 0c-1.183 0-2.157-1.069-2.157-2.38 0-1.312.955-2.38 2.157-2.38 1.21 0 2.176 1.077 2.157 2.38 0 1.312-.946 2.38-2.157 2.38z" />
-                  </svg>
-                </a>
-                <a href="#" className="p-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition">
-                  <svg className="h-4 w-4 text-white/60" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-                  </svg>
                 </a>
               </div>
             </div>
@@ -1572,19 +1358,19 @@ export default function Home() {
             <div>
               <h4 className="text-white font-semibold mb-4">Company</h4>
               <ul className="space-y-2 text-white/40 text-sm">
-                <li><Link href="#" className="hover:text-white transition">About</Link></li>
-                <li><Link href="#" className="hover:text-white transition">Blog</Link></li>
-                <li><Link href="#" className="hover:text-white transition">Careers</Link></li>
-                <li><Link href="#" className="hover:text-white transition">Contact</Link></li>
+                <li><Link href="/about" className="hover:text-white transition">About</Link></li>
+                <li><Link href="/blog" className="hover:text-white transition">Blog</Link></li>
+                <li><Link href="/careers" className="hover:text-white transition">Careers</Link></li>
+                <li><Link href="/contact" className="hover:text-white transition">Contact</Link></li>
               </ul>
             </div>
           </div>
           <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-white/40 text-sm">&copy; 2025 Aexy. All rights reserved.</p>
             <div className="flex items-center gap-6 text-white/40 text-sm">
-              <Link href="#" className="hover:text-white transition">Privacy Policy</Link>
-              <Link href="#" className="hover:text-white transition">Terms of Service</Link>
-              <Link href="#" className="hover:text-white transition">Security</Link>
+              <Link href="/privacy" className="hover:text-white transition">Privacy Policy</Link>
+              <Link href="/terms" className="hover:text-white transition">Terms of Service</Link>
+              <Link href="/security" className="hover:text-white transition">Security</Link>
             </div>
           </div>
         </div>

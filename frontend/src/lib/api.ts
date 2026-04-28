@@ -18,15 +18,33 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Top-level paths that live inside the (app) / (admin) route groups and require auth.
+// On 401, only those paths get a hard redirect to "/"; public marketing pages (/, /pricing,
+// /about, /blog, /products/*, etc.) just clear the stale token and keep rendering, since
+// they don't require auth and the (app)/(admin) layouts have their own auth guards.
+const PROTECTED_PATH_PREFIXES = [
+  "/dashboard", "/activity", "/agents", "/analytics", "/automations", "/booking",
+  "/chat", "/compliance", "/crm", "/docs", "/email-marketing", "/epics", "/exports",
+  "/forms", "/gtm", "/hiring", "/insights", "/learning", "/leave", "/mcp",
+  "/notifications", "/onboarding", "/profile", "/reminders", "/reports", "/reviews",
+  "/settings", "/sprints", "/tables", "/templates", "/tickets", "/tracking",
+  "/uptime", "/admin",
+];
+
 // Handle auth errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Clear token and redirect to home (login page)
       if (typeof window !== "undefined") {
         localStorage.removeItem("token");
-        window.location.href = "/";
+        const path = window.location.pathname;
+        const isProtected = PROTECTED_PATH_PREFIXES.some(
+          (prefix) => path === prefix || path.startsWith(`${prefix}/`)
+        );
+        if (isProtected) {
+          window.location.href = "/";
+        }
       }
     }
     return Promise.reject(error);
