@@ -19,6 +19,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useSubscription } from "@/hooks/useSubscription";
 import { billingApi } from "@/lib/api";
+import { STRIPE_ENABLED, buildSalesMailto } from "@/lib/billingMode";
 
 // New billing components
 import { UsageAlerts } from "@/components/billing/UsageAlert";
@@ -48,6 +49,15 @@ function BillingContent() {
   }, [searchParams, refetch]);
 
   const handleManageBilling = async () => {
+    if (!STRIPE_ENABLED) {
+      window.location.href = buildSalesMailto({
+        planTier: tier,
+        workspaceId: currentWorkspaceId,
+        intent: "manage",
+      });
+      return;
+    }
+
     setPortalLoading(true);
     try {
       const { portal_url } = await billingApi.createPortalSession({

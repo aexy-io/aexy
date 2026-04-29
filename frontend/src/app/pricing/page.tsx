@@ -22,6 +22,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { billingApi } from "@/lib/api";
+import { STRIPE_ENABLED, buildSalesMailto } from "@/lib/billingMode";
 import { BillingToggle } from "@/components/billing/BillingToggle";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
@@ -168,18 +169,29 @@ function PricingContent() {
   }, [billingPeriod]);
 
   const handleSubscribe = async (tier: string) => {
-    if (!user) {
-      router.push("/?redirect=/pricing");
-      return;
-    }
-
     if (tier === "free") {
+      if (!user) {
+        router.push("/?redirect=/dashboard");
+        return;
+      }
       router.push("/dashboard");
       return;
     }
 
-    if (tier === "enterprise") {
-      window.location.href = "mailto:sales@aexy.io?subject=Enterprise%20Inquiry";
+    // Enterprise always goes to sales, regardless of Stripe mode.
+    // Other paid tiers go to sales while Stripe is disabled.
+    if (tier === "enterprise" || !STRIPE_ENABLED) {
+      window.location.href = buildSalesMailto({
+        planTier: tier,
+        billingPeriod,
+        workspaceId: currentWorkspaceId,
+        intent: "subscribe",
+      });
+      return;
+    }
+
+    if (!user) {
+      router.push("/?redirect=/pricing");
       return;
     }
 

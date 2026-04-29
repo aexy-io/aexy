@@ -148,6 +148,7 @@ services:
       - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
       - NEXT_PUBLIC_GTM_WORKSPACE_ID=${NEXT_PUBLIC_GTM_WORKSPACE_ID:-}
       - NEXT_PUBLIC_GTM_API_URL=${NEXT_PUBLIC_GTM_API_URL:-http://localhost:8000/api/v1}
+      - NEXT_PUBLIC_STRIPE_ENABLED=${NEXT_PUBLIC_STRIPE_ENABLED:-false}
     depends_on:
       - backend
     volumes:
