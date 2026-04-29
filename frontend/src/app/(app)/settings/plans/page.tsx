@@ -22,6 +22,7 @@ import { BillingToggle } from "@/components/billing/BillingToggle";
 import { ChangePlanModal } from "@/components/billing/ChangePlanModal";
 import { PlanComparison } from "@/components/billing/PlanComparison";
 import { PlanFeatures } from "@/lib/api";
+import { STRIPE_ENABLED, buildSalesMailto } from "@/lib/billingMode";
 
 // Plan display configuration — keyed by billing_model for new plans, with tier fallbacks
 const planConfig: Record<string, {
@@ -216,16 +217,36 @@ export default function PlansPage() {
     // Check if this is the same plan+billing_model combo
     const currentBillingModel = currentPlan?.billing_model || "free";
     if (plan.billing_model === currentBillingModel && plan.tier === currentTier) return;
-    if (plan.tier === "enterprise" && plan.billing_model === "per_seat") {
-      window.location.href = "mailto:sales@aexy.io?subject=Enterprise%20Inquiry";
+
+    // Enterprise always goes to sales. While Stripe is disabled, all paid tiers do.
+    const isPaid = plan.tier !== "free" && plan.billing_model !== "free";
+    if (plan.tier === "enterprise" || (!STRIPE_ENABLED && isPaid)) {
+      window.location.href = buildSalesMailto({
+        planTier: plan.tier,
+        billingPeriod,
+        workspaceId: currentWorkspaceId,
+        intent: hasSubscription ? "upgrade" : "subscribe",
+      });
       return;
     }
+
     setSelectedPlan(plan);
     setShowModal(true);
   };
 
   const handleConfirmChange = async () => {
     if (!selectedPlan) return;
+
+    if (!STRIPE_ENABLED) {
+      // Stripe disabled — fall back to sales mailto for any paid plan change.
+      window.location.href = buildSalesMailto({
+        planTier: selectedPlan.tier,
+        billingPeriod,
+        workspaceId: currentWorkspaceId,
+        intent: hasSubscription ? "upgrade" : "subscribe",
+      });
+      return;
+    }
 
     if (!hasSubscription) {
       // Free users need to go through Stripe Checkout to create a subscription
