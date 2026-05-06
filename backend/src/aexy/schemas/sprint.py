@@ -224,6 +224,9 @@ class SprintTaskCreate(BaseModel):
     parent_task_id: str | None = None
     mentioned_user_ids: list[str] = Field(default_factory=list)  # @mentions
     mentioned_file_paths: list[str] = Field(default_factory=list)  # #mentions
+    start_date: datetime | None = None
+    end_date: datetime | None = None
+    estimated_hours: float | None = Field(None, ge=0)
 
 
 class ProjectTaskCreate(BaseModel):
@@ -241,6 +244,9 @@ class ProjectTaskCreate(BaseModel):
     sprint_id: str | None = None  # Optional - can assign to sprint later
     mentioned_user_ids: list[str] = Field(default_factory=list)  # @mentions
     mentioned_file_paths: list[str] = Field(default_factory=list)  # #mentions
+    start_date: datetime | None = None
+    end_date: datetime | None = None
+    estimated_hours: float | None = Field(None, ge=0)
 
 
 class SprintTaskUpdate(BaseModel):
@@ -259,6 +265,9 @@ class SprintTaskUpdate(BaseModel):
     contributes_to_goal: bool | None = None  # Sprint goal contribution
     mentioned_user_ids: list[str] | None = None  # @mentions
     mentioned_file_paths: list[str] | None = None  # #mentions
+    start_date: datetime | None = None
+    end_date: datetime | None = None
+    estimated_hours: float | None = Field(None, ge=0)
 
 
 class SprintTaskStatusUpdate(BaseModel):
@@ -319,6 +328,27 @@ class SprintTaskReorder(BaseModel):
     )
 
 
+class TaskAttachmentResponse(BaseModel):
+    """Schema for a task file attachment."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    task_id: str
+    file_name: str
+    file_url: str
+    file_size: int | None = None
+    content_type: str | None = None
+    uploaded_by_id: str | None = None
+    uploaded_at: datetime
+
+
+class TaskAttachmentListResponse(BaseModel):
+    """Wrapper for a list of attachments."""
+
+    attachments: list[TaskAttachmentResponse]
+
+
 class SprintTaskResponse(BaseModel):
     """Schema for sprint task response."""
 
@@ -358,6 +388,10 @@ class SprintTaskResponse(BaseModel):
     mentioned_user_ids: list[str] = Field(default_factory=list)
     mentioned_file_paths: list[str] = Field(default_factory=list)
     is_archived: bool = False
+    start_date: datetime | None = None
+    end_date: datetime | None = None
+    estimated_hours: float | None = None
+    attachments: list[TaskAttachmentResponse] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 

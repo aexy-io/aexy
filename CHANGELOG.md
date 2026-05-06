@@ -5,6 +5,69 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.4] - 2026-05-06
+
+### Added
+
+#### Task attachments, schedule, and over-estimate detection
+Sprint tasks now carry a scheduled timeline and uploaded files, and the
+board surfaces when work has slipped.
+
+- Added `start_date`, `end_date`, and `estimated_hours` columns to
+  `sprint_tasks`, plus a new `task_attachments` table with cascade delete.
+  Migration `migrate_sprint_tasks_v3.sql` is idempotent and indexes
+  `end_date` and `task_id`.
+- Added `POST/GET/DELETE /sprints/{sprint_id}/tasks/{task_id}/attachments`
+  endpoints. Multipart uploads stream through the existing S3-compatible
+  storage service (RustFS).
+- AddTaskModal gains datetime-local inputs for start/end, an estimated
+  hours field, and a multi-file uploader. Files are uploaded after the
+  task is created so cascade delete cleans up cancelled flows.
+- EditTaskModal mirrors the new fields and renders an attachment list
+  with download links and delete actions.
+- Kanban cards render an `Overdue` badge when `end_date` has passed and
+  the task is not done, and an `Over estimate` badge when actual cycle
+  time exceeds `estimated_hours`. Both are pure-frontend computations.
+
+#### Assignment history visible in the task modal
+The EditTaskModal grows a History tab showing the full reassignment
+chain so reviewers can see who originally assigned a task and every
+hand-off in between.
+
+- `assign_task`, `unassign_task`, and the assignee branch of
+  `update_task` now write both old and new assignee IDs into the
+  per-task `TaskActivity` stream and the workspace-wide
+  `EntityActivity` feed.
+- The History panel filters activities to assignment and status events,
+  resolves participant names from workspace members, and renders them
+  oldest-first so the chain reads in the order it actually happened.
+
+### Changed
+
+#### Whole task card is draggable on the kanban board
+Drag-and-drop listeners moved from the small `GripVertical` handle onto
+the `TaskCardPremium` root, so the entire card body initiates a drag.
+The grip icon remains as a visual affordance. Interactive children
+(menu, checkbox, quick-status, archive, quick-edit) stop pointer-down
+propagation so clicks on them no longer initiate a drag.
+
+### Fixed
+
+#### Links in task descriptions are clickable after saving
+The TipTap `Link` extension now uses `openOnClick: true` with
+`target="_blank"` and `rel="noopener noreferrer nofollow"`, so URLs
+typed into a task description open in a new tab on click instead of
+being inert.
+
+### Tests
+
+- Added six Playwright e2e specs covering: attachment upload during
+  task creation with start/end dates and estimated hours; the Overdue
+  badge; the Over estimate badge; the assignment history chain; the
+  whole-card drag affordance; and clickable links in saved
+  descriptions. A shared `task-test-helpers.ts` fixture sets up the
+  board mocks for all of them.
+
 ## [0.7.3] - 2026-04-27
 
 ### Added

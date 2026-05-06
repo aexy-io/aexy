@@ -88,8 +88,12 @@ export const TaskDescriptionEditor = forwardRef<
         emptyEditorClass: "is-editor-empty",
       }),
       Link.configure({
-        openOnClick: false,
+        openOnClick: true,
+        autolink: true,
+        linkOnPaste: true,
         HTMLAttributes: {
+          target: "_blank",
+          rel: "noopener noreferrer nofollow",
           class: "text-blue-400 hover:text-blue-300 underline cursor-pointer",
         },
       }),

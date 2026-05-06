@@ -475,6 +475,9 @@ interface AddTaskModalProps {
       assignee_id?: string;
       mentioned_user_ids?: string[];
       mentioned_file_paths?: string[];
+      start_date?: string;
+      end_date?: string;
+      estimated_hours?: number;
     };
   }) => Promise<SprintTask>;
   isAdding: boolean;
@@ -499,6 +502,11 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
   const [epicId, setEpicId] = useState<string>("");
   const [sprintId, setSprintId] = useState<string>("");
   const [assigneeId, setAssigneeId] = useState<string>("");
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+  const [estimatedHours, setEstimatedHours] = useState<string>("");
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
+  const [isUploadingAttachments, setIsUploadingAttachments] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const editorRef = useRef<TaskDescriptionEditorRef>(null);
 
@@ -533,13 +541,18 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
       return;
     }
 
+    if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
+      setError("End date must be after start date");
+      return;
+    }
+
     // Get plain text description from JSON for backwards compatibility
     const plainDescription = descriptionJson
       ? extractPlainText(descriptionJson)
       : undefined;
 
     try {
-      await onAdd({
+      const created = await onAdd({
         sprintId: sprintId || null, // null means project backlog (no sprint)
         task: {
           title: title.trim(),
@@ -552,8 +565,31 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
           assignee_id: assigneeId || undefined,
           mentioned_user_ids: mentionedUserIds.length > 0 ? mentionedUserIds : undefined,
           mentioned_file_paths: mentionedFilePaths.length > 0 ? mentionedFilePaths : undefined,
+          start_date: startDate ? new Date(startDate).toISOString() : undefined,
+          end_date: endDate ? new Date(endDate).toISOString() : undefined,
+          estimated_hours: estimatedHours ? parseFloat(estimatedHours) : undefined,
         },
       });
+
+      // Upload any selected attachments after the task exists. Attachments
+      // are scoped to a sprint task — for project-backlog tasks (no sprint)
+      // we surface a non-fatal warning instead of failing the whole flow.
+      if (attachmentFiles.length > 0) {
+        if (created.sprint_id) {
+          setIsUploadingAttachments(true);
+          try {
+            await sprintApi.uploadTaskAttachments(created.sprint_id, created.id, attachmentFiles);
+          } finally {
+            setIsUploadingAttachments(false);
+          }
+        } else {
+          setError(
+            "Task created, but attachments require the task to be in a sprint. Move the task into a sprint and re-attach.",
+          );
+          return;
+        }
+      }
+
       onClose();
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to add task";
@@ -719,8 +755,36 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
               </p>
             </div>
 
-            {/* Story Points & Priority */}
+            {/* Schedule */}
             <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                  Start Date & Time
+                </label>
+                <input
+                  type="datetime-local"
+                  data-testid="task-start-date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-background/50 border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                  End Date & Time
+                </label>
+                <input
+                  type="datetime-local"
+                  data-testid="task-end-date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-background/50 border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition"
+                />
+              </div>
+            </div>
+
+            {/* Story Points, Estimated Hours & Priority */}
+            <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1.5">Story Points</label>
                 <input
@@ -729,6 +793,21 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
                   max="21"
                   value={storyPoints}
                   onChange={(e) => setStoryPoints(e.target.value)}
+                  placeholder="0"
+                  className="w-full px-4 py-2.5 bg-background/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                  Estimated Hours
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  data-testid="task-estimated-hours"
+                  value={estimatedHours}
+                  onChange={(e) => setEstimatedHours(e.target.value)}
                   placeholder="0"
                   className="w-full px-4 py-2.5 bg-background/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition"
                 />
@@ -747,6 +826,54 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
                   ))}
                 </select>
               </div>
+            </div>
+
+            {/* Attachments */}
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1.5">
+                Attachments
+                <span className="text-xs text-muted-foreground font-normal ml-2">
+                  Multiple files supported
+                </span>
+              </label>
+              <input
+                type="file"
+                multiple
+                data-testid="task-attachments-input"
+                onChange={(e) => {
+                  const files = e.target.files ? Array.from(e.target.files) : [];
+                  setAttachmentFiles((prev) => [...prev, ...files]);
+                  // Allow re-selecting the same file later
+                  e.currentTarget.value = "";
+                }}
+                className="block w-full text-sm text-muted-foreground file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:bg-primary-600/20 file:text-primary-300 hover:file:bg-primary-600/30 file:cursor-pointer"
+              />
+              {attachmentFiles.length > 0 && (
+                <ul className="mt-2 space-y-1" data-testid="task-attachments-list">
+                  {attachmentFiles.map((file, i) => (
+                    <li
+                      key={`${file.name}-${i}`}
+                      className="flex items-center justify-between text-xs bg-background/50 border border-border rounded px-2 py-1"
+                    >
+                      <span className="text-foreground truncate max-w-[80%]">
+                        {file.name}{" "}
+                        <span className="text-muted-foreground">
+                          ({Math.round(file.size / 1024)} KB)
+                        </span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setAttachmentFiles((prev) => prev.filter((_, idx) => idx !== i))
+                        }
+                        className="text-muted-foreground hover:text-red-400"
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             {/* Status & Assignee */}
@@ -839,11 +966,18 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
               <div className="relative group">
                 <button
                   type="submit"
-                  disabled={isAdding || !title.trim()}
+                  disabled={isAdding || isUploadingAttachments || !title.trim()}
+                  data-testid="create-task-submit"
                   className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
-                  {isAdding && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {isAdding ? "Creating..." : "Create Task"}
+                  {(isAdding || isUploadingAttachments) && (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  )}
+                  {isUploadingAttachments
+                    ? "Uploading attachments…"
+                    : isAdding
+                      ? "Creating..."
+                      : "Create Task"}
                 </button>
                 {!title.trim() && !isAdding && (
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-accent text-xs text-foreground rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
@@ -857,6 +991,111 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
         )}
       </motion.div>
     </motion.div>
+  );
+}
+
+// Assignment & status-change history for a task. Lives in the "History" tab of
+// the EditTaskModal so reviewers (e.g. the user's example: "Sharief") can see
+// the full reassignment chain and not just the current assignee.
+function AssignmentHistoryPanel({
+  sprintId,
+  taskId,
+  users,
+}: {
+  sprintId: string | null;
+  taskId: string;
+  users: MentionUser[];
+}) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["taskActivities", sprintId, taskId],
+    queryFn: () => sprintApi.getTaskActivities(sprintId!, taskId),
+    enabled: !!sprintId,
+  });
+
+  if (!sprintId) {
+    return (
+      <p className="text-sm text-muted-foreground" data-testid="task-history-empty">
+        Move this task into a sprint to view its full assignment history.
+      </p>
+    );
+  }
+  if (isLoading) {
+    return <p className="text-sm text-muted-foreground">Loading history…</p>;
+  }
+  if (error) {
+    return <p className="text-sm text-red-400">Failed to load activity.</p>;
+  }
+
+  const userById = new Map(users.map((u) => [u.id, u]));
+  const lookupName = (id: string | null | undefined) =>
+    id ? userById.get(id)?.name ?? "Unknown user" : "Unassigned";
+
+  // Filter to assignment- and status-related events; show oldest first so the
+  // chain reads top-to-bottom in the order it actually happened.
+  const events = (data?.activities ?? [])
+    .filter((a) =>
+      a.action === "assigned" || a.action === "unassigned" || a.action === "status_changed",
+    )
+    .slice()
+    .reverse();
+
+  if (events.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground" data-testid="task-history-empty">
+        No assignment or status changes yet.
+      </p>
+    );
+  }
+
+  return (
+    <ol className="space-y-3" data-testid="task-history-list">
+      {events.map((event) => {
+        const meta = event.metadata as { from_assignee_id?: string | null; to_assignee_id?: string | null };
+        const fromName = lookupName(meta?.from_assignee_id);
+        const toName = lookupName(meta?.to_assignee_id);
+        const actorName = event.actor_name ?? "System";
+        let line: React.ReactNode;
+        if (event.action === "assigned") {
+          line = (
+            <>
+              <span className="text-foreground font-medium">{actorName}</span>{" "}
+              reassigned from <span className="text-foreground">{fromName}</span>{" "}
+              to <span className="text-foreground">{toName}</span>
+            </>
+          );
+        } else if (event.action === "unassigned") {
+          line = (
+            <>
+              <span className="text-foreground font-medium">{actorName}</span>{" "}
+              unassigned <span className="text-foreground">{fromName}</span>
+            </>
+          );
+        } else {
+          line = (
+            <>
+              <span className="text-foreground font-medium">{actorName}</span>{" "}
+              changed status:{" "}
+              <span className="text-foreground">{event.old_value ?? "—"}</span>
+              {" → "}
+              <span className="text-foreground">{event.new_value ?? "—"}</span>
+            </>
+          );
+        }
+        return (
+          <li
+            key={event.id}
+            data-testid="task-history-item"
+            data-history-action={event.action}
+            className="flex flex-col gap-1 rounded-lg border border-border bg-background/40 p-3 text-sm"
+          >
+            <span className="text-muted-foreground">{line}</span>
+            <time className="text-xs text-muted-foreground">
+              {new Date(event.created_at).toLocaleString()}
+            </time>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 
@@ -880,6 +1119,9 @@ interface EditTaskModalProps {
       contributes_to_goal?: boolean;
       mentioned_user_ids?: string[];
       mentioned_file_paths?: string[];
+      start_date?: string | null;
+      end_date?: string | null;
+      estimated_hours?: number | null;
     };
   }) => Promise<SprintTask>;
   onDelete: (data: { sprintId: string | null; taskId: string }) => Promise<void>;
@@ -926,6 +1168,21 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
   const [sprintId, setSprintId] = useState<string>(cachedState?.sprintId ?? task.sprint_id ?? "");
   const [assigneeId, setAssigneeId] = useState<string>(cachedState?.assigneeId ?? task.assignee_id ?? "");
   const [contributesToGoal, setContributesToGoal] = useState(cachedState?.contributesToGoal ?? task.contributes_to_goal ?? false);
+  // Schedule + estimated effort fields. Use the first 16 chars of an ISO
+  // timestamp ("YYYY-MM-DDTHH:MM") so they bind directly to a
+  // <input type="datetime-local">.
+  const [startDate, setStartDate] = useState<string>(
+    cachedState?.startDate ?? (task.start_date ? task.start_date.slice(0, 16) : ""),
+  );
+  const [endDate, setEndDate] = useState<string>(
+    cachedState?.endDate ?? (task.end_date ? task.end_date.slice(0, 16) : ""),
+  );
+  const [estimatedHours, setEstimatedHours] = useState<string>(
+    cachedState?.estimatedHours ?? task.estimated_hours?.toString() ?? "",
+  );
+  const [activeTab, setActiveTab] = useState<"details" | "history">("details");
+  const [newAttachmentFiles, setNewAttachmentFiles] = useState<File[]>([]);
+  const [isUploadingAttachments, setIsUploadingAttachments] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -940,6 +1197,9 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
   const editorRef = useRef<TaskDescriptionEditorRef>(null);
 
   // Cache form state when values change
+  const taskStartDateLocal = task.start_date ? task.start_date.slice(0, 16) : "";
+  const taskEndDateLocal = task.end_date ? task.end_date.slice(0, 16) : "";
+  const taskEstimatedHoursStr = task.estimated_hours?.toString() ?? "";
   useEffect(() => {
     const currentState = {
       title,
@@ -952,6 +1212,9 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
       epicId,
       sprintId,
       assigneeId,
+      startDate,
+      endDate,
+      estimatedHours,
     };
 
     // Only cache if there are actual changes from original task
@@ -963,14 +1226,17 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
       status !== task.status ||
       epicId !== (task.epic_id || "") ||
       sprintId !== (task.sprint_id || "") ||
-      assigneeId !== (task.assignee_id || "");
+      assigneeId !== (task.assignee_id || "") ||
+      startDate !== taskStartDateLocal ||
+      endDate !== taskEndDateLocal ||
+      estimatedHours !== taskEstimatedHoursStr;
 
     if (hasLocalChanges) {
       localStorage.setItem(CACHE_KEY, JSON.stringify(currentState));
     } else {
       localStorage.removeItem(CACHE_KEY);
     }
-  }, [CACHE_KEY, title, descriptionJson, mentionedUserIds, mentionedFilePaths, storyPoints, priority, status, epicId, sprintId, assigneeId, task]);
+  }, [CACHE_KEY, title, descriptionJson, mentionedUserIds, mentionedFilePaths, storyPoints, priority, status, epicId, sprintId, assigneeId, startDate, endDate, estimatedHours, taskStartDateLocal, taskEndDateLocal, taskEstimatedHoursStr, task]);
 
   // Clear cache helper
   const clearCache = useCallback(() => {
@@ -1009,11 +1275,19 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
     status !== task.status ||
     epicId !== (task.epic_id || "") ||
     sprintId !== (task.sprint_id || "") ||
-    assigneeId !== (task.assignee_id || "");
+    assigneeId !== (task.assignee_id || "") ||
+    startDate !== taskStartDateLocal ||
+    endDate !== taskEndDateLocal ||
+    estimatedHours !== taskEstimatedHoursStr ||
+    newAttachmentFiles.length > 0;
 
   const handleSave = async () => {
     if (!title.trim()) {
       setError("Title is required");
+      return;
+    }
+    if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
+      setError("End date must be after start date");
       return;
     }
 
@@ -1035,13 +1309,39 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
           contributes_to_goal: contributesToGoal,
           mentioned_user_ids: mentionedUserIds.length > 0 ? mentionedUserIds : undefined,
           mentioned_file_paths: mentionedFilePaths.length > 0 ? mentionedFilePaths : undefined,
+          start_date: startDate ? new Date(startDate).toISOString() : null,
+          end_date: endDate ? new Date(endDate).toISOString() : null,
+          estimated_hours: estimatedHours ? parseFloat(estimatedHours) : null,
         },
       });
+
+      // Upload any newly attached files after the task PATCH succeeds.
+      if (newAttachmentFiles.length > 0 && task.sprint_id) {
+        setIsUploadingAttachments(true);
+        try {
+          await sprintApi.uploadTaskAttachments(task.sprint_id, task.id, newAttachmentFiles);
+          await queryClient.invalidateQueries({ queryKey: ["sprintTasks"] });
+          setNewAttachmentFiles([]);
+        } finally {
+          setIsUploadingAttachments(false);
+        }
+      }
+
       clearCache();
       onClose();
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to update task";
       setError(errorMessage);
+    }
+  };
+
+  const handleDeleteAttachment = async (attachmentId: string) => {
+    if (!task.sprint_id) return;
+    try {
+      await sprintApi.deleteTaskAttachment(task.sprint_id, task.id, attachmentId);
+      await queryClient.invalidateQueries({ queryKey: ["sprintTasks"] });
+    } catch (err) {
+      console.error("Failed to delete attachment:", err);
     }
   };
 
@@ -1320,6 +1620,46 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
         <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_20rem]">
           {/* Main content */}
           <div className="space-y-5 p-5 sm:p-6">
+            {/* Tabs: Details / History */}
+            <div className="flex gap-2 border-b border-border" data-testid="task-tabs">
+              <button
+                type="button"
+                data-testid="task-tab-details"
+                onClick={() => setActiveTab("details")}
+                className={cn(
+                  "px-3 py-2 text-sm font-medium transition border-b-2",
+                  activeTab === "details"
+                    ? "text-foreground border-primary-500"
+                    : "text-muted-foreground border-transparent hover:text-foreground",
+                )}
+              >
+                Details
+              </button>
+              <button
+                type="button"
+                data-testid="task-tab-history"
+                onClick={() => setActiveTab("history")}
+                className={cn(
+                  "px-3 py-2 text-sm font-medium transition border-b-2",
+                  activeTab === "history"
+                    ? "text-foreground border-primary-500"
+                    : "text-muted-foreground border-transparent hover:text-foreground",
+                )}
+              >
+                History
+              </button>
+            </div>
+
+            {activeTab === "history" && (
+              <AssignmentHistoryPanel
+                sprintId={task.sprint_id}
+                taskId={task.id}
+                users={users}
+              />
+            )}
+
+            {activeTab === "details" && (
+              <>
             {/* Quick status buttons */}
             <section className="rounded-xl border border-border bg-muted/30 p-3">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -1620,11 +1960,91 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
               )}
             </section>
 
+            {/* Attachments */}
+            <section className="rounded-xl border border-border bg-muted/30 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-medium text-foreground">Attachments</h3>
+                <input
+                  type="file"
+                  multiple
+                  data-testid="task-attachments-input-edit"
+                  onChange={(e) => {
+                    const files = e.target.files ? Array.from(e.target.files) : [];
+                    setNewAttachmentFiles((prev) => [...prev, ...files]);
+                    e.currentTarget.value = "";
+                  }}
+                  className="text-xs text-muted-foreground file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-primary-600/20 file:text-primary-300 hover:file:bg-primary-600/30 file:cursor-pointer"
+                />
+              </div>
+              {(task.attachments?.length ?? 0) === 0 && newAttachmentFiles.length === 0 && (
+                <p className="text-xs text-muted-foreground">No attachments yet.</p>
+              )}
+              {(task.attachments?.length ?? 0) > 0 && (
+                <ul className="space-y-1" data-testid="task-attachments-existing">
+                  {task.attachments?.map((a) => (
+                    <li
+                      key={a.id}
+                      className="flex items-center justify-between text-xs bg-background/50 border border-border rounded px-2 py-1"
+                    >
+                      <a
+                        href={a.file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-400 hover:underline truncate max-w-[70%]"
+                      >
+                        {a.file_name}
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteAttachment(a.id)}
+                        className="text-muted-foreground hover:text-red-400"
+                      >
+                        Delete
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {newAttachmentFiles.length > 0 && (
+                <ul className="mt-2 space-y-1" data-testid="task-attachments-pending">
+                  {newAttachmentFiles.map((file, i) => (
+                    <li
+                      key={`${file.name}-${i}`}
+                      className="flex items-center justify-between text-xs bg-background/50 border border-dashed border-border rounded px-2 py-1"
+                    >
+                      <span className="text-foreground truncate max-w-[80%]">
+                        {file.name}{" "}
+                        <span className="text-muted-foreground">
+                          ({Math.round(file.size / 1024)} KB)
+                        </span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setNewAttachmentFiles((prev) => prev.filter((_, idx) => idx !== i))
+                        }
+                        className="text-muted-foreground hover:text-red-400"
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {!task.sprint_id && newAttachmentFiles.length > 0 && (
+                <p className="mt-2 text-xs text-amber-400">
+                  Move this task into a sprint to upload attachments.
+                </p>
+              )}
+            </section>
+
             {/* Error */}
             {error && (
               <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
                 <p className="text-sm text-red-400">{error}</p>
               </div>
+            )}
+              </>
             )}
           </div>
 
@@ -1657,6 +2077,47 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
                 max="21"
                 value={storyPoints}
                 onChange={(e) => setStoryPoints(e.target.value)}
+                placeholder="0"
+                className="w-full px-2 py-1.5 bg-background/50 border border-border rounded text-sm text-foreground focus:outline-none focus:border-primary-500"
+              />
+            </div>
+
+            {/* Schedule + Estimated Effort */}
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">
+                Start Date & Time
+              </label>
+              <input
+                type="datetime-local"
+                data-testid="task-edit-start-date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-2 py-1.5 bg-background/50 border border-border rounded text-sm text-foreground focus:outline-none focus:border-primary-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">
+                End Date & Time
+              </label>
+              <input
+                type="datetime-local"
+                data-testid="task-edit-end-date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-2 py-1.5 bg-background/50 border border-border rounded text-sm text-foreground focus:outline-none focus:border-primary-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">
+                Estimated Hours
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.5"
+                data-testid="task-edit-estimated-hours"
+                value={estimatedHours}
+                onChange={(e) => setEstimatedHours(e.target.value)}
                 placeholder="0"
                 className="w-full px-2 py-1.5 bg-background/50 border border-border rounded text-sm text-foreground focus:outline-none focus:border-primary-500"
               />

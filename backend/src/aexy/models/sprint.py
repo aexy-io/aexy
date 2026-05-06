@@ -381,6 +381,13 @@ class SprintTask(Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    # Scheduled timeline (for overdue detection)
+    start_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    end_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Estimated effort in hours (compared against actual cycle time for "over estimate" indicator)
+    estimated_hours: Mapped[float | None] = mapped_column(Float, nullable=True)
+
     # Carry-over tracking
     carried_over_from_sprint_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False),
@@ -477,6 +484,13 @@ class SprintTask(Base):
         cascade="all, delete-orphan",
         lazy="selectin",
         order_by="TaskActivity.created_at.desc()",
+    )
+    attachments: Mapped[list["TaskAttachment"]] = relationship(
+        "TaskAttachment",
+        back_populates="task",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        order_by="TaskAttachment.uploaded_at.desc()",
     )
 
     __table_args__ = (
@@ -853,6 +867,49 @@ class TaskActivity(Base):
         lazy="selectin",
     )
     actor: Mapped["Developer | None"] = relationship(
+        "Developer",
+        lazy="selectin",
+    )
+
+
+class TaskAttachment(Base):
+    """File attachment uploaded against a sprint task."""
+
+    __tablename__ = "task_attachments"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    task_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("sprint_tasks.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    file_name: Mapped[str] = mapped_column(String(500), nullable=False)
+    file_url: Mapped[str] = mapped_column(String(2000), nullable=False)
+    file_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    content_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    uploaded_by_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    uploaded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    task: Mapped["SprintTask"] = relationship(
+        "SprintTask",
+        back_populates="attachments",
+        lazy="selectin",
+    )
+    uploaded_by: Mapped["Developer | None"] = relationship(
         "Developer",
         lazy="selectin",
     )

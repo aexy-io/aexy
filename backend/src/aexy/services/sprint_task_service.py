@@ -7,7 +7,7 @@ from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from aexy.models.sprint import Sprint, SprintTask, TaskActivity
+from aexy.models.sprint import Sprint, SprintTask, TaskActivity, TaskAttachment
 from aexy.services.task_sources.base import TaskItem, TaskSourceConfig, TaskStatus
 from aexy.services.task_sources.github_issues import GitHubIssuesSource
 from aexy.services.task_sources.jira import JiraSource
@@ -44,6 +44,9 @@ class SprintTaskService:
         status: str = "backlog",
         epic_id: str | None = None,
         parent_task_id: str | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        estimated_hours: float | None = None,
     ) -> SprintTask:
         """Add a task to a sprint.
 
@@ -91,6 +94,9 @@ class SprintTaskService:
             status=status,
             epic_id=epic_id,
             parent_task_id=parent_task_id,
+            start_date=start_date,
+            end_date=end_date,
+            estimated_hours=estimated_hours,
         )
         self.db.add(task)
         await self.db.flush()
@@ -320,6 +326,10 @@ class SprintTaskService:
         epic_id: str | None = ...,  # Use sentinel to distinguish from None
         assignee_id: str | None = ...,  # Use sentinel to distinguish from None
         contributes_to_goal: bool | None = None,
+        start_date: datetime | None = ...,  # Sentinel: explicit None clears the date
+        end_date: datetime | None = ...,
+        estimated_hours: float | None = ...,
+        actor_id: str | None = None,
     ) -> SprintTask | None:
         """Update task details."""
         task = await self.get_task(task_id)
@@ -352,13 +362,63 @@ class SprintTaskService:
             task.labels = labels
         if epic_id is not ...:  # Only update if explicitly passed (including None)
             task.epic_id = epic_id
+
+        prior_assignee_id: str | None = None
+        assignee_changed = False
         if assignee_id is not ...:  # Only update if explicitly passed (including None)
+            prior_assignee_id = task.assignee_id
+            assignee_changed = prior_assignee_id != assignee_id
             task.assignee_id = assignee_id
         if contributes_to_goal is not None:
             task.contributes_to_goal = contributes_to_goal
+        if start_date is not ...:
+            task.start_date = start_date
+        if end_date is not ...:
+            task.end_date = end_date
+        if estimated_hours is not ...:
+            task.estimated_hours = estimated_hours
 
         await self.db.flush()
         await GitHubTaskSyncService(self.db).auto_link_issue_references(task)
+
+        # Log assignment change made via the generic update path so the
+        # assignment history shows the full chain even when reassignment
+        # is performed through PATCH /sprint-tasks/{id} rather than the
+        # dedicated /assign endpoint.
+        if assignee_changed:
+            # Per-task activity stream (rendered by the History tab).
+            await self.log_activity(
+                task_id=task_id,
+                action="assigned" if assignee_id else "unassigned",
+                actor_id=actor_id,
+                field_name="assignee_id",
+                old_value=prior_assignee_id,
+                new_value=assignee_id,
+                metadata={
+                    "from_assignee_id": prior_assignee_id,
+                    "to_assignee_id": assignee_id,
+                },
+            )
+            # Workspace-wide unified activity feed.
+            if task.workspace_id:
+                await log_activity(
+                    self.db,
+                    workspace_id=str(task.workspace_id),
+                    entity_type="task",
+                    entity_id=str(task.id),
+                    activity_type="assigned" if assignee_id else "unassigned",
+                    actor_id=actor_id,
+                    title=(
+                        f"Assigned task '{task.title}'"
+                        if assignee_id
+                        else f"Unassigned task '{task.title}'"
+                    ),
+                    changes={"assignee_id": {"old": prior_assignee_id, "new": assignee_id}},
+                    metadata={
+                        "from_assignee_id": prior_assignee_id,
+                        "to_assignee_id": assignee_id,
+                    },
+                )
 
         # Re-fetch with relationships loaded
         return await self.get_task(task_id)
@@ -411,6 +471,7 @@ class SprintTaskService:
         developer_id: str,
         reason: str | None = None,
         confidence: float | None = None,
+        actor_id: str | None = None,
     ) -> SprintTask | None:
         """Assign a task to a developer.
 
@@ -419,6 +480,7 @@ class SprintTaskService:
             developer_id: Developer ID to assign.
             reason: Optional reason for assignment (e.g., AI explanation).
             confidence: Optional confidence score (0-1).
+            actor_id: Developer performing the assignment (for history).
 
         Returns:
             Updated SprintTask.
@@ -427,6 +489,7 @@ class SprintTaskService:
         if not task:
             return None
 
+        prior_assignee_id = task.assignee_id
         task.assignee_id = developer_id
         task.assignment_reason = reason
         task.assignment_confidence = confidence
@@ -436,7 +499,23 @@ class SprintTaskService:
         # Re-fetch with relationships loaded
         updated_task = await self.get_task(task_id)
 
-        # Log unified activity for assignment
+        # Per-task activity stream consumed by the History tab.
+        await self.log_activity(
+            task_id=task_id,
+            action="assigned",
+            actor_id=actor_id,
+            field_name="assignee_id",
+            old_value=prior_assignee_id,
+            new_value=developer_id,
+            metadata={
+                "assignment_reason": reason,
+                "from_assignee_id": prior_assignee_id,
+                "to_assignee_id": developer_id,
+            },
+        )
+
+        # Log unified activity for assignment — capture both old and new
+        # assignee in metadata so the history UI can render the full chain.
         if updated_task and updated_task.workspace_id:
             await log_activity(
                 self.db,
@@ -444,9 +523,14 @@ class SprintTaskService:
                 entity_type="task",
                 entity_id=str(updated_task.id),
                 activity_type="assigned",
+                actor_id=actor_id,
                 title=f"Assigned task '{updated_task.title}'",
-                changes={"assignee_id": {"new": developer_id}},
-                metadata={"assignment_reason": reason},
+                changes={"assignee_id": {"old": prior_assignee_id, "new": developer_id}},
+                metadata={
+                    "assignment_reason": reason,
+                    "from_assignee_id": prior_assignee_id,
+                    "to_assignee_id": developer_id,
+                },
             )
 
         # Dispatch task.assigned event for automations
@@ -471,17 +555,49 @@ class SprintTaskService:
 
         return updated_task
 
-    async def unassign_task(self, task_id: str) -> SprintTask | None:
+    async def unassign_task(
+        self, task_id: str, actor_id: str | None = None
+    ) -> SprintTask | None:
         """Remove assignment from a task."""
         task = await self.get_task(task_id)
         if not task:
             return None
 
+        prior_assignee_id = task.assignee_id
         task.assignee_id = None
         task.assignment_reason = None
         task.assignment_confidence = None
 
         await self.db.flush()
+
+        if prior_assignee_id:
+            await self.log_activity(
+                task_id=task_id,
+                action="unassigned",
+                actor_id=actor_id,
+                field_name="assignee_id",
+                old_value=prior_assignee_id,
+                new_value=None,
+                metadata={
+                    "from_assignee_id": prior_assignee_id,
+                    "to_assignee_id": None,
+                },
+            )
+            if task.workspace_id:
+                await log_activity(
+                    self.db,
+                    workspace_id=str(task.workspace_id),
+                    entity_type="task",
+                    entity_id=str(task.id),
+                    activity_type="unassigned",
+                    actor_id=actor_id,
+                    title=f"Unassigned task '{task.title}'",
+                    changes={"assignee_id": {"old": prior_assignee_id, "new": None}},
+                    metadata={
+                        "from_assignee_id": prior_assignee_id,
+                        "to_assignee_id": None,
+                    },
+                )
 
         # Re-fetch with relationships loaded
         return await self.get_task(task_id)
@@ -1099,3 +1215,52 @@ class SprintTaskService:
                 updated_tasks.append(task)
 
         return updated_tasks
+
+    # Attachments
+    async def add_attachment(
+        self,
+        task_id: str,
+        file_name: str,
+        file_url: str,
+        file_size: int | None = None,
+        content_type: str | None = None,
+        uploaded_by_id: str | None = None,
+    ) -> TaskAttachment:
+        """Persist a file attachment row for a task."""
+        attachment = TaskAttachment(
+            id=str(uuid4()),
+            task_id=task_id,
+            file_name=file_name,
+            file_url=file_url,
+            file_size=file_size,
+            content_type=content_type,
+            uploaded_by_id=uploaded_by_id,
+        )
+        self.db.add(attachment)
+        await self.db.flush()
+        return attachment
+
+    async def list_attachments(self, task_id: str) -> list[TaskAttachment]:
+        """List all attachments for a task, newest first."""
+        stmt = (
+            select(TaskAttachment)
+            .where(TaskAttachment.task_id == task_id)
+            .order_by(TaskAttachment.uploaded_at.desc())
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_attachment(self, attachment_id: str) -> TaskAttachment | None:
+        """Get a single attachment by ID."""
+        stmt = select(TaskAttachment).where(TaskAttachment.id == attachment_id)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def delete_attachment(self, attachment_id: str) -> bool:
+        """Delete an attachment row. Returns True if removed."""
+        attachment = await self.get_attachment(attachment_id)
+        if not attachment:
+            return False
+        await self.db.delete(attachment)
+        await self.db.flush()
+        return True

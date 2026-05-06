@@ -280,6 +280,25 @@ export function useSprintTasks(sprintId: string | null) {
     },
   });
 
+  const uploadAttachmentsMutation = useMutation({
+    mutationFn: ({ taskId, files }: { taskId: string; files: File[] }) =>
+      sprintApi.uploadTaskAttachments(sprintId!, taskId, files),
+    onSuccess: (_data, { taskId }) => {
+      queryClient.invalidateQueries({ queryKey: ["sprintTasks", sprintId] });
+      queryClient.invalidateQueries({ queryKey: ["taskAttachments", sprintId, taskId] });
+      queryClient.invalidateQueries({ queryKey: ["taskActivities", sprintId, taskId] });
+    },
+  });
+
+  const deleteAttachmentMutation = useMutation({
+    mutationFn: ({ taskId, attachmentId }: { taskId: string; attachmentId: string }) =>
+      sprintApi.deleteTaskAttachment(sprintId!, taskId, attachmentId),
+    onSuccess: (_data, { taskId }) => {
+      queryClient.invalidateQueries({ queryKey: ["sprintTasks", sprintId] });
+      queryClient.invalidateQueries({ queryKey: ["taskAttachments", sprintId, taskId] });
+    },
+  });
+
   return {
     tasks: tasks || [],
     isLoading,
@@ -293,6 +312,8 @@ export function useSprintTasks(sprintId: string | null) {
     unassignTask: unassignTaskMutation.mutateAsync,
     bulkAssign: bulkAssignMutation.mutateAsync,
     importTasks: importTasksMutation.mutateAsync,
+    uploadAttachments: uploadAttachmentsMutation.mutateAsync,
+    deleteAttachment: deleteAttachmentMutation.mutateAsync,
     isAddingTask: addTaskMutation.isPending,
     isUpdatingTask: updateTaskMutation.isPending,
     isDeletingTask: deleteTaskMutation.isPending,
@@ -301,6 +322,8 @@ export function useSprintTasks(sprintId: string | null) {
     isUnassigning: unassignTaskMutation.isPending,
     isBulkAssigning: bulkAssignMutation.isPending,
     isImporting: importTasksMutation.isPending,
+    isUploadingAttachments: uploadAttachmentsMutation.isPending,
+    isDeletingAttachment: deleteAttachmentMutation.isPending,
   };
 }
 

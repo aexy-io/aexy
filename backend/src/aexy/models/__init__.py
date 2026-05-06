@@ -59,6 +59,7 @@ from aexy.models.sprint import (
     WorkspaceCustomField,
     TaskGitHubLink,
     TaskActivity,
+    TaskAttachment,
     TaskTemplate,
 )
 from aexy.models.epic import Epic
@@ -578,6 +579,7 @@ __all__ = [
     "WorkspaceCustomField",
     "TaskGitHubLink",
     "TaskActivity",
+    "TaskAttachment",
     # Epic
     "Epic",
     # User Story

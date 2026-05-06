@@ -2405,8 +2405,28 @@ export interface SprintTask {
   mentioned_file_paths: string[];
   // Archive support
   is_archived: boolean;
+  // Scheduled timeline + estimated effort (overdue / over-estimate detection)
+  start_date: string | null;
+  end_date: string | null;
+  estimated_hours: number | null;
+  attachments: TaskAttachment[];
   created_at: string;
   updated_at: string;
+}
+
+export interface TaskAttachment {
+  id: string;
+  task_id: string;
+  file_name: string;
+  file_url: string;
+  file_size: number | null;
+  content_type: string | null;
+  uploaded_by_id: string | null;
+  uploaded_at: string;
+}
+
+export interface TaskAttachmentList {
+  attachments: TaskAttachment[];
 }
 
 export interface PullRequestSummary {
@@ -3168,6 +3188,35 @@ export const sprintApi = {
   addTaskComment: async (sprintId: string, taskId: string, comment: string): Promise<TaskActivity> => {
     const response = await api.post(`/sprints/${sprintId}/tasks/${taskId}/comments`, { comment });
     return response.data;
+  },
+
+  // Attachments
+  uploadTaskAttachments: async (
+    sprintId: string,
+    taskId: string,
+    files: File[],
+  ): Promise<TaskAttachmentList> => {
+    const formData = new FormData();
+    files.forEach((f) => formData.append("files", f));
+    const response = await api.post(
+      `/sprints/${sprintId}/tasks/${taskId}/attachments`,
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } },
+    );
+    return response.data;
+  },
+
+  listTaskAttachments: async (sprintId: string, taskId: string): Promise<TaskAttachmentList> => {
+    const response = await api.get(`/sprints/${sprintId}/tasks/${taskId}/attachments`);
+    return response.data;
+  },
+
+  deleteTaskAttachment: async (
+    sprintId: string,
+    taskId: string,
+    attachmentId: string,
+  ): Promise<void> => {
+    await api.delete(`/sprints/${sprintId}/tasks/${taskId}/attachments/${attachmentId}`);
   },
 
   assignTask: async (sprintId: string, taskId: string, developerId: string, reason?: string, confidence?: number): Promise<SprintTask> => {

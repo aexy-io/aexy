@@ -1,6 +1,10 @@
 """Sprint Tasks API endpoints."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+import logging
+import re
+from uuid import uuid4
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +25,8 @@ from aexy.schemas.sprint import (
     SprintTaskBulkMove,
     SprintTaskReorder,
     SprintTaskResponse,
+    TaskAttachmentResponse,
+    TaskAttachmentListResponse,
     TaskImportRequest,
     TaskImportResponse,
     TaskActivityCreate,
@@ -31,7 +37,12 @@ from aexy.schemas.sprint import (
 from aexy.services.sprint_service import SprintService
 from aexy.services.sprint_task_service import SprintTaskService
 from aexy.services.github_task_sync_service import GitHubTaskSyncService
+from aexy.services.storage_service import get_storage_service
 from aexy.services.workspace_service import WorkspaceService
+
+logger = logging.getLogger(__name__)
+ATTACHMENTS_PREFIX = "task-attachments"
+SAFE_FILENAME_RE = re.compile(r"[^A-Za-z0-9._-]+")
 
 router = APIRouter(prefix="/sprints/{sprint_id}/tasks", tags=["Sprint Tasks"])
 
@@ -139,6 +150,19 @@ def task_to_response(task) -> SprintTaskResponse:
     """Convert SprintTask model to response schema."""
     assignee = task.assignee
     subtasks_count = len(task.subtasks) if task.subtasks else 0
+    attachments = [
+        TaskAttachmentResponse(
+            id=str(a.id),
+            task_id=str(a.task_id),
+            file_name=a.file_name,
+            file_url=a.file_url,
+            file_size=a.file_size,
+            content_type=a.content_type,
+            uploaded_by_id=str(a.uploaded_by_id) if a.uploaded_by_id else None,
+            uploaded_at=a.uploaded_at,
+        )
+        for a in (task.attachments or [])
+    ] if hasattr(task, "attachments") else []
     return SprintTaskResponse(
         id=str(task.id),
         sprint_id=str(task.sprint_id) if task.sprint_id else None,
@@ -174,6 +198,10 @@ def task_to_response(task) -> SprintTaskResponse:
         mentioned_user_ids=task.mentioned_user_ids or [],
         mentioned_file_paths=task.mentioned_file_paths or [],
         is_archived=task.is_archived,
+        start_date=task.start_date,
+        end_date=task.end_date,
+        estimated_hours=task.estimated_hours,
+        attachments=attachments,
         created_at=task.created_at,
         updated_at=task.updated_at,
     )
@@ -254,6 +282,9 @@ async def create_task(
         status=data.status,
         epic_id=data.epic_id,
         parent_task_id=data.parent_task_id,
+        start_date=data.start_date,
+        end_date=data.end_date,
+        estimated_hours=data.estimated_hours,
     )
 
     await db.commit()
@@ -979,6 +1010,7 @@ async def update_task(
         "priority": data.priority,
         "status": data.status,
         "labels": data.labels,
+        "actor_id": str(current_user.id),
     }
     # Only pass epic_id if it was explicitly provided in the request
     if data.epic_id is not None or "epic_id" in data.model_fields_set:
@@ -989,6 +1021,14 @@ async def update_task(
     # Only pass contributes_to_goal if it was explicitly provided
     if data.contributes_to_goal is not None:
         update_kwargs["contributes_to_goal"] = data.contributes_to_goal
+    # Pass scheduled-timeline fields only if explicitly set so callers can
+    # clear the dates by sending null and not just leave them unspecified.
+    if "start_date" in data.model_fields_set:
+        update_kwargs["start_date"] = data.start_date
+    if "end_date" in data.model_fields_set:
+        update_kwargs["end_date"] = data.end_date
+    if "estimated_hours" in data.model_fields_set:
+        update_kwargs["estimated_hours"] = data.estimated_hours
 
     task = await task_service.update_task(**update_kwargs)
 
@@ -1116,6 +1156,7 @@ async def assign_task(
         developer_id=data.developer_id,
         reason=data.reason,
         confidence=data.confidence,
+        actor_id=str(current_user.id),
     )
 
     if not task or task.sprint_id != sprint_id:
@@ -1139,7 +1180,7 @@ async def unassign_task(
     await get_sprint_and_check_permission(sprint_id, current_user, db, "member")
 
     task_service = SprintTaskService(db)
-    task = await task_service.unassign_task(task_id)
+    task = await task_service.unassign_task(task_id, actor_id=str(current_user.id))
 
     if not task or task.sprint_id != sprint_id:
         raise HTTPException(
@@ -1389,3 +1430,148 @@ async def export_sprint_tasks(
         media_type=content_types[format],
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+# ─── Attachments ────────────────────────────────────────────────────────────
+def _attachment_to_response(attachment) -> TaskAttachmentResponse:
+    return TaskAttachmentResponse(
+        id=str(attachment.id),
+        task_id=str(attachment.task_id),
+        file_name=attachment.file_name,
+        file_url=attachment.file_url,
+        file_size=attachment.file_size,
+        content_type=attachment.content_type,
+        uploaded_by_id=str(attachment.uploaded_by_id) if attachment.uploaded_by_id else None,
+        uploaded_at=attachment.uploaded_at,
+    )
+
+
+@router.post(
+    "/{task_id}/attachments",
+    response_model=TaskAttachmentListResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_task_attachments(
+    sprint_id: str,
+    task_id: str,
+    files: list[UploadFile] = File(...),
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Upload one or more file attachments to a task."""
+    await get_sprint_and_check_permission(sprint_id, current_user, db, "member")
+
+    task_service = SprintTaskService(db)
+    task = await task_service.get_task(task_id)
+    if not task or task.sprint_id != sprint_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
+    if not files:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No files provided",
+        )
+
+    storage = get_storage_service()
+    if not storage.is_configured():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="File storage is not configured on this deployment",
+        )
+
+    created: list = []
+    for upload in files:
+        body = await upload.read()
+        if not body:
+            continue
+        original_name = upload.filename or "attachment"
+        safe_name = SAFE_FILENAME_RE.sub("_", original_name) or "attachment"
+        key = f"{ATTACHMENTS_PREFIX}/{task_id}/{uuid4().hex}_{safe_name}"
+        content_type = upload.content_type or "application/octet-stream"
+        ok = storage.put_object(key=key, data=body, content_type=content_type)
+        if not ok:
+            logger.error("Failed to upload attachment %s for task %s", original_name, task_id)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to upload attachment '{original_name}'",
+            )
+
+        attachment = await task_service.add_attachment(
+            task_id=task_id,
+            file_name=original_name,
+            file_url=storage.get_object_url(key),
+            file_size=len(body),
+            content_type=content_type,
+            uploaded_by_id=str(current_user.id),
+        )
+        created.append(attachment)
+
+    await db.commit()
+
+    return TaskAttachmentListResponse(
+        attachments=[_attachment_to_response(a) for a in created],
+    )
+
+
+@router.get(
+    "/{task_id}/attachments",
+    response_model=TaskAttachmentListResponse,
+)
+async def list_task_attachments(
+    sprint_id: str,
+    task_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """List attachments on a task."""
+    await get_sprint_and_check_permission(sprint_id, current_user, db, "viewer")
+
+    task_service = SprintTaskService(db)
+    task = await task_service.get_task(task_id)
+    if not task or task.sprint_id != sprint_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
+    attachments = await task_service.list_attachments(task_id)
+    return TaskAttachmentListResponse(
+        attachments=[_attachment_to_response(a) for a in attachments],
+    )
+
+
+@router.delete(
+    "/{task_id}/attachments/{attachment_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_task_attachment(
+    sprint_id: str,
+    task_id: str,
+    attachment_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a task attachment."""
+    await get_sprint_and_check_permission(sprint_id, current_user, db, "member")
+
+    task_service = SprintTaskService(db)
+    task = await task_service.get_task(task_id)
+    if not task or task.sprint_id != sprint_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+
+    attachment = await task_service.get_attachment(attachment_id)
+    if not attachment or str(attachment.task_id) != task_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Attachment not found",
+        )
+
+    await task_service.delete_attachment(attachment_id)
+    await db.commit()
+    return None
