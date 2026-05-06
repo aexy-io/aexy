@@ -355,6 +355,27 @@ class StorageService:
             return f"https://{self.bucket}.{settings.r2_account_id}.r2.cloudflarestorage.com/{key}"
         return f"s3://{self.bucket}/{key}"
 
+    def key_from_url(self, url: str) -> str | None:
+        """Inverse of get_object_url: recover the storage key from a saved URL.
+
+        Returns None if the URL doesn't reference this service's bucket.
+        """
+        if not url:
+            return None
+        # path-style: ".../{bucket}/{key}" (s3://, RustFS/MinIO, public endpoint)
+        marker = f"/{self.bucket}/"
+        idx = url.find(marker)
+        if idx >= 0:
+            return url[idx + len(marker):] or None
+        # virtual-hosted-style for R2: "https://{bucket}.{account}.r2.cloudflarestorage.com/{key}"
+        host_marker = f"://{self.bucket}."
+        h = url.find(host_marker)
+        if h >= 0:
+            slash = url.find("/", h + len(host_marker))
+            if slash >= 0:
+                return url[slash + 1:] or None
+        return None
+
 
 # Singleton instance
 _storage_service = None

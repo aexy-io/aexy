@@ -1007,9 +1007,10 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
   );
 }
 
-// Assignment & status-change history for a task. Lives in the "History" tab of
-// the EditTaskModal so reviewers (e.g. the user's example: "Sharief") can see
-// the full reassignment chain and not just the current assignee.
+// Full activity log for a task. Lives in the "History" tab of the
+// EditTaskModal so every change is attributable to the user who made it —
+// creation, assignment, status, priority, points, epic, dates, estimate,
+// title/description/labels edits, and comments.
 function AssignmentHistoryPanel({
   sprintId,
   taskId,
@@ -1028,7 +1029,7 @@ function AssignmentHistoryPanel({
   if (!sprintId) {
     return (
       <p className="text-sm text-muted-foreground" data-testid="task-history-empty">
-        Move this task into a sprint to view its full assignment history.
+        Move this task into a sprint to view its full activity history.
       </p>
     );
   }
@@ -1043,19 +1044,14 @@ function AssignmentHistoryPanel({
   const lookupName = (id: string | null | undefined) =>
     id ? userById.get(id)?.name ?? "Unknown user" : "Unassigned";
 
-  // Filter to assignment- and status-related events; show oldest first so the
-  // chain reads top-to-bottom in the order it actually happened.
-  const events = (data?.activities ?? [])
-    .filter((a) =>
-      a.action === "assigned" || a.action === "unassigned" || a.action === "status_changed",
-    )
-    .slice()
-    .reverse();
+  // Show oldest first so the chain reads top-to-bottom in the order it
+  // actually happened.
+  const events = (data?.activities ?? []).slice().reverse();
 
   if (events.length === 0) {
     return (
       <p className="text-sm text-muted-foreground" data-testid="task-history-empty">
-        No assignment or status changes yet.
+        No activity yet.
       </p>
     );
   }
@@ -1063,37 +1059,115 @@ function AssignmentHistoryPanel({
   return (
     <ol className="space-y-3" data-testid="task-history-list">
       {events.map((event) => {
-        const meta = event.metadata as { from_assignee_id?: string | null; to_assignee_id?: string | null };
-        const fromName = lookupName(meta?.from_assignee_id);
-        const toName = lookupName(meta?.to_assignee_id);
+        const meta = event.metadata as { from_assignee_id?: string | null; to_assignee_id?: string | null } | null;
         const actorName = event.actor_name ?? "System";
+        const oldStr = event.old_value ?? "—";
+        const newStr = event.new_value ?? "—";
+
         let line: React.ReactNode;
-        if (event.action === "assigned") {
-          line = (
-            <>
-              <span className="text-foreground font-medium">{actorName}</span>{" "}
-              reassigned from <span className="text-foreground">{fromName}</span>{" "}
-              to <span className="text-foreground">{toName}</span>
-            </>
-          );
-        } else if (event.action === "unassigned") {
-          line = (
-            <>
-              <span className="text-foreground font-medium">{actorName}</span>{" "}
-              unassigned <span className="text-foreground">{fromName}</span>
-            </>
-          );
-        } else {
-          line = (
-            <>
-              <span className="text-foreground font-medium">{actorName}</span>{" "}
-              changed status:{" "}
-              <span className="text-foreground">{event.old_value ?? "—"}</span>
-              {" → "}
-              <span className="text-foreground">{event.new_value ?? "—"}</span>
-            </>
-          );
+        switch (event.action) {
+          case "created":
+            line = <>created this task</>;
+            break;
+          case "assigned":
+            line = (
+              <>
+                reassigned from <span className="text-foreground">{lookupName(meta?.from_assignee_id)}</span>{" "}
+                to <span className="text-foreground">{lookupName(meta?.to_assignee_id)}</span>
+              </>
+            );
+            break;
+          case "unassigned":
+            line = (
+              <>
+                unassigned <span className="text-foreground">{lookupName(meta?.from_assignee_id)}</span>
+              </>
+            );
+            break;
+          case "status_changed":
+            line = (
+              <>
+                changed status: <span className="text-foreground">{oldStr}</span>{" → "}
+                <span className="text-foreground">{newStr}</span>
+              </>
+            );
+            break;
+          case "priority_changed":
+            line = (
+              <>
+                changed priority: <span className="text-foreground">{oldStr}</span>{" → "}
+                <span className="text-foreground">{newStr}</span>
+              </>
+            );
+            break;
+          case "points_changed":
+            line = (
+              <>
+                changed story points: <span className="text-foreground">{oldStr}</span>{" → "}
+                <span className="text-foreground">{newStr}</span>
+              </>
+            );
+            break;
+          case "epic_changed":
+            line = (
+              <>
+                {event.new_value
+                  ? <>linked to epic <span className="text-foreground">{newStr}</span></>
+                  : <>removed from epic</>}
+              </>
+            );
+            break;
+          case "title_changed":
+            line = <>renamed to <span className="text-foreground">{newStr}</span></>;
+            break;
+          case "description_changed":
+            line = <>updated the description</>;
+            break;
+          case "labels_changed":
+            line = <>updated labels</>;
+            break;
+          case "start_date_changed":
+            line = (
+              <>
+                {event.new_value
+                  ? <>set start date to <span className="text-foreground">{newStr}</span></>
+                  : <>cleared start date</>}
+              </>
+            );
+            break;
+          case "end_date_changed":
+            line = (
+              <>
+                {event.new_value
+                  ? <>set due date to <span className="text-foreground">{newStr}</span></>
+                  : <>cleared due date</>}
+              </>
+            );
+            break;
+          case "estimated_hours_changed":
+            line = (
+              <>
+                {event.new_value
+                  ? <>set estimate to <span className="text-foreground">{newStr}h</span></>
+                  : <>cleared estimate</>}
+              </>
+            );
+            break;
+          case "comment":
+            line = <>commented</>;
+            break;
+          default:
+            line = (
+              <>
+                updated {event.field_name ?? event.action}
+                {event.old_value || event.new_value ? (
+                  <>: <span className="text-foreground">{oldStr}</span>{" → "}
+                    <span className="text-foreground">{newStr}</span></>
+                ) : null}
+              </>
+            );
         }
+
         return (
           <li
             key={event.id}
@@ -1101,7 +1175,13 @@ function AssignmentHistoryPanel({
             data-history-action={event.action}
             className="flex flex-col gap-1 rounded-lg border border-border bg-background/40 p-3 text-sm"
           >
-            <span className="text-muted-foreground">{line}</span>
+            <span className="text-muted-foreground">
+              <span className="text-foreground font-medium">{actorName}</span>{" "}
+              {line}
+            </span>
+            {event.action === "comment" && event.comment && (
+              <p className="whitespace-pre-wrap text-foreground text-sm">{event.comment}</p>
+            )}
             <time className="text-xs text-muted-foreground">
               {new Date(event.created_at).toLocaleString()}
             </time>

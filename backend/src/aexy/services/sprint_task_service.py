@@ -22,6 +22,21 @@ from aexy.services.notification_service import (
 from aexy.services.github_task_sync_service import GitHubTaskSyncService
 
 
+def _stringify_field(value: object) -> str | None:
+    """Render a field value into TaskActivity.old_value / new_value text.
+
+    Returns None for None inputs so the History tab can render "—" or "none"
+    consistently instead of the literal string "None".
+    """
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, list):
+        return ", ".join(str(v) for v in value)
+    return str(value)
+
+
 class SprintTaskService:
     """Service for managing tasks within sprints."""
 
@@ -47,6 +62,7 @@ class SprintTaskService:
         start_date: datetime | None = None,
         end_date: datetime | None = None,
         estimated_hours: float | None = None,
+        actor_id: str | None = None,
     ) -> SprintTask:
         """Add a task to a sprint.
 
@@ -122,10 +138,17 @@ class SprintTaskService:
                 entity_type="task",
                 entity_id=str(created_task.id),
                 activity_type="created",
-                actor_id=assignee_id,
+                actor_id=actor_id,
                 title=f"Created task '{title}'",
                 metadata={"sprint_id": sprint_id, "source_type": source_type},
             )
+
+        # Per-task activity row so the History tab shows who created the task.
+        await self.log_activity(
+            task_id=str(created_task.id),
+            action="created",
+            actor_id=actor_id,
+        )
 
         # Dispatch task.created event for automations
         if workspace_id:
@@ -336,16 +359,32 @@ class SprintTaskService:
         if not task:
             return None
 
+        # Snapshot the fields we want to log before mutation, so each field that
+        # actually changes produces a per-task activity row attributed to the
+        # acting user. Without this, the History tab can't show "X changed
+        # priority from medium to high" — only the assignment edge case was
+        # logged before.
+        field_changes: list[tuple[str, str, object, object]] = []
+
+        def _record(action: str, field: str, old: object, new: object) -> None:
+            if old != new:
+                field_changes.append((action, field, old, new))
+
         if title is not None:
+            _record("title_changed", "title", task.title, title)
             task.title = title
         if description is not None:
+            _record("description_changed", "description", task.description, description)
             task.description = description
         if story_points is not None:
+            _record("points_changed", "story_points", task.story_points, story_points)
             task.story_points = story_points
         if priority is not None:
+            _record("priority_changed", "priority", task.priority, priority)
             task.priority = priority
         if status is not None:
             old_status = task.status
+            _record("status_changed", "status", old_status, status)
             task.status = status
             now = datetime.now(timezone.utc)
             # Track status change timestamps
@@ -359,8 +398,10 @@ class SprintTaskService:
                     task.cycle_time_hours = (now - task.work_started_at).total_seconds() / 3600
                 task.lead_time_hours = (now - task.created_at).total_seconds() / 3600
         if labels is not None:
+            _record("labels_changed", "labels", task.labels or [], labels)
             task.labels = labels
         if epic_id is not ...:  # Only update if explicitly passed (including None)
+            _record("epic_changed", "epic_id", task.epic_id, epic_id)
             task.epic_id = epic_id
 
         prior_assignee_id: str | None = None
@@ -372,14 +413,32 @@ class SprintTaskService:
         if contributes_to_goal is not None:
             task.contributes_to_goal = contributes_to_goal
         if start_date is not ...:
+            _record("start_date_changed", "start_date", task.start_date, start_date)
             task.start_date = start_date
         if end_date is not ...:
+            _record("end_date_changed", "end_date", task.end_date, end_date)
             task.end_date = end_date
         if estimated_hours is not ...:
+            _record("estimated_hours_changed", "estimated_hours", task.estimated_hours, estimated_hours)
             task.estimated_hours = estimated_hours
 
         await self.db.flush()
         await GitHubTaskSyncService(self.db).auto_link_issue_references(task)
+
+        # Persist a per-task activity row for every field that actually changed.
+        # Description is intentionally not stringified into old/new — it's often
+        # large rich text — only that it changed is recorded.
+        for action, field, old_v, new_v in field_changes:
+            log_old = None if action == "description_changed" else _stringify_field(old_v)
+            log_new = None if action == "description_changed" else _stringify_field(new_v)
+            await self.log_activity(
+                task_id=task_id,
+                action=action,
+                actor_id=actor_id,
+                field_name=field,
+                old_value=log_old,
+                new_value=log_new,
+            )
 
         # Log assignment change made via the generic update path so the
         # assignment history shows the full chain even when reassignment
@@ -420,8 +479,36 @@ class SprintTaskService:
                     },
                 )
 
-        # Re-fetch with relationships loaded
-        return await self.get_task(task_id)
+        # Re-fetch with relationships loaded (assignee may have changed).
+        refreshed = await self.get_task(task_id)
+
+        # Dispatch task.assigned automation trigger so PATCH-based reassignments
+        # fire automations the same way the dedicated /assign endpoint does.
+        # Mirrors the dispatch in `assign_task` — keep these in sync.
+        if (
+            assignee_changed
+            and assignee_id
+            and refreshed
+            and refreshed.workspace_id
+        ):
+            await dispatch_automation_event(
+                db=self.db,
+                workspace_id=refreshed.workspace_id,
+                module="sprints",
+                trigger_type="task.assigned",
+                entity_id=refreshed.id,
+                trigger_data={
+                    "task_id": refreshed.id,
+                    "task_title": refreshed.title,
+                    "sprint_id": refreshed.sprint_id,
+                    "assignee_id": assignee_id,
+                    "assignee_email": refreshed.assignee.email if refreshed.assignee else None,
+                    "status": refreshed.status,
+                    "workspace_id": refreshed.workspace_id,
+                },
+            )
+
+        return refreshed
 
     async def remove_task(self, task_id: str) -> bool:
         """Remove a task from a sprint (soft delete via archive)."""
@@ -632,20 +719,13 @@ class SprintTaskService:
         self,
         task_ids: list[str],
         new_status: str,
+        actor_id: str | None = None,
     ) -> list[SprintTask]:
-        """Bulk update status for multiple tasks.
-
-        Args:
-            task_ids: List of task IDs to update.
-            new_status: New status value for all tasks.
-
-        Returns:
-            List of updated SprintTasks.
-        """
+        """Bulk update status for multiple tasks."""
         updated_tasks = []
 
         for task_id in task_ids:
-            task = await self.update_task_status(task_id, new_status)
+            task = await self.update_task_status(task_id, new_status, actor_id=actor_id)
             if task:
                 updated_tasks.append(task)
 
@@ -692,12 +772,14 @@ class SprintTaskService:
         self,
         task_id: str,
         new_status: str,
+        actor_id: str | None = None,
     ) -> SprintTask | None:
         """Update a task's status.
 
         Args:
             task_id: Task ID.
             new_status: New status value.
+            actor_id: ID of the user making the change (for activity logging).
 
         Returns:
             Updated SprintTask.
@@ -728,6 +810,18 @@ class SprintTaskService:
         # Re-fetch with relationships loaded
         updated_task = await self.get_task(task_id)
 
+        # Per-task activity row so the History tab attributes the status change
+        # to the user who dragged the card / clicked the status pill.
+        if old_status != new_status:
+            await self.log_activity(
+                task_id=task_id,
+                action="status_changed",
+                actor_id=actor_id,
+                field_name="status",
+                old_value=old_status,
+                new_value=new_status,
+            )
+
         # Log unified activity for status changes
         if updated_task and updated_task.workspace_id and old_status != new_status:
             act_type = "status_changed"
@@ -739,6 +833,7 @@ class SprintTaskService:
                 entity_type="task",
                 entity_id=str(updated_task.id),
                 activity_type=act_type,
+                actor_id=actor_id,
                 title=f"Task '{updated_task.title}' status changed",
                 changes={"status": {"old": old_status, "new": new_status}},
             )

@@ -503,14 +503,16 @@ function ActivityItem({ activity }: { activity: TaskActivity }) {
   };
 
   const getActivityText = () => {
+    const oldStr = activity.old_value ?? "—";
+    const newStr = activity.new_value ?? "—";
     switch (activity.action) {
       case "comment":
         return null; // Comment text is shown separately
       case "status_changed":
         return (
           <span>
-            changed status from <span className="text-foreground">{activity.old_value}</span> to{" "}
-            <span className="text-foreground">{activity.new_value}</span>
+            changed status from <span className="text-foreground">{oldStr}</span> to{" "}
+            <span className="text-foreground">{newStr}</span>
           </span>
         );
       case "assigned":
@@ -524,15 +526,15 @@ function ActivityItem({ activity }: { activity: TaskActivity }) {
       case "priority_changed":
         return (
           <span>
-            changed priority from <span className="text-foreground">{activity.old_value}</span> to{" "}
-            <span className="text-foreground">{activity.new_value}</span>
+            changed priority from <span className="text-foreground">{oldStr}</span> to{" "}
+            <span className="text-foreground">{newStr}</span>
           </span>
         );
       case "points_changed":
         return (
           <span>
             changed story points from <span className="text-foreground">{activity.old_value || "none"}</span> to{" "}
-            <span className="text-foreground">{activity.new_value}</span>
+            <span className="text-foreground">{newStr}</span>
           </span>
         );
       case "epic_changed":
@@ -543,12 +545,45 @@ function ActivityItem({ activity }: { activity: TaskActivity }) {
               : "removed from epic"}
           </span>
         );
+      case "title_changed":
+        return <span>renamed to <span className="text-foreground">{newStr}</span></span>;
+      case "description_changed":
+        return <span>updated the description</span>;
+      case "labels_changed":
+        return <span>updated labels</span>;
+      case "start_date_changed":
+        return (
+          <span>
+            {activity.new_value
+              ? <>set start date to <span className="text-foreground">{newStr}</span></>
+              : <>cleared start date</>}
+          </span>
+        );
+      case "end_date_changed":
+        return (
+          <span>
+            {activity.new_value
+              ? <>set due date to <span className="text-foreground">{newStr}</span></>
+              : <>cleared due date</>}
+          </span>
+        );
+      case "estimated_hours_changed":
+        return (
+          <span>
+            {activity.new_value
+              ? <>set estimate to <span className="text-foreground">{newStr}h</span></>
+              : <>cleared estimate</>}
+          </span>
+        );
       case "created":
         return <span>created this task</span>;
       default:
         return (
           <span>
-            updated {activity.field_name}: {activity.new_value}
+            updated {activity.field_name ?? activity.action}
+            {activity.old_value || activity.new_value
+              ? <>: <span className="text-foreground">{oldStr}</span> → <span className="text-foreground">{newStr}</span></>
+              : null}
           </span>
         );
     }

@@ -226,7 +226,28 @@ export function useSprintTasks(sprintId: string | null) {
   const updateStatusMutation = useMutation({
     mutationFn: ({ taskId, status }: { taskId: string; status: TaskStatus }) =>
       sprintApi.updateTaskStatus(sprintId!, taskId, status),
-    onSuccess: () => {
+    // Optimistic update: drag-and-drop relies on the task being in its new
+    // column the instant the drop completes. Without this, dnd-kit animates
+    // the card back to its original slot before the network response, and
+    // the user sees a "snap back, then move" flicker.
+    onMutate: async ({ taskId, status }) => {
+      const key = ["sprintTasks", sprintId];
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<SprintTask[]>(key);
+      if (previous) {
+        queryClient.setQueryData<SprintTask[]>(
+          key,
+          previous.map((t) => (t.id === taskId ? { ...t, status } : t)),
+        );
+      }
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["sprintTasks", sprintId], context.previous);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["sprintTasks", sprintId] });
       queryClient.invalidateQueries({ queryKey: ["sprintStats"] });
       queryClient.invalidateQueries({ queryKey: ["burndown", sprintId] });

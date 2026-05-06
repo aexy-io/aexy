@@ -150,12 +150,33 @@ export function useProjectBoard(
       }
       throw new Error("Either sprintId or projectId is required");
     },
-    onSuccess: () => {
+    // Optimistic update: drag-and-drop relies on the task being in its new
+    // column the instant the drop completes. Without this, dnd-kit animates
+    // the card back to its original slot before the network response, which
+    // produces a "snap back, then move" flicker.
+    onMutate: async ({ taskId, status }) => {
+      const projectKey = ["projectTasks", workspaceId, projectId];
+      const sprintKey = ["sprintTasks"];
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: projectKey }),
+        queryClient.cancelQueries({ queryKey: sprintKey }),
+      ]);
+      const projectSnapshots = queryClient.getQueriesData<TaskWithSprint[]>({ queryKey: projectKey });
+      const sprintSnapshots = queryClient.getQueriesData<SprintTask[]>({ queryKey: sprintKey });
+      const apply = <T extends { id: string; status: TaskStatus }>(arr: T[] | undefined) =>
+        arr?.map((t) => (t.id === taskId ? { ...t, status } : t));
+      projectSnapshots.forEach(([key, data]) => queryClient.setQueryData(key, apply(data)));
+      sprintSnapshots.forEach(([key, data]) => queryClient.setQueryData(key, apply(data)));
+      return { projectSnapshots, sprintSnapshots };
+    },
+    onError: (_err, _vars, context) => {
+      context?.projectSnapshots.forEach(([key, data]) => queryClient.setQueryData(key, data));
+      context?.sprintSnapshots.forEach(([key, data]) => queryClient.setQueryData(key, data));
+      toast.error("Failed to update task status");
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["projectTasks", workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ["sprintTasks"] });
-    },
-    onError: () => {
-      toast.error("Failed to update task status");
     },
   });
 

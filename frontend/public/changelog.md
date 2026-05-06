@@ -5,6 +5,98 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.6] - 2026-05-07
+
+### Added
+
+#### Full task activity history
+The History tab on the task modal now shows every change to a task —
+not just assignment and status — and every change is attributed to the
+user who made it. A reviewer can see who created the task, who renamed
+it, who shifted the dates, who edited the description, who reassigned
+it, and who dragged it across the board, top-to-bottom in the order
+events actually happened.
+
+- `SprintTaskService.update_task` now snapshots each field before
+  mutation and writes a per-task `TaskActivity` row (`title_changed`,
+  `description_changed`, `points_changed`, `priority_changed`,
+  `status_changed`, `labels_changed`, `epic_changed`,
+  `start_date_changed`, `end_date_changed`,
+  `estimated_hours_changed`) for every value that actually changed.
+  Description bodies are not stringified into `old_value`/`new_value`
+  — only the fact that the description changed is recorded — to keep
+  the activity row small for rich-text edits.
+- `update_task_status` and `bulk_update_status` now accept an
+  `actor_id` and write a per-task activity row attributing the status
+  change to the user who dragged the card or clicked the pill.
+  Previously the workspace-wide `EntityActivity` feed had this but
+  the modal's History tab did not.
+- `create_task` records the creator on the `created` activity row, so
+  the History tab opens with a "X created this task" line instead of
+  silently starting at the first edit.
+- `TaskActivityAction` union extended in `frontend/src/lib/api.ts`
+  with the six new field-change actions, and the renderer in
+  `AssignmentHistoryPanel` (board page) and `ActivityItem` (single
+  sprint page) now switches on every action with human-readable
+  copy: "renamed to X", "set due date to Y", "cleared estimate", etc.
+- The History panel no longer filters out non-assignment events —
+  it shows everything, with the actor name on every line.
+
+### Changed
+
+#### Optimistic drag-and-drop on the kanban board
+Dropping a task into a new column updates the cache before the
+network round-trip, so the card stays where the user dropped it
+instead of snapping back to its original column for ~100 ms before
+re-rendering. Both `useSprintTasks` (sprint board) and
+`useProjectBoard` (workspace tasks) gained `onMutate` /
+`onError` / `onSettled` handlers that snapshot the prior cache,
+apply the new status optimistically, roll back on failure, and
+invalidate on settle. The "snap back, then move" flicker that
+made dnd-kit feel laggy is gone.
+
+#### Editable links in task descriptions
+TipTap's `Link` extension was switched to `openOnClick: false` in
+edit mode (when `readOnly` is false), so single-clicking a link
+inside the editor now lands the cursor on it for editing instead
+of opening it in a new tab. Cmd/Ctrl+click still opens the link.
+In read-only renders (description preview, comment view) plain
+clicks open the link as before.
+
+### Fixed
+
+#### Storage object orphaned on task attachment delete
+`DELETE /sprints/{sprint_id}/tasks/{task_id}/attachments/{id}` was
+removing the `task_attachments` row but leaving the underlying S3
+object in RustFS forever, so deleted files kept counting against
+the workspace's storage quota. The endpoint now derives the storage
+key from the attachment URL via the new
+`StorageService.key_from_url` (handles both path-style and the R2
+virtual-hosted style), calls `delete_object`, and invalidates the
+workspace usage cache via `StorageQuotaService` so the quota meter
+catches up immediately.
+
+#### `task.assigned` automation didn't fire on PATCH-based reassignment
+Reassigning a task by sending `PATCH /sprint-tasks/{id}` with a new
+`assignee_id` updated the row and wrote the assignment activity, but
+never dispatched the `task.assigned` automation trigger — only the
+dedicated `/assign` endpoint did. So workspace automations subscribed
+to `task.assigned` (Slack DMs, Linear sync, etc.) silently missed
+every reassignment performed through the task modal's edit flow.
+`update_task` now mirrors `assign_task`'s `dispatch_automation_event`
+call when the assignee changes.
+
+### Internal
+
+- New helper `_stringify_field` in `sprint_task_service` renders
+  TaskActivity field values consistently — `None` stays `None` (so
+  the History tab can render "—"), datetimes go through `.isoformat()`,
+  and lists join with `, `. Avoids the `"None"` string showing up
+  in old/new value cells.
+- Removed a vestigial `hasattr(task, "attachments")` guard in
+  `task_to_response` — the `attachments` relationship is always
+  present on `SprintTask` since the v0.7.4 schema migration.
+
 ## [0.7.5] - 2026-05-07
 
 ### Added

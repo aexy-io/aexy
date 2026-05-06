@@ -88,7 +88,10 @@ export const TaskDescriptionEditor = forwardRef<
         emptyEditorClass: "is-editor-empty",
       }),
       Link.configure({
-        openOnClick: true,
+        // In edit mode (readOnly=false), single-click should land the cursor
+        // on the link to edit it; only open on Cmd/Ctrl+click. In read-only
+        // renders, click opens the link directly.
+        openOnClick: readOnly,
         autolink: true,
         linkOnPaste: true,
         HTMLAttributes: {
@@ -122,6 +125,16 @@ export const TaskDescriptionEditor = forwardRef<
           "[&_.is-editor-empty:first-child::before]:pointer-events-none"
         ),
         style: `min-height: ${minHeight}`,
+      },
+      handleClick: (_view, _pos, event) => {
+        // In edit mode, openOnClick is false so the cursor lands on the link
+        // for editing. Still let Cmd/Ctrl+click open the link in a new tab.
+        if (readOnly || !(event.metaKey || event.ctrlKey)) return false;
+        const target = (event.target as HTMLElement | null)?.closest("a");
+        const href = target?.getAttribute("href");
+        if (!href) return false;
+        window.open(href, "_blank", "noopener,noreferrer");
+        return true;
       },
       handleKeyDown: (_view, event) => {
         // Handle @ for user mentions

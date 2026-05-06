@@ -163,7 +163,7 @@ def task_to_response(task) -> SprintTaskResponse:
             uploaded_at=a.uploaded_at,
         )
         for a in (task.attachments or [])
-    ] if hasattr(task, "attachments") else []
+    ]
     return SprintTaskResponse(
         id=str(task.id),
         sprint_id=str(task.sprint_id) if task.sprint_id else None,
@@ -286,6 +286,7 @@ async def create_task(
         start_date=data.start_date,
         end_date=data.end_date,
         estimated_hours=data.estimated_hours,
+        actor_id=str(current_user.id),
     )
 
     await db.commit()
@@ -323,7 +324,9 @@ async def bulk_update_status(
     await get_sprint_and_check_permission(sprint_id, current_user, db, "member")
 
     task_service = SprintTaskService(db)
-    tasks = await task_service.bulk_update_status(data.task_ids, data.status)
+    tasks = await task_service.bulk_update_status(
+        data.task_ids, data.status, actor_id=str(current_user.id)
+    )
 
     await db.commit()
     return [task_to_response(t) for t in tasks]
@@ -1127,7 +1130,9 @@ async def update_task_status(
     await get_sprint_and_check_permission(sprint_id, current_user, db, "member")
 
     task_service = SprintTaskService(db)
-    task = await task_service.update_task_status(task_id, data.status)
+    task = await task_service.update_task_status(
+        task_id, data.status, actor_id=str(current_user.id)
+    )
 
     if not task or task.sprint_id != sprint_id:
         raise HTTPException(
@@ -1641,6 +1646,20 @@ async def delete_task_attachment(
             detail="Attachment not found",
         )
 
+    storage = get_storage_service()
+    if storage.is_configured():
+        key = storage.key_from_url(attachment.file_url)
+        if key:
+            await storage.delete_object(key)
+        else:
+            logger.warning(
+                "Could not derive storage key from attachment URL %s; "
+                "skipping object delete",
+                attachment.file_url,
+            )
+
     await task_service.delete_attachment(attachment_id)
     await db.commit()
+    if task.workspace_id:
+        await StorageQuotaService(db).invalidate_workspace_usage(str(task.workspace_id))
     return None

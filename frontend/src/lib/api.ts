@@ -2599,7 +2599,13 @@ export type TaskActivityAction =
   | "comment"
   | "priority_changed"
   | "points_changed"
-  | "epic_changed";
+  | "epic_changed"
+  | "title_changed"
+  | "description_changed"
+  | "labels_changed"
+  | "start_date_changed"
+  | "end_date_changed"
+  | "estimated_hours_changed";
 
 export interface TaskActivity {
   id: string;
