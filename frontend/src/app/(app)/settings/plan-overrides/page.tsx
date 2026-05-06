@@ -23,6 +23,7 @@ interface PlanOverride {
   base_fee_monthly_cents: number | null;
   per_seat_price_monthly_cents: number | null;
   max_repos: number | null;
+  max_storage_gb: number | null;
   llm_requests_per_day: number | null;
   free_llm_tokens_per_month: number | null;
   discount_percent: number | null;
@@ -260,6 +261,26 @@ export default function PlanOverridesPage() {
                   setEditingOverride((prev) => ({
                     ...prev,
                     max_repos: e.target.value
+                      ? parseInt(e.target.value)
+                      : null,
+                  }))
+                }
+                placeholder="-1 = unlimited"
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">
+                Max Storage (GB)
+              </label>
+              <input
+                type="number"
+                data-testid="override-max-storage-gb"
+                value={editingOverride?.max_storage_gb ?? ""}
+                onChange={(e) =>
+                  setEditingOverride((prev) => ({
+                    ...prev,
+                    max_storage_gb: e.target.value
                       ? parseInt(e.target.value)
                       : null,
                   }))

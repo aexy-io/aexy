@@ -50,6 +50,11 @@ const adminNavItems = [
     href: "/admin/ai-benchmarking",
     icon: BarChart2,
   },
+  {
+    title: "Plans",
+    href: "/admin/plans",
+    icon: Shield,
+  },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

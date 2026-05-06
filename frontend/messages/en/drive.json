@@ -1,0 +1,110 @@
+{
+  "drive": {
+    "page": {
+      "title": "Drive",
+      "newFolder": "New folder",
+      "folderNamePrompt": "Folder name",
+      "smartViewsHeading": "Smart Views",
+      "newSmartViewTitle": "New smart view",
+      "noSmartViews": "No smart views yet. Create one to filter files by AI tags.",
+      "storageHeading": "Storage",
+      "unlimited": "Unlimited",
+      "percentUsed": "{percent}%",
+      "filesCount": "{count} files",
+      "ofLimit": "of {limit}",
+      "searchPlaceholder": "Search across all files (AI-powered)…",
+      "searching": "Searching…",
+      "noMatches": "No matches.",
+      "loading": "Loading…",
+      "emptyFolder": "This folder is empty. Drop files above to get started.",
+      "folderLabel": "(folder)",
+      "sourcesHeading": "Sources",
+      "viewDriveFiles": "Drive files",
+      "viewTaskAttachments": "Task attachments",
+      "viewComplianceDocs": "Compliance documents",
+      "emptySource": "No files in this source yet."
+    },
+    "fileCard": {
+      "aiPending": "AI",
+      "aiReady": "Ready",
+      "aiFailed": "Failed",
+      "tagsOverflow": "+{count}"
+    },
+    "upload": {
+      "dropPrompt": "Drop files to upload, or",
+      "browse": "browse",
+      "uploadedOf": "{done} of {total} uploaded",
+      "clear": "Clear",
+      "statusDone": "Done",
+      "statusFailed": "Failed",
+      "statusPercent": "{percent}%",
+      "quotaExceededAlert": "Storage quota would be exceeded. {used} used + {incoming} incoming > {limit} limit."
+    },
+    "quota": {
+      "limitReached": "Storage limit reached.",
+      "limitReachedDetail": "Delete files or upgrade your plan to upload more.",
+      "warning": "You're using {used} of {limit} ({percent}%)."
+    },
+    "smartView": {
+      "editTitle": "Edit smart view",
+      "newTitle": "New smart view",
+      "fieldName": "Name",
+      "namePlaceholder": "e.g. Invoices",
+      "fieldAllTags": "All of these tags",
+      "fieldAnyTags": "Any of these tags",
+      "fieldAnyCategories": "Any of these categories",
+      "fieldKind": "Kind",
+      "anyKind": "Any kind",
+      "tagInputPlaceholder": "Type and press Enter",
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "save": "Save",
+      "create": "Create",
+      "errorNameRequired": "Name is required",
+      "errorSaveFailed": "Save failed"
+    },
+    "video": {
+      "addAtCurrentFrame": "Add at current frame",
+      "annotationsCount": "{count} annotations",
+      "labelPrompt": "Label this moment:",
+      "delete": "Delete"
+    },
+    "aiBadges": {
+      "ready": "Ready",
+      "failed": "Failed",
+      "ai": "AI",
+      "overflow": "+{count}"
+    },
+    "metadataPopover": {
+      "loading": "Loading…",
+      "open": "Open",
+      "failedFallback": "AI processing failed.",
+      "analysing": "Analysing file… this usually takes a minute.",
+      "categoriesSeparator": " · "
+    },
+    "metadataSidecar": {
+      "heading": "AI Metadata",
+      "reannotate": "Reannotate",
+      "loading": "Loading…",
+      "summaryHeading": "Summary",
+      "summaryFailedFallback": "AI processing failed.",
+      "summaryAnalysing": "Analysing this file… come back in a moment.",
+      "tagsHeading": "Tags",
+      "tagsNone": "None yet.",
+      "categoriesHeading": "Categories",
+      "categoriesNone": "—",
+      "lastProcessed": "Last processed {when}"
+    },
+    "search": {
+      "ariaLabel": "Search files",
+      "placeholder": "Search files across workspace…",
+      "close": "Close",
+      "minLength": "Type at least two characters to search.",
+      "noFiles": "No files match.",
+      "footerHint": "↑↓ to navigate · Enter to open · Esc to close · ⌘⇧F to toggle",
+      "sourceDrive": "Drive",
+      "sourceTask": "Task",
+      "sourceCompliance": "Compliance"
+    }
+  }
+}

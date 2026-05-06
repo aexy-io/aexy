@@ -136,6 +136,37 @@ class LLMSettings(BaseSettings):
         validation_alias="DEEPSEEK_FALLBACK_MODELS",
     )
 
+    # Vision provider — used for image captioning + Qwen-VL video annotations.
+    # `openrouter` routes to qwen/qwen2.5-vl-72b-instruct via OpenRouter; `ollama`
+    # uses a local Ollama instance running a Qwen-VL tag (e.g. qwen2.5vl:7b).
+    vision_provider: str = Field(
+        default="openrouter",
+        description="Vision provider: openrouter | ollama",
+        validation_alias="VISION_PROVIDER",
+    )
+    vision_model: str = Field(
+        default="qwen/qwen2.5-vl-72b-instruct",
+        description="Vision model identifier (provider-specific)",
+        validation_alias="VISION_MODEL",
+    )
+
+    # Embeddings provider — used for chunk-level vectors stored in pgvector.
+    embeddings_provider: str = Field(
+        default="openrouter",
+        description="Embeddings provider: openrouter | ollama",
+        validation_alias="EMBEDDINGS_PROVIDER",
+    )
+    embeddings_model: str = Field(
+        default="openai/text-embedding-3-large",
+        description="Embeddings model identifier (provider-specific)",
+        validation_alias="EMBEDDINGS_MODEL",
+    )
+    embeddings_dim: int = Field(
+        default=1024,
+        description="Embedding vector dimension. Must match file_embeddings.embedding column.",
+        validation_alias="EMBEDDINGS_DIM",
+    )
+
     # Processing mode (configurable per billing plan)
     processing_mode: ProcessingMode = Field(
         default=ProcessingMode.BATCH,

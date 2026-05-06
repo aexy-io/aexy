@@ -1,0 +1,110 @@
+{
+  "drive": {
+    "page": {
+      "title": "Drive",
+      "newFolder": "नया फ़ोल्डर",
+      "folderNamePrompt": "फ़ोल्डर का नाम",
+      "smartViewsHeading": "Smart Views",
+      "newSmartViewTitle": "नया Smart View",
+      "noSmartViews": "अभी तक कोई Smart View नहीं। AI Tags से फ़ाइलें फ़िल्टर करने के लिए एक बनाएँ।",
+      "storageHeading": "स्टोरेज",
+      "unlimited": "असीमित",
+      "percentUsed": "{percent}%",
+      "filesCount": "{count} फ़ाइलें",
+      "ofLimit": "{limit} में से",
+      "searchPlaceholder": "सभी फ़ाइलों में खोजें (AI-powered)…",
+      "searching": "खोज रहे हैं…",
+      "noMatches": "कोई मेल नहीं मिला।",
+      "loading": "लोड हो रहा है…",
+      "emptyFolder": "यह फ़ोल्डर खाली है। शुरू करने के लिए ऊपर फ़ाइलें Drop करें।",
+      "folderLabel": "(फ़ोल्डर)",
+      "sourcesHeading": "Sources",
+      "viewDriveFiles": "Drive फ़ाइलें",
+      "viewTaskAttachments": "Task अटैचमेंट",
+      "viewComplianceDocs": "Compliance डॉक्यूमेंट",
+      "emptySource": "इस source में अभी कोई फ़ाइल नहीं है।"
+    },
+    "fileCard": {
+      "aiPending": "AI",
+      "aiReady": "तैयार",
+      "aiFailed": "विफल",
+      "tagsOverflow": "+{count}"
+    },
+    "upload": {
+      "dropPrompt": "अपलोड के लिए फ़ाइलें Drop करें, या",
+      "browse": "ब्राउज़ करें",
+      "uploadedOf": "{total} में से {done} अपलोड हो गईं",
+      "clear": "साफ़ करें",
+      "statusDone": "पूर्ण",
+      "statusFailed": "विफल",
+      "statusPercent": "{percent}%",
+      "quotaExceededAlert": "स्टोरेज सीमा पार हो जाएगी। {used} उपयोग + {incoming} आने वाली > {limit} सीमा।"
+    },
+    "quota": {
+      "limitReached": "स्टोरेज सीमा पूरी हो गई।",
+      "limitReachedDetail": "और अपलोड करने के लिए फ़ाइलें हटाएँ या अपना प्लान अपग्रेड करें।",
+      "warning": "आपने {limit} में से {used} उपयोग किया है ({percent}%)।"
+    },
+    "smartView": {
+      "editTitle": "Smart View संपादित करें",
+      "newTitle": "नया Smart View",
+      "fieldName": "नाम",
+      "namePlaceholder": "जैसे Invoices",
+      "fieldAllTags": "ये सभी Tags",
+      "fieldAnyTags": "इनमें से कोई भी Tags",
+      "fieldAnyCategories": "इनमें से कोई भी श्रेणी",
+      "fieldKind": "प्रकार",
+      "anyKind": "कोई भी प्रकार",
+      "tagInputPlaceholder": "टाइप करें और Enter दबाएँ",
+      "delete": "हटाएँ",
+      "cancel": "रद्द करें",
+      "save": "सहेजें",
+      "create": "बनाएँ",
+      "errorNameRequired": "नाम आवश्यक है",
+      "errorSaveFailed": "सहेजना विफल"
+    },
+    "video": {
+      "addAtCurrentFrame": "वर्तमान Frame पर जोड़ें",
+      "annotationsCount": "{count} Annotations",
+      "labelPrompt": "इस क्षण को लेबल करें:",
+      "delete": "हटाएँ"
+    },
+    "aiBadges": {
+      "ready": "तैयार",
+      "failed": "विफल",
+      "ai": "AI",
+      "overflow": "+{count}"
+    },
+    "metadataPopover": {
+      "loading": "लोड हो रहा है…",
+      "open": "खोलें",
+      "failedFallback": "AI प्रोसेसिंग विफल।",
+      "analysing": "फ़ाइल का विश्लेषण हो रहा है… आमतौर पर एक मिनट लगता है।",
+      "categoriesSeparator": " · "
+    },
+    "metadataSidecar": {
+      "heading": "AI Metadata",
+      "reannotate": "पुनः Annotate करें",
+      "loading": "लोड हो रहा है…",
+      "summaryHeading": "सारांश",
+      "summaryFailedFallback": "AI प्रोसेसिंग विफल।",
+      "summaryAnalysing": "इस फ़ाइल का विश्लेषण हो रहा है… एक पल में वापस आएँ।",
+      "tagsHeading": "Tags",
+      "tagsNone": "अभी कोई नहीं।",
+      "categoriesHeading": "श्रेणियाँ",
+      "categoriesNone": "—",
+      "lastProcessed": "अंतिम बार प्रोसेस किया गया {when}"
+    },
+    "search": {
+      "ariaLabel": "फ़ाइलें खोजें",
+      "placeholder": "वर्कस्पेस में फ़ाइलें खोजें…",
+      "close": "बंद करें",
+      "minLength": "खोजने के लिए कम से कम दो अक्षर टाइप करें।",
+      "noFiles": "कोई फ़ाइल मेल नहीं खाती।",
+      "footerHint": "↑↓ से navigate · Enter से खोलें · Esc से बंद · ⌘⇧F से toggle",
+      "sourceDrive": "Drive",
+      "sourceTask": "Task",
+      "sourceCompliance": "Compliance"
+    }
+  }
+}

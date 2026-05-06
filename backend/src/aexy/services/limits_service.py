@@ -106,6 +106,10 @@ class EffectivePlan:
     llm_requests_per_day: int
     llm_requests_per_minute: int
     llm_tokens_per_minute: int
+
+    # Storage quota in GB; -1 = unlimited.
+    max_storage_gb: int = 5
+
     llm_provider_access: list[str] = field(default_factory=list)
     free_llm_tokens_per_month: int = 100000
     llm_input_cost_per_1k_cents: int = 30
@@ -309,6 +313,7 @@ class LimitsService:
             max_commits_per_repo=_ov("max_commits_per_repo", plan.max_commits_per_repo),
             max_prs_per_repo=_ov("max_prs_per_repo", plan.max_prs_per_repo),
             sync_history_days=_ov("sync_history_days", plan.sync_history_days),
+            max_storage_gb=_ov("max_storage_gb", plan.max_storage_gb),
             # LLM limits
             llm_requests_per_day=_ov("llm_requests_per_day", plan.llm_requests_per_day),
             llm_requests_per_minute=_ov("llm_requests_per_minute", plan.llm_requests_per_minute),

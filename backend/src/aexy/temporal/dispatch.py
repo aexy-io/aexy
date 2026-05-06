@@ -63,6 +63,14 @@ ACTIVITY_CONFIG: dict[str, dict[str, Any]] = {
     "extract_knowledge_from_document": {"retry": LLM_RETRY, "timeout": timedelta(minutes=30)},
     "rebuild_workspace_graph": {"retry": LLM_RETRY, "timeout": timedelta(hours=2), "heartbeat": timedelta(minutes=5)},
 
+    # File AI metadata pipeline (polymorphic across drive_file / task_attachment / compliance_document)
+    "extract_file_ai_metadata": {"retry": LLM_RETRY, "timeout": timedelta(minutes=30), "heartbeat": timedelta(minutes=5)},
+    # Workspace-wide backfill scans uncovered files and dispatches per-file jobs at ~10/min/workspace.
+    "backfill_workspace_file_metadata": {"retry": STANDARD_RETRY, "timeout": timedelta(hours=6), "heartbeat": timedelta(minutes=5)},
+    # Deprecated drive-only names — kept for one release so already-queued workflows complete.
+    "extract_drive_file_metadata": {"retry": LLM_RETRY, "timeout": timedelta(minutes=30), "heartbeat": timedelta(minutes=5)},
+    "annotate_drive_video": {"retry": LLM_RETRY, "timeout": timedelta(minutes=45), "heartbeat": timedelta(minutes=5)},
+
     # Sync (external APIs)
     "sync_repository": {"retry": "github_sync", "timeout": timedelta(hours=2), "heartbeat": timedelta(minutes=5)},
     "sync_commits": {"retry": "github_sync", "timeout": timedelta(hours=1)},

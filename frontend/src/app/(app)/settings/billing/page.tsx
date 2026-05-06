@@ -24,6 +24,7 @@ import { STRIPE_ENABLED, buildSalesMailto } from "@/lib/billingMode";
 // New billing components
 import { UsageAlerts } from "@/components/billing/UsageAlert";
 import { UsageStatsCards } from "@/components/billing/UsageStatsCards";
+import { StorageUsageCard } from "@/components/billing/StorageUsageCard";
 import { UsageTrendChart } from "@/components/billing/UsageTrendChart";
 import { InvoiceList } from "@/components/billing/InvoiceList";
 
@@ -359,6 +360,9 @@ function BillingContent() {
         <div>
           <h3 className="text-lg font-semibold text-foreground mb-4">Current Usage</h3>
           <UsageStatsCards />
+          <div className="mt-4">
+            <StorageUsageCard />
+          </div>
         </div>
 
         {/* Usage Trend Chart */}

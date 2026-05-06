@@ -11,6 +11,7 @@ import {
     Ticket,
     FormInput,
     FileText,
+    HardDrive,
     ClipboardCheck,
     GraduationCap,
     Users,
@@ -353,6 +354,7 @@ export const GROUPED_LAYOUT: SidebarLayoutConfig = {
             label: "Knowledge",
             items: [
                 { href: "/docs", label: "Docs", icon: FileText },
+                { href: "/docs/drive", label: "Drive", icon: HardDrive },
                 { href: "/tables", label: "Tables", icon: Table2 },
                 { href: "/forms", label: "Forms", icon: FormInput },
                 {
@@ -471,6 +473,7 @@ export const FLAT_LAYOUT: SidebarLayoutConfig = {
                     items: leaveItems,
                 },
                 { href: "/docs", label: "Docs", icon: FileText },
+                { href: "/docs/drive", label: "Drive", icon: HardDrive },
                 { href: "/tables", label: "Tables", icon: Table2 },
                 { href: "/forms", label: "Forms", icon: FormInput },
                 {

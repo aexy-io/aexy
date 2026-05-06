@@ -19,6 +19,8 @@ from aexy.llm.base import (
 
 if TYPE_CHECKING:
     from aexy.services.llm_rate_limiter import LLMRateLimiter
+    from aexy.llm.embedding_base import EmbeddingProvider
+    from aexy.llm.vision_base import VisionProvider
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +52,181 @@ class LLMGateway:
             from aexy.services.llm_rate_limiter import get_llm_rate_limiter
             self._rate_limiter = get_llm_rate_limiter()
         return self._rate_limiter
+
+    # ─── Vision (Drive AI metadata pipeline) ───────────────────────────────
+    @property
+    def vision(self) -> "VisionProvider":
+        """Lazy vision provider — Qwen-VL via OpenRouter or Ollama.
+
+        The provider is selected by `settings.llm.vision_provider`. Constructed
+        on first access and cached on the gateway instance for the lifetime
+        of the Temporal activity.
+        """
+        cached = getattr(self, "_vision_provider", None)
+        if cached is not None:
+            return cached
+        from aexy.core.config import get_settings
+        from aexy.llm.qwen_ollama_provider import QwenOllamaVisionProvider
+        from aexy.llm.qwen_openrouter_provider import QwenOpenRouterVisionProvider
+        from aexy.llm.vision_base import VisionProvider as _VP
+
+        settings = get_settings()
+        choice = (settings.llm.vision_provider or "openrouter").lower()
+        if choice == "ollama":
+            provider: _VP = QwenOllamaVisionProvider(
+                base_url=settings.llm.ollama_base_url,
+                model=settings.llm.vision_model,
+            )
+        else:
+            provider = QwenOpenRouterVisionProvider(
+                api_key=settings.llm.openrouter_api_key,
+                model=settings.llm.vision_model,
+            )
+        self._vision_provider = provider
+        return provider
+
+    @property
+    def embeddings(self) -> "EmbeddingProvider":
+        """Lazy embeddings provider — OpenRouter or Ollama."""
+        cached = getattr(self, "_embedding_provider", None)
+        if cached is not None:
+            return cached
+        from aexy.core.config import get_settings
+        from aexy.llm.embedding_base import (
+            EmbeddingProvider as _EP,
+            OllamaEmbeddingProvider,
+            OpenRouterEmbeddingProvider,
+        )
+
+        settings = get_settings()
+        choice = (settings.llm.embeddings_provider or "openrouter").lower()
+        if choice == "ollama":
+            provider: _EP = OllamaEmbeddingProvider(
+                base_url=settings.llm.ollama_base_url,
+                model=settings.llm.embeddings_model,
+                dim=settings.llm.embeddings_dim,
+            )
+        else:
+            provider = OpenRouterEmbeddingProvider(
+                api_key=settings.llm.openrouter_api_key,
+                model=settings.llm.embeddings_model,
+                dim=settings.llm.embeddings_dim,
+            )
+        self._embedding_provider = provider
+        return provider
+
+    # ─── Rate-limited vision + embeddings helpers ───────────────────────────
+    async def _gate(
+        self,
+        provider_key: str,
+        tokens_estimate: int,
+        workspace_id: str | None,
+        developer_id: str | None,
+    ) -> None:
+        """Pre-call rate-limit check for non-text providers (Qwen vision,
+        embeddings). Reuses the same Redis-backed limiter as text LLMs but
+        keys by `provider_key` ("qwen-openrouter", "embeddings-ollama", …)
+        so vision/embedding usage is tracked separately from chat.
+        """
+        result = await self.rate_limiter.check_rate_limit(
+            provider_key,
+            tokens_estimate=tokens_estimate,
+            workspace_id=workspace_id,
+            developer_id=developer_id,
+        )
+        if not result.allowed:
+            raise LLMRateLimitError(
+                message=result.reason or "Rate limit exceeded",
+                retry_after=result.retry_after,
+                wait_seconds=result.wait_seconds,
+            )
+
+    async def _record(
+        self,
+        provider_key: str,
+        tokens_used: int,
+        workspace_id: str | None,
+        developer_id: str | None,
+    ) -> None:
+        await self.rate_limiter.record_request(
+            provider_key,
+            tokens_used=tokens_used,
+            workspace_id=workspace_id,
+            developer_id=developer_id,
+        )
+
+    async def embed_batch_limited(
+        self,
+        texts: list[str],
+        *,
+        workspace_id: str | None = None,
+        developer_id: str | None = None,
+    ) -> list[list[float]]:
+        """Rate-limited wrapper around the embedding provider's `embed_batch`.
+
+        Token estimate uses the rough rule of ~4 chars per token. We charge
+        on inputs only; the response is a fixed-size vector and not billed
+        as tokens.
+        """
+        if not texts:
+            return []
+        embedder = self.embeddings
+        tokens_estimate = max(1, sum(len(t) for t in texts) // 4)
+        await self._gate(embedder.provider_name, tokens_estimate, workspace_id, developer_id)
+        vectors = await embedder.embed_batch(texts)
+        await self._record(embedder.provider_name, tokens_estimate, workspace_id, developer_id)
+        return vectors
+
+    async def vision_image_limited(
+        self,
+        *,
+        image_url: str | None = None,
+        image_bytes: bytes | None = None,
+        prompt: str | None = None,
+        workspace_id: str | None = None,
+        developer_id: str | None = None,
+    ):
+        vision = self.vision
+        # An image with caption — assume a flat ~1500 tokens per call. The
+        # exact cost depends on resolution but we're rate-limiting, not
+        # billing, so an estimate is sufficient.
+        tokens_estimate = 1500
+        await self._gate(vision.provider_name, tokens_estimate, workspace_id, developer_id)
+        kwargs = {"image_url": image_url, "image_bytes": image_bytes}
+        if prompt is not None:
+            kwargs["prompt"] = prompt
+        result = await vision.analyze_image(**kwargs)
+        used = int(getattr(result, "tokens_used", 0) or tokens_estimate)
+        await self._record(vision.provider_name, used, workspace_id, developer_id)
+        return result
+
+    async def vision_video_frames_limited(
+        self,
+        *,
+        frame_bytes: list[bytes],
+        frame_timestamps_ms: list[int],
+        sample_fps: float,
+        max_annotations: int,
+        workspace_id: str | None = None,
+        developer_id: str | None = None,
+    ):
+        vision = self.vision
+        if not hasattr(vision, "analyze_video_frames"):
+            raise RuntimeError(
+                f"Vision provider {vision.provider_name} does not implement analyze_video_frames"
+            )
+        # Charge per frame so longer videos burn more of the budget.
+        tokens_estimate = max(1500, len(frame_bytes) * 800)
+        await self._gate(vision.provider_name, tokens_estimate, workspace_id, developer_id)
+        result = await vision.analyze_video_frames(
+            frame_bytes=frame_bytes,
+            frame_timestamps_ms=frame_timestamps_ms,
+            sample_fps=sample_fps,
+            max_annotations=max_annotations,
+        )
+        used = int(getattr(result, "tokens_used", 0) or tokens_estimate)
+        await self._record(vision.provider_name, used, workspace_id, developer_id)
+        return result
 
     async def _check_rate_limit(
         self,

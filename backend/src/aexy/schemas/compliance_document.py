@@ -116,6 +116,13 @@ class DocumentResponse(BaseModel):
     archived_at: datetime | None = None
     tags: list[str] = []
     download_url: str | None = None
+    # Polymorphic AI metadata; populated by the file_metadata pipeline.
+    ai: "FileAIMetadata | None" = None
+
+
+from aexy.schemas.file_metadata import FileAIMetadata  # noqa: E402
+
+DocumentResponse.model_rebuild()
 
 
 class DocumentListResponse(BaseModel):

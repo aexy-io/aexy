@@ -66,6 +66,19 @@ import { SavedViewSwitcher } from "@/components/crm/SavedViewSwitcher";
 import { useSavedViews } from "@/hooks/useSavedViews";
 import { CommandPalette } from "@/components/CommandPalette";
 import { TaskDescriptionEditor, TaskDescriptionEditorRef, MentionUser } from "@/components/planning/TaskDescriptionEditor";
+import { FileMetadataPopover } from "@/components/files/FileMetadataPopover";
+import { FileAILine } from "@/components/files/FileAIBadges";
+import type { FileAIMetadata } from "@/lib/api";
+
+// Local helper type for the AI block on task attachments — the SprintTask
+// shape from lib/api.ts hasn't been re-typed for `ai` yet (tracked
+// separately), so we cast at call sites.
+type TaskAttachmentWithAI = {
+  id: string;
+  file_url: string;
+  file_name: string;
+  ai?: FileAIMetadata | null;
+};
 import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -1981,28 +1994,43 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
               )}
               {(task.attachments?.length ?? 0) > 0 && (
                 <ul className="space-y-1" data-testid="task-attachments-existing">
-                  {task.attachments?.map((a) => (
-                    <li
-                      key={a.id}
-                      className="flex items-center justify-between text-xs bg-background/50 border border-border rounded px-2 py-1"
-                    >
-                      <a
-                        href={a.file_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-400 hover:underline truncate max-w-[70%]"
+                  {task.attachments?.map((a) => {
+                    const ai = (a as TaskAttachmentWithAI).ai ?? null;
+                    return (
+                      <li
+                        key={a.id}
+                        className="flex flex-col gap-1 rounded border border-border bg-background/50 px-2 py-1 text-xs"
                       >
-                        {a.file_name}
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteAttachment(a.id)}
-                        className="text-muted-foreground hover:text-red-400"
-                      >
-                        Delete
-                      </button>
-                    </li>
-                  ))}
+                        <div className="flex items-center justify-between gap-2">
+                          <FileMetadataPopover
+                            workspaceId={(task as any).workspace_id ?? null}
+                            sourceType="task_attachment"
+                            sourceId={a.id}
+                            initialMetadata={ai}
+                          >
+                            <a
+                              href={a.file_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block max-w-[70%] truncate text-blue-400 hover:underline"
+                            >
+                              {a.file_name}
+                            </a>
+                          </FileMetadataPopover>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAttachment(a.id)}
+                            className="text-muted-foreground hover:text-red-400"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                        {ai && (ai.ai_tags.length > 0 || ai.ai_status !== "done") && (
+                          <FileAILine ai={ai} />
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
               {newAttachmentFiles.length > 0 && (

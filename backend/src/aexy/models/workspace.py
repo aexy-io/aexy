@@ -452,6 +452,9 @@ class WorkspacePlanOverride(Base):
     max_prs_per_repo: Mapped[int | None] = mapped_column(Integer, nullable=True)
     sync_history_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
+    # Storage quota override (GB; -1 = unlimited).
+    max_storage_gb: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
     # LLM limit overrides
     llm_requests_per_day: Mapped[int | None] = mapped_column(Integer, nullable=True)
     llm_requests_per_minute: Mapped[int | None] = mapped_column(Integer, nullable=True)

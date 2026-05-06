@@ -341,6 +341,17 @@ class TaskAttachmentResponse(BaseModel):
     content_type: str | None = None
     uploaded_by_id: str | None = None
     uploaded_at: datetime
+    # Polymorphic AI metadata; resolved at response-build time. Always present
+    # so the frontend doesn't have to special-case files that haven't been
+    # processed yet — those just carry ai_status="pending".
+    ai: "FileAIMetadata | None" = None
+
+
+# Late import to avoid a circular dependency at module-load time. The Pydantic
+# model has already been built by the time `model_rebuild` runs at app start.
+from aexy.schemas.file_metadata import FileAIMetadata  # noqa: E402
+
+TaskAttachmentResponse.model_rebuild()
 
 
 class TaskAttachmentListResponse(BaseModel):

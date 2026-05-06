@@ -52,6 +52,10 @@ class Plan(Base):
     max_prs_per_repo: Mapped[int] = mapped_column(Integer, default=100)
     sync_history_days: Mapped[int] = mapped_column(Integer, default=90)  # How far back to sync
 
+    # Storage quota in GB; -1 means unlimited. Enforced across drive_files,
+    # task_attachments and compliance_documents via storage_quota_service.
+    max_storage_gb: Mapped[int] = mapped_column(Integer, default=5)
+
     # LLM limits
     llm_requests_per_day: Mapped[int] = mapped_column(Integer, default=50)
     llm_requests_per_minute: Mapped[int] = mapped_column(Integer, default=10)
@@ -143,6 +147,7 @@ DEFAULT_PLANS = [
         "max_commits_per_repo": 1000,
         "max_prs_per_repo": 200,
         "sync_history_days": 90,
+        "max_storage_gb": 5,
         "llm_requests_per_day": 50,
         "llm_requests_per_minute": 5,
         "llm_tokens_per_minute": 20000,
@@ -176,6 +181,7 @@ DEFAULT_PLANS = [
         "max_commits_per_repo": 5000,
         "max_prs_per_repo": 1000,
         "sync_history_days": 365,
+        "max_storage_gb": 100,
         "llm_requests_per_day": 500,
         "llm_requests_per_minute": 20,
         "llm_tokens_per_minute": 100000,
@@ -208,6 +214,7 @@ DEFAULT_PLANS = [
         "max_commits_per_repo": -1,
         "max_prs_per_repo": -1,
         "sync_history_days": -1,  # All history
+        "max_storage_gb": -1,
         "llm_requests_per_day": -1,
         "llm_requests_per_minute": 60,
         "llm_tokens_per_minute": -1,  # Unlimited
@@ -240,6 +247,7 @@ DEFAULT_PLANS = [
         "max_commits_per_repo": -1,
         "max_prs_per_repo": -1,
         "sync_history_days": -1,
+        "max_storage_gb": 500,
         "llm_requests_per_day": -1,
         "llm_requests_per_minute": 30,
         "llm_tokens_per_minute": 200000,
@@ -271,6 +279,7 @@ DEFAULT_PLANS = [
         "max_commits_per_repo": -1,
         "max_prs_per_repo": -1,
         "sync_history_days": -1,
+        "max_storage_gb": -1,
         "llm_requests_per_day": -1,
         "llm_requests_per_minute": 30,
         "llm_tokens_per_minute": 200000,

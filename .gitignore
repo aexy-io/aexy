@@ -14,3 +14,11 @@ backend-rust
 /prds
 .playwright-mcp
 screenshots
+
+# Playwright artifacts (regenerated each test run)
+frontend/playwright-report/
+frontend/test-results/
+frontend/e2e/debug-screenshot*.png
+
+# Local code-review notes
+REVIEW_*.md

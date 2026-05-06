@@ -2088,6 +2088,7 @@ export interface PlanFeatures {
   max_commits_per_repo: number;
   max_prs_per_repo: number;
   sync_history_days: number;
+  max_storage_gb: number;
   llm_requests_per_day: number;
   llm_provider_access: string[];
   free_llm_tokens_per_month: number;
@@ -20854,6 +20855,544 @@ export const aiBenchmarkingApi = {
 
   listFeedback: async (params?: { entity_type?: string; page?: number; limit?: number }): Promise<PaginatedAIFeedback> => {
     const response = await api.get("/platform-admin/ai-feedback", { params });
+    return response.data;
+  },
+};
+
+// ─── Drive (collaborative file storage + AI metadata) ───────────────────────
+
+export type DriveFileKind =
+  | "file"
+  | "folder"
+  | "image"
+  | "video"
+  | "audio"
+  | "pdf"
+  | "doc";
+
+// AI metadata (status, summary, tags, categories) lives on the polymorphic
+// `file_metadata` row, not on DriveFile. Use `fileMetadataApi.get` (or the
+// `useFileMetadata` hook) keyed by `(source_type='drive_file', source_id=<DriveFile.id>)`.
+export interface DriveFile {
+  id: string;
+  workspace_id: string;
+  parent_id: string | null;
+  space_id: string | null;
+  file_name: string;
+  file_url: string | null;
+  file_size_bytes: number;
+  content_type: string | null;
+  kind: DriveFileKind;
+  uploaded_by_id: string | null;
+  uploaded_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export interface DriveFileList {
+  files: DriveFile[];
+  total: number;
+}
+
+export interface VideoAnnotation {
+  id: string;
+  file_id: string;
+  t_start_ms: number;
+  t_end_ms: number;
+  label: string;
+  description: string | null;
+  tags: string[];
+  confidence: number | null;
+  source: "qwen" | "manual";
+  bbox: { x: number; y: number; w: number; h: number } | null;
+  created_by_id: string | null;
+  created_at: string;
+}
+
+export interface VideoAnnotationList {
+  annotations: VideoAnnotation[];
+}
+
+export interface SmartViewFilter {
+  all_tags?: string[];
+  any_tags?: string[];
+  any_categories?: string[];
+  kind?: DriveFileKind;
+}
+
+export interface SmartView {
+  id: string;
+  workspace_id: string;
+  name: string;
+  icon: string | null;
+  color: string | null;
+  filter_query: SmartViewFilter;
+  is_shared: boolean;
+  created_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SmartViewList {
+  smart_views: SmartView[];
+}
+
+// Drive-specific search has been removed; use `workspaceSearchApi.search`
+// with `kinds: ["drive_file"]` instead.
+
+export interface DriveUsage {
+  used_bytes: number;
+  limit_bytes: number;
+  unlimited: boolean;
+  percent_used: number;
+  files_count: number;
+}
+
+export const driveApi = {
+  listFiles: async (
+    workspaceId: string,
+    params: {
+      parent_id?: string | null;
+      kind?: DriveFileKind;
+      search?: string;
+      limit?: number;
+      offset?: number;
+    } = {},
+  ): Promise<DriveFileList> => {
+    const response = await api.get(`/workspaces/${workspaceId}/drive/files`, {
+      params,
+    });
+    return response.data;
+  },
+
+  getFile: async (workspaceId: string, fileId: string): Promise<DriveFile> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/drive/files/${fileId}`,
+    );
+    return response.data;
+  },
+
+  createFolder: async (
+    workspaceId: string,
+    name: string,
+    parentId: string | null = null,
+  ): Promise<DriveFile> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/drive/folders`,
+      { name, parent_id: parentId },
+    );
+    return response.data;
+  },
+
+  // Per-file XHR upload — gives true per-file progress (axios's batched
+  // multipart progress fires once for the whole batch). Caller passes a
+  // single File and receives a Promise that resolves with the persisted row.
+  uploadFile: (
+    workspaceId: string,
+    file: File,
+    parentId: string | null = null,
+    onProgress?: (loaded: number, total: number) => void,
+  ): Promise<DriveFile> => {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      const params = parentId ? `?parent_id=${encodeURIComponent(parentId)}` : "";
+      const url = `${API_BASE_URL}/workspaces/${workspaceId}/drive/files${params}`;
+      xhr.open("POST", url);
+
+      const token =
+        typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && onProgress) {
+          onProgress(e.loaded, e.total);
+        }
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const body = JSON.parse(xhr.responseText) as DriveFileList;
+            const first = body.files?.[0];
+            if (!first)
+              reject(new Error("Upload succeeded but no file returned"));
+            else resolve(first);
+          } catch (e) {
+            reject(e);
+          }
+        } else {
+          let detail = `Upload failed (${xhr.status})`;
+          try {
+            const body = JSON.parse(xhr.responseText);
+            detail = body.detail || detail;
+          } catch {}
+          reject(new Error(detail));
+        }
+      };
+      xhr.onerror = () => reject(new Error("Network error during upload"));
+
+      const fd = new FormData();
+      fd.append("files", file, file.name);
+      xhr.send(fd);
+    });
+  },
+
+  updateFile: async (
+    workspaceId: string,
+    fileId: string,
+    patch: { file_name?: string; parent_id?: string | null },
+  ): Promise<DriveFile> => {
+    const response = await api.patch(
+      `/workspaces/${workspaceId}/drive/files/${fileId}`,
+      patch,
+    );
+    return response.data;
+  },
+
+  deleteFile: async (workspaceId: string, fileId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/drive/files/${fileId}`);
+  },
+
+  reannotate: async (workspaceId: string, fileId: string): Promise<void> => {
+    await api.post(
+      `/workspaces/${workspaceId}/drive/files/${fileId}/reannotate`,
+    );
+  },
+
+  // Video annotations
+  listAnnotations: async (
+    workspaceId: string,
+    fileId: string,
+  ): Promise<VideoAnnotationList> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/drive/files/${fileId}/annotations`,
+    );
+    return response.data;
+  },
+
+  createAnnotation: async (
+    workspaceId: string,
+    fileId: string,
+    data: {
+      t_start_ms: number;
+      t_end_ms: number;
+      label: string;
+      description?: string;
+      tags?: string[];
+      bbox?: { x: number; y: number; w: number; h: number };
+    },
+  ): Promise<VideoAnnotation> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/drive/files/${fileId}/annotations`,
+      data,
+    );
+    return response.data;
+  },
+
+  updateAnnotation: async (
+    workspaceId: string,
+    fileId: string,
+    annotationId: string,
+    patch: Partial<{
+      t_start_ms: number;
+      t_end_ms: number;
+      label: string;
+      description: string;
+      tags: string[];
+    }>,
+  ): Promise<VideoAnnotation> => {
+    const response = await api.patch(
+      `/workspaces/${workspaceId}/drive/files/${fileId}/annotations/${annotationId}`,
+      patch,
+    );
+    return response.data;
+  },
+
+  deleteAnnotation: async (
+    workspaceId: string,
+    fileId: string,
+    annotationId: string,
+  ): Promise<void> => {
+    await api.delete(
+      `/workspaces/${workspaceId}/drive/files/${fileId}/annotations/${annotationId}`,
+    );
+  },
+
+  // Smart Views
+  listSmartViews: async (workspaceId: string): Promise<SmartViewList> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/drive/smart-views`,
+    );
+    return response.data;
+  },
+
+  createSmartView: async (
+    workspaceId: string,
+    data: {
+      name: string;
+      icon?: string;
+      color?: string;
+      filter_query: SmartViewFilter;
+      is_shared?: boolean;
+    },
+  ): Promise<SmartView> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/drive/smart-views`,
+      data,
+    );
+    return response.data;
+  },
+
+  updateSmartView: async (
+    workspaceId: string,
+    viewId: string,
+    patch: Partial<{
+      name: string;
+      icon: string | null;
+      color: string | null;
+      filter_query: SmartViewFilter;
+      is_shared: boolean;
+    }>,
+  ): Promise<SmartView> => {
+    const response = await api.patch(
+      `/workspaces/${workspaceId}/drive/smart-views/${viewId}`,
+      patch,
+    );
+    return response.data;
+  },
+
+  deleteSmartView: async (workspaceId: string, viewId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/drive/smart-views/${viewId}`);
+  },
+
+  smartViewFiles: async (
+    workspaceId: string,
+    viewId: string,
+  ): Promise<DriveFileList> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/drive/smart-views/${viewId}/files`,
+    );
+    return response.data;
+  },
+
+  // Drive-specific search dropped — call `workspaceSearchApi.search(ws, q,
+  // { kinds: ["drive_file"] })` instead.
+
+  getUsage: async (workspaceId: string): Promise<DriveUsage> => {
+    const response = await api.get(`/workspaces/${workspaceId}/drive/usage`);
+    return response.data;
+  },
+};
+
+// ─── Super-admin: Plan editor ───────────────────────────────────────────────
+
+export interface PlanWorkspaceOverride {
+  workspace_id: string;
+  max_repos: number | null;
+  max_commits_per_repo: number | null;
+  max_prs_per_repo: number | null;
+  sync_history_days: number | null;
+  max_storage_gb: number | null;
+  llm_requests_per_day: number | null;
+  llm_requests_per_minute: number | null;
+  llm_tokens_per_minute: number | null;
+  free_llm_tokens_per_month: number | null;
+  enable_real_time_sync: boolean | null;
+  enable_advanced_analytics: boolean | null;
+  enable_exports: boolean | null;
+  enable_webhooks: boolean | null;
+  enable_team_features: boolean | null;
+  discount_percent: number | null;
+  notes: string | null;
+}
+
+export const adminPlansApi = {
+  list: async (): Promise<{ plans: PlanFeatures[] }> => {
+    const response = await api.get("/platform-admin/plans");
+    return response.data;
+  },
+
+  update: async (
+    planId: string,
+    patch: Partial<PlanFeatures>,
+  ): Promise<PlanFeatures> => {
+    const response = await api.patch(`/platform-admin/plans/${planId}`, patch);
+    return response.data;
+  },
+
+  getOverride: async (
+    workspaceId: string,
+  ): Promise<PlanWorkspaceOverride | null> => {
+    const response = await api.get(
+      `/platform-admin/workspaces/${workspaceId}/plan-override`,
+    );
+    return response.data;
+  },
+
+  upsertOverride: async (
+    workspaceId: string,
+    patch: Partial<PlanWorkspaceOverride>,
+  ): Promise<PlanWorkspaceOverride> => {
+    const response = await api.patch(
+      `/platform-admin/workspaces/${workspaceId}/plan-override`,
+      patch,
+    );
+    return response.data;
+  },
+
+  deleteOverride: async (workspaceId: string): Promise<void> => {
+    await api.delete(
+      `/platform-admin/workspaces/${workspaceId}/plan-override`,
+    );
+  },
+};
+
+// ─── Polymorphic file AI metadata ──────────────────────────────────────────
+
+export type FileSourceType =
+  | "drive_file"
+  | "task_attachment"
+  | "compliance_document";
+
+export type FileAIStatus = "pending" | "processing" | "done" | "failed";
+
+export interface FileAIMetadata {
+  metadata_id: string | null;
+  source_type: FileSourceType;
+  source_id: string;
+  ai_status: FileAIStatus;
+  ai_error: string | null;
+  ai_summary: string | null;
+  ai_tags: string[];
+  ai_categories: string[];
+  ai_processed_at: string | null;
+}
+
+export interface FileSearchHit {
+  metadata_id: string;
+  source_type: FileSourceType;
+  source_id: string;
+  workspace_id: string;
+  file_name: string;
+  file_url: string | null;
+  content_type: string | null;
+  ai_summary: string | null;
+  ai_tags: string[];
+  ai_categories: string[];
+  ai_status: FileAIStatus;
+  score: number;
+  highlights: string[];
+}
+
+export interface FileSearchResults {
+  results: FileSearchHit[];
+}
+
+export const fileMetadataApi = {
+  get: async (
+    workspaceId: string,
+    sourceType: FileSourceType,
+    sourceId: string,
+  ): Promise<FileAIMetadata> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/files/${sourceType}/${sourceId}/metadata`,
+    );
+    return response.data;
+  },
+
+  reannotate: async (
+    workspaceId: string,
+    sourceType: FileSourceType,
+    sourceId: string,
+  ): Promise<void> => {
+    await api.post(
+      `/workspaces/${workspaceId}/files/${sourceType}/${sourceId}/reannotate`,
+    );
+  },
+};
+
+export const workspaceSearchApi = {
+  search: async (
+    workspaceId: string,
+    query: string,
+    options: { kinds?: FileSourceType[]; limit?: number } = {},
+  ): Promise<FileSearchResults> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/search/files`,
+      {
+        params: {
+          q: query,
+          kinds: options.kinds?.join(",") || undefined,
+          limit: options.limit ?? 20,
+        },
+      },
+    );
+    return response.data;
+  },
+};
+
+// Unified file row for cross-source browsing (Drive grid renders these
+// alongside DriveFile rows for "Task Attachments" and "Compliance
+// Documents" virtual views).
+export interface SourceFileRow {
+  source_type: FileSourceType;
+  source_id: string;
+  workspace_id: string;
+  file_name: string;
+  file_url: string | null;
+  content_type: string | null;
+  kind: DriveFileKind;
+  file_size_bytes: number;
+  uploaded_at: string;
+}
+
+export interface SourceFileListResponse {
+  files: SourceFileRow[];
+  total: number;
+}
+
+export const sourceFilesApi = {
+  list: async (
+    workspaceId: string,
+    sourceType: FileSourceType,
+    options: { limit?: number; offset?: number } = {},
+  ): Promise<SourceFileListResponse> => {
+    const response = await api.get(`/workspaces/${workspaceId}/source-files`, {
+      params: {
+        source_type: sourceType,
+        limit: options.limit ?? 200,
+        offset: options.offset ?? 0,
+      },
+    });
+    return response.data;
+  },
+};
+
+export interface BackfillStatus {
+  workspace_id: string;
+  workflow_id: string | null;
+  status: "running" | "completed" | "failed" | "unknown" | "not-started";
+  enqueued: number | null;
+  skipped: number | null;
+  started_at: string | null;
+  closed_at: string | null;
+}
+
+export const adminBackfillApi = {
+  start: async (
+    workspaceId: string,
+    options: { delay_seconds?: number; max_files?: number } = {},
+  ): Promise<{ workspace_id: string; workflow_id: string; queued_at: string }> => {
+    const response = await api.post(
+      `/platform-admin/workspaces/${workspaceId}/backfill-file-metadata`,
+      options,
+    );
+    return response.data;
+  },
+
+  status: async (workspaceId: string): Promise<BackfillStatus> => {
+    const response = await api.get(
+      `/platform-admin/workspaces/${workspaceId}/backfill-file-metadata/status`,
+    );
     return response.data;
   },
 };

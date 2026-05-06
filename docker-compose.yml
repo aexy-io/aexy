@@ -1,6 +1,7 @@
 services:
   postgres:
-    image: postgres:18-alpine
+    build: ./postgres
+    image: aexy-postgres:18-alpine-pgvector
     container_name: aexy-postgres
     environment:
       POSTGRES_USER: postgres

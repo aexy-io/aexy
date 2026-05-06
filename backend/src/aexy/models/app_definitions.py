@@ -265,6 +265,31 @@ APP_CATALOG: dict[str, AppConfig] = {
         "required_permission": "can_view_docs",
         "modules": {},
     },
+    "drive": {
+        "name": "Drive",
+        "description": "Collaborative file storage with AI tagging, smart views, and semantic search",
+        "icon": "HardDrive",
+        "category": AppCategory.PRODUCTIVITY,
+        "base_route": "/docs/drive",
+        "required_permission": "can_view_drive",
+        "modules": {
+            "files": {
+                "name": "Files",
+                "description": "Browse, upload, and organise files in folders",
+                "route": "/",
+            },
+            "smart_views": {
+                "name": "Smart Views",
+                "description": "Filter overlays grouping files by AI tags or category",
+                "route": "/smart-views",
+            },
+            "search": {
+                "name": "Search",
+                "description": "Hybrid semantic + keyword search across the workspace",
+                "route": "/search",
+            },
+        },
+    },
     "forms": {
         "name": "Forms",
         "description": "Form builder and submissions",

@@ -148,6 +148,12 @@ from aexy.api.questionnaires import router as questionnaires_router
 # Compliance Document Center
 from aexy.api.compliance_documents import router as compliance_documents_router
 from aexy.api.compliance_documents import folder_router as compliance_folders_router
+# Drive (collaborative file storage + AI metadata)
+from aexy.api.drive import router as drive_router
+# Workspace-wide file search + per-file metadata
+from aexy.api.file_search import router as file_search_router
+# Super-admin: edit Plan rows + workspace overrides
+from aexy.api.admin_plans import router as admin_plans_router
 # Leave Management & Team Calendar
 from aexy.api.leave import router as leave_router
 from aexy.api.team_calendar import router as team_calendar_router
@@ -322,6 +328,12 @@ api_router.include_router(questionnaires_router, tags=["questionnaires"])
 # Compliance Document Center
 api_router.include_router(compliance_documents_router, tags=["compliance-documents"])
 api_router.include_router(compliance_folders_router, tags=["compliance-folders"])
+# Drive
+api_router.include_router(drive_router, tags=["drive"])
+# Workspace file search + per-file metadata (polymorphic across all sources)
+api_router.include_router(file_search_router, tags=["file-search"])
+# Super-admin plan editor + AI backfill
+api_router.include_router(admin_plans_router, tags=["platform-admin-plans"])
 # Leave Management & Team Calendar
 api_router.include_router(leave_router, tags=["leave"])
 api_router.include_router(team_calendar_router, tags=["team-calendar"])

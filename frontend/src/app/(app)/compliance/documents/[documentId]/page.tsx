@@ -19,6 +19,7 @@ import {
   useComplianceDocumentLinks,
 } from "@/hooks/useComplianceDocuments";
 import { DocumentLinkPanel } from "@/components/compliance-documents/DocumentLinkPanel";
+import { FileMetadataSidecar } from "@/components/files/FileMetadataSidecar";
 
 function formatFileSize(bytes: number): string {
   if (bytes === 0) return "0 B";
@@ -170,6 +171,15 @@ export default function DocumentDetailPage() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* AI metadata sidecar */}
+      <div className="mb-6">
+        <FileMetadataSidecar
+          workspaceId={workspaceId}
+          sourceType="compliance_document"
+          sourceId={doc.id}
+        />
       </div>
 
       {/* Linked Entities */}

@@ -116,6 +116,12 @@ def get_all_activities() -> list:
         schedule_incremental_extraction,
         update_document_relationships,
     )
+    from aexy.temporal.activities.file_metadata import (
+        annotate_drive_video,            # deprecated shim
+        backfill_workspace_file_metadata,
+        extract_drive_file_metadata,     # deprecated shim
+        extract_file_ai_metadata,
+    )
     from aexy.temporal.activities.oncall import (
         check_ending_shifts,
         check_upcoming_shifts,
@@ -317,6 +323,11 @@ def get_all_activities() -> list:
         update_document_relationships,
         cleanup_orphaned_entities,
         schedule_incremental_extraction,
+        # File AI metadata pipeline (polymorphic) + deprecated drive-only shims
+        extract_file_ai_metadata,
+        backfill_workspace_file_metadata,
+        extract_drive_file_metadata,
+        annotate_drive_video,
         # Workflow Actions
         execute_workflow_action,
         cleanup_old_executions,

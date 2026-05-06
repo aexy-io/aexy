@@ -25,6 +25,7 @@ import {
   Table2,
   Plug,
   MessageCircle,
+  HardDrive,
   LucideIcon,
 } from "lucide-react";
 
@@ -210,6 +211,20 @@ export const APP_CATALOG: Record<string, AppDefinition> = {
     baseRoute: "/docs",
     requiredPermission: "can_view_docs",
     modules: [],
+  },
+  drive: {
+    id: "drive",
+    name: "Drive",
+    description: "Collaborative file storage with AI tagging, smart views, and semantic search",
+    icon: HardDrive,
+    category: "productivity",
+    baseRoute: "/docs/drive",
+    requiredPermission: "can_view_drive",
+    modules: [
+      { id: "files", name: "Files", description: "Browse, upload, and organise files in folders", route: "/" },
+      { id: "smart_views", name: "Smart Views", description: "Filter overlays grouping files by AI tags or category", route: "/smart-views" },
+      { id: "search", name: "Search", description: "Hybrid semantic + keyword search across the workspace", route: "/search" },
+    ],
   },
   forms: {
     id: "forms",

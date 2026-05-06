@@ -37,6 +37,7 @@ from aexy.schemas.sprint import (
 from aexy.services.sprint_service import SprintService
 from aexy.services.sprint_task_service import SprintTaskService
 from aexy.services.github_task_sync_service import GitHubTaskSyncService
+from aexy.services.storage_quota_service import StorageQuotaService
 from aexy.services.storage_service import get_storage_service
 from aexy.services.workspace_service import WorkspaceService
 
@@ -1433,7 +1434,12 @@ async def export_sprint_tasks(
 
 
 # ─── Attachments ────────────────────────────────────────────────────────────
-def _attachment_to_response(attachment) -> TaskAttachmentResponse:
+def _attachment_to_response(
+    attachment, ai_row: object | None = None
+) -> TaskAttachmentResponse:
+    from aexy.models.file_metadata import SOURCE_TASK_ATTACHMENT
+    from aexy.schemas.file_metadata import metadata_to_ai_response
+
     return TaskAttachmentResponse(
         id=str(attachment.id),
         task_id=str(attachment.task_id),
@@ -1443,7 +1449,21 @@ def _attachment_to_response(attachment) -> TaskAttachmentResponse:
         content_type=attachment.content_type,
         uploaded_by_id=str(attachment.uploaded_by_id) if attachment.uploaded_by_id else None,
         uploaded_at=attachment.uploaded_at,
+        ai=metadata_to_ai_response(SOURCE_TASK_ATTACHMENT, str(attachment.id), ai_row),
     )
+
+
+async def _attachments_with_ai(db, attachments) -> list[TaskAttachmentResponse]:
+    """Build attachment responses with their `ai` block populated in one
+    extra query (no N+1)."""
+    from aexy.models.file_metadata import SOURCE_TASK_ATTACHMENT
+    from aexy.services.file_metadata_service import get_metadata_batch
+
+    if not attachments:
+        return []
+    ids = [str(a.id) for a in attachments]
+    ai_map = await get_metadata_batch(db, SOURCE_TASK_ATTACHMENT, ids)
+    return [_attachment_to_response(a, ai_map.get(str(a.id))) for a in attachments]
 
 
 @router.post(
@@ -1482,11 +1502,34 @@ async def upload_task_attachments(
             detail="File storage is not configured on this deployment",
         )
 
-    created: list = []
+    # Read every file into memory up front so we can quota-check the batch
+    # before persisting anything. Loading is unavoidable because we then
+    # `put_object` to S3 with the bytes; making a second pass wouldn't help.
+    bodies: list[tuple[UploadFile, bytes]] = []
+    total_bytes = 0
     for upload in files:
         body = await upload.read()
         if not body:
             continue
+        bodies.append((upload, body))
+        total_bytes += len(body)
+
+    if not bodies:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No non-empty files provided",
+        )
+
+    quota = StorageQuotaService(db)
+    if task.workspace_id:
+        await quota.assert_storage_available(
+            workspace_id=str(task.workspace_id),
+            incoming_bytes=total_bytes,
+            developer_id=str(current_user.id),
+        )
+
+    created: list = []
+    for upload, body in bodies:
         original_name = upload.filename or "attachment"
         safe_name = SAFE_FILENAME_RE.sub("_", original_name) or "attachment"
         key = f"{ATTACHMENTS_PREFIX}/{task_id}/{uuid4().hex}_{safe_name}"
@@ -1510,9 +1553,35 @@ async def upload_task_attachments(
         created.append(attachment)
 
     await db.commit()
+    if task.workspace_id:
+        await quota.invalidate_workspace_usage(str(task.workspace_id))
+
+    # Fire-and-forget AI metadata pipeline per attachment. Failure here must
+    # never block the upload — the file is already persisted.
+    from aexy.models.file_metadata import SOURCE_TASK_ATTACHMENT
+    from aexy.temporal.activities.file_metadata import ExtractFileMetadataInput
+    from aexy.temporal.dispatch import dispatch
+    from aexy.temporal.task_queues import TaskQueue
+
+    for attachment in created:
+        try:
+            await dispatch(
+                "extract_file_ai_metadata",
+                ExtractFileMetadataInput(
+                    source_type=SOURCE_TASK_ATTACHMENT,
+                    source_id=str(attachment.id),
+                ),
+                task_queue=TaskQueue.ANALYSIS,
+                workflow_id=f"file-ai-task_attachment-{attachment.id}",
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.exception(
+                "Failed to dispatch file AI pipeline for attachment %s: %s",
+                attachment.id, exc,
+            )
 
     return TaskAttachmentListResponse(
-        attachments=[_attachment_to_response(a) for a in created],
+        attachments=await _attachments_with_ai(db, created),
     )
 
 
@@ -1539,7 +1608,7 @@ async def list_task_attachments(
 
     attachments = await task_service.list_attachments(task_id)
     return TaskAttachmentListResponse(
-        attachments=[_attachment_to_response(a) for a in attachments],
+        attachments=await _attachments_with_ai(db, attachments),
     )
 
 

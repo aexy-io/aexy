@@ -5,6 +5,210 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.5] - 2026-05-07
+
+### Added
+
+#### Drive — collaborative file storage with AI tagging
+A workspace-wide Drive backed by S3-compatible storage (RustFS in dev),
+enriched by an AI metadata pipeline that captions images, tags documents,
+and annotates videos with timecoded events from a vision-language model.
+
+- New `drive_files` table with folder hierarchy, soft delete, and per-kind
+  rendering hints (file / folder / image / video / audio / pdf / doc).
+  Smart Views are filter overlays — they don't move files, they translate
+  a JSONB filter to a `file_metadata` join. Migration
+  `migrate_drive_v1.sql` is idempotent and adds covering partial indexes.
+- New `/workspaces/{ws}/drive/files`, `/folders`, `/files`, `/files/{id}`,
+  `/smart-views`, `/files/{id}/annotations`, `/files/{id}/reannotate`,
+  and `/usage` endpoints. Multipart upload caps at 500 MB per file and
+  2 GB per batch before the plan-level quota check, protecting worker
+  memory.
+- Drive UI under `/docs/drive`: file grid, smart-view sidebar, hybrid
+  search bar, multi-file dropzone, quota banner, and a video player that
+  overlays Qwen-VL annotations on the timeline.
+- Storage quotas: per-plan `max_storage_gb` (with `-1` for unlimited),
+  workspace-level overrides, and a Redis-cached usage rollup spanning
+  drive_files, task_attachments, and compliance_documents. Concurrent
+  uploads are serialised per-workspace via a Postgres advisory lock so
+  two simultaneous uploads can't overshoot the cap.
+
+#### Polymorphic file AI metadata
+A single `file_metadata` row per file regardless of where the file lives.
+`(source_type, source_id)` is unique across `drive_file`,
+`task_attachment`, and `compliance_document`. `file_embeddings` and
+`video_annotations` foreign-key to `file_metadata.id`, so a non-Drive
+video (e.g. a task attachment) can carry annotations through the same
+machinery. Adding a fourth source type is one resolver registration —
+no schema change.
+
+- Migration `migrate_file_metadata_v1.sql` creates the schema in a single
+  transaction with a GIN index on `ai_tags`/`ai_categories` and an
+  ivfflat cosine index on the 1024-dim `embedding` column.
+- New `/workspaces/{ws}/files/{source_type}/{source_id}/metadata` and
+  `.../reannotate` endpoints — the frontend's universal "Reannotate"
+  button posts here regardless of source.
+- New `/workspaces/{ws}/search/files?q=…&kinds=…` workspace-wide hybrid
+  search: pgvector cosine over `file_embeddings` plus an ILIKE pass over
+  `ai_summary` and per-source file names. Cmd+K palette
+  (`WorkspaceSearchPalette`) is the user-facing surface.
+- New `/workspaces/{ws}/source-files?source_type=…` browse endpoint
+  returns a unified file row for any source. The Drive sidebar uses it
+  to render virtual cross-source views ("Task attachments",
+  "Compliance documents") in the same grid as drive files.
+
+#### Qwen vision + embeddings via the LLM gateway
+The gateway grows lazy `vision` and `embeddings` properties selected via
+`settings.llm.vision_provider` / `embeddings_provider`. Provider keys
+are tracked separately from chat-LLM usage so vision + embedding spend
+shows up distinctly in the rate limiter.
+
+- Vision providers: OpenRouter (`qwen/qwen2.5-vl-72b-instruct` by default)
+  and local Ollama (any Qwen-VL tag). Both implement `analyze_image` and
+  `analyze_video_frames`.
+- Embedding providers: OpenRouter (`text-embedding-3-large@1024`) and
+  Ollama (`bge-m3`). Both produce pgvector-compatible 1024-dim vectors
+  so the two backends are interchangeable.
+- New `gateway.embed_batch_limited`, `vision_image_limited`, and
+  `vision_video_frames_limited` helpers gate every call through the
+  Redis rate limiter. Provider keys: `qwen-openrouter`, `qwen-ollama`,
+  `embeddings-openrouter`, `embeddings-ollama`.
+- ffmpeg frame sampling for video annotation runs in
+  `asyncio.to_thread`, so a multi-minute video doesn't block the worker
+  event loop.
+
+#### Admin Plans & Overrides editor
+A super-admin UI under `/admin/plans` to inspect plans, edit
+per-workspace overrides, and kick off the AI metadata backfill for
+existing rows.
+
+- Backfill endpoint enqueues a Temporal workflow per workspace that
+  scans uncovered drive_files, task_attachments, and compliance_docs
+  and dispatches the AI pipeline at the configured rate. The button
+  is idempotent — re-clicking finds the running workflow rather than
+  starting a parallel one.
+
+### Changed
+
+#### LLM gateway settings moved under `settings.llm.*`
+`vision_provider`, `vision_model`, `embeddings_provider`,
+`embeddings_model`, and `embeddings_dim` now live under the `LLMSettings`
+group instead of the root `Settings`. Existing `VISION_PROVIDER` /
+`EMBEDDINGS_*` env vars continue to work.
+
+#### Drive registered in the app catalogue
+Added to both `frontend/src/config/appDefinitions.ts` and
+`backend/src/aexy/models/app_definitions.py` so it shows up in app-bundle
+permission templates and the sidebar layout filter.
+
+#### `DriveFile` is no longer the home of AI metadata
+`ai_status`, `ai_summary`, `ai_tags`, `ai_categories`, and
+`ai_processed_at` were removed from `drive_files` and the `DriveFile`
+TypeScript interface. AI metadata is now read from `file_metadata` via
+the polymorphic endpoint or the `useFileMetadata` hook. `FileCard` fetches
+its own AI metadata per row, which means task_attachment and
+compliance_document files render with the same AI badges in the Drive
+grid.
+
+#### Drive-specific search dropped
+`GET /workspaces/{ws}/drive/search` and `driveApi.search` are gone.
+Callers use the workspace-wide `/search/files?kinds=drive_file` endpoint
+(via `useDriveSearch`, which adapts the response to the legacy hit
+shape so the UI didn't have to change).
+
+### Fixed
+
+- **Server boot crash from stale module references.** Several legacy
+  imports survived the polymorphic-metadata refactor — `DriveFileEmbedding`
+  in `drive_search_service`, `VideoAnnotation.file_id` in `drive_service`,
+  and a `max_storage_gb` default placed before required dataclass fields
+  in `EffectivePlan`. Each one raised at module-import time, taking down
+  the entire FastAPI app on startup. All cleaned up; `drive_search_service`
+  was removed entirely (replaced by the cross-source `file_search_service`).
+- **Gateway vision/embedding settings raised AttributeError.** The
+  gateway was reading `settings.vision_provider` etc. off the root
+  `Settings`, but those fields had been moved to `LLMSettings`. First
+  call to `gateway.vision` or `gateway.embeddings` crashed.
+- **Workspace-wide file_name search produced wrong rows.** The `_scan`
+  helper's `select(FileMetadata).join(FileMetadata, …)` re-joined
+  `FileMetadata` onto itself; the source table was never in the FROM
+  clause. Now starts from the source table and joins `file_metadata`
+  correctly.
+- **Folder cycle detection only caught direct self-parenting.** Moving
+  folder A under one of its own descendants (A → … → D → A) silently
+  succeeded and corrupted the tree. Now walks the parent ancestry and
+  rejects on collision.
+- **None-gateway 500.** When `get_llm_gateway()` returned `None`
+  (misconfigured or no API keys), `FileSearchService` and the Drive
+  search route called `gateway.embeddings` and crashed. Both now accept
+  `Optional[LLMGateway]` and degrade to keyword-only search.
+- **Mutable default `BackfillStartRequest()`** in the admin backfill
+  route replaced with `Body(default_factory=BackfillStartRequest)`.
+
+### Security
+
+- **SSRF guard on the file AI pipeline's `_download_bytes`.** URLs must
+  match an allowlisted host suffix (`.amazonaws.com`, `.cloudfront.net`,
+  `.r2.cloudflarestorage.com`, `.aexy.io`) or the configured
+  `s3_endpoint_url`. After DNS resolution, every returned IP is checked
+  against private / loopback / link-local / multicast / reserved /
+  unspecified ranges, defending against DNS rebinding attacks where a
+  "public" hostname resolves to `169.254.169.254` or RFC1918. Storage
+  endpoints matched verbatim skip the IP check by design (ops controls
+  those names; they often resolve privately). `follow_redirects=False`
+  prevents 30x bypass.
+- **IDOR fix on cross-source reannotate.** The
+  `/workspaces/{ws}/files/{source_type}/{source_id}/reannotate` endpoint
+  used to dispatch the LLM pipeline without verifying that `source_id`
+  belonged to `workspace_id`. Any workspace member could trigger
+  reprocessing of any file in any workspace by guessing a UUID, charging
+  the LLM bill to the wrong tenant. Now resolves the source row and
+  rejects with 404 when the workspace doesn't match.
+- **Storage quota TOCTOU race.** Two concurrent uploads from the same
+  workspace could both pass the cached usage check and overshoot the
+  cap by ~2× the incoming bytes. `assert_storage_available` now wraps
+  the check in `pg_advisory_xact_lock(hashtextextended(workspace_id, 0))`
+  and reads the used-bytes total fresh from the DB inside the lock.
+
+### Performance
+
+- **Source-files browse covering indexes** (migration
+  `migrate_source_files_idx_v1.sql`):
+  - `idx_drive_files_workspace_uploaded` on
+    `(workspace_id, uploaded_at DESC)` partial
+    `WHERE deleted_at IS NULL AND kind <> 'folder'` — covers the exact
+    scan the endpoint runs and skips the sort step.
+  - `idx_task_attachments_task_uploaded` on `(task_id, uploaded_at DESC)`
+    — speeds the join-then-sort pattern when listing all task
+    attachments in a workspace.
+  - `compliance_documents` already had `(workspace_id, created_at DESC)`
+    from `migrate_compliance_documents.sql` — no new index needed.
+
+### i18n
+
+- New `messages/en/drive.json` and `messages/hi/drive.json` cover the
+  Drive UI: ~65 keys across `drive.page`, `drive.fileCard`,
+  `drive.upload`, `drive.quota`, `drive.smartView`, `drive.video`,
+  `drive.aiBadges`, `drive.metadataPopover`, `drive.metadataSidecar`,
+  and `drive.search`. ICU placeholders ({count}, {percent}, {used},
+  {limit}, {incoming}) match across both locales.
+
+### Tests
+
+- New Playwright e2e specs: `drive-quota.spec.ts`,
+  `drive-smart-views.spec.ts`, `drive-upload.spec.ts`,
+  `compliance-doc-ai-sidecar.spec.ts`, `task-attachment-ai-tags.spec.ts`,
+  `workspace-search-palette.spec.ts`, `admin-backfill.spec.ts`,
+  `admin-plans-edit.spec.ts`. Shared `e2e/fixtures/drive-mock-data.ts`
+  fixture seeds files, smart views, AI metadata, and quota state.
+
+### Internal
+
+- `.gitignore` extended for `frontend/playwright-report/`,
+  `frontend/test-results/`, `frontend/e2e/debug-screenshot*.png`, and
+  `REVIEW_*.md`. The previously-tracked `playwright-report/index.html`
+  was removed from the index.
+
 ## [0.7.4] - 2026-05-06
 
 ### Added

@@ -46,6 +46,7 @@ class UsageType(str, Enum):
     LLM_OUTPUT_TOKENS = "llm_output_tokens"
     SYNC_OPERATIONS = "sync_operations"
     API_CALLS = "api_calls"
+    STORAGE_BYTES = "storage_bytes"
 
 
 class CustomerBilling(Base):

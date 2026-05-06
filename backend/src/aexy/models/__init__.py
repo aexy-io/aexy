@@ -429,6 +429,23 @@ from aexy.models.compliance_document import (
     ComplianceEntityType,
     ComplianceDocumentLinkType,
 )
+from aexy.models.drive import (
+    DriveFile,
+    SmartView,
+)
+from aexy.models.file_metadata import (
+    FileMetadata,
+    FileEmbedding,
+    VideoAnnotation,
+    SOURCE_DRIVE_FILE,
+    SOURCE_TASK_ATTACHMENT,
+    SOURCE_COMPLIANCE_DOCUMENT,
+    ALL_SOURCE_TYPES,
+    AI_STATUS_PENDING,
+    AI_STATUS_PROCESSING,
+    AI_STATUS_DONE,
+    AI_STATUS_FAILED,
+)
 from aexy.models.reminder import (
     Reminder,
     ReminderInstance,
@@ -934,6 +951,21 @@ __all__ = [
     "ComplianceDocumentStatus",
     "ComplianceEntityType",
     "ComplianceDocumentLinkType",
+    # Drive (collaborative file storage)
+    "DriveFile",
+    "SmartView",
+    # Polymorphic file metadata (drive_file / task_attachment / compliance_document)
+    "FileMetadata",
+    "FileEmbedding",
+    "VideoAnnotation",
+    "SOURCE_DRIVE_FILE",
+    "SOURCE_TASK_ATTACHMENT",
+    "SOURCE_COMPLIANCE_DOCUMENT",
+    "ALL_SOURCE_TYPES",
+    "AI_STATUS_PENDING",
+    "AI_STATUS_PROCESSING",
+    "AI_STATUS_DONE",
+    "AI_STATUS_FAILED",
     # Reminders
     "Reminder",
     "ReminderInstance",

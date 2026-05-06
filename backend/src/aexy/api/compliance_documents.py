@@ -49,7 +49,12 @@ async def _verify_access(
         )
 
 
-def _doc_to_response(doc, download_url: str | None = None) -> DocumentResponse:
+def _doc_to_response(
+    doc, download_url: str | None = None, ai_row: object | None = None
+) -> DocumentResponse:
+    from aexy.models.file_metadata import SOURCE_COMPLIANCE_DOCUMENT
+    from aexy.schemas.file_metadata import metadata_to_ai_response
+
     tags = [t.tag for t in doc.tags] if doc.tags else []
     return DocumentResponse(
         id=str(doc.id),
@@ -68,7 +73,28 @@ def _doc_to_response(doc, download_url: str | None = None) -> DocumentResponse:
         archived_at=doc.archived_at,
         tags=tags,
         download_url=download_url,
+        ai=metadata_to_ai_response(SOURCE_COMPLIANCE_DOCUMENT, str(doc.id), ai_row),
     )
+
+
+async def _docs_with_ai(
+    db, docs, *, with_download_urls: bool = False, service=None
+) -> list[DocumentResponse]:
+    """Bulk-build doc responses with the polymorphic `ai` block. Avoids
+    N+1 by batch-loading file_metadata for all the doc IDs in one query.
+    """
+    from aexy.models.file_metadata import SOURCE_COMPLIANCE_DOCUMENT
+    from aexy.services.file_metadata_service import get_metadata_batch
+
+    if not docs:
+        return []
+    ids = [str(d.id) for d in docs]
+    ai_map = await get_metadata_batch(db, SOURCE_COMPLIANCE_DOCUMENT, ids)
+    out: list[DocumentResponse] = []
+    for d in docs:
+        url = service.generate_download_url(d.file_key) if (with_download_urls and service) else None
+        out.append(_doc_to_response(d, url, ai_map.get(str(d.id))))
+    return out
 
 
 # --- Upload URL ---
@@ -130,6 +156,17 @@ async def upload_document_directly(
         )
     content_type = file.content_type or "application/octet-stream"
 
+    # Per-workspace storage quota covers compliance docs alongside drive +
+    # task attachments. assert_storage_available raises 413 on overflow.
+    from aexy.services.storage_quota_service import StorageQuotaService
+
+    quota = StorageQuotaService(db)
+    await quota.assert_storage_available(
+        workspace_id=workspace_id,
+        incoming_bytes=len(file_data),
+        developer_id=str(current_user.id),
+    )
+
     try:
         result = service.upload_file_directly(
             workspace_id=workspace_id,
@@ -155,6 +192,33 @@ async def upload_document_directly(
         ),
         str(current_user.id),
     )
+    await quota.invalidate_workspace_usage(workspace_id)
+
+    # Fire-and-forget AI metadata pipeline. Compliance docs are typically the
+    # most consequential files (contracts, policies) — surfacing summary +
+    # tags on them is the entire point of this layer.
+    try:
+        from aexy.models.file_metadata import SOURCE_COMPLIANCE_DOCUMENT
+        from aexy.temporal.activities.file_metadata import ExtractFileMetadataInput
+        from aexy.temporal.dispatch import dispatch
+        from aexy.temporal.task_queues import TaskQueue
+
+        await dispatch(
+            "extract_file_ai_metadata",
+            ExtractFileMetadataInput(
+                source_type=SOURCE_COMPLIANCE_DOCUMENT,
+                source_id=str(doc.id),
+            ),
+            task_queue=TaskQueue.ANALYSIS,
+            workflow_id=f"file-ai-compliance_document-{doc.id}",
+        )
+    except Exception:  # noqa: BLE001
+        # Never block the upload on a dispatch failure.
+        import logging
+
+        logging.getLogger(__name__).exception(
+            "Failed to dispatch file AI pipeline for compliance doc %s", doc.id
+        )
 
     download_url = service.generate_download_url(doc.file_key)
     return _doc_to_response(doc, download_url)
@@ -212,7 +276,7 @@ async def list_documents(
     )
 
     documents, total = await service.list_documents(workspace_id, filters)
-    items = [_doc_to_response(doc) for doc in documents]
+    items = await _docs_with_ai(db, documents)
 
     return DocumentListResponse(
         items=items, total=total, page=page, page_size=page_size
