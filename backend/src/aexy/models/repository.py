@@ -195,6 +195,171 @@ class DeveloperRepository(Base):
     )
 
 
+class WorkspaceRepository(Base):
+    """Workspace-level repository adoption.
+
+    Replaces `DeveloperRepository.is_enabled` as the source of truth for
+    "this repo is in scope for this workspace." Sync state, webhook
+    bookkeeping, and incremental-sync cursors live here — they're a
+    workspace concern, not a personal one.
+
+    `adopted_by_developer_id` records whose GitHub installation token
+    we use for sync. If that developer becomes inactive, callers can
+    "reclaim" the row by re-binding it to another active workspace
+    member with installation coverage (see `pick_installation_developer`
+    in `WorkspaceRepositoryService`).
+    """
+
+    __tablename__ = "workspace_repositories"
+
+    id: Mapped[str] = mapped_column(
+        String(36),
+        primary_key=True,
+    )
+    workspace_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    repository_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("repositories.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Whose installation token drives sync. Nullable so an admin can
+    # un-bind without deleting the adoption (banner + reclaim flow).
+    adopted_by_developer_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    # Selection state — flip false to soft-disable without losing sync state.
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # Sync state (moved from DeveloperRepository — workspace-owned now).
+    sync_status: Mapped[str] = mapped_column(
+        String(50),
+        default="pending",
+        nullable=False,
+    )  # pending | syncing | synced | failed | no_credentials
+    last_sync_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    sync_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Sync progress
+    commits_synced: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    prs_synced: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    reviews_synced: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    # Incremental sync tracking
+    last_commit_sha: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    last_commit_date: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    last_pr_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    last_pr_date: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    incremental_sync_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=True, nullable=False
+    )
+
+    # Webhook state
+    webhook_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    webhook_status: Mapped[str] = mapped_column(
+        String(50),
+        default="none",
+        nullable=False,
+    )  # none | pending | active | failed
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id", "repository_id", name="uq_workspace_repository"
+        ),
+    )
+
+    # Relationships
+    repository: Mapped["Repository"] = relationship("Repository")
+    adopted_by: Mapped["Developer | None"] = relationship(
+        "Developer",
+        foreign_keys=[adopted_by_developer_id],
+    )
+    team_links: Mapped[list["TeamRepository"]] = relationship(
+        "TeamRepository",
+        back_populates="workspace_repository",
+        cascade="all, delete-orphan",
+    )
+
+
+class TeamRepository(Base):
+    """Project (team) selection of a workspace-adopted repo.
+
+    A row here means: "this team works against this repo" — used for
+    PR search, GitHub-issue search/import, per-project insights. A
+    team can pick any subset of its workspace's adopted repos.
+    """
+
+    __tablename__ = "team_repositories"
+
+    id: Mapped[str] = mapped_column(
+        String(36),
+        primary_key=True,
+    )
+    team_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("teams.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    workspace_repository_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("workspace_repositories.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "team_id",
+            "workspace_repository_id",
+            name="uq_team_repository",
+        ),
+    )
+
+    # Relationships
+    workspace_repository: Mapped["WorkspaceRepository"] = relationship(
+        "WorkspaceRepository",
+        back_populates="team_links",
+    )
+
+
 class DeveloperOrganization(Base):
     """Junction table tracking org-level toggles for a developer."""
 

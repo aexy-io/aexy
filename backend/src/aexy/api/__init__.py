@@ -27,6 +27,7 @@ from aexy.api.predictions import router as predictions_router
 from aexy.api.exports import router as exports_router
 from aexy.api.slack import router as slack_router
 from aexy.api.repositories import router as repositories_router
+from aexy.api.workspace_repositories import router as workspace_repositories_router
 from aexy.api.billing import router as billing_router
 # Organization & Team Management
 from aexy.api.workspaces import router as workspaces_router, invites_router
@@ -204,6 +205,7 @@ api_router.include_router(exports_router, tags=["exports"])
 api_router.include_router(slack_router, tags=["slack"])
 # Repository Management
 api_router.include_router(repositories_router, tags=["repositories"])
+api_router.include_router(workspace_repositories_router)
 # Billing & Subscriptions
 api_router.include_router(billing_router, tags=["billing"])
 # Organization & Team Management

@@ -37,6 +37,8 @@ from aexy.models.repository import (
     Repository,
     DeveloperRepository,
     DeveloperOrganization,
+    WorkspaceRepository,
+    TeamRepository,
 )
 from aexy.models.workspace import (
     Workspace,
