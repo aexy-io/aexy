@@ -950,7 +950,12 @@ class SprintTaskService:
             old_value=old_value,
             new_value=new_value,
             comment=comment,
-            metadata=metadata or {},
+            # Column is `activity_metadata` — `metadata` is reserved on
+            # SQLAlchemy declarative Base, so the kwarg gets silently
+            # swallowed and every row's payload becomes `{}`. That's why
+            # the History tab kept rendering "Unassigned to Unassigned"
+            # even though callers passed from/to assignee IDs.
+            activity_metadata=metadata or {},
         )
         self.db.add(activity)
         await self.db.flush()

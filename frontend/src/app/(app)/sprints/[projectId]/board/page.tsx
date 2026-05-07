@@ -1086,15 +1086,24 @@ function AssignmentHistoryPanel({
           case "assigned":
             line = (
               <>
-                reassigned from <span className="text-foreground">{lookupName(meta?.from_assignee_id)}</span>{" "}
-                to <span className="text-foreground">{lookupName(meta?.to_assignee_id)}</span>
+                reassigned from{" "}
+                <span className="text-foreground">
+                  {lookupName(meta?.from_assignee_id ?? event.old_value)}
+                </span>{" "}
+                to{" "}
+                <span className="text-foreground">
+                  {lookupName(meta?.to_assignee_id ?? event.new_value)}
+                </span>
               </>
             );
             break;
           case "unassigned":
             line = (
               <>
-                unassigned <span className="text-foreground">{lookupName(meta?.from_assignee_id)}</span>
+                unassigned{" "}
+                <span className="text-foreground">
+                  {lookupName(meta?.from_assignee_id ?? event.old_value)}
+                </span>
               </>
             );
             break;
