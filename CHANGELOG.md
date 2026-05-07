@@ -14,6 +14,34 @@ line with the real stack. Adds backlog (sprint-less) task attachments.
 
 ### Added
 
+#### History tab now records project-task field changes and attachment events
+The History tab on the task modal was wired up for backlog tasks but
+several event sources never wrote a `TaskActivity` row, so the timeline
+came back empty. Three classes of bug:
+
+1. The project-task PATCH at `/teams/{team_id}/tasks/{task_id}` did
+   inline field updates instead of delegating to
+   `SprintTaskService.update_task`, so none of the per-field activity
+   rows (title_changed / status_changed / priority_changed / etc.) got
+   written for backlog tasks. Refactored the handler to delegate so
+   the History tab gets the same field-by-field timeline that sprint
+   tasks have, with the actor attributed correctly.
+2. The project-task status PATCH at
+   `/teams/{team_id}/tasks/{task_id}/status` only emitted a workspace
+   `EntityActivity`, never a per-task `TaskActivity`. Added the
+   per-task row so drag-and-drop on the board renders in History.
+3. `SprintTaskService.add_attachment` and `delete_attachment` never
+   wrote History events, so attachment uploads/removals were
+   invisible in the timeline for both sprint and project tasks.
+   Added `attachment_added` and `attachment_removed` actions on the
+   service, threaded `actor_id` through
+   `delete_attachment_for_task`, extended the `TaskActivityAction`
+   union, and added matching renderer cases in both task modals.
+
+Also added a "created" `TaskActivity` row to `create_project_task`
+(the sprint create path already logged this via the service) so
+backlog timelines start with "X created this task" instead of empty.
+
 #### Backlog tasks now show activity history and accept comments
 The History tab on the task modal previously rendered "Move this task
 into a sprint to view its full activity history" for sprint-less

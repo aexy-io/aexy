@@ -1170,6 +1170,22 @@ function AssignmentHistoryPanel({
           case "comment":
             line = <>commented</>;
             break;
+          case "attachment_added":
+            line = (
+              <>
+                attached{" "}
+                <span className="text-foreground">{newStr}</span>
+              </>
+            );
+            break;
+          case "attachment_removed":
+            line = (
+              <>
+                removed attachment{" "}
+                <span className="text-foreground">{oldStr}</span>
+              </>
+            );
+            break;
           default:
             line = (
               <>

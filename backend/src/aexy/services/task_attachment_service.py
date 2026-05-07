@@ -184,7 +184,10 @@ async def list_attachments_for_task(db, task: SprintTask) -> TaskAttachmentListR
 
 
 async def delete_attachment_for_task(
-    db, task: SprintTask, attachment_id: str
+    db,
+    task: SprintTask,
+    attachment_id: str,
+    actor_id: str | None = None,
 ) -> None:
     """Delete an attachment row + its S3 object. Raises 404 if not found
     or if the attachment doesn't belong to `task`."""
@@ -208,7 +211,7 @@ async def delete_attachment_for_task(
                 attachment.file_url,
             )
 
-    await task_service.delete_attachment(attachment_id)
+    await task_service.delete_attachment(attachment_id, actor_id=actor_id)
     await db.commit()
     if task.workspace_id:
         await StorageQuotaService(db).invalidate_workspace_usage(str(task.workspace_id))

@@ -1457,5 +1457,5 @@ async def delete_task_attachment(
             detail="Task not found",
         )
 
-    await delete_attachment_for_task(db, task, attachment_id)
+    await delete_attachment_for_task(db, task, attachment_id, actor_id=str(current_user.id))
     return None

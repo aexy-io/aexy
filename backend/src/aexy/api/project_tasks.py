@@ -262,6 +262,16 @@ async def create_project_task(
     await db.flush()
     await GitHubTaskSyncService(db).auto_link_issue_references(task)
 
+    # Per-task History row so the modal shows "X created this task" instead
+    # of an empty timeline. The sprint create path does this via
+    # SprintTaskService.add_task; project create reproduces it here.
+    task_service = SprintTaskService(db)
+    await task_service.log_activity(
+        task_id=str(task.id),
+        action="created",
+        actor_id=str(current_user.id),
+    )
+
     await log_activity(
         db,
         workspace_id=str(team.workspace_id),
@@ -324,63 +334,74 @@ async def update_task(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Update a task."""
+    """Update a task.
+
+    Delegates field updates to `SprintTaskService.update_task` so every
+    field change writes a per-task History entry — same behavior as the
+    sprint-scoped PATCH. Mentions, sprint_id moves, and workspace-level
+    activity are handled inline since the service doesn't cover them.
+    """
     await get_team_and_check_permission(team_id, current_user, db, "member")
 
+    task_service = SprintTaskService(db)
+
+    # Resolve the task with team scoping before delegating, so we keep the
+    # team-membership boundary even though the service is workspace-wide.
     query = select(SprintTask).options(
         selectinload(SprintTask.assignee),
         selectinload(SprintTask.subtasks),
     ).where(SprintTask.id == task_id, SprintTask.team_id == team_id)
-
     result = await db.execute(query)
     task = result.scalar_one_or_none()
-
     if not task:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
+            status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
         )
 
-    # Track old mentions to find new ones
     old_mentioned_users = set(task.mentioned_user_ids or [])
 
-    # Update fields
-    if data.title is not None:
-        task.title = data.title
-    if data.description is not None:
-        task.description = data.description
-    if data.description_json is not None:
-        task.description_json = data.description_json
-    if data.story_points is not None:
-        task.story_points = data.story_points
-    if data.priority is not None:
-        task.priority = data.priority
-    if data.status is not None:
-        task.status = data.status
-    if data.labels is not None:
-        task.labels = data.labels
+    # Build kwargs for the canonical update path (writes per-field activity
+    # rows for everything that actually changed). Mirror the conditional
+    # forwarding from sprint_tasks.update_task so we don't clobber
+    # unspecified fields.
+    update_kwargs: dict = {
+        "task_id": task_id,
+        "title": data.title,
+        "description": data.description,
+        "story_points": data.story_points,
+        "priority": data.priority,
+        "status": data.status,
+        "labels": data.labels,
+        "actor_id": str(current_user.id),
+    }
+    if "description_json" in data.model_fields_set:
+        update_kwargs["description_json"] = data.description_json
     if data.epic_id is not None or "epic_id" in data.model_fields_set:
-        task.epic_id = data.epic_id
-    if data.sprint_id is not None or "sprint_id" in data.model_fields_set:
-        task.sprint_id = data.sprint_id
+        update_kwargs["epic_id"] = data.epic_id
     if data.assignee_id is not None or "assignee_id" in data.model_fields_set:
-        task.assignee_id = data.assignee_id
+        update_kwargs["assignee_id"] = data.assignee_id
+    if data.contributes_to_goal is not None:
+        update_kwargs["contributes_to_goal"] = data.contributes_to_goal
+    if "start_date" in data.model_fields_set:
+        update_kwargs["start_date"] = data.start_date
+    if "end_date" in data.model_fields_set:
+        update_kwargs["end_date"] = data.end_date
+    if "estimated_hours" in data.model_fields_set:
+        update_kwargs["estimated_hours"] = data.estimated_hours
+
+    task = await task_service.update_task(**update_kwargs)
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
+        )
+
+    # sprint_id and mentions aren't service-handled — keep them inline.
+    if "sprint_id" in data.model_fields_set:
+        task.sprint_id = data.sprint_id
     if data.mentioned_user_ids is not None:
         task.mentioned_user_ids = data.mentioned_user_ids
     if data.mentioned_file_paths is not None:
         task.mentioned_file_paths = data.mentioned_file_paths
-    # contributes_to_goal is a non-nullable bool — apply only when the caller
-    # explicitly set true/false.
-    if data.contributes_to_goal is not None:
-        task.contributes_to_goal = data.contributes_to_goal
-    # `model_fields_set` lets callers clear date/hours fields by sending an
-    # explicit null; checking `is not None` alone would silently drop a clear.
-    if "start_date" in data.model_fields_set:
-        task.start_date = data.start_date
-    if "end_date" in data.model_fields_set:
-        task.end_date = data.end_date
-    if "estimated_hours" in data.model_fields_set:
-        task.estimated_hours = data.estimated_hours
 
     await GitHubTaskSyncService(db).auto_link_issue_references(task)
 
@@ -687,6 +708,19 @@ async def update_task_status(
     old_status = task.status
     task.status = data.status
 
+    if old_status != data.status:
+        # Per-task History row so the modal shows status changes alongside
+        # other field-change events.
+        task_service = SprintTaskService(db)
+        await task_service.log_activity(
+            task_id=task_id,
+            action="status_changed",
+            actor_id=str(current_user.id),
+            field_name="status",
+            old_value=old_status,
+            new_value=data.status,
+        )
+
     if task.workspace_id and old_status != data.status:
         act_type = "status_changed"
         if data.status == "done":
@@ -881,7 +915,7 @@ async def delete_project_task_attachment(
 
     await get_team_and_check_permission(team_id, current_user, db, "member")
     task = await _resolve_team_task(team_id, task_id, db)
-    await delete_attachment_for_task(db, task, attachment_id)
+    await delete_attachment_for_task(db, task, attachment_id, actor_id=str(current_user.id))
     return None
 
 

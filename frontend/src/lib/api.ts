@@ -2605,7 +2605,9 @@ export type TaskActivityAction =
   | "labels_changed"
   | "start_date_changed"
   | "end_date_changed"
-  | "estimated_hours_changed";
+  | "estimated_hours_changed"
+  | "attachment_added"
+  | "attachment_removed";
 
 export interface TaskActivity {
   id: string;

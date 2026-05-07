@@ -577,6 +577,14 @@ function ActivityItem({ activity }: { activity: TaskActivity }) {
         );
       case "created":
         return <span>created this task</span>;
+      case "attachment_added":
+        return (
+          <span>attached <span className="text-foreground">{newStr}</span></span>
+        );
+      case "attachment_removed":
+        return (
+          <span>removed attachment <span className="text-foreground">{oldStr}</span></span>
+        );
       default:
         return (
           <span>

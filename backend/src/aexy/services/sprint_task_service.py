@@ -1448,7 +1448,7 @@ class SprintTaskService:
         content_type: str | None = None,
         uploaded_by_id: str | None = None,
     ) -> TaskAttachment:
-        """Persist a file attachment row for a task."""
+        """Persist a file attachment row for a task and write a History entry."""
         attachment = TaskAttachment(
             id=str(uuid4()),
             task_id=task_id,
@@ -1460,6 +1460,15 @@ class SprintTaskService:
         )
         self.db.add(attachment)
         await self.db.flush()
+        # History tab event so attachment uploads show up alongside other
+        # task activity. uploaded_by_id is the actor (the user who uploaded).
+        await self.log_activity(
+            task_id=task_id,
+            action="attachment_added",
+            actor_id=uploaded_by_id,
+            field_name="attachment",
+            new_value=file_name,
+        )
         return attachment
 
     async def list_attachments(self, task_id: str) -> list[TaskAttachment]:
@@ -1478,11 +1487,23 @@ class SprintTaskService:
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def delete_attachment(self, attachment_id: str) -> bool:
+    async def delete_attachment(
+        self, attachment_id: str, actor_id: str | None = None
+    ) -> bool:
         """Delete an attachment row. Returns True if removed."""
         attachment = await self.get_attachment(attachment_id)
         if not attachment:
             return False
+        task_id = str(attachment.task_id)
+        file_name = attachment.file_name
         await self.db.delete(attachment)
         await self.db.flush()
+        # History tab event so deletes show up alongside other task activity.
+        await self.log_activity(
+            task_id=task_id,
+            action="attachment_removed",
+            actor_id=actor_id,
+            field_name="attachment",
+            old_value=file_name,
+        )
         return True
