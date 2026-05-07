@@ -5,6 +5,66 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.71] - 2026-05-07
+
+Patch release on top of 0.7.7. Fixes a production-only file-upload
+outage, the light-mode contrast on the task-create form, and brings
+the deployment docs in line with the real stack.
+
+### Fixed
+
+#### Object storage missing from production compose
+`docker-compose.prod.yml` had no rustfs (or any S3-compatible) service
+and no `S3_ENDPOINT_URL` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY`
+env vars on `backend` or `temporal-worker`, even though the dev compose
+ships rustfs and points the backend at it. Result: in production
+`StorageService.is_configured()` returned False and every file upload —
+task attachments, recording uploads, compliance docs — returned `503
+File storage is not configured on this deployment`. Added a `rustfs`
+service to the prod compose (internal-network only, with healthcheck),
+wired the S3 env vars on backend and temporal-worker, added
+`rustfs_data` and `rustfs_logs` volumes, added an `/storage/` proxy
+location to `nginx/nginx.conf` so uploaded URLs are reachable from the
+browser, and seeded `RUSTFS_ROOT_USER` / `RUSTFS_ROOT_PASSWORD` /
+`S3_PUBLIC_ENDPOINT_URL` in `.env.prod.example`. Existing operators
+need to set those three values in `.env.prod` and re-run
+`docker compose -f docker-compose.prod.yml up -d`.
+
+#### Light-mode contrast on task-create attachment & GitHub-issue buttons
+The native `<input type="file">` "Choose files" button on the new-task
+form and the secondary "Link issue" button on the GitHub Issues panel
+both used `bg-primary-*/10` + `text-primary-200/300` — both very light
+blue, which collapses to barely-visible against the form background in
+light mode. Reskinned all three controls (two file inputs + the link
+button) to the solid `bg-primary-600` + `text-white` style already used
+by the primary "+ Link" button, so they pass contrast in both light
+and dark mode.
+
+### Documentation
+
+#### New Database Operations guide and stale-reference cleanup
+A new `docs/guides/database-operations.md` is now the canonical
+reference for everything that touches PostgreSQL: the custom SQL
+migration system at `backend/scripts/migrate_*.sql`, manual and
+automated backups (the production `aexy-backup` sidecar at 02:00 UTC),
+restore from sql dump, restore from volume snapshot, the safe
+postgres image-rebuild flow (data on the `postgres_data` named
+volume is independent of the image — `down -v` is what kills it),
+the major-version upgrade dump-and-reload procedure, and pgvector
+specifics. Linked from `docs/README.md`, `DEPLOY.md`, and the
+deployment guide.
+
+`DEPLOY.md` and `docs/guides/deployment.md` were brought in line with
+the actual stack: the `alembic upgrade head` references became
+`python scripts/run_migrations.py`, the Celery / Celery beat /
+Flower references became Temporal worker / Temporal UI / Temporal
+schedules, the postgres prerequisite is now PG 18 with pgvector
+(the bundled `aexy-postgres:18-alpine-pgvector` image) instead of
+PG 14/16, and the deployment example compose now includes the
+`temporal`, `temporal-ui`, and `temporal-worker` services. The
+backup/restore quick-references in both docs now point at the new
+Database Operations guide for full procedures.
+
 ## [0.7.7] - 2026-05-07
 
 ### Added
@@ -94,58 +154,6 @@ no active subscription row are excluded when `billing_model` is set
 (they have no canonical workspace-level billing model to filter on);
 plan-tier filtering uses the source plan tier and does not consider
 workspace plan overrides.
-
-#### Object storage missing from production compose
-`docker-compose.prod.yml` had no rustfs (or any S3-compatible) service
-and no `S3_ENDPOINT_URL` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY`
-env vars on `backend` or `temporal-worker`, even though the dev compose
-ships rustfs and points the backend at it. Result: in production
-`StorageService.is_configured()` returned False and every file upload —
-task attachments, recording uploads, compliance docs — returned `503
-File storage is not configured on this deployment`. Added a `rustfs`
-service to the prod compose (internal-network only, with healthcheck),
-wired the S3 env vars on backend and temporal-worker, added
-`rustfs_data` and `rustfs_logs` volumes, added an `/storage/` proxy
-location to `nginx/nginx.conf` so uploaded URLs are reachable from the
-browser, and seeded `RUSTFS_ROOT_USER` / `RUSTFS_ROOT_PASSWORD` /
-`S3_PUBLIC_ENDPOINT_URL` in `.env.prod.example`. Existing operators
-need to set those three values in `.env.prod` and re-run
-`docker compose -f docker-compose.prod.yml up -d`.
-
-#### Light-mode contrast on task-create attachment & GitHub-issue buttons
-The native `<input type="file">` "Choose files" button on the new-task
-form and the secondary "Link issue" button on the GitHub Issues panel
-both used `bg-primary-*/10` + `text-primary-200/300` — both very light
-blue, which collapses to barely-visible against the form background in
-light mode. Reskinned all three controls (two file inputs + the link
-button) to the solid `bg-primary-600` + `text-white` style already used
-by the primary "+ Link" button, so they pass contrast in both light
-and dark mode.
-
-### Documentation
-
-#### New Database Operations guide and stale-reference cleanup
-A new `docs/guides/database-operations.md` is now the canonical
-reference for everything that touches PostgreSQL: the custom SQL
-migration system at `backend/scripts/migrate_*.sql`, manual and
-automated backups (the production `aexy-backup` sidecar at 02:00 UTC),
-restore from sql dump, restore from volume snapshot, the safe
-postgres image-rebuild flow (data on the `postgres_data` named
-volume is independent of the image — `down -v` is what kills it),
-the major-version upgrade dump-and-reload procedure, and pgvector
-specifics. Linked from `docs/README.md`, `DEPLOY.md`, and the
-deployment guide.
-
-`DEPLOY.md` and `docs/guides/deployment.md` were brought in line with
-the actual stack: the `alembic upgrade head` references became
-`python scripts/run_migrations.py`, the Celery / Celery beat /
-Flower references became Temporal worker / Temporal UI / Temporal
-schedules, the postgres prerequisite is now PG 18 with pgvector
-(the bundled `aexy-postgres:18-alpine-pgvector` image) instead of
-PG 14/16, and the deployment example compose now includes the
-`temporal`, `temporal-ui`, and `temporal-worker` services. The
-backup/restore quick-references in both docs now point at the new
-Database Operations guide for full procedures.
 
 ## [0.7.6] - 2026-05-07
 
