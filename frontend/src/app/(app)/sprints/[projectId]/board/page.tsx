@@ -1186,6 +1186,22 @@ function AssignmentHistoryPanel({
               </>
             );
             break;
+          case "archived":
+            line = <>archived this task</>;
+            break;
+          case "unarchived":
+            line = <>restored this task</>;
+            break;
+          case "sprint_changed":
+            line = event.new_value
+              ? (
+                <>
+                  moved into sprint{" "}
+                  <span className="text-foreground">{newStr}</span>
+                </>
+              )
+              : <>moved to backlog</>;
+            break;
           default:
             line = (
               <>

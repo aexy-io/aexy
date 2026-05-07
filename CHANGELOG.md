@@ -14,6 +14,31 @@ line with the real stack. Adds backlog (sprint-less) task attachments.
 
 ### Added
 
+#### History tab now records archive, unarchive, sprint moves, and poker estimates
+Continued the activity-log audit. Several more mutation paths were
+silently dropping events:
+
+- `archive_task` / `unarchive_task` / `remove_task` in the service
+  flipped `is_archived` without a per-task `TaskActivity` row. Added
+  `archived` and `unarchived` actions, threaded `actor_id` through
+  the service methods, and updated the sprint and project routers
+  to pass the actor.
+- `bulk_move_to_sprint` moved tasks between sprints with no log.
+  Added a per-task `sprint_changed` row with the prior and new
+  `sprint_id` so the timeline shows "X moved into sprint Y".
+- The project-task PATCH inline `task.sprint_id = …` and the project
+  `move-to-sprint` endpoint were also silent — now both write a
+  `sprint_changed` row with the same shape.
+- Planning poker's `finalize` endpoint set `task.story_points`
+  directly without going through the service, so the resulting
+  estimate never appeared in History. Now writes a `points_changed`
+  row attributed to the user who finalized the session.
+
+Extended `TaskActivityAction` with `archived`, `unarchived`, and
+`sprint_changed` and added matching renderer cases on the board
+modal and the per-sprint page so each new event renders with
+human-readable copy.
+
 #### History tab now records project-task field changes and attachment events
 The History tab on the task modal was wired up for backlog tasks but
 several event sources never wrote a `TaskActivity` row, so the timeline

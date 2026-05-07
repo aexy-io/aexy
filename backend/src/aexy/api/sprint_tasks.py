@@ -278,7 +278,9 @@ async def bulk_move_tasks(
     await get_sprint_and_check_permission(sprint_id, current_user, db, "member")
 
     task_service = SprintTaskService(db)
-    tasks = await task_service.bulk_move_to_sprint(data.task_ids, data.target_sprint_id)
+    tasks = await task_service.bulk_move_to_sprint(
+        data.task_ids, data.target_sprint_id, actor_id=str(current_user.id)
+    )
 
     await db.commit()
     return [task_to_response(t) for t in tasks]
@@ -1006,7 +1008,7 @@ async def delete_task(
             detail="Task not found",
         )
 
-    await task_service.archive_task(task_id)
+    await task_service.archive_task(task_id, actor_id=str(current_user.id))
     await db.commit()
 
 
@@ -1029,7 +1031,7 @@ async def unarchive_task(
             detail="Task not found",
         )
 
-    restored = await task_service.unarchive_task(task_id)
+    restored = await task_service.unarchive_task(task_id, actor_id=str(current_user.id))
     await db.commit()
     return task_to_response(restored)
 

@@ -585,6 +585,14 @@ function ActivityItem({ activity }: { activity: TaskActivity }) {
         return (
           <span>removed attachment <span className="text-foreground">{oldStr}</span></span>
         );
+      case "archived":
+        return <span>archived this task</span>;
+      case "unarchived":
+        return <span>restored this task</span>;
+      case "sprint_changed":
+        return activity.new_value
+          ? <span>moved into sprint <span className="text-foreground">{newStr}</span></span>
+          : <span>moved to backlog</span>;
       default:
         return (
           <span>

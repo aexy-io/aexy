@@ -702,11 +702,25 @@ async def finalize_poker_session(
         if final_estimate is not None and isinstance(final_estimate, (int, float)):
             task = await task_service.get_task(task_id)
             if task:
-                task.story_points = int(final_estimate)
+                old_points = task.story_points
+                new_points = int(final_estimate)
+                task.story_points = new_points
+                # History tab event so the planning-poker estimate appears as
+                # a points_changed row alongside other activity. Skip when the
+                # value didn't change to keep the log noise-free.
+                if old_points != new_points:
+                    await task_service.log_activity(
+                        task_id=task_id,
+                        action="points_changed",
+                        actor_id=str(current_user.id),
+                        field_name="story_points",
+                        old_value=str(old_points) if old_points is not None else None,
+                        new_value=str(new_points),
+                    )
                 updated_tasks.append({
                     "task_id": task_id,
                     "title": task.title,
-                    "story_points": int(final_estimate),
+                    "story_points": new_points,
                 })
 
     # Update planning session record

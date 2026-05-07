@@ -397,7 +397,18 @@ async def update_task(
 
     # sprint_id and mentions aren't service-handled — keep them inline.
     if "sprint_id" in data.model_fields_set:
+        prior_sprint_id = str(task.sprint_id) if task.sprint_id else None
+        new_sprint_id = str(data.sprint_id) if data.sprint_id else None
         task.sprint_id = data.sprint_id
+        if prior_sprint_id != new_sprint_id:
+            await task_service.log_activity(
+                task_id=task_id,
+                action="sprint_changed",
+                actor_id=str(current_user.id),
+                field_name="sprint_id",
+                old_value=prior_sprint_id,
+                new_value=new_sprint_id,
+            )
     if data.mentioned_user_ids is not None:
         task.mentioned_user_ids = data.mentioned_user_ids
     if data.mentioned_file_paths is not None:
@@ -767,7 +778,19 @@ async def move_task_to_sprint(
             detail="Task not found",
         )
 
+    prior_sprint_id = str(task.sprint_id) if task.sprint_id else None
     task.sprint_id = sprint_id
+    if prior_sprint_id != (sprint_id or None):
+        # History tab event so sprint moves render alongside other activity.
+        task_service = SprintTaskService(db)
+        await task_service.log_activity(
+            task_id=task_id,
+            action="sprint_changed",
+            actor_id=str(current_user.id),
+            field_name="sprint_id",
+            old_value=prior_sprint_id,
+            new_value=sprint_id,
+        )
     await db.commit()
     await db.refresh(task)
 
@@ -808,6 +831,13 @@ async def delete_task(
         )
 
     task.is_archived = True
+    # Per-task History event so backlog timelines show the archive action.
+    task_service = SprintTaskService(db)
+    await task_service.log_activity(
+        task_id=task_id,
+        action="archived",
+        actor_id=str(current_user.id),
+    )
     await db.commit()
 
 
@@ -836,6 +866,12 @@ async def unarchive_task(
         )
 
     task.is_archived = False
+    task_service = SprintTaskService(db)
+    await task_service.log_activity(
+        task_id=task_id,
+        action="unarchived",
+        actor_id=str(current_user.id),
+    )
     await db.commit()
     await db.refresh(task)
 

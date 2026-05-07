@@ -515,7 +515,7 @@ class SprintTaskService:
 
         return refreshed
 
-    async def remove_task(self, task_id: str) -> bool:
+    async def remove_task(self, task_id: str, actor_id: str | None = None) -> bool:
         """Remove a task from a sprint (soft delete via archive)."""
         task = await self.get_task(task_id)
         if not task:
@@ -529,14 +529,23 @@ class SprintTaskService:
                 entity_type="task",
                 entity_id=str(task.id),
                 activity_type="deleted",
+                actor_id=actor_id,
                 title=f"Removed task '{task.title}'",
             )
+        # History tab event so the timeline shows the archive action.
+        await self.log_activity(
+            task_id=task_id,
+            action="archived",
+            actor_id=actor_id,
+        )
 
         task.is_archived = True
         await self.db.flush()
         return True
 
-    async def archive_task(self, task_id: str) -> SprintTask | None:
+    async def archive_task(
+        self, task_id: str, actor_id: str | None = None
+    ) -> SprintTask | None:
         """Archive a task (soft delete)."""
         task = await self.get_task(task_id)
         if not task:
@@ -544,9 +553,16 @@ class SprintTaskService:
 
         task.is_archived = True
         await self.db.flush()
+        await self.log_activity(
+            task_id=task_id,
+            action="archived",
+            actor_id=actor_id,
+        )
         return await self.get_task(task_id)
 
-    async def unarchive_task(self, task_id: str) -> SprintTask | None:
+    async def unarchive_task(
+        self, task_id: str, actor_id: str | None = None
+    ) -> SprintTask | None:
         """Unarchive a task (restore from soft delete)."""
         task = await self.get_task(task_id)
         if not task:
@@ -554,6 +570,11 @@ class SprintTaskService:
 
         task.is_archived = False
         await self.db.flush()
+        await self.log_activity(
+            task_id=task_id,
+            action="unarchived",
+            actor_id=actor_id,
+        )
         return await self.get_task(task_id)
 
     # Assignment
@@ -740,12 +761,14 @@ class SprintTaskService:
         self,
         task_ids: list[str],
         target_sprint_id: str,
+        actor_id: str | None = None,
     ) -> list[SprintTask]:
         """Bulk move tasks to another sprint.
 
         Args:
             task_ids: List of task IDs to move.
             target_sprint_id: Target sprint ID.
+            actor_id: Developer performing the move (for History attribution).
 
         Returns:
             List of updated SprintTasks.
@@ -763,9 +786,21 @@ class SprintTaskService:
         for task_id in task_ids:
             task = await self.get_task(task_id)
             if task:
+                prior_sprint_id = str(task.sprint_id) if task.sprint_id else None
                 task.sprint_id = target_sprint_id
                 task.workspace_id = target_sprint.workspace_id
                 await self.db.flush()
+                # History tab event so sprint moves show up alongside other
+                # task activity. The renderer uses sprint_changed.
+                if prior_sprint_id != target_sprint_id:
+                    await self.log_activity(
+                        task_id=task_id,
+                        action="sprint_changed",
+                        actor_id=actor_id,
+                        field_name="sprint_id",
+                        old_value=prior_sprint_id,
+                        new_value=target_sprint_id,
+                    )
                 updated_task = await self.get_task(task_id)
                 if updated_task:
                     updated_tasks.append(updated_task)
