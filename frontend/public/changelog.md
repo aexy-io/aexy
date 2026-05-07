@@ -5,6 +5,156 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.71] - 2026-05-07
+
+Patch release on top of 0.7.7. Fixes a production-only file-upload
+outage, the light-mode contrast on the task-create form, and brings
+the deployment docs in line with the real stack.
+
+### Fixed
+
+#### Object storage missing from production compose
+`docker-compose.prod.yml` had no rustfs (or any S3-compatible) service
+and no `S3_ENDPOINT_URL` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY`
+env vars on `backend` or `temporal-worker`, even though the dev compose
+ships rustfs and points the backend at it. Result: in production
+`StorageService.is_configured()` returned False and every file upload —
+task attachments, recording uploads, compliance docs — returned `503
+File storage is not configured on this deployment`. Added a `rustfs`
+service to the prod compose (internal-network only, with healthcheck),
+wired the S3 env vars on backend and temporal-worker, added
+`rustfs_data` and `rustfs_logs` volumes, added an `/storage/` proxy
+location to `nginx/nginx.conf` so uploaded URLs are reachable from the
+browser, and seeded `RUSTFS_ROOT_USER` / `RUSTFS_ROOT_PASSWORD` /
+`S3_PUBLIC_ENDPOINT_URL` in `.env.prod.example`. Existing operators
+need to set those three values in `.env.prod` and re-run
+`docker compose -f docker-compose.prod.yml up -d`.
+
+#### Light-mode contrast on task-create attachment & GitHub-issue buttons
+The native `<input type="file">` "Choose files" button on the new-task
+form and the secondary "Link issue" button on the GitHub Issues panel
+both used `bg-primary-*/10` + `text-primary-200/300` — both very light
+blue, which collapses to barely-visible against the form background in
+light mode. Reskinned all three controls (two file inputs + the link
+button) to the solid `bg-primary-600` + `text-white` style already used
+by the primary "+ Link" button, so they pass contrast in both light
+and dark mode.
+
+### Documentation
+
+#### New Database Operations guide and stale-reference cleanup
+A new `docs/guides/database-operations.md` is now the canonical
+reference for everything that touches PostgreSQL: the custom SQL
+migration system at `backend/scripts/migrate_*.sql`, manual and
+automated backups (the production `aexy-backup` sidecar at 02:00 UTC),
+restore from sql dump, restore from volume snapshot, the safe
+postgres image-rebuild flow (data on the `postgres_data` named
+volume is independent of the image — `down -v` is what kills it),
+the major-version upgrade dump-and-reload procedure, and pgvector
+specifics. Linked from `docs/README.md`, `DEPLOY.md`, and the
+deployment guide.
+
+`DEPLOY.md` and `docs/guides/deployment.md` were brought in line with
+the actual stack: the `alembic upgrade head` references became
+`python scripts/run_migrations.py`, the Celery / Celery beat /
+Flower references became Temporal worker / Temporal UI / Temporal
+schedules, the postgres prerequisite is now PG 18 with pgvector
+(the bundled `aexy-postgres:18-alpine-pgvector` image) instead of
+PG 14/16, and the deployment example compose now includes the
+`temporal`, `temporal-ui`, and `temporal-worker` services. The
+backup/restore quick-references in both docs now point at the new
+Database Operations guide for full procedures.
+
+## [0.7.7] - 2026-05-07
+
+### Added
+
+#### Admin billing breakdown — line-item view of charges, usage, and rates
+Workspace owners/admins now have a dedicated breakdown page at
+`/settings/billing/breakdown` answering "what am I being charged this
+period and why." Platform admins get the same view across every
+workspace at `/admin/billing` with a margin column and a click-to-drill
+drawer. Both reuse a single `BillingBreakdownView` component so the
+shape and behavior stay consistent.
+
+- New `BillingBreakdownService` (`backend/src/aexy/services/billing_breakdown_service.py`)
+  composes `LimitsService`, `UsageService`, `PostpaidBillingService`,
+  and `StorageQuotaService` into one typed `BillingBreakdown`. Line
+  items: base subscription fee, active seats (with included vs
+  billable split), LLM usage per provider (tokens, request count,
+  rate display), storage usage (informational), plus info counters
+  for plan-included free tokens and postpaid accruals. The service
+  reads period bounds from `WorkspaceSubscription.current_period_*`
+  and falls back to the current calendar month.
+- Workspace endpoints `GET /api/v1/billing/breakdown?workspace_id=…&period=current|previous|YYYY-MM`
+  and `GET /api/v1/billing/breakdown/history?workspace_id=…&months=6`,
+  gated by `verify_workspace_admin`. Margin information is never
+  exposed via these routes.
+- Platform-admin endpoints under `/api/v1/platform-admin/billing/*`:
+  `breakdown`, `breakdown/history`, `summary` (paginated, filterable
+  workspace table), and `totals` (revenue, margin, top workspaces,
+  plan-tier and billing-model splits). Margin (`base_cost_cents`
+  vs `charged_cents` from the snapshotted `UsageRecord` rows) is
+  exposed only here.
+- `BillingBreakdownView` renders the period header, total/delta cards,
+  a category-grouped line-item table with per-item drilldown (provider,
+  request counts, base cost when admin), info counters, invoices for
+  the period, and a 6-period sparkline. The `delta_cents` /
+  `delta_pct` are computed against the prior month's
+  `usage_aggregates` row, falling back to live SQL over
+  `usage_records` when the aggregate is missing.
+- Sidebar entries: `Billing Breakdown` (adminOnly) under Account in
+  `settingsNavigation.ts`, and `Billing` in the platform-admin sidebar
+  in `(admin)/layout.tsx`.
+
+#### Daily Temporal job to populate billing aggregates
+New `aggregate_billing_usage` activity (analysis.py) wired into
+`worker.py` and scheduled in `schedules.py` to run every 24h. It
+calls `UsageService.update_usage_aggregate` for every active
+customer subscription's current period, plus the current and prior
+calendar month for every workspace that has any usage. Without this
+job the historical breakdown view stays empty in production —
+nothing else writes to `usage_aggregates`.
+
+#### Internationalization for the breakdown views
+Added `settings.billing.breakdownPage` and `settings.platformBilling`
+translation namespaces in `messages/en/settings.json` and
+`messages/hi/settings.json`. Every user-facing string in the new
+pages and the shared `BillingBreakdownView` component goes through
+`useTranslations()`. Plan tier and billing-model labels stay in
+English in the Hindi translations per project convention.
+
+### Fixed
+
+#### Plan-included free tokens no longer reduce the breakdown total
+The breakdown previously emitted a synthetic `free_credit` line item
+with a negative subtotal, dropping `total_cents` by an estimated
+allowance. The Stripe billing pipeline
+(`UsageService.report_workspace_usage_to_stripe`) reports the raw
+sum of `UsageRecord.total_cost_cents` with no such deduction —
+per-member free quotas live on `Developer.llm_overage_cost_cents`
+and never reduce the workspace invoice. The result was that the UI
+showed a lower bill than what Stripe charged. The synthetic credit
+is now surfaced as `free_tokens_per_member_per_month` and
+`llm_tokens_used` info counters plus a computation note explaining
+the per-developer scope, so `total_cents` always equals what the
+billing pipeline reports.
+
+#### Platform billing summary filters now apply before pagination
+`GET /platform-admin/billing/summary` was paginating on the workspace
+query first, then dropping rows whose computed `plan_tier` or
+`billing_model` didn't match. A filtered request could return an
+empty first page even when matches existed on later pages, and the
+`total` count reflected only the search filter. The filters are now
+pushed into SQL: `plan_tier` joins `Workspace.plan_id → Plan.tier`,
+`billing_model` joins `WorkspaceSubscription.workspace_id →
+WorkspaceSubscription.billing_model`. `total` reflects the filtered
+set, and pagination operates on the filtered query. Workspaces with
+no active subscription row are excluded when `billing_model` is set
+(they have no canonical workspace-level billing model to filter on);
+plan-tier filtering uses the source plan tier and does not consider
+workspace plan overrides.
+
 ## [0.7.6] - 2026-05-07
 
 ### Added
