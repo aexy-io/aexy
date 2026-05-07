@@ -8,8 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.7.71] - 2026-05-07
 
 Patch release on top of 0.7.7. Fixes a production-only file-upload
-outage, the light-mode contrast on the task-create form, and brings
-the deployment docs in line with the real stack.
+outage, several silently-dropped task fields on PATCH, light-mode
+contrast on the task-create form, and brings the deployment docs in
+line with the real stack. Adds backlog (sprint-less) task attachments.
+
+### Added
+
+#### Backlog tasks can now carry attachments
+Sprint-less project tasks (where `sprint_id IS NULL`) had attachment
+upload gated behind a "Move this task into a sprint to upload
+attachments" banner because the only attachment routes lived under
+`/sprints/{sprint_id}/tasks/{task_id}/attachments`. Added parallel
+endpoints under `/teams/{team_id}/tasks/{task_id}/attachments`
+(POST / GET / DELETE) authorised via team membership. Both routers
+now share the same upload, list, and delete logic via a new
+`backend/src/aexy/services/task_attachment_service.py` (S3 put,
+storage-quota assertion, AI metadata pipeline dispatch, S3 delete,
+quota-cache invalidation — all in one place). The frontend
+(`board/page.tsx`) picks the right endpoint based on whether the
+task has a sprint; the gate banner is gone.
 
 ### Fixed
 
@@ -29,6 +46,37 @@ browser, and seeded `RUSTFS_ROOT_USER` / `RUSTFS_ROOT_PASSWORD` /
 `S3_PUBLIC_ENDPOINT_URL` in `.env.prod.example`. Existing operators
 need to set those three values in `.env.prod` and re-run
 `docker compose -f docker-compose.prod.yml up -d`.
+
+#### Project-task PATCH silently dropped four fields
+`PATCH /teams/{team_id}/tasks/{task_id}` (the route used for backlog /
+sprint-less tasks via `projectTasksApi.update`) accepted `start_date`,
+`end_date`, `estimated_hours`, and `contributes_to_goal` in its
+`SprintTaskUpdate` body but never read them — the inline update in
+`backend/src/aexy/api/project_tasks.py:update_task` only handled
+title/description/story_points/priority/status/labels/epic_id/
+sprint_id/assignee_id/mentions. Result: editing dates or hours on a
+backlog task looked successful but nothing persisted. Added the four
+missing assignments, using `data.model_fields_set` on the date and
+hours fields so callers can clear them by sending explicit null;
+`contributes_to_goal` is non-nullable on the model and stays
+"set when explicitly provided."
+
+#### Sprint-task PATCH silently dropped `description_json`
+The mirror bug on the sprint-scoped route: `data.description_json`
+came in via Pydantic but `task_service.update_task` had no parameter
+for it, so the rich-text representation never updated even when the
+plain `description` did. Added a sentinel-typed `description_json`
+parameter to `SprintTaskService.update_task` (with no activity-log
+entry — `description_changed` already covers that), and pass it
+through from the sprint-tasks PATCH handler.
+
+#### Aligned frontend update types with the backend schema
+`sprintApi.updateTask`, `projectTasksApi.update`, and
+`useProjectBoard.updateTaskMutation` had TypeScript signatures that
+omitted `start_date`, `end_date`, `estimated_hours`, and
+`contributes_to_goal`. The runtime axios call still sent them
+(JavaScript is permissive), but the types misled callers. Added the
+missing fields so the contract matches the backend.
 
 #### Light-mode contrast on task-create attachment & GitHub-issue buttons
 The native `<input type="file">` "Choose files" button on the new-task

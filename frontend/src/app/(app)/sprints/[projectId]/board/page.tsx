@@ -584,22 +584,32 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
         },
       });
 
-      // Upload any selected attachments after the task exists. Attachments
-      // are scoped to a sprint task — for project-backlog tasks (no sprint)
-      // we surface a non-fatal warning instead of failing the whole flow.
+      // Upload any selected attachments after the task exists. Backlog tasks
+      // (no sprint) use the project-task endpoint; sprint tasks use the
+      // sprint-scoped endpoint. Both go through the same backend helper.
       if (attachmentFiles.length > 0) {
-        if (created.sprint_id) {
-          setIsUploadingAttachments(true);
-          try {
-            await sprintApi.uploadTaskAttachments(created.sprint_id, created.id, attachmentFiles);
-          } finally {
-            setIsUploadingAttachments(false);
+        setIsUploadingAttachments(true);
+        try {
+          if (created.sprint_id) {
+            await sprintApi.uploadTaskAttachments(
+              created.sprint_id,
+              created.id,
+              attachmentFiles,
+            );
+          } else if (created.team_id) {
+            await projectTasksApi.uploadTaskAttachments(
+              created.team_id,
+              created.id,
+              attachmentFiles,
+            );
+          } else {
+            setError(
+              "Task created, but couldn't attach files: task is missing a team. Refresh and try again.",
+            );
+            return;
           }
-        } else {
-          setError(
-            "Task created, but attachments require the task to be in a sprint. Move the task into a sprint and re-attach.",
-          );
-          return;
+        } finally {
+          setIsUploadingAttachments(false);
         }
       }
 
@@ -1409,11 +1419,25 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
       });
 
       // Upload any newly attached files after the task PATCH succeeds.
-      if (newAttachmentFiles.length > 0 && task.sprint_id) {
+      // Sprint tasks → sprint-scoped endpoint; backlog tasks → project endpoint.
+      if (newAttachmentFiles.length > 0) {
         setIsUploadingAttachments(true);
         try {
-          await sprintApi.uploadTaskAttachments(task.sprint_id, task.id, newAttachmentFiles);
+          if (task.sprint_id) {
+            await sprintApi.uploadTaskAttachments(
+              task.sprint_id,
+              task.id,
+              newAttachmentFiles,
+            );
+          } else if (task.team_id) {
+            await projectTasksApi.uploadTaskAttachments(
+              task.team_id,
+              task.id,
+              newAttachmentFiles,
+            );
+          }
           await queryClient.invalidateQueries({ queryKey: ["sprintTasks"] });
+          await queryClient.invalidateQueries({ queryKey: ["projectTasks"] });
           setNewAttachmentFiles([]);
         } finally {
           setIsUploadingAttachments(false);
@@ -1429,10 +1453,16 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
   };
 
   const handleDeleteAttachment = async (attachmentId: string) => {
-    if (!task.sprint_id) return;
     try {
-      await sprintApi.deleteTaskAttachment(task.sprint_id, task.id, attachmentId);
+      if (task.sprint_id) {
+        await sprintApi.deleteTaskAttachment(task.sprint_id, task.id, attachmentId);
+      } else if (task.team_id) {
+        await projectTasksApi.deleteTaskAttachment(task.team_id, task.id, attachmentId);
+      } else {
+        return;
+      }
       await queryClient.invalidateQueries({ queryKey: ["sprintTasks"] });
+      await queryClient.invalidateQueries({ queryKey: ["projectTasks"] });
     } catch (err) {
       console.error("Failed to delete attachment:", err);
     }
@@ -2138,11 +2168,6 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
                     </li>
                   ))}
                 </ul>
-              )}
-              {!task.sprint_id && newAttachmentFiles.length > 0 && (
-                <p className="mt-2 text-xs text-amber-400">
-                  Move this task into a sprint to upload attachments.
-                </p>
               )}
             </section>
 

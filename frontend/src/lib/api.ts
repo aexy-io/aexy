@@ -3110,8 +3110,12 @@ export const sprintApi = {
     epic_id?: string | null;
     sprint_id?: string | null;
     assignee_id?: string | null;
+    contributes_to_goal?: boolean;
     mentioned_user_ids?: string[];
     mentioned_file_paths?: string[];
+    start_date?: string | null;
+    end_date?: string | null;
+    estimated_hours?: number | null;
   }): Promise<SprintTask> => {
     const response = await api.patch(`/sprints/${sprintId}/tasks/${taskId}`, data);
     return response.data;
@@ -3625,8 +3629,12 @@ export const projectTasksApi = {
     epic_id?: string | null;
     sprint_id?: string | null;
     assignee_id?: string | null;
+    contributes_to_goal?: boolean;
     mentioned_user_ids?: string[];
     mentioned_file_paths?: string[];
+    start_date?: string | null;
+    end_date?: string | null;
+    estimated_hours?: number | null;
   }): Promise<SprintTask> => {
     const response = await api.patch(`/teams/${teamId}/tasks/${taskId}`, data);
     return response.data;
@@ -3663,6 +3671,42 @@ export const projectTasksApi = {
   unarchive: async (teamId: string, taskId: string): Promise<SprintTask> => {
     const response = await api.post(`/teams/${teamId}/tasks/${taskId}/unarchive`);
     return response.data;
+  },
+
+  /**
+   * Attachments — work on backlog (sprint-less) project tasks too.
+   */
+  uploadTaskAttachments: async (
+    teamId: string,
+    taskId: string,
+    files: File[],
+  ): Promise<TaskAttachmentList> => {
+    const formData = new FormData();
+    files.forEach((f) => formData.append("files", f));
+    const response = await api.post(
+      `/teams/${teamId}/tasks/${taskId}/attachments`,
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } },
+    );
+    return response.data;
+  },
+
+  listTaskAttachments: async (
+    teamId: string,
+    taskId: string,
+  ): Promise<TaskAttachmentList> => {
+    const response = await api.get(`/teams/${teamId}/tasks/${taskId}/attachments`);
+    return response.data;
+  },
+
+  deleteTaskAttachment: async (
+    teamId: string,
+    taskId: string,
+    attachmentId: string,
+  ): Promise<void> => {
+    await api.delete(
+      `/teams/${teamId}/tasks/${taskId}/attachments/${attachmentId}`,
+    );
   },
 
   searchGitHubIssues: async (teamId: string, query?: string): Promise<GitHubIssueSummary[]> => {

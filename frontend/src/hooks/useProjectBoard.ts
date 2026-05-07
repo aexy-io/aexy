@@ -195,6 +195,12 @@ export function useProjectBoard(
         labels?: string[];
         epic_id?: string | null;
         assignee_id?: string | null;
+        contributes_to_goal?: boolean;
+        mentioned_user_ids?: string[];
+        mentioned_file_paths?: string[];
+        start_date?: string | null;
+        end_date?: string | null;
+        estimated_hours?: number | null;
       };
     }) => {
       if (!sprintId && projectId) {

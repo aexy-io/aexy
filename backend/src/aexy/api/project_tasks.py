@@ -5,7 +5,7 @@ These tasks can be in the project backlog and optionally assigned to sprints lat
 """
 
 from uuid import uuid4
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,12 +21,14 @@ from aexy.schemas.sprint import (
     SprintTaskUpdate,
     SprintTaskStatusUpdate,
     SprintTaskResponse,
+    TaskAttachmentListResponse,
     TaskStatus,
 )
 from aexy.services.workspace_service import WorkspaceService
 from aexy.services.notification_service import NotificationService
 from aexy.services.activity_logger import log_activity
 from aexy.services.github_task_sync_service import GitHubTaskSyncService
+from aexy.services.sprint_task_service import SprintTaskService
 
 router = APIRouter(prefix="/teams/{team_id}/tasks", tags=["Project Tasks"])
 
@@ -362,6 +364,18 @@ async def update_task(
         task.mentioned_user_ids = data.mentioned_user_ids
     if data.mentioned_file_paths is not None:
         task.mentioned_file_paths = data.mentioned_file_paths
+    # contributes_to_goal is a non-nullable bool — apply only when the caller
+    # explicitly set true/false.
+    if data.contributes_to_goal is not None:
+        task.contributes_to_goal = data.contributes_to_goal
+    # `model_fields_set` lets callers clear date/hours fields by sending an
+    # explicit null; checking `is not None` alone would silently drop a clear.
+    if "start_date" in data.model_fields_set:
+        task.start_date = data.start_date
+    if "end_date" in data.model_fields_set:
+        task.end_date = data.end_date
+    if "estimated_hours" in data.model_fields_set:
+        task.estimated_hours = data.estimated_hours
 
     await GitHubTaskSyncService(db).auto_link_issue_references(task)
 
@@ -685,3 +699,80 @@ async def unarchive_task(
     await db.refresh(task)
 
     return task_to_response(task)
+
+
+
+# ─── Attachments (project-level / sprint-less tasks) ────────────────────────
+async def _resolve_team_task(team_id: str, task_id: str, db: AsyncSession) -> SprintTask:
+    """Fetch a task in this team or 404. Used by attachment endpoints."""
+    result = await db.execute(
+        select(SprintTask).where(
+            SprintTask.id == task_id,
+            SprintTask.team_id == team_id,
+        )
+    )
+    task = result.scalar_one_or_none()
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        )
+    return task
+
+
+@router.post(
+    "/{task_id}/attachments",
+    response_model=TaskAttachmentListResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_project_task_attachments(
+    team_id: str,
+    task_id: str,
+    files: list[UploadFile] = File(...),
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Upload attachments to a project-level task (with or without a sprint)."""
+    from aexy.services.task_attachment_service import upload_attachments_for_task
+
+    await get_team_and_check_permission(team_id, current_user, db, "member")
+    task = await _resolve_team_task(team_id, task_id, db)
+    return await upload_attachments_for_task(db, task, files, current_user)
+
+
+@router.get(
+    "/{task_id}/attachments",
+    response_model=TaskAttachmentListResponse,
+)
+async def list_project_task_attachments(
+    team_id: str,
+    task_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """List attachments on a project-level task."""
+    from aexy.services.task_attachment_service import list_attachments_for_task
+
+    await get_team_and_check_permission(team_id, current_user, db, "viewer")
+    task = await _resolve_team_task(team_id, task_id, db)
+    return await list_attachments_for_task(db, task)
+
+
+@router.delete(
+    "/{task_id}/attachments/{attachment_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_project_task_attachment(
+    team_id: str,
+    task_id: str,
+    attachment_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete an attachment from a project-level task."""
+    from aexy.services.task_attachment_service import delete_attachment_for_task
+
+    await get_team_and_check_permission(team_id, current_user, db, "member")
+    task = await _resolve_team_task(team_id, task_id, db)
+    await delete_attachment_for_task(db, task, attachment_id)
+    return None

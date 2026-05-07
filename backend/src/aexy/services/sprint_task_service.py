@@ -342,6 +342,7 @@ class SprintTaskService:
         task_id: str,
         title: str | None = None,
         description: str | None = None,
+        description_json: dict | None = ...,  # Sentinel: distinct from explicit None
         story_points: int | None = None,
         priority: str | None = None,
         status: str | None = None,
@@ -376,6 +377,10 @@ class SprintTaskService:
         if description is not None:
             _record("description_changed", "description", task.description, description)
             task.description = description
+        if description_json is not ...:
+            # Rich-text representation of description; not activity-logged
+            # because `description_changed` already covers the change event.
+            task.description_json = description_json
         if story_points is not None:
             _record("points_changed", "story_points", task.story_points, story_points)
             task.story_points = story_points

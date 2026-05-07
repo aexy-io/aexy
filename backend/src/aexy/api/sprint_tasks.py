@@ -1,8 +1,6 @@
 """Sprint Tasks API endpoints."""
 
 import logging
-import re
-from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel, Field
@@ -37,13 +35,9 @@ from aexy.schemas.sprint import (
 from aexy.services.sprint_service import SprintService
 from aexy.services.sprint_task_service import SprintTaskService
 from aexy.services.github_task_sync_service import GitHubTaskSyncService
-from aexy.services.storage_quota_service import StorageQuotaService
-from aexy.services.storage_service import get_storage_service
 from aexy.services.workspace_service import WorkspaceService
 
 logger = logging.getLogger(__name__)
-ATTACHMENTS_PREFIX = "task-attachments"
-SAFE_FILENAME_RE = re.compile(r"[^A-Za-z0-9._-]+")
 
 router = APIRouter(prefix="/sprints/{sprint_id}/tasks", tags=["Sprint Tasks"])
 
@@ -1016,13 +1010,18 @@ async def update_task(
         "labels": data.labels,
         "actor_id": str(current_user.id),
     }
+    # description_json is the rich-text representation; pass through only when
+    # the caller explicitly set it so we don't clobber it on partial updates.
+    if "description_json" in data.model_fields_set:
+        update_kwargs["description_json"] = data.description_json
     # Only pass epic_id if it was explicitly provided in the request
     if data.epic_id is not None or "epic_id" in data.model_fields_set:
         update_kwargs["epic_id"] = data.epic_id
     # Only pass assignee_id if it was explicitly provided in the request
     if data.assignee_id is not None or "assignee_id" in data.model_fields_set:
         update_kwargs["assignee_id"] = data.assignee_id
-    # Only pass contributes_to_goal if it was explicitly provided
+    # contributes_to_goal is a non-nullable bool on the model — only apply
+    # when the caller explicitly set true/false.
     if data.contributes_to_goal is not None:
         update_kwargs["contributes_to_goal"] = data.contributes_to_goal
     # Pass scheduled-timeline fields only if explicitly set so callers can
@@ -1439,38 +1438,6 @@ async def export_sprint_tasks(
 
 
 # ─── Attachments ────────────────────────────────────────────────────────────
-def _attachment_to_response(
-    attachment, ai_row: object | None = None
-) -> TaskAttachmentResponse:
-    from aexy.models.file_metadata import SOURCE_TASK_ATTACHMENT
-    from aexy.schemas.file_metadata import metadata_to_ai_response
-
-    return TaskAttachmentResponse(
-        id=str(attachment.id),
-        task_id=str(attachment.task_id),
-        file_name=attachment.file_name,
-        file_url=attachment.file_url,
-        file_size=attachment.file_size,
-        content_type=attachment.content_type,
-        uploaded_by_id=str(attachment.uploaded_by_id) if attachment.uploaded_by_id else None,
-        uploaded_at=attachment.uploaded_at,
-        ai=metadata_to_ai_response(SOURCE_TASK_ATTACHMENT, str(attachment.id), ai_row),
-    )
-
-
-async def _attachments_with_ai(db, attachments) -> list[TaskAttachmentResponse]:
-    """Build attachment responses with their `ai` block populated in one
-    extra query (no N+1)."""
-    from aexy.models.file_metadata import SOURCE_TASK_ATTACHMENT
-    from aexy.services.file_metadata_service import get_metadata_batch
-
-    if not attachments:
-        return []
-    ids = [str(a.id) for a in attachments]
-    ai_map = await get_metadata_batch(db, SOURCE_TASK_ATTACHMENT, ids)
-    return [_attachment_to_response(a, ai_map.get(str(a.id))) for a in attachments]
-
-
 @router.post(
     "/{task_id}/attachments",
     response_model=TaskAttachmentListResponse,
@@ -1484,6 +1451,8 @@ async def upload_task_attachments(
     db: AsyncSession = Depends(get_db),
 ):
     """Upload one or more file attachments to a task."""
+    from aexy.services.task_attachment_service import upload_attachments_for_task
+
     await get_sprint_and_check_permission(sprint_id, current_user, db, "member")
 
     task_service = SprintTaskService(db)
@@ -1494,100 +1463,7 @@ async def upload_task_attachments(
             detail="Task not found",
         )
 
-    if not files:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No files provided",
-        )
-
-    storage = get_storage_service()
-    if not storage.is_configured():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="File storage is not configured on this deployment",
-        )
-
-    # Read every file into memory up front so we can quota-check the batch
-    # before persisting anything. Loading is unavoidable because we then
-    # `put_object` to S3 with the bytes; making a second pass wouldn't help.
-    bodies: list[tuple[UploadFile, bytes]] = []
-    total_bytes = 0
-    for upload in files:
-        body = await upload.read()
-        if not body:
-            continue
-        bodies.append((upload, body))
-        total_bytes += len(body)
-
-    if not bodies:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No non-empty files provided",
-        )
-
-    quota = StorageQuotaService(db)
-    if task.workspace_id:
-        await quota.assert_storage_available(
-            workspace_id=str(task.workspace_id),
-            incoming_bytes=total_bytes,
-            developer_id=str(current_user.id),
-        )
-
-    created: list = []
-    for upload, body in bodies:
-        original_name = upload.filename or "attachment"
-        safe_name = SAFE_FILENAME_RE.sub("_", original_name) or "attachment"
-        key = f"{ATTACHMENTS_PREFIX}/{task_id}/{uuid4().hex}_{safe_name}"
-        content_type = upload.content_type or "application/octet-stream"
-        ok = storage.put_object(key=key, data=body, content_type=content_type)
-        if not ok:
-            logger.error("Failed to upload attachment %s for task %s", original_name, task_id)
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to upload attachment '{original_name}'",
-            )
-
-        attachment = await task_service.add_attachment(
-            task_id=task_id,
-            file_name=original_name,
-            file_url=storage.get_object_url(key),
-            file_size=len(body),
-            content_type=content_type,
-            uploaded_by_id=str(current_user.id),
-        )
-        created.append(attachment)
-
-    await db.commit()
-    if task.workspace_id:
-        await quota.invalidate_workspace_usage(str(task.workspace_id))
-
-    # Fire-and-forget AI metadata pipeline per attachment. Failure here must
-    # never block the upload — the file is already persisted.
-    from aexy.models.file_metadata import SOURCE_TASK_ATTACHMENT
-    from aexy.temporal.activities.file_metadata import ExtractFileMetadataInput
-    from aexy.temporal.dispatch import dispatch
-    from aexy.temporal.task_queues import TaskQueue
-
-    for attachment in created:
-        try:
-            await dispatch(
-                "extract_file_ai_metadata",
-                ExtractFileMetadataInput(
-                    source_type=SOURCE_TASK_ATTACHMENT,
-                    source_id=str(attachment.id),
-                ),
-                task_queue=TaskQueue.ANALYSIS,
-                workflow_id=f"file-ai-task_attachment-{attachment.id}",
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.exception(
-                "Failed to dispatch file AI pipeline for attachment %s: %s",
-                attachment.id, exc,
-            )
-
-    return TaskAttachmentListResponse(
-        attachments=await _attachments_with_ai(db, created),
-    )
+    return await upload_attachments_for_task(db, task, files, current_user)
 
 
 @router.get(
@@ -1601,6 +1477,8 @@ async def list_task_attachments(
     db: AsyncSession = Depends(get_db),
 ):
     """List attachments on a task."""
+    from aexy.services.task_attachment_service import list_attachments_for_task
+
     await get_sprint_and_check_permission(sprint_id, current_user, db, "viewer")
 
     task_service = SprintTaskService(db)
@@ -1611,10 +1489,7 @@ async def list_task_attachments(
             detail="Task not found",
         )
 
-    attachments = await task_service.list_attachments(task_id)
-    return TaskAttachmentListResponse(
-        attachments=await _attachments_with_ai(db, attachments),
-    )
+    return await list_attachments_for_task(db, task)
 
 
 @router.delete(
@@ -1629,6 +1504,8 @@ async def delete_task_attachment(
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a task attachment."""
+    from aexy.services.task_attachment_service import delete_attachment_for_task
+
     await get_sprint_and_check_permission(sprint_id, current_user, db, "member")
 
     task_service = SprintTaskService(db)
@@ -1639,27 +1516,5 @@ async def delete_task_attachment(
             detail="Task not found",
         )
 
-    attachment = await task_service.get_attachment(attachment_id)
-    if not attachment or str(attachment.task_id) != task_id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Attachment not found",
-        )
-
-    storage = get_storage_service()
-    if storage.is_configured():
-        key = storage.key_from_url(attachment.file_url)
-        if key:
-            await storage.delete_object(key)
-        else:
-            logger.warning(
-                "Could not derive storage key from attachment URL %s; "
-                "skipping object delete",
-                attachment.file_url,
-            )
-
-    await task_service.delete_attachment(attachment_id)
-    await db.commit()
-    if task.workspace_id:
-        await StorageQuotaService(db).invalidate_workspace_usage(str(task.workspace_id))
+    await delete_attachment_for_task(db, task, attachment_id)
     return None
