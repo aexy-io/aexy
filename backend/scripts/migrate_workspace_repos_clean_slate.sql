@@ -1,0 +1,24 @@
+-- Clean slate for workspace_repositories.
+--
+-- migrate_workspace_team_repositories.sql backfilled greedily from
+-- developer_repositories.is_enabled, and the follow-up
+-- migrate_workspace_repos_evidence_filter.sql turned out to be too
+-- permissive: PR/commit authorship by a workspace member counts as
+-- evidence even when the repo lives in a different org from the
+-- workspace, so a developer in two workspaces drags all of their
+-- repos into both. There is no reliable way to infer "this repo
+-- belongs to this workspace" from per-developer legacy data — the
+-- workspace ↔ repo relationship simply did not exist before 0.7.72.
+--
+-- This migration clears the catalog so workspace admins re-adopt
+-- explicitly via /settings/repositories. team_repositories rows
+-- cascade away via the existing FK. PR search, the GitHub issue
+-- dropdown, and the auto-sync scheduler will return empty for any
+-- workspace until its admin re-adopts — that's intentional so
+-- leaked repos stop appearing.
+--
+-- Idempotent (re-running drops anything fresh that hasn't been
+-- adopted in the meantime; in practice only re-run if the original
+-- backfill is replayed).
+
+DELETE FROM workspace_repositories;
