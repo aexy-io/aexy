@@ -509,23 +509,24 @@ async def search_project_pull_requests(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Search PRs from repos connected to this team's workspace.
+    """Search PRs from repos selected for this team.
 
-    Filters by repo connection (`DeveloperRepository.is_enabled` for a
-    workspace member), not by PR author's workspace membership — the
-    earlier author-only filter let through any PR the author had ever
-    written, including PRs in repos that aren't connected to the
-    workspace at all. Now we only surface PRs whose `repository` matches
-    a `Repository.full_name` that some workspace member has enabled.
+    Scopes by `team_repositories` → `workspace_repositories`. The team's
+    explicit repo selection is the source of truth — repos that aren't
+    in the team's selection don't surface here.
     """
-    from aexy.models.repository import DeveloperRepository, Repository
+    from aexy.models.repository import (
+        Repository,
+        TeamRepository,
+        WorkspaceRepository,
+    )
 
-    team = await get_team_and_check_permission(team_id, current_user, db, "viewer")
+    await get_team_and_check_permission(team_id, current_user, db, "viewer")
     limit = min(max(limit, 1), 50)
 
     conditions = [
-        WorkspaceMember.workspace_id == team.workspace_id,
-        DeveloperRepository.is_enabled == True,  # noqa: E712
+        TeamRepository.team_id == team_id,
+        WorkspaceRepository.is_active == True,  # noqa: E712
     ]
     if query:
         stripped_query = query.strip()
@@ -541,8 +542,14 @@ async def search_project_pull_requests(
     stmt = (
         select(PullRequest)
         .join(Repository, Repository.full_name == PullRequest.repository)
-        .join(DeveloperRepository, DeveloperRepository.repository_id == Repository.id)
-        .join(WorkspaceMember, WorkspaceMember.developer_id == DeveloperRepository.developer_id)
+        .join(
+            WorkspaceRepository,
+            WorkspaceRepository.repository_id == Repository.id,
+        )
+        .join(
+            TeamRepository,
+            TeamRepository.workspace_repository_id == WorkspaceRepository.id,
+        )
         .where(and_(*conditions))
         .order_by(
             PullRequest.updated_at_github.desc().nullslast(),

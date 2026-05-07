@@ -2752,15 +2752,21 @@ class DeveloperInsightsService:
         pr_result = await self.db.execute(pr_stmt)
         repos.update(row[0] for row in pr_result.all())
 
-        # 3. Enabled repos from developer_repositories (covers case where
-        #    the GitHub-connected developer ID differs from workspace member ID)
-        dr_stmt = (
+        # 3. Adopted workspace repositories (replaces the legacy
+        #    DeveloperRepository.is_enabled scan now that adoption is
+        #    workspace-scoped).
+        from aexy.models.repository import WorkspaceRepository
+
+        wr_stmt = (
             select(Repository.full_name)
-            .join(DeveloperRepository, DeveloperRepository.repository_id == Repository.id)
-            .where(DeveloperRepository.is_enabled == True)
+            .join(
+                WorkspaceRepository,
+                WorkspaceRepository.repository_id == Repository.id,
+            )
+            .where(WorkspaceRepository.is_active == True)  # noqa: E712
         )
-        dr_result = await self.db.execute(dr_stmt)
-        repos.update(row[0] for row in dr_result.all())
+        wr_result = await self.db.execute(wr_stmt)
+        repos.update(row[0] for row in wr_result.all())
 
         return list(repos)
 

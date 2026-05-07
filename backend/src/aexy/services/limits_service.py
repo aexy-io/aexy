@@ -376,32 +376,45 @@ class LimitsService:
         )
 
     async def can_sync_repo(self, developer_id: str) -> tuple[bool, str | None]:
-        """Check if a developer can sync another repository.
+        """Deprecated: per-developer repo cap is gone in 0.7.72.
 
-        Returns (can_sync, error_message).
+        Repos are workspace-scoped now. Use `can_adopt_repository(
+        workspace_id, developer_id)` for the new gate. This stub stays
+        so old callers don't break — it always allows.
         """
-        developer = await self.get_developer_with_plan(developer_id)
-        if not developer:
-            return False, "Developer not found"
+        return True, None
 
-        plan = await self.get_plan(developer_id)
+    async def can_adopt_repository(
+        self, workspace_id: str, developer_id: str
+    ) -> tuple[bool, str | None]:
+        """Check if `workspace_id` can adopt one more repository.
 
-        # Unlimited repos
-        if plan.max_repos == -1:
+        Counts active rows in `workspace_repositories` against the
+        workspace's effective plan's `max_repos`. Returns
+        (can_adopt, error_message).
+        """
+        from aexy.models.repository import WorkspaceRepository
+
+        effective = await self.get_effective_plan(developer_id, workspace_id)
+        if effective.max_repos == -1:
             return True, None
 
-        # Count enabled repos
-        stmt = (
-            select(func.count(DeveloperRepository.id))
-            .where(DeveloperRepository.developer_id == developer_id)
-            .where(DeveloperRepository.is_enabled == True)
+        stmt = select(func.count(WorkspaceRepository.id)).where(
+            WorkspaceRepository.workspace_id == workspace_id,
+            WorkspaceRepository.is_active == True,  # noqa: E712
         )
         result = await self.db.execute(stmt)
-        count = result.scalar() or 0
+        count = int(result.scalar() or 0)
 
-        if count >= plan.max_repos:
-            return False, f"Repository limit reached ({plan.max_repos} repos for {plan.name} plan)"
-
+        if count >= effective.max_repos:
+            return (
+                False,
+                (
+                    f"Workspace repository limit reached "
+                    f"({effective.max_repos} repos for {effective.plan_name} plan). "
+                    "Upgrade the workspace plan to add more."
+                ),
+            )
         return True, None
 
     async def can_use_llm(
@@ -729,14 +742,31 @@ class LimitsService:
         }
 
     async def get_enabled_repos_count(self, developer_id: str) -> int:
-        """Get the count of enabled repositories for a developer."""
+        """Total active workspace_repositories across this developer's workspaces.
+
+        Per-developer counter that drives the limits widget on the
+        billing/usage pages. Repos are workspace-scoped now (since
+        0.7.72), so this is a sum across every workspace the developer
+        belongs to actively.
+        """
+        from aexy.models.repository import WorkspaceRepository
+        from aexy.models.workspace import WorkspaceMember
+
         stmt = (
-            select(func.count(DeveloperRepository.id))
-            .where(DeveloperRepository.developer_id == developer_id)
-            .where(DeveloperRepository.is_enabled == True)
+            select(func.count(WorkspaceRepository.id.distinct()))
+            .select_from(WorkspaceRepository)
+            .join(
+                WorkspaceMember,
+                WorkspaceMember.workspace_id == WorkspaceRepository.workspace_id,
+            )
+            .where(
+                WorkspaceMember.developer_id == developer_id,
+                WorkspaceMember.status == "active",
+                WorkspaceRepository.is_active == True,  # noqa: E712
+            )
         )
         result = await self.db.execute(stmt)
-        return result.scalar() or 0
+        return int(result.scalar() or 0)
 
     async def get_usage_summary(self, developer_id: str) -> dict[str, Any]:
         """Get a usage summary for a developer."""

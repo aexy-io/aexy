@@ -643,21 +643,24 @@ async def search_pull_requests_for_task_linking(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Search PRs from repos connected to this sprint's workspace.
+    """Search PRs from repos selected for this sprint's team.
 
-    Filters by repo connection (`DeveloperRepository.is_enabled` for a
-    workspace member), not by PR author's workspace membership — the
-    earlier author-only filter surfaced any PR by any member, including
-    PRs in repos that aren't connected to the workspace.
+    Scopes via the sprint's team → `team_repositories` →
+    `workspace_repositories`. PRs from repos not in the team's
+    selection don't surface here.
     """
-    from aexy.models.repository import DeveloperRepository, Repository
+    from aexy.models.repository import (
+        Repository,
+        TeamRepository,
+        WorkspaceRepository,
+    )
 
     sprint = await get_sprint_and_check_permission(sprint_id, current_user, db, "viewer")
     limit = min(max(limit, 1), 50)
 
     conditions = [
-        WorkspaceMember.workspace_id == sprint.workspace_id,
-        DeveloperRepository.is_enabled == True,  # noqa: E712
+        TeamRepository.team_id == sprint.team_id,
+        WorkspaceRepository.is_active == True,  # noqa: E712
     ]
     if query:
         stripped_query = query.strip()
@@ -673,8 +676,14 @@ async def search_pull_requests_for_task_linking(
     stmt = (
         select(PullRequest)
         .join(Repository, Repository.full_name == PullRequest.repository)
-        .join(DeveloperRepository, DeveloperRepository.repository_id == Repository.id)
-        .join(WorkspaceMember, WorkspaceMember.developer_id == DeveloperRepository.developer_id)
+        .join(
+            WorkspaceRepository,
+            WorkspaceRepository.repository_id == Repository.id,
+        )
+        .join(
+            TeamRepository,
+            TeamRepository.workspace_repository_id == WorkspaceRepository.id,
+        )
         .where(and_(*conditions))
         .order_by(PullRequest.updated_at_github.desc().nullslast(), PullRequest.created_at_github.desc())
         .limit(limit)

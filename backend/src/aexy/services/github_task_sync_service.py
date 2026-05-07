@@ -214,21 +214,59 @@ class GitHubTaskSyncService:
         return int(match.group(2)) if match else None
 
     async def get_project_issue_repositories(self, team_id: str) -> list[str]:
-        """Return distinct GitHub issue repositories known in a project/team."""
-        stmt = select(SprintTask.source_url).where(
+        """Return repos selected for this project/team.
+
+        Reads from `team_repositories` → `workspace_repositories` →
+        `repositories.full_name`. The team's explicit selection is the
+        source of truth — falls back to the historic "distinct repos
+        seen in past imports" only if the team has no selection yet
+        (covers workspaces that haven't run the workspace-catalog
+        adoption flow yet).
+        """
+        from aexy.models.repository import (
+            Repository,
+            TeamRepository,
+            WorkspaceRepository,
+        )
+
+        stmt = (
+            select(Repository.full_name)
+            .join(
+                WorkspaceRepository,
+                WorkspaceRepository.repository_id == Repository.id,
+            )
+            .join(
+                TeamRepository,
+                TeamRepository.workspace_repository_id == WorkspaceRepository.id,
+            )
+            .where(
+                TeamRepository.team_id == team_id,
+                WorkspaceRepository.is_active == True,  # noqa: E712
+            )
+            .distinct()
+        )
+        result = await self.db.execute(stmt)
+        repositories = sorted(result.scalars().all())
+        if repositories:
+            return repositories
+
+        # Fallback for workspaces that haven't adopted yet — preserve the
+        # legacy behavior so the issue dropdown isn't suddenly empty.
+        legacy_stmt = select(SprintTask.source_url).where(
             and_(
                 SprintTask.team_id == team_id,
                 SprintTask.source_type == "github_issue",
                 SprintTask.source_url.is_not(None),
             )
         )
-        result = await self.db.execute(stmt)
-        repositories = {
-            repo
-            for url in result.scalars().all()
-            if (repo := self.repository_from_issue_url(url))
-        }
-        return sorted(repositories)
+        legacy_result = await self.db.execute(legacy_stmt)
+        return sorted(
+            {
+                repo
+                for url in legacy_result.scalars().all()
+                if (repo := self.repository_from_issue_url(url))
+            }
+        )
 
     async def infer_repository_for_task(self, task: SprintTask) -> str | None:
         """Infer a repository for bare #123 references when unambiguous."""

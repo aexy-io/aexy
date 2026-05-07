@@ -223,7 +223,20 @@ async def adopt_repository(
             status_code=status.HTTP_404_NOT_FOUND, detail="Repository not found"
         )
 
+    # Workspace-scoped repo-cap gate. Skips when the workspace is already
+    # adopting this repo (idempotent re-adopt should never fail on cap).
+    from aexy.services.limits_service import LimitsService
+
     service = WorkspaceRepositoryService(db)
+    existing = await service.get_workspace_repository(workspace_id, data.repository_id)
+    if not existing:
+        limits = LimitsService(db)
+        can_adopt, error = await limits.can_adopt_repository(workspace_id, developer_id)
+        if not can_adopt:
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail=error or "Workspace repository limit reached",
+            )
     adopter = developer_id
     fallback = await service.pick_installation_developer(
         workspace_id, data.repository_id

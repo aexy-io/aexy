@@ -64,8 +64,10 @@ class SyncService:
         if not dev_repo:
             raise ValueError("Repository not found for this developer")
 
-        if not dev_repo.is_enabled:
-            raise ValueError("Repository is not enabled")
+        # Note: per-developer is_enabled gate was removed in 0.7.72 —
+        # adoption is now workspace-scoped and the auto-sync scheduler
+        # only fires for adopted workspace_repositories. Manual callers
+        # should hit /workspaces/{id}/repositories/.../sync instead.
 
         # Update sync status
         dev_repo.sync_status = "syncing"
@@ -138,8 +140,10 @@ class SyncService:
         if not dev_repo:
             raise ValueError("Repository not found for this developer")
 
-        if not dev_repo.is_enabled:
-            raise ValueError("Repository is not enabled")
+        # Note: per-developer is_enabled gate was removed in 0.7.72 —
+        # adoption is now workspace-scoped and the auto-sync scheduler
+        # only fires for adopted workspace_repositories. Manual callers
+        # should hit /workspaces/{id}/repositories/.../sync instead.
 
         # Get access token
         stmt = select(GitHubConnection).where(GitHubConnection.developer_id == developer_id)

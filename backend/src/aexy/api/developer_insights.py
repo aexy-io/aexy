@@ -2175,15 +2175,24 @@ async def get_sync_status(
 
     member_id_set = set(dev_ids)
 
-    # Find all repo IDs linked to workspace members OR enabled repos
+    # Repos in scope: either visible to a workspace member through their
+    # GitHub install (DeveloperRepository row exists) or adopted into the
+    # workspace catalog (the canonical signal post-0.7.72).
+    from aexy.models.repository import WorkspaceRepository
+
     member_repo_stmt = select(distinct(DeveloperRepository.repository_id)).where(
-        or_(
-            DeveloperRepository.developer_id.in_(dev_ids),
-            DeveloperRepository.is_enabled == True,
-        )
+        DeveloperRepository.developer_id.in_(dev_ids),
+    )
+    workspace_repo_stmt = select(distinct(WorkspaceRepository.repository_id)).where(
+        WorkspaceRepository.workspace_id == workspace_id,
+        WorkspaceRepository.is_active == True,  # noqa: E712
     )
     member_repo_result = await db.execute(member_repo_stmt)
-    repo_ids = [row[0] for row in member_repo_result.all()]
+    workspace_repo_result = await db.execute(workspace_repo_stmt)
+    repo_ids = list(
+        {row[0] for row in member_repo_result.all()}
+        | {row[0] for row in workspace_repo_result.all()}
+    )
 
     if not repo_ids:
         # No repos at all — just return empty entries for workspace members

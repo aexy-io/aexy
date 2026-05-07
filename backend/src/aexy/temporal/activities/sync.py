@@ -116,7 +116,7 @@ async def check_repo_auto_sync(input: CheckRepoAutoSyncInput) -> dict[str, Any]:
     from sqlalchemy import and_, select
 
     from aexy.models.developer import Developer, GitHubConnection
-    from aexy.models.repository import DeveloperRepository
+    from aexy.models.repository import WorkspaceRepository
     from aexy.temporal.dispatch import dispatch
 
     now = datetime.now(timezone.utc)
@@ -124,20 +124,34 @@ async def check_repo_auto_sync(input: CheckRepoAutoSyncInput) -> dict[str, Any]:
     skipped_auth = 0
 
     async with async_session_maker() as db:
-        # Find all developers with auto-sync enabled
-        result = await db.execute(
-            select(Developer).where(
-                Developer.repo_sync_settings.isnot(None),
+        # Walk every active workspace_repository. Sync uses the
+        # adopter's installation token; if their auth is broken the
+        # workspace_repository's sync_status flips to no_credentials so
+        # the catalog UI can prompt a reclaim.
+        wrs_stmt = (
+            select(WorkspaceRepository)
+            .where(
+                WorkspaceRepository.is_active == True,  # noqa: E712
+                WorkspaceRepository.sync_status != "syncing",
+                WorkspaceRepository.adopted_by_developer_id.is_not(None),
             )
         )
-        developers = result.scalars().all()
+        wrs = (await db.execute(wrs_stmt)).scalars().all()
 
-        for developer in developers:
-            settings = developer.repo_sync_settings or {}
-            if not settings.get("enabled"):
+        for wr in wrs:
+            adopter_id = wr.adopted_by_developer_id
+            if not adopter_id:
                 continue
 
-            # Skip developers whose GitHub connection has broken auth
+            developer = await db.get(Developer, adopter_id)
+            if not developer:
+                continue
+
+            settings = developer.repo_sync_settings or {}
+            if not settings.get("enabled"):
+                # Adopter hasn't opted into auto-sync; skip silently.
+                continue
+
             conn_result = await db.execute(
                 select(GitHubConnection).where(
                     GitHubConnection.developer_id == developer.id
@@ -146,46 +160,32 @@ async def check_repo_auto_sync(input: CheckRepoAutoSyncInput) -> dict[str, Any]:
             connection = conn_result.scalar_one_or_none()
             if not connection or connection.auth_status == "error":
                 skipped_auth += 1
+                wr.sync_status = "no_credentials"
                 continue
 
             frequency = settings.get("frequency", "1h")
             interval = FREQUENCY_MAP.get(frequency, timedelta(hours=1))
 
-            # Get enabled repos for this developer
-            repos_result = await db.execute(
-                select(DeveloperRepository).where(
-                    and_(
-                        DeveloperRepository.developer_id == developer.id,
-                        DeveloperRepository.is_enabled == True,
-                        DeveloperRepository.sync_status != "syncing",
-                    )
+            if wr.last_sync_at and now < wr.last_sync_at + interval:
+                continue
+
+            try:
+                await dispatch(
+                    "sync_repository",
+                    SyncRepositoryInput(
+                        repository_id=wr.repository_id,
+                        developer_id=str(developer.id),
+                    ),
                 )
-            )
-            dev_repos = repos_result.scalars().all()
-
-            for dev_repo in dev_repos:
-                # Skip if synced recently within the configured interval
-                if dev_repo.last_sync_at and now < dev_repo.last_sync_at + interval:
-                    continue
-
-                # Dispatch incremental sync via Temporal
-                try:
-                    await dispatch(
-                        "sync_repository",
-                        SyncRepositoryInput(
-                            repository_id=dev_repo.repository_id,
-                            developer_id=developer.id,
-                        ),
-                    )
-                    syncs_triggered += 1
-                    logger.info(
-                        f"Auto-sync triggered for repo {dev_repo.repository_id} "
-                        f"(developer {developer.id})"
-                    )
-                except Exception:
-                    logger.exception(
-                        f"Failed to dispatch auto-sync for repo {dev_repo.repository_id}"
-                    )
+                syncs_triggered += 1
+                logger.info(
+                    f"Auto-sync triggered for workspace_repository {wr.id} "
+                    f"(repo {wr.repository_id}, adopter {developer.id})"
+                )
+            except Exception:
+                logger.exception(
+                    f"Failed to dispatch auto-sync for workspace_repository {wr.id}"
+                )
 
     if skipped_auth:
         logger.warning(f"Auto-sync skipped {skipped_auth} developers with broken GitHub auth")
