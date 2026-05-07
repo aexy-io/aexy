@@ -3094,6 +3094,9 @@ export const sprintApi = {
     parent_task_id?: string;
     mentioned_user_ids?: string[];
     mentioned_file_paths?: string[];
+    start_date?: string | null;
+    end_date?: string | null;
+    estimated_hours?: number | null;
   }): Promise<SprintTask> => {
     const response = await api.post(`/sprints/${sprintId}/tasks`, data);
     return response.data;
@@ -3602,6 +3605,9 @@ export const projectTasksApi = {
     sprint_id?: string;  // Optional - can assign to sprint on creation
     mentioned_user_ids?: string[];
     mentioned_file_paths?: string[];
+    start_date?: string | null;
+    end_date?: string | null;
+    estimated_hours?: number | null;
   }): Promise<SprintTask> => {
     const response = await api.post(`/teams/${teamId}/tasks`, data);
     return response.data;

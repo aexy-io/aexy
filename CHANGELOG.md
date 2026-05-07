@@ -47,6 +47,21 @@ browser, and seeded `RUSTFS_ROOT_USER` / `RUSTFS_ROOT_PASSWORD` /
 need to set those three values in `.env.prod` and re-run
 `docker compose -f docker-compose.prod.yml up -d`.
 
+#### Project-task creation silently dropped dates and estimated hours
+`POST /teams/{team_id}/tasks` (used to create backlog / sprint-less
+tasks via `projectTasksApi.create`) accepted `start_date`, `end_date`,
+and `estimated_hours` in the `ProjectTaskCreate` body but the handler
+instantiated `SprintTask(...)` without passing them through, so a
+fresh task always saved with `start_date IS NULL` / `end_date IS NULL`
+/ `estimated_hours IS NULL` regardless of what the form submitted.
+Same drop happened in the frontend create path: the
+`useProjectBoard.addTaskMutation` mutationFn destructures the typed
+task and explicitly forwards each known field to
+`projectTasksApi.create`, and the type/forwarding listed neither
+date field nor hours. Wired all three fields through every layer
+(SprintTask kwargs in the backend, mutationFn type and forwarding,
+and the `create` and `addTask` API client signatures).
+
 #### Project-task PATCH silently dropped four fields
 `PATCH /teams/{team_id}/tasks/{task_id}` (the route used for backlog /
 sprint-less tasks via `projectTasksApi.update`) accepted `start_date`,

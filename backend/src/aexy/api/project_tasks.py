@@ -214,6 +214,9 @@ async def create_project_task(
         epic_id=data.epic_id,
         mentioned_user_ids=data.mentioned_user_ids or [],
         mentioned_file_paths=data.mentioned_file_paths or [],
+        start_date=data.start_date,
+        end_date=data.end_date,
+        estimated_hours=data.estimated_hours,
     )
 
     db.add(task)

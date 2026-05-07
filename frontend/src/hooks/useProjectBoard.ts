@@ -240,6 +240,9 @@ export function useProjectBoard(
         assignee_id?: string;
         mentioned_user_ids?: string[];
         mentioned_file_paths?: string[];
+        start_date?: string | null;
+        end_date?: string | null;
+        estimated_hours?: number | null;
       };
     }) => {
       if (!sprintId) {
@@ -259,6 +262,9 @@ export function useProjectBoard(
           assignee_id: task.assignee_id,
           mentioned_user_ids: task.mentioned_user_ids,
           mentioned_file_paths: task.mentioned_file_paths,
+          start_date: task.start_date,
+          end_date: task.end_date,
+          estimated_hours: task.estimated_hours,
         });
       }
       return sprintApi.addTask(sprintId, task);
