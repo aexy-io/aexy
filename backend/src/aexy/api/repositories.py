@@ -301,49 +301,11 @@ async def list_repositories(
     return [RepositoryResponse(**repo) for repo in repos]
 
 
-@router.post("/{repo_id}/enable", response_model=EnableRepositoryResponse)
-async def enable_repository(
-    repo_id: str,
-    developer_id: str = Depends(get_current_developer_id),
-    db: AsyncSession = Depends(get_db),
-) -> EnableRepositoryResponse:
-    """Enable a repository for syncing."""
-    # Check plan limits before enabling
-    from aexy.services.limits_service import LimitsService
-    limits_service = LimitsService(db)
-    can_enable, error = await limits_service.can_sync_repo(developer_id)
-    if not can_enable:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error or "Repository limit reached",
-        )
-
-    service = RepositoryService(db)
-    try:
-        dev_repo = await service.enable_repository(developer_id, repo_id)
-        return EnableRepositoryResponse(
-            id=dev_repo.id,
-            repository_id=dev_repo.repository_id,
-            is_enabled=dev_repo.is_enabled,
-            sync_status=dev_repo.sync_status,
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-
-
-@router.post("/{repo_id}/disable")
-async def disable_repository(
-    repo_id: str,
-    developer_id: str = Depends(get_current_developer_id),
-    db: AsyncSession = Depends(get_db),
-) -> dict:
-    """Disable a repository."""
-    service = RepositoryService(db)
-    try:
-        await service.disable_repository(developer_id, repo_id)
-        return {"message": "Repository disabled"}
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+# Per-developer enable/disable removed in 0.7.72 — repo enablement is
+# workspace-scoped now. Use POST /workspaces/{workspace_id}/repositories
+# to adopt a repo and DELETE /workspaces/{workspace_id}/repositories/{repo_id}
+# to remove it. The /repositories endpoints below remain for GitHub-discovery
+# and per-developer sync state.
 
 
 @router.get("/{repo_id}/status", response_model=RepositoryStatusResponse)
