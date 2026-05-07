@@ -604,9 +604,33 @@ class CarryOverResponse(BaseModel):
 
 
 # Task Activity Schemas
+# Keep this in lockstep with the frontend `TaskActivityAction` union in
+# `frontend/src/lib/api.ts`. New per-task event types added in the service
+# (`SprintTaskService.update_task` _record calls, attachment add/delete,
+# archive/unarchive, sprint moves, etc.) MUST be listed here or the
+# response schema will reject them with a Pydantic literal_error and the
+# History tab returns 500.
 TaskActivityAction = Literal[
-    "created", "updated", "status_changed", "assigned", "unassigned",
-    "comment", "priority_changed", "points_changed", "epic_changed"
+    "created",
+    "updated",
+    "status_changed",
+    "assigned",
+    "unassigned",
+    "comment",
+    "priority_changed",
+    "points_changed",
+    "epic_changed",
+    "title_changed",
+    "description_changed",
+    "labels_changed",
+    "start_date_changed",
+    "end_date_changed",
+    "estimated_hours_changed",
+    "attachment_added",
+    "attachment_removed",
+    "archived",
+    "unarchived",
+    "sprint_changed",
 ]
 
 
