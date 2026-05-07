@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
+  FolderGit2,
   FolderKanban,
   Save,
   Trash2,
@@ -261,6 +262,13 @@ export default function ProjectSettingsPage() {
           >
             <Shield className="h-4 w-4" />
             Permissions
+          </Link>
+          <Link
+            href={`/settings/projects/${projectId}/repositories`}
+            className="px-4 py-2 bg-muted hover:bg-accent text-foreground rounded-lg text-sm font-medium transition flex items-center gap-2"
+          >
+            <FolderGit2 className="h-4 w-4" />
+            Repositories
           </Link>
         </div>
 

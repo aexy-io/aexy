@@ -11,10 +11,57 @@ Project-level (sprint-less) tasks reach feature parity with sprint
 tasks. Backlog tasks can now carry attachments, attach GitHub PRs and
 issues, accept comments, and surface a full activity history; several
 silently-dropped fields on create/update across both routes are
-plugged; and the History tab now logs every meaningful task mutation
-including archives, sprint moves, and planning-poker estimates.
+plugged; the History tab now logs every meaningful task mutation
+including archives, sprint moves, and planning-poker estimates; and
+repository connection moves from per-developer to workspace-scoped.
 
 ### Added
+
+#### Workspace + project repository connection
+Repositories are connected at the **workspace** level now, with
+projects picking subsets. New tables `workspace_repositories` (the
+workspace's adopted catalog) and `team_repositories` (the project's
+selection) replace `DeveloperRepository.is_enabled` as the source of
+truth for "which repos are tracked here." Migration
+`migrate_workspace_team_repositories.sql` backfills both from
+existing per-developer enables so nothing in scope today disappears.
+
+- New endpoints: `GET/POST/DELETE /workspaces/{id}/repositories`
+  (admin), `GET/POST/DELETE /teams/{id}/repositories`, plus
+  `POST /workspaces/{id}/repositories/{wr_id}/reclaim` for the
+  former-member adoption flow.
+- `WorkspaceRepositoryService` exposes the adopt / unadopt /
+  reclaim / link-team / unlink-team / pick_installation_developer
+  surface; the canonical sync state (sync_status, last_sync_at,
+  webhook bookkeeping, incremental cursors) lives on
+  `workspace_repositories` since sync is workspace-owned now.
+- Free-plan repo cap is now per-workspace.
+  `LimitsService.can_adopt_repository(workspace_id)` counts active
+  rows against the workspace's effective plan and gates the adopt
+  endpoint. Removes the per-developer counter from the gating path
+  (still used as a display-only roll-up on the limits widget).
+- Consumers swapped: PR search (sprint + project), GitHub issue
+  search/import, the auto-sync Temporal scheduler, developer
+  insights, sync-status. Per-developer enable/disable endpoints
+  are removed; the column `DeveloperRepository.is_enabled` stays
+  as a discovery cache and gets cleaned up in a follow-up.
+- New project settings tab at
+  `/settings/projects/{projectId}/repositories` for picking which
+  workspace repos a project tracks.
+- Former-member adoption UX: a "Reclaim" banner on
+  `/settings/repositories` lists `workspace_repositories` whose
+  adopter is no longer an active workspace member, with a one-click
+  "Reclaim" action that re-binds the row to the active member who
+  clicked it (or any active member with reach as a fallback).
+  `WorkspaceRepository.sync_status='no_credentials'` is set
+  automatically when the auto-sync scheduler can't get a token,
+  surfacing the same banner.
+- Frontend rewires `handleRepoToggle` on `/settings/repositories`
+  to call `workspaceRepositoriesApi.adopt` / `unadopt` instead of
+  the removed per-developer endpoints; existing UI keeps working,
+  the toggle now adopts into the current workspace.
+
+
 
 #### Backlog tasks can carry attachments
 Sprint-less project tasks had attachment upload gated behind a "Move

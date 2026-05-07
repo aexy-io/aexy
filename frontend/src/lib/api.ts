@@ -1849,20 +1849,8 @@ export const repositoriesApi = {
     return response.data;
   },
 
-  enableRepository: async (repoId: string): Promise<{
-    id: string;
-    repository_id: string;
-    is_enabled: boolean;
-    sync_status: string;
-  }> => {
-    const response = await api.post(`/repositories/${repoId}/enable`);
-    return response.data;
-  },
-
-  disableRepository: async (repoId: string): Promise<{ message: string }> => {
-    const response = await api.post(`/repositories/${repoId}/disable`);
-    return response.data;
-  },
+  // Per-developer enable/disable removed in 0.7.72 — use
+  // workspaceRepositoriesApi.adopt / unadopt instead.
 
   getRepositoryStatus: async (repoId: string): Promise<RepositoryStatus> => {
     const response = await api.get(`/repositories/${repoId}/status`);
@@ -1952,6 +1940,96 @@ export const repositoriesApi = {
   ): Promise<{ enabled: boolean; frequency: string }> => {
     const response = await api.put("/repositories/auto-sync/settings", settings);
     return response.data;
+  },
+};
+
+// ============================================================================
+// Workspace + Team repository adoption (0.7.72)
+// ============================================================================
+
+export interface WorkspaceRepositoryRepoSummary {
+  id: string;
+  full_name: string;
+  name: string;
+  owner_login: string;
+  owner_type: string;
+  description: string | null;
+  is_private: boolean;
+  is_archived: boolean;
+  language: string | null;
+}
+
+export interface WorkspaceRepositoryItem {
+  id: string;
+  workspace_id: string;
+  repository: WorkspaceRepositoryRepoSummary;
+  adopted_by_developer_id: string | null;
+  adopted_by_name: string | null;
+  adopter_active: boolean;
+  is_active: boolean;
+  sync_status: string;
+  last_sync_at: string | null;
+  sync_error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const workspaceRepositoriesApi = {
+  list: async (
+    workspaceId: string,
+    opts?: { include_inactive?: boolean }
+  ): Promise<WorkspaceRepositoryItem[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/repositories`, {
+      params: opts,
+    });
+    return response.data;
+  },
+
+  adopt: async (
+    workspaceId: string,
+    repositoryId: string
+  ): Promise<WorkspaceRepositoryItem> => {
+    const response = await api.post(`/workspaces/${workspaceId}/repositories`, {
+      repository_id: repositoryId,
+    });
+    return response.data;
+  },
+
+  unadopt: async (workspaceId: string, repositoryId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/repositories/${repositoryId}`);
+  },
+
+  reclaim: async (
+    workspaceId: string,
+    workspaceRepositoryId: string,
+    newAdopterId?: string
+  ): Promise<WorkspaceRepositoryItem> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/repositories/${workspaceRepositoryId}/reclaim`,
+      { new_adopter_id: newAdopterId ?? null },
+    );
+    return response.data;
+  },
+};
+
+export const teamRepositoriesApi = {
+  list: async (teamId: string): Promise<WorkspaceRepositoryItem[]> => {
+    const response = await api.get(`/teams/${teamId}/repositories`);
+    return response.data;
+  },
+
+  link: async (
+    teamId: string,
+    workspaceRepositoryId: string
+  ): Promise<{ id: string; team_id: string }> => {
+    const response = await api.post(`/teams/${teamId}/repositories`, {
+      workspace_repository_id: workspaceRepositoryId,
+    });
+    return response.data;
+  },
+
+  unlink: async (teamId: string, workspaceRepositoryId: string): Promise<void> => {
+    await api.delete(`/teams/${teamId}/repositories/${workspaceRepositoryId}`);
   },
 };
 
