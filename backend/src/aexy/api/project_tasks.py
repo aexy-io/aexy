@@ -449,7 +449,8 @@ async def update_task(
 async def search_project_github_issues(
     team_id: str,
     query: str | None = None,
-    limit: int = 20,
+    limit: int = 50,
+    offset: int = 0,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
@@ -459,7 +460,8 @@ async def search_project_github_issues(
     issues = await service.search_imported_issues(
         team_id=team_id,
         query=query,
-        limit=min(max(limit, 1), 50),
+        limit=min(max(limit, 1), 100),
+        offset=max(offset, 0),
     )
     summaries: list[GitHubIssueSummary] = []
     for issue in issues:
@@ -505,7 +507,8 @@ async def list_project_task_github_links(
 async def search_project_pull_requests(
     team_id: str,
     query: str | None = None,
-    limit: int = 20,
+    limit: int = 50,
+    offset: int = 0,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
@@ -522,7 +525,8 @@ async def search_project_pull_requests(
     )
 
     await get_team_and_check_permission(team_id, current_user, db, "viewer")
-    limit = min(max(limit, 1), 50)
+    limit = min(max(limit, 1), 100)
+    offset = max(offset, 0)
 
     conditions = [
         TeamRepository.team_id == team_id,
@@ -555,6 +559,7 @@ async def search_project_pull_requests(
             PullRequest.updated_at_github.desc().nullslast(),
             PullRequest.created_at_github.desc(),
         )
+        .offset(offset)
         .limit(limit)
     )
     result = await db.execute(stmt)

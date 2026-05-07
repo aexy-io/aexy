@@ -312,7 +312,8 @@ class GitHubTaskSyncService:
         *,
         team_id: str,
         query: str | None = None,
-        limit: int = 20,
+        limit: int = 50,
+        offset: int = 0,
     ) -> list[SprintTask]:
         """Search imported GitHub issue tasks in a project/team."""
         stmt = select(SprintTask).where(
@@ -331,7 +332,11 @@ class GitHubTaskSyncService:
             if stripped_query.isdigit():
                 conditions.append(SprintTask.source_id == stripped_query)
             stmt = stmt.where(or_(*conditions))
-        stmt = stmt.order_by(SprintTask.updated_at.desc()).limit(limit)
+        stmt = (
+            stmt.order_by(SprintTask.updated_at.desc())
+            .offset(max(offset, 0))
+            .limit(limit)
+        )
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 

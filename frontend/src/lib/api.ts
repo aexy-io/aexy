@@ -3226,19 +3226,31 @@ export const sprintApi = {
     return response.data;
   },
 
-  searchPullRequests: async (sprintId: string, query?: string): Promise<PullRequestSummary[]> => {
+  searchPullRequests: async (
+    sprintId: string,
+    query?: string,
+    opts?: { limit?: number; offset?: number },
+  ): Promise<PullRequestSummary[]> => {
     const response = await api.get(`/sprints/${sprintId}/tasks/github/pull-requests`, {
       params: {
         ...(query && { query }),
+        ...(opts?.limit !== undefined && { limit: opts.limit }),
+        ...(opts?.offset !== undefined && { offset: opts.offset }),
       },
     });
     return response.data;
   },
 
-  searchGitHubIssues: async (sprintId: string, query?: string): Promise<GitHubIssueSummary[]> => {
+  searchGitHubIssues: async (
+    sprintId: string,
+    query?: string,
+    opts?: { limit?: number; offset?: number },
+  ): Promise<GitHubIssueSummary[]> => {
     const response = await api.get(`/sprints/${sprintId}/tasks/github/issues`, {
       params: {
         ...(query && { query }),
+        ...(opts?.limit !== undefined && { limit: opts.limit }),
+        ...(opts?.offset !== undefined && { offset: opts.offset }),
       },
     });
     return response.data;
@@ -3798,10 +3810,16 @@ export const projectTasksApi = {
     );
   },
 
-  searchGitHubIssues: async (teamId: string, query?: string): Promise<GitHubIssueSummary[]> => {
+  searchGitHubIssues: async (
+    teamId: string,
+    query?: string,
+    opts?: { limit?: number; offset?: number },
+  ): Promise<GitHubIssueSummary[]> => {
     const response = await api.get(`/teams/${teamId}/tasks/github/issues`, {
       params: {
         ...(query && { query }),
+        ...(opts?.limit !== undefined && { limit: opts.limit }),
+        ...(opts?.offset !== undefined && { offset: opts.offset }),
       },
     });
     return response.data;
@@ -3810,10 +3828,13 @@ export const projectTasksApi = {
   searchPullRequests: async (
     teamId: string,
     query?: string,
+    opts?: { limit?: number; offset?: number },
   ): Promise<PullRequestSummary[]> => {
     const response = await api.get(`/teams/${teamId}/tasks/github/pull-requests`, {
       params: {
         ...(query && { query }),
+        ...(opts?.limit !== undefined && { limit: opts.limit }),
+        ...(opts?.offset !== undefined && { offset: opts.offset }),
       },
     });
     return response.data;

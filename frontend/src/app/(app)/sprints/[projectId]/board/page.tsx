@@ -59,7 +59,7 @@ import { useProjectBoard, BoardViewMode, useBoardSelection } from "@/hooks/usePr
 import { useEpics } from "@/hooks/useEpics";
 import { useProject } from "@/hooks/useProjects";
 import { SprintTask, TaskStatus, TaskPriority, SprintListItem, EpicListItem, sprintApi, projectTasksApi, TaskTemplate, taskTemplatesApi } from "@/lib/api";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { TaskCardPremium, TaskCardSkeleton } from "@/components/planning/TaskCardPremium";
 import { FilterBar } from "@/components/planning/FilterBar";
 import { SavedViewSwitcher } from "@/components/crm/SavedViewSwitcher";
@@ -1568,21 +1568,70 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
     enabled: !!task.sprint_id || canUseProjectGitHubLinks,
   });
 
-  const { data: pullRequests = [], isLoading: isLoadingPullRequests } = useQuery({
-    queryKey: pullRequestsQueryKey,
-    queryFn: () => task.sprint_id
-      ? sprintApi.searchPullRequests(task.sprint_id, prSearch)
-      : projectTasksApi.searchPullRequests(task.team_id!, prSearch),
-    enabled: !!task.sprint_id || canUseProjectGitHubLinks,
-  });
+  // Page size for the search dropdowns. Larger pages = fewer round
+  // trips at the cost of a bigger initial payload; 50 is the sweet
+  // spot most teams won't paginate past.
+  const SEARCH_PAGE_SIZE = 50;
 
-  const { data: githubIssues = [], isLoading: isLoadingGithubIssues } = useQuery({
-    queryKey: githubIssuesQueryKey,
-    queryFn: () => task.sprint_id
-      ? sprintApi.searchGitHubIssues(task.sprint_id, issueSearch)
-      : projectTasksApi.searchGitHubIssues(task.team_id!, issueSearch),
+  const {
+    data: pullRequestsData,
+    isLoading: isLoadingPullRequests,
+    fetchNextPage: fetchMorePullRequests,
+    hasNextPage: hasMorePullRequests,
+    isFetchingNextPage: isFetchingMorePullRequests,
+  } = useInfiniteQuery({
+    queryKey: pullRequestsQueryKey,
+    queryFn: ({ pageParam = 0 }) => task.sprint_id
+      ? sprintApi.searchPullRequests(task.sprint_id, prSearch, {
+          limit: SEARCH_PAGE_SIZE,
+          offset: pageParam,
+        })
+      : projectTasksApi.searchPullRequests(task.team_id!, prSearch, {
+          limit: SEARCH_PAGE_SIZE,
+          offset: pageParam,
+        }),
     enabled: !!task.sprint_id || canUseProjectGitHubLinks,
+    initialPageParam: 0,
+    // If the last page came back full, assume there's more. The API
+    // returns a plain list so we infer pagination from length.
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.length === SEARCH_PAGE_SIZE
+        ? allPages.length * SEARCH_PAGE_SIZE
+        : undefined,
   });
+  const pullRequests = useMemo(
+    () => pullRequestsData?.pages.flat() ?? [],
+    [pullRequestsData],
+  );
+
+  const {
+    data: githubIssuesData,
+    isLoading: isLoadingGithubIssues,
+    fetchNextPage: fetchMoreGithubIssues,
+    hasNextPage: hasMoreGithubIssues,
+    isFetchingNextPage: isFetchingMoreGithubIssues,
+  } = useInfiniteQuery({
+    queryKey: githubIssuesQueryKey,
+    queryFn: ({ pageParam = 0 }) => task.sprint_id
+      ? sprintApi.searchGitHubIssues(task.sprint_id, issueSearch, {
+          limit: SEARCH_PAGE_SIZE,
+          offset: pageParam,
+        })
+      : projectTasksApi.searchGitHubIssues(task.team_id!, issueSearch, {
+          limit: SEARCH_PAGE_SIZE,
+          offset: pageParam,
+        }),
+    enabled: !!task.sprint_id || canUseProjectGitHubLinks,
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.length === SEARCH_PAGE_SIZE
+        ? allPages.length * SEARCH_PAGE_SIZE
+        : undefined,
+  });
+  const githubIssues = useMemo(
+    () => githubIssuesData?.pages.flat() ?? [],
+    [githubIssuesData],
+  );
 
   const { data: issueRepositoryContext } = useQuery({
     queryKey: issueRepositoryContextQueryKey,
@@ -1893,21 +1942,35 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
                       placeholder="Search synced PRs..."
                       className="min-w-0 flex-1 rounded-lg border border-border bg-background/70 px-3 py-2 text-sm text-foreground placeholder-muted-foreground focus:border-primary-500 focus:outline-none"
                     />
-                    <select
-                      aria-label="Select pull request"
-                      value={selectedPrId}
-                      onChange={(e) => setSelectedPrId(e.target.value)}
-                      className="min-w-0 rounded-lg border border-border bg-background/70 px-3 py-2 text-sm text-foreground focus:border-primary-500 focus:outline-none sm:w-48"
-                    >
-                      <option value="">
-                        {isLoadingPullRequests ? "Loading..." : "Select PR"}
-                      </option>
-                      {availablePullRequests.map((pr) => (
-                        <option key={pr.id} value={pr.id}>
-                          {pr.repository} #{pr.number}
+                    <div className="flex flex-col gap-1 sm:w-48">
+                      <select
+                        aria-label="Select pull request"
+                        value={selectedPrId}
+                        onChange={(e) => setSelectedPrId(e.target.value)}
+                        className="min-w-0 rounded-lg border border-border bg-background/70 px-3 py-2 text-sm text-foreground focus:border-primary-500 focus:outline-none"
+                      >
+                        <option value="">
+                          {isLoadingPullRequests ? "Loading..." : "Select PR"}
                         </option>
-                      ))}
-                    </select>
+                        {availablePullRequests.map((pr) => (
+                          <option key={pr.id} value={pr.id}>
+                            {pr.repository} #{pr.number}
+                          </option>
+                        ))}
+                      </select>
+                      {hasMorePullRequests && (
+                        <button
+                          type="button"
+                          onClick={() => fetchMorePullRequests()}
+                          disabled={isFetchingMorePullRequests}
+                          className="text-xs text-primary-400 hover:text-primary-300 px-1 py-0.5 text-left disabled:opacity-50"
+                        >
+                          {isFetchingMorePullRequests
+                            ? "Loading more…"
+                            : `Load more (showing ${availablePullRequests.length})`}
+                        </button>
+                      )}
+                    </div>
                     <button
                       type="button"
                       onClick={() => selectedPrId && linkPullRequestMutation.mutate(selectedPrId)}
@@ -1993,21 +2056,35 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
                       placeholder="Search imported issues..."
                       className="min-w-0 flex-1 rounded-lg border border-border bg-background/70 px-3 py-2 text-sm text-foreground placeholder-muted-foreground focus:border-primary-500 focus:outline-none"
                     />
-                    <select
-                      aria-label="Select GitHub issue"
-                      value={selectedIssueKey}
-                      onChange={(e) => setSelectedIssueKey(e.target.value)}
-                      className="min-w-0 rounded-lg border border-border bg-background/70 px-3 py-2 text-sm text-foreground focus:border-primary-500 focus:outline-none sm:w-48"
-                    >
-                      <option value="">
-                        {isLoadingGithubIssues ? "Loading..." : "Select issue"}
-                      </option>
-                      {availableGitHubIssues.map((issue) => (
-                        <option key={`${issue.repository}#${issue.number}`} value={`${issue.repository}#${issue.number}`}>
-                          {issue.repository} #{issue.number}
+                    <div className="flex flex-col gap-1 sm:w-48">
+                      <select
+                        aria-label="Select GitHub issue"
+                        value={selectedIssueKey}
+                        onChange={(e) => setSelectedIssueKey(e.target.value)}
+                        className="min-w-0 rounded-lg border border-border bg-background/70 px-3 py-2 text-sm text-foreground focus:border-primary-500 focus:outline-none"
+                      >
+                        <option value="">
+                          {isLoadingGithubIssues ? "Loading..." : "Select issue"}
                         </option>
-                      ))}
-                    </select>
+                        {availableGitHubIssues.map((issue) => (
+                          <option key={`${issue.repository}#${issue.number}`} value={`${issue.repository}#${issue.number}`}>
+                            {issue.repository} #{issue.number}
+                          </option>
+                        ))}
+                      </select>
+                      {hasMoreGithubIssues && (
+                        <button
+                          type="button"
+                          onClick={() => fetchMoreGithubIssues()}
+                          disabled={isFetchingMoreGithubIssues}
+                          className="text-xs text-primary-400 hover:text-primary-300 px-1 py-0.5 text-left disabled:opacity-50"
+                        >
+                          {isFetchingMoreGithubIssues
+                            ? "Loading more…"
+                            : `Load more (showing ${availableGitHubIssues.length})`}
+                        </button>
+                      )}
+                    </div>
                     <button
                       type="button"
                       onClick={handleSelectedIssueLink}
