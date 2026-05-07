@@ -1040,6 +1040,128 @@ class SprintTaskService:
         return activity
 
     # Import from sources
+    async def add_project_task(
+        self,
+        team_id: str,
+        title: str,
+        source_type: str = "manual",
+        source_id: str | None = None,
+        source_url: str | None = None,
+        description: str | None = None,
+        story_points: int | None = None,
+        priority: str = "medium",
+        labels: list[str] | None = None,
+        status: str = "backlog",
+    ) -> SprintTask:
+        """Add a task at the team/project level (no sprint).
+
+        Used by the project-level import path so backlog tasks can be
+        seeded from GitHub without first creating a sprint.
+        """
+        from aexy.models.team import Team
+
+        if source_type == "manual" and not source_id:
+            source_id = str(uuid4())
+
+        team_stmt = select(Team).where(Team.id == team_id)
+        team_result = await self.db.execute(team_stmt)
+        team = team_result.scalar_one_or_none()
+        workspace_id = team.workspace_id if team else None
+
+        task = SprintTask(
+            id=str(uuid4()),
+            team_id=team_id,
+            workspace_id=workspace_id,
+            sprint_id=None,
+            source_type=source_type,
+            source_id=source_id,
+            source_url=source_url,
+            title=title,
+            description=description,
+            story_points=story_points,
+            priority=priority,
+            labels=labels or [],
+            status=status,
+        )
+        self.db.add(task)
+        await self.db.flush()
+        await GitHubTaskSyncService(self.db).auto_link_issue_references(task)
+        return task
+
+    async def _import_project_task_items(
+        self,
+        team_id: str,
+        task_items: list[TaskItem],
+        source_type: str,
+    ) -> list[SprintTask]:
+        """Import TaskItem objects into a team's backlog (no sprint).
+
+        Mirrors `_import_task_items` but keys dedup on (team_id, source_type,
+        source_id) so the same issue can't be imported twice into a project.
+        """
+        created_tasks: list[SprintTask] = []
+        for item in task_items:
+            existing_stmt = select(SprintTask).where(
+                SprintTask.team_id == team_id,
+                SprintTask.source_type == source_type,
+                SprintTask.source_id == item.external_id,
+            )
+            existing = (await self.db.execute(existing_stmt)).scalar_one_or_none()
+            if existing:
+                continue
+
+            priority = "medium"
+            if item.priority:
+                priority_map = {
+                    "highest": "critical",
+                    "high": "high",
+                    "medium": "medium",
+                    "low": "low",
+                    "lowest": "low",
+                }
+                priority = priority_map.get(item.priority.value, "medium")
+
+            task = await self.add_project_task(
+                team_id=team_id,
+                title=item.title,
+                source_type=source_type,
+                source_id=item.external_id,
+                source_url=item.url,
+                description=item.description,
+                story_points=item.story_points,
+                priority=priority,
+                labels=item.labels,
+                status="backlog",
+            )
+            created_tasks.append(task)
+        return created_tasks
+
+    async def import_project_github_issues(
+        self,
+        team_id: str,
+        owner: str,
+        repo: str,
+        api_token: str | None = None,
+        labels: list[str] | None = None,
+        limit: int = 50,
+    ) -> list[SprintTask]:
+        """Import GitHub issues into a team's backlog (no sprint required).
+
+        The resulting `SprintTask` rows have `sprint_id IS NULL`,
+        `team_id=team_id`, and `source_type='github_issue'` — exactly the
+        rows the GitHub-issue dropdown surfaces, so importing here populates
+        the dropdown for every task in the team.
+        """
+        config = TaskSourceConfig(
+            source_type="github", owner=owner, repo=repo, api_token=api_token
+        )
+        source = GitHubIssuesSource(config)
+        try:
+            tasks = await source.fetch_tasks(limit=limit, labels=labels, status=TaskStatus.OPEN)
+            return await self._import_project_task_items(team_id, tasks, "github_issue")
+        finally:
+            await source.close()
+
     async def import_github_issues(
         self,
         sprint_id: str,

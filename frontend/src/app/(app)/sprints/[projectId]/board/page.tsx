@@ -1510,7 +1510,7 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
   };
 
   const githubLinksQueryKey = ["taskGithubLinks", task.sprint_id, task.team_id, task.id];
-  const pullRequestsQueryKey = ["taskLinkPullRequests", task.sprint_id, prSearch];
+  const pullRequestsQueryKey = ["taskLinkPullRequests", task.sprint_id, task.team_id, prSearch];
   const githubIssuesQueryKey = ["taskLinkGitHubIssues", task.sprint_id, task.team_id, issueSearch];
   const issueRepositoryContextQueryKey = ["taskGitHubIssueRepositories", task.sprint_id, task.team_id, task.id];
   const canUseProjectGitHubLinks = !!task.team_id;
@@ -1525,8 +1525,10 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
 
   const { data: pullRequests = [], isLoading: isLoadingPullRequests } = useQuery({
     queryKey: pullRequestsQueryKey,
-    queryFn: () => sprintApi.searchPullRequests(task.sprint_id!, prSearch),
-    enabled: !!task.sprint_id,
+    queryFn: () => task.sprint_id
+      ? sprintApi.searchPullRequests(task.sprint_id, prSearch)
+      : projectTasksApi.searchPullRequests(task.team_id!, prSearch),
+    enabled: !!task.sprint_id || canUseProjectGitHubLinks,
   });
 
   const { data: githubIssues = [], isLoading: isLoadingGithubIssues } = useQuery({
@@ -1546,7 +1548,9 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
   });
 
   const linkPullRequestMutation = useMutation({
-    mutationFn: (pullRequestId: string) => sprintApi.linkPullRequest(task.sprint_id!, task.id, pullRequestId),
+    mutationFn: (pullRequestId: string) => task.sprint_id
+      ? sprintApi.linkPullRequest(task.sprint_id, task.id, pullRequestId)
+      : projectTasksApi.linkPullRequest(task.team_id!, task.id, pullRequestId),
     onSuccess: () => {
       setSelectedPrId("");
       queryClient.invalidateQueries({ queryKey: githubLinksQueryKey });
@@ -1834,7 +1838,7 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
                   <GitPullRequest className="h-4 w-4 text-muted-foreground" />
                   <h3 className="text-sm font-medium text-foreground">GitHub PRs</h3>
                 </div>
-                {task.sprint_id && (
+                {(task.sprint_id || canUseProjectGitHubLinks) && (
                   <div className="flex flex-col gap-2 sm:min-w-[22rem] sm:flex-row">
                     <input
                       type="search"

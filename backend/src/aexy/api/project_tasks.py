@@ -7,21 +7,25 @@ These tasks can be in the project backlog and optionally assigned to sprints lat
 from uuid import uuid4
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel, Field
-from sqlalchemy import and_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from aexy.core.database import get_db
 from aexy.api.developers import get_current_developer
+from aexy.models.activity import PullRequest
 from aexy.models.developer import Developer
 from aexy.models.sprint import SprintTask, TaskGitHubLink
 from aexy.models.notification import NotificationEventType
+from aexy.models.workspace import WorkspaceMember
 from aexy.schemas.sprint import (
     ProjectTaskCreate,
     SprintTaskUpdate,
     SprintTaskStatusUpdate,
     SprintTaskResponse,
     TaskAttachmentListResponse,
+    TaskImportRequest,
+    TaskImportResponse,
     TaskStatus,
 )
 from aexy.services.workspace_service import WorkspaceService
@@ -46,12 +50,22 @@ class GitHubIssueRepositoryContext(BaseModel):
     inferred_repository: str | None = None
 
 
+class PullRequestSummary(BaseModel):
+    id: str
+    repository: str | None = None
+    number: int | None = None
+    title: str | None = None
+    state: str | None = None
+    url: str | None = None
+
+
 class ProjectTaskGitHubLinkResponse(BaseModel):
     id: str
     link_type: str
     is_auto_linked: bool
     created_at: str
     github_issue: GitHubIssueSummary | None = None
+    pull_request: PullRequestSummary | None = None
 
 
 class GitHubIssueLinkCreate(BaseModel):
@@ -60,6 +74,27 @@ class GitHubIssueLinkCreate(BaseModel):
     title: str | None = None
     state: str | None = None
     url: str | None = None
+
+
+class PullRequestLinkCreate(BaseModel):
+    pull_request_id: str = Field(..., min_length=1)
+
+
+def pull_request_url(pr: PullRequest) -> str | None:
+    if not pr.repository or not pr.number:
+        return None
+    return f"https://github.com/{pr.repository}/pull/{pr.number}"
+
+
+def pull_request_to_summary(pr: PullRequest) -> PullRequestSummary:
+    return PullRequestSummary(
+        id=str(pr.id),
+        repository=pr.repository,
+        number=pr.number,
+        title=pr.title,
+        state=pr.state,
+        url=pull_request_url(pr),
+    )
 
 
 def github_issue_to_summary(link: TaskGitHubLink) -> GitHubIssueSummary | None:
@@ -82,6 +117,7 @@ def github_link_to_response(link: TaskGitHubLink) -> ProjectTaskGitHubLinkRespon
         is_auto_linked=link.is_auto_linked,
         created_at=link.created_at.isoformat(),
         github_issue=github_issue_to_summary(link),
+        pull_request=pull_request_to_summary(link.pull_request) if link.pull_request else None,
     )
 
 
@@ -415,7 +451,7 @@ async def list_project_task_github_links(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """List GitHub issue links for a project-level task."""
+    """List GitHub issue + PR links for a project-level task."""
     await get_team_and_check_permission(team_id, current_user, db, "viewer")
     task = await db.get(SprintTask, task_id)
     if not task or str(task.team_id) != team_id:
@@ -423,7 +459,109 @@ async def list_project_task_github_links(
 
     service = GitHubTaskSyncService(db)
     links = await service.get_task_links(task_id)
-    return [github_link_to_response(link) for link in links if link.link_type == "github_issue"]
+    return [
+        github_link_to_response(link)
+        for link in links
+        if link.link_type in ("pull_request", "github_issue")
+    ]
+
+
+@router.get("/github/pull-requests", response_model=list[PullRequestSummary])
+async def search_project_pull_requests(
+    team_id: str,
+    query: str | None = None,
+    limit: int = 20,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Search synced workspace pull requests for project-level task linking."""
+    team = await get_team_and_check_permission(team_id, current_user, db, "viewer")
+    limit = min(max(limit, 1), 50)
+
+    conditions = [WorkspaceMember.workspace_id == team.workspace_id]
+    if query:
+        stripped_query = query.strip()
+        search = f"%{stripped_query}%"
+        query_conditions = [
+            PullRequest.title.ilike(search),
+            PullRequest.repository.ilike(search),
+        ]
+        if stripped_query.isdigit():
+            query_conditions.append(PullRequest.number == int(stripped_query))
+        conditions.append(or_(*query_conditions))
+
+    stmt = (
+        select(PullRequest)
+        .join(WorkspaceMember, WorkspaceMember.developer_id == PullRequest.developer_id)
+        .where(and_(*conditions))
+        .order_by(
+            PullRequest.updated_at_github.desc().nullslast(),
+            PullRequest.created_at_github.desc(),
+        )
+        .limit(limit)
+    )
+    result = await db.execute(stmt)
+    return [pull_request_to_summary(pr) for pr in result.scalars().unique().all()]
+
+
+@router.post(
+    "/{task_id}/github-links/pull-requests",
+    response_model=ProjectTaskGitHubLinkResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def link_pull_request_to_project_task(
+    team_id: str,
+    task_id: str,
+    data: PullRequestLinkCreate,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Link a synced workspace PR to a project-level (backlog) task."""
+    team = await get_team_and_check_permission(team_id, current_user, db, "member")
+
+    task = await db.get(SprintTask, task_id)
+    if not task or str(task.team_id) != team_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+
+    pr = await db.get(PullRequest, data.pull_request_id)
+    if not pr:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Pull request not found"
+        )
+    # Confirm the PR's author is a member of this team's workspace, mirroring
+    # the sprint-scoped check so users can't link PRs outside their workspace.
+    membership_stmt = select(WorkspaceMember).where(
+        and_(
+            WorkspaceMember.workspace_id == team.workspace_id,
+            WorkspaceMember.developer_id == pr.developer_id,
+        )
+    )
+    membership_result = await db.execute(membership_stmt)
+    if not membership_result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Pull request not found"
+        )
+
+    service = GitHubTaskSyncService(db)
+    link = await service.link_pr_manually(task_id, data.pull_request_id)
+    if not link:
+        existing_stmt = select(TaskGitHubLink).where(
+            and_(
+                TaskGitHubLink.task_id == task_id,
+                TaskGitHubLink.pull_request_id == data.pull_request_id,
+            )
+        )
+        existing_result = await db.execute(existing_stmt)
+        link = existing_result.scalar_one_or_none()
+        if not link:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Unable to link pull request"
+            )
+
+    await db.commit()
+    await db.refresh(link)
+    link.pull_request = pr
+    return github_link_to_response(link)
 
 
 @router.get("/{task_id}/github-links/issue-repositories", response_model=GitHubIssueRepositoryContext)
@@ -742,3 +880,55 @@ async def delete_project_task_attachment(
     task = await _resolve_team_task(team_id, task_id, db)
     await delete_attachment_for_task(db, task, attachment_id)
     return None
+
+
+# ─── Import (project-level / no sprint required) ────────────────────────────
+@router.post("/import", response_model=TaskImportResponse)
+async def import_project_tasks(
+    team_id: str,
+    data: TaskImportRequest,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Import tasks from GitHub / Jira / Linear into the project backlog.
+
+    Mirrors `POST /sprints/{sprint_id}/tasks/import` but doesn't require a
+    sprint — the resulting tasks are sprint-less project-level rows. For
+    GitHub specifically, this populates the "Select issue" dropdown across
+    every task in the team.
+    """
+    await get_team_and_check_permission(team_id, current_user, db, "member")
+    task_service = SprintTaskService(db)
+    imported_tasks: list[SprintTask] = []
+
+    try:
+        if data.source == "github_issue" and data.github:
+            imported_tasks = await task_service.import_project_github_issues(
+                team_id=team_id,
+                owner=data.github.owner,
+                repo=data.github.repo,
+                api_token=data.github.api_token,
+                labels=data.github.labels,
+                limit=data.github.limit,
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"Source '{data.source}' not supported for project-level "
+                    "import yet. Use the sprint import for Jira/Linear."
+                ),
+            )
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Import failed: {exc}",
+        )
+
+    await db.commit()
+    return TaskImportResponse(
+        imported_count=len(imported_tasks),
+        tasks=[task_to_response(t) for t in imported_tasks],
+    )

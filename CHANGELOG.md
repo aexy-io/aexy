@@ -14,6 +14,24 @@ line with the real stack. Adds backlog (sprint-less) task attachments.
 
 ### Added
 
+#### Backlog tasks can attach pull requests; project-level GitHub import
+Two related additions for backlog (sprint-less) tasks. (1) The PR
+linking section in the task modal now works for project-level tasks —
+new endpoints `GET /teams/{team_id}/tasks/github/pull-requests` and
+`POST /teams/{team_id}/tasks/{task_id}/github-links/pull-requests`
+mirror the sprint-scoped equivalents (workspace-membership check on
+the PR author preserved), and the EditTaskModal dispatches the
+search and link mutations to either endpoint based on whether the
+task has a `sprint_id`. The list endpoint at
+`/teams/{team_id}/tasks/{task_id}/github-links` now returns both
+issue and PR links (previously filtered to `github_issue` only).
+(2) New `POST /teams/{team_id}/tasks/import` (with
+`projectTasksApi.importTasks` on the frontend) imports GitHub issues
+into the team's backlog without requiring a sprint, populating the
+"Select issue" dropdown across every task in the team. New service
+helpers `add_project_task` and `_import_project_task_items` keep the
+import dedup keyed on `(team_id, source_type, source_id)`.
+
 #### Backlog tasks can now carry attachments
 Sprint-less project tasks (where `sprint_id IS NULL`) had attachment
 upload gated behind a "Move this task into a sprint to upload

@@ -3724,6 +3724,43 @@ export const projectTasksApi = {
     return response.data;
   },
 
+  searchPullRequests: async (
+    teamId: string,
+    query?: string,
+  ): Promise<PullRequestSummary[]> => {
+    const response = await api.get(`/teams/${teamId}/tasks/github/pull-requests`, {
+      params: {
+        ...(query && { query }),
+      },
+    });
+    return response.data;
+  },
+
+  linkPullRequest: async (
+    teamId: string,
+    taskId: string,
+    pullRequestId: string,
+  ): Promise<TaskGitHubLink> => {
+    const response = await api.post(
+      `/teams/${teamId}/tasks/${taskId}/github-links/pull-requests`,
+      { pull_request_id: pullRequestId },
+    );
+    return response.data;
+  },
+
+  importTasks: async (
+    teamId: string,
+    source: TaskSourceType,
+    config: {
+      github?: { owner: string; repo: string; api_token?: string; labels?: string[]; limit?: number };
+      jira?: { api_url: string; api_key: string; project_key: string; jql_filter?: string; limit?: number };
+      linear?: { api_key: string; team_id?: string; labels?: string[]; limit?: number };
+    },
+  ): Promise<{ imported_count: number; tasks: SprintTask[] }> => {
+    const response = await api.post(`/teams/${teamId}/tasks/import`, { source, ...config });
+    return response.data;
+  },
+
   getTaskGitHubLinks: async (teamId: string, taskId: string): Promise<TaskGitHubLink[]> => {
     const response = await api.get(`/teams/${teamId}/tasks/${taskId}/github-links`);
     return response.data;
