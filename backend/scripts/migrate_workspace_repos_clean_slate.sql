@@ -10,15 +10,24 @@
 -- belongs to this workspace" from per-developer legacy data — the
 -- workspace ↔ repo relationship simply did not exist before 0.7.72.
 --
--- This migration clears the catalog so workspace admins re-adopt
--- explicitly via /settings/repositories. team_repositories rows
--- cascade away via the existing FK. PR search, the GitHub issue
--- dropdown, and the auto-sync scheduler will return empty for any
--- workspace until its admin re-adopts — that's intentional so
--- leaked repos stop appearing.
+-- This migration clears the rows produced by that backfill so
+-- workspace admins re-adopt explicitly via /settings/repositories.
+-- team_repositories rows cascade away via the existing FK. PR
+-- search, the GitHub issue dropdown, and the auto-sync scheduler
+-- will return empty for any workspace until its admin re-adopts —
+-- intentional, so leaked repos stop appearing.
 --
--- Idempotent (re-running drops anything fresh that hasn't been
--- adopted in the meantime; in practice only re-run if the original
--- backfill is replayed).
+-- Idempotent: targets only rows that were created at or before the
+-- original backfill's applied_at timestamp recorded in
+-- schema_migrations. New adoptions made after the original migration
+-- ran (via the /workspaces/{id}/repositories adopt API) are NOT
+-- deleted, even on re-run. If the original migration hasn't been
+-- applied (fresh deploy), the subquery returns NULL and nothing is
+-- deleted — safe.
 
-DELETE FROM workspace_repositories;
+DELETE FROM workspace_repositories wr
+WHERE wr.created_at <= (
+    SELECT applied_at
+    FROM schema_migrations
+    WHERE name = 'migrate_workspace_team_repositories.sql'
+);
