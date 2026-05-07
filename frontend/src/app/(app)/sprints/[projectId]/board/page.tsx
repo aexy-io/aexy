@@ -1023,23 +1023,27 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
 // title/description/labels edits, and comments.
 function AssignmentHistoryPanel({
   sprintId,
+  teamId,
   taskId,
   users,
 }: {
   sprintId: string | null;
+  teamId: string | null;
   taskId: string;
   users: MentionUser[];
 }) {
   const { data, isLoading, error } = useQuery({
-    queryKey: ["taskActivities", sprintId, taskId],
-    queryFn: () => sprintApi.getTaskActivities(sprintId!, taskId),
-    enabled: !!sprintId,
+    queryKey: ["taskActivities", sprintId, teamId, taskId],
+    queryFn: () => sprintId
+      ? sprintApi.getTaskActivities(sprintId, taskId)
+      : projectTasksApi.getTaskActivities(teamId!, taskId),
+    enabled: !!sprintId || !!teamId,
   });
 
-  if (!sprintId) {
+  if (!sprintId && !teamId) {
     return (
       <p className="text-sm text-muted-foreground" data-testid="task-history-empty">
-        Move this task into a sprint to view its full activity history.
+        No activity available — task is not linked to a sprint or team.
       </p>
     );
   }
@@ -1780,6 +1784,7 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
             {activeTab === "history" && (
               <AssignmentHistoryPanel
                 sprintId={task.sprint_id}
+                teamId={task.team_id}
                 taskId={task.id}
                 users={users}
               />
