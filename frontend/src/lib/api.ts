@@ -3761,6 +3761,31 @@ export const projectTasksApi = {
     return response.data;
   },
 
+  getTaskActivities: async (
+    teamId: string,
+    taskId: string,
+    limit = 50,
+    offset = 0,
+  ): Promise<TaskActivityList> => {
+    const response = await api.get(
+      `/teams/${teamId}/tasks/${taskId}/activities`,
+      { params: { limit, offset } },
+    );
+    return response.data;
+  },
+
+  addTaskComment: async (
+    teamId: string,
+    taskId: string,
+    comment: string,
+  ): Promise<TaskActivity> => {
+    const response = await api.post(
+      `/teams/${teamId}/tasks/${taskId}/comments`,
+      { comment },
+    );
+    return response.data;
+  },
+
   getTaskGitHubLinks: async (teamId: string, taskId: string): Promise<TaskGitHubLink[]> => {
     const response = await api.get(`/teams/${teamId}/tasks/${taskId}/github-links`);
     return response.data;

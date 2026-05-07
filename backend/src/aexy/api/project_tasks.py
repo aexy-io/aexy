@@ -23,6 +23,9 @@ from aexy.schemas.sprint import (
     SprintTaskUpdate,
     SprintTaskStatusUpdate,
     SprintTaskResponse,
+    TaskActivityCreate,
+    TaskActivityListResponse,
+    TaskActivityResponse,
     TaskAttachmentListResponse,
     TaskImportRequest,
     TaskImportResponse,
@@ -932,3 +935,69 @@ async def import_project_tasks(
         imported_count=len(imported_tasks),
         tasks=[task_to_response(t) for t in imported_tasks],
     )
+
+
+# ─── Activity log + comments (project-level / works for backlog tasks) ──────
+from aexy.api.sprint_tasks import activity_to_response  # noqa: E402
+
+
+@router.get("/{task_id}/activities", response_model=TaskActivityListResponse)
+async def get_project_task_activities(
+    team_id: str,
+    task_id: str,
+    limit: int = 50,
+    offset: int = 0,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get the activity log for a project-level (backlog) task.
+
+    Mirrors the sprint-scoped activity log. The History tab now works
+    regardless of whether the task has a sprint.
+    """
+    await get_team_and_check_permission(team_id, current_user, db, "viewer")
+    task_service = SprintTaskService(db)
+    task = await task_service.get_task(task_id)
+    if not task or str(task.team_id) != team_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
+        )
+
+    activities, total = await task_service.get_task_activities(
+        task_id=task_id, limit=limit, offset=offset
+    )
+    return TaskActivityListResponse(
+        activities=[activity_to_response(a) for a in activities],
+        total=total,
+    )
+
+
+@router.post(
+    "/{task_id}/comments",
+    response_model=TaskActivityResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_project_task_comment(
+    team_id: str,
+    task_id: str,
+    data: TaskActivityCreate,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Add a comment to a project-level (backlog) task."""
+    await get_team_and_check_permission(team_id, current_user, db, "member")
+    task_service = SprintTaskService(db)
+    task = await task_service.get_task(task_id)
+    if not task or str(task.team_id) != team_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
+        )
+
+    activity = await task_service.add_comment(
+        task_id=task_id,
+        comment=data.comment,
+        actor_id=str(current_user.id),
+    )
+    await db.commit()
+    await db.refresh(activity)
+    return activity_to_response(activity)

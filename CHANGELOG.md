@@ -14,6 +14,19 @@ line with the real stack. Adds backlog (sprint-less) task attachments.
 
 ### Added
 
+#### Backlog tasks now show activity history and accept comments
+The History tab on the task modal previously rendered "Move this task
+into a sprint to view its full activity history" for sprint-less
+tasks because the only activities + comments routes were
+sprint-scoped. Added the matching team-scoped routes
+(`GET /teams/{team_id}/tasks/{task_id}/activities` and
+`POST /teams/{team_id}/tasks/{task_id}/comments`) and updated
+`AssignmentHistoryPanel` to dispatch the query based on
+`task.sprint_id` vs `task.team_id`. Activity rows are keyed on
+`task_id` only on the model side, so the existing per-task creation,
+status, assignment, and field-change events surface for backlog
+tasks without any data backfill.
+
 #### Backlog tasks can attach pull requests; project-level GitHub import
 Two related additions for backlog (sprint-less) tasks. (1) The PR
 linking section in the task modal now works for project-level tasks —
