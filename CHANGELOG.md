@@ -61,6 +61,21 @@ hours fields so callers can clear them by sending explicit null;
 `contributes_to_goal` is non-nullable on the model and stays
 "set when explicitly provided."
 
+#### Project-task responses omitted attachments and seven other fields
+`task_to_response` was duplicated in `sprint_tasks.py` and
+`project_tasks.py` and the project-tasks copy was missing eight
+fields: `attachments`, `work_started_at`, `cycle_time_hours`,
+`lead_time_hours`, `contributes_to_goal`, `start_date`, `end_date`,
+`estimated_hours`. Result: uploading an attachment to a backlog task
+succeeded server-side (the row + S3 object were created and returned
+by the dedicated `/attachments` endpoint), but when the UI re-fetched
+the task via the project-task list/get/update endpoints, the response
+serialized `attachments: []`. The dates / hours / cycle-time fields
+on backlog tasks were similarly hidden after save. Extracted the
+canonical `task_to_response` into a new shared module
+`backend/src/aexy/services/sprint_task_response.py` and pointed both
+routers at it, so the response shape stays in lockstep going forward.
+
 #### Sprint-task PATCH silently dropped `description_json`
 The mirror bug on the sprint-scoped route: `data.description_json`
 came in via Pydantic but `task_service.update_task` had no parameter
