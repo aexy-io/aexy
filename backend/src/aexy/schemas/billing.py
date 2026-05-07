@@ -444,3 +444,92 @@ class MarkInvoicePaidRequest(BaseModel):
     bank_transfer_reference: str | None = Field(default=None, description="Wire ref / ACH trace number")
     payment_note: str | None = Field(default=None, description="Admin notes about the payment")
     payment_date: datetime | None = Field(default=None, description="When the payment was received")
+
+
+# --- Billing Breakdown (line-item view) ---
+
+
+class BillingLineItem(BaseModel):
+    """A single line item in the billing breakdown."""
+
+    category: str  # base_fee | seats | llm_usage | storage | free_credit | overage | other
+    label: str
+    description: str | None = None
+    quantity: float = 0.0
+    unit: str = ""  # tokens | seats | GB | month | ""
+    rate_cents: float | None = None
+    rate_display: str | None = None
+    included_quantity: float | None = None
+    billable_quantity: float = 0.0
+    subtotal_cents: float = 0.0
+    metadata: dict[str, Any] | None = None
+
+
+class BillingBreakdownResponse(BaseModel):
+    """Billing breakdown for a single workspace and period."""
+
+    workspace_id: str
+    workspace_name: str | None = None
+    period_start: datetime
+    period_end: datetime
+    plan_id: str
+    plan_name: str
+    plan_tier: str
+    billing_model: str
+    line_items: list[BillingLineItem]
+    subtotal_cents: float = 0.0
+    credit_cents: float = 0.0
+    total_cents: float = 0.0
+    previous_period_total_cents: float | None = None
+    delta_cents: float | None = None
+    delta_pct: float | None = None
+    invoices: list[InvoiceResponse] = Field(default_factory=list)
+    info_counters: dict[str, Any] = Field(default_factory=dict)
+    computation_notes: list[str] = Field(default_factory=list)
+    margin: dict[str, float] | None = None  # platform-admin only
+    generated_at: datetime
+
+
+class BillingBreakdownHistoryResponse(BaseModel):
+    """Current period breakdown plus history for prior periods."""
+
+    current: BillingBreakdownResponse
+    history: list[BillingBreakdownResponse] = Field(default_factory=list)
+
+
+class PlatformBillingSummaryRow(BaseModel):
+    """A row in the cross-workspace platform billing summary."""
+
+    workspace_id: str
+    workspace_name: str
+    plan_tier: str
+    billing_model: str
+    period_start: datetime
+    period_end: datetime
+    total_cents: float
+    base_cost_cents: float
+    margin_cents: float
+    seat_count: int
+
+
+class PlatformBillingSummaryResponse(BaseModel):
+    """Paginated cross-workspace billing summary."""
+
+    rows: list[PlatformBillingSummaryRow]
+    page: int
+    per_page: int
+    total: int
+
+
+class PlatformBillingTotals(BaseModel):
+    """Aggregate platform-wide billing totals."""
+
+    period_start: datetime
+    period_end: datetime
+    total_revenue_cents: float
+    total_base_cost_cents: float
+    total_margin_cents: float
+    workspace_count: int
+    by_plan_tier: dict[str, float]
+    by_billing_model: dict[str, float]
+    top_workspaces: list[PlatformBillingSummaryRow]

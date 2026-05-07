@@ -48,6 +48,11 @@ class BatchReportUsageInput:
 
 
 @dataclass
+class AggregateBillingUsageInput:
+    pass
+
+
+@dataclass
 class BatchProfileSyncInput:
     pass
 
@@ -192,6 +197,25 @@ async def batch_report_usage(input: BatchReportUsageInput) -> dict[str, Any]:
     async with async_session_maker() as db:
         service = UsageReportingService(db)
         result = await service.batch_report_usage()
+        await db.commit()
+        return result
+
+
+@activity.defn
+async def aggregate_billing_usage(input: AggregateBillingUsageInput) -> dict[str, Any]:
+    """Refresh `usage_aggregates` for every active workspace's current period.
+
+    Drives the historical billing-breakdown view. Without this the prior-month
+    panels are empty because nothing else writes to `usage_aggregates`.
+    """
+    logger.info("Refreshing usage aggregates for billing breakdown")
+
+    from aexy.services.billing_breakdown_service import (
+        aggregate_all_workspaces_usage,
+    )
+
+    async with async_session_maker() as db:
+        result = await aggregate_all_workspaces_usage(db)
         await db.commit()
         return result
 

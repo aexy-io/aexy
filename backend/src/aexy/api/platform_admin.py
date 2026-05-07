@@ -22,10 +22,15 @@ from aexy.models.notification import EmailNotificationLog, Notification
 from aexy.models.workspace import Workspace, WorkspaceMember, WorkspacePlanOverride
 from aexy.models.billing import CustomerBilling, Invoice
 from aexy.schemas.billing import (
+    BillingBreakdownHistoryResponse,
+    BillingBreakdownResponse,
     CreateManualInvoiceRequest,
     EffectivePlanResponse,
     InvoiceResponse,
     MarkInvoicePaidRequest,
+    PlatformBillingSummaryResponse,
+    PlatformBillingSummaryRow,
+    PlatformBillingTotals,
     WorkspacePlanOverrideCreate,
     WorkspacePlanOverrideResponse,
 )
@@ -1304,3 +1309,287 @@ async def generate_invoice_from_usage(
     )
 
     return InvoiceResponse.model_validate(invoice)
+
+
+# =============================================================================
+# PLATFORM BILLING (cross-workspace)
+# =============================================================================
+
+
+@router.get(
+    "/billing/breakdown",
+    response_model=BillingBreakdownResponse,
+)
+async def admin_get_breakdown(
+    workspace_id: str,
+    period: str = "current",
+    admin: Developer = Depends(get_platform_admin),
+    db: AsyncSession = Depends(get_db),
+) -> BillingBreakdownResponse:
+    """Platform-admin breakdown for a chosen workspace. Includes margin."""
+    from aexy.services.billing_breakdown_service import BillingBreakdownService
+
+    period_start: datetime | None = None
+    period_end: datetime | None = None
+    if period and period != "current":
+        if period == "previous":
+            now = datetime.now(timezone.utc)
+            this_start = now.replace(
+                day=1, hour=0, minute=0, second=0, microsecond=0
+            )
+            if this_start.month == 1:
+                period_start = this_start.replace(
+                    year=this_start.year - 1, month=12
+                )
+            else:
+                period_start = this_start.replace(month=this_start.month - 1)
+            period_end = this_start
+        else:
+            try:
+                year_str, month_str = period.split("-")
+                year_int = int(year_str)
+                month_int = int(month_str)
+                period_start = datetime(
+                    year_int, month_int, 1, tzinfo=timezone.utc
+                )
+                if month_int == 12:
+                    period_end = datetime(
+                        year_int + 1, 1, 1, tzinfo=timezone.utc
+                    )
+                else:
+                    period_end = datetime(
+                        year_int, month_int + 1, 1, tzinfo=timezone.utc
+                    )
+            except (ValueError, AttributeError):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="period must be 'current', 'previous', or 'YYYY-MM'",
+                )
+
+    service = BillingBreakdownService(db, include_margin=True)
+    try:
+        result = await service.get_breakdown(
+            workspace_id, period_start=period_start, period_end=period_end
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        )
+    return BillingBreakdownResponse.model_validate(result)
+
+
+@router.get(
+    "/billing/breakdown/history",
+    response_model=BillingBreakdownHistoryResponse,
+)
+async def admin_get_breakdown_history(
+    workspace_id: str,
+    months: int = 6,
+    admin: Developer = Depends(get_platform_admin),
+    db: AsyncSession = Depends(get_db),
+) -> BillingBreakdownHistoryResponse:
+    """Platform-admin: history for a chosen workspace, with margin."""
+    from aexy.services.billing_breakdown_service import BillingBreakdownService
+
+    if months < 1 or months > 24:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="months must be between 1 and 24",
+        )
+
+    service = BillingBreakdownService(db, include_margin=True)
+    try:
+        result = await service.get_history(workspace_id, months=months)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        )
+    return BillingBreakdownHistoryResponse.model_validate(result)
+
+
+@router.get(
+    "/billing/summary",
+    response_model=PlatformBillingSummaryResponse,
+)
+async def admin_get_billing_summary(
+    page: int = 1,
+    per_page: int = 25,
+    plan_tier: str | None = None,
+    billing_model: str | None = None,
+    search: str | None = None,
+    admin: Developer = Depends(get_platform_admin),
+    db: AsyncSession = Depends(get_db),
+) -> PlatformBillingSummaryResponse:
+    """Cross-workspace billing summary table for the platform-admin page.
+
+    Returns one row per workspace with current-period totals + margin.
+    Filters: plan_tier, billing_model, search (workspace name).
+
+    Filters are pushed into the SQL query so `total` and pagination both
+    reflect the filtered set. plan_tier joins on `Workspace.plan_id → Plan.tier`
+    (workspace plan overrides are not considered for filtering — they don't
+    change the workspace's nominal tier in admin terms). billing_model joins
+    on `WorkspaceSubscription.billing_model`; workspaces without an active
+    subscription row are excluded when this filter is set.
+    """
+    from aexy.models.plan import Plan
+    from aexy.models.workspace import WorkspaceSubscription
+    from aexy.services.billing_breakdown_service import BillingBreakdownService
+
+    if page < 1:
+        page = 1
+    if per_page < 1 or per_page > 100:
+        per_page = 25
+
+    ws_stmt = select(Workspace).where(Workspace.is_active == True)  # noqa: E712
+    if search:
+        ws_stmt = ws_stmt.where(Workspace.name.ilike(f"%{search}%"))
+    if plan_tier:
+        ws_stmt = ws_stmt.join(Plan, Plan.id == Workspace.plan_id).where(
+            Plan.tier == plan_tier
+        )
+    if billing_model:
+        ws_stmt = ws_stmt.join(
+            WorkspaceSubscription,
+            WorkspaceSubscription.workspace_id == Workspace.id,
+        ).where(WorkspaceSubscription.billing_model == billing_model)
+
+    total_stmt = select(func.count()).select_from(ws_stmt.subquery())
+    total = int((await db.scalar(total_stmt)) or 0)
+
+    ws_stmt = (
+        ws_stmt.order_by(Workspace.created_at.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+    )
+    ws_result = await db.execute(ws_stmt)
+    workspaces = list(ws_result.scalars().all())
+
+    service = BillingBreakdownService(db, include_margin=True)
+    rows: list[PlatformBillingSummaryRow] = []
+    for ws in workspaces:
+        try:
+            breakdown = await service.get_breakdown(ws.id)
+        except Exception:
+            logger.exception("Breakdown failed for workspace %s", ws.id)
+            continue
+
+        margin = breakdown.get("margin") or {}
+        rows.append(
+            PlatformBillingSummaryRow(
+                workspace_id=ws.id,
+                workspace_name=ws.name,
+                plan_tier=breakdown.get("plan_tier", ""),
+                billing_model=breakdown.get("billing_model", ""),
+                period_start=breakdown["period_start"],
+                period_end=breakdown["period_end"],
+                total_cents=breakdown.get("total_cents", 0.0),
+                base_cost_cents=margin.get("base_cost_cents", 0.0),
+                margin_cents=margin.get("margin_cents", 0.0),
+                seat_count=int(
+                    breakdown.get("info_counters", {}).get("seat_count", 0)
+                ),
+            )
+        )
+
+    return PlatformBillingSummaryResponse(
+        rows=rows,
+        page=page,
+        per_page=per_page,
+        total=total,
+    )
+
+
+@router.get(
+    "/billing/totals",
+    response_model=PlatformBillingTotals,
+)
+async def admin_get_billing_totals(
+    period: str = "current",
+    admin: Developer = Depends(get_platform_admin),
+    db: AsyncSession = Depends(get_db),
+) -> PlatformBillingTotals:
+    """Aggregate totals across all workspaces for the period.
+
+    Used by the platform-admin overview cards (MRR, top customers).
+    """
+    from aexy.services.billing_breakdown_service import BillingBreakdownService
+
+    if period == "previous":
+        now = datetime.now(timezone.utc)
+        this_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        if this_start.month == 1:
+            period_start = this_start.replace(year=this_start.year - 1, month=12)
+        else:
+            period_start = this_start.replace(month=this_start.month - 1)
+        period_end = this_start
+    else:
+        now = datetime.now(timezone.utc)
+        period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        if now.month == 12:
+            period_end = period_start.replace(year=now.year + 1, month=1)
+        else:
+            period_end = period_start.replace(month=now.month + 1)
+
+    ws_result = await db.execute(
+        select(Workspace).where(Workspace.is_active == True)  # noqa: E712
+    )
+    workspaces = list(ws_result.scalars().all())
+
+    service = BillingBreakdownService(db, include_margin=True)
+    total_revenue = 0.0
+    total_base_cost = 0.0
+    total_margin = 0.0
+    by_tier: dict[str, float] = {}
+    by_model: dict[str, float] = {}
+    rows: list[PlatformBillingSummaryRow] = []
+
+    for ws in workspaces:
+        try:
+            breakdown = await service.get_breakdown(
+                ws.id, period_start=period_start, period_end=period_end
+            )
+        except Exception:
+            logger.exception("Totals breakdown failed for workspace %s", ws.id)
+            continue
+        margin = breakdown.get("margin") or {}
+        ws_total = float(breakdown.get("total_cents", 0.0))
+        total_revenue += ws_total
+        total_base_cost += float(margin.get("base_cost_cents", 0.0))
+        total_margin += float(margin.get("margin_cents", 0.0))
+        tier = breakdown.get("plan_tier") or "unknown"
+        model = breakdown.get("billing_model") or "unknown"
+        by_tier[tier] = by_tier.get(tier, 0.0) + ws_total
+        by_model[model] = by_model.get(model, 0.0) + ws_total
+
+        rows.append(
+            PlatformBillingSummaryRow(
+                workspace_id=ws.id,
+                workspace_name=ws.name,
+                plan_tier=tier,
+                billing_model=model,
+                period_start=breakdown["period_start"],
+                period_end=breakdown["period_end"],
+                total_cents=ws_total,
+                base_cost_cents=float(margin.get("base_cost_cents", 0.0)),
+                margin_cents=float(margin.get("margin_cents", 0.0)),
+                seat_count=int(
+                    breakdown.get("info_counters", {}).get("seat_count", 0)
+                ),
+            )
+        )
+
+    rows.sort(key=lambda r: r.total_cents, reverse=True)
+    top = rows[:10]
+
+    return PlatformBillingTotals(
+        period_start=period_start,
+        period_end=period_end,
+        total_revenue_cents=total_revenue,
+        total_base_cost_cents=total_base_cost,
+        total_margin_cents=total_margin,
+        workspace_count=len(workspaces),
+        by_plan_tier=by_tier,
+        by_billing_model=by_model,
+        top_workspaces=top,
+    )

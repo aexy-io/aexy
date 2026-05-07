@@ -5,6 +5,96 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.7] - 2026-05-07
+
+### Added
+
+#### Admin billing breakdown — line-item view of charges, usage, and rates
+Workspace owners/admins now have a dedicated breakdown page at
+`/settings/billing/breakdown` answering "what am I being charged this
+period and why." Platform admins get the same view across every
+workspace at `/admin/billing` with a margin column and a click-to-drill
+drawer. Both reuse a single `BillingBreakdownView` component so the
+shape and behavior stay consistent.
+
+- New `BillingBreakdownService` (`backend/src/aexy/services/billing_breakdown_service.py`)
+  composes `LimitsService`, `UsageService`, `PostpaidBillingService`,
+  and `StorageQuotaService` into one typed `BillingBreakdown`. Line
+  items: base subscription fee, active seats (with included vs
+  billable split), LLM usage per provider (tokens, request count,
+  rate display), storage usage (informational), plus info counters
+  for plan-included free tokens and postpaid accruals. The service
+  reads period bounds from `WorkspaceSubscription.current_period_*`
+  and falls back to the current calendar month.
+- Workspace endpoints `GET /api/v1/billing/breakdown?workspace_id=…&period=current|previous|YYYY-MM`
+  and `GET /api/v1/billing/breakdown/history?workspace_id=…&months=6`,
+  gated by `verify_workspace_admin`. Margin information is never
+  exposed via these routes.
+- Platform-admin endpoints under `/api/v1/platform-admin/billing/*`:
+  `breakdown`, `breakdown/history`, `summary` (paginated, filterable
+  workspace table), and `totals` (revenue, margin, top workspaces,
+  plan-tier and billing-model splits). Margin (`base_cost_cents`
+  vs `charged_cents` from the snapshotted `UsageRecord` rows) is
+  exposed only here.
+- `BillingBreakdownView` renders the period header, total/delta cards,
+  a category-grouped line-item table with per-item drilldown (provider,
+  request counts, base cost when admin), info counters, invoices for
+  the period, and a 6-period sparkline. The `delta_cents` /
+  `delta_pct` are computed against the prior month's
+  `usage_aggregates` row, falling back to live SQL over
+  `usage_records` when the aggregate is missing.
+- Sidebar entries: `Billing Breakdown` (adminOnly) under Account in
+  `settingsNavigation.ts`, and `Billing` in the platform-admin sidebar
+  in `(admin)/layout.tsx`.
+
+#### Daily Temporal job to populate billing aggregates
+New `aggregate_billing_usage` activity (analysis.py) wired into
+`worker.py` and scheduled in `schedules.py` to run every 24h. It
+calls `UsageService.update_usage_aggregate` for every active
+customer subscription's current period, plus the current and prior
+calendar month for every workspace that has any usage. Without this
+job the historical breakdown view stays empty in production —
+nothing else writes to `usage_aggregates`.
+
+#### Internationalization for the breakdown views
+Added `settings.billing.breakdownPage` and `settings.platformBilling`
+translation namespaces in `messages/en/settings.json` and
+`messages/hi/settings.json`. Every user-facing string in the new
+pages and the shared `BillingBreakdownView` component goes through
+`useTranslations()`. Plan tier and billing-model labels stay in
+English in the Hindi translations per project convention.
+
+### Fixed
+
+#### Plan-included free tokens no longer reduce the breakdown total
+The breakdown previously emitted a synthetic `free_credit` line item
+with a negative subtotal, dropping `total_cents` by an estimated
+allowance. The Stripe billing pipeline
+(`UsageService.report_workspace_usage_to_stripe`) reports the raw
+sum of `UsageRecord.total_cost_cents` with no such deduction —
+per-member free quotas live on `Developer.llm_overage_cost_cents`
+and never reduce the workspace invoice. The result was that the UI
+showed a lower bill than what Stripe charged. The synthetic credit
+is now surfaced as `free_tokens_per_member_per_month` and
+`llm_tokens_used` info counters plus a computation note explaining
+the per-developer scope, so `total_cents` always equals what the
+billing pipeline reports.
+
+#### Platform billing summary filters now apply before pagination
+`GET /platform-admin/billing/summary` was paginating on the workspace
+query first, then dropping rows whose computed `plan_tier` or
+`billing_model` didn't match. A filtered request could return an
+empty first page even when matches existed on later pages, and the
+`total` count reflected only the search filter. The filters are now
+pushed into SQL: `plan_tier` joins `Workspace.plan_id → Plan.tier`,
+`billing_model` joins `WorkspaceSubscription.workspace_id →
+WorkspaceSubscription.billing_model`. `total` reflects the filtered
+set, and pagination operates on the filtered query. Workspaces with
+no active subscription row are excluded when `billing_model` is set
+(they have no canonical workspace-level billing model to filter on);
+plan-tier filtering uses the source plan tier and does not consider
+workspace plan overrides.
+
 ## [0.7.6] - 2026-05-07
 
 ### Added

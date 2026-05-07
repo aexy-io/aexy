@@ -52,6 +52,7 @@ def get_all_workflows() -> list:
 def get_all_activities() -> list:
     """Import and return all activity functions."""
     from aexy.temporal.activities.analysis import (
+        aggregate_billing_usage,
         analyze_commit,
         analyze_developer,
         analyze_pr,
@@ -235,6 +236,7 @@ def get_all_activities() -> list:
         analyze_developer,
         reset_daily_limits,
         batch_report_usage,
+        aggregate_billing_usage,
         batch_profile_sync,
         process_document_sync_queue,
         regenerate_document,

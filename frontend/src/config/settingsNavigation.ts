@@ -244,6 +244,15 @@ export const settingsNavigation: SettingsNavCategory[] = [
         keywords: ["billing", "payment", "invoice", "stripe", "credit card"],
       },
       {
+        id: "billing-breakdown",
+        label: "Billing Breakdown",
+        href: "/settings/billing/breakdown",
+        icon: Receipt,
+        description: "Line-item breakdown of charges, usage, rates, and prior periods",
+        adminOnly: true,
+        keywords: ["billing", "breakdown", "line item", "usage", "rate", "invoice", "history"],
+      },
+      {
         id: "usage",
         label: "Usage & Limits",
         href: "/settings/usage",

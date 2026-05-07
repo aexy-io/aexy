@@ -13,6 +13,7 @@ import {
   Shield,
   Loader2,
   BarChart2,
+  Receipt,
 } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -54,6 +55,11 @@ const adminNavItems = [
     title: "Plans",
     href: "/admin/plans",
     icon: Shield,
+  },
+  {
+    title: "Billing",
+    href: "/admin/billing",
+    icon: Receipt,
   },
 ];
 

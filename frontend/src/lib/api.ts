@@ -4551,6 +4551,159 @@ export const billingApi = {
     const response = await api.get("/billing/limits");
     return response.data;
   },
+
+  getBreakdown: async (
+    workspaceId: string,
+    period: string = "current"
+  ): Promise<BillingBreakdown> => {
+    const response = await api.get("/billing/breakdown", {
+      params: { workspace_id: workspaceId, period },
+    });
+    return response.data;
+  },
+
+  getBreakdownHistory: async (
+    workspaceId: string,
+    months: number = 6
+  ): Promise<BillingBreakdownHistory> => {
+    const response = await api.get("/billing/breakdown/history", {
+      params: { workspace_id: workspaceId, months },
+    });
+    return response.data;
+  },
+};
+
+// Billing breakdown types
+export interface BillingLineItem {
+  category:
+    | "base_fee"
+    | "seats"
+    | "llm_usage"
+    | "storage"
+    | "free_credit"
+    | "overage"
+    | "other";
+  label: string;
+  description: string | null;
+  quantity: number;
+  unit: string;
+  rate_cents: number | null;
+  rate_display: string | null;
+  included_quantity: number | null;
+  billable_quantity: number;
+  subtotal_cents: number;
+  metadata: Record<string, any> | null;
+}
+
+export interface BillingBreakdown {
+  workspace_id: string;
+  workspace_name: string | null;
+  period_start: string;
+  period_end: string;
+  plan_id: string;
+  plan_name: string;
+  plan_tier: string;
+  billing_model: string;
+  line_items: BillingLineItem[];
+  subtotal_cents: number;
+  credit_cents: number;
+  total_cents: number;
+  previous_period_total_cents: number | null;
+  delta_cents: number | null;
+  delta_pct: number | null;
+  invoices: Invoice[];
+  info_counters: Record<string, any>;
+  computation_notes: string[];
+  margin: {
+    base_cost_cents: number;
+    charged_cents: number;
+    margin_cents: number;
+    margin_pct: number;
+  } | null;
+  generated_at: string;
+}
+
+export interface BillingBreakdownHistory {
+  current: BillingBreakdown;
+  history: BillingBreakdown[];
+}
+
+export interface PlatformBillingSummaryRow {
+  workspace_id: string;
+  workspace_name: string;
+  plan_tier: string;
+  billing_model: string;
+  period_start: string;
+  period_end: string;
+  total_cents: number;
+  base_cost_cents: number;
+  margin_cents: number;
+  seat_count: number;
+}
+
+export interface PlatformBillingSummary {
+  rows: PlatformBillingSummaryRow[];
+  page: number;
+  per_page: number;
+  total: number;
+}
+
+export interface PlatformBillingTotals {
+  period_start: string;
+  period_end: string;
+  total_revenue_cents: number;
+  total_base_cost_cents: number;
+  total_margin_cents: number;
+  workspace_count: number;
+  by_plan_tier: Record<string, number>;
+  by_billing_model: Record<string, number>;
+  top_workspaces: PlatformBillingSummaryRow[];
+}
+
+// Platform-admin billing API (admin-only)
+export const platformAdminBillingApi = {
+  getBreakdown: async (
+    workspaceId: string,
+    period: string = "current"
+  ): Promise<BillingBreakdown> => {
+    const response = await api.get("/platform-admin/billing/breakdown", {
+      params: { workspace_id: workspaceId, period },
+    });
+    return response.data;
+  },
+
+  getBreakdownHistory: async (
+    workspaceId: string,
+    months: number = 6
+  ): Promise<BillingBreakdownHistory> => {
+    const response = await api.get(
+      "/platform-admin/billing/breakdown/history",
+      { params: { workspace_id: workspaceId, months } }
+    );
+    return response.data;
+  },
+
+  getSummary: async (params: {
+    page?: number;
+    per_page?: number;
+    plan_tier?: string;
+    billing_model?: string;
+    search?: string;
+  }): Promise<PlatformBillingSummary> => {
+    const response = await api.get("/platform-admin/billing/summary", {
+      params,
+    });
+    return response.data;
+  },
+
+  getTotals: async (
+    period: string = "current"
+  ): Promise<PlatformBillingTotals> => {
+    const response = await api.get("/platform-admin/billing/totals", {
+      params: { period },
+    });
+    return response.data;
+  },
 };
 
 // ============ Reviews & Goals API Types ============

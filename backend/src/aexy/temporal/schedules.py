@@ -52,6 +52,14 @@ SCHEDULES: list[dict] = [
         "interval": timedelta(hours=1),
         "queue": TaskQueue.ANALYSIS,
     },
+    {
+        "id": "aggregate-billing-usage",
+        "activity": "aggregate_billing_usage",
+        "input_module": "aexy.temporal.activities.analysis",
+        "input_class": "AggregateBillingUsageInput",
+        "interval": timedelta(hours=24),
+        "queue": TaskQueue.ANALYSIS,
+    },
 
     # === On-call ===
     {

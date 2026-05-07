@@ -14,6 +14,8 @@ from aexy.models.billing import Subscription, SubscriptionStatus
 from aexy.models.developer import Developer
 from aexy.models.plan import Plan, PlanTier
 from aexy.schemas.billing import (
+    BillingBreakdownHistoryResponse,
+    BillingBreakdownResponse,
     BillingHistoryEntry,
     ChangePlanRequest,
     CreateCheckoutSessionRequest,
@@ -40,6 +42,7 @@ from aexy.schemas.billing import (
     UsageSummaryResponse,
     WebhookResponse,
 )
+from aexy.services.billing_breakdown_service import BillingBreakdownService
 from aexy.services.stripe_service import StripeService
 from aexy.services.stripe_webhook_handler import StripeWebhookHandler
 from aexy.services.usage_service import UsageService
@@ -636,6 +639,96 @@ async def get_limits_usage(
             team_features=plan.enable_team_features,
         ),
     )
+
+
+@router.get("/breakdown", response_model=BillingBreakdownResponse)
+async def get_billing_breakdown(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    developer_id: Annotated[str, Depends(get_current_developer_id)],
+    workspace_id: str,
+    period: str = "current",
+) -> BillingBreakdownResponse:
+    """Workspace-admin billing breakdown for a single period.
+
+    `period` is `current` (default), `previous`, or `YYYY-MM`. Margin
+    information is never exposed via this endpoint — see the
+    /platform-admin/billing/* routes for that.
+    """
+    await verify_workspace_admin(db, workspace_id, developer_id)
+
+    period_start: "datetime | None" = None
+    period_end: "datetime | None" = None
+    if period and period != "current":
+        from datetime import datetime as _dt
+        from datetime import timezone as _tz
+
+        if period == "previous":
+            now = _dt.now(_tz.utc)
+            this_start = now.replace(
+                day=1, hour=0, minute=0, second=0, microsecond=0
+            )
+            if this_start.month == 1:
+                period_start = this_start.replace(
+                    year=this_start.year - 1, month=12
+                )
+            else:
+                period_start = this_start.replace(month=this_start.month - 1)
+            period_end = this_start
+        else:
+            try:
+                year_str, month_str = period.split("-")
+                year_int = int(year_str)
+                month_int = int(month_str)
+                period_start = _dt(year_int, month_int, 1, tzinfo=_tz.utc)
+                if month_int == 12:
+                    period_end = _dt(year_int + 1, 1, 1, tzinfo=_tz.utc)
+                else:
+                    period_end = _dt(year_int, month_int + 1, 1, tzinfo=_tz.utc)
+            except (ValueError, AttributeError):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="period must be 'current', 'previous', or 'YYYY-MM'",
+                )
+
+    service = BillingBreakdownService(db, include_margin=False)
+    try:
+        result = await service.get_breakdown(
+            workspace_id, period_start=period_start, period_end=period_end
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        )
+    return BillingBreakdownResponse.model_validate(result)
+
+
+@router.get(
+    "/breakdown/history",
+    response_model=BillingBreakdownHistoryResponse,
+)
+async def get_billing_breakdown_history(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    developer_id: Annotated[str, Depends(get_current_developer_id)],
+    workspace_id: str,
+    months: int = 6,
+) -> BillingBreakdownHistoryResponse:
+    """Current breakdown plus prior N months for a workspace."""
+    await verify_workspace_admin(db, workspace_id, developer_id)
+
+    if months < 1 or months > 24:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="months must be between 1 and 24",
+        )
+
+    service = BillingBreakdownService(db, include_margin=False)
+    try:
+        result = await service.get_history(workspace_id, months=months)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        )
+    return BillingBreakdownHistoryResponse.model_validate(result)
 
 
 @router.post("/webhook", response_model=WebhookResponse)
