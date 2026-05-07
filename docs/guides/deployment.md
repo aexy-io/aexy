@@ -6,11 +6,19 @@ This guide covers deploying Aexy to production environments, including Docker, K
 
 ## Prerequisites
 
-- Docker and Docker Compose
-- PostgreSQL 14+
-- Redis 6+
+- Docker and Docker Compose v2
+- PostgreSQL **18 with pgvector** (the bundled `aexy-postgres:18-alpine-pgvector`
+  image builds this automatically — see `postgres/Dockerfile`)
+- Redis 7+
+- Temporal server (bundled in compose; replaces Celery)
+- RustFS or any S3-compatible object store (bundled)
+- Mailagent service for email infrastructure (bundled)
 - Domain with SSL certificate
 - GitHub App configured for production
+- LLM API keys (Anthropic, Google, or OpenRouter)
+
+> **Migrations**: Aexy uses a custom SQL migration system, not Alembic.
+> See the [Database Operations guide](./database-operations.md).
 
 ## Deployment Options
 
@@ -55,40 +63,52 @@ services:
       - backend
     restart: unless-stopped
 
-  celery-worker:
+  temporal-worker:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: celery -A aexy.processing.celery_app worker --loglevel=info
+    command: python -m aexy.temporal.worker
     environment:
       - DATABASE_URL=postgresql+asyncpg://aexy:${DB_PASSWORD}@postgres:5432/aexy
       - REDIS_URL=redis://redis:6379/0
+      - TEMPORAL_ADDRESS=temporal:7233
     depends_on:
       - postgres
       - redis
+      - temporal
     restart: unless-stopped
 
-  celery-beat:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    command: celery -A aexy.processing.celery_app beat --loglevel=info
+  temporal:
+    image: temporalio/auto-setup:latest
     environment:
-      - DATABASE_URL=postgresql+asyncpg://aexy:${DB_PASSWORD}@postgres:5432/aexy
-      - REDIS_URL=redis://redis:6379/0
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=aexy
+      - POSTGRES_PWD=${DB_PASSWORD}
+      - POSTGRES_SEEDS=postgres
     depends_on:
       - postgres
-      - redis
     restart: unless-stopped
+
+  temporal-ui:
+    image: temporalio/ui:latest
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+    depends_on:
+      - temporal
 
   postgres:
-    image: postgres:16
+    build: ./postgres
+    image: aexy-postgres:18-alpine-pgvector
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
       - POSTGRES_DB=aexy
       - POSTGRES_USER=aexy
       - POSTGRES_PASSWORD=${DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aexy"]
+      interval: 10s
     restart: unless-stopped
 
   redis:
@@ -129,12 +149,15 @@ export ANTHROPIC_API_KEY=your-api-key
 # Start services
 docker-compose up -d
 
-# Run migrations
-docker-compose exec backend alembic upgrade head
+# Run migrations (custom SQL migration system, not Alembic)
+docker-compose exec backend python scripts/run_migrations.py
 
 # Check logs
 docker-compose logs -f
 ```
+
+For full migration commands and the database operations reference,
+see [Database Operations](./database-operations.md).
 
 ### Option 2: Kubernetes
 
@@ -330,12 +353,14 @@ module "rds" {
   source               = "terraform-aws-modules/rds/aws"
   identifier           = "aexy-db"
   engine               = "postgres"
-  engine_version       = "16"
+  engine_version       = "18"
   instance_class       = "db.t3.medium"
   allocated_storage    = 20
   db_name              = "aexy"
   username             = "aexy"
   password             = var.db_password
+  # pgvector ships with RDS PG16+ via the `vector` extension; enable
+  # via parameter group or `CREATE EXTENSION vector` after provisioning.
 }
 
 module "elasticache" {
@@ -439,21 +464,30 @@ NEXT_PUBLIC_API_URL=https://api.aexy.io/api
 
 ## Backup and Recovery
 
-### Database Backup
+`docker-compose.prod.yml` ships an `aexy-backup` sidecar that runs
+`pg_dump | gzip` daily at 02:00 UTC into the `backup_data` volume. Full
+procedures (manual + automated, dumps + volume snapshots, restore, major
+version upgrades) live in
+[Database Operations](./database-operations.md).
+
+Quick reference:
 
 ```bash
-# Manual backup
-pg_dump -h host -U aexy aexy > backup.sql
+# Manual backup against the running prod stack
+docker compose -f docker-compose.prod.yml exec -T postgres \
+  pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+  | gzip > manual_$(date +%Y%m%d_%H%M%S).sql.gz
 
-# Automated backup (cron)
-0 2 * * * pg_dump -h host -U aexy aexy | gzip > /backups/aexy-$(date +%Y%m%d).sql.gz
-```
-
-### Restore
-
-```bash
-# Restore from backup
-psql -h host -U aexy aexy < backup.sql
+# Restore (drops and recreates the database — overwrites all data)
+docker compose -f docker-compose.prod.yml stop backend temporal-worker
+docker compose -f docker-compose.prod.yml exec postgres \
+  psql -U "$POSTGRES_USER" -c "DROP DATABASE IF EXISTS $POSTGRES_DB;"
+docker compose -f docker-compose.prod.yml exec postgres \
+  psql -U "$POSTGRES_USER" -c "CREATE DATABASE $POSTGRES_DB;"
+gunzip -c manual_*.sql.gz \
+  | docker compose -f docker-compose.prod.yml exec -T postgres \
+    psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+docker compose -f docker-compose.prod.yml start backend temporal-worker
 ```
 
 ## Scaling
@@ -462,7 +496,9 @@ psql -h host -U aexy aexy < backup.sql
 
 - Add more backend replicas
 - Load balancer distributes traffic
-- Celery workers scale independently
+- Temporal workers scale independently — run multiple
+  `temporal-worker` containers (optionally pinned to specific task
+  queues via `--queues`)
 
 ### Vertical Scaling
 
@@ -507,11 +543,23 @@ kubectl exec -it aexy-backend-xxx -- python -c "from aexy.core.database import e
 redis-cli -h host ping
 ```
 
-**Celery Workers Not Processing**
-```bash
-# Check worker status
-celery -A aexy.processing.celery_app inspect active
+**Temporal Workers Not Processing**
 
-# Check queue
-celery -A aexy.processing.celery_app inspect reserved
+Open the Temporal UI (port 8080, tunnel via SSH if not exposed) and look
+for stuck workflows. Common signs and fixes:
+
+```bash
+# Are the worker containers up and connected to the Temporal frontend?
+docker-compose logs temporal-worker | tail -50
+
+# Restart the worker fleet
+docker-compose restart temporal-worker
+
+# Inspect schedules from the Temporal UI under "Schedules", or via the
+# tctl CLI:
+docker-compose exec temporal tctl schedule list
 ```
+
+The Temporal UI also shows per-activity retry attempts, error stacks,
+and the input that was passed — usually the fastest way to diagnose a
+stuck workflow.

@@ -24,6 +24,7 @@ We're on a mission to bring positive change by building world-class tools actual
 - [CLI Usage](./guides/cli-usage.md) - Command-line interface guide
 - [VS Code Extension](./guides/vscode-extension.md) - IDE extension guide
 - [Deployment](./guides/deployment.md) - Production deployment guide
+- [Database Operations](./guides/database-operations.md) - Migrations, backups, restores, postgres rebuilds, pgvector upgrades
 - [AI Agents](./ai-agents.md) - Intelligent automation assistants
 - [Email Marketing](./email-marketing.md) - Campaigns, automation & infrastructure
 - [Booking](./booking.md) - Calendar scheduling, team bookings & RSVP

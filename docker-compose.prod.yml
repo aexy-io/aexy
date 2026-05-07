@@ -33,6 +33,30 @@ services:
     networks:
       - aexy-network
 
+  # S3-compatible object storage for task attachments, recordings,
+  # compliance docs, etc. Reached only via the internal docker network;
+  # public access is brokered by nginx at /storage/.
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: aexy-rustfs
+    restart: unless-stopped
+    environment:
+      - RUSTFS_ROOT_USER=${RUSTFS_ROOT_USER:?Set RUSTFS_ROOT_USER in .env.prod}
+      - RUSTFS_ROOT_PASSWORD=${RUSTFS_ROOT_PASSWORD:?Set RUSTFS_ROOT_PASSWORD in .env.prod}
+    volumes:
+      - rustfs_data:/data
+      - rustfs_logs:/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: server /data --console-address ":9001"
+    expose:
+      - "9000"
+    networks:
+      - aexy-network
+
   temporal:
     image: temporalio/auto-setup:latest
     container_name: aexy-temporal
@@ -146,6 +170,15 @@ services:
       - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER}
       # Platform
       - PLATFORM_ORG_ID=${PLATFORM_ORG_ID:-}
+      # Object storage (RustFS, internal)
+      - S3_ENDPOINT_URL=http://rustfs:9000
+      - S3_ACCESS_KEY_ID=${RUSTFS_ROOT_USER}
+      - S3_SECRET_ACCESS_KEY=${RUSTFS_ROOT_PASSWORD}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME:-aexy-storage}
+      - S3_REGION=${S3_REGION:-us-east-1}
+      # Public URL the browser uses to fetch uploaded files; nginx proxies
+      # /storage/ to rustfs:9000. Set this to your public origin.
+      - S3_PUBLIC_ENDPOINT_URL=${S3_PUBLIC_ENDPOINT_URL:-https://server.aexy.io/storage}
 
       - STRIPE_PRO_PRODUCT_ID=${STRIPE_PRO_PRODUCT_ID}
       - STRIPE_PRO_MONTHLY_PRICE_ID=${STRIPE_PRO_MONTHLY_PRICE_ID}
@@ -158,6 +191,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      rustfs:
         condition: service_healthy
       temporal:
         condition: service_started
@@ -244,10 +279,19 @@ services:
       - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER}
       # Platform
       - PLATFORM_ORG_ID=${PLATFORM_ORG_ID:-}
+      # Object storage (RustFS, internal)
+      - S3_ENDPOINT_URL=http://rustfs:9000
+      - S3_ACCESS_KEY_ID=${RUSTFS_ROOT_USER}
+      - S3_SECRET_ACCESS_KEY=${RUSTFS_ROOT_PASSWORD}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME:-aexy-storage}
+      - S3_REGION=${S3_REGION:-us-east-1}
+      - S3_PUBLIC_ENDPOINT_URL=${S3_PUBLIC_ENDPOINT_URL:-https://server.aexy.io/storage}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      rustfs:
         condition: service_healthy
       temporal:
         condition: service_started
@@ -315,6 +359,8 @@ volumes:
   postgres_data:
   redis_data:
   backup_data:
+  rustfs_data:
+  rustfs_logs:
 
 networks:
   aexy-network:

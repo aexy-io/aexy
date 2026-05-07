@@ -48,30 +48,74 @@ docker compose -f docker-compose.prod.yml logs -f
 
 ### 4. Run Database Migrations
 
+Aexy uses a **custom SQL migration system** (not Alembic). Migration
+files live under `backend/scripts/migrate_*.sql` and are tracked in a
+`schema_migrations` table.
+
 ```bash
-docker compose -f docker-compose.prod.yml exec backend alembic upgrade head
+# Status of all migrations
+docker compose -f docker-compose.prod.yml exec backend \
+  python scripts/run_migrations.py --list
+
+# Apply all pending migrations
+docker compose -f docker-compose.prod.yml exec backend \
+  python scripts/run_migrations.py
 ```
+
+For full migration commands and database operations, see the
+[Database Operations guide](docs/guides/database-operations.md).
 
 ---
 
 ## Backup & Restore
 
 ### Automated Backups
-Backups run automatically at 2 AM daily. Files are stored in `./backup/dumps/`
+The `aexy-backup` sidecar wakes every 30 minutes and runs `pg_dump | gzip`
+at 02:00 UTC daily into the `backup_data` volume under `/backup/dumps/`.
+Default retention is 7 days (`BACKUP_RETENTION_DAYS`).
+
+```bash
+# List backups inside the container
+docker compose -f docker-compose.prod.yml exec backup ls -lh /backup/dumps/
+
+# Pull a backup file to the host
+docker cp aexy-backup:/backup/dumps/aexy_YYYYMMDD_HHMMSS.sql.gz ./
+```
 
 ### Manual Backup
+The sidecar uses an inline command and does not mount the helper scripts,
+so trigger manual backups directly against postgres:
+
 ```bash
-docker compose -f docker-compose.prod.yml exec backup /bin/sh /backup.sh
+docker compose -f docker-compose.prod.yml exec -T postgres \
+  pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+  | gzip > manual_$(date +%Y%m%d_%H%M%S).sql.gz
 ```
 
 ### Restore from Backup
 ```bash
-# List available backups
-ls -la backup/dumps/
+# Stop writers
+docker compose -f docker-compose.prod.yml stop backend temporal-worker
 
-# Restore (WARNING: overwrites all data!)
-docker compose -f docker-compose.prod.yml exec backup /bin/sh /backup/restore.sh dumps/<backup_file>.sql.gz
+# Drop, recreate, restore
+docker compose -f docker-compose.prod.yml exec postgres \
+  psql -U "$POSTGRES_USER" -c "DROP DATABASE IF EXISTS $POSTGRES_DB;"
+docker compose -f docker-compose.prod.yml exec postgres \
+  psql -U "$POSTGRES_USER" -c "CREATE DATABASE $POSTGRES_DB;"
+
+gunzip -c manual_YYYYMMDD_HHMMSS.sql.gz \
+  | docker compose -f docker-compose.prod.yml exec -T postgres \
+    psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+
+# Bring writers back
+docker compose -f docker-compose.prod.yml start backend temporal-worker
 ```
+
+> Rebuilding the postgres image (`docker compose build postgres`) does
+> **not** delete data — the `postgres_data` named volume is independent
+> of the image. Major-version bumps and base-image switches do require a
+> dump/restore cycle. See the
+> [Database Operations guide](docs/guides/database-operations.md#will-rebuilding-postgres-delete-my-data).
 
 ### Offsite Backup (Recommended)
 Set up a cron job to sync backups to cloud storage:
@@ -158,14 +202,21 @@ docker stats
 curl http://localhost/health
 ```
 
-### Celery Monitoring (Flower)
-Flower is not exposed publicly by default. To access:
+### Temporal UI (workflow monitoring)
+Aexy uses Temporal for background processing (replaces Celery). The
+Temporal UI runs on port 8080 and is **not** exposed publicly by default
+in `docker-compose.prod.yml`. To access:
+
 ```bash
 # SSH tunnel from your local machine
-ssh -L 5555:localhost:5555 user@your-server
+ssh -L 8080:localhost:8080 user@your-server
 
-# Then open http://localhost:5555 in your browser
+# Then open http://localhost:8080 in your browser
 ```
+
+The UI shows running workflows, schedules, activity history, and retry
+state. For scheduled jobs (daily aggregations, periodic checks) look
+under "Schedules"; for ad-hoc workflow runs look under "Workflows".
 
 ---
 

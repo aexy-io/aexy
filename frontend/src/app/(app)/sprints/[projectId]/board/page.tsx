@@ -859,7 +859,7 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
                   // Allow re-selecting the same file later
                   e.currentTarget.value = "";
                 }}
-                className="block w-full text-sm text-muted-foreground file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:bg-primary-600/20 file:text-primary-300 hover:file:bg-primary-600/30 file:cursor-pointer"
+                className="block w-full text-sm text-muted-foreground file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:bg-primary-600 file:text-white file:font-medium hover:file:bg-primary-700 file:cursor-pointer"
               />
               {attachmentFiles.length > 0 && (
                 <ul className="mt-2 space-y-1" data-testid="task-attachments-list">
@@ -1988,7 +1988,7 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
                       type="button"
                       onClick={handleManualIssueLink}
                       disabled={!manualIssueRef.trim() || linkGitHubIssueMutation.isPending}
-                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-primary-500/40 bg-primary-500/10 px-3 py-2 text-sm font-medium text-primary-200 transition hover:bg-primary-500/20 disabled:opacity-50"
+                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-primary-700 disabled:opacity-50"
                     >
                       {linkGitHubIssueMutation.isPending ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -2066,7 +2066,7 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
                     setNewAttachmentFiles((prev) => [...prev, ...files]);
                     e.currentTarget.value = "";
                   }}
-                  className="text-xs text-muted-foreground file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-primary-600/20 file:text-primary-300 hover:file:bg-primary-600/30 file:cursor-pointer"
+                  className="text-xs text-muted-foreground file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-primary-600 file:text-white file:font-medium hover:file:bg-primary-700 file:cursor-pointer"
                 />
               </div>
               {(task.attachments?.length ?? 0) === 0 && newAttachmentFiles.length === 0 && (
