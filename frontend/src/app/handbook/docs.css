@@ -1,0 +1,36 @@
+/* Anchor links appended to headings by rehype-autolink-headings */
+.docs-article .heading-anchor {
+  opacity: 0;
+  margin-left: 0.5rem;
+  color: rgb(99 102 241 / 0.7);
+  text-decoration: none;
+  transition: opacity 0.15s ease;
+  font-weight: 400;
+}
+
+.docs-article h2:hover .heading-anchor,
+.docs-article h3:hover .heading-anchor,
+.docs-article h4:hover .heading-anchor {
+  opacity: 1;
+}
+
+/* Hide auto-generated <code> wrapper class collisions from highlight.js when
+   highlight.js theme is loaded but block uses bare ``` (no language) — we
+   still want neutral styling. */
+.docs-article pre code.hljs {
+  padding: 0;
+  background: transparent;
+}
+
+/* Inline code inside table cells looks tighter */
+.docs-article td code {
+  white-space: nowrap;
+}
+
+/* Image captions for figure-style markdown (no plugin yet, but ready) */
+.docs-article figure figcaption {
+  text-align: center;
+  font-size: 0.875rem;
+  color: rgb(255 255 255 / 0.4);
+  margin-top: 0.5rem;
+}

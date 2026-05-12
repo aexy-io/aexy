@@ -1,0 +1,1008 @@
+{
+  "sections": [
+    {
+      "title": "Architecture & Design",
+      "items": [
+        {
+          "title": "System Architecture",
+          "slug": "architecture/system-architecture",
+          "path": "architecture/system-architecture.md",
+          "description": "High-level system design and components"
+        },
+        {
+          "title": "Tech Stack",
+          "slug": "architecture/tech-stack",
+          "path": "architecture/tech-stack.md",
+          "description": "Technologies and frameworks used"
+        },
+        {
+          "title": "Database Schema",
+          "slug": "architecture/database-schema",
+          "path": "architecture/database-schema.md",
+          "description": "Data models and relationships"
+        },
+        {
+          "title": "LLM Integration",
+          "slug": "architecture/llm-integration",
+          "path": "architecture/llm-integration.md",
+          "description": "AI/LLM provider architecture"
+        }
+      ]
+    },
+    {
+      "title": "API Reference",
+      "items": [
+        {
+          "title": "API Overview",
+          "slug": "api/overview",
+          "path": "api/overview.md",
+          "description": "Base URL, live Swagger/ReDoc, pointers to the cross-cutting API docs"
+        }
+      ]
+    },
+    {
+      "title": "Getting started & operations",
+      "items": [
+        {
+          "title": "Getting Started",
+          "slug": "guides/getting-started",
+          "path": "guides/getting-started.md",
+          "description": "Quick start guide"
+        },
+        {
+          "title": "Deployment",
+          "slug": "guides/deployment",
+          "path": "guides/deployment.md",
+          "description": "Production deployment guide"
+        },
+        {
+          "title": "Database Operations",
+          "slug": "guides/database-operations",
+          "path": "guides/database-operations.md",
+          "description": "Migrations, backups, restores, postgres rebuilds, pgvector upgrades"
+        },
+        {
+          "title": "CLI Usage",
+          "slug": "guides/cli-usage",
+          "path": "guides/cli-usage.md",
+          "description": "Command-line interface guide"
+        },
+        {
+          "title": "VS Code Extension",
+          "slug": "guides/vscode-extension",
+          "path": "guides/vscode-extension.md",
+          "description": "IDE extension guide"
+        }
+      ]
+    },
+    {
+      "title": "Developer guides (cross-cutting)",
+      "items": [
+        {
+          "title": "Adding a feature",
+          "slug": "guides/adding-a-feature",
+          "path": "guides/adding-a-feature.md",
+          "description": "Full-stack checklist for a new module"
+        },
+        {
+          "title": "API conventions",
+          "slug": "guides/api-conventions",
+          "path": "guides/api-conventions.md",
+          "description": "URL shape, pagination, errors, status codes"
+        },
+        {
+          "title": "Authentication & permissions",
+          "slug": "guides/authentication",
+          "path": "guides/authentication.md",
+          "description": "JWT, OAuth, workspaces, RBAC, API tokens"
+        },
+        {
+          "title": "Temporal",
+          "slug": "guides/temporal",
+          "path": "guides/temporal.md",
+          "description": "Workflows, activities, schedules, retries, idempotency"
+        },
+        {
+          "title": "Webhooks",
+          "slug": "guides/webhooks",
+          "path": "guides/webhooks.md",
+          "description": "Inbound + outbound signing and delivery"
+        },
+        {
+          "title": "File uploads & object storage",
+          "slug": "guides/file-uploads",
+          "path": "guides/file-uploads.md",
+          "description": "RustFS / S3 + presigned URLs + AI metadata pipeline"
+        },
+        {
+          "title": "Internationalization (i18n)",
+          "slug": "guides/i18n",
+          "path": "guides/i18n.md",
+          "description": "next-intl, cookie-based locale, message files"
+        },
+        {
+          "title": "Frontend conventions",
+          "slug": "guides/frontend-conventions",
+          "path": "guides/frontend-conventions.md",
+          "description": "App Router, React Query, Zustand, generated client"
+        },
+        {
+          "title": "Aexy Email Infrastructure",
+          "slug": "guides/aexy-email-infrastructure",
+          "path": "guides/aexy-email-infrastructure.md",
+          "description": ""
+        }
+      ]
+    },
+    {
+      "title": "Provider setup",
+      "items": [
+        {
+          "title": "Google integration",
+          "slug": "google",
+          "path": "google.md",
+          "description": "Sign-in, Gmail & Calendar"
+        },
+        {
+          "title": "Microsoft integration",
+          "slug": "microsoft",
+          "path": "microsoft.md",
+          "description": "Sign-in, Outlook & Calendar (Microsoft Graph)"
+        },
+        {
+          "title": "Slack",
+          "slug": "slack",
+          "path": "slack.md",
+          "description": "Bot install, slash commands, OAuth"
+        },
+        {
+          "title": "Stripe",
+          "slug": "stripe",
+          "path": "stripe.md",
+          "description": "Billing & subscriptions"
+        }
+      ]
+    },
+    {
+      "title": "Modules — Work & planning",
+      "items": [
+        {
+          "title": "Sprints & planning",
+          "slug": "sprints",
+          "path": "sprints.md",
+          "description": "Sprints, epics, stories, planning poker, retrospectives, releases"
+        },
+        {
+          "title": "Tickets & projects",
+          "slug": "tickets-and-projects",
+          "path": "tickets-and-projects.md",
+          "description": "Tickets, sprint tasks, projects, templates, ticket forms"
+        },
+        {
+          "title": "Booking",
+          "slug": "booking",
+          "path": "booking.md",
+          "description": "Calendar scheduling, team bookings & RSVP"
+        },
+        {
+          "title": "Tracking",
+          "slug": "tracking",
+          "path": "tracking.md",
+          "description": "Standups, time entries, blockers, entity activity"
+        }
+      ]
+    },
+    {
+      "title": "Modules — People",
+      "items": [
+        {
+          "title": "Reviews, hiring & learning",
+          "slug": "reviews-and-people",
+          "path": "reviews-and-people.md",
+          "description": "Performance reviews, hiring & assessments, learning paths"
+        },
+        {
+          "title": "Compliance",
+          "slug": "compliance",
+          "path": "compliance.md",
+          "description": "Mandatory training, certifications, reminders, escalation, audit"
+        },
+        {
+          "title": "Reminders (guide)",
+          "slug": "guides/reminders",
+          "path": "guides/reminders.md",
+          "description": "The narrower how-to for recurring compliance reminders"
+        },
+        {
+          "title": "Leave",
+          "slug": "leave",
+          "path": "leave.md",
+          "description": "Time-off types, policies, approvals, balances"
+        }
+      ]
+    },
+    {
+      "title": "Modules — Customers",
+      "items": [
+        {
+          "title": "CRM",
+          "slug": "crm",
+          "path": "crm.md",
+          "description": "Companies, people, deals, custom objects, sequences, automations"
+        },
+        {
+          "title": "GTM",
+          "slug": "gtm",
+          "path": "gtm.md",
+          "description": "Lead scoring, ABM, outreach sequences, intent, expansion playbooks"
+        },
+        {
+          "title": "Forms",
+          "slug": "forms",
+          "path": "forms.md",
+          "description": "Public form builder, themes, conditional logic, ticket/CRM/deal routing"
+        },
+        {
+          "title": "Tables",
+          "slug": "tables",
+          "path": "tables.md",
+          "description": "Airtable-style custom data tables with saved views"
+        },
+        {
+          "title": "Email Marketing",
+          "slug": "email-marketing",
+          "path": "email-marketing.md",
+          "description": "Campaigns, automation & infrastructure"
+        }
+      ]
+    },
+    {
+      "title": "Modules — AI & knowledge",
+      "items": [
+        {
+          "title": "AI Agents",
+          "slug": "ai-agents",
+          "path": "ai-agents.md",
+          "description": "LangGraph-based agents with CRM/email tools"
+        },
+        {
+          "title": "Workflows & automations",
+          "slug": "workflows-and-automations",
+          "path": "workflows-and-automations.md",
+          "description": "Automation triggers/actions + visual workflows + agent policies"
+        },
+        {
+          "title": "Documents, Drive & Knowledge Graph",
+          "slug": "documents-and-drive",
+          "path": "documents-and-drive.md",
+          "description": "Docs, file browser, AI metadata pipeline, MCP"
+        }
+      ]
+    },
+    {
+      "title": "Modules — Observability",
+      "items": [
+        {
+          "title": "Analytics, insights & reports",
+          "slug": "analytics",
+          "path": "analytics.md",
+          "description": "Dashboards, snapshots, custom reports, predictions, intelligence"
+        },
+        {
+          "title": "Uptime Monitoring",
+          "slug": "uptime",
+          "path": "uptime.md",
+          "description": "Endpoint monitoring & incident management"
+        }
+      ]
+    },
+    {
+      "title": "Modules — Communication",
+      "items": [
+        {
+          "title": "Notifications & chat",
+          "slug": "notifications-and-chat",
+          "path": "notifications-and-chat.md",
+          "description": "In-app/web push/email/Slack delivery, chat, onboarding, profile"
+        }
+      ]
+    },
+    {
+      "title": "Testing",
+      "items": [
+        {
+          "title": "Testing Strategy",
+          "slug": "testing/testing-strategy",
+          "path": "testing/testing-strategy.md",
+          "description": "Overall testing approach"
+        }
+      ]
+    }
+  ],
+  "lookup": {
+    "architecture/system-architecture": {
+      "title": "System Architecture",
+      "section": "Architecture & Design",
+      "description": "High-level system design and components",
+      "path": "architecture/system-architecture.md"
+    },
+    "architecture/tech-stack": {
+      "title": "Tech Stack",
+      "section": "Architecture & Design",
+      "description": "Technologies and frameworks used",
+      "path": "architecture/tech-stack.md"
+    },
+    "architecture/database-schema": {
+      "title": "Database Schema",
+      "section": "Architecture & Design",
+      "description": "Data models and relationships",
+      "path": "architecture/database-schema.md"
+    },
+    "architecture/llm-integration": {
+      "title": "LLM Integration",
+      "section": "Architecture & Design",
+      "description": "AI/LLM provider architecture",
+      "path": "architecture/llm-integration.md"
+    },
+    "api/overview": {
+      "title": "API Overview",
+      "section": "API Reference",
+      "description": "Base URL, live Swagger/ReDoc, pointers to the cross-cutting API docs",
+      "path": "api/overview.md"
+    },
+    "guides/getting-started": {
+      "title": "Getting Started",
+      "section": "Getting started & operations",
+      "description": "Quick start guide",
+      "path": "guides/getting-started.md"
+    },
+    "guides/deployment": {
+      "title": "Deployment",
+      "section": "Getting started & operations",
+      "description": "Production deployment guide",
+      "path": "guides/deployment.md"
+    },
+    "guides/database-operations": {
+      "title": "Database Operations",
+      "section": "Getting started & operations",
+      "description": "Migrations, backups, restores, postgres rebuilds, pgvector upgrades",
+      "path": "guides/database-operations.md"
+    },
+    "guides/cli-usage": {
+      "title": "CLI Usage",
+      "section": "Getting started & operations",
+      "description": "Command-line interface guide",
+      "path": "guides/cli-usage.md"
+    },
+    "guides/vscode-extension": {
+      "title": "VS Code Extension",
+      "section": "Getting started & operations",
+      "description": "IDE extension guide",
+      "path": "guides/vscode-extension.md"
+    },
+    "guides/adding-a-feature": {
+      "title": "Adding a feature",
+      "section": "Developer guides (cross-cutting)",
+      "description": "Full-stack checklist for a new module",
+      "path": "guides/adding-a-feature.md"
+    },
+    "guides/api-conventions": {
+      "title": "API conventions",
+      "section": "Developer guides (cross-cutting)",
+      "description": "URL shape, pagination, errors, status codes",
+      "path": "guides/api-conventions.md"
+    },
+    "guides/authentication": {
+      "title": "Authentication & permissions",
+      "section": "Developer guides (cross-cutting)",
+      "description": "JWT, OAuth, workspaces, RBAC, API tokens",
+      "path": "guides/authentication.md"
+    },
+    "guides/temporal": {
+      "title": "Temporal",
+      "section": "Developer guides (cross-cutting)",
+      "description": "Workflows, activities, schedules, retries, idempotency",
+      "path": "guides/temporal.md"
+    },
+    "guides/webhooks": {
+      "title": "Webhooks",
+      "section": "Developer guides (cross-cutting)",
+      "description": "Inbound + outbound signing and delivery",
+      "path": "guides/webhooks.md"
+    },
+    "guides/file-uploads": {
+      "title": "File uploads & object storage",
+      "section": "Developer guides (cross-cutting)",
+      "description": "RustFS / S3 + presigned URLs + AI metadata pipeline",
+      "path": "guides/file-uploads.md"
+    },
+    "guides/i18n": {
+      "title": "Internationalization (i18n)",
+      "section": "Developer guides (cross-cutting)",
+      "description": "next-intl, cookie-based locale, message files",
+      "path": "guides/i18n.md"
+    },
+    "guides/frontend-conventions": {
+      "title": "Frontend conventions",
+      "section": "Developer guides (cross-cutting)",
+      "description": "App Router, React Query, Zustand, generated client",
+      "path": "guides/frontend-conventions.md"
+    },
+    "guides/aexy-email-infrastructure": {
+      "title": "Aexy Email Infrastructure",
+      "section": "Developer guides (cross-cutting)",
+      "description": "",
+      "path": "guides/aexy-email-infrastructure.md"
+    },
+    "google": {
+      "title": "Google integration",
+      "section": "Provider setup",
+      "description": "Sign-in, Gmail & Calendar",
+      "path": "google.md"
+    },
+    "microsoft": {
+      "title": "Microsoft integration",
+      "section": "Provider setup",
+      "description": "Sign-in, Outlook & Calendar (Microsoft Graph)",
+      "path": "microsoft.md"
+    },
+    "slack": {
+      "title": "Slack",
+      "section": "Provider setup",
+      "description": "Bot install, slash commands, OAuth",
+      "path": "slack.md"
+    },
+    "stripe": {
+      "title": "Stripe",
+      "section": "Provider setup",
+      "description": "Billing & subscriptions",
+      "path": "stripe.md"
+    },
+    "sprints": {
+      "title": "Sprints & planning",
+      "section": "Modules — Work & planning",
+      "description": "Sprints, epics, stories, planning poker, retrospectives, releases",
+      "path": "sprints.md"
+    },
+    "tickets-and-projects": {
+      "title": "Tickets & projects",
+      "section": "Modules — Work & planning",
+      "description": "Tickets, sprint tasks, projects, templates, ticket forms",
+      "path": "tickets-and-projects.md"
+    },
+    "booking": {
+      "title": "Booking",
+      "section": "Modules — Work & planning",
+      "description": "Calendar scheduling, team bookings & RSVP",
+      "path": "booking.md"
+    },
+    "tracking": {
+      "title": "Tracking",
+      "section": "Modules — Work & planning",
+      "description": "Standups, time entries, blockers, entity activity",
+      "path": "tracking.md"
+    },
+    "reviews-and-people": {
+      "title": "Reviews, hiring & learning",
+      "section": "Modules — People",
+      "description": "Performance reviews, hiring & assessments, learning paths",
+      "path": "reviews-and-people.md"
+    },
+    "compliance": {
+      "title": "Compliance",
+      "section": "Modules — People",
+      "description": "Mandatory training, certifications, reminders, escalation, audit",
+      "path": "compliance.md"
+    },
+    "guides/reminders": {
+      "title": "Reminders (guide)",
+      "section": "Modules — People",
+      "description": "The narrower how-to for recurring compliance reminders",
+      "path": "guides/reminders.md"
+    },
+    "leave": {
+      "title": "Leave",
+      "section": "Modules — People",
+      "description": "Time-off types, policies, approvals, balances",
+      "path": "leave.md"
+    },
+    "crm": {
+      "title": "CRM",
+      "section": "Modules — Customers",
+      "description": "Companies, people, deals, custom objects, sequences, automations",
+      "path": "crm.md"
+    },
+    "gtm": {
+      "title": "GTM",
+      "section": "Modules — Customers",
+      "description": "Lead scoring, ABM, outreach sequences, intent, expansion playbooks",
+      "path": "gtm.md"
+    },
+    "forms": {
+      "title": "Forms",
+      "section": "Modules — Customers",
+      "description": "Public form builder, themes, conditional logic, ticket/CRM/deal routing",
+      "path": "forms.md"
+    },
+    "tables": {
+      "title": "Tables",
+      "section": "Modules — Customers",
+      "description": "Airtable-style custom data tables with saved views",
+      "path": "tables.md"
+    },
+    "email-marketing": {
+      "title": "Email Marketing",
+      "section": "Modules — Customers",
+      "description": "Campaigns, automation & infrastructure",
+      "path": "email-marketing.md"
+    },
+    "ai-agents": {
+      "title": "AI Agents",
+      "section": "Modules — AI & knowledge",
+      "description": "LangGraph-based agents with CRM/email tools",
+      "path": "ai-agents.md"
+    },
+    "workflows-and-automations": {
+      "title": "Workflows & automations",
+      "section": "Modules — AI & knowledge",
+      "description": "Automation triggers/actions + visual workflows + agent policies",
+      "path": "workflows-and-automations.md"
+    },
+    "documents-and-drive": {
+      "title": "Documents, Drive & Knowledge Graph",
+      "section": "Modules — AI & knowledge",
+      "description": "Docs, file browser, AI metadata pipeline, MCP",
+      "path": "documents-and-drive.md"
+    },
+    "analytics": {
+      "title": "Analytics, insights & reports",
+      "section": "Modules — Observability",
+      "description": "Dashboards, snapshots, custom reports, predictions, intelligence",
+      "path": "analytics.md"
+    },
+    "uptime": {
+      "title": "Uptime Monitoring",
+      "section": "Modules — Observability",
+      "description": "Endpoint monitoring & incident management",
+      "path": "uptime.md"
+    },
+    "notifications-and-chat": {
+      "title": "Notifications & chat",
+      "section": "Modules — Communication",
+      "description": "In-app/web push/email/Slack delivery, chat, onboarding, profile",
+      "path": "notifications-and-chat.md"
+    },
+    "testing/testing-strategy": {
+      "title": "Testing Strategy",
+      "section": "Testing",
+      "description": "Overall testing approach",
+      "path": "testing/testing-strategy.md"
+    }
+  },
+  "pager": {
+    "architecture/system-architecture": {
+      "prev": null,
+      "next": {
+        "title": "Tech Stack",
+        "slug": "architecture/tech-stack"
+      }
+    },
+    "architecture/tech-stack": {
+      "prev": {
+        "title": "System Architecture",
+        "slug": "architecture/system-architecture"
+      },
+      "next": {
+        "title": "Database Schema",
+        "slug": "architecture/database-schema"
+      }
+    },
+    "architecture/database-schema": {
+      "prev": {
+        "title": "Tech Stack",
+        "slug": "architecture/tech-stack"
+      },
+      "next": {
+        "title": "LLM Integration",
+        "slug": "architecture/llm-integration"
+      }
+    },
+    "architecture/llm-integration": {
+      "prev": {
+        "title": "Database Schema",
+        "slug": "architecture/database-schema"
+      },
+      "next": {
+        "title": "API Overview",
+        "slug": "api/overview"
+      }
+    },
+    "api/overview": {
+      "prev": {
+        "title": "LLM Integration",
+        "slug": "architecture/llm-integration"
+      },
+      "next": {
+        "title": "Getting Started",
+        "slug": "guides/getting-started"
+      }
+    },
+    "guides/getting-started": {
+      "prev": {
+        "title": "API Overview",
+        "slug": "api/overview"
+      },
+      "next": {
+        "title": "Deployment",
+        "slug": "guides/deployment"
+      }
+    },
+    "guides/deployment": {
+      "prev": {
+        "title": "Getting Started",
+        "slug": "guides/getting-started"
+      },
+      "next": {
+        "title": "Database Operations",
+        "slug": "guides/database-operations"
+      }
+    },
+    "guides/database-operations": {
+      "prev": {
+        "title": "Deployment",
+        "slug": "guides/deployment"
+      },
+      "next": {
+        "title": "CLI Usage",
+        "slug": "guides/cli-usage"
+      }
+    },
+    "guides/cli-usage": {
+      "prev": {
+        "title": "Database Operations",
+        "slug": "guides/database-operations"
+      },
+      "next": {
+        "title": "VS Code Extension",
+        "slug": "guides/vscode-extension"
+      }
+    },
+    "guides/vscode-extension": {
+      "prev": {
+        "title": "CLI Usage",
+        "slug": "guides/cli-usage"
+      },
+      "next": {
+        "title": "Adding a feature",
+        "slug": "guides/adding-a-feature"
+      }
+    },
+    "guides/adding-a-feature": {
+      "prev": {
+        "title": "VS Code Extension",
+        "slug": "guides/vscode-extension"
+      },
+      "next": {
+        "title": "API conventions",
+        "slug": "guides/api-conventions"
+      }
+    },
+    "guides/api-conventions": {
+      "prev": {
+        "title": "Adding a feature",
+        "slug": "guides/adding-a-feature"
+      },
+      "next": {
+        "title": "Authentication & permissions",
+        "slug": "guides/authentication"
+      }
+    },
+    "guides/authentication": {
+      "prev": {
+        "title": "API conventions",
+        "slug": "guides/api-conventions"
+      },
+      "next": {
+        "title": "Temporal",
+        "slug": "guides/temporal"
+      }
+    },
+    "guides/temporal": {
+      "prev": {
+        "title": "Authentication & permissions",
+        "slug": "guides/authentication"
+      },
+      "next": {
+        "title": "Webhooks",
+        "slug": "guides/webhooks"
+      }
+    },
+    "guides/webhooks": {
+      "prev": {
+        "title": "Temporal",
+        "slug": "guides/temporal"
+      },
+      "next": {
+        "title": "File uploads & object storage",
+        "slug": "guides/file-uploads"
+      }
+    },
+    "guides/file-uploads": {
+      "prev": {
+        "title": "Webhooks",
+        "slug": "guides/webhooks"
+      },
+      "next": {
+        "title": "Internationalization (i18n)",
+        "slug": "guides/i18n"
+      }
+    },
+    "guides/i18n": {
+      "prev": {
+        "title": "File uploads & object storage",
+        "slug": "guides/file-uploads"
+      },
+      "next": {
+        "title": "Frontend conventions",
+        "slug": "guides/frontend-conventions"
+      }
+    },
+    "guides/frontend-conventions": {
+      "prev": {
+        "title": "Internationalization (i18n)",
+        "slug": "guides/i18n"
+      },
+      "next": {
+        "title": "Aexy Email Infrastructure",
+        "slug": "guides/aexy-email-infrastructure"
+      }
+    },
+    "guides/aexy-email-infrastructure": {
+      "prev": {
+        "title": "Frontend conventions",
+        "slug": "guides/frontend-conventions"
+      },
+      "next": {
+        "title": "Google integration",
+        "slug": "google"
+      }
+    },
+    "google": {
+      "prev": {
+        "title": "Aexy Email Infrastructure",
+        "slug": "guides/aexy-email-infrastructure"
+      },
+      "next": {
+        "title": "Microsoft integration",
+        "slug": "microsoft"
+      }
+    },
+    "microsoft": {
+      "prev": {
+        "title": "Google integration",
+        "slug": "google"
+      },
+      "next": {
+        "title": "Slack",
+        "slug": "slack"
+      }
+    },
+    "slack": {
+      "prev": {
+        "title": "Microsoft integration",
+        "slug": "microsoft"
+      },
+      "next": {
+        "title": "Stripe",
+        "slug": "stripe"
+      }
+    },
+    "stripe": {
+      "prev": {
+        "title": "Slack",
+        "slug": "slack"
+      },
+      "next": {
+        "title": "Sprints & planning",
+        "slug": "sprints"
+      }
+    },
+    "sprints": {
+      "prev": {
+        "title": "Stripe",
+        "slug": "stripe"
+      },
+      "next": {
+        "title": "Tickets & projects",
+        "slug": "tickets-and-projects"
+      }
+    },
+    "tickets-and-projects": {
+      "prev": {
+        "title": "Sprints & planning",
+        "slug": "sprints"
+      },
+      "next": {
+        "title": "Booking",
+        "slug": "booking"
+      }
+    },
+    "booking": {
+      "prev": {
+        "title": "Tickets & projects",
+        "slug": "tickets-and-projects"
+      },
+      "next": {
+        "title": "Tracking",
+        "slug": "tracking"
+      }
+    },
+    "tracking": {
+      "prev": {
+        "title": "Booking",
+        "slug": "booking"
+      },
+      "next": {
+        "title": "Reviews, hiring & learning",
+        "slug": "reviews-and-people"
+      }
+    },
+    "reviews-and-people": {
+      "prev": {
+        "title": "Tracking",
+        "slug": "tracking"
+      },
+      "next": {
+        "title": "Compliance",
+        "slug": "compliance"
+      }
+    },
+    "compliance": {
+      "prev": {
+        "title": "Reviews, hiring & learning",
+        "slug": "reviews-and-people"
+      },
+      "next": {
+        "title": "Reminders (guide)",
+        "slug": "guides/reminders"
+      }
+    },
+    "guides/reminders": {
+      "prev": {
+        "title": "Compliance",
+        "slug": "compliance"
+      },
+      "next": {
+        "title": "Leave",
+        "slug": "leave"
+      }
+    },
+    "leave": {
+      "prev": {
+        "title": "Reminders (guide)",
+        "slug": "guides/reminders"
+      },
+      "next": {
+        "title": "CRM",
+        "slug": "crm"
+      }
+    },
+    "crm": {
+      "prev": {
+        "title": "Leave",
+        "slug": "leave"
+      },
+      "next": {
+        "title": "GTM",
+        "slug": "gtm"
+      }
+    },
+    "gtm": {
+      "prev": {
+        "title": "CRM",
+        "slug": "crm"
+      },
+      "next": {
+        "title": "Forms",
+        "slug": "forms"
+      }
+    },
+    "forms": {
+      "prev": {
+        "title": "GTM",
+        "slug": "gtm"
+      },
+      "next": {
+        "title": "Tables",
+        "slug": "tables"
+      }
+    },
+    "tables": {
+      "prev": {
+        "title": "Forms",
+        "slug": "forms"
+      },
+      "next": {
+        "title": "Email Marketing",
+        "slug": "email-marketing"
+      }
+    },
+    "email-marketing": {
+      "prev": {
+        "title": "Tables",
+        "slug": "tables"
+      },
+      "next": {
+        "title": "AI Agents",
+        "slug": "ai-agents"
+      }
+    },
+    "ai-agents": {
+      "prev": {
+        "title": "Email Marketing",
+        "slug": "email-marketing"
+      },
+      "next": {
+        "title": "Workflows & automations",
+        "slug": "workflows-and-automations"
+      }
+    },
+    "workflows-and-automations": {
+      "prev": {
+        "title": "AI Agents",
+        "slug": "ai-agents"
+      },
+      "next": {
+        "title": "Documents, Drive & Knowledge Graph",
+        "slug": "documents-and-drive"
+      }
+    },
+    "documents-and-drive": {
+      "prev": {
+        "title": "Workflows & automations",
+        "slug": "workflows-and-automations"
+      },
+      "next": {
+        "title": "Analytics, insights & reports",
+        "slug": "analytics"
+      }
+    },
+    "analytics": {
+      "prev": {
+        "title": "Documents, Drive & Knowledge Graph",
+        "slug": "documents-and-drive"
+      },
+      "next": {
+        "title": "Uptime Monitoring",
+        "slug": "uptime"
+      }
+    },
+    "uptime": {
+      "prev": {
+        "title": "Analytics, insights & reports",
+        "slug": "analytics"
+      },
+      "next": {
+        "title": "Notifications & chat",
+        "slug": "notifications-and-chat"
+      }
+    },
+    "notifications-and-chat": {
+      "prev": {
+        "title": "Uptime Monitoring",
+        "slug": "uptime"
+      },
+      "next": {
+        "title": "Testing Strategy",
+        "slug": "testing/testing-strategy"
+      }
+    },
+    "testing/testing-strategy": {
+      "prev": {
+        "title": "Notifications & chat",
+        "slug": "notifications-and-chat"
+      },
+      "next": null
+    }
+  }
+}

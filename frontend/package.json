@@ -1,11 +1,11 @@
 {
   "name": "aexy-frontend",
-  "version": "0.7.6",
+  "version": "0.7.72",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "i18n:merge": "node scripts/merge-messages.js",
-    "prebuild": "npm run i18n:merge && node scripts/generate-changelog.mjs",
+    "prebuild": "npm run i18n:merge && node scripts/generate-changelog.mjs && node scripts/generate-docs.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -21,7 +21,8 @@
     "test:e2e:billing:ui": "playwright test e2e/billing.spec.ts --ui",
     "test:e2e:invoices": "playwright test e2e/admin-invoices.spec.ts",
     "test:e2e:invoices:headed": "playwright test e2e/admin-invoices.spec.ts --headed",
-    "changelog": "node scripts/generate-changelog.mjs"
+    "changelog": "node scripts/generate-changelog.mjs",
+    "docs:gen": "node scripts/generate-docs.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -63,6 +64,8 @@
     "date-fns": "^4.1.0",
     "face-api.js": "^0.22.2",
     "framer-motion": "^12.24.0",
+    "fuse.js": "^7.3.0",
+    "gray-matter": "^4.0.3",
     "lowlight": "^3.0.0",
     "lucide-react": "^0.469.0",
     "next": "^16.2.1",
@@ -73,7 +76,14 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-is": "^19.2.4",
+    "react-markdown": "^9.1.0",
     "recharts": "^3.6.0",
+    "rehype-autolink-headings": "^7.1.0",
+    "rehype-highlight": "^7.0.2",
+    "rehype-pretty-code": "^0.14.3",
+    "rehype-slug": "^6.0.0",
+    "remark-gfm": "^4.0.1",
+    "shiki": "^1.29.2",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^3.4.1",

@@ -202,7 +202,8 @@ async def get_calendar_oauth_url(
             "scope": " ".join(MICROSOFT_CALENDAR_SCOPES) + " offline_access",
             "state": state,
         }
-        auth_url = f"https://login.microsoftonline.com/common/oauth2/v2.0/authorize?{urlencode(params)}"
+        tenant = getattr(settings, "microsoft_tenant_id", None) or "common"
+        auth_url = f"https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize?{urlencode(params)}"
 
     return {"auth_url": auth_url}
 
@@ -354,7 +355,8 @@ async def calendar_oauth_callback(
                 )
 
             # Exchange authorization code for tokens
-            token_url = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
+            tenant = getattr(settings, "microsoft_tenant_id", None) or "common"
+            token_url = f"https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token"
             token_data = {
                 "client_id": microsoft_client_id,
                 "client_secret": microsoft_client_secret,

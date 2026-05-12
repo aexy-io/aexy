@@ -17,18 +17,61 @@ We're on a mission to bring positive change by building world-class tools actual
 - [LLM Integration](./architecture/llm-integration.md) - AI/LLM provider architecture
 
 ### API Reference
-- [API Overview](./api/overview.md) - API design principles and authentication
+- [API Overview](./api/overview.md) - Base URL, live Swagger/ReDoc, pointers to the cross-cutting API docs
 
-### Guides
+### Getting started & operations
 - [Getting Started](./guides/getting-started.md) - Quick start guide
-- [CLI Usage](./guides/cli-usage.md) - Command-line interface guide
-- [VS Code Extension](./guides/vscode-extension.md) - IDE extension guide
 - [Deployment](./guides/deployment.md) - Production deployment guide
 - [Database Operations](./guides/database-operations.md) - Migrations, backups, restores, postgres rebuilds, pgvector upgrades
-- [AI Agents](./ai-agents.md) - Intelligent automation assistants
-- [Email Marketing](./email-marketing.md) - Campaigns, automation & infrastructure
+- [CLI Usage](./guides/cli-usage.md) - Command-line interface guide
+- [VS Code Extension](./guides/vscode-extension.md) - IDE extension guide
+
+### Developer guides (cross-cutting)
+- [Adding a feature](./guides/adding-a-feature.md) - Full-stack checklist for a new module
+- [API conventions](./guides/api-conventions.md) - URL shape, pagination, errors, status codes
+- [Authentication & permissions](./guides/authentication.md) - JWT, OAuth, workspaces, RBAC, API tokens
+- [Temporal](./guides/temporal.md) - Workflows, activities, schedules, retries, idempotency
+- [Webhooks](./guides/webhooks.md) - Inbound + outbound signing and delivery
+- [File uploads & object storage](./guides/file-uploads.md) - RustFS / S3 + presigned URLs + AI metadata pipeline
+- [Internationalization (i18n)](./guides/i18n.md) - next-intl, cookie-based locale, message files
+- [Frontend conventions](./guides/frontend-conventions.md) - App Router, React Query, Zustand, generated client
+
+### Provider setup
+- [Google integration](./google.md) - Sign-in, Gmail & Calendar
+- [Microsoft integration](./microsoft.md) - Sign-in, Outlook & Calendar (Microsoft Graph)
+- [Slack](./slack.md) - Bot install, slash commands, OAuth
+- [Stripe](./stripe.md) - Billing & subscriptions
+
+### Modules — Work & planning
+- [Sprints & planning](./sprints.md) - Sprints, epics, stories, planning poker, retrospectives, releases
+- [Tickets & projects](./tickets-and-projects.md) - Tickets, sprint tasks, projects, templates, ticket forms
 - [Booking](./booking.md) - Calendar scheduling, team bookings & RSVP
+- [Tracking](./tracking.md) - Standups, time entries, blockers, entity activity
+
+### Modules — People
+- [Reviews, hiring & learning](./reviews-and-people.md) - Performance reviews, hiring & assessments, learning paths
+- [Compliance](./compliance.md) - Mandatory training, certifications, reminders, escalation, audit
+- [Reminders (guide)](./guides/reminders.md) - The narrower how-to for recurring compliance reminders
+- [Leave](./leave.md) - Time-off types, policies, approvals, balances
+
+### Modules — Customers
+- [CRM](./crm.md) - Companies, people, deals, custom objects, sequences, automations
+- [GTM](./gtm.md) - Lead scoring, ABM, outreach sequences, intent, expansion playbooks
+- [Forms](./forms.md) - Public form builder, themes, conditional logic, ticket/CRM/deal routing
+- [Tables](./tables.md) - Airtable-style custom data tables with saved views
+- [Email Marketing](./email-marketing.md) - Campaigns, automation & infrastructure
+
+### Modules — AI & knowledge
+- [AI Agents](./ai-agents.md) - LangGraph-based agents with CRM/email tools
+- [Workflows & automations](./workflows-and-automations.md) - Automation triggers/actions + visual workflows + agent policies
+- [Documents, Drive & Knowledge Graph](./documents-and-drive.md) - Docs, file browser, AI metadata pipeline, MCP
+
+### Modules — Observability
+- [Analytics, insights & reports](./analytics.md) - Dashboards, snapshots, custom reports, predictions, intelligence
 - [Uptime Monitoring](./uptime.md) - Endpoint monitoring & incident management
+
+### Modules — Communication
+- [Notifications & chat](./notifications-and-chat.md) - In-app/web push/email/Slack delivery, chat, onboarding, profile
 
 ### Testing
 - [Testing Strategy](./testing/testing-strategy.md) - Overall testing approach

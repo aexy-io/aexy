@@ -5,120 +5,168 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.7.71] - 2026-05-07
+## [0.7.72] - 2026-05-07
 
-Patch release on top of 0.7.7. Fixes a production-only file-upload
-outage, several silently-dropped task fields on PATCH, light-mode
-contrast on the task-create form, and brings the deployment docs in
-line with the real stack. Adds backlog (sprint-less) task attachments.
+Project-level (sprint-less) tasks reach feature parity with sprint
+tasks. Backlog tasks can now carry attachments, attach GitHub PRs and
+issues, accept comments, and surface a full activity history; several
+silently-dropped fields on create/update across both routes are
+plugged; the History tab now logs every meaningful task mutation
+including archives, sprint moves, and planning-poker estimates; and
+repository connection moves from per-developer to workspace-scoped.
 
 ### Added
 
-#### Backlog tasks now show activity history and accept comments
-The History tab on the task modal previously rendered "Move this task
-into a sprint to view its full activity history" for sprint-less
-tasks because the only activities + comments routes were
-sprint-scoped. Added the matching team-scoped routes
-(`GET /teams/{team_id}/tasks/{task_id}/activities` and
-`POST /teams/{team_id}/tasks/{task_id}/comments`) and updated
-`AssignmentHistoryPanel` to dispatch the query based on
-`task.sprint_id` vs `task.team_id`. Activity rows are keyed on
-`task_id` only on the model side, so the existing per-task creation,
-status, assignment, and field-change events surface for backlog
-tasks without any data backfill.
+#### Workspace + project repository connection
+Repositories are connected at the **workspace** level now, with
+projects picking subsets. New tables `workspace_repositories` (the
+workspace's adopted catalog) and `team_repositories` (the project's
+selection) replace `DeveloperRepository.is_enabled` as the source of
+truth for "which repos are tracked here." Migration
+`migrate_workspace_team_repositories.sql` backfills both from
+existing per-developer enables so nothing in scope today disappears.
 
-#### Backlog tasks can attach pull requests; project-level GitHub import
-Two related additions for backlog (sprint-less) tasks. (1) The PR
-linking section in the task modal now works for project-level tasks —
-new endpoints `GET /teams/{team_id}/tasks/github/pull-requests` and
-`POST /teams/{team_id}/tasks/{task_id}/github-links/pull-requests`
+- New endpoints: `GET/POST/DELETE /workspaces/{id}/repositories`
+  (admin), `GET/POST/DELETE /teams/{id}/repositories`, plus
+  `POST /workspaces/{id}/repositories/{wr_id}/reclaim` for the
+  former-member adoption flow.
+- `WorkspaceRepositoryService` exposes the adopt / unadopt /
+  reclaim / link-team / unlink-team / pick_installation_developer
+  surface; the canonical sync state (sync_status, last_sync_at,
+  webhook bookkeeping, incremental cursors) lives on
+  `workspace_repositories` since sync is workspace-owned now.
+- Free-plan repo cap is now per-workspace.
+  `LimitsService.can_adopt_repository(workspace_id)` counts active
+  rows against the workspace's effective plan and gates the adopt
+  endpoint. Removes the per-developer counter from the gating path
+  (still used as a display-only roll-up on the limits widget).
+- Consumers swapped: PR search (sprint + project), GitHub issue
+  search/import, the auto-sync Temporal scheduler, developer
+  insights, sync-status. Per-developer enable/disable endpoints
+  are removed; the column `DeveloperRepository.is_enabled` stays
+  as a discovery cache and gets cleaned up in a follow-up.
+- New project settings tab at
+  `/settings/projects/{projectId}/repositories` for picking which
+  workspace repos a project tracks.
+- Former-member adoption UX: a "Reclaim" banner on
+  `/settings/repositories` lists `workspace_repositories` whose
+  adopter is no longer an active workspace member, with a one-click
+  "Reclaim" action that re-binds the row to the active member who
+  clicked it (or any active member with reach as a fallback).
+  `WorkspaceRepository.sync_status='no_credentials'` is set
+  automatically when the auto-sync scheduler can't get a token,
+  surfacing the same banner.
+- Frontend rewires `handleRepoToggle` on `/settings/repositories`
+  to call `workspaceRepositoriesApi.adopt` / `unadopt` instead of
+  the removed per-developer endpoints; existing UI keeps working,
+  the toggle now adopts into the current workspace.
+
+
+
+#### Backlog tasks can carry attachments
+Sprint-less project tasks had attachment upload gated behind a "Move
+this task into a sprint to upload attachments" banner because the
+only attachment routes lived under `/sprints/{sprint_id}/tasks/...`.
+Added parallel endpoints under `/teams/{team_id}/tasks/{task_id}/attachments`
+(POST / GET / DELETE) authorised via team membership. Both routers now
+share the same upload, list, and delete logic via a new
+`backend/src/aexy/services/task_attachment_service.py` (S3 put,
+storage-quota assertion, AI metadata pipeline dispatch, S3 delete,
+quota-cache invalidation — all in one place). The frontend picks the
+right endpoint based on `task.sprint_id`; the gate banner is gone.
+
+#### Backlog tasks can attach pull requests and GitHub issues
+The PR linking section in the task modal now works for project-level
+tasks — new endpoints `GET /teams/{team_id}/tasks/github/pull-requests`
+and `POST /teams/{team_id}/tasks/{task_id}/github-links/pull-requests`
 mirror the sprint-scoped equivalents (workspace-membership check on
-the PR author preserved), and the EditTaskModal dispatches the
-search and link mutations to either endpoint based on whether the
-task has a `sprint_id`. The list endpoint at
-`/teams/{team_id}/tasks/{task_id}/github-links` now returns both
-issue and PR links (previously filtered to `github_issue` only).
-(2) New `POST /teams/{team_id}/tasks/import` (with
+the PR author preserved). The list endpoint at
+`/teams/{team_id}/tasks/{task_id}/github-links` now returns both issue
+and PR links (previously filtered to `github_issue` only). The
+`EditTaskModal` dispatches search and link mutations to either endpoint
+based on whether the task has a `sprint_id`.
+
+#### Project-level GitHub issue import
+New `POST /teams/{team_id}/tasks/import` (with
 `projectTasksApi.importTasks` on the frontend) imports GitHub issues
 into the team's backlog without requiring a sprint, populating the
 "Select issue" dropdown across every task in the team. New service
 helpers `add_project_task` and `_import_project_task_items` keep the
 import dedup keyed on `(team_id, source_type, source_id)`.
 
-#### Backlog tasks can now carry attachments
-Sprint-less project tasks (where `sprint_id IS NULL`) had attachment
-upload gated behind a "Move this task into a sprint to upload
-attachments" banner because the only attachment routes lived under
-`/sprints/{sprint_id}/tasks/{task_id}/attachments`. Added parallel
-endpoints under `/teams/{team_id}/tasks/{task_id}/attachments`
-(POST / GET / DELETE) authorised via team membership. Both routers
-now share the same upload, list, and delete logic via a new
-`backend/src/aexy/services/task_attachment_service.py` (S3 put,
-storage-quota assertion, AI metadata pipeline dispatch, S3 delete,
-quota-cache invalidation — all in one place). The frontend
-(`board/page.tsx`) picks the right endpoint based on whether the
-task has a sprint; the gate banner is gone.
+#### Backlog tasks show activity history and accept comments
+The History tab previously rendered "Move this task into a sprint to
+view its full activity history" for sprint-less tasks because the only
+activities + comments routes were sprint-scoped. Added the matching
+team-scoped routes (`GET /teams/{team_id}/tasks/{task_id}/activities`
+and `POST /teams/{team_id}/tasks/{task_id}/comments`) and updated
+`AssignmentHistoryPanel` to dispatch by `task.sprint_id` vs
+`task.team_id`. Activity rows are keyed on `task_id` only on the model
+side, so existing per-task creation / status / assignment / field-change
+events surface for backlog tasks without any data backfill.
+
+#### History tab now logs every meaningful task mutation
+Audit pass on every place that mutates a `SprintTask`. Previously
+silent paths now write per-task `TaskActivity` rows:
+
+- **Project-task PATCH** delegates to `SprintTaskService.update_task`
+  instead of duplicating field assignments, so backlog edits get the
+  same per-field timeline (`title_changed`, `priority_changed`, etc.)
+  that sprint tasks have.
+- **Project-task status PATCH** writes a per-task `status_changed` row
+  in addition to the workspace `EntityActivity` it already emitted.
+- **Attachment upload + delete** write `attachment_added` /
+  `attachment_removed` rows attributed to the actor; affects sprint
+  AND project tasks (this was missing for both).
+- **Archive / unarchive / remove** write `archived` / `unarchived`
+  rows; `actor_id` threaded through `archive_task`, `unarchive_task`,
+  and `remove_task` on the service.
+- **Sprint moves** (project PATCH inline `sprint_id`, the dedicated
+  `move-to-sprint` endpoint, and `bulk_move_to_sprint`) write
+  `sprint_changed` with prior and new sprint IDs.
+- **Planning-poker finalize** writes a `points_changed` row when the
+  estimate it stamps onto each task differs from the prior value.
+- **Project-task creation** writes a `created` row so backlog
+  timelines start with "X created this task" instead of empty.
+
+`TaskActivityAction` extended with `attachment_added`,
+`attachment_removed`, `archived`, `unarchived`, and `sprint_changed`,
+with renderer cases in both task modals.
 
 ### Fixed
 
-#### Object storage missing from production compose
-`docker-compose.prod.yml` had no rustfs (or any S3-compatible) service
-and no `S3_ENDPOINT_URL` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY`
-env vars on `backend` or `temporal-worker`, even though the dev compose
-ships rustfs and points the backend at it. Result: in production
-`StorageService.is_configured()` returned False and every file upload —
-task attachments, recording uploads, compliance docs — returned `503
-File storage is not configured on this deployment`. Added a `rustfs`
-service to the prod compose (internal-network only, with healthcheck),
-wired the S3 env vars on backend and temporal-worker, added
-`rustfs_data` and `rustfs_logs` volumes, added an `/storage/` proxy
-location to `nginx/nginx.conf` so uploaded URLs are reachable from the
-browser, and seeded `RUSTFS_ROOT_USER` / `RUSTFS_ROOT_PASSWORD` /
-`S3_PUBLIC_ENDPOINT_URL` in `.env.prod.example`. Existing operators
-need to set those three values in `.env.prod` and re-run
-`docker compose -f docker-compose.prod.yml up -d`.
-
 #### Project-task creation silently dropped dates and estimated hours
-`POST /teams/{team_id}/tasks` (used to create backlog / sprint-less
-tasks via `projectTasksApi.create`) accepted `start_date`, `end_date`,
-and `estimated_hours` in the `ProjectTaskCreate` body but the handler
-instantiated `SprintTask(...)` without passing them through, so a
-fresh task always saved with `start_date IS NULL` / `end_date IS NULL`
-/ `estimated_hours IS NULL` regardless of what the form submitted.
-Same drop happened in the frontend create path: the
-`useProjectBoard.addTaskMutation` mutationFn destructures the typed
-task and explicitly forwards each known field to
-`projectTasksApi.create`, and the type/forwarding listed neither
-date field nor hours. Wired all three fields through every layer
-(SprintTask kwargs in the backend, mutationFn type and forwarding,
-and the `create` and `addTask` API client signatures).
+`POST /teams/{team_id}/tasks` accepted `start_date`, `end_date`, and
+`estimated_hours` in `ProjectTaskCreate` but the handler instantiated
+`SprintTask(...)` without passing them through, so a fresh task always
+saved with NULL dates and NULL hours regardless of the form. The
+frontend create path mirrored the drop —
+`useProjectBoard.addTaskMutation` explicitly listed each forwarded
+field and the dates/hours weren't in the list. Wired all three fields
+through every layer (SprintTask kwargs in the backend, mutationFn type
+and forwarding, and the `create` and `addTask` API client signatures).
 
 #### Project-task PATCH silently dropped four fields
-`PATCH /teams/{team_id}/tasks/{task_id}` (the route used for backlog /
-sprint-less tasks via `projectTasksApi.update`) accepted `start_date`,
-`end_date`, `estimated_hours`, and `contributes_to_goal` in its
-`SprintTaskUpdate` body but never read them — the inline update in
-`backend/src/aexy/api/project_tasks.py:update_task` only handled
-title/description/story_points/priority/status/labels/epic_id/
-sprint_id/assignee_id/mentions. Result: editing dates or hours on a
-backlog task looked successful but nothing persisted. Added the four
-missing assignments, using `data.model_fields_set` on the date and
-hours fields so callers can clear them by sending explicit null;
-`contributes_to_goal` is non-nullable on the model and stays
-"set when explicitly provided."
+The same route accepted `start_date`, `end_date`, `estimated_hours`,
+and `contributes_to_goal` in `SprintTaskUpdate` but the inline
+update in `project_tasks.py:update_task` only handled
+title/description/story_points/priority/status/labels/epic_id/sprint_id/
+assignee_id/mentions. Editing dates or hours on a backlog task looked
+successful but nothing persisted. Added the four missing assignments
+with `model_fields_set` semantics on the date and hours fields so
+callers can clear them by sending explicit null; `contributes_to_goal`
+is non-nullable on the model and stays "set when explicitly provided."
 
 #### Project-task responses omitted attachments and seven other fields
-`task_to_response` was duplicated in `sprint_tasks.py` and
-`project_tasks.py` and the project-tasks copy was missing eight
-fields: `attachments`, `work_started_at`, `cycle_time_hours`,
+`task_to_response` was duplicated across `sprint_tasks.py` and
+`project_tasks.py` and the project-tasks copy was missing
+`attachments`, `work_started_at`, `cycle_time_hours`,
 `lead_time_hours`, `contributes_to_goal`, `start_date`, `end_date`,
-`estimated_hours`. Result: uploading an attachment to a backlog task
-succeeded server-side (the row + S3 object were created and returned
-by the dedicated `/attachments` endpoint), but when the UI re-fetched
-the task via the project-task list/get/update endpoints, the response
-serialized `attachments: []`. The dates / hours / cycle-time fields
-on backlog tasks were similarly hidden after save. Extracted the
-canonical `task_to_response` into a new shared module
+and `estimated_hours`. Result: uploading an attachment to a backlog
+task succeeded server-side, but when the UI re-fetched the task via
+the project-task list/get/update endpoints, the response serialized
+`attachments: []` and stale nulls for dates/hours. Extracted the
+canonical builder into a new
 `backend/src/aexy/services/sprint_task_response.py` and pointed both
 routers at it, so the response shape stays in lockstep going forward.
 
@@ -138,6 +186,31 @@ omitted `start_date`, `end_date`, `estimated_hours`, and
 `contributes_to_goal`. The runtime axios call still sent them
 (JavaScript is permissive), but the types misled callers. Added the
 missing fields so the contract matches the backend.
+
+## [0.7.71] - 2026-05-07
+
+Patch release on top of 0.7.7. Fixes a production-only file-upload
+outage, light-mode contrast on the task-create form, and brings the
+deployment docs in line with the real stack.
+
+### Fixed
+
+#### Object storage missing from production compose
+`docker-compose.prod.yml` had no rustfs (or any S3-compatible) service
+and no `S3_ENDPOINT_URL` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY`
+env vars on `backend` or `temporal-worker`, even though the dev compose
+ships rustfs and points the backend at it. Result: in production
+`StorageService.is_configured()` returned False and every file upload —
+task attachments, recording uploads, compliance docs — returned `503
+File storage is not configured on this deployment`. Added a `rustfs`
+service to the prod compose (internal-network only, with healthcheck),
+wired the S3 env vars on backend and temporal-worker, added
+`rustfs_data` and `rustfs_logs` volumes, added an `/storage/` proxy
+location to `nginx/nginx.conf` so uploaded URLs are reachable from the
+browser, and seeded `RUSTFS_ROOT_USER` / `RUSTFS_ROOT_PASSWORD` /
+`S3_PUBLIC_ENDPOINT_URL` in `.env.prod.example`. Existing operators
+need to set those three values in `.env.prod` and re-run
+`docker compose -f docker-compose.prod.yml up -d`.
 
 #### Light-mode contrast on task-create attachment & GitHub-issue buttons
 The native `<input type="file">` "Choose files" button on the new-task

@@ -187,6 +187,9 @@ export function LandingHeader({ showGetStarted = true }: LandingHeaderProps) {
           <Link href="/pricing" className="text-white/60 hover:text-white transition text-sm">
             Pricing
           </Link>
+          <Link href="/handbook" className="text-white/60 hover:text-white transition text-sm">
+            Docs
+          </Link>
           <a href="https://github.com/aexy-io/aexy" className="text-white/60 hover:text-white transition text-sm flex items-center gap-1">
             <SiGithub className="h-4 w-4" />
             GitHub
@@ -264,6 +267,7 @@ export function LandingHeader({ showGetStarted = true }: LandingHeaderProps) {
                   <Link href="/mission" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Mission</Link>
                   <Link href="/manifesto" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Engineering OS</Link>
                   <Link href="/pricing" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Pricing</Link>
+                  <Link href="/handbook" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Docs</Link>
                   <a href="https://github.com/aexy-io/aexy" className="flex items-center gap-2 p-2 text-white/70 hover:text-white text-sm transition">
                     <SiGithub className="h-4 w-4" />
                     GitHub
@@ -348,6 +352,8 @@ export function LandingFooter() {
               <li><Link href="/mission" className="hover:text-white transition">Mission</Link></li>
               <li><Link href="/manifesto" className="hover:text-white transition">Engineering OS</Link></li>
               <li><Link href="/pricing" className="hover:text-white transition">Pricing</Link></li>
+              <li><Link href="/handbook" className="hover:text-white transition">Documentation</Link></li>
+              <li><Link href="/changelog" className="hover:text-white transition">Changelog</Link></li>
               <li><a href="https://github.com/aexy-io/aexy" className="hover:text-white transition">GitHub</a></li>
             </ul>
           </div>

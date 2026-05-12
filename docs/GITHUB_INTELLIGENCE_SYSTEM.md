@@ -751,7 +751,7 @@ burnout_risk = {
 
 ### Current Issues
 1. **Hardcoded Language List** - Add extensibility for new languages
-2. **Synchronous Profile Sync** - Move to fully async Celery tasks
+2. **Synchronous Profile Sync** - Move to fully async Temporal activities
 3. **No Incremental Analysis** - Re-analyzes all activity each time
 4. **Limited Error Recovery** - Webhook failures not retried
 
@@ -797,7 +797,9 @@ burnout_risk = {
 | LLM Gateway | `backend/src/aexy/llm/gateway.py` |
 | Developer Model | `backend/src/aexy/models/developer.py` |
 | Activity Models | `backend/src/aexy/models/activity.py` |
-| Celery Tasks | `backend/src/aexy/processing/tasks.py` |
+| Temporal Activities | `backend/src/aexy/temporal/activities/` |
+| Temporal Workflows | `backend/src/aexy/temporal/workflows/` |
+| Temporal Dispatch | `backend/src/aexy/temporal/dispatch.py` |
 | **Intelligence API** | `backend/src/aexy/api/intelligence.py` |
 | **Commit Analyzer** | `backend/src/aexy/services/commit_analyzer.py` |
 | **Review Quality** | `backend/src/aexy/services/review_quality_analyzer.py` |
