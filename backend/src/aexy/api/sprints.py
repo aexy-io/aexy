@@ -14,9 +14,9 @@ from aexy.schemas.sprint import (
     SprintStatsResponse,
     CarryOverRequest,
     CarryOverResponse,
-    SprintTaskResponse,
 )
 from aexy.services.sprint_service import SprintService
+from aexy.services.sprint_task_response import task_to_response
 from aexy.services.workspace_service import WorkspaceService
 router = APIRouter(tags=["Sprints"])
 
@@ -62,34 +62,6 @@ def sprint_to_list_response(sprint, stats: dict | None = None) -> SprintListResp
         total_points=stats.get("total_points", 0),
         completed_points=stats.get("completed_points", 0),
         settings=sprint.settings or {},
-    )
-
-
-def task_to_response(task) -> SprintTaskResponse:
-    """Convert SprintTask model to response schema."""
-    assignee = task.assignee
-    return SprintTaskResponse(
-        id=str(task.id),
-        sprint_id=str(task.sprint_id),
-        source_type=task.source_type,
-        source_id=task.source_id,
-        source_url=task.source_url,
-        title=task.title,
-        description=task.description,
-        story_points=task.story_points,
-        priority=task.priority,
-        labels=task.labels or [],
-        assignee_id=str(task.assignee_id) if task.assignee_id else None,
-        assignee_name=assignee.name if assignee else None,
-        assignee_avatar_url=assignee.avatar_url if assignee else None,
-        assignment_reason=task.assignment_reason,
-        assignment_confidence=task.assignment_confidence,
-        status=task.status,
-        started_at=task.started_at,
-        completed_at=task.completed_at,
-        carried_over_from_sprint_id=str(task.carried_over_from_sprint_id) if task.carried_over_from_sprint_id else None,
-        created_at=task.created_at,
-        updated_at=task.updated_at,
     )
 
 

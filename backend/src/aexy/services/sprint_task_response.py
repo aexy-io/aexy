@@ -74,4 +74,8 @@ def task_to_response(task) -> SprintTaskResponse:
         attachments=attachments,
         created_at=task.created_at,
         updated_at=task.updated_at,
+        task_key=task.task_key,
+        workspace_slug=task.workspace_slug,
+        identifier=task.identifier,
+        public_url=task.public_url,
     )
