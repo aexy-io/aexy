@@ -10,11 +10,11 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: {
-    default: "Aexy",
+    default: "Aexy | AI Superapp for Companies",
     template: "%s | Aexy",
   },
   description:
-    "GitHub-based developer profiling and analytics for intelligent task allocation and career growth",
+    "Aexy is an AI company operating system for engineering, CRM, GTM, people, docs, workflows, and AI agents. Open source, self-hostable, and built for modern teams.",
 };
 
 export default async function RootLayout({

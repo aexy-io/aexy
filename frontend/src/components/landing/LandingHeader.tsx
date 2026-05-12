@@ -50,6 +50,10 @@ const productLinks = [
 ];
 
 const solutionLinks = [
+  { href: "/for/founders", label: "Founders", icon: Building2, desc: "Run the company OS", color: "from-emerald-500 to-cyan-500" },
+  { href: "/for/revenue-teams", label: "Revenue Teams", icon: Crosshair, desc: "CRM, GTM & handoffs", color: "from-indigo-500 to-violet-500" },
+  { href: "/for/operations", label: "Operations", icon: ClipboardCheck, desc: "Process & workflow control", color: "from-amber-500 to-orange-500" },
+  { href: "/for/ai-agent-builders", label: "AI Agent Builders", icon: Bot, desc: "Governed company context", color: "from-purple-500 to-violet-500" },
   { href: "/for/engineering-managers", label: "Engineering Managers", icon: Users, desc: "Visibility & planning tools", color: "from-blue-500 to-cyan-500" },
   { href: "/for/developers", label: "Developers", icon: Code2, desc: "No surveillance, just growth", color: "from-emerald-500 to-teal-500" },
   { href: "/for/engineering-leaders", label: "CTOs & VPs", icon: Briefcase, desc: "Scale with confidence", color: "from-purple-500 to-violet-500" },
@@ -175,14 +179,17 @@ export function LandingHeader({ showGetStarted = true }: LandingHeaderProps) {
             )}
           </div>
 
-          <Link href="/story" className="text-white/60 hover:text-white transition text-sm">
-            Our Story
+          <Link href="/#platform" className="text-white/60 hover:text-white transition text-sm">
+            Platform
           </Link>
-          <Link href="/mission" className="text-white/60 hover:text-white transition text-sm">
-            Mission
+          <Link href="/ai-company-os" className="text-white/60 hover:text-white transition text-sm">
+            Company OS
           </Link>
-          <Link href="/manifesto" className="text-white/60 hover:text-white transition text-sm">
-            Engineering OS
+          <Link href="/products/ai-agents" className="text-white/60 hover:text-white transition text-sm">
+            AI Agents
+          </Link>
+          <Link href="/products/gtm-intelligence" className="text-white/60 hover:text-white transition text-sm">
+            GTM
           </Link>
           <Link href="/pricing" className="text-white/60 hover:text-white transition text-sm">
             Pricing
@@ -263,9 +270,10 @@ export function LandingHeader({ showGetStarted = true }: LandingHeaderProps) {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <Link href="/story" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Our Story</Link>
-                  <Link href="/mission" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Mission</Link>
-                  <Link href="/manifesto" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Engineering OS</Link>
+                  <Link href="/#platform" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Platform</Link>
+                  <Link href="/ai-company-os" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Company OS</Link>
+                  <Link href="/products/ai-agents" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">AI Agents</Link>
+                  <Link href="/products/gtm-intelligence" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">GTM Intelligence</Link>
                   <Link href="/pricing" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Pricing</Link>
                   <Link href="/handbook" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Docs</Link>
                   <a href="https://github.com/aexy-io/aexy" className="flex items-center gap-2 p-2 text-white/70 hover:text-white text-sm transition">
@@ -313,7 +321,7 @@ export function LandingFooter() {
               <span className="text-lg font-bold text-white">Aexy</span>
             </div>
             <p className="text-white/40 text-sm mb-4">
-              The open-source operating system for engineering organizations.
+              The AI superapp for companies. Open source, self-hostable, and built for modern teams.
             </p>
             <div className="flex items-center gap-3">
               <a href="https://github.com/aexy-io/aexy" className="p-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition">
@@ -334,11 +342,17 @@ export function LandingFooter() {
               <li><Link href="/products/email-marketing" className="hover:text-white transition">Email Marketing</Link></li>
               <li><Link href="/products/ai-agents" className="hover:text-white transition">AI Agents</Link></li>
               <li><Link href="/products/gtm-intelligence" className="hover:text-white transition">GTM Intelligence</Link></li>
+              <li><Link href="/ai-company-os" className="hover:text-white transition">AI Company OS</Link></li>
+              <li><Link href="/open-source-company-os" className="hover:text-white transition">Open Source Company OS</Link></li>
             </ul>
           </div>
           <div>
             <h4 className="text-white font-semibold mb-4">Solutions</h4>
             <ul className="space-y-2 text-white/40 text-sm">
+              <li><Link href="/for/founders" className="hover:text-white transition">For Founders</Link></li>
+              <li><Link href="/for/revenue-teams" className="hover:text-white transition">For Revenue</Link></li>
+              <li><Link href="/for/operations" className="hover:text-white transition">For Operations</Link></li>
+              <li><Link href="/for/ai-agent-builders" className="hover:text-white transition">For Agent Builders</Link></li>
               <li><Link href="/for/engineering-managers" className="hover:text-white transition">For Managers</Link></li>
               <li><Link href="/for/developers" className="hover:text-white transition">For Developers</Link></li>
               <li><Link href="/for/engineering-leaders" className="hover:text-white transition">For CTOs</Link></li>
@@ -350,7 +364,11 @@ export function LandingFooter() {
             <ul className="space-y-2 text-white/40 text-sm">
               <li><Link href="/story" className="hover:text-white transition">Our Story</Link></li>
               <li><Link href="/mission" className="hover:text-white transition">Mission</Link></li>
-              <li><Link href="/manifesto" className="hover:text-white transition">Engineering OS</Link></li>
+              <li><Link href="/manifesto" className="hover:text-white transition">Company OS Manifesto</Link></li>
+              <li><Link href="/use-cases/replace-saas-sprawl" className="hover:text-white transition">Replace SaaS Sprawl</Link></li>
+              <li><Link href="/use-cases/company-knowledge-graph" className="hover:text-white transition">Knowledge Graph</Link></li>
+              <li><Link href="/compare/hubspot" className="hover:text-white transition">Compare HubSpot</Link></li>
+              <li><Link href="/compare/jira" className="hover:text-white transition">Compare Jira</Link></li>
               <li><Link href="/pricing" className="hover:text-white transition">Pricing</Link></li>
               <li><Link href="/handbook" className="hover:text-white transition">Documentation</Link></li>
               <li><Link href="/changelog" className="hover:text-white transition">Changelog</Link></li>
@@ -368,7 +386,7 @@ export function LandingFooter() {
           </div>
         </div>
         <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-white/40 text-sm">&copy; 2025 Aexy. All rights reserved.</p>
+          <p className="text-white/40 text-sm">&copy; 2026 Aexy. All rights reserved.</p>
           <div className="flex items-center gap-6 text-white/40 text-sm">
             <Link href="/privacy" className="hover:text-white transition">Privacy Policy</Link>
             <Link href="/terms" className="hover:text-white transition">Terms of Service</Link>

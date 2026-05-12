@@ -1,117 +1,126 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
-  GitBranch,
-  Users,
-  Target,
-  Zap,
-  BarChart3,
-  Shield,
   ArrowRight,
-  CheckCircle2,
-  Sparkles,
-  Layout,
-  RefreshCw,
-  Layers,
-  GitPullRequest,
+  BarChart3,
   Bot,
-  Rocket,
+  BriefcaseBusiness,
+  CheckCircle2,
   ChevronRight,
-  ChevronDown,
-  GraduationCap,
-  Cpu,
-  Activity,
-  ClipboardCheck,
-  Phone,
-  Calendar,
-  Mail,
-  Building2,
-  UserPlus,
-  Inbox,
-  Ticket,
-  FormInput,
-  FileText,
-  Heart,
   Code2,
-  Briefcase,
-  Plus,
-  Minus,
-  MonitorCheck,
-  Bell,
+  DatabaseZap,
+  FileText,
+  GitBranch,
   Menu,
-  Crosshair,
+  Network,
+  Rocket,
+  Shield,
+  Sparkles,
+  Users,
+  Workflow,
+  X,
 } from "lucide-react";
 import { SiGithub } from "@icons-pack/react-simple-icons";
-import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-  SheetTitle,
-} from "@/components/ui/sheet";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
-const productLinks = [
-  { href: "/products/tracking", label: "Activity Tracking", icon: Target, desc: "Real-time team visibility", color: "from-emerald-500 to-teal-500" },
-  { href: "/products/planning", label: "Sprint Planning", icon: Calendar, desc: "AI-powered capacity planning", color: "from-green-500 to-emerald-500" },
-  { href: "/products/tickets", label: "Ticketing", icon: Ticket, desc: "Keyboard-first issue tracking", color: "from-pink-500 to-rose-500" },
-  { href: "/products/forms", label: "Forms", icon: FormInput, desc: "Drag-and-drop form builder", color: "from-violet-500 to-purple-500" },
-  { href: "/products/docs", label: "Documentation", icon: FileText, desc: "Connected team knowledge", color: "from-indigo-500 to-blue-500" },
-  { href: "/products/reviews", label: "Performance Reviews", icon: ClipboardCheck, desc: "360° feedback & SMART goals", color: "from-orange-500 to-amber-500" },
-  { href: "/products/learning", label: "Learning & Dev", icon: GraduationCap, desc: "Personalized skill growth", color: "from-rose-500 to-pink-500" },
-  { href: "/products/hiring", label: "Technical Hiring", icon: UserPlus, desc: "AI-powered assessments", color: "from-cyan-500 to-blue-500" },
-  { href: "/products/crm", label: "CRM", icon: Building2, desc: "Relationship management", color: "from-purple-500 to-violet-500" },
-  { href: "/products/email-marketing", label: "Email Marketing", icon: Mail, desc: "Campaigns & automation", color: "from-sky-500 to-blue-500" },
-  { href: "/products/ai-agents", label: "AI Agents", icon: Bot, desc: "Intelligent automation", color: "from-purple-500 to-violet-500" },
-  { href: "/products/uptime", label: "Uptime Monitoring", icon: MonitorCheck, desc: "Endpoint health & incidents", color: "from-emerald-500 to-green-500" },
-  { href: "/products/reminders", label: "Compliance Reminders", icon: Bell, desc: "Track recurring commitments", color: "from-blue-500 to-cyan-500" },
-  { href: "/products/gtm-intelligence", label: "GTM Intelligence", icon: Crosshair, desc: "Visitor ID & lead scoring", color: "from-indigo-500 to-violet-500" },
+const pillars = [
+  {
+    title: "Build",
+    label: "Engineering",
+    icon: Code2,
+    description: "Sprints, tasks, GitHub/Jira/Linear sync, analytics, releases, uptime, and engineering reviews.",
+    features: ["Sprint lifecycle", "Task intelligence", "Developer insights", "Release readiness"],
+    accent: "from-cyan-500 to-blue-500",
+  },
+  {
+    title: "Sell",
+    label: "Revenue",
+    icon: BriefcaseBusiness,
+    description: "CRM, GTM intelligence, visitor identification, lead scoring, sequences, routing, and customer health.",
+    features: ["Schema-less CRM", "Visitor ID", "Lead scoring", "Expansion playbooks"],
+    accent: "from-amber-500 to-orange-500",
+  },
+  {
+    title: "Operate",
+    label: "Workflows",
+    icon: Workflow,
+    description: "Automations, visual workflows, tickets, forms, reminders, approvals, and operational handoffs.",
+    features: ["No-code triggers", "Branching workflows", "Agent actions", "Audit trails"],
+    accent: "from-emerald-500 to-teal-500",
+  },
+  {
+    title: "Grow",
+    label: "People",
+    icon: Users,
+    description: "Hiring, assessments, performance reviews, learning paths, compliance, leave, and team development.",
+    features: ["360 reviews", "AI assessments", "Learning paths", "Skill gaps"],
+    accent: "from-rose-500 to-pink-500",
+  },
+  {
+    title: "Know",
+    label: "Knowledge",
+    icon: Network,
+    description: "Docs, Drive, AI metadata, knowledge graph, MCP tools, custom tables, and company-wide reporting.",
+    features: ["Rich docs", "AI metadata", "Knowledge graph", "MCP tools"],
+    accent: "from-violet-500 to-purple-500",
+  },
 ];
 
-const solutionLinks = [
-  { href: "/for/engineering-managers", label: "Engineering Managers", icon: Users, desc: "Visibility & planning tools", color: "from-blue-500 to-cyan-500" },
-  { href: "/for/developers", label: "Developers", icon: Code2, desc: "No surveillance, just growth", color: "from-emerald-500 to-teal-500" },
-  { href: "/for/engineering-leaders", label: "CTOs & VPs", icon: Briefcase, desc: "Scale with confidence", color: "from-purple-500 to-violet-500" },
-  { href: "/for/people-ops", label: "HR & People Ops", icon: Heart, desc: "Hiring, reviews & L&D", color: "from-rose-500 to-pink-500" },
+const proofPoints = [
+  "Open source and self-hostable",
+  "AI-native workflows and agents",
+  "Built for company-wide context",
+  "Designed to replace SaaS sprawl",
 ];
 
-const FAQS = [
+const useCases = [
+  "Replace disconnected Jira, CRM, docs, HR, and workflow tools with one connected operating layer.",
+  "Give AI agents governed access to CRM records, email, Slack, docs, workflows, and business context.",
+  "Connect engineering delivery, GTM execution, people growth, and company knowledge in one workspace.",
+];
+
+const homepageFaqs = [
   {
-    question: "Is Aexy really open source?",
-    answer: "Yes! The core platform is 100% open source under the MIT license. You can host it yourself for free, forever."
+    question: "What is an AI company operating system?",
+    answer:
+      "An AI company operating system is one workspace where core company data, workflows, and AI agents share context across teams instead of living in disconnected SaaS tools.",
   },
   {
-    question: "How does the AI profiling work?",
-    answer: "Our AI analyzes your public (and private, if connected) GitHub activity to identify languages, frameworks, and code patterns you use most, building a dynamic skills profile."
+    question: "Can Aexy replace our CRM?",
+    answer:
+      "Aexy includes a custom-object CRM with contacts, companies, deals, activities, email sync, automations, and GTM intelligence. Teams can start with CRM and expand into engineering, docs, workflows, and people operations.",
   },
   {
-    question: "Can I import data from Jira?",
-    answer: "Absolutely. We offer a one-click import for Jira projects, epics, and tickets. We also support two-way sync so your data is always fresh."
+    question: "Can Aexy be self-hosted?",
+    answer:
+      "Yes. Aexy is open source and self-hostable, with a cloud option for teams that want managed infrastructure.",
   },
   {
-    question: "Is my data secure?",
-    answer: "Security is our top priority. We are SOC 2 Type II certified. We process data in short-lived encrypted containers and never train our models on your proprietary code without explicit opt-in."
+    question: "How do Aexy AI agents work?",
+    answer:
+      "Aexy agents run inside governed company context. They can use approved tools such as CRM records, email, enrichment, Slack, workflows, and docs, with policy gates, approvals, and audit history.",
   },
-  {
-    question: "What are AI Agents?",
-    answer: "AI Agents are intelligent automation assistants that handle tasks like email responses, CRM updates, and workflow automation. They support multiple LLM providers (Claude, Gemini) and include human-in-the-loop approval for sensitive actions. Create custom agents for support, sales, scheduling, and more."
-  }
+];
+
+const platformLinks = [
+  { title: "AI Agents", href: "/products/ai-agents", description: "Governed agents for CRM, email, workflows, and company context." },
+  { title: "GTM Intelligence", href: "/products/gtm-intelligence", description: "Visitor identification, lead scoring, routing, sequences, and expansion." },
+  { title: "CRM", href: "/products/crm", description: "A flexible CRM that humans and AI agents can operate together." },
+  { title: "Company OS", href: "/ai-company-os", description: "The category page for Aexy's operating-system approach." },
+  { title: "Docs", href: "/handbook", description: "Architecture, module guides, APIs, and implementation proof." },
+  { title: "Pricing", href: "/pricing", description: "Self-host free, use cloud for speed, scale with enterprise controls." },
 ];
 
 export default function Home() {
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(true);
-  const [showProductsMenu, setShowProductsMenu] = useState(false);
-  const [showSolutionsMenu, setShowSolutionsMenu] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const productsRef = useRef<HTMLDivElement>(null);
-  const solutionsRef = useRef<HTMLDivElement>(null);
-  const githubLoginUrl = `${API_BASE_URL}/auth/github/login`;
   const googleLoginUrl = `${API_BASE_URL}/auth/google/login`;
+  const githubLoginUrl = `${API_BASE_URL}/auth/github/login`;
   const microsoftLoginUrl = `${API_BASE_URL}/auth/microsoft/login`;
 
   useEffect(() => {
@@ -123,1494 +132,498 @@ export default function Home() {
     }
   }, [router]);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (productsRef.current && !productsRef.current.contains(event.target as Node)) {
-        setShowProductsMenu(false);
-      }
-      if (solutionsRef.current && !solutionsRef.current.contains(event.target as Node)) {
-        setShowSolutionsMenu(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   if (isChecking) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-500"></div>
-      </div>
+      <main className="min-h-screen bg-[#08090d] flex items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+      </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[#0a0a0f] overflow-hidden">
-      {/* Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-primary-500/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[120px] animate-pulse delay-1000" />
-        <div className="absolute bottom-1/4 left-1/3 w-[400px] h-[400px] bg-emerald-500/8 rounded-full blur-[100px] animate-pulse delay-500" />
-        {/* Grid pattern */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
+    <main className="min-h-screen bg-[#08090d] text-white overflow-hidden">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(homepageJsonLd) }}
+      />
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(45,212,191,0.16),transparent_32%),radial-gradient(circle_at_72%_8%,rgba(168,85,247,0.14),transparent_30%),linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[auto,auto,72px_72px,72px_72px]" />
       </div>
 
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0f]/80 backdrop-blur-xl border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="absolute inset-0 bg-primary-500 blur-lg opacity-50" />
-              <div className="relative p-2 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl">
-                <GitBranch className="h-6 w-6 text-white" />
-              </div>
+      <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-[#08090d]/82 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
+          <Link href="/" className="flex items-center gap-3">
+            <div className="relative rounded-xl bg-white p-2 text-black">
+              <GitBranch className="h-5 w-5" />
             </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">
-              Aexy
-            </span>
-          </div>
-          <nav className="hidden md:flex items-center gap-6">
-            {/* Products Dropdown */}
-            <div className="relative" ref={productsRef}>
-              <button
-                onClick={() => { setShowProductsMenu(!showProductsMenu); setShowSolutionsMenu(false); }}
-                className="flex items-center gap-1 text-white/60 hover:text-white transition text-sm"
-              >
-                Products
-                <ChevronDown className={`h-4 w-4 transition-transform ${showProductsMenu ? "rotate-180" : ""}`} />
-              </button>
-              {showProductsMenu && (
-                <div className="absolute top-full left-0 mt-2 w-80 bg-[#12121a]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
-                  <div className="p-2 max-h-[70vh] overflow-y-auto">
-                    {productLinks.map(({ href, label, icon: Icon, desc, color }) => (
-                      <Link
-                        key={href}
-                        href={href}
-                        onClick={() => setShowProductsMenu(false)}
-                        className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-all group"
-                      >
-                        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
-                          <Icon className="h-5 w-5 text-white" />
-                        </div>
-                        <div>
-                          <div className="text-white font-medium text-sm">{label}</div>
-                          <div className="text-white/40 text-xs">{desc}</div>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                  <div className="border-t border-white/10 p-3">
-                    <Link
-                      href="#pillars"
-                      onClick={() => setShowProductsMenu(false)}
-                      className="flex items-center justify-center gap-2 text-sm text-primary-400 hover:text-primary-300 transition"
-                    >
-                      View all products
-                      <ArrowRight className="h-4 w-4" />
-                    </Link>
-                  </div>
-                </div>
-              )}
-            </div>
+            <span className="text-xl font-semibold tracking-tight">Aexy</span>
+          </Link>
 
-            {/* Solutions Dropdown */}
-            <div className="relative" ref={solutionsRef}>
-              <button
-                onClick={() => { setShowSolutionsMenu(!showSolutionsMenu); setShowProductsMenu(false); }}
-                className="flex items-center gap-1 text-white/60 hover:text-white transition text-sm"
-              >
-                Solutions
-                <ChevronDown className={`h-4 w-4 transition-transform ${showSolutionsMenu ? "rotate-180" : ""}`} />
-              </button>
-              {showSolutionsMenu && (
-                <div className="absolute top-full left-0 mt-2 w-72 bg-[#12121a]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
-                  <div className="p-2">
-                    {solutionLinks.map(({ href, label, icon: Icon, desc, color }) => (
-                      <Link
-                        key={href}
-                        href={href}
-                        onClick={() => setShowSolutionsMenu(false)}
-                        className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-all group"
-                      >
-                        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
-                          <Icon className="h-5 w-5 text-white" />
-                        </div>
-                        <div>
-                          <div className="text-white font-medium text-sm">{label}</div>
-                          <div className="text-white/40 text-xs">{desc}</div>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <Link href="/story" className="text-white/60 hover:text-white transition text-sm">
-              Our Story
-            </Link>
-            <Link href="/mission" className="text-white/60 hover:text-white transition text-sm">
-              Mission
-            </Link>
-            <Link href="/manifesto" className="text-white/60 hover:text-white transition text-sm">
-              Engineering OS
-            </Link>
-            <Link href="/pricing" className="text-white/60 hover:text-white transition text-sm">
-              Pricing
-            </Link>
-            <a href="https://github.com/aexy-io/aexy" className="text-white/60 hover:text-white transition text-sm flex items-center gap-1">
+          <nav className="hidden items-center gap-7 text-sm text-white/62 md:flex">
+            <a href="#platform" className="hover:text-white transition">Platform</a>
+            <a href="#agents" className="hover:text-white transition">AI Agents</a>
+            <a href="#use-cases" className="hover:text-white transition">Use Cases</a>
+            <Link href="/pricing" className="hover:text-white transition">Pricing</Link>
+            <Link href="/handbook" className="hover:text-white transition">Docs</Link>
+            <a href="https://github.com/aexy-io/aexy" className="flex items-center gap-1 hover:text-white transition">
               <SiGithub className="h-4 w-4" />
               GitHub
             </a>
           </nav>
-          <div className="flex items-center gap-3">
-            <a
-              href={githubLoginUrl}
-              className="hidden sm:flex text-white/70 hover:text-white transition text-sm font-medium items-center gap-1"
-            >
-              <SiGithub className="h-4 w-4" />
-              Sign In
+
+          <div className="hidden items-center gap-3 md:flex">
+            <a href={githubLoginUrl} className="text-sm font-medium text-white/70 hover:text-white transition">
+              Sign in
             </a>
             <a
               href={googleLoginUrl}
-              className="group relative bg-white text-black px-3 sm:px-5 py-2 sm:py-2.5 rounded-full transition text-xs sm:text-sm font-semibold flex items-center gap-2 hover:bg-white/90"
+              className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-white/90"
             >
-              <GoogleIcon />
-              Get Started
-              <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+              Start free
+              <ArrowRight className="h-4 w-4" />
             </a>
-
-            {/* Mobile hamburger menu */}
-            <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-              <SheetTrigger asChild>
-                <button className="md:hidden p-2 text-white/70 hover:text-white transition">
-                  <Menu className="h-5 w-5" />
-                </button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[300px] bg-[#0a0a0f] border-white/10 overflow-y-auto">
-                <SheetTitle className="text-white text-lg font-bold mb-6">Menu</SheetTitle>
-                <nav className="flex flex-col gap-6">
-                  <div>
-                    <h3 className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-3">Products</h3>
-                    <div className="space-y-1">
-                      {productLinks.map(({ href, label, icon: Icon, color }) => (
-                        <Link
-                          key={href}
-                          href={href}
-                          onClick={() => setMobileOpen(false)}
-                          className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition"
-                        >
-                          <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center`}>
-                            <Icon className="h-4 w-4 text-white" />
-                          </div>
-                          <span className="text-white/80 text-sm">{label}</span>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-3">Solutions</h3>
-                    <div className="space-y-1">
-                      {solutionLinks.map(({ href, label, icon: Icon, color }) => (
-                        <Link
-                          key={href}
-                          href={href}
-                          onClick={() => setMobileOpen(false)}
-                          className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition"
-                        >
-                          <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center`}>
-                            <Icon className="h-4 w-4 text-white" />
-                          </div>
-                          <span className="text-white/80 text-sm">{label}</span>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <Link href="/story" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Our Story</Link>
-                    <Link href="/mission" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Mission</Link>
-                    <Link href="/manifesto" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Engineering OS</Link>
-                    <Link href="/pricing" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Pricing</Link>
-                    <a href="https://github.com/aexy-io/aexy" className="flex items-center gap-2 p-2 text-white/70 hover:text-white text-sm transition">
-                      <SiGithub className="h-4 w-4" />
-                      GitHub
-                    </a>
-                  </div>
-                  <div className="pt-4 border-t border-white/10 space-y-3">
-                    <a
-                      href={githubLoginUrl}
-                      className="flex items-center justify-center gap-2 w-full px-4 py-2.5 border border-white/20 rounded-full text-white text-sm font-medium hover:bg-white/5 transition"
-                    >
-                      <SiGithub className="h-4 w-4" />
-                      Sign In with GitHub
-                    </a>
-                    <a
-                      href={googleLoginUrl}
-                      className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-white text-black rounded-full text-sm font-semibold hover:bg-white/90 transition"
-                    >
-                      Get Started
-                      <ArrowRight className="h-4 w-4" />
-                    </a>
-                  </div>
-                </nav>
-              </SheetContent>
-            </Sheet>
           </div>
+
+          <button
+            type="button"
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="rounded-lg border border-white/10 p-2 text-white/80 md:hidden"
+            aria-label="Toggle menu"
+          >
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
         </div>
+        {mobileOpen && (
+          <div className="border-t border-white/10 bg-[#08090d] px-4 py-4 md:hidden">
+            <nav className="flex flex-col gap-4 text-sm text-white/72">
+              <a href="#platform" onClick={() => setMobileOpen(false)}>Platform</a>
+              <a href="#agents" onClick={() => setMobileOpen(false)}>AI Agents</a>
+              <a href="#use-cases" onClick={() => setMobileOpen(false)}>Use Cases</a>
+              <Link href="/pricing" onClick={() => setMobileOpen(false)}>Pricing</Link>
+              <Link href="/handbook" onClick={() => setMobileOpen(false)}>Docs</Link>
+              <a href="https://github.com/aexy-io/aexy" className="flex items-center gap-2">
+                <SiGithub className="h-4 w-4" />
+                GitHub
+              </a>
+              <a href={googleLoginUrl} className="mt-2 inline-flex items-center justify-center gap-2 rounded-full bg-white px-4 py-2.5 font-semibold text-black">
+                Start free
+                <ArrowRight className="h-4 w-4" />
+              </a>
+            </nav>
+          </div>
+        )}
       </header>
 
-      {/* Hero Section */}
-      <section className="pt-24 sm:pt-32 pb-16 sm:pb-24 px-4 sm:px-6 relative">
-        <div className="max-w-7xl mx-auto relative">
-          <div className="max-w-4xl mx-auto text-center">
-            {/* Open Source Badge */}
-            {/* Badges */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
-              <motion.a
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                href="https://github.com/aexy-io/aexy"
-                className="group inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 rounded-full text-emerald-400 text-sm hover:border-emerald-500/50 transition-all hover:scale-105"
-              >
-                <SiGithub className="h-4 w-4" />
-                <span>Open Source</span>
-                <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-              </motion.a>
+      <section className="relative px-4 pb-16 pt-28 sm:px-6 sm:pb-24 sm:pt-36">
+        <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[1fr_0.86fr]">
+          <div>
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white/70">
+              <Sparkles className="h-4 w-4 text-cyan-300" />
+              AI company operating system
             </div>
-
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-8 leading-[1.1] tracking-tight">
-              One{" "}
-              <span className="relative">
-                <span className="bg-gradient-to-r from-primary-400 via-purple-400 to-emerald-400 bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
-                  open-source platform
-                </span>
-              </span>
-              <br />
-              to run your engineering org.
+            <h1 className="max-w-4xl text-5xl font-semibold leading-[1.03] tracking-tight sm:text-6xl lg:text-7xl">
+              Aexy is the AI superapp for companies.
             </h1>
-
-            <p className="text-xl text-white/50 max-w-2xl mx-auto mb-10 leading-relaxed">
-              Sprint planning, performance reviews, hiring, and CRM —
-              connected to the GitHub activity your team already produces.
+            <p className="mt-7 max-w-2xl text-lg leading-8 text-white/62 sm:text-xl">
+              Replace scattered tools for engineering, CRM, GTM, people, docs, workflows, and AI agents with one connected company operating system.
             </p>
-
-            <div className="flex flex-col sm:flex-row justify-center gap-4 mb-6">
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <a
                 href={googleLoginUrl}
-                className="group relative overflow-hidden bg-white text-black px-8 py-4 rounded-full text-lg font-semibold transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(255,255,255,0.3)] flex items-center justify-center gap-3"
+                className="inline-flex items-center justify-center gap-3 rounded-full bg-white px-7 py-4 text-base font-semibold text-black transition hover:bg-white/90"
               >
                 <GoogleIcon />
-                Start free with Google
-                <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                Start free
+                <ArrowRight className="h-5 w-5" />
               </a>
-              <a
-                href="https://github.com/aexy-io/aexy"
-                className="group bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-3"
+              <Link
+                href="/contact"
+                className="inline-flex items-center justify-center gap-3 rounded-full border border-white/12 bg-white/[0.04] px-7 py-4 text-base font-semibold text-white transition hover:bg-white/[0.08]"
               >
-                <SiGithub className="h-5 w-5" />
-                View on GitHub
-              </a>
+                Book demo
+                <ChevronRight className="h-5 w-5" />
+              </Link>
             </div>
-
-            <div className="flex flex-col items-center gap-3 text-sm text-white/50 mb-2">
-              <div className="flex items-center gap-3 text-white/40 text-xs">
-                <span>or continue with</span>
-                <a href={microsoftLoginUrl} className="hover:text-white transition flex items-center gap-1.5">
-                  <MicrosoftIcon />
-                  Microsoft
-                </a>
-                <span className="text-white/20">·</span>
-                <a href={githubLoginUrl} className="hover:text-white transition flex items-center gap-1.5">
-                  <SiGithub className="h-3.5 w-3.5" />
-                  GitHub
-                </a>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 sm:gap-8 text-xs sm:text-sm text-white/40 mt-4">
-              <span className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                Self-host free, forever
-              </span>
-              <span className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                Cloud from $24/user/mo
-              </span>
-              <span className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                No credit card required
-              </span>
-            </div>
-
-            <Link
-              href="/story"
-              className="inline-flex items-center gap-2 text-white/50 hover:text-white transition mt-6 text-sm group"
-            >
-              <Heart className="h-4 w-4" />
-              Read our story
-              <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </div>
-
-          {/* Hero Visual */}
-          <div className="mt-20 relative">
-            <div className="absolute -inset-4 bg-gradient-to-r from-primary-500/20 via-purple-500/20 to-emerald-500/20 rounded-3xl blur-2xl opacity-50" />
-            <div className="relative bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-1.5 shadow-2xl">
-              <div className="bg-[#0d0d12] rounded-xl overflow-hidden">
-                <DashboardPreview />
-              </div>
-            </div>
-            {/* Floating badges */}
-            <div className="hidden sm:block absolute -left-4 top-1/4 bg-gradient-to-r from-emerald-500/20 to-emerald-500/10 backdrop-blur-sm border border-emerald-500/20 rounded-xl px-4 py-3 animate-float">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                <span className="text-emerald-400 text-sm font-medium">3 commits synced</span>
-              </div>
-            </div>
-            <div className="hidden sm:block absolute -right-4 top-1/3 bg-gradient-to-r from-purple-500/20 to-purple-500/10 backdrop-blur-sm border border-purple-500/20 rounded-xl px-4 py-3 animate-float delay-500">
-              <div className="flex items-center gap-2">
-                <Zap className="h-4 w-4 text-purple-400" />
-                <span className="text-purple-400 text-sm font-medium">Skills analyzed</span>
-              </div>
-            </div>
-            <div className="hidden sm:block absolute -left-4 bottom-1/4 bg-gradient-to-r from-amber-500/20 to-amber-500/10 backdrop-blur-sm border border-amber-500/20 rounded-xl px-4 py-3 animate-float delay-700">
-              <div className="flex items-center gap-2">
-                <Mail className="h-4 w-4 text-amber-400" />
-                <span className="text-amber-400 text-sm font-medium">12 emails synced</span>
-              </div>
+            <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/45">
+              <a href={microsoftLoginUrl} className="hover:text-white transition">Continue with Microsoft</a>
+              <span className="text-white/20">/</span>
+              <a href={githubLoginUrl} className="hover:text-white transition">Continue with GitHub</a>
+              <span className="text-white/20">/</span>
+              <a href="https://github.com/aexy-io/aexy" className="hover:text-white transition">View source</a>
             </div>
           </div>
+
+          <CompanyOSPreview />
         </div>
       </section>
 
-      {/* Four Pillars Section */}
-      <section id="pillars" className="py-24 px-6 relative">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
-              One platform. Four pillars. Complete visibility.
+      <section className="relative border-y border-white/10 bg-white/[0.025] px-4 py-5 sm:px-6">
+        <div className="mx-auto grid max-w-7xl gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {proofPoints.map((point) => (
+            <div key={point} className="flex items-center gap-2 text-sm text-white/64">
+              <CheckCircle2 className="h-4 w-4 text-emerald-300" />
+              {point}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section id="platform" className="relative px-4 py-20 sm:px-6 sm:py-28">
+        <div className="mx-auto max-w-7xl">
+          <div className="max-w-3xl">
+            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-cyan-300">Platform</p>
+            <h2 className="text-4xl font-semibold tracking-tight sm:text-5xl">
+              One operating layer for the work, customers, people, and knowledge behind your company.
             </h2>
-            <p className="text-white/50 text-lg max-w-2xl mx-auto">
-              Everything you need to run a world-class engineering organization.
-              Start with one pillar, expand to all four.
+            <p className="mt-5 text-lg leading-8 text-white/56">
+              Aexy is not another point solution. It connects the systems companies normally buy separately, then gives AI agents governed access to that shared context.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* UNDERSTAND Pillar */}
-            <div className="group relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500" />
-              <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-blue-500/30 transition-all h-full">
-                <div className="p-4 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl shadow-lg shadow-blue-500/25 w-fit mb-6">
-                  <Activity className="h-8 w-8 text-white" />
+          <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+            {pillars.map(({ title, label, icon: Icon, description, features, accent }) => (
+              <article key={title} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+                <div className={`mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${accent}`}>
+                  <Icon className="h-5 w-5 text-white" />
                 </div>
-                <div className="text-blue-400 text-sm font-semibold tracking-wider mb-2">UNDERSTAND</div>
-                <h3 className="text-2xl font-bold text-white mb-3">Intelligence</h3>
-                <p className="text-white/50 mb-6">
-                  Know your engineering organization. See team health, predict risks, and make data-driven decisions.
-                </p>
-                <div className="border-t border-white/10 pt-6 space-y-3">
-                  <div className="flex items-center gap-2 text-white/60 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-blue-400" />
-                    Developer profiles & skills
-                  </div>
-                  <div className="flex items-center gap-2 text-white/60 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-blue-400" />
-                    Team health analytics
-                  </div>
-                  <div className="flex items-center gap-2 text-white/60 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-blue-400" />
-                    Attrition & burnout prediction
-                  </div>
-                  <div className="flex items-center gap-2 text-white/60 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-blue-400" />
-                    Custom dashboards & reports
-                  </div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/38">{label}</p>
+                <h3 className="mt-2 text-2xl font-semibold">{title}</h3>
+                <p className="mt-3 min-h-24 text-sm leading-6 text-white/54">{description}</p>
+                <div className="mt-5 space-y-2 border-t border-white/10 pt-4">
+                  {features.map((feature) => (
+                    <div key={feature} className="flex items-center gap-2 text-sm text-white/62">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-white/45" />
+                      {feature}
+                    </div>
+                  ))}
                 </div>
-                <Link href="#features" className="inline-flex items-center gap-2 text-blue-400 mt-6 text-sm font-medium group-hover:gap-3 transition-all">
-                  Explore Intelligence <ArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
-            </div>
-
-            {/* OPTIMIZE Pillar */}
-            <div className="group relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500" />
-              <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-purple-500/30 transition-all h-full">
-                <div className="p-4 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl shadow-lg shadow-purple-500/25 w-fit mb-6">
-                  <Zap className="h-8 w-8 text-white" />
-                </div>
-                <div className="text-purple-400 text-sm font-semibold tracking-wider mb-2">OPTIMIZE</div>
-                <h3 className="text-2xl font-bold text-white mb-3">Operations</h3>
-                <p className="text-white/50 mb-6">
-                  Run engineering efficiently. Better planning, smarter assignments, less overhead.
-                </p>
-                <div className="border-t border-white/10 pt-6 space-y-3">
-                  <div className="flex items-center gap-2 text-white/60 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-purple-400" />
-                    AI-powered task matching
-                  </div>
-                  <div className="flex items-center gap-2 text-white/60 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-purple-400" />
-                    Sprint planning & velocity
-                  </div>
-                  <div className="flex items-center gap-2 text-white/60 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-purple-400" />
-                    On-call management
-                  </div>
-                  <div className="flex items-center gap-2 text-white/60 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-purple-400" />
-                    Ticketing & escalations
-                  </div>
-                </div>
-                <Link href="#features" className="inline-flex items-center gap-2 text-purple-400 mt-6 text-sm font-medium group-hover:gap-3 transition-all">
-                  Explore Operations <ArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
-            </div>
-
-            {/* BUILD Pillar */}
-            <div className="group relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500" />
-              <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-emerald-500/30 transition-all h-full">
-                <div className="p-4 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl shadow-lg shadow-emerald-500/25 w-fit mb-6">
-                  <Rocket className="h-8 w-8 text-white" />
-                </div>
-                <div className="text-emerald-400 text-sm font-semibold tracking-wider mb-2">BUILD</div>
-                <h3 className="text-2xl font-bold text-white mb-3">Talent</h3>
-                <p className="text-white/50 mb-6">
-                  Hire and grow the best engineers. Better assessments, personalized development, retained talent.
-                </p>
-                <div className="border-t border-white/10 pt-6 space-y-3">
-                  <div className="flex items-center gap-2 text-white/60 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                    AI technical assessments
-                  </div>
-                  <div className="flex items-center gap-2 text-white/60 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                    Job description generator
-                  </div>
-                  <div className="flex items-center gap-2 text-white/60 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                    Learning paths & skill gaps
-                  </div>
-                  <div className="flex items-center gap-2 text-white/60 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                    Career growth tracking
-                  </div>
-                </div>
-                <Link href="#features" className="inline-flex items-center gap-2 text-emerald-400 mt-6 text-sm font-medium group-hover:gap-3 transition-all">
-                  Explore Talent <ArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
-            </div>
-
-            {/* CONNECT Pillar - CRM */}
-            <div className="group relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-amber-500/20 to-orange-500/20 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500" />
-              <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-amber-500/30 transition-all h-full">
-                <div className="p-4 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl shadow-lg shadow-amber-500/25 w-fit mb-6">
-                  <UserPlus className="h-8 w-8 text-white" />
-                </div>
-                <div className="text-amber-400 text-sm font-semibold tracking-wider mb-2">CONNECT</div>
-                <h3 className="text-2xl font-bold text-white mb-3">Relationships</h3>
-                <p className="text-white/50 mb-6">
-                  Manage all your business relationships. CRM, GTM intelligence, email marketing, calendar integration.
-                </p>
-                <div className="border-t border-white/10 pt-6 space-y-3">
-                  <div className="flex items-center gap-2 text-white/60 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-amber-400" />
-                    Visitor identification & lead scoring
-                  </div>
-                  <div className="flex items-center gap-2 text-white/60 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-amber-400" />
-                    Contact management & CRM
-                  </div>
-                  <div className="flex items-center gap-2 text-white/60 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-amber-400" />
-                    Email campaigns & automation
-                  </div>
-                  <div className="flex items-center gap-2 text-white/60 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-amber-400" />
-                    Pluggable provider registry (10 slots)
-                  </div>
-                </div>
-                <div className="flex items-center gap-4 mt-6">
-                  <Link href="/products/gtm-intelligence" className="inline-flex items-center gap-2 text-amber-400 text-sm font-medium group-hover:gap-3 transition-all">
-                    GTM Intelligence <ArrowRight className="h-4 w-4" />
-                  </Link>
-                  <Link href="/products/email-marketing" className="inline-flex items-center gap-2 text-white/40 hover:text-amber-400 text-sm font-medium transition-all">
-                    Email Marketing <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </div>
-              </div>
-            </div>
+              </article>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Why Open Source Section */}
-      <section className="py-24 px-6 relative">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-sm mb-6">
-              <SiGithub className="h-4 w-4" />
-              Open Source
+      <section id="agents" className="relative px-4 py-20 sm:px-6">
+        <div className="mx-auto grid max-w-7xl gap-10 rounded-3xl border border-white/10 bg-white/[0.035] p-6 sm:p-10 lg:grid-cols-[0.9fr_1fr]">
+          <div>
+            <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-500">
+              <Bot className="h-6 w-6" />
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
-              Why we&apos;re open source
+            <h2 className="text-4xl font-semibold tracking-tight sm:text-5xl">
+              AI agents that understand your company context.
             </h2>
-            <p className="text-white/50 text-lg max-w-2xl mx-auto">
-              Developer analytics tools have a surveillance problem. We solved it by making everything transparent.
+            <p className="mt-5 text-lg leading-8 text-white/58">
+              Aexy agents can read CRM history, draft emails, enrich accounts, update records, call workflows, and escalate to humans through policy gates.
             </p>
           </div>
-
-          <div className="grid md:grid-cols-3 gap-6 mb-12">
-            {/* Transparent */}
-            <div className="group relative">
-              <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-white/20 transition-all h-full text-center">
-                <div className="p-4 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-2xl w-fit mx-auto mb-6">
-                  <Shield className="h-8 w-8 text-blue-400" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-3">Transparent</h3>
-                <p className="text-white/50 text-sm">
-                  Every algorithm is open-source. Audit the code anytime. Your developers will trust metrics they can verify.
-                </p>
-              </div>
-            </div>
-
-            {/* No Vendor Lock-in */}
-            <div className="group relative">
-              <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-white/20 transition-all h-full text-center">
-                <div className="p-4 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-2xl w-fit mx-auto mb-6">
-                  <RefreshCw className="h-8 w-8 text-purple-400" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-3">No Vendor Lock-in</h3>
-                <p className="text-white/50 text-sm">
-                  Export everything. Self-host anytime. No hostage situations. We earn your business by being better, not by trapping you.
-                </p>
-              </div>
-            </div>
-
-            {/* Community Driven */}
-            <div className="group relative">
-              <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-white/20 transition-all h-full text-center">
-                <div className="p-4 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-2xl w-fit mx-auto mb-6">
-                  <Users className="h-8 w-8 text-emerald-400" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-3">Community Driven</h3>
-                <p className="text-white/50 text-sm">
-                  Active development. Regular releases. Features you actually need. Join the community shaping the future of engineering intelligence.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex justify-center gap-4">
-            <a
-              href="https://github.com/aexy-io/aexy"
-              className="group inline-flex items-center gap-2 bg-white text-black px-6 py-3 rounded-full font-semibold transition-all hover:scale-105"
-            >
-              <SiGithub className="h-5 w-5" />
-              View on GitHub
-            </a>
-            <Link
-              href="/story"
-              className="group inline-flex items-center gap-2 bg-white/5 text-white px-6 py-3 rounded-full font-semibold transition-all border border-white/10 hover:border-white/20"
-            >
-              Read Our Story
-              <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section - Bento Grid */}
-      <section id="features" className="py-24 px-6 relative">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary-500/10 border border-primary-500/20 rounded-full text-primary-400 text-sm mb-6">
-              <Cpu className="h-4 w-4" />
-              Feature Deep Dive
-            </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
-              Everything you need to run engineering
-            </h2>
-            <p className="text-white/50 text-lg max-w-2xl mx-auto">
-              Explore the full capabilities across all three pillars of the Engineering OS.
-            </p>
-          </div>
-
-          {/* Bento Grid */}
-          <div className="grid grid-cols-12 gap-4 md:gap-6">
-            {/* AI Developer Profiles - Large card */}
-            <div className="col-span-12 md:col-span-7 group">
-              <div className="relative h-full overflow-hidden rounded-3xl bg-gradient-to-br from-blue-500/10 via-cyan-500/5 to-transparent border border-white/10 p-8 hover:border-blue-500/30 transition-all duration-500">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl group-hover:bg-blue-500/30 transition-all duration-500" />
-                <div className="relative">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="p-3 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl shadow-lg shadow-blue-500/25">
-                      <Users className="h-6 w-6 text-white" />
-                    </div>
-                    <span className="px-3 py-1 bg-blue-500/20 text-blue-400 text-xs font-semibold rounded-full border border-blue-500/20">
-                      AI-POWERED
-                    </span>
-                  </div>
-                  <h3 className="text-2xl font-bold text-white mb-3">AI Developer Profiles</h3>
-                  <p className="text-white/50 mb-6 max-w-md">
-                    Automatic skill extraction from commits and PRs. Know your team&apos;s expertise in TypeScript, React, Python, and 50+ technologies.
-                  </p>
-                  {/* Skill visualization */}
-                  <div className="flex flex-wrap gap-2">
-                    {["TypeScript", "React", "Python", "Node.js", "Go", "Rust"].map((skill, i) => (
-                      <div
-                        key={skill}
-                        className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white/70 text-sm hover:bg-white/10 hover:border-white/20 transition-all cursor-default"
-                        style={{ animationDelay: `${i * 100}ms` }}
-                      >
-                        {skill}
-                      </div>
-                    ))}
-                    <div className="px-3 py-1.5 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-500/20 rounded-lg text-blue-400 text-sm">
-                      +44 more
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Epic Tracking - Medium card */}
-            <div className="col-span-12 md:col-span-5 group">
-              <div className="relative h-full overflow-hidden rounded-3xl bg-gradient-to-br from-purple-500/10 via-pink-500/5 to-transparent border border-white/10 p-8 hover:border-purple-500/30 transition-all duration-500">
-                <div className="absolute top-0 right-0 w-48 h-48 bg-purple-500/20 rounded-full blur-3xl group-hover:bg-purple-500/30 transition-all duration-500" />
-                <div className="relative">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl shadow-lg shadow-purple-500/25">
-                      <Layers className="h-6 w-6 text-white" />
-                    </div>
-                    <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-semibold rounded-full border border-emerald-500/20">
-                      NEW
-                    </span>
-                  </div>
-                  <h3 className="text-2xl font-bold text-white mb-3">Epic & Initiative Tracking</h3>
-                  <p className="text-white/50 mb-6">
-                    Create epics spanning multiple sprints. Link tasks from Jira, Linear, or GitHub Issues.
-                  </p>
-                  {/* Mini progress visualization */}
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-3 h-3 rounded-full bg-purple-500" />
-                      <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
-                        <div className="h-full w-3/4 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full" />
-                      </div>
-                      <span className="text-white/40 text-sm">75%</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-3 h-3 rounded-full bg-pink-500" />
-                      <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
-                        <div className="h-full w-1/2 bg-gradient-to-r from-pink-500 to-rose-500 rounded-full" />
-                      </div>
-                      <span className="text-white/40 text-sm">50%</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Smart Sprint Planning */}
-            <div className="col-span-12 md:col-span-4 group">
-              <div className="relative h-full overflow-hidden rounded-3xl bg-gradient-to-br from-orange-500/10 via-amber-500/5 to-transparent border border-white/10 p-8 hover:border-orange-500/30 transition-all duration-500">
-                <div className="absolute bottom-0 right-0 w-40 h-40 bg-orange-500/20 rounded-full blur-3xl group-hover:bg-orange-500/30 transition-all duration-500" />
-                <div className="relative">
-                  <div className="p-3 bg-gradient-to-br from-orange-500 to-amber-500 rounded-2xl shadow-lg shadow-orange-500/25 w-fit mb-4">
-                    <Layout className="h-6 w-6 text-white" />
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-2">Smart Sprint Planning</h3>
-                  <p className="text-white/50 text-sm">
-                    Visual kanban with AI-powered capacity planning and task suggestions.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Intelligent Task Matching */}
-            <div className="col-span-12 md:col-span-4 group">
-              <div className="relative h-full overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent border border-white/10 p-8 hover:border-emerald-500/30 transition-all duration-500">
-                <div className="absolute bottom-0 left-0 w-40 h-40 bg-emerald-500/20 rounded-full blur-3xl group-hover:bg-emerald-500/30 transition-all duration-500" />
-                <div className="relative">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="p-3 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl shadow-lg shadow-emerald-500/25">
-                      <Target className="h-6 w-6 text-white" />
-                    </div>
-                    <span className="px-3 py-1 bg-blue-500/20 text-blue-400 text-xs font-semibold rounded-full border border-blue-500/20">
-                      AI-POWERED
-                    </span>
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-2">Intelligent Task Matching</h3>
-                  <p className="text-white/50 text-sm">
-                    AI matches tasks to developers based on skills and workload.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* On-Call Scheduling - Medium card */}
-            <div className="col-span-12 md:col-span-6 group">
-              <div className="relative h-full overflow-hidden rounded-3xl bg-gradient-to-br from-green-500/10 via-emerald-500/5 to-transparent border border-white/10 p-8 hover:border-green-500/30 transition-all duration-500">
-                <div className="absolute top-0 right-0 w-48 h-48 bg-green-500/20 rounded-full blur-3xl group-hover:bg-green-500/30 transition-all duration-500" />
-                <div className="relative">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl shadow-lg shadow-green-500/25">
-                      <Phone className="h-6 w-6 text-white" />
-                    </div>
-                    <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-semibold rounded-full border border-emerald-500/20">
-                      NEW
-                    </span>
-                  </div>
-                  <h3 className="text-2xl font-bold text-white mb-3">On-Call Scheduling</h3>
-                  <p className="text-white/50 mb-6">
-                    Flexible on-call rotations with Google Calendar sync. Self-service swaps and real-time notifications.
-                  </p>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-white/60 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-green-400" />
-                      Custom schedules per team
-                    </div>
-                    <div className="flex items-center gap-2 text-white/60 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-green-400" />
-                      Google Calendar sync
-                    </div>
-                    <div className="flex items-center gap-2 text-white/60 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-green-400" />
-                      Self-service shift swaps
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Performance Reviews - Medium card */}
-            <div className="col-span-12 md:col-span-6 group">
-              <div className="relative h-full overflow-hidden rounded-3xl bg-gradient-to-br from-cyan-500/10 via-teal-500/5 to-transparent border border-white/10 p-8 hover:border-cyan-500/30 transition-all duration-500">
-                <div className="absolute top-0 right-0 w-48 h-48 bg-cyan-500/20 rounded-full blur-3xl group-hover:bg-cyan-500/30 transition-all duration-500" />
-                <div className="relative">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="p-3 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-2xl shadow-lg shadow-cyan-500/25">
-                      <ClipboardCheck className="h-6 w-6 text-white" />
-                    </div>
-                    <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-semibold rounded-full border border-emerald-500/20">
-                      NEW
-                    </span>
-                  </div>
-                  <h3 className="text-2xl font-bold text-white mb-3">360° Performance Reviews</h3>
-                  <p className="text-white/50 mb-6">
-                    SMART goals with auto-linked GitHub contributions. Anonymous peer feedback with COIN framework.
-                  </p>
-                  {/* Review features */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-white/60 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-cyan-400" />
-                      Auto-generated contribution summaries
-                    </div>
-                    <div className="flex items-center gap-2 text-white/60 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-cyan-400" />
-                      Anonymous 360° feedback
-                    </div>
-                    <div className="flex items-center gap-2 text-white/60 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-cyan-400" />
-                      SMART goal tracking with OKRs
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* AI Review Summary - Small card */}
-            <div className="col-span-12 md:col-span-6 group">
-              <div className="relative h-full overflow-hidden rounded-3xl bg-gradient-to-br from-violet-500/10 via-purple-500/5 to-transparent border border-white/10 p-8 hover:border-violet-500/30 transition-all duration-500">
-                <div className="absolute bottom-0 left-0 w-40 h-40 bg-violet-500/20 rounded-full blur-3xl group-hover:bg-violet-500/30 transition-all duration-500" />
-                <div className="relative">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-500 rounded-2xl shadow-lg shadow-violet-500/25">
-                      <Sparkles className="h-6 w-6 text-white" />
-                    </div>
-                    <span className="px-3 py-1 bg-blue-500/20 text-blue-400 text-xs font-semibold rounded-full border border-blue-500/20">
-                      AI-POWERED
-                    </span>
-                  </div>
-                  <h3 className="text-2xl font-bold text-white mb-3">AI Review Intelligence</h3>
-                  <p className="text-white/50 mb-4">
-                    LLM-powered insights that synthesize your GitHub activity into compelling review narratives.
-                  </p>
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Bot className="h-4 w-4 text-white" />
-                      </div>
-                      <div className="text-white/60 text-sm italic">
-                        &ldquo;Led 3 major feature implementations with 98% test coverage. Strong collaboration...&rdquo;
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* CRM Inbox - Medium card */}
-            <div className="col-span-12 md:col-span-6 group">
-              <div className="relative h-full overflow-hidden rounded-3xl bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-transparent border border-white/10 p-8 hover:border-amber-500/30 transition-all duration-500">
-                <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/20 rounded-full blur-3xl group-hover:bg-amber-500/30 transition-all duration-500" />
-                <div className="relative">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="p-3 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl shadow-lg shadow-amber-500/25">
-                      <Inbox className="h-6 w-6 text-white" />
-                    </div>
-                    <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-semibold rounded-full border border-emerald-500/20">
-                      NEW
-                    </span>
-                  </div>
-                  <h3 className="text-2xl font-bold text-white mb-3">CRM Inbox</h3>
-                  <p className="text-white/50 mb-6">
-                    Gmail sync with automatic contact linking. Reply to emails, track threads, and link to deals.
-                  </p>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-white/60 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-amber-400" />
-                      Auto-sync Gmail messages
-                    </div>
-                    <div className="flex items-center gap-2 text-white/60 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-amber-400" />
-                      Link emails to contacts & deals
-                    </div>
-                    <div className="flex items-center gap-2 text-white/60 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-amber-400" />
-                      Reply directly from CRM
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* GTM Intelligence - Medium card */}
-            <div className="col-span-12 md:col-span-6 group">
-              <div className="relative h-full overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500/10 via-violet-500/5 to-transparent border border-white/10 p-8 hover:border-indigo-500/30 transition-all duration-500">
-                <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/20 rounded-full blur-3xl group-hover:bg-indigo-500/30 transition-all duration-500" />
-                <div className="relative">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="p-3 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-2xl shadow-lg shadow-indigo-500/25">
-                      <Crosshair className="h-6 w-6 text-white" />
-                    </div>
-                    <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-semibold rounded-full border border-emerald-500/20">
-                      NEW
-                    </span>
-                  </div>
-                  <h3 className="text-2xl font-bold text-white mb-3">GTM Intelligence</h3>
-                  <p className="text-white/50 mb-6">
-                    Identify anonymous website visitors, score leads automatically, and route hot prospects to sales with pluggable providers.
-                  </p>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-white/60 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-indigo-400" />
-                      IP-to-company visitor identification
-                    </div>
-                    <div className="flex items-center gap-2 text-white/60 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-indigo-400" />
-                      Multi-factor lead scoring (0-100)
-                    </div>
-                    <div className="flex items-center gap-2 text-white/60 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-indigo-400" />
-                      10-slot hot-swappable provider registry
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* AI Agents - Medium card */}
-            <div className="col-span-12 md:col-span-6 group">
-              <div className="relative h-full overflow-hidden rounded-3xl bg-gradient-to-br from-purple-500/10 via-violet-500/5 to-transparent border border-white/10 p-8 hover:border-purple-500/30 transition-all duration-500">
-                <div className="absolute top-0 right-0 w-48 h-48 bg-purple-500/20 rounded-full blur-3xl group-hover:bg-purple-500/30 transition-all duration-500" />
-                <div className="relative">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="p-3 bg-gradient-to-br from-purple-500 to-violet-500 rounded-2xl shadow-lg shadow-purple-500/25">
-                      <Bot className="h-6 w-6 text-white" />
-                    </div>
-                    <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-semibold rounded-full border border-emerald-500/20">
-                      NEW
-                    </span>
-                  </div>
-                  <h3 className="text-2xl font-bold text-white mb-3">AI Agents</h3>
-                  <p className="text-white/50 mb-6">
-                    Deploy intelligent agents that handle email responses, CRM updates, and workflow automation with configurable tools and confidence thresholds.
-                  </p>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-white/60 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-purple-400" />
-                      Support, Sales & Custom agents
-                    </div>
-                    <div className="flex items-center gap-2 text-white/60 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-purple-400" />
-                      Multi-LLM support (Claude, Gemini)
-                    </div>
-                    <div className="flex items-center gap-2 text-white/60 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-purple-400" />
-                      Human-in-the-loop approval
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Uptime Monitoring - Medium card */}
-            <div className="col-span-12 md:col-span-6 group">
-              <div className="relative h-full overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-500/10 via-green-500/5 to-transparent border border-white/10 p-8 hover:border-emerald-500/30 transition-all duration-500">
-                <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/20 rounded-full blur-3xl group-hover:bg-emerald-500/30 transition-all duration-500" />
-                <div className="relative">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="p-3 bg-gradient-to-br from-emerald-500 to-green-500 rounded-2xl shadow-lg shadow-emerald-500/25">
-                      <MonitorCheck className="h-6 w-6 text-white" />
-                    </div>
-                    <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-semibold rounded-full border border-emerald-500/20">
-                      NEW
-                    </span>
-                  </div>
-                  <h3 className="text-2xl font-bold text-white mb-3">Uptime Monitoring</h3>
-                  <p className="text-white/50 mb-6">
-                    Monitor your endpoints with configurable intervals. Get notified instantly when services go down.
-                  </p>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-white/60 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                      HTTP/HTTPS endpoint checks
-                    </div>
-                    <div className="flex items-center gap-2 text-white/60 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                      Configurable check intervals
-                    </div>
-                    <div className="flex items-center gap-2 text-white/60 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                      Incident history & reporting
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Team Analytics - Wide card */}
-            <div className="col-span-12 group">
-              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-500/10 via-violet-500/5 to-purple-500/10 border border-white/10 p-8 hover:border-indigo-500/30 transition-all duration-500">
-                <div className="absolute top-0 left-1/4 w-96 h-48 bg-indigo-500/20 rounded-full blur-3xl group-hover:bg-indigo-500/30 transition-all duration-500" />
-                <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-8">
-                  <div className="md:max-w-md">
-                    <div className="p-3 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-2xl shadow-lg shadow-indigo-500/25 w-fit mb-4">
-                      <BarChart3 className="h-6 w-6 text-white" />
-                    </div>
-                    <h3 className="text-2xl font-bold text-white mb-3">Team Analytics</h3>
-                    <p className="text-white/50">
-                      Velocity tracking, contribution insights, and collaboration patterns. Real-time dashboards for engineering leaders.
-                    </p>
-                  </div>
-                  {/* Mini chart visualization */}
-                  <div className="flex items-end gap-2 h-24">
-                    {[40, 65, 45, 80, 55, 90, 70, 85, 60, 95].map((h, i) => (
-                      <div
-                        key={i}
-                        className="w-6 md:w-8 bg-gradient-to-t from-indigo-500 to-violet-500 rounded-t-lg transition-all duration-300 hover:from-indigo-400 hover:to-violet-400"
-                        style={{ height: `${h}%`, animationDelay: `${i * 50}ms` }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Integration Section */}
-      <section id="integrations" className="py-24 px-6 relative">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-sm mb-6">
-              <RefreshCw className="h-4 w-4 animate-spin-slow" />
-              Automated Sync
-            </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
-              Seamless Integrations
-            </h2>
-            <p className="text-white/50 text-lg max-w-2xl mx-auto">
-              Connect once, sync forever. Your commits automatically update tasks, epics, and sprints.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <IntegrationCard
-              icon={<SiGithub className="h-8 w-8" />}
-              title="GitHub"
-              description="Auto-analyze commits, PRs, and code reviews. Build rich developer profiles."
-              features={["Commit analysis", "PR tracking", "Code review insights", "Skill extraction"]}
-              gradient="from-slate-500 to-slate-400"
-            />
-            <IntegrationCard
-              icon={<GoogleIcon />}
-              title="Google"
-              description="Gmail and Calendar sync. Auto-link emails to contacts and sync events."
-              features={["Gmail sync", "Calendar sync", "Contact enrichment", "Event tracking"]}
-              gradient="from-red-500 to-amber-400"
-            />
-            <IntegrationCard
-              icon={<JiraIcon large />}
-              title="Jira"
-              description="Two-way sync with Jira. Import issues, update status, link PRs to tickets."
-              features={["Issue import", "Status sync", "Epic tracking", "Sprint mapping"]}
-              gradient="from-blue-500 to-blue-400"
-            />
-            <IntegrationCard
-              icon={<LinearIcon large />}
-              title="Linear"
-              description="Native Linear integration. Auto-close issues, sync projects, track cycles."
-              features={["Auto-close issues", "Project sync", "Cycle mapping", "Priority sync"]}
-              gradient="from-purple-500 to-violet-400"
-            />
-          </div>
-
-          {/* Sync Flow */}
-          <div className="mt-16 relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-primary-500/10 via-purple-500/10 to-emerald-500/10 rounded-3xl blur-xl" />
-            <div className="relative bg-white/5 backdrop-blur-sm rounded-3xl p-8 border border-white/10">
-              <h3 className="text-xl font-semibold text-white mb-8 text-center">How Auto-Sync Works</h3>
-              <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8">
-                <SyncStep icon={<GitPullRequest />} label="Push Code" desc="Commit or merge PR" />
-                <SyncArrow />
-                <SyncStep icon={<Bot />} label="AI Analyzes" desc="Skills extracted" />
-                <SyncArrow />
-                <SyncStep icon={<RefreshCw />} label="Auto-Sync" desc="Tools updated" />
-                <SyncArrow />
-                <SyncStep icon={<CheckCircle2 />} label="Done!" desc="Tasks complete" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section id="how-it-works" className="py-24 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
-              Get Started in 2 Minutes
-            </h2>
-            <p className="text-white/50 text-lg">No complex setup. Just connect and go.</p>
-          </div>
-
-          <div className="grid md:grid-cols-4 gap-6">
+          <div className="grid gap-4 sm:grid-cols-2">
             {[
-              { num: "1", icon: <SiGithub />, title: "Connect GitHub", desc: "One-click OAuth" },
-              { num: "2", icon: <RefreshCw />, title: "Link Jira/Linear", desc: "Optional integrations" },
-              { num: "3", icon: <Bot />, title: "Auto-Profile", desc: "AI builds profiles" },
-              { num: "4", icon: <Rocket />, title: "Start Planning", desc: "Create sprints" },
-            ].map((step, i) => (
-              <div key={i} className="group relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary-500/20 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500" />
-                <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-6 text-center hover:border-white/20 transition-all group-hover:translate-y-[-4px] duration-300">
-                  <div className="relative w-16 h-16 mx-auto mb-4">
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary-500 to-purple-500 rounded-2xl" />
-                    <div className="absolute inset-0 flex items-center justify-center text-white">
-                      {step.icon}
-                    </div>
-                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-white text-black rounded-full flex items-center justify-center text-xs font-bold">
-                      {step.num}
-                    </div>
-                  </div>
-                  <h3 className="text-lg font-semibold text-white mb-1">{step.title}</h3>
-                  <p className="text-white/50 text-sm">{step.desc}</p>
-                </div>
+              ["Tool access", "CRM, email, enrichment, Slack, workflows, docs, and company records."],
+              ["Policy gates", "Require approval, block tools, restrict fields, rate-limit actions, and cap spend."],
+              ["Automation hooks", "Invoke agents when a lead replies, a deal changes, a ticket arrives, or a workflow branches."],
+              ["Audit history", "Every run, tool call, policy decision, and config change is visible."],
+            ].map(([title, body]) => (
+              <div key={title} className="rounded-2xl border border-white/10 bg-black/20 p-5">
+                <h3 className="text-lg font-semibold">{title}</h3>
+                <p className="mt-2 text-sm leading-6 text-white/55">{body}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* FAQ Section */}
-      <section className="py-24 px-6 relative">
-        <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-              Frequently Asked Questions
+      <section id="use-cases" className="relative px-4 py-20 sm:px-6 sm:py-28">
+        <div className="mx-auto max-w-7xl">
+          <div className="grid gap-10 lg:grid-cols-[0.8fr_1fr]">
+            <div>
+              <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-emerald-300">Why Aexy</p>
+              <h2 className="text-4xl font-semibold tracking-tight sm:text-5xl">
+                Start with one workflow. Grow into one company OS.
+              </h2>
+            </div>
+            <div className="space-y-4">
+              {useCases.map((useCase, index) => (
+                <div key={useCase} className="flex gap-4 rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-sm font-semibold text-black">
+                    {index + 1}
+                  </div>
+                  <p className="text-lg leading-8 text-white/65">{useCase}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="relative px-4 py-20 sm:px-6">
+        <div className="mx-auto max-w-7xl rounded-3xl border border-white/10 bg-white/[0.035] p-6 sm:p-10">
+          <div className="grid gap-8 lg:grid-cols-[0.9fr_1fr] lg:items-center">
+            <div>
+              <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-black">
+                <Shield className="h-6 w-6" />
+              </div>
+              <h2 className="text-4xl font-semibold tracking-tight">
+                Transparent by design. Flexible by default.
+              </h2>
+              <p className="mt-5 text-lg leading-8 text-white/58">
+                Aexy is open source and self-hostable, with exportable data and auditable logic. Use cloud to move fast or run it on your own infrastructure.
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {["Self-host free", "Open algorithms", "Data export", "Commercial cloud"].map((item) => (
+                <div key={item} className="rounded-2xl border border-white/10 bg-black/20 p-5 text-lg font-semibold">
+                  {item}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="relative px-4 py-20 sm:px-6">
+        <div className="mx-auto max-w-7xl">
+          <div className="max-w-3xl">
+            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-violet-300">Explore</p>
+            <h2 className="text-4xl font-semibold tracking-tight sm:text-5xl">
+              Start with the highest-leverage workflow.
             </h2>
-            <p className="text-white/50 text-lg">
-              Everything you need to know about Aexy.
+            <p className="mt-5 text-lg leading-8 text-white/56">
+              Aexy is broad by design, but adoption does not need to be. Start with agents, GTM, CRM, docs, or company-OS strategy, then expand into the shared operating layer.
             </p>
           </div>
-          <div className="space-y-4">
-            {FAQS.map((faq, i) => (
-              <FAQItem key={i} question={faq.question} answer={faq.answer} />
+          <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {platformLinks.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="group rounded-2xl border border-white/10 bg-white/[0.035] p-5 transition hover:border-white/25 hover:bg-white/[0.06]"
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <h3 className="text-xl font-semibold">{item.title}</h3>
+                  <ArrowRight className="h-5 w-5 text-white/35 transition group-hover:translate-x-1 group-hover:text-white" />
+                </div>
+                <p className="mt-3 text-sm leading-6 text-white/52">{item.description}</p>
+              </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-24 px-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-primary-500/30 via-purple-500/30 to-emerald-500/30 rounded-3xl blur-2xl" />
-            <div className="relative bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-sm rounded-3xl p-12 border border-white/10 text-center overflow-hidden">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/20 rounded-full blur-3xl" />
-              <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl" />
-
-              <div className="relative">
-                <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">
-                  Ready to run your Engineering OS?
-                </h2>
-                <p className="text-white/50 text-lg mb-10 max-w-2xl mx-auto">
-                  Understand your team. Optimize operations. Build talent.
-                </p>
-
-                <div className="flex flex-col sm:flex-row justify-center gap-4 mb-8">
-                  <a
-                    href={googleLoginUrl}
-                    className="group inline-flex items-center justify-center gap-3 bg-white text-black px-8 py-4 rounded-full text-lg font-semibold transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(255,255,255,0.3)]"
-                  >
-                    <GoogleIcon />
-                    Continue with Google
-                    <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                  </a>
-                  <a
-                    href={microsoftLoginUrl}
-                    className="group bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-3"
-                  >
-                    <MicrosoftIcon />
-                    Continue with Microsoft
-                  </a>
-                  <a
-                    href={githubLoginUrl}
-                    className="group bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-3"
-                  >
-                    <SiGithub className="h-5 w-5" />
-                    Continue with GitHub
-                  </a>
-                </div>
-
-                <p className="text-white/40 text-sm">
-                  Self-host free, forever · 14-day cloud trial · No credit card required
-                </p>
+      <section className="relative px-4 py-20 sm:px-6">
+        <div className="mx-auto max-w-4xl">
+          <div className="text-center">
+            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-cyan-300">FAQ</p>
+            <h2 className="text-4xl font-semibold tracking-tight sm:text-5xl">
+              Questions companies ask before replacing the stack.
+            </h2>
+          </div>
+          <div className="mt-10 space-y-4">
+            {homepageFaqs.map((faq) => (
+              <div key={faq.question} className="rounded-2xl border border-white/10 bg-white/[0.035] p-6">
+                <h3 className="text-lg font-semibold">{faq.question}</h3>
+                <p className="mt-3 text-sm leading-6 text-white/58">{faq.answer}</p>
               </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-white/5 py-12 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-6 gap-8 mb-12">
-            <div className="md:col-span-2">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl">
-                  <GitBranch className="h-5 w-5 text-white" />
-                </div>
-                <span className="text-lg font-bold text-white">Aexy</span>
-              </div>
-              <p className="text-white/40 text-sm mb-4">
-                The open-source operating system for engineering organizations.
-              </p>
-              <div className="flex items-center gap-3">
-                <a href="https://github.com/aexy-io/aexy" className="p-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition">
-                  <SiGithub className="h-4 w-4 text-white/60" />
-                </a>
-              </div>
-            </div>
-            <div>
-              <h4 className="text-white font-semibold mb-4">Products</h4>
-              <ul className="space-y-2 text-white/40 text-sm">
-                <li><Link href="/products/tracking" className="hover:text-white transition">Activity Tracking</Link></li>
-                <li><Link href="/products/planning" className="hover:text-white transition">Sprint Planning</Link></li>
-                <li><Link href="/products/tickets" className="hover:text-white transition">Ticketing</Link></li>
-                <li><Link href="/products/reviews" className="hover:text-white transition">Reviews</Link></li>
-                <li><Link href="/products/learning" className="hover:text-white transition">Learning</Link></li>
-                <li><Link href="/products/hiring" className="hover:text-white transition">Hiring</Link></li>
-                <li><Link href="/products/crm" className="hover:text-white transition">CRM</Link></li>
-                <li><Link href="/products/ai-agents" className="hover:text-white transition">AI Agents</Link></li>
-                <li><Link href="/products/uptime" className="hover:text-white transition">Uptime</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-white font-semibold mb-4">Solutions</h4>
-              <ul className="space-y-2 text-white/40 text-sm">
-                <li><Link href="/for/engineering-managers" className="hover:text-white transition">For Managers</Link></li>
-                <li><Link href="/for/developers" className="hover:text-white transition">For Developers</Link></li>
-                <li><Link href="/for/engineering-leaders" className="hover:text-white transition">For CTOs</Link></li>
-                <li><Link href="/for/people-ops" className="hover:text-white transition">For HR</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-white font-semibold mb-4">Resources</h4>
-              <ul className="space-y-2 text-white/40 text-sm">
-                <li><Link href="/story" className="hover:text-white transition">Our Story</Link></li>
-                <li><Link href="/mission" className="hover:text-white transition">Mission</Link></li>
-                <li><Link href="/manifesto" className="hover:text-white transition">Engineering OS</Link></li>
-                <li><Link href="/pricing" className="hover:text-white transition">Pricing</Link></li>
-                <li><a href="https://github.com/aexy-io/aexy" className="hover:text-white transition">GitHub</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-white font-semibold mb-4">Company</h4>
-              <ul className="space-y-2 text-white/40 text-sm">
-                <li><Link href="/about" className="hover:text-white transition">About</Link></li>
-                <li><Link href="/blog" className="hover:text-white transition">Blog</Link></li>
-                <li><Link href="/careers" className="hover:text-white transition">Careers</Link></li>
-                <li><Link href="/contact" className="hover:text-white transition">Contact</Link></li>
-              </ul>
-            </div>
-          </div>
-          <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-white/40 text-sm">&copy; 2025 Aexy. All rights reserved.</p>
-            <div className="flex items-center gap-6 text-white/40 text-sm">
-              <Link href="/privacy" className="hover:text-white transition">Privacy Policy</Link>
-              <Link href="/terms" className="hover:text-white transition">Terms of Service</Link>
-              <Link href="/security" className="hover:text-white transition">Security</Link>
-            </div>
+      <section className="relative px-4 py-20 sm:px-6 sm:py-28">
+        <div className="mx-auto max-w-4xl text-center">
+          <h2 className="text-4xl font-semibold tracking-tight sm:text-5xl">
+            Run the company from one AI workspace.
+          </h2>
+          <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-white/56">
+            Bring engineering, GTM, people, knowledge, and AI agents into the same operating system.
+          </p>
+          <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
+            <a href={googleLoginUrl} className="inline-flex items-center justify-center gap-3 rounded-full bg-white px-7 py-4 font-semibold text-black">
+              <GoogleIcon />
+              Start free
+              <ArrowRight className="h-5 w-5" />
+            </a>
+            <Link href="/contact" className="inline-flex items-center justify-center gap-3 rounded-full border border-white/12 bg-white/[0.04] px-7 py-4 font-semibold text-white">
+              Book demo
+            </Link>
           </div>
         </div>
-      </footer>
+      </section>
 
-      {/* Custom Styles */}
-      <style jsx>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-10px); }
-        }
-        @keyframes gradient {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-        .animate-float {
-          animation: float 3s ease-in-out infinite;
-        }
-        .animate-gradient {
-          animation: gradient 3s ease infinite;
-        }
-        .animate-spin-slow {
-          animation: spin 3s linear infinite;
-        }
-        .delay-500 {
-          animation-delay: 500ms;
-        }
-        .delay-700 {
-          animation-delay: 700ms;
-        }
-        .delay-1000 {
-          animation-delay: 1000ms;
-        }
-      `}</style>
+      <Footer />
     </main>
   );
 }
 
-// Components
-function JiraIcon({ large }: { large?: boolean }) {
-  const size = large ? "h-8 w-8" : "h-5 w-5";
+const homepageJsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://aexy.io/#organization",
+      name: "Aexy",
+      url: "https://aexy.io",
+      sameAs: ["https://github.com/aexy-io/aexy"],
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://aexy.io/#software",
+      name: "Aexy",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      description:
+        "Aexy is an AI company operating system for engineering, CRM, GTM, people, docs, workflows, and AI agents.",
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "USD",
+        description: "Open-source self-hosted option available.",
+      },
+      publisher: {
+        "@id": "https://aexy.io/#organization",
+      },
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://aexy.io/#faq",
+      mainEntity: homepageFaqs.map((faq) => ({
+        "@type": "Question",
+        name: faq.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: faq.answer,
+        },
+      })),
+    },
+  ],
+};
+
+function CompanyOSPreview() {
   return (
-    <svg className={`${size} text-blue-400`} viewBox="0 0 24 24" fill="currentColor">
-      <path d="M11.571 11.513H0a5.218 5.218 0 0 0 5.232 5.215h2.13v2.057A5.215 5.215 0 0 0 12.575 24V12.518a1.005 1.005 0 0 0-1.005-1.005zm5.723-5.756H5.736a5.215 5.215 0 0 0 5.215 5.214h2.129v2.058a5.218 5.218 0 0 0 5.215 5.214V6.758a1.001 1.001 0 0 0-1.001-1.001zM23 .262h-11.59a5.215 5.215 0 0 0 5.215 5.215h2.129v2.057A5.215 5.215 0 0 0 24 12.749V1.262A1.001 1.001 0 0 0 23 .262z" />
-    </svg>
+    <div className="relative">
+      <div className="absolute -inset-5 rounded-[2rem] bg-gradient-to-br from-cyan-500/16 via-violet-500/16 to-emerald-500/12 blur-2xl" />
+      <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#0d0f14] shadow-2xl">
+        <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-black">
+              <DatabaseZap className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-sm font-semibold">Company Command Center</div>
+              <div className="text-xs text-white/42">Live operating graph</div>
+            </div>
+          </div>
+          <div className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-300">
+            Synced
+          </div>
+        </div>
+        <div className="grid gap-3 p-4 sm:grid-cols-2">
+          <PreviewCard icon={Rocket} title="Engineering" stat="24 active tasks" body="Sprint, backlog, releases, velocity" />
+          <PreviewCard icon={BarChart3} title="GTM" stat="18 hot accounts" body="Visitor ID, scoring, routing, ABM" />
+          <PreviewCard icon={Users} title="People" stat="7 growth plans" body="Hiring, reviews, learning, leave" />
+          <PreviewCard icon={FileText} title="Knowledge" stat="1,284 indexed docs" body="Docs, Drive, graph, MCP tools" />
+        </div>
+        <div className="border-t border-white/10 p-4">
+          <div className="rounded-2xl border border-violet-400/20 bg-violet-400/8 p-4">
+            <div className="flex items-center gap-3">
+              <Bot className="h-5 w-5 text-violet-300" />
+              <div>
+                <div className="text-sm font-semibold">Sales agent routed a high-intent account</div>
+                <div className="mt-1 text-xs text-white/48">Checked policy, enriched CRM, created task, notified Slack.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
-function LinearIcon({ large }: { large?: boolean }) {
-  const size = large ? "h-8 w-8" : "h-5 w-5";
+function PreviewCard({
+  icon: Icon,
+  title,
+  stat,
+  body,
+}: {
+  icon: typeof Rocket;
+  title: string;
+  stat: string;
+  body: string;
+}) {
   return (
-    <svg className={`${size} text-purple-400`} viewBox="0 0 24 24" fill="currentColor">
-      <path d="M2.654 10.6a.463.463 0 0 1-.127-.636l3.197-4.686a.464.464 0 0 1 .636-.127l14.986 10.228a.463.463 0 0 1 .127.636l-3.197 4.686a.464.464 0 0 1-.636.127L2.654 10.6zm.636 2.8a.463.463 0 0 0-.127.636l3.197 4.686a.464.464 0 0 0 .636.127l8.486-5.794-3.706-2.528-8.486 2.873zm16.056-3.328L10.86 4.278 7.154 6.806l8.486 5.794 3.706-2.528z" />
-    </svg>
+    <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+      <div className="mb-4 flex items-center justify-between">
+        <Icon className="h-5 w-5 text-white/72" />
+        <div className="h-2 w-2 rounded-full bg-emerald-300" />
+      </div>
+      <div className="text-sm font-semibold">{title}</div>
+      <div className="mt-1 text-xl font-semibold">{stat}</div>
+      <div className="mt-2 text-xs leading-5 text-white/45">{body}</div>
+    </div>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="relative border-t border-white/10 px-4 py-12 sm:px-6">
+      <div className="mx-auto grid max-w-7xl gap-10 md:grid-cols-[1.5fr_1fr_1fr_1fr]">
+        <div>
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-white p-2 text-black">
+              <GitBranch className="h-5 w-5" />
+            </div>
+            <span className="text-lg font-semibold">Aexy</span>
+          </div>
+          <p className="mt-4 max-w-sm text-sm leading-6 text-white/45">
+            The AI superapp for companies. Open source, self-hostable, and built for modern teams.
+          </p>
+        </div>
+        <FooterColumn title="Platform" links={[["AI Agents", "/products/ai-agents"], ["GTM Intelligence", "/products/gtm-intelligence"], ["CRM", "/products/crm"], ["Planning", "/products/planning"]]} />
+        <FooterColumn title="Company" links={[["Pricing", "/pricing"], ["About", "/about"], ["Mission", "/mission"], ["Contact", "/contact"]]} />
+        <div>
+          <h3 className="font-semibold">Resources</h3>
+          <div className="mt-4 space-y-3 text-sm text-white/45">
+            <Link href="/handbook" className="block hover:text-white transition">Docs</Link>
+            <Link href="/security" className="block hover:text-white transition">Security</Link>
+            <a href="https://github.com/aexy-io/aexy" className="flex items-center gap-2 hover:text-white transition">
+              <SiGithub className="h-4 w-4" />
+              GitHub
+            </a>
+          </div>
+        </div>
+      </div>
+      <div className="mx-auto mt-10 flex max-w-7xl flex-col gap-3 border-t border-white/10 pt-6 text-sm text-white/35 sm:flex-row sm:justify-between">
+        <p>&copy; 2026 Aexy. All rights reserved.</p>
+        <div className="flex gap-5">
+          <Link href="/privacy" className="hover:text-white transition">Privacy</Link>
+          <Link href="/terms" className="hover:text-white transition">Terms</Link>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+function FooterColumn({ title, links }: { title: string; links: Array<[string, string]> }) {
+  return (
+    <div>
+      <h3 className="font-semibold">{title}</h3>
+      <div className="mt-4 space-y-3 text-sm text-white/45">
+        {links.map(([label, href]) => (
+          <Link key={href} href={href} className="block hover:text-white transition">
+            {label}
+          </Link>
+        ))}
+      </div>
+    </div>
   );
 }
 
 function GoogleIcon() {
   return (
-    <svg className="h-5 w-5" viewBox="0 0 24 24">
-      <path
-        fill="#4285F4"
-        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-      />
-      <path
-        fill="#34A853"
-        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-      />
-      <path
-        fill="#EA4335"
-        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-      />
+    <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
     </svg>
-  );
-}
-
-function MicrosoftIcon() {
-  return (
-    <svg className="h-5 w-5" viewBox="0 0 23 23" xmlns="http://www.w3.org/2000/svg">
-      <path fill="#F25022" d="M1 1h10v10H1z" />
-      <path fill="#7FBA00" d="M12 1h10v10H12z" />
-      <path fill="#00A4EF" d="M1 12h10v10H1z" />
-      <path fill="#FFB900" d="M12 12h10v10H12z" />
-    </svg>
-  );
-}
-
-function DashboardPreview() {
-  return (
-    <div className="bg-[#0d0d12] p-6">
-      <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/5">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center">
-              <GitBranch className="h-4 w-4 text-white" />
-            </div>
-            <span className="text-white font-semibold">Aexy</span>
-          </div>
-          <div className="flex gap-2">
-            <div className="px-3 py-1 bg-white/10 rounded-lg text-white text-xs">Dashboard</div>
-            <div className="px-3 py-1 text-white/40 text-xs">Sprints</div>
-            <div className="px-3 py-1 text-white/40 text-xs">Epics</div>
-          </div>
-        </div>
-        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full" />
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white/5 rounded-xl p-4 border border-white/5">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center text-white text-sm font-bold">JD</div>
-            <div>
-              <div className="text-white text-sm font-medium">Jane Developer</div>
-              <div className="text-white/40 text-xs">Senior Engineer</div>
-            </div>
-          </div>
-          <div className="space-y-2">
-            {[{ l: "TypeScript", v: 95 }, { l: "React", v: 90 }, { l: "Node.js", v: 80 }].map(s => (
-              <div key={s.l}>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-white/60">{s.l}</span>
-                  <span className="text-white/40">{s.v}%</span>
-                </div>
-                <div className="h-1 bg-white/10 rounded-full"><div className="h-full bg-gradient-to-r from-primary-500 to-cyan-500 rounded-full" style={{ width: `${s.v}%` }} /></div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-white/5 rounded-xl p-4 border border-white/5">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-white text-sm font-medium">Sprint 24</span>
-            <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-xs rounded-full">Active</span>
-          </div>
-          <div className="space-y-2">
-            {[{ s: "done", t: "API Integration" }, { s: "progress", t: "Dashboard UI" }, { s: "todo", t: "Testing" }].map((task, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${task.s === "done" ? "bg-emerald-500" : task.s === "progress" ? "bg-blue-500" : "bg-white/20"}`} />
-                <span className={`text-xs ${task.s === "done" ? "text-white/40 line-through" : "text-white/70"}`}>{task.t}</span>
-              </div>
-            ))}
-          </div>
-          <div className="mt-3 pt-3 border-t border-white/5">
-            <div className="flex justify-between text-xs text-white/40 mb-1"><span>Progress</span><span>67%</span></div>
-            <div className="h-1.5 bg-white/10 rounded-full"><div className="h-full w-2/3 bg-gradient-to-r from-primary-500 to-emerald-500 rounded-full" /></div>
-          </div>
-        </div>
-
-        <div className="bg-white/5 rounded-xl p-4 border border-white/5">
-          <div className="text-white text-sm font-medium mb-3">Recent Syncs</div>
-          <div className="space-y-2">
-            {[{ p: "GitHub", a: "3 commits synced", t: "2m ago" }, { p: "Gmail", a: "12 emails synced", t: "3m ago" }, { p: "Jira", a: "PROJ-123 updated", t: "5m ago" }, { p: "Calendar", a: "2 events added", t: "8m ago" }].map((s, i) => (
-              <div key={i} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                  <span className="text-xs text-white/40">{s.p}:</span>
-                  <span className="text-xs text-white/70">{s.a}</span>
-                </div>
-                <span className="text-xs text-white/30">{s.t}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function IntegrationCard({ icon, title, description, features, gradient }: { icon: React.ReactNode; title: string; description: string; features: string[]; gradient: string }) {
-  return (
-    <div className="group relative">
-      <div className={`absolute inset-0 bg-gradient-to-br ${gradient} rounded-3xl opacity-0 group-hover:opacity-20 blur-xl transition-all duration-500`} />
-      <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-white/20 transition-all h-full">
-        <div className={`w-16 h-16 bg-gradient-to-br ${gradient} rounded-2xl flex items-center justify-center text-white mb-6 group-hover:scale-110 transition-transform shadow-lg`}>
-          {icon}
-        </div>
-        <h3 className="text-2xl font-bold text-white mb-3">{title}</h3>
-        <p className="text-white/50 mb-6">{description}</p>
-        <ul className="space-y-2">
-          {features.map(f => (
-            <li key={f} className="flex items-center gap-2 text-white/60 text-sm">
-              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-              {f}
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  );
-}
-
-function SyncStep({ icon, label, desc }: { icon: React.ReactNode; label: string; desc: string }) {
-  return (
-    <div className="flex flex-col items-center text-center group">
-      <div className="w-14 h-14 bg-gradient-to-br from-primary-500/20 to-purple-500/20 rounded-xl flex items-center justify-center text-primary-400 mb-3 group-hover:scale-110 transition-transform border border-primary-500/20">
-        {icon}
-      </div>
-      <div className="text-white font-medium">{label}</div>
-      <div className="text-white/40 text-sm">{desc}</div>
-    </div>
-  );
-}
-
-function SyncArrow() {
-  return <div className="hidden md:block text-white/20"><ChevronRight className="h-6 w-6" /></div>;
-}
-
-function FAQItem({ question, answer }: { question: string; answer: string }) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <div className="border border-white/5 rounded-2xl bg-white/[0.02] overflow-hidden transition-all duration-200 hover:bg-white/[0.04]">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-6 text-left"
-      >
-        <span className="text-lg font-medium text-white">{question}</span>
-        <div className={`p-2 rounded-full transition-colors ${isOpen ? "bg-white/10 text-white" : "text-white/50"}`}>
-          {isOpen ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-        </div>
-      </button>
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <div className="px-6 pb-6 text-white/60 leading-relaxed">
-              {answer}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
   );
 }

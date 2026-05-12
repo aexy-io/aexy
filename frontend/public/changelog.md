@@ -5,6 +5,77 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.73] - 2026-05-12
+
+Tasks now have a copyable per-workspace identifier and a short
+shareable link. Format is `[{workspace_slug}:{task_key}]` (e.g.
+`[aexy:42]`); the bracketed form doubles as an auto-link token in
+GitHub PR/issue titles. The kanban task card surfaces two icon-only
+copy actions on hover — full link / full identifier shown on hover,
+copied on click.
+
+### Added
+
+#### Shareable task identifiers
+A new monotonic per-workspace counter assigns a `task_key` to every
+new task. Combined with `workspace.slug` it forms the displayed
+identifier `[slug:N]`, rendered as a subtle monospace prefix on the
+kanban card title and used as the body of two new copy actions in
+the card's hover quick-actions bar. Existing tasks are backfilled
+in `created_at` order per workspace.
+
+- New columns: `sprint_tasks.task_key` (int, unique per workspace)
+  and `workspaces.next_task_key` (counter). Migration
+  `migrate_task_keys.sql` adds them, backfills existing tasks, and
+  seeds each workspace counter to `MAX(task_key) + 1`.
+- Atomic assignment via a SQLAlchemy `before_insert` event on
+  `SprintTask` — one `UPDATE ... RETURNING` consumes the next key
+  and serializes concurrent inserts. Covers all task-creation paths
+  (manual, GitHub import, Jira, Linear, workflows, templates,
+  planning poker) without touching their call sites.
+- `SprintTaskResponse` exposes `task_key`, `workspace_slug`,
+  `identifier`, and `public_url` so the frontend can render and
+  copy without recomposing the string.
+
+#### Public short-link route
+A short URL at `/t/{workspace_slug}/{task_key}` resolves to the
+sprint kanban for the task, with the task drawer auto-opened.
+
+- New backend endpoint `GET /api/v1/tasks/by-key/{slug}/{key}`
+  returns the task UUID plus the sprint and project IDs needed to
+  build the redirect. Auth-gated on workspace membership.
+- New frontend route `frontend/src/app/(app)/t/[workspaceSlug]/[taskKey]/page.tsx`
+  calls the resolver and `router.replace`s to
+  `/sprints/{project_id}/{sprint_id}?task={uuid}` (or the project
+  backlog when the task has no sprint).
+- The sprint kanban page reads `?task=<uuid>` on mount, opens the
+  task drawer for that task, and strips the param so refresh
+  doesn't re-open it.
+
+#### GitHub PR/issue title auto-linking
+The task reference parser learns a new pattern for the native
+`[workspace-slug:N]` form. When a PR or issue is ingested with that
+bracket in its title, `GitHubTaskSyncService` resolves the matching
+task by `(workspace.slug, task_key)` and creates a `TaskGitHubLink`
+with `is_auto_linked=True`.
+
+- New `AEXY_BRACKETED_PATTERN` regex
+  `\[([a-z0-9][a-z0-9-]*):(\d+)\]` in `task_reference_parser.py`,
+  exposed as `TaskReferenceSource.AEXY`. Distinct from the existing
+  `[PROJ-123]` Jira/Linear pattern (the colon separator avoids the
+  collision).
+- Already wired into the runtime webhook path
+  (`/webhooks/github`) for both PRs and commits — no behavior change
+  for past PRs that didn't use this format, future ones link
+  automatically.
+
+#### Card UI
+- Two icon-only buttons in `TaskCardPremium`'s hover quick-actions
+  bar: `Link2` copies the public URL, `Hash` copies the identifier.
+  Full string in the `title=` tooltip; Sonner toast on click.
+- Persistent monospace `[slug:N]` prefix on the card title so the
+  identifier is visible at a glance without hovering.
+
 ## [0.7.72] - 2026-05-07
 
 Project-level (sprint-less) tasks reach feature parity with sprint

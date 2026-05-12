@@ -25,12 +25,11 @@ export default function BlogPage() {
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 tracking-tight leading-tight">
             Notes on building an{" "}
             <span className="bg-gradient-to-r from-primary-400 to-purple-400 bg-clip-text text-transparent">
-              open Engineering OS
+              open AI company OS
             </span>
           </h1>
           <p className="text-xl text-white/60 max-w-2xl mx-auto">
-            Engineering culture, product thinking, and lessons from running a transparent,
-            open-source company.
+            Company operations, AI agents, product thinking, engineering culture, and lessons from building in the open.
           </p>
         </div>
       </section>

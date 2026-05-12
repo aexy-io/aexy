@@ -41,7 +41,7 @@ const plans = [
     borderColor: "border-emerald-500/30",
     textColor: "text-emerald-400",
     features: [
-      "Core Engineering OS (open source)",
+      "Core AI company OS (open source)",
       "Developer profiles & skill analysis",
       "Sprint & epic planning",
       "Tickets & task tracking",
@@ -85,7 +85,7 @@ const plans = [
   {
     name: "Enterprise",
     tier: "enterprise",
-    tagline: "Engineering OS at Scale",
+    tagline: "Company OS at Scale",
     description: "For organizations running critical engineering operations",
     monthlyPrice: -1,
     annualPrice: -1,
@@ -144,6 +144,19 @@ const faqs = [
     a: "Yes! Team plans come with a 14-day free trial. No credit card required to start.",
   },
 ];
+
+const pricingJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqs.map((faq) => ({
+    "@type": "Question",
+    name: faq.q,
+    acceptedAnswer: {
+      "@type": "Answer",
+      text: faq.a,
+    },
+  })),
+};
 
 function PricingContent() {
   const searchParams = useSearchParams();
@@ -213,6 +226,7 @@ function PricingContent() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] overflow-hidden">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingJsonLd) }} />
       {/* Animated Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <motion.div
@@ -313,7 +327,7 @@ function PricingContent() {
               transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
               className="bg-gradient-to-r from-primary-400 via-purple-400 to-emerald-400 bg-[length:200%_auto] bg-clip-text text-transparent"
             >
-              Engineering OS
+              AI company OS
             </motion.span>
           </motion.h1>
 
@@ -664,10 +678,10 @@ function PricingContent() {
 
               <div className="relative">
                 <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-                  Start with open source. Grow into your Engineering OS.
+                  Start with open source. Grow into your company OS.
                 </h2>
                 <p className="text-foreground/50 text-lg mb-10 max-w-2xl mx-auto">
-                  Join thousands of engineering teams building better software with Aexy.
+                  Bring engineering, GTM, people, knowledge, and AI agents into one operating system.
                 </p>
 
                 <div className="flex flex-col sm:flex-row justify-center gap-4">

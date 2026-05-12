@@ -43,12 +43,12 @@ export default function CareersPage() {
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 tracking-tight leading-tight">
             Help us build the{" "}
             <span className="bg-gradient-to-r from-primary-400 to-purple-400 bg-clip-text text-transparent">
-              future of engineering work
+              AI company OS
             </span>
           </h1>
           <p className="text-xl text-white/60 max-w-2xl mx-auto">
-            We&apos;re a small team building tools that thousands of engineering organizations
-            will run their work on.
+            We&apos;re a small team building the workspace companies will use to run engineering,
+            GTM, people, knowledge, workflows, and AI agents.
           </p>
         </div>
       </section>

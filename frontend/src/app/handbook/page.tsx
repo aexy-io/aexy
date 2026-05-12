@@ -7,7 +7,7 @@ import { getDocIndex, getSearchIndex } from "@/lib/docs";
 export const metadata: Metadata = {
   title: "Documentation - Aexy",
   description:
-    "The open-source Engineering OS, fully documented. Architecture, guides, API reference, and per-module deep dives.",
+    "The Aexy AI company operating system, fully documented. Architecture, guides, API reference, and per-module deep dives.",
 };
 
 const SECTION_ICONS: Record<string, { icon: typeof BookOpen; gradient: string }> = {
@@ -42,7 +42,7 @@ export default function DocsHomePage() {
           Build with Aexy
         </h1>
         <p className="text-lg text-white/55 max-w-2xl mb-8 leading-relaxed">
-          The open-source Engineering OS, fully documented. Architecture deep
+          The AI company operating system, fully documented. Architecture deep
           dives, cross-cutting guides, API conventions, and per-module references —
           {" "}
           <span className="text-white/80">{totalPages} pages, all generated from the source repo.</span>

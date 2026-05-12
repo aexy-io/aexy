@@ -1,387 +1,153 @@
-"use client";
-
+import type { Metadata } from "next";
 import Link from "next/link";
-import {
-  ArrowRight,
-  Bot,
-  CheckCircle2,
-  Mail,
-  Sparkles,
-  Shield,
-  Clock,
-  Cpu,
-  Wrench,
-  Building2,
-} from "lucide-react";
-import { SiGithub } from "@icons-pack/react-simple-icons";
+import { ArrowRight, Bot, CheckCircle2, LockKeyhole, Mail, Shield, Workflow, Wrench } from "lucide-react";
 import { LandingHeader, LandingFooter } from "@/components/landing/LandingHeader";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+export const metadata: Metadata = {
+  title: "AI Agents for Business Workflows",
+  description:
+    "Build governed AI agents that work across CRM, email, Slack, enrichment, docs, and workflows with approvals, policy gates, and audit history.",
+};
 
-const features = [
-  {
-    icon: Mail,
-    title: "Email Automation",
-    description: "Auto-respond to emails with context-aware replies. Handle inquiries, follow-ups, and escalations automatically.",
-    color: "from-purple-500 to-violet-500",
-  },
-  {
-    icon: Building2,
-    title: "CRM Integration",
-    description: "Search contacts, enrich data, update records, and log activities automatically as agents interact.",
-    color: "from-blue-500 to-cyan-500",
-  },
-  {
-    icon: Cpu,
-    title: "Multiple LLM Providers",
-    description: "Choose between Claude (Anthropic), Gemini (Google), or Ollama for self-hosted inference.",
-    color: "from-emerald-500 to-teal-500",
-  },
-  {
-    icon: Shield,
-    title: "Confidence Thresholds",
-    description: "Set approval requirements below confidence thresholds. Never send uncertain responses without review.",
-    color: "from-amber-500 to-orange-500",
-  },
+const capabilities = [
+  ["Tool access", "Give agents approved access to CRM records, email history, enrichment tools, Slack, workflows, and company context.", Wrench],
+  ["Policy gates", "Block tools, require approval, restrict fields, rate-limit actions, and cap token budgets before agents act.", LockKeyhole],
+  ["Workflow triggers", "Run agents when leads reply, deals change, forms arrive, tickets escalate, or workflows branch.", Workflow],
+  ["Audit history", "Log every run, tool call, policy decision, approval, and output for review and governance.", Shield],
 ];
 
-const agentTypes = [
-  { type: "Support", desc: "Customer support automation", color: "bg-blue-500" },
-  { type: "Sales", desc: "Outreach and follow-ups", color: "bg-green-500" },
-  { type: "Scheduling", desc: "Calendar management", color: "bg-purple-500" },
-  { type: "Custom", desc: "Build your own", color: "bg-amber-500" },
+const useCases = [
+  "Classify inbound replies and route hot leads to the right owner.",
+  "Draft contextual email replies using CRM and prior conversation history.",
+  "Enrich companies, summarize account activity, and update CRM fields.",
+  "Escalate uncertain actions to a human before anything sensitive happens.",
 ];
 
-const tools = [
-  { name: "reply", category: "Actions" },
-  { name: "escalate", category: "Actions" },
-  { name: "create_task", category: "Actions" },
-  { name: "search_contacts", category: "CRM" },
-  { name: "enrich_person", category: "Enrichment" },
-  { name: "send_email", category: "Email" },
-  { name: "send_slack", category: "Communication" },
-  { name: "web_search", category: "Research" },
+const faqs = [
+  ["Can Aexy agents send emails automatically?", "Yes, but sensitive tools can require approval based on confidence, policy, tool type, field access, or workspace rules."],
+  ["Which tools can agents use?", "Agents can use configured tools for CRM records, email, enrichment, communication, workflows, and other Aexy modules."],
+  ["Are agent actions auditable?", "Yes. Aexy records executions, tool calls, policy decisions, approvals, outputs, and errors."],
 ];
 
 export default function AIAgentsProductPage() {
-  const googleLoginUrl = `${API_BASE_URL}/auth/google/login`;
-
   return (
-    <div className="min-h-screen bg-[#0a0a0f] overflow-hidden">
-      {/* Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-purple-500/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-violet-500/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
-      </div>
-
+    <div className="min-h-screen overflow-hidden bg-[#08090d] text-white">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_left,rgba(168,85,247,0.15),transparent_32%),radial-gradient(circle_at_75%_10%,rgba(34,211,238,0.12),transparent_30%)]" />
       <LandingHeader />
 
-      {/* Hero */}
-      <section className="pt-32 pb-20 px-6 relative">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+      <main className="relative">
+        <section className="px-4 pb-20 pt-32 sm:px-6">
+          <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[1fr_0.85fr]">
             <div>
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500/20 to-violet-500/20 border border-purple-500/30 rounded-full text-purple-400 text-sm mb-6">
+              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-violet-400/25 bg-violet-400/10 px-4 py-2 text-sm text-violet-200">
                 <Bot className="h-4 w-4" />
-                <span>AI Agents</span>
+                AI agents for business workflows
               </div>
-
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 tracking-tight leading-tight">
-                Intelligent{" "}
-                <span className="bg-gradient-to-r from-purple-400 to-violet-400 bg-clip-text text-transparent">
-                  automation
-                </span>{" "}
-                across your stack
+              <h1 className="max-w-4xl text-5xl font-semibold leading-[1.04] tracking-tight sm:text-6xl">
+                AI agents that work inside your company OS.
               </h1>
-
-              <p className="text-xl text-foreground/60 mb-8 leading-relaxed">
-                Create custom AI agents to handle email, support, scheduling, and CRM tasks.
-                Configure LLM providers, tools, and behavior. Works across your entire workflow.
+              <p className="mt-7 max-w-2xl text-lg leading-8 text-white/62">
+                Build agents that can read company context, use approved tools, update CRM records, draft emails, trigger workflows, and ask for approval before sensitive actions.
               </p>
-
-              <div className="flex flex-col sm:flex-row gap-4 mb-8">
-                <a
-                  href={googleLoginUrl}
-                  className="group inline-flex items-center justify-center gap-3 bg-gradient-to-r from-purple-500 to-violet-500 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(139,92,246,0.3)]"
-                >
-                  Create Your First Agent
-                  <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                </a>
-                <Link
-                  href="/manifesto"
-                  className="group inline-flex items-center justify-center gap-2 bg-white/5 text-foreground px-8 py-4 rounded-full text-lg font-medium border border-white/10 hover:border-white/20 transition-all"
-                >
-                  Learn More
+              <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+                <Link href="/contact" className="inline-flex items-center justify-center gap-3 rounded-full bg-white px-7 py-4 font-semibold text-black">
+                  Book demo
+                  <ArrowRight className="h-5 w-5" />
+                </Link>
+                <Link href="/ai-company-os" className="inline-flex items-center justify-center rounded-full border border-white/12 bg-white/[0.04] px-7 py-4 font-semibold text-white">
+                  See company OS
                 </Link>
               </div>
-
-              <div className="flex items-center gap-6 text-sm text-foreground/40">
-                <span className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-purple-500" />
-                  Multi-LLM support
-                </span>
-                <span className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-purple-500" />
-                  Customizable tools
-                </span>
-              </div>
             </div>
 
-            {/* Visual - Agent Preview */}
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-violet-500/20 rounded-3xl blur-2xl" />
-              <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
-                      <Bot className="h-5 w-5 text-purple-400" />
-                    </div>
-                    <div>
-                      <h3 className="text-foreground font-medium">Support Agent</h3>
-                      <span className="text-xs text-muted-foreground">@support</span>
-                    </div>
+            <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-6">
+              <div className="mb-5 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl bg-violet-500 p-2">
+                    <Bot className="h-5 w-5" />
                   </div>
-                  <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full">Active</span>
-                </div>
-
-                {/* Stats */}
-                <div className="grid grid-cols-3 gap-3 mb-6">
-                  <div className="text-center p-3 bg-white/5 rounded-xl">
-                    <div className="text-xl font-bold text-foreground">847</div>
-                    <div className="text-xs text-muted-foreground">Runs</div>
-                  </div>
-                  <div className="text-center p-3 bg-white/5 rounded-xl">
-                    <div className="text-xl font-bold text-green-400">94%</div>
-                    <div className="text-xs text-muted-foreground">Success</div>
-                  </div>
-                  <div className="text-center p-3 bg-white/5 rounded-xl">
-                    <div className="text-xl font-bold text-foreground">1.2s</div>
-                    <div className="text-xs text-muted-foreground">Avg Time</div>
+                  <div>
+                    <div className="font-semibold">Sales agent</div>
+                    <div className="text-sm text-white/45">Policy checked, tool access approved</div>
                   </div>
                 </div>
-
-                {/* Tools */}
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {["reply", "escalate", "search_contacts", "create_task"].map((tool) => (
-                    <span key={tool} className="px-2 py-1 bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400 text-xs rounded-full">
-                      {tool}
-                    </span>
-                  ))}
-                </div>
-
-                {/* Activity */}
-                <div className="p-3 bg-purple-500/10 rounded-xl border border-purple-500/20 flex items-center gap-3">
-                  <Sparkles className="h-5 w-5 text-purple-400" />
-                  <span className="text-foreground/70 text-sm">Processed 12 emails in the last hour</span>
-                </div>
+                <div className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs text-emerald-300">Live</div>
+              </div>
+              <div className="space-y-3">
+                {["Read CRM account context", "Classified reply as high intent", "Drafted follow-up email", "Created owner task", "Logged policy decision"].map((event) => (
+                  <div key={event} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-white/68">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-300" />
+                    {event}
+                  </div>
+                ))}
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Features */}
-      <section className="py-20 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Build agents that work for you
+        <section className="px-4 py-20 sm:px-6">
+          <div className="mx-auto max-w-7xl">
+            <h2 className="max-w-3xl text-4xl font-semibold tracking-tight">
+              Give agents useful context without giving up control.
             </h2>
-            <p className="text-foreground/50 text-lg max-w-2xl mx-auto">
-              Configure intelligent automation with fine-grained control over behavior, tools, and confidence thresholds.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            {features.map((feature, idx) => (
-              <div key={idx} className="group relative">
-                <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} rounded-3xl opacity-0 group-hover:opacity-10 blur-xl transition-all duration-500`} />
-                <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-white/20 transition-all h-full">
-                  <div className={`p-4 bg-gradient-to-br ${feature.color} rounded-2xl w-fit mb-6`}>
-                    <feature.icon className="h-6 w-6 text-foreground" />
-                  </div>
-                  <h3 className="text-xl font-bold text-foreground mb-3">{feature.title}</h3>
-                  <p className="text-foreground/60">{feature.description}</p>
+            <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {capabilities.map(([title, body, Icon]) => (
+                <div key={title as string} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+                  <Icon className="h-6 w-6 text-violet-300" />
+                  <h3 className="mt-5 text-xl font-semibold">{title}</h3>
+                  <p className="mt-3 text-sm leading-6 text-white/55">{body}</p>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Agent Types */}
-      <section className="py-20 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-violet-500/10 rounded-3xl blur-xl" />
-            <div className="relative bg-white/5 backdrop-blur-sm rounded-3xl p-10 md:p-12 border border-white/10">
-              <div className="text-center mb-10">
-                <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
-                  Pre-built agent types
-                </h2>
-                <p className="text-foreground/60">
-                  Start with a template or build fully custom agents from scratch.
-                </p>
-              </div>
-
-              <div className="grid md:grid-cols-4 gap-4">
-                {agentTypes.map((agent, idx) => (
-                  <div key={idx} className="text-center p-6 bg-white/5 rounded-2xl border border-white/10 hover:border-purple-500/30 transition-all">
-                    <div className={`w-12 h-12 ${agent.color} rounded-xl flex items-center justify-center mx-auto mb-3`}>
-                      <Bot className="h-6 w-6 text-foreground" />
-                    </div>
-                    <h3 className="text-foreground font-medium mb-1">{agent.type}</h3>
-                    <p className="text-foreground/40 text-xs">{agent.desc}</p>
-                  </div>
-                ))}
-              </div>
+              ))}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Tools Grid */}
-      <section className="py-20 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-8 items-center">
+        <section className="px-4 py-20 sm:px-6">
+          <div className="mx-auto grid max-w-7xl gap-10 rounded-3xl border border-white/10 bg-white/[0.035] p-6 sm:p-10 lg:grid-cols-[0.8fr_1fr]">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-500/20 rounded-full text-purple-400 text-xs mb-4">
-                <Wrench className="h-3 w-3" />
-                EXTENSIBLE TOOLS
-              </div>
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
-                Grant access to powerful tools
-              </h2>
-              <p className="text-foreground/60 mb-6">
-                Each agent can access a curated set of tools. Control what actions agents can take
-                with granular permissions.
+              <Mail className="h-10 w-10 text-cyan-300" />
+              <h2 className="mt-6 text-4xl font-semibold tracking-tight">Use cases that need company context.</h2>
+              <p className="mt-5 text-lg leading-8 text-white/58">
+                Aexy agents are designed for work where the answer depends on CRM records, email history, ownership, workflow state, policies, and prior activity.
               </p>
-              <ul className="space-y-3">
-                {[
-                  "CRM tools: search, create, update records",
-                  "Email tools: send, draft, get history",
-                  "Actions: reply, escalate, create tasks",
-                  "Enrichment: company & person data",
-                ].map((item, idx) => (
-                  <li key={idx} className="flex items-center gap-3 text-foreground/70">
-                    <CheckCircle2 className="h-5 w-5 text-purple-400" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
             </div>
-            <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
-              <div className="flex items-center gap-3 mb-4">
-                <Wrench className="h-5 w-5 text-purple-400" />
-                <span className="text-foreground font-medium">Available Tools</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {tools.map((tool, idx) => (
-                  <div key={idx} className="p-3 bg-white/5 rounded-lg">
-                    <div className="text-foreground text-sm font-medium">{tool.name}</div>
-                    <div className="text-foreground/40 text-xs">{tool.category}</div>
-                  </div>
-                ))}
-              </div>
+            <div className="space-y-3">
+              {useCases.map((useCase) => (
+                <div key={useCase} className="rounded-2xl border border-white/10 bg-black/20 p-5 text-white/68">
+                  {useCase}
+                </div>
+              ))}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Working Hours & Behavior */}
-      <section className="py-20 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-8 items-center">
-            <div className="bg-white/5 rounded-2xl p-6 border border-white/10 order-2 md:order-1">
-              <div className="flex items-center gap-3 mb-4">
-                <Clock className="h-5 w-5 text-purple-400" />
-                <span className="text-foreground font-medium">Behavior Settings</span>
-              </div>
-              <div className="space-y-4">
-                <div className="p-3 bg-white/5 rounded-lg">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-foreground/60 text-sm">Confidence Threshold</span>
-                    <span className="text-foreground font-medium">70%</span>
-                  </div>
-                  <div className="h-2 bg-accent rounded-full">
-                    <div className="h-2 bg-purple-500 rounded-full" style={{ width: "70%" }} />
-                  </div>
+        <section className="px-4 py-20 sm:px-6">
+          <div className="mx-auto max-w-4xl">
+            <h2 className="text-center text-4xl font-semibold tracking-tight">AI agent FAQs</h2>
+            <div className="mt-10 space-y-4">
+              {faqs.map(([question, answer]) => (
+                <div key={question} className="rounded-2xl border border-white/10 bg-white/[0.035] p-6">
+                  <h3 className="text-lg font-semibold">{question}</h3>
+                  <p className="mt-3 text-sm leading-6 text-white/58">{answer}</p>
                 </div>
-                <div className="p-3 bg-white/5 rounded-lg flex items-center justify-between">
-                  <span className="text-foreground/60 text-sm">Working Hours</span>
-                  <span className="text-foreground">9:00 - 17:00 EST</span>
-                </div>
-                <div className="p-3 bg-white/5 rounded-lg flex items-center justify-between">
-                  <span className="text-foreground/60 text-sm">Max Daily Responses</span>
-                  <span className="text-foreground">100</span>
-                </div>
-                <div className="p-3 bg-white/5 rounded-lg flex items-center justify-between">
-                  <span className="text-foreground/60 text-sm">Response Delay</span>
-                  <span className="text-foreground">5 minutes</span>
-                </div>
-              </div>
-            </div>
-            <div className="order-1 md:order-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-500/20 rounded-full text-purple-400 text-xs mb-4">
-                <Shield className="h-3 w-3" />
-                SAFETY CONTROLS
-              </div>
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
-                Fine-grained behavior control
-              </h2>
-              <p className="text-foreground/60 mb-6">
-                Set confidence thresholds, working hours, response limits, and escalation rules.
-                Agents only act when you want them to.
-              </p>
-              <ul className="space-y-3">
-                {[
-                  "Require approval for low-confidence responses",
-                  "Configure working hours per timezone",
-                  "Set daily response limits",
-                  "Add response delays for natural timing",
-                ].map((item, idx) => (
-                  <li key={idx} className="flex items-center gap-3 text-foreground/70">
-                    <CheckCircle2 className="h-5 w-5 text-purple-400" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
+              ))}
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="py-24 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-            Automate intelligently
-          </h2>
-          <p className="text-xl text-foreground/50 mb-10">
-            Create AI agents that work across your entire workflow.
-          </p>
-
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <a
-              href={googleLoginUrl}
-              className="group inline-flex items-center justify-center gap-3 bg-gradient-to-r from-purple-500 to-violet-500 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all hover:scale-105"
-            >
-              Get Started Free
-              <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-            </a>
-            <a
-              href="https://github.com/aexy-io/aexy"
-              className="group bg-white/5 hover:bg-white/10 text-foreground px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-3"
-            >
-              <SiGithub className="h-5 w-5" />
-              View on GitHub
-            </a>
-          </div>
-        </div>
-      </section>
+        </section>
+      </main>
 
       <LandingFooter />
     </div>
   );
 }
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "Aexy AI Agents",
+  applicationCategory: "BusinessApplication",
+  description:
+    "Governed AI agents for CRM, email, Slack, enrichment, docs, and business workflows.",
+  url: "https://aexy.io/products/ai-agents",
+};

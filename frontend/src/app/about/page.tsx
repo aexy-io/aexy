@@ -50,12 +50,12 @@ export default function AboutPage() {
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 tracking-tight leading-tight">
             We&apos;re building the{" "}
             <span className="bg-gradient-to-r from-primary-400 to-purple-400 bg-clip-text text-transparent">
-              open-source operating system
+              AI company operating system
             </span>{" "}
-            for engineering organizations.
+            for modern teams.
           </h1>
           <p className="text-xl text-white/60 max-w-2xl mx-auto">
-            One platform that connects sprint planning, performance, hiring, and revenue —
+            One platform that connects engineering, GTM, people, docs, workflows, and AI agents —
             transparent by default, free to self-host.
           </p>
         </div>
@@ -124,7 +124,7 @@ export default function AboutPage() {
               href="/manifesto"
               className="group bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-3"
             >
-              Engineering OS Manifesto
+              Company OS Manifesto
             </Link>
           </div>
         </div>
