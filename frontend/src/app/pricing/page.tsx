@@ -9,7 +9,6 @@ import {
   Shield,
   Github,
   ChevronDown,
-  ChevronUp,
   Users,
   Building2,
   Star,
@@ -86,7 +85,7 @@ const plans = [
     name: "Enterprise",
     tier: "enterprise",
     tagline: "Company OS at Scale",
-    description: "For organizations running critical engineering operations",
+    description: "For organizations running the company OS at scale",
     monthlyPrice: -1,
     annualPrice: -1,
     priceLabel: "pricing",
@@ -225,26 +224,10 @@ function PricingContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] overflow-hidden">
+    <div className="min-h-screen overflow-hidden bg-[#08090d] text-white">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingJsonLd) }} />
-      {/* Animated Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <motion.div
-          animate={{
-            scale: [1, 1.1, 1],
-            opacity: [0.1, 0.15, 0.1],
-          }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-primary-500/10 rounded-full blur-[120px]"
-        />
-        <motion.div
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.1, 0.12, 0.1],
-          }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-          className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[120px]"
-        />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(45,212,191,0.12),transparent_30%),radial-gradient(circle_at_78%_8%,rgba(168,85,247,0.11),transparent_34%)]" />
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
       </div>
 
@@ -267,11 +250,11 @@ function PricingContent() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="relative bg-background border border-border rounded-2xl p-6 max-w-md w-full shadow-2xl"
+              className="relative bg-[#12121a] border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl"
             >
               <button
                 onClick={() => setError(null)}
-                className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition"
+                className="absolute top-4 right-4 text-white/55 hover:text-white transition"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -280,14 +263,14 @@ function PricingContent() {
                   <AlertCircle className="h-6 w-6 text-red-400" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-foreground mb-2">Checkout Error</h3>
-                  <p className="text-muted-foreground">{error}</p>
+                  <h3 className="text-lg font-semibold text-white mb-2">Checkout Error</h3>
+                  <p className="text-white/55">{error}</p>
                 </div>
               </div>
               <div className="mt-6 flex justify-end">
                 <button
                   onClick={() => setError(null)}
-                  className="px-4 py-2 bg-accent hover:bg-muted text-foreground rounded-lg transition"
+                  className="px-4 py-2 bg-white/10 hover:bg-white/15 text-white rounded-lg transition"
                 >
                   Close
                 </button>
@@ -298,17 +281,17 @@ function PricingContent() {
       </AnimatePresence>
 
       {/* Hero */}
-      <section className="pt-32 pb-16 px-6 relative">
+      <section className="pt-32 pb-12 px-6 relative">
         <div className="max-w-4xl mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 rounded-full text-emerald-400 text-sm mb-6"
+            className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-4 py-2 text-sm text-emerald-300 mb-6"
           >
             <Github className="h-4 w-4" />
             <span>Open Source</span>
-            <span className="text-foreground/40">·</span>
+            <span className="text-white/40">·</span>
             <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
             <span>Self-host free</span>
           </motion.div>
@@ -317,9 +300,9 @@ function PricingContent() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 tracking-tight"
+            className="text-4xl md:text-5xl lg:text-6xl font-semibold text-white mb-6 tracking-tight leading-[1.04]"
           >
-            Simple pricing for the{" "}
+            Pricing for an open{" "}
             <motion.span
               animate={{
                 backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
@@ -335,34 +318,41 @@ function PricingContent() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-xl text-foreground/50 max-w-2xl mx-auto mb-4"
+            className="text-lg leading-8 text-white/62 max-w-2xl mx-auto mb-4"
           >
-            Start open source. Scale with confidence.
-            <br />
-            Pay only when your organization needs more.
+            Start self-hosted. Move to cloud when speed matters. Use enterprise controls when your company OS becomes critical infrastructure.
           </motion.p>
         </div>
       </section>
 
       {/* Pricing Philosophy */}
-      <section className="py-12 px-6">
-        <div className="max-w-4xl mx-auto">
+      <section className="py-8 px-6">
+        <div className="max-w-6xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
-            className="relative"
+            className="grid gap-4 md:grid-cols-3"
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 rounded-3xl blur-xl" />
-            <div className="relative bg-white/5 backdrop-blur-sm rounded-3xl p-8 border border-white/10 text-center">
-              <div className="flex items-center justify-center gap-3 mb-4">
-                <Shield className="h-6 w-6 text-emerald-400" />
-                <h2 className="text-2xl font-bold text-foreground">Built open. Priced fair. No lock-in.</h2>
-              </div>
-              <p className="text-foreground/60 max-w-2xl mx-auto">
-                Aexy is open source by default. You can self-host, audit the code, and export your data anytime.
-                <br />
-                We earn your business by being valuable - not by trapping you.
+            <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-6">
+              <Github className="h-6 w-6 text-emerald-300" />
+              <h2 className="mt-5 text-xl font-semibold text-white">Self-host free</h2>
+              <p className="mt-3 text-sm leading-6 text-white/58">
+                Evaluate the core company OS, audit the code, and keep control of your operating data.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-6">
+              <Users className="h-6 w-6 text-cyan-300" />
+              <h2 className="mt-5 text-xl font-semibold text-white">Cloud for speed</h2>
+              <p className="mt-3 text-sm leading-6 text-white/58">
+                Let Aexy handle hosting, updates, integrations, and team workflows while you scale.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-6">
+              <Shield className="h-6 w-6 text-violet-300" />
+              <h2 className="mt-5 text-xl font-semibold text-white">Enterprise control</h2>
+              <p className="mt-3 text-sm leading-6 text-white/58">
+                Add SSO, audit logs, retention controls, and private deployment options for critical work.
               </p>
             </div>
           </motion.div>
@@ -370,7 +360,7 @@ function PricingContent() {
       </section>
 
       {/* Billing Toggle */}
-      <section className="py-8 px-6">
+      <section className="py-6 px-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -381,7 +371,7 @@ function PricingContent() {
       </section>
 
       {/* Pricing Cards */}
-      <section className="py-8 px-6">
+      <section className="py-10 px-6">
         <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-6">
           {plans.map((plan, index) => {
             const Icon = plan.icon;
@@ -424,9 +414,9 @@ function PricingContent() {
                 )}
 
                 <motion.div
-                  whileHover={{ scale: 1.02, y: -4 }}
+                  whileHover={{ y: -4 }}
                   transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                  className={`absolute inset-0 bg-gradient-to-br ${plan.color} rounded-3xl opacity-0 group-hover:opacity-20 blur-xl transition-all duration-500`}
+                  className={`absolute inset-0 bg-gradient-to-br ${plan.color} rounded-2xl opacity-0 group-hover:opacity-20 blur-xl transition-all duration-500`}
                 />
 
                 <div
@@ -436,7 +426,7 @@ function PricingContent() {
                       : plan.popular
                       ? "border-primary-500/50"
                       : "border-white/10"
-                  } rounded-3xl p-8 hover:border-white/20 transition-all ${
+                  } rounded-2xl p-8 hover:border-white/20 transition-all ${
                     plan.popular || isCurrentPlan ? "shadow-xl shadow-primary-500/10" : ""
                   }`}
                 >
@@ -447,7 +437,7 @@ function PricingContent() {
                       transition={{ duration: 0.5 }}
                       className={`p-3 bg-gradient-to-br ${plan.color} rounded-2xl shadow-lg`}
                     >
-                      <Icon className="h-6 w-6 text-foreground" />
+                      <Icon className="h-6 w-6 text-white" />
                     </motion.div>
                     <div>
                       <span className={`text-xs font-semibold tracking-wider ${plan.textColor}`}>
@@ -456,30 +446,30 @@ function PricingContent() {
                     </div>
                   </div>
 
-                  <h3 className="text-2xl font-bold text-foreground mb-2">{plan.name}</h3>
-                  <p className="text-foreground/50 text-sm mb-6">{plan.description}</p>
+                  <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
+                  <p className="text-white/50 text-sm mb-6">{plan.description}</p>
 
                   {/* Price */}
                   <div className="mb-6 h-16">
                     {isCustomPrice ? (
                       <div className="flex items-baseline gap-1">
-                        <span className="text-5xl font-bold text-foreground">Custom</span>
+                        <span className="text-5xl font-bold text-white">Custom</span>
                       </div>
                     ) : (
                       <div className="flex items-baseline gap-1">
-                        <span className="text-foreground/50 text-2xl">$</span>
+                        <span className="text-white/50 text-2xl">$</span>
                         <motion.span
                           key={displayPrice}
                           initial={{ opacity: 0, y: -10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                          className="text-5xl font-bold text-foreground"
+                          className="text-5xl font-bold text-white"
                         >
                           {displayPrice}
                         </motion.span>
                       </div>
                     )}
-                    <span className="text-foreground/40 text-sm">{plan.priceLabel}</span>
+                    <span className="text-white/40 text-sm">{plan.priceLabel}</span>
                   </div>
 
                   {/* CTA Button */}
@@ -493,7 +483,7 @@ function PricingContent() {
                         ? "bg-white text-black hover:bg-white/90 hover:shadow-lg hover:shadow-white/10"
                         : plan.tier === "enterprise"
                         ? "bg-gradient-to-r from-purple-500 to-violet-500 text-white hover:from-purple-600 hover:to-violet-600"
-                        : "bg-white/10 text-foreground hover:bg-white/20 border border-white/10"
+                        : "bg-white/10 text-white hover:bg-white/20 border border-white/10"
                     } disabled:opacity-50`}
                   >
                     {loading === plan.tier ? (
@@ -510,7 +500,7 @@ function PricingContent() {
 
                   {/* Features */}
                   <div className="mt-8 space-y-3">
-                    <div className="text-foreground/40 text-xs font-semibold tracking-wider mb-4">WHAT YOU GET</div>
+                    <div className="text-white/40 text-xs font-semibold tracking-wider mb-4">WHAT YOU GET</div>
                     {plan.features.map((feature, idx) => (
                       <motion.div
                         key={idx}
@@ -520,19 +510,19 @@ function PricingContent() {
                         className="flex items-start gap-3"
                       >
                         <CheckCircle2 className={`h-5 w-5 ${plan.textColor} flex-shrink-0 mt-0.5`} />
-                        <span className="text-foreground/70 text-sm">{feature}</span>
+                        <span className="text-white/70 text-sm">{feature}</span>
                       </motion.div>
                     ))}
                   </div>
 
                   {/* Best For */}
                   <div className="mt-8 pt-6 border-t border-white/10">
-                    <div className="text-foreground/40 text-xs font-semibold tracking-wider mb-3">BEST FOR</div>
+                    <div className="text-white/40 text-xs font-semibold tracking-wider mb-3">BEST FOR</div>
                     <div className="flex flex-wrap gap-2">
                       {plan.bestFor.map((item, idx) => (
                         <span
                           key={idx}
-                          className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-foreground/60 text-xs"
+                          className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-white/60 text-xs"
                         >
                           {item}
                         </span>
@@ -556,7 +546,7 @@ function PricingContent() {
             transition={{ duration: 0.5 }}
             className="text-center mb-12"
           >
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
               Replace tool sprawl, not just one tool
             </h2>
           </motion.div>
@@ -573,7 +563,7 @@ function PricingContent() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-white/10">
-                    <th className="text-left py-4 px-6 text-foreground/40 text-sm font-medium">You need</th>
+                    <th className="text-left py-4 px-6 text-white/40 text-sm font-medium">You need</th>
                     <th className="text-left py-4 px-6 text-primary-400 text-sm font-medium">With Aexy</th>
                   </tr>
                 </thead>
@@ -587,7 +577,7 @@ function PricingContent() {
                       transition={{ duration: 0.3, delay: idx * 0.1 }}
                       className={idx !== comparisonItems.length - 1 ? "border-b border-white/5" : ""}
                     >
-                      <td className="py-4 px-6 text-foreground/60">{item.need}</td>
+                      <td className="py-4 px-6 text-white/60">{item.need}</td>
                       <td className="py-4 px-6">
                         <span className="inline-flex items-center gap-2 text-emerald-400 font-medium">
                           <Check className="h-4 w-4" />
@@ -613,7 +603,7 @@ function PricingContent() {
             transition={{ duration: 0.5 }}
             className="text-center mb-12"
           >
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
               Frequently Asked Questions
             </h2>
           </motion.div>
@@ -632,12 +622,12 @@ function PricingContent() {
                   onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
                   className="w-full flex items-center justify-between p-6 text-left"
                 >
-                  <h3 className="text-lg font-medium text-foreground pr-4">{faq.q}</h3>
+                  <h3 className="text-lg font-medium text-white pr-4">{faq.q}</h3>
                   <motion.div
                     animate={{ rotate: openFaq === idx ? 180 : 0 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <ChevronDown className="h-5 w-5 text-foreground/40 flex-shrink-0" />
+                    <ChevronDown className="h-5 w-5 text-white/40 flex-shrink-0" />
                   </motion.div>
                 </button>
                 <AnimatePresence>
@@ -650,7 +640,7 @@ function PricingContent() {
                       className="overflow-hidden"
                     >
                       <div className="px-6 pb-6 -mt-2">
-                        <p className="text-foreground/60">{faq.a}</p>
+                        <p className="text-white/60">{faq.a}</p>
                       </div>
                     </motion.div>
                   )}
@@ -677,10 +667,10 @@ function PricingContent() {
               <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl" />
 
               <div className="relative">
-                <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
                   Start with open source. Grow into your company OS.
                 </h2>
-                <p className="text-foreground/50 text-lg mb-10 max-w-2xl mx-auto">
+                <p className="text-white/50 text-lg mb-10 max-w-2xl mx-auto">
                   Bring engineering, GTM, people, knowledge, and AI agents into one operating system.
                 </p>
 
@@ -698,7 +688,7 @@ function PricingContent() {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.98 }}
                     href="https://github.com/aexy-io/aexy"
-                    className="group bg-white/5 hover:bg-white/10 text-foreground px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-3"
+                    className="group bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-3"
                   >
                     <Github className="h-5 w-5" />
                     View on GitHub
