@@ -14,7 +14,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from aexy.api.developers import get_current_developer
 from aexy.core.database import get_db
 from aexy.models.developer import Developer
-from aexy.models.project import Project, ProjectTeam
 from aexy.models.sprint import SprintTask
 from aexy.models.workspace import Workspace, WorkspaceMember
 
@@ -29,11 +28,11 @@ class TaskLinkResolution(BaseModel):
     workspace_slug: str
     task_key: int
     sprint_id: str | None
+    # The frontend uses `team_id` as the `[projectId]` URL segment
+    # (the route name is a historical misnomer — see the existing
+    # `f"/sprints/{task.team_id}/board?task={task.id}"` pattern in
+    # project_tasks.py). The short-link route redirects to that board.
     team_id: str | None
-    # The frontend route is /sprints/{project_id}/{sprint_id|...} —
-    # we resolve the project on the backend so the redirect can be
-    # built without an extra round trip.
-    project_id: str | None
     is_archived: bool
 
 
@@ -74,20 +73,6 @@ async def resolve_task_link(
     if member_check.scalar_one_or_none() is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access")
 
-    # Best-effort project resolution: tasks aren't directly project-scoped,
-    # so we look up via the team's first associated project. Null is fine —
-    # the frontend falls back to a workspace-wide landing in that case.
-    project_id: str | None = None
-    if task.team_id:
-        project_row = await db.execute(
-            select(Project.id)
-            .join(ProjectTeam, ProjectTeam.project_id == Project.id)
-            .where(ProjectTeam.team_id == task.team_id)
-            .order_by(Project.created_at.asc())
-            .limit(1)
-        )
-        project_id = project_row.scalar_one_or_none()
-
     return TaskLinkResolution(
         task_id=task.id,
         workspace_id=workspace.id,
@@ -95,6 +80,5 @@ async def resolve_task_link(
         task_key=task.task_key,
         sprint_id=task.sprint_id,
         team_id=task.team_id,
-        project_id=project_id,
         is_archived=task.is_archived,
     )

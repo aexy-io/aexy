@@ -12,7 +12,6 @@ interface TaskLinkResolution {
   task_key: number;
   sprint_id: string | null;
   team_id: string | null;
-  project_id: string | null;
   is_archived: boolean;
 }
 
@@ -35,17 +34,15 @@ export default function TaskShortLinkPage({ params }: PageProps) {
         );
         if (cancelled) return;
 
-        // Prefer sprint board if the task is on a sprint and we know the project.
-        // Fallback to the project backlog when there's no sprint. Final fallback
-        // is the workspace dashboard since we can't render a usable destination.
-        let url: string;
-        if (data.project_id && data.sprint_id) {
-          url = `/sprints/${data.project_id}/${data.sprint_id}?task=${data.task_id}`;
-        } else if (data.project_id) {
-          url = `/sprints/${data.project_id}/backlog?task=${data.task_id}`;
-        } else {
-          url = `/dashboard?task=${data.task_id}`;
-        }
+        // Use the team's project board (`/sprints/{team_id}/board`) — it shows
+        // every task regardless of sprint membership and already honors
+        // `?task=<uuid>` to open the task drawer. This is the same pattern the
+        // backend's existing `action_url` strings use. Falls back to the
+        // workspace dashboard only when we can't resolve a team.
+        const teamId = data.team_id;
+        const url = teamId
+          ? `/sprints/${teamId}/board?task=${data.task_id}`
+          : `/dashboard?task=${data.task_id}`;
         router.replace(url);
       } catch (err: any) {
         if (cancelled) return;
