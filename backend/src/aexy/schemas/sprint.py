@@ -406,6 +406,15 @@ class SprintTaskResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    # Shareable identifier. task_key is the per-workspace sequential
+    # number; identifier is the bracketed form rendered as `[slug:N]`
+    # used in copy buttons and GitHub PR/issue title auto-linking;
+    # public_url is the short shareable link.
+    task_key: int | None = None
+    workspace_slug: str | None = None
+    identifier: str | None = None
+    public_url: str | None = None
+
 
 class SubtaskResponse(BaseModel):
     """Schema for subtask summary in parent task."""

@@ -147,6 +147,9 @@ class GitHubTaskSyncService:
         Returns:
             Matching SprintTask or None
         """
+        if ref.source == TaskReferenceSource.AEXY:
+            return await self._find_aexy_task(ref.project_key, ref.identifier)
+
         if ref.source == TaskReferenceSource.GITHUB_ISSUE:
             # Look for GitHub issue in active sprints
             return await self._find_github_issue_task(ref.identifier, repository)
@@ -163,6 +166,35 @@ class GitHubTaskSyncService:
             return await self._find_generic_task(ref.identifier)
 
         return None
+
+    async def _find_aexy_task(
+        self,
+        workspace_slug: str | None,
+        task_key_str: str,
+    ) -> SprintTask | None:
+        """Resolve a native Aexy reference [workspace-slug:task_key] to a task."""
+        if not workspace_slug:
+            return None
+        try:
+            task_key = int(task_key_str)
+        except ValueError:
+            return None
+
+        from aexy.models.workspace import Workspace
+
+        stmt = (
+            select(SprintTask)
+            .join(Workspace, Workspace.id == SprintTask.workspace_id)
+            .where(
+                and_(
+                    Workspace.slug == workspace_slug.lower(),
+                    SprintTask.task_key == task_key,
+                )
+            )
+            .limit(1)
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
 
     async def _find_github_issue_task(
         self,

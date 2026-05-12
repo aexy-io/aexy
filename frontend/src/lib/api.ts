@@ -28,7 +28,7 @@ const PROTECTED_PATH_PREFIXES = [
   "/forms", "/gtm", "/hiring", "/insights", "/learning", "/leave", "/mcp",
   "/notifications", "/onboarding", "/profile", "/reminders", "/reports", "/reviews",
   "/settings", "/sprints", "/tables", "/templates", "/tickets", "/tracking",
-  "/uptime", "/admin",
+  "/uptime", "/admin", "/t",
 ];
 
 // Handle auth errors
@@ -2491,6 +2491,13 @@ export interface SprintTask {
   attachments: TaskAttachment[];
   created_at: string;
   updated_at: string;
+  // Per-workspace shareable identifier. task_key is the sequential
+  // integer; identifier is "[workspace_slug:task_key]"; public_url is
+  // the short link rendered as /t/{workspace_slug}/{task_key}.
+  task_key: number | null;
+  workspace_slug: string | null;
+  identifier: string | null;
+  public_url: string | null;
 }
 
 export interface TaskAttachment {

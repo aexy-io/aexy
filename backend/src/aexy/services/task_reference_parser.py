@@ -25,6 +25,7 @@ class TaskReferenceSource(str, Enum):
     GITHUB_ISSUE = "github_issue"
     JIRA = "jira"
     LINEAR = "linear"
+    AEXY = "aexy"  # Native Aexy task: [{workspace_slug}:{task_key}]
     GENERIC = "generic"  # Unknown format, could be any source
 
 
@@ -119,6 +120,15 @@ class TaskReferenceParser:
         re.IGNORECASE
     )
 
+    # Pattern for native Aexy bracketed identifiers: [workspace-slug:42].
+    # Slug is the workspace.slug (lowercase, may contain hyphens), separator
+    # is a literal colon, then the per-workspace task_key as digits. The
+    # colon distinguishes this from BRACKETED_KEY_PATTERN ([PROJ-123]).
+    AEXY_BRACKETED_PATTERN = re.compile(
+        r"\[([a-z0-9][a-z0-9-]*):(\d+)\]",
+        re.IGNORECASE,
+    )
+
     # Pattern for "Task: " or "Task #" prefix
     TASK_PREFIX_PATTERN = re.compile(
         r"\btask[:\s#-]+(\d+)\b",
@@ -152,6 +162,11 @@ class TaskReferenceParser:
         # owner/repo#123 can carry repository context.
         references.extend(self._parse_repo_github(text, seen_identifiers))
         references.extend(self._parse_github_issue_urls(text, seen_identifiers))
+
+        # Native Aexy [slug:key] form is the strongest signal — try it
+        # first so it shines through even when other patterns might
+        # otherwise nibble at the surrounding text.
+        references.extend(self._parse_aexy_bracketed(text, seen_identifiers))
 
         # Check standalone patterns (default to refs type)
         references.extend(self._parse_standalone_github(text, seen_identifiers))
@@ -359,6 +374,29 @@ class TaskReferenceParser:
                 source=self._detect_project_source(project),
                 matched_text=match.group(0),
                 project_key=project,
+            ))
+        return refs
+
+    def _parse_aexy_bracketed(
+        self, text: str, seen: set[str]
+    ) -> list[TaskReference]:
+        """Parse native Aexy bracketed identifiers: [workspace-slug:42]."""
+        refs = []
+        for match in self.AEXY_BRACKETED_PATTERN.finditer(text):
+            workspace_slug = match.group(1).lower()
+            task_key = match.group(2)
+            identifier = f"{workspace_slug}:{task_key}"
+
+            if identifier in seen:
+                continue
+            seen.add(identifier)
+
+            refs.append(TaskReference(
+                identifier=task_key,
+                reference_type=ReferenceType.REFS,
+                source=TaskReferenceSource.AEXY,
+                matched_text=match.group(0),
+                project_key=workspace_slug,
             ))
         return refs
 

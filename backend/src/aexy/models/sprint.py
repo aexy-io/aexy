@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from uuid import uuid4
 import re
 
-from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, event, func, update
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -275,6 +275,11 @@ class SprintTask(Base):
         index=True,
     )
 
+    # Human-readable per-workspace sequential id. Combined with workspace.slug
+    # this forms the shareable identifier [{workspace.slug}:{task_key}] used
+    # for copy-to-clipboard and GitHub PR/issue title auto-linking.
+    task_key: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+
     # Task source reference
     source_type: Mapped[str] = mapped_column(
         String(50), nullable=False, default="manual"
@@ -495,7 +500,27 @@ class SprintTask(Base):
 
     __table_args__ = (
         UniqueConstraint("sprint_id", "source_type", "source_id", name="uq_sprint_task_source"),
+        UniqueConstraint("workspace_id", "task_key", name="uq_sprint_task_workspace_key"),
     )
+
+    @property
+    def workspace_slug(self) -> str | None:
+        return self.workspace.slug if self.workspace else None
+
+    @property
+    def identifier(self) -> str | None:
+        slug = self.workspace_slug
+        if self.task_key is None or not slug:
+            return None
+        return f"[{slug}:{self.task_key}]"
+
+    @property
+    def public_url(self) -> str | None:
+        slug = self.workspace_slug
+        if self.task_key is None or not slug:
+            return None
+        from aexy.core.config import settings
+        return f"{settings.frontend_url.rstrip('/')}/t/{slug}/{self.task_key}"
 
 
 class SprintMetrics(Base):
@@ -983,3 +1008,31 @@ class TaskTemplate(Base):
         "Developer",
         lazy="selectin",
     )
+
+
+# Atomic per-workspace task_key assignment. Runs once per SprintTask
+# insert (regardless of which of the ~14 creation paths produced it).
+# The UPDATE...RETURNING locks the workspace row, so concurrent inserts
+# serialize on it and get distinct task_keys. Rolls back automatically
+# if the surrounding transaction aborts.
+#
+# next_task_key holds the value to assign NEXT. We consume it as the
+# task_key, then leave the workspace counter pointing at the next
+# unused value. With a fresh workspace at next_task_key=1 the first
+# task gets task_key=1 and the counter becomes 2.
+@event.listens_for(SprintTask, "before_insert")
+def _assign_task_key(mapper, connection, target):
+    if target.task_key is not None or target.workspace_id is None:
+        return
+    from aexy.models.workspace import Workspace
+
+    stmt = (
+        update(Workspace)
+        .where(Workspace.id == target.workspace_id)
+        .values(next_task_key=Workspace.next_task_key + 1)
+        .returning(Workspace.next_task_key)
+    )
+    row = connection.execute(stmt).fetchone()
+    if row is not None:
+        target.task_key = row[0] - 1
+

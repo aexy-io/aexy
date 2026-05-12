@@ -22,7 +22,10 @@ import {
   PlayCircle,
   Eye,
   CheckCircle2,
+  Link2,
+  Hash,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { SprintTask, TaskPriority, TaskStatus } from "@/lib/api";
@@ -91,6 +94,19 @@ export function TaskCardPremium({
   const [showMenu, setShowMenu] = useState(false);
   const [showQuickStatus, setShowQuickStatus] = useState(false);
   const priorityConfig = PRIORITY_CONFIG[task.priority];
+
+  const copyToClipboard = async (value: string | null, successLabel: string) => {
+    if (!value) {
+      toast.error("Not available yet — task is missing its shareable id");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success(successLabel);
+    } catch {
+      toast.error("Couldn't copy to clipboard");
+    }
+  };
 
   const {
     attributes,
@@ -347,8 +363,16 @@ export function TaskCardPremium({
         </div>
       </div>
 
-      {/* Title */}
+      {/* Title + per-workspace identifier (e.g. [aexy:42]) */}
       <h4 className="text-sm font-medium text-foreground mb-2 line-clamp-2 leading-snug">
+        {task.identifier && (
+          <span
+            className="mr-1.5 font-mono text-[11px] text-muted-foreground/70 align-baseline"
+            title={task.identifier}
+          >
+            {task.identifier}
+          </span>
+        )}
         {task.title}
       </h4>
 
@@ -445,6 +469,34 @@ export function TaskCardPremium({
         className="absolute -bottom-1 left-0 right-0 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-1/2 pointer-events-none group-hover:pointer-events-auto z-10"
       >
         <div className="flex items-center gap-0.5 bg-accent/95 backdrop-blur-sm rounded-full px-1.5 py-1 shadow-lg border border-border">
+          {/* Copy shareable link (full URL on hover) */}
+          <button
+            {...stopDrag}
+            onClick={(e) => {
+              e.stopPropagation();
+              copyToClipboard(task.public_url, "Link copied");
+            }}
+            disabled={!task.public_url}
+            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-full transition disabled:opacity-30 disabled:cursor-not-allowed"
+            title={task.public_url || "Shareable link not available"}
+          >
+            <Link2 className="h-3 w-3" />
+          </button>
+
+          {/* Copy identifier [slug:N] for GitHub PR/issue titles */}
+          <button
+            {...stopDrag}
+            onClick={(e) => {
+              e.stopPropagation();
+              copyToClipboard(task.identifier, "Identifier copied");
+            }}
+            disabled={!task.identifier}
+            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-full transition disabled:opacity-30 disabled:cursor-not-allowed"
+            title={task.identifier || "Identifier not available"}
+          >
+            <Hash className="h-3 w-3" />
+          </button>
+
           {/* Quick Edit */}
           <button
             {...stopDrag}

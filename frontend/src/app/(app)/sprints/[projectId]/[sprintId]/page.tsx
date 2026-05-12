@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useMemo } from "react";
+import { use, useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -49,7 +49,7 @@ import { useSprints } from "@/hooks/useSprints";
 import { SprintTask, TaskStatus, TaskPriority, AssignmentSuggestion, EpicListItem, TaskActivity } from "@/lib/api";
 import { TASK_STATUS_COLORS, PRIORITY_COLORS } from "@/lib/statusColors";
 import { ImportTasksModal } from "@/components/planning/ImportTasksModal";
-import { redirect } from "next/navigation";
+import { redirect, useRouter, useSearchParams, usePathname } from "next/navigation";
 
 const COLUMN_CONFIG: Record<TaskStatus, { label: string; color: string; bgColor: string }> = {
   backlog: { label: "Backlog", color: TASK_STATUS_COLORS.backlog.text, bgColor: TASK_STATUS_COLORS.backlog.bg },
@@ -1101,6 +1101,25 @@ export default function SprintBoardPage({
   const [showImportTasks, setShowImportTasks] = useState(false);
   const [selectedTask, setSelectedTask] = useState<SprintTask | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+
+  // Open the task drawer when navigated here from a /t/[slug]/[key] short
+  // link (which redirects to this page with ?task=<uuid>). The query
+  // param is cleared once consumed so refresh doesn't keep re-opening.
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
+  const taskFromUrl = searchParams.get("task");
+  useEffect(() => {
+    if (!taskFromUrl || !tasks?.length) return;
+    const found = tasks.find((t) => t.id === taskFromUrl);
+    if (found) {
+      setSelectedTask(found);
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("task");
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    }
+  }, [taskFromUrl, tasks, pathname, router, searchParams]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {

@@ -65,6 +65,10 @@ class Workspace(Base):
     # Settings (JSONB for flexibility)
     settings: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
 
+    # Monotonic per-workspace counter used to assign SprintTask.task_key.
+    # Always read+incremented atomically in one UPDATE ... RETURNING.
+    next_task_key: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+
     # Status
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
