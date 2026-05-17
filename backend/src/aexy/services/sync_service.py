@@ -153,29 +153,35 @@ class SyncService:
         if not connection:
             raise ValueError("GitHub connection not found")
 
-        # Refresh token if expired (GitHub App tokens expire after ~8 hours)
-        await self._ensure_valid_token(connection)
-
         repo = dev_repo.repository
         owner, repo_name = repo.full_name.split("/")
         repo_language = repo.language if hasattr(repo, 'language') else None
         github_username = connection.github_username or developer_id
 
-        logger.info(f"Starting sync for {repo.full_name} using token of @{github_username}")
-
-        # Mark as syncing
+        # Mark as syncing before any work that could fail. The API entry point
+        # (start_historical_sync) also pre-sets this, so we must ensure the
+        # except handlers below flip it back to "failed" on any error — otherwise
+        # the UI gets stuck on "syncing".
         dev_repo.sync_status = "syncing"
         dev_repo.sync_error = None
         await self.db.flush()
-
-        if heartbeat_fn:
-            heartbeat_fn("Fetching commits...")
 
         # Initialize developer lookup caches
         self._dev_cache_by_github_id: dict[int, str] = {}
         self._dev_cache_by_email: dict[str, str] = {}
 
         try:
+            # Refresh token if expired (GitHub App tokens expire after ~8 hours).
+            # Inside the try block so refresh failures flip sync_status to "failed".
+            await self._ensure_valid_token(connection)
+
+            logger.info(
+                f"Starting sync for {repo.full_name} using token of @{github_username}"
+            )
+
+            if heartbeat_fn:
+                heartbeat_fn("Fetching commits...")
+
             async with GitHubService(access_token=connection.access_token) as gh:
                 commits_synced = await self._sync_commits_with_session(
                     self.db, gh, owner, repo_name, developer_id, repository_id, repo_language
@@ -263,6 +269,13 @@ class SyncService:
 
         GitHub App user-to-server tokens (ghu_) expire after ~8 hours.
         This method uses the stored refresh token to get a new access token.
+
+        GitHub refresh tokens are single-use: once consumed, the old refresh
+        token is invalidated. To avoid races when concurrent syncs run for the
+        same developer (e.g. auto-sync fans out to many repos at once), the
+        refresh runs in a dedicated transaction with row-level locking and
+        double-checked expiry. Without this, only the first parallel sync wins
+        and the others falsely mark the connection broken.
         """
         if not connection.token_expires_at or not connection.refresh_token:
             return  # No expiry info or no refresh token — nothing to do
@@ -271,28 +284,66 @@ class SyncService:
         if connection.token_expires_at > datetime.now(timezone.utc) + timedelta(minutes=5):
             return  # Token still valid
 
-        logger.info(f"Refreshing expired GitHub token for @{connection.github_username}")
-        try:
-            gh = GitHubService()
-            refreshed = await gh.refresh_access_token(connection.refresh_token)
+        async with async_session_maker() as refresh_db:
+            locked_stmt = (
+                select(GitHubConnection)
+                .where(GitHubConnection.id == connection.id)
+                .with_for_update()
+            )
+            locked_conn = (await refresh_db.execute(locked_stmt)).scalar_one()
 
-            connection.access_token = refreshed.access_token
-            connection.auth_status = "active"
-            connection.auth_error = None
+            # Another concurrent sync may have already refreshed while we waited
+            # for the lock. Pick up its tokens instead of refreshing again.
+            if (
+                locked_conn.token_expires_at
+                and locked_conn.token_expires_at
+                > datetime.now(timezone.utc) + timedelta(minutes=5)
+            ):
+                connection.access_token = locked_conn.access_token
+                connection.refresh_token = locked_conn.refresh_token
+                connection.token_expires_at = locked_conn.token_expires_at
+                connection.auth_status = locked_conn.auth_status
+                connection.auth_error = locked_conn.auth_error
+                await refresh_db.commit()
+                return
+
+            logger.info(
+                f"Refreshing expired GitHub token for @{locked_conn.github_username}"
+            )
+            try:
+                gh = GitHubService()
+                refreshed = await gh.refresh_access_token(locked_conn.refresh_token)
+            except GitHubAuthError as e:
+                logger.error(
+                    f"Failed to refresh GitHub token for @{locked_conn.github_username}: {e}"
+                )
+                locked_conn.auth_status = "error"
+                locked_conn.auth_error = (
+                    "GitHub refresh token is invalid or expired. "
+                    "Please reconnect your GitHub account."
+                )
+                await refresh_db.commit()
+                connection.auth_status = locked_conn.auth_status
+                connection.auth_error = locked_conn.auth_error
+                raise
+
+            locked_conn.access_token = refreshed.access_token
+            locked_conn.auth_status = "active"
+            locked_conn.auth_error = None
             if refreshed.refresh_token:
-                connection.refresh_token = refreshed.refresh_token
+                locked_conn.refresh_token = refreshed.refresh_token
             if refreshed.expires_in:
-                connection.token_expires_at = (
+                locked_conn.token_expires_at = (
                     datetime.now(timezone.utc) + timedelta(seconds=refreshed.expires_in)
                 )
-            await self.db.flush()
-            logger.info(f"GitHub token refreshed for @{connection.github_username}")
-        except GitHubAuthError as e:
-            logger.error(f"Failed to refresh GitHub token for @{connection.github_username}: {e}")
-            connection.auth_status = "error"
-            connection.auth_error = "GitHub refresh token is invalid or expired. Please reconnect your GitHub account."
-            await self.db.flush()
-            raise
+            await refresh_db.commit()
+            logger.info(f"GitHub token refreshed for @{locked_conn.github_username}")
+
+            connection.access_token = locked_conn.access_token
+            connection.refresh_token = locked_conn.refresh_token
+            connection.token_expires_at = locked_conn.token_expires_at
+            connection.auth_status = "active"
+            connection.auth_error = None
 
     async def _get_not_found_error_message(
         self,
