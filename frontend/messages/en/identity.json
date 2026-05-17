@@ -1,0 +1,43 @@
+{
+  "identity": {
+    "title": "Identity & commit ownership",
+    "intro": "Aexy attributes commits to whoever's logged in by matching your GitHub username. If commits from your account were synced before you signed in, they're attached to a placeholder developer record. Claim them here to merge those rows into your account so they show up in your insights and on leaderboards.",
+    "noGithub": "Connect a GitHub account in your developer settings before claiming commits.",
+    "noGithubLink": "Connect GitHub",
+    "loading": "Looking for orphaned commits…",
+    "github": "Linked as",
+    "previewHeader": "What we'd claim for you",
+    "noneFound": "Nothing to claim. Either your commits are already attributed to you, or no work has been synced yet under @{username}.",
+    "claim": "Claim my commits",
+    "claiming": "Claiming…",
+    "metrics": {
+      "commits": "{count, plural, one {# commit} other {# commits}}",
+      "prs": "{count, plural, one {# pull request} other {# pull requests}}",
+      "reviews": "{count, plural, one {# review} other {# reviews}}"
+    },
+    "explainer": "Future syncs auto-merge on every login. This button is for older work synced before D2 shipped or after you change your GitHub username.",
+    "admin": {
+      "title": "Workspace ghost developers",
+      "intro": "Commits attributed to placeholder developers that touch your workspace's repos. Pick a target member to reattribute their work.",
+      "adminOnlyHint": "Admin only — workspace admins can manually link ghost activity to any workspace member.",
+      "noGhosts": "No ghost developers found in this workspace. All activity is attributed to real members.",
+      "loading": "Scanning workspace activity for ghost rows…",
+      "columns": {
+        "ghost": "Ghost identity",
+        "activity": "Activity",
+        "suggestion": "Suggested match",
+        "actions": "Merge into"
+      },
+      "suggestion": {
+        "github_username_match": "GitHub username matches",
+        "developer_name_match": "Display name matches",
+        "none": "No suggestion"
+      },
+      "metricCompact": "{commits}c · {prs}p · {reviews}r",
+      "selectMember": "Choose member…",
+      "merge": "Merge",
+      "merging": "Merging…",
+      "confirmMerge": "Merge {ghost} → {target}? All activity rows move and the ghost row is deleted."
+    }
+  }
+}

@@ -51,11 +51,24 @@ def get_all_workflows() -> list:
 
 def get_all_activities() -> list:
     """Import and return all activity functions."""
+    from aexy.temporal.activities.ai_digests import (
+        analyze_task_pr_alignment,
+        compose_developer_digest,
+        compose_repo_health,
+        embed_pr_summary,
+        enqueue_workspace_weekly_digests,
+    )
+    from aexy.temporal.activities.review_digests import (
+        compose_developer_review_period,
+        compose_team_review_period,
+        enqueue_review_cycle_digests,
+    )
     from aexy.temporal.activities.analysis import (
         aggregate_billing_usage,
         analyze_commit,
         analyze_developer,
         analyze_pr,
+        analyze_review,
         batch_profile_sync,
         batch_report_usage,
         process_document_sync_queue,
@@ -146,7 +159,14 @@ def get_all_activities() -> list:
         process_unprocessed_events,
     )
     from aexy.temporal.activities.insights import auto_generate_snapshots
-    from aexy.temporal.activities.sync import check_repo_auto_sync, sync_commits, sync_repository
+    from aexy.temporal.activities.sync import (
+        check_repo_auto_sync,
+        enqueue_active_pr_refresh,
+        enqueue_ai_analysis,
+        refresh_single_pr,
+        sync_commits,
+        sync_repository,
+    )
     from aexy.temporal.activities.tracking import (
         aggregate_daily_standups,
         aggregate_time_entries,
@@ -233,7 +253,19 @@ def get_all_activities() -> list:
         # Analysis
         analyze_commit,
         analyze_pr,
+        analyze_review,
         analyze_developer,
+        # Phase 3 — AI digests + embeddings
+        compose_developer_digest,
+        compose_repo_health,
+        embed_pr_summary,
+        enqueue_workspace_weekly_digests,
+        # Phase 4C
+        analyze_task_pr_alignment,
+        # Phase B — review digests
+        compose_developer_review_period,
+        compose_team_review_period,
+        enqueue_review_cycle_digests,
         reset_daily_limits,
         batch_report_usage,
         aggregate_billing_usage,
@@ -244,6 +276,9 @@ def get_all_activities() -> list:
         sync_repository,
         sync_commits,
         check_repo_auto_sync,
+        enqueue_ai_analysis,
+        enqueue_active_pr_refresh,
+        refresh_single_pr,
         # Email
         send_campaign,
         send_campaign_email,

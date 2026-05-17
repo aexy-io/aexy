@@ -800,6 +800,13 @@ class TaskGitHubLink(Base):
         Boolean, nullable=False, default=True
     )  # True if auto-detected, False if manually linked
 
+    # Phase 4C — LLM-derived alignment between the task's description and
+    # the linked PR's analysis. Populated by `analyze_task_pr_alignment`.
+    alignment: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    alignment_analyzed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

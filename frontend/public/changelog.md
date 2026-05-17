@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.74] - 2026-05-17
+
+AI code insights now run across GitHub commits, pull requests, reviews,
+and sprint task links, with workspace controls for enabling analysis and
+new UI surfaces for reading the results.
+
+### Added
+
+#### AI code insights
+- Added code-insight API endpoints for commit, pull request, review,
+  similar-PR, reviewer-suggestion, task-PR alignment, and snapshot
+  retrieval workflows.
+- Added Temporal activities and schedules for artifact analysis, weekly
+  developer digests, repository health summaries, active PR refreshes,
+  task-to-PR alignment, and performance-review summaries.
+- Added LLM analysis cache, deterministic security scanning, PR
+  embeddings, AI settings, and migration scripts for the new storage
+  columns and snapshot tables.
+
+#### Product surfaces
+- Added frontend code-insight hooks, API client helpers, localized
+  messages, and cards/panels for AI summaries in developer, repository,
+  review, sprint board, and settings pages.
+- Added identity settings messaging and navigation surfaces for the
+  organization/settings area.
+
+### Changed
+
+- GitHub sync now enriches commits and PRs with deterministic metadata,
+  supports branch-aware commit collection, and fans out AI analysis after
+  repository sync.
+- Developer identity handling can claim and merge ghost contributor
+  activity into the authenticated GitHub developer profile.
+- Coverage artifacts are ignored so regenerated test output stays out of
+  normal commits.
+
 ## [0.7.73] - 2026-05-12
 
 Tasks now have a copyable per-workspace identifier and a short

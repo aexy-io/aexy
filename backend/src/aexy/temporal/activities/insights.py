@@ -27,11 +27,19 @@ SNAPSHOT_FREQUENCY_MAP = {
 def _get_period_boundaries(frequency: str) -> tuple[datetime, datetime]:
     """Compute the period start/end based on frequency.
 
-    Returns the most recent completed period boundaries.
-    For daily: yesterday 00:00 to today 00:00
-    For weekly: last Monday 00:00 to this Monday 00:00
-    For biweekly: two Mondays ago to this Monday
-    For monthly: first of last month to first of this month
+    Returns the most recent COMPLETED period boundaries — that's what reviews
+    want, so a quarterly review on Apr 15 covers Jan-Mar (not the partial
+    week so far). The end boundary is always the *start* of the next period
+    (exclusive on the trailing day).
+
+    Supported frequencies:
+      daily        — yesterday 00:00 to today 00:00
+      weekly       — last Monday 00:00 to this Monday 00:00
+      biweekly     — two Mondays ago to this Monday
+      monthly      — first of last month to first of this month
+      quarterly    — start of last quarter to start of this quarter (3mo)
+      semi_annual  — start of last half-year to start of this half-year (6mo)
+      yearly       — Jan 1 of last year to Jan 1 of this year
     """
     now = datetime.now(timezone.utc)
     today = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -58,6 +66,27 @@ def _get_period_boundaries(frequency: str) -> tuple[datetime, datetime]:
             start = first_of_this_month.replace(year=first_of_this_month.year - 1, month=12)
         else:
             start = first_of_this_month.replace(month=first_of_this_month.month - 1)
+    elif frequency == "quarterly":
+        # Calendar quarters: Jan-Mar, Apr-Jun, Jul-Sep, Oct-Dec.
+        this_q_first_month = ((today.month - 1) // 3) * 3 + 1
+        end = today.replace(month=this_q_first_month, day=1)
+        if this_q_first_month <= 3:
+            start = end.replace(year=end.year - 1, month=10)
+        else:
+            start = end.replace(month=this_q_first_month - 3)
+    elif frequency == "semi_annual":
+        # H1 = Jan-Jun, H2 = Jul-Dec.
+        if today.month <= 6:
+            # We're in H1 → last completed half is H2 of previous year.
+            end = today.replace(month=1, day=1)
+            start = end.replace(year=end.year - 1, month=7)
+        else:
+            # We're in H2 → last completed half is H1 of this year.
+            end = today.replace(month=7, day=1)
+            start = end.replace(month=1)
+    elif frequency == "yearly":
+        end = today.replace(month=1, day=1)
+        start = end.replace(year=end.year - 1)
     else:
         # Default to weekly
         days_since_monday = today.weekday()

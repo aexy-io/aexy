@@ -1,0 +1,170 @@
+{
+  "aiInsights": {
+    "title": "AI insights",
+    "summary": "सारांश",
+    "languages": "भाषाएँ",
+    "frameworks": "Frameworks",
+    "domains": "क्षेत्र",
+    "softSkills": "Soft skills",
+    "confidence": "विश्वास",
+    "analyzedAt": "{date} को विश्लेषित",
+    "notAnalyzed": "अभी तक विश्लेषित नहीं",
+    "notAnalyzedHint": "रिपॉज़िटरी सिंक करें — उसके बाद AI विश्लेषण अपने आप चलेगा।",
+    "loading": "Insights लोड हो रहा है…",
+    "error": "AI insights लोड नहीं हो सके",
+    "skippedBot": "छोड़ा गया (bot author)",
+    "skippedMerge": "छोड़ा गया (merge commit)",
+    "skippedDocsOnly": "छोड़ा गया (केवल docs बदलाव)",
+    "skippedFormatter": "छोड़ा गया (केवल formatter)",
+    "skippedGenerated": "छोड़ा गया (generated files)",
+    "skippedSizeXs": "छोड़ा गया (बहुत छोटा PR)",
+    "skippedEmpty": "छोड़ा गया (खाली review)",
+    "pr": {
+      "title": "PR insights"
+    },
+    "commit": {
+      "title": "Commit insights"
+    },
+    "review": {
+      "title": "Review insights"
+    },
+    "weeklyDigest": {
+      "title": "साप्ताहिक digest",
+      "noSnapshotYet": "अभी तक कोई digest नहीं बना",
+      "noSnapshotHint": "AI-enabled workspaces के लिए digests हर सोमवार चलते हैं।",
+      "headline": "मुख्य बात",
+      "whatShipped": "क्या deliver हुआ",
+      "hotspots": "Hotspots",
+      "growthSignals": "Growth signals",
+      "blockers": "Blockers",
+      "period": "{start} – {end}",
+      "metrics": {
+        "commits": "{count, plural, one {# commit} other {# commits}}",
+        "prs": "{count, plural, one {# PR} other {# PRs}}",
+        "reviews": "{count, plural, one {# review} other {# reviews}}",
+        "reverts": "{count, plural, one {# revert} other {# reverts}}"
+      }
+    },
+    "repoHealth": {
+      "title": "Repo health",
+      "noSnapshotYet": "अभी तक कोई repo-health snapshot नहीं",
+      "noSnapshotHint": "AI-enabled workspaces के लिए snapshots हर सोमवार चलते हैं।",
+      "headline": "मुख्य बात",
+      "hotspots": "Hotspots",
+      "risks": "जोखिम",
+      "highlights": "Highlights",
+      "trends": "रुझान",
+      "metrics": {
+        "commits": "{count, plural, one {# commit} other {# commits}}",
+        "prsOpened": "{count, plural, one {# PR खुला} other {# PRs खुले}}",
+        "prsMerged": "{count, plural, one {# merged} other {# merged}}",
+        "mergedWithoutReview": "{count, plural, one {# बिना review merged} other {# बिना review merged}}",
+        "reverts": "{count, plural, one {# revert} other {# reverts}}"
+      }
+    },
+    "similarPRs": {
+      "title": "मिलते-जुलते PRs",
+      "empty": "कोई मिलते-जुलते PR नहीं मिले",
+      "notEmbedded": "अभी तक embed नहीं हुआ — साप्ताहिक job के बाद देखें।",
+      "similarityLabel": "{percent}% similar"
+    },
+    "reviewerSuggestions": {
+      "title": "Suggested reviewers",
+      "empty": "अभी कोई सुझाव नहीं",
+      "notEmbedded": "अभी तक embed नहीं हुआ — साप्ताहिक job के बाद सुझाव दिखेंगे।",
+      "evidenceAuthor": "{repo} में #{number} लिखा ({percent}% similar)",
+      "evidenceReviewer": "{repo} में #{number} review किया ({percent}% similar)"
+    },
+    "security": {
+      "title": "Security findings",
+      "totalLabel": "{count, plural, one {# finding} other {# findings}}",
+      "severityHigh": "उच्च",
+      "severityMedium": "मध्यम",
+      "severityLow": "कम",
+      "kindSecret": "Secret",
+      "kindSensitiveArea": "संवेदनशील क्षेत्र",
+      "kindRiskyCall": "जोखिम भरा call",
+      "noFindings": "कोई security findings नहीं"
+    },
+    "alignment": {
+      "title": "Task alignment",
+      "matchesIntentLabel": "{percent}% मेल",
+      "notAnalyzed": "अभी तक विश्लेषित नहीं",
+      "gaps": "Gaps",
+      "extras": "Extras",
+      "notes": "Notes"
+    },
+    "reviewDigest": {
+      "title": "Review summary",
+      "noSnapshotYet": "अभी तक कोई review summary नहीं",
+      "noSnapshotHint": "Review cycle activate होने पर या on-demand अपने आप generate होता है।",
+      "generate": "अभी generate करें",
+      "generating": "Generate हो रहा है…",
+      "period": {
+        "weekly": "हफ्ता",
+        "monthly": "महीना",
+        "quarterly": "तिमाही",
+        "semi_annual": "अर्धवार्षिक",
+        "yearly": "वार्षिक"
+      },
+      "periodLabel": "अवधि",
+      "headline": "मुख्य बात",
+      "shipped": "क्या deliver हुआ",
+      "growth": "विकास",
+      "strengths": "मजबूतियाँ",
+      "areasToInvest": "निवेश के क्षेत्र",
+      "blockers": "Blockers",
+      "collaboration": "सहयोग",
+      "weekByWeek": "हफ्ते-वार timeline",
+      "metrics": {
+        "commits": "{count, plural, one {# commit} other {# commits}}",
+        "prsOpened": "{count, plural, one {# PR खुला} other {# PRs खुले}}",
+        "prsMerged": "{count, plural, one {# merged} other {# merged}}",
+        "reviews": "{count, plural, one {# review दिया} other {# reviews दिए}}"
+      }
+    },
+    "teamReview": {
+      "title": "टीम review",
+      "noSnapshotYet": "अभी तक कोई team review summary नहीं",
+      "highlights": "Highlights",
+      "crossTeam": "Cross-team patterns",
+      "knowledgeRisks": "ज्ञान के जोखिम",
+      "teamStrengths": "टीम की मजबूतियाँ",
+      "teamGrowthAreas": "विकास के क्षेत्र"
+    },
+    "usage": {
+      "title": "LLM usage",
+      "description": "इस workspace में AI activities के token counts। `llm_prompt_logs` से डेटा; cost आपके configured model पर निर्भर करता है।",
+      "adminOnly": "केवल admins — workspace admins token usage देख सकते हैं।",
+      "windowLabel": "अवधि",
+      "window": {
+        "7": "7 दिन",
+        "30": "30 दिन",
+        "90": "90 दिन"
+      },
+      "totals": {
+        "calls": "{count, plural, one {# call} other {# calls}}",
+        "inputTokens": "Input: {tokens}",
+        "outputTokens": "Output: {tokens}"
+      },
+      "byProvider": "Provider के हिसाब से",
+      "byOperation": "Operation के हिसाब से",
+      "noUsage": "इस अवधि में कोई LLM activity नहीं। AI disabled है, कोई analysis नहीं चली है, या कोई LLM provider configure नहीं है।"
+    },
+    "settings": {
+      "title": "AI विश्लेषण",
+      "description": "Claude का उपयोग करके अपने GitHub डेटा से प्रति-commit और प्रति-PR insights बनाएँ। Cached और rate-limited।",
+      "modeLabel": "मोड",
+      "modeOn": "चालू",
+      "modeOff": "बंद",
+      "modeOnHint": "नए commits, PRs और reviews पर sync के तुरंत बाद AI विश्लेषण चलाएँ।",
+      "modeOffHint": "इस workspace से किसी भी LLM provider को payload नहीं भेजा जाएगा।",
+      "modelTierLabel": "Model tier",
+      "modelTierHaiku": "Haiku (तेज़, कम लागत)",
+      "modelTierSonnet": "Sonnet (गहरा, अधिक लागत)",
+      "save": "AI सेटिंग्स सहेजें",
+      "saving": "सहेजा जा रहा है…",
+      "adminOnly": "केवल workspace admins AI सेटिंग्स बदल सकते हैं।"
+    }
+  }
+}

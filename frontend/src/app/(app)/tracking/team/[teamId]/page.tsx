@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Users, Settings } from "lucide-react";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { TeamTrackingDashboard } from "@/components/tracking";
+import { TeamReviewCard } from "@/components/code-insights";
+import { useWorkspace } from "@/hooks/useWorkspace";
 import {
   useTeamTrackingDashboard,
   useResolveBlocker,
@@ -18,6 +20,7 @@ interface TeamTrackingPageProps {
 export default function TeamTrackingPage({ params }: TeamTrackingPageProps) {
   const { teamId } = use(params);
   const router = useRouter();
+  const { currentWorkspaceId } = useWorkspace();
 
   const { data: dashboard, isLoading } = useTeamTrackingDashboard(teamId);
   const resolveBlocker = useResolveBlocker();
@@ -61,6 +64,17 @@ export default function TeamTrackingPage({ params }: TeamTrackingPageProps) {
               Team Settings
             </button>
           </div>
+        </div>
+
+        {/* AI team-review summary — auto-generated when a review cycle
+            activates, or manually via the card's "Generate now" button.
+            Lazy by period; hides itself entirely when nothing exists yet. */}
+        <div className="mb-6">
+          <TeamReviewCard
+            scopeType="team"
+            scopeId={teamId}
+            workspaceId={currentWorkspaceId}
+          />
         </div>
 
         {/* Team Dashboard */}

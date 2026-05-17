@@ -200,20 +200,123 @@ class GitHubService:
         author: str | None = None,
         per_page: int = 100,
         page: int = 1,
+        sha: str | None = None,
+        since: str | None = None,
     ) -> list[dict[str, Any]]:
-        """Get commits from a repository."""
+        """Get commits from a repository.
+
+        Without `sha`, GitHub returns commits from the repository's default
+        branch only — the silent default that hid feature-branch work from
+        the sync. Pass a branch name (or commit SHA) to walk that branch's
+        history instead.
+
+        `since` is an ISO-8601 timestamp filter; useful to do a peek-only
+        check (with per_page=1) on whether a branch is active.
+        """
         if not self._client:
             raise GitHubServiceError("Service not initialized. Use async context manager.")
 
         params: dict[str, Any] = {"per_page": per_page, "page": page}
         if author:
             params["author"] = author
+        if sha:
+            params["sha"] = sha
+        if since:
+            params["since"] = since
 
         response = await self._client.get(f"/repos/{owner}/{repo}/commits", params=params)
         self._check_response(response, "get commits")
 
         if response.status_code != 200:
             raise GitHubAPIError(f"Failed to get commits: {response.text}")
+
+        return response.json()
+
+    async def get_branches(
+        self,
+        owner: str,
+        repo: str,
+    ) -> list[dict[str, Any]]:
+        """Return all branches on a repository, paginated transparently.
+
+        Each entry is `{name, commit: {sha, url}, protected}`. The tip
+        timestamp is *not* included by the GitHub list-branches API; use
+        `get_active_branches` if you need the recency filter.
+        """
+        if not self._client:
+            raise GitHubServiceError("Service not initialized. Use async context manager.")
+
+        branches: list[dict[str, Any]] = []
+        page = 1
+        while True:
+            response = await self._client.get(
+                f"/repos/{owner}/{repo}/branches",
+                params={"per_page": 100, "page": page},
+            )
+            self._check_response(response, "get branches")
+            if response.status_code != 200:
+                raise GitHubAPIError(f"Failed to get branches: {response.text}")
+            chunk = response.json()
+            if not chunk:
+                break
+            branches.extend(chunk)
+            if len(chunk) < 100:
+                break
+            page += 1
+        return branches
+
+    async def get_active_branches(
+        self,
+        owner: str,
+        repo: str,
+        since_days: int = 90,
+    ) -> list[str]:
+        """Return branch names whose tip commit is within `since_days`.
+
+        Cheap-ish: one call to list branches + one `per_page=1&since=...`
+        commits call per branch. Stale branches return an empty list and
+        get filtered out without further pagination.
+        """
+        from datetime import datetime, timedelta, timezone
+
+        cutoff_iso = (
+            datetime.now(timezone.utc) - timedelta(days=since_days)
+        ).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+        branches = await self.get_branches(owner, repo)
+        active: list[str] = []
+        for b in branches:
+            name = b.get("name")
+            if not name:
+                continue
+            try:
+                peek = await self.get_commits(
+                    owner, repo, sha=name, per_page=1, page=1, since=cutoff_iso
+                )
+            except GitHubAPIError:
+                # A branch might have been deleted between list+peek; skip cleanly.
+                continue
+            if peek:
+                active.append(name)
+        return active
+
+    async def get_pull_request(
+        self,
+        owner: str,
+        repo: str,
+        number: int,
+    ) -> dict[str, Any]:
+        """Fetch a single PR's full payload (title, body, state, mergeable, head)."""
+        if not self._client:
+            raise GitHubServiceError("Service not initialized. Use async context manager.")
+
+        response = await self._client.get(f"/repos/{owner}/{repo}/pulls/{number}")
+        self._check_response(response, "get pull request")
+
+        if response.status_code == 404:
+            raise GitHubNotFoundError(f"PR {owner}/{repo}#{number} not found")
+        if response.status_code != 200:
+            raise GitHubAPIError(f"Failed to get pull request: {response.text}")
 
         return response.json()
 

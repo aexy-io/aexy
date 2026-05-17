@@ -228,6 +228,27 @@ class ReviewService:
         cycle.updated_at = datetime.utcnow()
         await self.db.flush()
 
+        # Phase B — auto-fire AI review-summary fan-out so per-developer +
+        # team digests are ready as soon as managers open the review forms.
+        # Best-effort: dispatch failure doesn't block cycle activation.
+        try:
+            from aexy.temporal.activities.review_digests import (
+                EnqueueReviewCycleDigestsInput,
+            )
+            from aexy.temporal.dispatch import dispatch
+            from aexy.temporal.task_queues import TaskQueue
+
+            await dispatch(
+                "enqueue_review_cycle_digests",
+                EnqueueReviewCycleDigestsInput(cycle_id=str(cycle.id)),
+                task_queue=TaskQueue.ANALYSIS,
+                workflow_id=f"review-cycle-digests-{cycle.id}",
+            )
+        except Exception as e:
+            logger.warning(
+                f"Failed to enqueue review-cycle digests for {cycle.id}: {e}"
+            )
+
         return cycle
 
     async def advance_cycle_phase(self, cycle_id: str) -> str | None:

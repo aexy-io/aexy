@@ -6,6 +6,7 @@ from aexy.api.admin import router as admin_router
 from aexy.api.platform_admin import router as platform_admin_router
 from aexy.api.admin_rate_limits import router as admin_rate_limits_router
 from aexy.api.analysis import router as analysis_router
+from aexy.api.code_insights import router as code_insights_router
 from aexy.api.auth import router as auth_router
 from aexy.api.career import router as career_router
 from aexy.api.developers import router as developers_router
@@ -184,6 +185,7 @@ api_router.include_router(developers_router, prefix="/developers", tags=["develo
 api_router.include_router(webhooks_router, prefix="/webhooks", tags=["webhooks"])
 api_router.include_router(teams_router, prefix="/teams", tags=["teams"])
 api_router.include_router(analysis_router, tags=["analysis"])
+api_router.include_router(code_insights_router, tags=["code-insights"])
 api_router.include_router(admin_router, tags=["admin"])
 api_router.include_router(platform_admin_router, tags=["platform-admin"])
 api_router.include_router(admin_rate_limits_router, tags=["admin-rate-limits"])

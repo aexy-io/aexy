@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import { reviewsApi, IndividualReviewDetail, WorkGoal, GoalSuggestion } from "@/lib/api";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { ReviewDigestCard } from "@/components/code-insights";
 import { GOAL_TYPE_COLORS, GOAL_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
 // Extra statuses specific to the manage view (at_risk, pending not in centralized GOAL_STATUS_COLORS)
@@ -472,6 +473,14 @@ export default function MemberDetailPage() {
 
             {/* Sidebar */}
             <div className="space-y-4">
+              {/* AI review summary — auto-generated when this cycle was
+                  activated; falls back to a "Generate now" button if not. */}
+              <ReviewDigestCard
+                developerId={review?.developer_id ?? null}
+                workspaceId={currentWorkspace?.id ?? null}
+                defaultPeriod="monthly"
+              />
+
               {/* Feedback Summary */}
               <div className="bg-muted rounded-xl border border-border overflow-hidden">
                 <div className="px-6 py-4 border-b border-border">

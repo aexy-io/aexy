@@ -21,6 +21,7 @@ import {
   Bell,
   Settings2,
   Receipt,
+  Fingerprint,
   type LucideIcon,
 } from "lucide-react";
 
@@ -92,6 +93,14 @@ export const settingsNavigation: SettingsNavCategory[] = [
         icon: FolderGit2,
         description: "Manage GitHub repositories for analysis and sync",
         keywords: ["github", "repo", "sync", "git", "code"],
+      },
+      {
+        id: "identity",
+        label: "Identity",
+        href: "/settings/identity",
+        icon: Fingerprint,
+        description: "Reclaim commits attributed to an orphaned GitHub identity",
+        keywords: ["ghost", "claim", "github", "commits", "merge", "attribution"],
       },
       {
         id: "projects",

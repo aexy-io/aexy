@@ -60,6 +60,28 @@ SCHEDULES: list[dict] = [
         "interval": timedelta(hours=24),
         "queue": TaskQueue.ANALYSIS,
     },
+    # Phase 3 — weekly AI digests + embedding catch-up across all
+    # AI-enabled workspaces. Single fan-out activity; per-developer and
+    # per-repo digests are then dispatched onto the analysis queue.
+    {
+        "id": "weekly-ai-digests",
+        "activity": "enqueue_workspace_weekly_digests",
+        "input_module": "aexy.temporal.activities.ai_digests",
+        "input_class": "EnqueueWorkspaceWeeklyDigestsInput",
+        "interval": timedelta(weeks=1),
+        "queue": TaskQueue.ANALYSIS,
+    },
+    # Phase 4 / C2 — 30-min poll of every open PR across AI-enabled
+    # workspaces. Cheap (one GitHub call per PR); only fans out re-analysis
+    # when title/description actually changed since last poll.
+    {
+        "id": "active-pr-refresh",
+        "activity": "enqueue_active_pr_refresh",
+        "input_module": "aexy.temporal.activities.sync",
+        "input_class": "EnqueueActivePRRefreshInput",
+        "interval": timedelta(minutes=30),
+        "queue": TaskQueue.SYNC,
+    },
 
     # === On-call ===
     {

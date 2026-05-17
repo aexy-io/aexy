@@ -16,7 +16,14 @@ import {
   ArrowUpDown,
 } from "lucide-react";
 import { useRepositoryDetail } from "@/hooks/useInsights";
-import { InsightsPeriodType, RepositoryDeveloperBreakdown } from "@/lib/api";
+import {
+  InsightsPeriodType,
+  Repository,
+  RepositoryDeveloperBreakdown,
+  repositoriesApi,
+} from "@/lib/api";
+import { useQuery } from "@tanstack/react-query";
+import { RepoHealthCard } from "@/components/code-insights";
 
 const PERIOD_OPTIONS: { value: InsightsPeriodType; label: string }[] = [
   { value: "weekly", label: "Weekly" },
@@ -46,6 +53,17 @@ export default function RepositoryDetailPage() {
     repoName,
     { period_type: periodType }
   );
+
+  // The repo-name URL doesn't carry the workspace-side repository id we need
+  // for InsightsSnapshot lookup. Resolve it lazily off the repos list — the
+  // list is cached app-wide so this is usually a free read.
+  const { data: repositories } = useQuery<Repository[]>({
+    queryKey: ["repositories", "all"],
+    queryFn: () => repositoriesApi.listRepositories(),
+    staleTime: 5 * 60 * 1000,
+  });
+  const repositoryId =
+    repositories?.find((r) => r.full_name === repoName)?.id ?? null;
 
   if (authLoading) {
     return (
@@ -145,6 +163,13 @@ export default function RepositoryDetailPage() {
           ))}
         </div>
       </div>
+
+      {/* AI repo-health rollup — Phase 3. Renders even before stats load
+          so the slowest network call doesn't gate the AI summary. */}
+      <RepoHealthCard
+        repositoryId={repositoryId}
+        workspaceId={currentWorkspaceId}
+      />
 
       {/* Aggregate Stats Cards */}
       {isLoading ? (

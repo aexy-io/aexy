@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status
 from jose import JWTError, jwt
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,7 +14,6 @@ from aexy.core.config import get_settings
 from aexy.core.database import get_db
 from aexy.models.developer import Developer, GoogleConnection
 from aexy.schemas.developer import DeveloperResponse, DeveloperUpdate
-from aexy.schemas.sprint import SprintTaskResponse
 from aexy.services.api_token_service import ApiTokenService
 from aexy.services.developer_service import DeveloperNotFoundError, DeveloperService
 from aexy.services.sprint_task_service import SprintTaskService
@@ -147,6 +146,82 @@ async def get_current_developer_profile(
         ) from e
 
     return DeveloperResponse.model_validate(developer)
+
+
+@router.get("/me/claim-commits/preview")
+async def preview_claim_my_commits(
+    developer_id: str = Depends(get_current_developer_id),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Preview how many commits/PRs/reviews would be merged if the caller
+    clicks the claim button. Read-only; safe to call repeatedly.
+
+    Returns `{ ghost_id, commits, prs, reviews, github_username }`.
+    `ghost_id` is null when there's nothing to claim.
+    """
+    from aexy.models.developer import GitHubConnection
+
+    service = DeveloperService(db)
+    conn = (
+        await db.execute(
+            select(GitHubConnection).where(
+                GitHubConnection.developer_id == developer_id
+            )
+        )
+    ).scalar_one_or_none()
+    if not conn or not conn.github_username:
+        return {
+            "ghost_id": None,
+            "commits": 0,
+            "prs": 0,
+            "reviews": 0,
+            "github_username": None,
+        }
+
+    preview = await service.preview_ghost_match(
+        canonical_developer_id=developer_id,
+        github_username=conn.github_username,
+    )
+    preview["github_username"] = conn.github_username
+    return preview
+
+
+@router.post("/me/claim-commits")
+async def claim_my_commits(
+    developer_id: str = Depends(get_current_developer_id),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Merge any orphaned 'ghost developer' rows that match my GitHub login.
+
+    Self-serve recovery for the case where a contributor's commits were
+    synced (e.g. by an admin's pre-existing connection) before they signed
+    in themselves. Their `Commit.developer_id` rows still point at a ghost
+    row whose `name == my_github_login AND email IS NULL`; this endpoint
+    physically reassigns them to the current logged-in developer.
+    """
+    from aexy.models.developer import GitHubConnection
+
+    service = DeveloperService(db)
+    # Look up the caller's GitHub username from their stored connection.
+    conn = (
+        await db.execute(
+            select(GitHubConnection).where(
+                GitHubConnection.developer_id == developer_id
+            )
+        )
+    ).scalar_one_or_none()
+    if not conn or not conn.github_username:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No GitHub connection found — connect GitHub first.",
+        )
+
+    result = await service.merge_ghost_into_developer(
+        canonical_developer_id=developer_id,
+        github_username=conn.github_username,
+    )
+    await db.commit()
+    return result
 
 
 @router.get("/me/google-status", response_model=GoogleConnectionStatus)

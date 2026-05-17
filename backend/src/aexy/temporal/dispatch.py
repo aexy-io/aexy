@@ -58,7 +58,19 @@ ACTIVITY_CONFIG: dict[str, dict[str, Any]] = {
     # Analysis (LLM)
     "analyze_commit": {"retry": LLM_RETRY, "timeout": timedelta(minutes=10)},
     "analyze_pr": {"retry": LLM_RETRY, "timeout": timedelta(minutes=10)},
+    "analyze_review": {"retry": LLM_RETRY, "timeout": timedelta(minutes=10)},
     "analyze_developer": {"retry": LLM_RETRY, "timeout": timedelta(minutes=30)},
+    # Phase 3 — weekly digests / embeddings
+    "compose_developer_digest": {"retry": LLM_RETRY, "timeout": timedelta(minutes=15)},
+    "compose_repo_health": {"retry": LLM_RETRY, "timeout": timedelta(minutes=15)},
+    "embed_pr_summary": {"retry": LLM_RETRY, "timeout": timedelta(minutes=5)},
+    "enqueue_workspace_weekly_digests": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=30)},
+    # Phase 4C — task-PR alignment
+    "analyze_task_pr_alignment": {"retry": LLM_RETRY, "timeout": timedelta(minutes=10)},
+    # Phase B — performance-review digests
+    "compose_developer_review_period": {"retry": LLM_RETRY, "timeout": timedelta(minutes=20)},
+    "compose_team_review_period": {"retry": LLM_RETRY, "timeout": timedelta(minutes=20)},
+    "enqueue_review_cycle_digests": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=10)},
     "batch_profile_sync": {"retry": STANDARD_RETRY, "timeout": timedelta(hours=2), "heartbeat": timedelta(minutes=5)},
     "extract_knowledge_from_document": {"retry": LLM_RETRY, "timeout": timedelta(minutes=30)},
     "rebuild_workspace_graph": {"retry": LLM_RETRY, "timeout": timedelta(hours=2), "heartbeat": timedelta(minutes=5)},
@@ -75,6 +87,12 @@ ACTIVITY_CONFIG: dict[str, dict[str, Any]] = {
     "sync_repository": {"retry": "github_sync", "timeout": timedelta(hours=2), "heartbeat": timedelta(minutes=5)},
     "sync_commits": {"retry": "github_sync", "timeout": timedelta(hours=1)},
     "check_repo_auto_sync": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=10)},
+    # Fan-out for the GitHub AI pipeline. Dispatches per-artifact analysis;
+    # heavy lifting is in the LLM activities (own retry policy).
+    "enqueue_ai_analysis": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=15)},
+    # Active-PR fast-track poll (C2). Single GitHub call per PR; cheap.
+    "enqueue_active_pr_refresh": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=10)},
+    "refresh_single_pr": {"retry": "github_sync", "timeout": timedelta(minutes=3)},
     "sync_gmail": {"retry": "google_sync", "timeout": timedelta(minutes=30), "heartbeat": timedelta(minutes=5)},
     "sync_calendar": {"retry": "google_sync", "timeout": timedelta(minutes=30)},
 

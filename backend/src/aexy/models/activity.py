@@ -4,7 +4,8 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, String, Text, func
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -47,8 +48,20 @@ class Commit(Base):
     author_github_login: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     author_email: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
 
+    # Layer-0 deterministic enrichment (set during sync, no LLM)
+    author_class: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)  # human | bot | external
+    change_class: Mapped[str | None] = mapped_column(String(30), nullable=True)  # code | test_only | config_only | docs_only | formatter_only | generated
+    is_merge: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_revert: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    # Truncated diff stored at sync time so re-analysis doesn't re-fetch from GitHub
+    patch_sample: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     # Semantic analysis (LLM-derived)
     semantic_analysis: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    ai_analyzed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
 
     committed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
@@ -94,6 +107,21 @@ class PullRequest(Base):
 
     # Detected skills/technologies
     detected_skills: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+
+    # Layer-0 deterministic enrichment + Layer-1 LLM analysis
+    size_bucket: Mapped[str | None] = mapped_column(String(4), nullable=True)  # xs | s | m | l | xl
+    ai_analysis: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    ai_analyzed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
+
+    # Phase 3: PR-level embedding for similarity search & repo-health clustering.
+    # Vector dim 1024 matches file_embeddings so the provider config is shared.
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(1024), nullable=True)
+    embedding_model: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    embedded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Timestamps
     created_at_github: Mapped[datetime] = mapped_column(DateTime(timezone=True))
@@ -150,6 +178,9 @@ class CodeReview(Base):
 
     # Quality analysis (depth, thoroughness, mentoring indicators)
     quality_metrics: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    ai_analyzed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
 
     submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(

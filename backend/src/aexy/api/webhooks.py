@@ -125,6 +125,42 @@ async def handle_github_webhook(
                 if links:
                     result["task_links_created"] = len(links)
 
+                # Realtime AI analysis (C1): only the big moments — opened
+                # + ready_for_review. In-progress edits get caught by the
+                # 30-min active-PR poll (C2). Alignment is fanned out as
+                # the tail of analyze_pr so it always reads fresh data.
+                if event.action in {"opened", "ready_for_review"}:
+                    try:
+                        import hashlib as _hashlib
+
+                        from aexy.temporal.activities.analysis import AnalyzePRInput
+                        from aexy.temporal.dispatch import dispatch
+                        from aexy.temporal.task_queues import TaskQueue
+
+                        # Content-hash workflow_id so re-triggers on edits
+                        # don't collide with prior runs within the same day.
+                        content = f"{pr.title or ''}\n{pr.description or ''}"
+                        content_hash = _hashlib.sha256(
+                            content.encode("utf-8")
+                        ).hexdigest()[:8]
+
+                        await dispatch(
+                            "analyze_pr",
+                            AnalyzePRInput(
+                                developer_id=str(pr.developer_id),
+                                pr_id=str(pr.id),
+                            ),
+                            task_queue=TaskQueue.ANALYSIS,
+                            workflow_id=(
+                                f"analyze_pr-{pr.id}-realtime-{event.action}-{content_hash}"
+                            ),
+                        )
+                        result["realtime_ai_dispatched"] = True
+                    except Exception:
+                        # Don't fail the webhook on a dispatch hiccup — the
+                        # 30-min poll will catch up.
+                        result["realtime_ai_dispatched"] = False
+
     # Trigger profile sync for affected developer(s)
     if event.sender:
         sender_id = event.sender.get("id")

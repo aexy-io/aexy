@@ -30,6 +30,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { WorkspaceMember, WorkspacePendingInvite, repositoriesApi, Organization } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { UpgradeBanner } from "@/components/UpgradeBanner";
+import { TeamReviewCard } from "@/components/code-insights";
 
 const ROLE_OPTIONS = [
   { value: "owner", label: "Owner", description: "Full access, can delete workspace" },
@@ -776,6 +777,15 @@ export default function OrganizationSettingsPage() {
           compact
         />
       )}
+
+      {/* AI workspace-wide review summary. Hides itself until data exists,
+          so non-AI workspaces don't see clutter. */}
+      <TeamReviewCard
+        scopeType="workspace"
+        scopeId={currentWorkspaceId}
+        workspaceId={currentWorkspaceId}
+        defaultPeriod="quarterly"
+      />
 
       <div>
         {/* Workspace Selector */}

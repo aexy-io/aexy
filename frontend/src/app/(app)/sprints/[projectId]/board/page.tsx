@@ -89,6 +89,12 @@ import { CapacityPlanner } from "@/components/planning/CapacityPlanner";
 import { PlanningPoker } from "@/components/planning/PlanningPoker";
 import { ImportTasksModal } from "@/components/planning/ImportTasksModal";
 import {
+  CollapsiblePRInsight,
+  ReviewerSuggestionsCard,
+  SimilarPRsCard,
+  TaskAlignmentBadge,
+} from "@/components/code-insights";
+import {
   SPRINT_STATUS_COLORS as SPRINT_STATUS_COLORS_BASE,
   TASK_STATUS_COLORS as TASK_STATUS_COLORS_BASE,
 } from "@/lib/statusColors";
@@ -1998,39 +2004,47 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
                     if (!pr) return null;
 
                     return (
-                      <div key={link.id} className="flex items-center gap-3 rounded-lg border border-border bg-background/60 p-3">
-                        <span className={cn(
-                          "rounded-full px-2 py-0.5 text-xs",
-                          pr.state === "open"
-                            ? "bg-emerald-500/15 text-emerald-400"
-                            : pr.state === "merged"
-                              ? "bg-violet-500/15 text-violet-300"
-                              : "bg-muted text-muted-foreground"
-                        )}>
-                          {pr.state || "linked"}
-                        </span>
-                        <a
-                          href={pr.url || "#"}
-                          target={pr.url ? "_blank" : undefined}
-                          rel={pr.url ? "noreferrer" : undefined}
-                          className="min-w-0 flex-1 truncate text-sm text-foreground hover:underline"
-                        >
-                          {pr.repository} #{pr.number}
-                          {pr.title ? ` - ${pr.title}` : ""}
-                        </a>
-                        <button
-                          type="button"
-                          aria-label="Unlink pull request"
-                          onClick={() => unlinkGitHubLinkMutation.mutate(link.id)}
-                          disabled={unlinkGitHubLinkMutation.isPending}
-                          className="rounded p-1 text-muted-foreground transition hover:bg-accent hover:text-foreground"
-                        >
-                          {unlinkGitHubLinkMutation.isPending ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <X className="h-3.5 w-3.5" />
-                          )}
-                        </button>
+                      <div key={link.id} className="space-y-1.5">
+                        <div className="flex items-center gap-3 rounded-lg border border-border bg-background/60 p-3">
+                          <span className={cn(
+                            "rounded-full px-2 py-0.5 text-xs",
+                            pr.state === "open"
+                              ? "bg-emerald-500/15 text-emerald-400"
+                              : pr.state === "merged"
+                                ? "bg-violet-500/15 text-violet-300"
+                                : "bg-muted text-muted-foreground"
+                          )}>
+                            {pr.state || "linked"}
+                          </span>
+                          <a
+                            href={pr.url || "#"}
+                            target={pr.url ? "_blank" : undefined}
+                            rel={pr.url ? "noreferrer" : undefined}
+                            className="min-w-0 flex-1 truncate text-sm text-foreground hover:underline"
+                          >
+                            {pr.repository} #{pr.number}
+                            {pr.title ? ` - ${pr.title}` : ""}
+                          </a>
+                          <button
+                            type="button"
+                            aria-label="Unlink pull request"
+                            onClick={() => unlinkGitHubLinkMutation.mutate(link.id)}
+                            disabled={unlinkGitHubLinkMutation.isPending}
+                            className="rounded p-1 text-muted-foreground transition hover:bg-accent hover:text-foreground"
+                          >
+                            {unlinkGitHubLinkMutation.isPending ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <X className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                        </div>
+                        {/* Phase 4C — alignment badge sits inline next to
+                            the PR row; auto-hides until analyzed. */}
+                        <TaskAlignmentBadge linkId={link.id} />
+                        {/* Collapsed by default — only fires the network call
+                            when the user expands. Keeps busy tasks responsive. */}
+                        <CollapsiblePRInsight prId={pr.id} />
                       </div>
                     );
                   })}
@@ -2038,6 +2052,19 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
               ) : (
                 <p className="text-sm text-muted-foreground">No pull requests linked.</p>
               )}
+              {/* When the task is linked to exactly one PR, surface similar
+                  past PRs + suggested reviewers (Phase 4A) — both keyed on
+                  the same PR id. Only shows for the single-PR case so we
+                  don't flood the modal when many PRs are linked. */}
+              {pullRequestLinks.length === 1 &&
+                pullRequestLinks[0].pull_request && (
+                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    <SimilarPRsCard prId={pullRequestLinks[0].pull_request.id} />
+                    <ReviewerSuggestionsCard
+                      prId={pullRequestLinks[0].pull_request.id}
+                    />
+                  </div>
+                )}
             </section>
 
             {/* GitHub Issue Links */}

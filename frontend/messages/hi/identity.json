@@ -1,0 +1,43 @@
+{
+  "identity": {
+    "title": "पहचान और commit ownership",
+    "intro": "Aexy आपके GitHub username से मिलाकर commits को attribute करता है। यदि आपके sign-in से पहले आपके account के commits sync हो गए थे, वे एक placeholder developer record में अटक जाते हैं। यहाँ उन्हें claim करके अपने account में merge करें।",
+    "noGithub": "Commits claim करने से पहले अपनी developer settings में GitHub account जोड़ें।",
+    "noGithubLink": "GitHub जोड़ें",
+    "loading": "Orphan commits ढूंढ रहे हैं…",
+    "github": "Linked",
+    "previewHeader": "हम क्या claim करेंगे",
+    "noneFound": "Claim करने के लिए कुछ नहीं है। आपके commits पहले से ही आपके name पर हैं, या @{username} के नीचे कोई काम sync नहीं हुआ है।",
+    "claim": "मेरे commits claim करें",
+    "claiming": "Claim हो रहा है…",
+    "metrics": {
+      "commits": "{count, plural, one {# commit} other {# commits}}",
+      "prs": "{count, plural, one {# pull request} other {# pull requests}}",
+      "reviews": "{count, plural, one {# review} other {# reviews}}"
+    },
+    "explainer": "अब हर login पर syncs auto-merge हो जाते हैं। यह button उन पुराने commits के लिए है जो D2 ship होने से पहले sync हुए थे या जब आप अपना GitHub username बदलें।",
+    "admin": {
+      "title": "Workspace ghost developers",
+      "intro": "Placeholder developer से जुड़े commits जो इस workspace के repos में हैं। उनके काम को सही member से जोड़ें।",
+      "adminOnlyHint": "केवल admins — workspace admins ghost activity को किसी भी member से link कर सकते हैं।",
+      "noGhosts": "इस workspace में कोई ghost developer नहीं। सारी activity असली members से जुड़ी है।",
+      "loading": "Workspace activity में ghost rows ढूंढ रहे हैं…",
+      "columns": {
+        "ghost": "Ghost पहचान",
+        "activity": "गतिविधि",
+        "suggestion": "सुझाव",
+        "actions": "जिसमें merge करें"
+      },
+      "suggestion": {
+        "github_username_match": "GitHub username मेल खाता है",
+        "developer_name_match": "Display name मेल खाता है",
+        "none": "कोई सुझाव नहीं"
+      },
+      "metricCompact": "{commits}c · {prs}p · {reviews}r",
+      "selectMember": "Member चुनें…",
+      "merge": "Merge",
+      "merging": "Merge हो रहा है…",
+      "confirmMerge": "Merge {ghost} → {target}? सारी activity rows move हो जाएँगी और ghost row delete हो जाएगा।"
+    }
+  }
+}

@@ -1,0 +1,170 @@
+{
+  "aiInsights": {
+    "title": "AI insights",
+    "summary": "Summary",
+    "languages": "Languages",
+    "frameworks": "Frameworks",
+    "domains": "Domains",
+    "softSkills": "Soft skills",
+    "confidence": "Confidence",
+    "analyzedAt": "Analyzed {date}",
+    "notAnalyzed": "Not analyzed yet",
+    "notAnalyzedHint": "Run a repository sync — AI analysis fires automatically afterwards.",
+    "loading": "Loading insights…",
+    "error": "Couldn't load AI insights",
+    "skippedBot": "Skipped (bot author)",
+    "skippedMerge": "Skipped (merge commit)",
+    "skippedDocsOnly": "Skipped (docs-only change)",
+    "skippedFormatter": "Skipped (formatter-only change)",
+    "skippedGenerated": "Skipped (generated files)",
+    "skippedSizeXs": "Skipped (very small PR)",
+    "skippedEmpty": "Skipped (empty review)",
+    "pr": {
+      "title": "PR insights"
+    },
+    "commit": {
+      "title": "Commit insights"
+    },
+    "review": {
+      "title": "Review insights"
+    },
+    "weeklyDigest": {
+      "title": "Weekly digest",
+      "noSnapshotYet": "No weekly digest generated yet",
+      "noSnapshotHint": "Digests run every Monday for AI-enabled workspaces.",
+      "headline": "Headline",
+      "whatShipped": "What shipped",
+      "hotspots": "Hotspots",
+      "growthSignals": "Growth signals",
+      "blockers": "Blockers",
+      "period": "{start} – {end}",
+      "metrics": {
+        "commits": "{count, plural, one {# commit} other {# commits}}",
+        "prs": "{count, plural, one {# PR} other {# PRs}}",
+        "reviews": "{count, plural, one {# review} other {# reviews}}",
+        "reverts": "{count, plural, one {# revert} other {# reverts}}"
+      }
+    },
+    "repoHealth": {
+      "title": "Repo health",
+      "noSnapshotYet": "No repo-health snapshot generated yet",
+      "noSnapshotHint": "Snapshots run every Monday for AI-enabled workspaces.",
+      "headline": "Headline",
+      "hotspots": "Hotspots",
+      "risks": "Risks",
+      "highlights": "Highlights",
+      "trends": "Trends",
+      "metrics": {
+        "commits": "{count, plural, one {# commit} other {# commits}}",
+        "prsOpened": "{count, plural, one {# PR opened} other {# PRs opened}}",
+        "prsMerged": "{count, plural, one {# merged} other {# merged}}",
+        "mergedWithoutReview": "{count, plural, one {# merged without review} other {# merged without review}}",
+        "reverts": "{count, plural, one {# revert} other {# reverts}}"
+      }
+    },
+    "similarPRs": {
+      "title": "Similar PRs",
+      "empty": "No similar PRs found",
+      "notEmbedded": "Not embedded yet — check back after the weekly job runs.",
+      "similarityLabel": "{percent}% similar"
+    },
+    "reviewerSuggestions": {
+      "title": "Suggested reviewers",
+      "empty": "No suggestions yet",
+      "notEmbedded": "Not embedded yet — suggestions appear after the weekly job runs.",
+      "evidenceAuthor": "wrote #{number} in {repo} ({percent}% similar)",
+      "evidenceReviewer": "reviewed #{number} in {repo} ({percent}% similar)"
+    },
+    "security": {
+      "title": "Security findings",
+      "totalLabel": "{count, plural, one {# finding} other {# findings}}",
+      "severityHigh": "high",
+      "severityMedium": "medium",
+      "severityLow": "low",
+      "kindSecret": "Secret",
+      "kindSensitiveArea": "Sensitive area",
+      "kindRiskyCall": "Risky call",
+      "noFindings": "No security findings"
+    },
+    "alignment": {
+      "title": "Task alignment",
+      "matchesIntentLabel": "{percent}% match",
+      "notAnalyzed": "Not analyzed yet",
+      "gaps": "Gaps",
+      "extras": "Extras",
+      "notes": "Notes"
+    },
+    "reviewDigest": {
+      "title": "Review summary",
+      "noSnapshotYet": "No review summary generated yet",
+      "noSnapshotHint": "Generated automatically when a review cycle activates, or on demand.",
+      "generate": "Generate now",
+      "generating": "Generating…",
+      "period": {
+        "weekly": "Week",
+        "monthly": "Month",
+        "quarterly": "Quarter",
+        "semi_annual": "Half-year",
+        "yearly": "Year"
+      },
+      "periodLabel": "Period",
+      "headline": "Headline",
+      "shipped": "What shipped",
+      "growth": "Growth",
+      "strengths": "Strengths",
+      "areasToInvest": "Areas to invest",
+      "blockers": "Blockers",
+      "collaboration": "Collaboration",
+      "weekByWeek": "Week-by-week timeline",
+      "metrics": {
+        "commits": "{count, plural, one {# commit} other {# commits}}",
+        "prsOpened": "{count, plural, one {# PR opened} other {# PRs opened}}",
+        "prsMerged": "{count, plural, one {# merged} other {# merged}}",
+        "reviews": "{count, plural, one {# review given} other {# reviews given}}"
+      }
+    },
+    "teamReview": {
+      "title": "Team review",
+      "noSnapshotYet": "No team review summary yet",
+      "highlights": "Highlights",
+      "crossTeam": "Cross-team patterns",
+      "knowledgeRisks": "Knowledge risks",
+      "teamStrengths": "Team strengths",
+      "teamGrowthAreas": "Growth areas"
+    },
+    "usage": {
+      "title": "LLM usage",
+      "description": "Token counts from AI activities across this workspace. Counts come from `llm_prompt_logs`; cost depends on the model you've configured.",
+      "adminOnly": "Admin only — workspace admins see token usage.",
+      "windowLabel": "Window",
+      "window": {
+        "7": "7 days",
+        "30": "30 days",
+        "90": "90 days"
+      },
+      "totals": {
+        "calls": "{count, plural, one {# call} other {# calls}}",
+        "inputTokens": "Input: {tokens}",
+        "outputTokens": "Output: {tokens}"
+      },
+      "byProvider": "By provider",
+      "byOperation": "By operation",
+      "noUsage": "No LLM activity in this window. Either AI is disabled, no analysis has fired yet, or no LLM provider is configured."
+    },
+    "settings": {
+      "title": "AI analysis",
+      "description": "Use Claude to generate per-commit and per-PR insights from your synced GitHub data. Cached and rate-limited.",
+      "modeLabel": "Mode",
+      "modeOn": "On",
+      "modeOff": "Off",
+      "modeOnHint": "Run AI analysis on new commits, PRs, and reviews as they sync.",
+      "modeOffHint": "No payloads will be sent to any LLM provider from this workspace.",
+      "modelTierLabel": "Model tier",
+      "modelTierHaiku": "Haiku (fast, low cost)",
+      "modelTierSonnet": "Sonnet (deeper, higher cost)",
+      "save": "Save AI settings",
+      "saving": "Saving…",
+      "adminOnly": "Only workspace admins can change AI settings."
+    }
+  }
+}

@@ -520,6 +520,8 @@ from aexy.models.api_token import ApiToken
 from aexy.models.ask import AskConversation, AskMessage, AskConversationParticipant, AskShareLink
 from aexy.models.ai_feedback import AIFeedback
 from aexy.models.llm_prompt_log import LLMPromptLog
+from aexy.models.llm_analysis_cache import LlmAnalysisCache
+from aexy.models.insights_snapshot import InsightsSnapshot
 from aexy.models.chat import (
     ChatChannel,
     ChatChannelMember,
@@ -1064,6 +1066,9 @@ __all__ = [
     "AIFeedback",
     # LLM Prompt Log
     "LLMPromptLog",
+    # LLM Analysis Cache + Insights Snapshots (GitHub AI pipeline)
+    "LlmAnalysisCache",
+    "InsightsSnapshot",
     # Team Chat
     "ChatChannel",
     "ChatChannelMember",

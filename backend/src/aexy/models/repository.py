@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -100,6 +100,20 @@ class Repository(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),
+    )
+
+    # AI analysis high-water mark — enqueue_ai_analysis only walks
+    # artifacts with timestamps after this cursor.
+    ai_analysis_cursor: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    # Per-repo branch whitelist. NULL = active-branches policy (tip < 90d).
+    # Non-null array = sync only these branches explicitly. Useful when a
+    # repo has hundreds of dependabot branches and we want to cap scope.
+    sync_branches: Mapped[list[str] | None] = mapped_column(
+        JSONB, nullable=True
     )
 
     # Relationships

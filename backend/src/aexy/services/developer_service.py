@@ -1,8 +1,9 @@
 """Developer profile service."""
 
 from datetime import datetime
+from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -243,6 +244,432 @@ class DeveloperService:
         await self.db.refresh(connection)
         return connection
 
+    async def list_workspace_ghosts(
+        self,
+        workspace_id: str,
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        """List ghost developers whose activity touches a workspace's repos,
+        with per-ghost activity counts and suggested match candidates.
+
+        A "match candidate" is a workspace member whose Developer.name or
+        GitHubConnection.github_username case-insensitively matches the
+        ghost's name. Suggestions are an ordered list (best match first);
+        empty when no fuzzy match exists.
+
+        Output rows look like:
+          {
+            "ghost_id": "...",
+            "name": "<github-login-or-display-name>",
+            "commits": 47,
+            "prs": 12,
+            "reviews": 8,
+            "suggestions": [
+              { "developer_id": "...", "name": "...", "github_username": "...", "reason": "github_username_match" },
+              ...
+            ],
+          }
+        """
+        from aexy.models.activity import Commit, PullRequest, CodeReview
+        from aexy.models.developer import GitHubConnection
+        from aexy.models.repository import Repository, WorkspaceRepository
+        from aexy.models.workspace import WorkspaceMember
+
+        # 1) Resolve which repository full_names are in this workspace.
+        adopted_repos = (
+            await self.db.execute(
+                select(Repository.full_name)
+                .join(
+                    WorkspaceRepository,
+                    WorkspaceRepository.repository_id == Repository.id,
+                )
+                .where(
+                    WorkspaceRepository.workspace_id == workspace_id,
+                    WorkspaceRepository.is_active == True,  # noqa: E712
+                )
+            )
+        ).scalars().all()
+        if not adopted_repos:
+            return []
+        repo_set = set(adopted_repos)
+
+        # 2) Find all "ghost" developer ids referenced by commits in those
+        # repos. A ghost is one with email IS NULL and no GitHubConnection.
+        # We deliberately do the no-conn filter via NOT EXISTS so the count
+        # query stays cheap even at scale.
+        ghost_commit_counts_stmt = (
+            select(
+                Commit.developer_id,
+                Developer.name,
+                func.count(Commit.id).label("commits"),
+            )
+            .join(Developer, Developer.id == Commit.developer_id)
+            .where(
+                Commit.repository.in_(repo_set),
+                Developer.email.is_(None),
+                ~select(GitHubConnection.id)
+                .where(GitHubConnection.developer_id == Developer.id)
+                .exists(),
+            )
+            .group_by(Commit.developer_id, Developer.name)
+            .order_by(func.count(Commit.id).desc())
+            .limit(limit)
+        )
+        ghost_rows = (await self.db.execute(ghost_commit_counts_stmt)).all()
+        if not ghost_rows:
+            return []
+
+        ghost_ids = [str(g.developer_id) for g in ghost_rows]
+        ghost_names = {str(g.developer_id): (g.name or "") for g in ghost_rows}
+
+        # 3) Per-ghost PR + review counts (scoped to the same repos).
+        pr_counts_stmt = (
+            select(PullRequest.developer_id, func.count(PullRequest.id))
+            .where(
+                PullRequest.developer_id.in_(ghost_ids),
+                PullRequest.repository.in_(repo_set),
+            )
+            .group_by(PullRequest.developer_id)
+        )
+        pr_counts = {
+            str(dev_id): cnt
+            for dev_id, cnt in (await self.db.execute(pr_counts_stmt)).all()
+        }
+        review_counts_stmt = (
+            select(CodeReview.developer_id, func.count(CodeReview.id))
+            .where(
+                CodeReview.developer_id.in_(ghost_ids),
+                CodeReview.repository.in_(repo_set),
+            )
+            .group_by(CodeReview.developer_id)
+        )
+        review_counts = {
+            str(dev_id): cnt
+            for dev_id, cnt in (await self.db.execute(review_counts_stmt)).all()
+        }
+
+        # 4) Build a name → developer index for the workspace's members so
+        # we can suggest matches. Two index keys per developer: their
+        # Developer.name and their GitHubConnection.github_username.
+        member_stmt = (
+            select(
+                Developer.id,
+                Developer.name,
+                Developer.avatar_url,
+                GitHubConnection.github_username,
+            )
+            .outerjoin(
+                GitHubConnection,
+                GitHubConnection.developer_id == Developer.id,
+            )
+            .join(
+                WorkspaceMember,
+                WorkspaceMember.developer_id == Developer.id,
+            )
+            .where(WorkspaceMember.workspace_id == workspace_id)
+        )
+        member_rows = (await self.db.execute(member_stmt)).all()
+        by_login: dict[str, dict[str, Any]] = {}
+        by_name: dict[str, dict[str, Any]] = {}
+        for row in member_rows:
+            entry = {
+                "developer_id": str(row.id),
+                "name": row.name,
+                "github_username": row.github_username,
+                "avatar_url": row.avatar_url,
+            }
+            if row.github_username:
+                by_login[row.github_username.lower()] = entry
+            if row.name:
+                by_name[row.name.lower()] = entry
+
+        # 5) Assemble output.
+        out: list[dict[str, Any]] = []
+        for g in ghost_rows:
+            ghost_id_str = str(g.developer_id)
+            display_name = ghost_names.get(ghost_id_str, "")
+            key = display_name.lower() if display_name else ""
+
+            suggestions: list[dict[str, Any]] = []
+            seen: set[str] = set()
+            for candidate, reason in (
+                (by_login.get(key), "github_username_match"),
+                (by_name.get(key), "developer_name_match"),
+            ):
+                if candidate and candidate["developer_id"] not in seen:
+                    suggestions.append({**candidate, "reason": reason})
+                    seen.add(candidate["developer_id"])
+
+            out.append(
+                {
+                    "ghost_id": ghost_id_str,
+                    "name": display_name,
+                    "commits": int(g.commits),
+                    "prs": pr_counts.get(ghost_id_str, 0),
+                    "reviews": review_counts.get(ghost_id_str, 0),
+                    "suggestions": suggestions,
+                }
+            )
+        return out
+
+    async def merge_ghost_by_id(
+        self,
+        ghost_developer_id: str,
+        target_developer_id: str,
+    ) -> dict[str, int]:
+        """Admin-driven merge: move all activity rows from a specific ghost
+        into a specific target developer, then delete the ghost.
+
+        Same safety check as `merge_ghost_into_developer` (ghost must have
+        no GitHubConnection of its own). Used by the workspace-admin UI
+        when the auto-merge couldn't find a match (e.g. github_username
+        casing drift or username change).
+        """
+        from sqlalchemy import update
+
+        from aexy.models.activity import CodeReview, Commit, PullRequest
+        from aexy.models.developer import GitHubConnection
+
+        if ghost_developer_id == target_developer_id:
+            return {"commits": 0, "prs": 0, "reviews": 0, "ghost_deleted": 0}
+
+        ghost = await self.db.get(Developer, ghost_developer_id)
+        target = await self.db.get(Developer, target_developer_id)
+        if ghost is None or target is None:
+            return {"commits": 0, "prs": 0, "reviews": 0, "ghost_deleted": 0}
+
+        # Safety: don't merge two "real" developers — only ghost → real.
+        if ghost.email is not None:
+            raise ValueError("Source row is not a ghost (has an email)")
+        has_conn = (
+            await self.db.execute(
+                select(GitHubConnection.id)
+                .where(GitHubConnection.developer_id == ghost.id)
+                .limit(1)
+            )
+        ).first() is not None
+        if has_conn:
+            raise ValueError("Source row is not a ghost (has a GitHub connection)")
+
+        commits_updated = (
+            await self.db.execute(
+                update(Commit)
+                .where(Commit.developer_id == ghost.id)
+                .values(developer_id=target.id)
+            )
+        ).rowcount or 0
+        prs_updated = (
+            await self.db.execute(
+                update(PullRequest)
+                .where(PullRequest.developer_id == ghost.id)
+                .values(developer_id=target.id)
+            )
+        ).rowcount or 0
+        reviews_updated = (
+            await self.db.execute(
+                update(CodeReview)
+                .where(CodeReview.developer_id == ghost.id)
+                .values(developer_id=target.id)
+            )
+        ).rowcount or 0
+
+        await self.db.delete(ghost)
+        await self.db.flush()
+
+        return {
+            "commits": commits_updated,
+            "prs": prs_updated,
+            "reviews": reviews_updated,
+            "ghost_deleted": 1,
+        }
+
+    async def preview_ghost_match(
+        self,
+        canonical_developer_id: str,
+        github_username: str,
+    ) -> dict[str, Any]:
+        """Read-only preview of what `merge_ghost_into_developer` would do.
+
+        Returns the matching ghost developer's id (if any) plus the count
+        of activity rows currently attached to it. Used to show users
+        "we found N commits we can claim for you" before they hit the
+        merge button.
+        """
+        from aexy.models.activity import CodeReview, Commit, PullRequest
+        from aexy.models.developer import GitHubConnection
+
+        # There can be multiple ghost rows for the same login (sync race or
+        # historical data). Aggregate counts across all of them so the
+        # preview reflects the full reclaimable scope.
+        ghost_stmt = (
+            select(Developer)
+            .where(
+                func.lower(Developer.name) == github_username.lower(),
+                Developer.email.is_(None),
+                Developer.id != canonical_developer_id,
+            )
+        )
+        ghosts = (await self.db.execute(ghost_stmt)).scalars().all()
+        if not ghosts:
+            return {
+                "ghost_id": None,
+                "commits": 0,
+                "prs": 0,
+                "reviews": 0,
+            }
+
+        # Filter to true ghosts: any row that has its own GitHubConnection is
+        # a real account that happens to share a name and must be left alone.
+        ghost_ids: list[str] = []
+        for g in ghosts:
+            has_conn = (
+                await self.db.execute(
+                    select(GitHubConnection.id)
+                    .where(GitHubConnection.developer_id == g.id)
+                    .limit(1)
+                )
+            ).first() is not None
+            if not has_conn:
+                ghost_ids.append(g.id)
+
+        if not ghost_ids:
+            return {
+                "ghost_id": None,
+                "commits": 0,
+                "prs": 0,
+                "reviews": 0,
+            }
+
+        commit_count = (
+            await self.db.execute(
+                select(func.count(Commit.id)).where(
+                    Commit.developer_id.in_(ghost_ids)
+                )
+            )
+        ).scalar_one()
+        pr_count = (
+            await self.db.execute(
+                select(func.count(PullRequest.id)).where(
+                    PullRequest.developer_id.in_(ghost_ids)
+                )
+            )
+        ).scalar_one()
+        review_count = (
+            await self.db.execute(
+                select(func.count(CodeReview.id)).where(
+                    CodeReview.developer_id.in_(ghost_ids)
+                )
+            )
+        ).scalar_one()
+
+        # UI only uses `ghost_id` as a "is there something to claim" flag,
+        # so returning one representative id is sufficient even when
+        # multiple ghosts exist.
+        return {
+            "ghost_id": str(ghost_ids[0]),
+            "commits": commit_count,
+            "prs": pr_count,
+            "reviews": review_count,
+        }
+
+    async def merge_ghost_into_developer(
+        self,
+        canonical_developer_id: str,
+        github_username: str,
+    ) -> dict[str, int]:
+        """Reassign all activity rows from a matching ghost developer
+        into the canonical developer, then delete the ghost.
+
+        A "ghost developer" is one we auto-created during sync to attribute
+        commits/PRs/reviews from a contributor we couldn't resolve to a real
+        Developer row. They're identified by:
+            * email IS NULL          (never logged in)
+            * name == github_username  (sync uses login as the name)
+            * no github_connection   (otherwise they're a real account)
+
+        Returns counts of rows reassigned. Idempotent — if no ghost exists,
+        returns zeros and does nothing.
+        """
+        from sqlalchemy import update
+
+        from aexy.models.activity import CodeReview, Commit, PullRequest
+        from aexy.models.developer import GitHubConnection
+
+        # Locate every ghost. Case-insensitive on name; sync races and
+        # historical data can produce duplicate ghost rows for the same
+        # login, so we iterate-and-merge all matches in a single pass —
+        # cleaning up duplicates in the process. (Pre-fix this query used
+        # scalar_one_or_none which would raise MultipleResultsFound and
+        # block both login and self-claim flows.)
+        ghost_stmt = (
+            select(Developer)
+            .where(
+                func.lower(Developer.name) == github_username.lower(),
+                Developer.email.is_(None),
+                Developer.id != canonical_developer_id,
+            )
+        )
+        ghosts = (await self.db.execute(ghost_stmt)).scalars().all()
+        if not ghosts:
+            return {"commits": 0, "prs": 0, "reviews": 0, "ghost_deleted": 0}
+
+        # Belt-and-suspenders: refuse to merge any "ghost" that has a
+        # GitHubConnection of its own (real account that shares a name).
+        # We filter the candidate set rather than skipping the whole
+        # operation, so a duplicate ghost alongside a real account still
+        # gets cleaned up.
+        true_ghosts: list[Developer] = []
+        for g in ghosts:
+            has_conn = (
+                await self.db.execute(
+                    select(GitHubConnection.id)
+                    .where(GitHubConnection.developer_id == g.id)
+                    .limit(1)
+                )
+            ).first() is not None
+            if not has_conn:
+                true_ghosts.append(g)
+
+        if not true_ghosts:
+            return {"commits": 0, "prs": 0, "reviews": 0, "ghost_deleted": 0}
+
+        ghost_id_list = [g.id for g in true_ghosts]
+        commits_updated = (
+            await self.db.execute(
+                update(Commit)
+                .where(Commit.developer_id.in_(ghost_id_list))
+                .values(developer_id=canonical_developer_id)
+            )
+        ).rowcount or 0
+        prs_updated = (
+            await self.db.execute(
+                update(PullRequest)
+                .where(PullRequest.developer_id.in_(ghost_id_list))
+                .values(developer_id=canonical_developer_id)
+            )
+        ).rowcount or 0
+        reviews_updated = (
+            await self.db.execute(
+                update(CodeReview)
+                .where(CodeReview.developer_id.in_(ghost_id_list))
+                .values(developer_id=canonical_developer_id)
+            )
+        ).rowcount or 0
+
+        # Delete every merged ghost row. Any FK rows we didn't explicitly
+        # reassign (workspace_members, etc.) are zero for true ghosts;
+        # ON DELETE CASCADE handles edge cases.
+        for g in true_ghosts:
+            await self.db.delete(g)
+        await self.db.flush()
+
+        return {
+            "commits": commits_updated,
+            "prs": prs_updated,
+            "reviews": reviews_updated,
+            "ghost_deleted": len(true_ghosts),
+        }
+
     async def get_or_create_by_github(
         self,
         github_id: int,
@@ -271,6 +698,9 @@ class DeveloperService:
                 if scopes:
                     developer.github_connection.scopes = scopes
                 await self.db.flush()
+            # Re-run ghost merge in case past syncs created ghosts under a
+            # case-variant of this login (the dedup is one-shot on login).
+            await self.merge_ghost_into_developer(developer.id, github_username)
             return developer
 
         # Try to find by email
@@ -289,6 +719,7 @@ class DeveloperService:
                 token_expires_at=token_expires_at,
             )
             await self.db.refresh(developer)
+            await self.merge_ghost_into_developer(developer.id, github_username)
             return developer
 
         # Create new developer
@@ -314,6 +745,7 @@ class DeveloperService:
         )
 
         await self.db.refresh(developer, ["github_connection"])
+        await self.merge_ghost_into_developer(developer.id, github_username)
         await self._dispatch_signup_handler(developer, "github")
         return developer
 

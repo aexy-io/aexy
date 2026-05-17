@@ -20,6 +20,11 @@ frontend/playwright-report/
 frontend/test-results/
 frontend/e2e/debug-screenshot*.png
 
+# Test coverage output (regenerated each test run)
+.coverage
+backend/.coverage
+htmlcov/
+
 # Local code-review notes
 REVIEW_*.md
 SEO_GTM_2_MONTH_PLAN.md

@@ -20,6 +20,8 @@ import { useWorkspace } from "@/hooks/useWorkspace";
 import { PremiumGate } from "@/components/PremiumGate";
 import { useTeams } from "@/hooks/useTeams";
 import { insightsApi } from "@/lib/api";
+import { AISettingsSection } from "@/components/code-insights/AISettingsSection";
+import { LLMUsageCard } from "@/components/code-insights";
 
 interface WorkingHoursConfig {
   start_hour: number;
@@ -498,6 +500,12 @@ export default function InsightsSettingsPage() {
             )}
           </div>
         </section>
+
+        {/* AI analysis — workspace-level mode + model tier toggle. */}
+        <AISettingsSection />
+
+        {/* LLM cost telemetry — tokens consumed by AI activities this workspace. */}
+        <LLMUsageCard />
 
         {/* Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4">

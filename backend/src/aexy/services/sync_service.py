@@ -16,6 +16,14 @@ from aexy.models.activity import CodeReview, Commit, PullRequest
 from aexy.models.developer import Developer, GitHubConnection, GitHubInstallation
 from aexy.models.repository import DeveloperRepository, Repository
 from aexy.services.github_service import GitHubAPIError, GitHubAuthError, GitHubNotFoundError, GitHubService
+from aexy.services.sync_enrichment import (
+    build_patch_sample,
+    classify_author,
+    classify_change,
+    is_merge_commit,
+    is_revert_commit,
+    size_bucket,
+)
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -184,7 +192,14 @@ class SyncService:
 
             async with GitHubService(access_token=connection.access_token) as gh:
                 commits_synced = await self._sync_commits_with_session(
-                    self.db, gh, owner, repo_name, developer_id, repository_id, repo_language
+                    self.db,
+                    gh,
+                    owner,
+                    repo_name,
+                    developer_id,
+                    repository_id,
+                    repo_language,
+                    sync_branches=repo.sync_branches,
                 )
 
                 if heartbeat_fn:
@@ -224,6 +239,24 @@ class SyncService:
                 logger.info(f"Profile sync complete for developer {developer_id}")
             except Exception as profile_error:
                 logger.warning(f"Profile sync failed: {profile_error}")
+
+            # Fan out AI analysis for newly synced commits/PRs/reviews. Failures
+            # here must not poison the sync — the worst case is the cursor
+            # doesn't advance and the next sync re-enqueues.
+            try:
+                from aexy.temporal.activities.sync import EnqueueAIAnalysisInput
+                from aexy.temporal.dispatch import dispatch
+                from aexy.temporal.task_queues import TaskQueue
+
+                await dispatch(
+                    "enqueue_ai_analysis",
+                    EnqueueAIAnalysisInput(repository_id=str(repository_id)),
+                    task_queue=TaskQueue.SYNC,
+                )
+            except Exception as enqueue_error:
+                logger.warning(
+                    f"Failed to enqueue AI analysis for {repo.full_name}: {enqueue_error}"
+                )
 
             return {
                 "commits_synced": commits_synced,
@@ -543,100 +576,138 @@ class SyncService:
         developer_id: str,
         repository_id: str,
         repo_language: str | None = None,
+        sync_branches: list[str] | None = None,
     ) -> int:
-        """Sync commits from repository (all contributors)."""
+        """Sync commits from repository (all contributors).
+
+        Walks every branch in `sync_branches` (or the auto-detected active
+        branch set if None). The default branch alone hides feature-branch
+        work; cross-branch dedup is handled by `Commit.sha`'s UNIQUE
+        constraint plus an in-memory `seen_shas` guard.
+        """
+        # Resolve which branches to walk. Three modes:
+        #   1) Explicit whitelist on the Repository row → use as-is
+        #   2) Auto-detect: any branch with a commit in the last 90 days
+        #   3) On error / empty: fall back to the GitHub default branch (None)
+        branches_to_sync: list[str | None]
+        if sync_branches:
+            branches_to_sync = list(sync_branches)
+        else:
+            try:
+                active = await gh.get_active_branches(owner, repo, since_days=90)
+                # `None` here means "let GitHub pick the default branch".
+                # We include it so we always cover the default even if it
+                # somehow wasn't reported active (e.g. dormant project).
+                branches_to_sync = [None, *active] if active else [None]
+                # Dedup while preserving order: list(dict.fromkeys(...))
+                branches_to_sync = list(dict.fromkeys(branches_to_sync))
+            except GitHubAPIError:
+                logger.warning(
+                    f"Failed to enumerate branches for {owner}/{repo}; "
+                    "falling back to default branch only"
+                )
+                branches_to_sync = [None]
+
         synced = 0
-        page = 1
         seen_shas: set[str] = set()
 
-        while True:
-            try:
-                commits = await gh.get_commits(
-                    owner, repo, per_page=100, page=page
-                )
-            except GitHubAPIError:
-                break
-
-            if not commits:
-                break
-
-            for commit_data in commits:
-                sha = commit_data["sha"]
-                if sha in seen_shas:
-                    continue
-                seen_shas.add(sha)
-
-                # Check if commit already exists (no_autoflush to prevent
-                # flushing pending inserts which can cause IntegrityError)
-                with db.no_autoflush:
-                    stmt = select(Commit).where(Commit.sha == sha)
-                    result = await db.execute(stmt)
-                    existing = result.scalar_one_or_none()
-
-                if not existing:
-                    # Resolve which developer this commit belongs to
-                    resolved_dev_id, github_login, author_email = (
-                        await self._resolve_developer_for_commit(db, commit_data, developer_id)
+        for branch in branches_to_sync:
+            page = 1
+            while True:
+                try:
+                    commits = await gh.get_commits(
+                        owner, repo, per_page=100, page=page, sha=branch
                     )
+                except GitHubAPIError:
+                    break
 
-                    # Get commit details for stats
-                    try:
-                        details = await gh.get_commit_details(owner, repo, commit_data["sha"])
-                        stats = details.get("stats", {})
-                        files = details.get("files", [])
-                    except GitHubAPIError:
-                        stats = {}
-                        files = []
+                if not commits:
+                    break
 
-                    # Extract file types from filenames
-                    file_types = set()
-                    detected_languages = set()
-                    if repo_language:
-                        detected_languages.add(repo_language)
+                for commit_data in commits:
+                    sha = commit_data["sha"]
+                    if sha in seen_shas:
+                        continue
+                    seen_shas.add(sha)
 
-                    for file in files:
-                        filename = file.get("filename", "")
-                        if "." in filename:
-                            ext = filename.rsplit(".", 1)[-1].lower()
-                            file_types.add(ext)
-                            # Map common extensions to languages
-                            ext_to_lang = {
-                                "py": "Python", "js": "JavaScript", "ts": "TypeScript",
-                                "tsx": "TypeScript", "jsx": "JavaScript", "java": "Java",
-                                "go": "Go", "rs": "Rust", "rb": "Ruby", "php": "PHP",
-                                "cs": "C#", "cpp": "C++", "c": "C", "swift": "Swift",
-                                "kt": "Kotlin", "scala": "Scala", "vue": "Vue",
-                            }
-                            if ext in ext_to_lang:
-                                detected_languages.add(ext_to_lang[ext])
+                    # Check if commit already exists (no_autoflush to prevent
+                    # flushing pending inserts which can cause IntegrityError)
+                    with db.no_autoflush:
+                        stmt = select(Commit).where(Commit.sha == sha)
+                        result = await db.execute(stmt)
+                        existing = result.scalar_one_or_none()
 
-                    commit = Commit(
-                        id=str(uuid4()),
-                        developer_id=resolved_dev_id,
-                        repository=f"{owner}/{repo}",
-                        sha=commit_data["sha"],
-                        message=commit_data["commit"]["message"][:500] if commit_data["commit"]["message"] else "",
-                        additions=stats.get("additions", 0),
-                        deletions=stats.get("deletions", 0),
-                        files_changed=len(files),
-                        languages=list(detected_languages) if detected_languages else None,
-                        file_types=list(file_types) if file_types else None,
-                        author_github_login=github_login,
-                        author_email=author_email,
-                        committed_at=datetime.fromisoformat(
-                            commit_data["commit"]["committer"]["date"].replace("Z", "+00:00")
-                        ),
-                    )
-                    db.add(commit)
-                    synced += 1
+                    if not existing:
+                        # Resolve which developer this commit belongs to
+                        resolved_dev_id, github_login, author_email = (
+                            await self._resolve_developer_for_commit(db, commit_data, developer_id)
+                        )
 
-            if len(commits) < 100:
-                break
-            page += 1
+                        # Get commit details for stats
+                        try:
+                            details = await gh.get_commit_details(owner, repo, commit_data["sha"])
+                            stats = details.get("stats", {})
+                            files = details.get("files", [])
+                        except GitHubAPIError:
+                            stats = {}
+                            files = []
 
-            # Batch commit every 100 records
-            if synced % 100 == 0:
-                await db.commit()
+                        # Extract file types from filenames
+                        file_types = set()
+                        detected_languages = set()
+                        if repo_language:
+                            detected_languages.add(repo_language)
+
+                        for file in files:
+                            filename = file.get("filename", "")
+                            if "." in filename:
+                                ext = filename.rsplit(".", 1)[-1].lower()
+                                file_types.add(ext)
+                                # Map common extensions to languages
+                                ext_to_lang = {
+                                    "py": "Python", "js": "JavaScript", "ts": "TypeScript",
+                                    "tsx": "TypeScript", "jsx": "JavaScript", "java": "Java",
+                                    "go": "Go", "rs": "Rust", "rb": "Ruby", "php": "PHP",
+                                    "cs": "C#", "cpp": "C++", "c": "C", "swift": "Swift",
+                                    "kt": "Kotlin", "scala": "Scala", "vue": "Vue",
+                                }
+                                if ext in ext_to_lang:
+                                    detected_languages.add(ext_to_lang[ext])
+
+                        full_message = commit_data["commit"]["message"] or ""
+
+                        commit = Commit(
+                            id=str(uuid4()),
+                            developer_id=resolved_dev_id,
+                            repository=f"{owner}/{repo}",
+                            sha=commit_data["sha"],
+                            message=full_message[:500],
+                            additions=stats.get("additions", 0),
+                            deletions=stats.get("deletions", 0),
+                            files_changed=len(files),
+                            languages=list(detected_languages) if detected_languages else None,
+                            file_types=list(file_types) if file_types else None,
+                            author_github_login=github_login,
+                            author_email=author_email,
+                            author_class=classify_author(github_login, author_email),
+                            change_class=classify_change(files),
+                            is_merge=is_merge_commit(commit_data),
+                            is_revert=is_revert_commit(full_message),
+                            patch_sample=build_patch_sample(files),
+                            committed_at=datetime.fromisoformat(
+                                commit_data["commit"]["committer"]["date"].replace("Z", "+00:00")
+                            ),
+                        )
+                        db.add(commit)
+                        synced += 1
+
+                if len(commits) < 100:
+                    break
+                page += 1
+
+                # Batch commit every 100 records
+                if synced % 100 == 0:
+                    await db.commit()
 
         await db.commit()
         return synced
@@ -681,6 +752,9 @@ class SyncService:
                         db, pr_data.get("user", {}), developer_id
                     )
 
+                    pr_additions = pr_data.get("additions", 0)
+                    pr_deletions = pr_data.get("deletions", 0)
+                    pr_files_changed = pr_data.get("changed_files", 0)
                     pr = PullRequest(
                         id=str(uuid4()),
                         developer_id=resolved_dev_id,
@@ -689,11 +763,12 @@ class SyncService:
                         number=pr_data["number"],
                         title=pr_data["title"][:500] if pr_data["title"] else "",
                         state=pr_state,
-                        additions=pr_data.get("additions", 0),
-                        deletions=pr_data.get("deletions", 0),
-                        files_changed=pr_data.get("changed_files", 0),
+                        additions=pr_additions,
+                        deletions=pr_deletions,
+                        files_changed=pr_files_changed,
                         commits_count=pr_data.get("commits", 0),
                         comments_count=pr_data.get("comments", 0) + pr_data.get("review_comments", 0),
+                        size_bucket=size_bucket(pr_additions, pr_deletions, pr_files_changed),
                         created_at_github=datetime.fromisoformat(
                             pr_data["created_at"].replace("Z", "+00:00")
                         ),

@@ -27,6 +27,10 @@ import {
   useDeveloperTrends,
 } from "@/hooks/useInsights";
 import {
+  ReviewDigestCard,
+  WeeklyDigestCard,
+} from "@/components/code-insights";
+import {
   InsightsPeriodType,
   insightsApi,
   HealthScoreResponse,
@@ -206,6 +210,21 @@ export default function DeveloperInsightsPage() {
         </div>
       ) : (
         <>
+          {/* AI weekly digest — independent of the InsightsSnapshot timeline above,
+              this is the LLM-narrative rollup from compose_developer_digest. */}
+          <WeeklyDigestCard
+            developerId={developerId}
+            workspaceId={currentWorkspaceId}
+          />
+
+          {/* AI review summary — drives the weekly/monthly/quarterly/semi/yearly
+              performance-review narrative. Lazy by period; auto-generated when
+              a review cycle activates. */}
+          <ReviewDigestCard
+            developerId={developerId}
+            workspaceId={currentWorkspaceId}
+          />
+
           {/* Velocity Section */}
           <Section title="Velocity" icon={Zap} color="text-green-400">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
