@@ -27,6 +27,7 @@ import {
   useDeveloperTrends,
 } from "@/hooks/useInsights";
 import {
+  ClaimCommitsBanner,
   ReviewDigestCard,
   WeeklyDigestCard,
 } from "@/components/code-insights";
@@ -60,11 +61,15 @@ const PERIOD_OPTIONS: { value: InsightsPeriodType; label: string }[] = [
 ];
 
 export default function DeveloperInsightsPage() {
-  const { isLoading: authLoading, isAuthenticated } = useAuth();
+  const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const { currentWorkspaceId } = useWorkspace();
   const params = useParams();
   const developerId = params.developerId as string;
   const [periodType, setPeriodType] = useState<InsightsPeriodType>("weekly");
+
+  // Only show the claim banner when the viewer is looking at their own
+  // profile — claiming is a self-only operation.
+  const viewingSelf = user?.id === developerId;
 
   const { insights, isLoading } = useDeveloperInsights(
     currentWorkspaceId,
@@ -154,6 +159,10 @@ export default function DeveloperInsightsPage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
+      {/* When the user is looking at their own profile and we detect
+          orphan commits attributed elsewhere, prompt them to claim. */}
+      {viewingSelf && <ClaimCommitsBanner />}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">

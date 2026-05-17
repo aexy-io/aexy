@@ -61,13 +61,23 @@ class DeepSeekProvider(LLMProvider):
 
         self._api_key = config.api_key
         base_url = config.base_url or self.DEEPSEEK_API_URL
+        # Per-phase timeouts. DeepSeek streams completions slowly under
+        # load — a flat 60s timeout was triggering `httpx.ReadTimeout`
+        # on long-tail generations. `read=180` keeps the connection
+        # alive long enough for ~120s completions. `connect=10` fails
+        # fast on a dead provider so Temporal can retry quickly.
         self._client = httpx.AsyncClient(
             base_url=base_url,
             headers={
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {self._api_key}",
             },
-            timeout=config.timeout,
+            timeout=httpx.Timeout(
+                connect=10.0,
+                read=max(180.0, float(config.timeout)),
+                write=30.0,
+                pool=10.0,
+            ),
         )
 
     @property

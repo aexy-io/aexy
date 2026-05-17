@@ -165,7 +165,8 @@ async def analyze_commit(input: AnalyzeCommitInput) -> dict[str, Any]:
             return {"commit_id": input.commit_id, "status": "cache_hit"}
 
         analyzer = CodeAnalyzer(llm_gateway=gateway)
-        result = await analyzer.analyze_commit_message(
+        result = await _call_llm_with_rate_limit_wait(
+            analyzer.analyze_commit_message,
             message=commit.message or "",
             files_changed=commit.files_changed or 0,
             additions=commit.additions or 0,
@@ -288,7 +289,8 @@ async def analyze_pr(input: AnalyzePRInput) -> dict[str, Any]:
             return {"pr_id": input.pr_id, "status": "cache_hit"}
 
         analyzer = CodeAnalyzer(llm_gateway=gateway)
-        result = await analyzer.analyze_pr_description(
+        result = await _call_llm_with_rate_limit_wait(
+            analyzer.analyze_pr_description,
             title=pr.title or "",
             description=pr.description or "",
             files_changed=pr.files_changed or 0,
@@ -327,6 +329,39 @@ async def analyze_pr(input: AnalyzePRInput) -> dict[str, Any]:
             "status": "analyzed",
             "token_usage": token_usage,
         }
+
+
+async def _call_llm_with_rate_limit_wait(callable_, *args, **kwargs):
+    """Call an LLM-bound function, waiting in-place when the rate limiter trips.
+
+    The LLM_RETRY policy on these activities uses exponential backoff
+    (30s → 60s → 120s → …), which burns retries when a rate-limit error
+    fires concurrently across many activities — every retry slams into
+    the same sliding window. This helper instead sleeps for the rate
+    limiter's reported wait window, then retries inline. Activity
+    timeouts are 10 minutes; a 60–120s wait is comfortably inside that.
+    """
+    import asyncio as _asyncio
+
+    from aexy.llm.base import LLMRateLimitError
+
+    max_inline_waits = 4
+    waited = 0
+    while True:
+        try:
+            return await callable_(*args, **kwargs)
+        except LLMRateLimitError as e:
+            wait = max(1.0, float(getattr(e, "wait_seconds", 0) or 5))
+            wait = min(wait, 90.0)  # cap inline sleep at 90s
+            if waited >= max_inline_waits:
+                # Give up and let Temporal handle it.
+                raise
+            logger.info(
+                f"LLM rate-limited; sleeping {wait:.1f}s before retry "
+                f"(inline attempt {waited + 1}/{max_inline_waits})"
+            )
+            await _asyncio.sleep(wait)
+            waited += 1
 
 
 async def _dispatch_alignment_for_pr(db, pr_id: str, trigger: str) -> int:
@@ -431,7 +466,8 @@ async def analyze_review(input: AnalyzeReviewInput) -> dict[str, Any]:
             return {"review_id": input.review_id, "status": "cache_hit"}
 
         analyzer = CodeAnalyzer(llm_gateway=gateway)
-        result = await analyzer.analyze_review_comment(
+        result = await _call_llm_with_rate_limit_wait(
+            analyzer.analyze_review_comment,
             comment=review.body or "",
             state=review.state or "commented",
         )

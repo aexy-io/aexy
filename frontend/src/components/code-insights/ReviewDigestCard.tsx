@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ClipboardCheck, RefreshCw } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -13,6 +13,8 @@ import type {
   DeveloperReviewPayload,
   ReviewPeriodType,
 } from "@/lib/code-insights-api";
+
+import { CardSkeleton } from "./CardSkeleton";
 
 interface Props {
   developerId: string | null;
@@ -80,10 +82,36 @@ export function ReviewDigestCard({
   const payload = snapshot?.payload as DeveloperReviewPayload | undefined;
 
   const generate = useGenerateReviewDigest();
-  const isGenerating = generate.isPending;
+  const [polling, setPolling] = useState(false);
+  // Render the spinner during both the initial dispatch AND the
+  // background poll waiting for the LLM to land its snapshot.
+  const isGenerating = generate.isPending || polling;
+
+  // After Generate fires, poll the snapshots query every 5s until either
+  // the period's snapshot appears or we hit a ~2-minute timeout. The
+  // single-refetch-at-1.5s pattern this replaces left users staring at
+  // "No review summary generated yet" for the full 30-60s LLM call.
+  const pollAttemptsRef = useRef(0);
+  useEffect(() => {
+    if (!polling) return;
+    if (snapshot) {
+      setPolling(false);
+      return;
+    }
+    if (pollAttemptsRef.current >= 24) {
+      setPolling(false);
+      return;
+    }
+    const id = setTimeout(() => {
+      pollAttemptsRef.current += 1;
+      refetch();
+    }, 5000);
+    return () => clearTimeout(id);
+  }, [polling, snapshot, refetch, data]);
 
   const handleGenerate = () => {
     if (!developerId || !workspaceId) return;
+    pollAttemptsRef.current = 0;
     generate.mutate(
       {
         scopeType: "developer",
@@ -91,7 +119,14 @@ export function ReviewDigestCard({
         workspaceId,
         periodType: period,
       },
-      { onSuccess: () => setTimeout(() => refetch(), 1500) },
+      {
+        onSuccess: () => {
+          setPolling(true);
+          // Kick off an immediate refetch in case the activity completed
+          // before the dispatch even returned (rare but possible on cache).
+          refetch();
+        },
+      },
     );
   };
 
@@ -137,9 +172,7 @@ export function ReviewDigestCard({
           ))}
         </div>
 
-        {isLoading && (
-          <div className="text-sm text-muted-foreground">…</div>
-        )}
+        {isLoading && <CardSkeleton bulletLines={4} />}
         {error && (
           <div className="text-sm text-destructive">
             {(error as Error).message}

@@ -486,15 +486,28 @@ async def run_worker(queues: list[str] | None = None) -> None:
         restrictions=SandboxRestrictions.default.with_passthrough_modules("aexy"),
     )
 
+    # Per-queue concurrency caps. The analysis queue runs LLM-bound
+    # activities (analyze_pr / compose_*) that share a global rate limit
+    # against the LLM provider. Without a cap, ~200 dispatches fan out
+    # from `enqueue_ai_analysis` and stampede the same 60-req/min window,
+    # burning Temporal retries. A cap of 5 concurrent LLM activities
+    # naturally serializes them under the rate limit.
+    _max_concurrent_per_queue: dict[str, int] = {
+        "analysis": 5,
+    }
+
     workers = []
     for queue in target_queues:
-        worker = Worker(
-            client,
-            task_queue=queue,
-            workflows=workflows,
-            activities=activities,
-            workflow_runner=sandbox_runner,
-        )
+        kwargs: dict = {
+            "client": client,
+            "task_queue": queue,
+            "workflows": workflows,
+            "activities": activities,
+            "workflow_runner": sandbox_runner,
+        }
+        if queue in _max_concurrent_per_queue:
+            kwargs["max_concurrent_activities"] = _max_concurrent_per_queue[queue]
+        worker = Worker(**kwargs)
         workers.append(worker)
 
     if len(workers) == 1:

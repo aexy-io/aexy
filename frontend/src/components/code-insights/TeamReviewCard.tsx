@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Users, RefreshCw } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -13,6 +13,8 @@ import type {
   ReviewPeriodType,
   TeamReviewPayload,
 } from "@/lib/code-insights-api";
+
+import { CardSkeleton } from "./CardSkeleton";
 
 interface Props {
   /** Either a team id (scopeType=team) or a workspace id (scopeType=workspace). */
@@ -72,10 +74,32 @@ export function TeamReviewCard({
   const payload = snapshot?.payload as TeamReviewPayload | undefined;
 
   const generate = useGenerateReviewDigest();
-  const isGenerating = generate.isPending;
+  const [polling, setPolling] = useState(false);
+  const isGenerating = generate.isPending || polling;
+
+  // Poll for the new snapshot every 5s after Generate, up to ~2min.
+  // See `ReviewDigestCard` for the rationale.
+  const pollAttemptsRef = useRef(0);
+  useEffect(() => {
+    if (!polling) return;
+    if (snapshot) {
+      setPolling(false);
+      return;
+    }
+    if (pollAttemptsRef.current >= 24) {
+      setPolling(false);
+      return;
+    }
+    const id = setTimeout(() => {
+      pollAttemptsRef.current += 1;
+      refetch();
+    }, 5000);
+    return () => clearTimeout(id);
+  }, [polling, snapshot, refetch, data]);
 
   const handleGenerate = () => {
     if (!scopeId || !workspaceId) return;
+    pollAttemptsRef.current = 0;
     generate.mutate(
       {
         scopeType,
@@ -83,7 +107,12 @@ export function TeamReviewCard({
         workspaceId,
         periodType: period,
       },
-      { onSuccess: () => setTimeout(() => refetch(), 1500) },
+      {
+        onSuccess: () => {
+          setPolling(true);
+          refetch();
+        },
+      },
     );
   };
 
@@ -122,9 +151,7 @@ export function TeamReviewCard({
           ))}
         </div>
 
-        {isLoading && (
-          <div className="text-sm text-muted-foreground">…</div>
-        )}
+        {isLoading && <CardSkeleton bulletLines={4} />}
         {error && (
           <div className="text-sm text-destructive">
             {(error as Error).message}

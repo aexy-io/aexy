@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.75] - 2026-05-17
+
+This release tightens the AI insights experience after the initial
+code-insights rollout, with better contributor-claim flows, more resilient
+LLM execution, and clearer loading states.
+
+### Added
+
+- Added an auto-detecting claim banner on insights pages so developers can
+  reclaim orphaned GitHub commit, PR, and review activity without leaving
+  the context where missing activity is visible.
+- Added shared code-insight card skeletons to keep digest and repository
+  health panels stable while AI snapshots load.
+- Added identity-page success messaging and richer claim metrics for
+  commits, PRs, and reviews.
+
+### Changed
+
+- Expanded ghost contributor matching to include GitHub no-reply email
+  attribution, not only email-null contributor rows.
+- Wrapped commit, PR, and review AI analysis calls with inline
+  rate-limit waits so Temporal activities are less likely to burn retries
+  during LLM concurrency spikes.
+- Increased DeepSeek read timeouts for long-tail completions while keeping
+  connection failures fast.
+- Refined AI digest cards and insights pages with improved empty/loading
+  states and contributor-claim entry points.
+
 ## [0.7.74] - 2026-05-17
 
 AI code insights now run across GitHub commits, pull requests, reviews,

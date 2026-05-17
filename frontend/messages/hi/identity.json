@@ -16,6 +16,17 @@
       "reviews": "{count, plural, one {# review} other {# reviews}}"
     },
     "explainer": "अब हर login पर syncs auto-merge हो जाते हैं। यह button उन पुराने commits के लिए है जो D2 ship होने से पहले sync हुए थे या जब आप अपना GitHub username बदलें।",
+    "banner": {
+      "title": "@{username} के नाम पर {count, plural, one {# orphaned commit} other {# orphaned commits}} मिले",
+      "subtitle": "Claim करें ताकि वे आपके insights और leaderboard पर दिखें।",
+      "claim": "Claim करें",
+      "dismiss": "अभी नहीं",
+      "settings": "Settings में manage करें"
+    },
+    "successHeader": "सफलतापूर्वक reclaim",
+    "successDetail": "{commits, plural, one {# commit} other {# commits}}, {prs, plural, one {# pull request} other {# pull requests}}, {reviews, plural, one {# review} other {# reviews}} आपके account में move हो गए।",
+    "successCta": "अपने insights देखें",
+    "helpLink": "यह क्यों दिख रहा है?",
     "admin": {
       "title": "Workspace ghost developers",
       "intro": "Placeholder developer से जुड़े commits जो इस workspace के repos में हैं। उनके काम को सही member से जोड़ें।",

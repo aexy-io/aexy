@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { UpgradeBanner } from "@/components/UpgradeBanner";
+import { ClaimCommitsBanner } from "@/components/code-insights";
 import { DataTable, DataTableColumn } from "@/components/ui/data-table";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -244,6 +245,8 @@ export default function InsightsPage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
+      <ClaimCommitsBanner />
+
       {/* Header */}
       <div className="flex flex-col justify-between gap-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

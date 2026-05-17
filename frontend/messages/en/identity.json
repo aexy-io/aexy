@@ -16,6 +16,17 @@
       "reviews": "{count, plural, one {# review} other {# reviews}}"
     },
     "explainer": "Future syncs auto-merge on every login. This button is for older work synced before D2 shipped or after you change your GitHub username.",
+    "banner": {
+      "title": "We found {count, plural, one {# orphaned commit} other {# orphaned commits}} attributed to @{username}",
+      "subtitle": "Claim them to merge into your account so they appear in your insights and on leaderboards.",
+      "claim": "Claim now",
+      "dismiss": "Not now",
+      "settings": "Manage in settings"
+    },
+    "successHeader": "Reclaimed successfully",
+    "successDetail": "{commits, plural, one {# commit} other {# commits}}, {prs, plural, one {# pull request} other {# pull requests}}, {reviews, plural, one {# review} other {# reviews}} moved to your account.",
+    "successCta": "View your insights",
+    "helpLink": "Why am I seeing this?",
     "admin": {
       "title": "Workspace ghost developers",
       "intro": "Commits attributed to placeholder developers that touch your workspace's repos. Pick a target member to reattribute their work.",

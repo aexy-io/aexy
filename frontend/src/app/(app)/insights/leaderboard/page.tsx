@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useLeaderboard } from "@/hooks/useInsights";
 import { InsightsPeriodType } from "@/lib/api";
+import { ClaimCommitsBanner } from "@/components/code-insights";
 
 const PERIOD_OPTIONS: { value: InsightsPeriodType; label: string }[] = [
   { value: "weekly", label: "Weekly" },
@@ -59,6 +60,10 @@ export default function LeaderboardPage() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
+      {/* Surface the action where the symptom shows: a user seeing their own
+          row at 0 has no other signal that orphaned commits exist. */}
+      <ClaimCommitsBanner />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">

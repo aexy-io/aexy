@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useInsightsSnapshots } from "@/hooks/useCodeInsights";
 import type { WeeklyDigestPayload } from "@/lib/code-insights-api";
 
+import { CardSkeleton } from "./CardSkeleton";
+
 interface Props {
   /** ID of the developer (or workspace, if scopeType is "workspace") this digest is for. */
   developerId: string | null;
@@ -64,9 +66,7 @@ export function WeeklyDigestCard({ developerId, workspaceId }: Props) {
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-0 space-y-4">
-        {isLoading && (
-          <div className="text-sm text-muted-foreground">…</div>
-        )}
+        {isLoading && <CardSkeleton />}
         {error && (
           <div className="text-sm text-destructive">
             {(error as Error).message}

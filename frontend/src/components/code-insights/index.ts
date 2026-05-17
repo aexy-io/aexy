@@ -13,3 +13,4 @@ export { TaskAlignmentBadge } from "./TaskAlignmentBadge";
 export { ReviewDigestCard } from "./ReviewDigestCard";
 export { TeamReviewCard } from "./TeamReviewCard";
 export { LLMUsageCard } from "./LLMUsageCard";
+export { ClaimCommitsBanner } from "./ClaimCommitsBanner";

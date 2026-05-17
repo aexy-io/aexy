@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -495,18 +495,30 @@ class DeveloperService:
         "we found N commits we can claim for you" before they hit the
         merge button.
         """
+        from sqlalchemy import or_
+
         from aexy.models.activity import CodeReview, Commit, PullRequest
         from aexy.models.developer import GitHubConnection
 
-        # There can be multiple ghost rows for the same login (sync race or
-        # historical data). Aggregate counts across all of them so the
-        # preview reflects the full reclaimable scope.
+        # Same widened lookup as `merge_ghost_into_developer` — catches
+        # both email-NULL ghosts (PR-resolver) and no-reply-email
+        # pseudo-ghosts (commit-resolver). Aggregate counts across all
+        # of them so the preview reflects the full reclaimable scope.
+        lower_username = github_username.lower()
+        noreply_legacy = f"{lower_username}@users.noreply.github.com"
+        noreply_modern = f"%+{lower_username}@users.noreply.github.com"
         ghost_stmt = (
             select(Developer)
             .where(
-                func.lower(Developer.name) == github_username.lower(),
-                Developer.email.is_(None),
                 Developer.id != canonical_developer_id,
+                or_(
+                    and_(
+                        func.lower(Developer.name) == lower_username,
+                        Developer.email.is_(None),
+                    ),
+                    func.lower(Developer.email) == noreply_legacy,
+                    func.lower(Developer.email).like(noreply_modern),
+                ),
             )
         )
         ghosts = (await self.db.execute(ghost_stmt)).scalars().all()
@@ -592,21 +604,40 @@ class DeveloperService:
         """
         from sqlalchemy import update
 
+        from sqlalchemy import or_
+
         from aexy.models.activity import CodeReview, Commit, PullRequest
         from aexy.models.developer import GitHubConnection
 
-        # Locate every ghost. Case-insensitive on name; sync races and
-        # historical data can produce duplicate ghost rows for the same
-        # login, so we iterate-and-merge all matches in a single pass —
-        # cleaning up duplicates in the process. (Pre-fix this query used
-        # scalar_one_or_none which would raise MultipleResultsFound and
-        # block both login and self-claim flows.)
+        # Find every orphan attribution row for this login. Two flavors:
+        #   1. Email-NULL ghost (created by `_resolve_developer_for_pr`)
+        #      — name == github_username, no email
+        #   2. Commit-resolver "pseudo-ghost" (created by step 3 of
+        #      `_resolve_developer_for_commit`) — has the GitHub no-reply
+        #      email set, name is the git-config commit name, no
+        #      GitHubConnection. Matched by email pattern only.
+        #
+        # GitHub no-reply emails come in two formats:
+        #     {username}@users.noreply.github.com               (legacy)
+        #     {numeric_id}+{username}@users.noreply.github.com  (modern)
+        # We match both with ILIKE.
+        lower_username = github_username.lower()
+        noreply_legacy = f"{lower_username}@users.noreply.github.com"
+        noreply_modern = f"%+{lower_username}@users.noreply.github.com"
         ghost_stmt = (
             select(Developer)
             .where(
-                func.lower(Developer.name) == github_username.lower(),
-                Developer.email.is_(None),
                 Developer.id != canonical_developer_id,
+                or_(
+                    # email-NULL ghost (PR-resolver path)
+                    and_(
+                        func.lower(Developer.name) == lower_username,
+                        Developer.email.is_(None),
+                    ),
+                    # no-reply-email pseudo-ghost (commit-resolver path)
+                    func.lower(Developer.email) == noreply_legacy,
+                    func.lower(Developer.email).like(noreply_modern),
+                ),
             )
         )
         ghosts = (await self.db.execute(ghost_stmt)).scalars().all()

@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useInsightsSnapshots } from "@/hooks/useCodeInsights";
 import type { RepoHealthPayload } from "@/lib/code-insights-api";
 
+import { CardSkeleton } from "./CardSkeleton";
+
 interface Props {
   repositoryId: string | null;
   workspaceId: string | null;
@@ -61,9 +63,7 @@ export function RepoHealthCard({ repositoryId, workspaceId }: Props) {
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-0 space-y-4">
-        {isLoading && (
-          <div className="text-sm text-muted-foreground">…</div>
-        )}
+        {isLoading && <CardSkeleton />}
         {error && (
           <div className="text-sm text-destructive">
             {(error as Error).message}
