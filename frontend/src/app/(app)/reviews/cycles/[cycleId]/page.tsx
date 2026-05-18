@@ -11,6 +11,7 @@ import {
   Users,
   Clock,
   CheckCircle,
+  ClipboardCheck,
   UserCheck,
   MessageSquare,
   Settings,
@@ -21,7 +22,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useReviewCycle } from "@/hooks/useReviews";
+import { useMyReviews, useReviewCycle } from "@/hooks/useReviews";
 import { ReviewCycleStatus, reviewsApi } from "@/lib/api";
 import { REVIEW_CYCLE_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
@@ -63,8 +64,14 @@ const cycleTypeLabels: Record<string, string> = {
 export default function CycleDetailPage() {
   const params = useParams();
   const cycleId = params.cycleId as string;
-  const { isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { cycle, isLoading, error, refetch } = useReviewCycle(cycleId);
+  // Resolve the visitor's own IndividualReview row in this cycle so we
+  // can surface a direct deep-link to their /my-reviews/[reviewId]
+  // surface. Without this an enrolled developer landing on the cycle
+  // page sees admin controls and no obvious path to their own review.
+  const { reviews: myReviews } = useMyReviews(user?.id);
+  const myReviewInCycle = myReviews.find((r) => r.review_cycle_id === cycleId);
 
   const [isActivating, setIsActivating] = useState(false);
   const [isAdvancing, setIsAdvancing] = useState(false);
@@ -195,7 +202,19 @@ export default function CycleDetailPage() {
                 {cycleTypeLabels[cycle.cycle_type] || cycle.cycle_type}
               </span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Surface the visitor's own review first — enrolled
+                  developers usually want to act on their review, not
+                  see the cycle's admin controls. */}
+              {myReviewInCycle && (
+                <Link
+                  href={`/reviews/my-reviews/${myReviewInCycle.id}`}
+                  className="px-4 py-2 text-sm bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition flex items-center gap-2"
+                >
+                  <ClipboardCheck className="h-4 w-4" />
+                  Open your review
+                </Link>
+              )}
               {cycle.status === "draft" && (
                 <button
                   onClick={() => setShowStartConfirm(true)}

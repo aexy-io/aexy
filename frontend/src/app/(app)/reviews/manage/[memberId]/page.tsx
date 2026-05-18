@@ -41,7 +41,7 @@ import { reviewsApi, IndividualReviewDetail, WorkGoal, GoalSuggestion } from "@/
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { ReviewDigestCard } from "@/components/code-insights";
 import { GOAL_TYPE_COLORS, GOAL_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
-import { AssignPeerReviewersModal } from "./AssignPeerReviewersModal";
+import { InvitePeerReviewersModal } from "@/components/reviews/InvitePeerReviewersModal";
 
 // Extra statuses specific to the manage view (at_risk, pending not in centralized GOAL_STATUS_COLORS)
 const extraGoalStatusColors: Record<string, { bg: string; text: string }> = {
@@ -857,15 +857,16 @@ export default function MemberDetailPage() {
         )}
 
         {review && user?.id && (
-          <AssignPeerReviewersModal
+          <InvitePeerReviewersModal
             open={showInviteReviewers}
             onClose={() => setShowInviteReviewers(false)}
             reviewId={review.id}
-            managerId={user.id}
+            callerDeveloperId={user.id}
             workspaceId={currentWorkspace?.id ?? null}
             revieweeDeveloperId={review.developer_id}
             minReviewers={reviewCycle?.settings?.min_peer_reviewers}
             maxReviewers={reviewCycle?.settings?.max_peer_reviewers}
+            mode="manager_assign"
             onAssigned={() => {
               // Refresh the review so the peer-review counter updates
               // immediately. The modal's own existing-invites list

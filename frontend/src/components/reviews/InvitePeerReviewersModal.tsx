@@ -7,13 +7,20 @@ import { CheckCircle, Loader2, Search, UserCheck, X } from "lucide-react";
 import { ReviewRequest, reviewsApi } from "@/lib/api";
 import { useWorkspaceMembers } from "@/hooks/useWorkspace";
 
+// Two callers fan into the same picker: a manager assigning reviewers
+// for a team member (`manager_assign` — fires `assignPeerReviewers`,
+// stamps `request_source: "manager"`), and a reviewee nominating their
+// own peers (`self_nominate` — loops `requestPeerReview`, stamps
+// `request_source: "employee"`). UI is identical aside from copy.
+export type InviteMode = "manager_assign" | "self_nominate";
+
 interface Props {
   open: boolean;
   onClose: () => void;
   /** IndividualReview.id — the review being assigned reviewers for. */
   reviewId: string;
-  /** Current user / the manager assigning the reviewers. */
-  managerId: string;
+  /** Caller's developer id — manager (manager_assign) or reviewee (self_nominate). */
+  callerDeveloperId: string;
   /** Workspace whose member roster we'll surface. */
   workspaceId: string | null;
   /** The developer being reviewed — exclude from the picker (can't peer-review yourself). */
@@ -21,6 +28,7 @@ interface Props {
   /** From the cycle settings, when known. Soft-enforced. */
   minReviewers?: number;
   maxReviewers?: number;
+  mode?: InviteMode;
   onAssigned?: () => void;
 }
 
@@ -31,22 +39,28 @@ const REQUEST_STATUS_LABELS: Record<string, string> = {
   declined: "Declined",
 };
 
+const SOURCE_LABELS: Record<string, string> = {
+  employee: "self-nominated",
+  manager: "manager-assigned",
+};
+
 // A reviewer who already has an active or completed request shouldn't be
-// re-invited. Declined requests are reopened to selection so a manager
+// re-invited. Declined requests are reopened to selection so the caller
 // can swap-and-retry without manual cleanup.
 function isActiveRequest(status: string): boolean {
   return status === "pending" || status === "accepted" || status === "completed";
 }
 
-export function AssignPeerReviewersModal({
+export function InvitePeerReviewersModal({
   open,
   onClose,
   reviewId,
-  managerId,
+  callerDeveloperId,
   workspaceId,
   revieweeDeveloperId,
   minReviewers = 1,
   maxReviewers = 5,
+  mode = "manager_assign",
   onAssigned,
 }: Props) {
   const { members, isLoading } = useWorkspaceMembers(workspaceId);
@@ -56,7 +70,7 @@ export function AssignPeerReviewersModal({
   const [submitting, setSubmitting] = useState(false);
 
   // Existing peer requests for this review — used to disable + label
-  // reviewers who've already been invited so the manager doesn't create
+  // reviewers who've already been invited so the caller doesn't create
   // duplicate ReviewRequest rows for the same reviewer.
   const [existing, setExisting] = useState<ReviewRequest[]>([]);
   const [loadingExisting, setLoadingExisting] = useState(false);
@@ -159,13 +173,40 @@ export function AssignPeerReviewersModal({
     }
     setSubmitting(true);
     try {
-      await reviewsApi.assignPeerReviewers(reviewId, managerId, {
-        reviewer_ids: Array.from(selected),
-        message: message.trim() || undefined,
-      });
-      toast.success(
-        `Invited ${selected.size} reviewer${selected.size === 1 ? "" : "s"}`
-      );
+      const ids = Array.from(selected);
+      const trimmedMessage = message.trim() || undefined;
+      if (mode === "self_nominate") {
+        // requestPeerReview is one-at-a-time on the backend; loop here.
+        // Settle individually so a partial failure still reports what
+        // succeeded.
+        const results = await Promise.allSettled(
+          ids.map((reviewerId) =>
+            reviewsApi.requestPeerReview(reviewId, callerDeveloperId, {
+              reviewer_id: reviewerId,
+              message: trimmedMessage,
+            }),
+          ),
+        );
+        const sent = results.filter((r) => r.status === "fulfilled").length;
+        const failed = results.length - sent;
+        if (sent > 0) {
+          toast.success(
+            `Invited ${sent} reviewer${sent === 1 ? "" : "s"}${
+              failed > 0 ? ` — ${failed} failed` : ""
+            }`,
+          );
+        }
+        if (sent === 0) {
+          toast.error("Failed to send invites");
+          return;
+        }
+      } else {
+        await reviewsApi.assignPeerReviewers(reviewId, callerDeveloperId, {
+          reviewer_ids: ids,
+          message: trimmedMessage,
+        });
+        toast.success(`Invited ${ids.length} reviewer${ids.length === 1 ? "" : "s"}`);
+      }
       setSelected(new Set());
       setMessage("");
       setSearch("");
@@ -177,6 +218,24 @@ export function AssignPeerReviewersModal({
       setSubmitting(false);
     }
   };
+
+  const headerCopy =
+    mode === "self_nominate"
+      ? {
+          title: "Nominate peer reviewers",
+          subtitle:
+            "Pick teammates you'd like to review you this cycle. Each gets a notification and can accept or decline.",
+          submit: "Send request",
+          messagePlaceholder:
+            "e.g. We collaborated on the auth migration this quarter — would love your perspective.",
+        }
+      : {
+          title: "Invite peer reviewers",
+          subtitle: `Pick ${minReviewers}–${maxReviewers} teammates. Each gets a notification and can accept or decline.`,
+          submit: "Invite",
+          messagePlaceholder:
+            "e.g. Focus on cross-team collaboration this cycle.",
+        };
 
   return (
     <div
@@ -190,11 +249,10 @@ export function AssignPeerReviewersModal({
         <header className="px-5 py-4 border-b border-border flex items-center justify-between">
           <div>
             <h2 className="text-base font-semibold text-foreground">
-              Invite peer reviewers
+              {headerCopy.title}
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Pick {minReviewers}–{maxReviewers} teammates. Each gets a
-              notification and can accept or decline.
+              {headerCopy.subtitle}
             </p>
           </div>
           <button
@@ -272,18 +330,25 @@ export function AssignPeerReviewersModal({
                       </p>
                     </div>
                     {existingReq && (
-                      <span
-                        className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full ${
-                          isAlreadyInvited
-                            ? "bg-muted text-muted-foreground"
-                            : "bg-red-500/10 text-red-400"
-                        }`}
-                        title={`Existing request: ${existingReq.status}`}
-                      >
-                        <CheckCircle className="h-3 w-3" />
-                        {REQUEST_STATUS_LABELS[existingReq.status] ||
-                          existingReq.status}
-                      </span>
+                      <div className="flex flex-col items-end gap-0.5">
+                        <span
+                          className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full ${
+                            isAlreadyInvited
+                              ? "bg-muted text-muted-foreground"
+                              : "bg-red-500/10 text-red-400"
+                          }`}
+                          title={`Existing request: ${existingReq.status}`}
+                        >
+                          <CheckCircle className="h-3 w-3" />
+                          {REQUEST_STATUS_LABELS[existingReq.status] ||
+                            existingReq.status}
+                        </span>
+                        {SOURCE_LABELS[existingReq.request_source] && (
+                          <span className="text-[10px] text-muted-foreground">
+                            {SOURCE_LABELS[existingReq.request_source]}
+                          </span>
+                        )}
+                      </div>
                     )}
                   </li>
                 );
@@ -301,7 +366,7 @@ export function AssignPeerReviewersModal({
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             rows={2}
-            placeholder="e.g. Focus on cross-team collaboration this cycle."
+            placeholder={headerCopy.messagePlaceholder}
             className="w-full bg-background border border-border rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
           />
         </div>
@@ -325,7 +390,7 @@ export function AssignPeerReviewersModal({
             ) : (
               <UserCheck className="h-3.5 w-3.5" />
             )}
-            Invite {selected.size > 0 ? selected.size : ""} reviewer
+            {headerCopy.submit} {selected.size > 0 ? selected.size : ""} reviewer
             {selected.size === 1 ? "" : "s"}
           </button>
         </footer>

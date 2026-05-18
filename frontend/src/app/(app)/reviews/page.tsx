@@ -113,10 +113,8 @@ export default function ReviewsPage() {
 
   // Fetch real data using hooks
   const developerId = user?.id;
-  const { stats, goals, peerRequests, isLoading: statsLoading } = useReviewStats(
-    developerId,
-    currentWorkspaceId
-  );
+  const { stats, goals, reviews: myReviews, peerRequests, isLoading: statsLoading } =
+    useReviewStats(developerId, currentWorkspaceId);
   const { cycles, isLoading: cyclesLoading } = useReviewCycles(
     currentWorkspaceId,
     "active"
@@ -147,6 +145,16 @@ export default function ReviewsPage() {
   const activeGoals = goals.filter(
     (g) => g.status === "active" || g.status === "in_progress"
   );
+  // Resolve the user's own IndividualReview row for the active cycle so
+  // the banner can deep-link straight into their self-review / peer
+  // nomination view instead of the admin-flavored cycle detail page.
+  const myActiveReview = activeCycle
+    ? myReviews.find((r) => r.review_cycle_id === activeCycle.id)
+    : undefined;
+  const selfNotStarted =
+    myActiveReview && myActiveReview.status === "pending";
+  const managerCompleted =
+    myActiveReview && myActiveReview.status === "completed";
 
   if (authLoading || currentWorkspaceLoading) {
     return (
@@ -282,6 +290,44 @@ export default function ReviewsPage() {
             <p className="text-xs text-muted-foreground mt-1">{t("stats.autoLinkedPRs")}</p>
           </div>
         </div>
+
+        {/* Active-cycle CTA — only renders when the user is enrolled in
+            an active cycle. Deep-links to the user's own review page so
+            they can act (self-review, nominate peers, acknowledge)
+            instead of landing on the admin-flavored cycle detail. */}
+        {myActiveReview && activeCycle && (
+          <Link
+            href={`/reviews/my-reviews/${myActiveReview.id}`}
+            className="block mb-8 bg-gradient-to-r from-purple-500/10 to-cyan-500/10 border border-purple-500/30 rounded-xl p-5 hover:border-purple-500/60 transition"
+          >
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-purple-500/20 rounded-lg">
+                  <ClipboardCheck className="h-5 w-5 text-purple-400" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    Your active review
+                  </p>
+                  <p className="text-lg font-semibold text-foreground">
+                    {activeCycle.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {selfNotStarted
+                      ? "Self-review not started — open to get started"
+                      : managerCompleted
+                      ? "Manager review complete — acknowledge to close out"
+                      : "Track self-review, peer nominations, and feedback"}
+                  </p>
+                </div>
+              </div>
+              <span className="text-sm text-purple-400 flex items-center gap-1 font-medium">
+                Open your review
+                <ChevronRight className="h-4 w-4" />
+              </span>
+            </div>
+          </Link>
+        )}
 
         {/* Main Content Grid */}
         <div className="grid lg:grid-cols-3 gap-6">

@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.79] - 2026-05-18
+
+This release improves the employee-facing review experience and reuses
+the peer-reviewer invitation flow across manager and self-nomination
+surfaces.
+
+### Added
+
+- Added `/reviews/my-reviews/[reviewId]` so employees can open their own
+  review, submit self-review notes, nominate peer reviewers when allowed,
+  track peer-review request status, and acknowledge completed manager
+  reviews.
+- Added a shared `InvitePeerReviewersModal` that supports both manager
+  assignment and employee self-nomination modes while preventing duplicate
+  active reviewer invites.
+- Added direct “Open your review” CTAs from the reviews dashboard and
+  review cycle detail page when the current user is enrolled in the
+  active cycle.
+
+### Changed
+
+- Replaced the route-local peer reviewer assignment modal with the shared
+  review component.
+- Refined review page copy and routing so participants land on their own
+  actionable review surface instead of the admin-oriented cycle view.
+
 ## [0.7.78] - 2026-05-18
 
 This release resolves frontend TypeScript drift across app surfaces and
