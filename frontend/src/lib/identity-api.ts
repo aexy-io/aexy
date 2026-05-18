@@ -76,3 +76,48 @@ export const identityApi = {
     return response.data;
   },
 };
+
+// ---------------------------------------------------------------
+// Email aliases — secondary git-config emails I commit under.
+// Fixes the "<developer>'s `secondary email patterns` commits are invisible"
+// class of attribution failure.
+// ---------------------------------------------------------------
+
+export interface EmailAlias {
+  id: string;
+  email: string;
+  verified: boolean;
+  created_at: string;
+}
+
+export interface EmailAliasPreview {
+  commits: number;
+}
+
+export interface EmailAliasAddResult {
+  alias: EmailAlias;
+  backfill: { commits: number; ghost_deleted: number };
+}
+
+export const emailAliasApi = {
+  list: async (): Promise<EmailAlias[]> => {
+    const response = await api.get("/developers/me/email-aliases");
+    return response.data;
+  },
+  preview: async (email: string): Promise<EmailAliasPreview> => {
+    const response = await api.get(
+      "/developers/me/email-aliases/preview",
+      { params: { email } },
+    );
+    return response.data;
+  },
+  add: async (email: string): Promise<EmailAliasAddResult> => {
+    const response = await api.post("/developers/me/email-aliases", {
+      email,
+    });
+    return response.data;
+  },
+  remove: async (aliasId: string): Promise<void> => {
+    await api.delete(`/developers/me/email-aliases/${aliasId}`);
+  },
+};

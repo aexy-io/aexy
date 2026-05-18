@@ -710,6 +710,213 @@ class DeveloperService:
             "ghost_deleted": len(true_ghosts),
         }
 
+    # ---------------------------------------------------------------
+    # Email aliases
+    # ---------------------------------------------------------------
+
+    async def list_email_aliases(
+        self, developer_id: str
+    ) -> list["DeveloperEmailAlias"]:
+        """Return every alias attached to this developer, oldest first."""
+        from aexy.models.developer import DeveloperEmailAlias
+
+        rows = (
+            await self.db.execute(
+                select(DeveloperEmailAlias)
+                .where(DeveloperEmailAlias.developer_id == developer_id)
+                .order_by(DeveloperEmailAlias.created_at.asc())
+            )
+        ).scalars().all()
+        return list(rows)
+
+    async def preview_alias_backfill(
+        self, developer_id: str, email: str
+    ) -> dict[str, int]:
+        """Count commits currently mis-attributed to a non-canonical
+        Developer row whose email matches `email`. The number the user
+        will see in the UI before they confirm adding the alias.
+
+        Strictly read-only. Filters to commits whose `developer_id` row
+        has NO own `GitHubConnection` (i.e., a pseudo-ghost) so we never
+        promise to reclaim something off a real account.
+        """
+        from aexy.models.activity import Commit
+        from aexy.models.developer import GitHubConnection
+
+        email_lc = email.strip().lower()
+        if not email_lc:
+            return {"commits": 0}
+
+        count = (
+            await self.db.execute(
+                select(func.count(Commit.id))
+                .where(
+                    Commit.developer_id != developer_id,
+                    func.lower(Commit.author_email) == email_lc,
+                    ~select(GitHubConnection.id)
+                    .where(GitHubConnection.developer_id == Commit.developer_id)
+                    .exists(),
+                )
+            )
+        ).scalar_one()
+        return {"commits": int(count or 0)}
+
+    async def add_email_alias(
+        self, developer_id: str, email: str
+    ) -> tuple["DeveloperEmailAlias", dict[str, int]]:
+        """Attach an alias and immediately backfill — move every Commit
+        currently sitting on a pseudo-ghost with this email onto the
+        caller's canonical row, then delete any pseudo-ghost rows that
+        are left empty.
+
+        Returns `(alias, {commits, ghost_deleted})`. The caller is
+        responsible for committing.
+
+        Raises `DeveloperAlreadyExistsError` if the email already belongs
+        to another developer (either canonically or as their alias).
+        """
+        from sqlalchemy import update
+
+        from aexy.models.activity import Commit
+        from aexy.models.developer import DeveloperEmailAlias, GitHubConnection
+
+        email_lc = email.strip().lower()
+        if not email_lc or "@" not in email_lc:
+            raise DeveloperServiceError(f"Invalid email: {email!r}")
+
+        # Conflict: alias already claimed by another developer.
+        conflict_alias = (
+            await self.db.execute(
+                select(DeveloperEmailAlias).where(
+                    func.lower(DeveloperEmailAlias.email) == email_lc,
+                    DeveloperEmailAlias.developer_id != developer_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if conflict_alias is not None:
+            raise DeveloperAlreadyExistsError(
+                f"Email {email_lc!r} is already an alias of another developer"
+            )
+
+        # Conflict: another developer's canonical email matches.
+        conflict_canonical = (
+            await self.db.execute(
+                select(Developer).where(
+                    func.lower(Developer.email) == email_lc,
+                    Developer.id != developer_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if conflict_canonical is not None:
+            # Allow only if the conflict is a pseudo-ghost (no GitHubConnection);
+            # those rows are what we'd be absorbing anyway via the backfill.
+            has_conn = (
+                await self.db.execute(
+                    select(GitHubConnection.id)
+                    .where(GitHubConnection.developer_id == conflict_canonical.id)
+                    .limit(1)
+                )
+            ).first() is not None
+            if has_conn:
+                raise DeveloperAlreadyExistsError(
+                    f"Email {email_lc!r} belongs to another active developer"
+                )
+
+        # Idempotent: if we already own this alias, return it without
+        # re-running the backfill.
+        existing = (
+            await self.db.execute(
+                select(DeveloperEmailAlias).where(
+                    DeveloperEmailAlias.developer_id == developer_id,
+                    func.lower(DeveloperEmailAlias.email) == email_lc,
+                )
+            )
+        ).scalar_one_or_none()
+        if existing is not None:
+            return existing, {"commits": 0, "ghost_deleted": 0}
+
+        alias = DeveloperEmailAlias(developer_id=developer_id, email=email_lc)
+        self.db.add(alias)
+        await self.db.flush()
+
+        # Inline backfill: every Commit currently attributed to a
+        # pseudo-ghost with this email moves to the canonical row.
+        ghost_ids = (
+            await self.db.execute(
+                select(Developer.id).where(
+                    Developer.id != developer_id,
+                    func.lower(Developer.email) == email_lc,
+                    ~select(GitHubConnection.id)
+                    .where(GitHubConnection.developer_id == Developer.id)
+                    .exists(),
+                )
+            )
+        ).scalars().all()
+
+        commits_moved = 0
+        ghost_deleted = 0
+        if ghost_ids:
+            commits_moved = (
+                await self.db.execute(
+                    update(Commit)
+                    .where(Commit.developer_id.in_(list(ghost_ids)))
+                    .values(developer_id=developer_id)
+                )
+            ).rowcount or 0
+            # Delete the now-empty pseudo-ghost rows.
+            for gid in ghost_ids:
+                ghost = await self.db.get(Developer, gid)
+                if ghost is not None:
+                    await self.db.delete(ghost)
+                    ghost_deleted += 1
+            await self.db.flush()
+
+        # Also catch any commits whose author_email matches but happen
+        # to sit on some OTHER developer_id that is itself a pseudo-ghost
+        # (e.g., the email/name combo differs from the row's canonical
+        # email). These rows didn't show up in the ghost_ids lookup above
+        # because their `Developer.email` doesn't match the alias.
+        extra_moved = (
+            await self.db.execute(
+                update(Commit)
+                .where(
+                    Commit.developer_id != developer_id,
+                    func.lower(Commit.author_email) == email_lc,
+                    ~select(GitHubConnection.id)
+                    .where(GitHubConnection.developer_id == Commit.developer_id)
+                    .exists(),
+                )
+                .values(developer_id=developer_id)
+            )
+        ).rowcount or 0
+        commits_moved += extra_moved
+
+        return alias, {"commits": int(commits_moved), "ghost_deleted": ghost_deleted}
+
+    async def remove_email_alias(
+        self, developer_id: str, alias_id: str
+    ) -> bool:
+        """Detach an alias. Does NOT re-attribute commits — once they
+        moved to canonical, they stay there. Removing the alias only
+        stops *future* commits with that email from auto-routing here.
+        Returns True if an alias was deleted.
+        """
+        from aexy.models.developer import DeveloperEmailAlias
+
+        alias = (
+            await self.db.execute(
+                select(DeveloperEmailAlias).where(
+                    DeveloperEmailAlias.id == alias_id,
+                    DeveloperEmailAlias.developer_id == developer_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if alias is None:
+            return False
+        await self.db.delete(alias)
+        await self.db.flush()
+        return True
+
     async def get_or_create_by_github(
         self,
         github_id: int,

@@ -27,6 +27,17 @@
     "successDetail": "{commits, plural, one {# commit} other {# commits}}, {prs, plural, one {# pull request} other {# pull requests}}, {reviews, plural, one {# review} other {# reviews}} आपके account में move हो गए।",
     "successCta": "अपने insights देखें",
     "helpLink": "यह क्यों दिख रहा है?",
+    "aliases": {
+      "title": "Email aliases",
+      "description": "हर वह git-config email जोड़ें जिसके साथ आप commit करते हैं। इन emails के साथ आने वाले commits अपने आप आपके account से जुड़ेंगे, और placeholder rows पर पड़े पुराने commits भी reclaim हो जाएँगे।",
+      "addLabel": "एक और email जोड़ें जिसके साथ मैं commit करता/करती हूँ",
+      "add": "Alias जोड़ें",
+      "adding": "जोड़ रहे हैं…",
+      "remove": "हटाएँ",
+      "removeTitle": "इस email वाले future commits को auto-route करना बंद करें। पुराने commits जुड़े रहेंगे।",
+      "previewReclaim": "यह alias जोड़ने से {count, plural, one {# commit} other {# commits}} placeholder rows से reclaim हो जाएँगे।",
+      "previewEmpty": "अभी इस email से कोई पुराना commit मेल नहीं खा रहा।"
+    },
     "admin": {
       "title": "Workspace ghost developers",
       "intro": "Placeholder developer से जुड़े commits जो इस workspace के repos में हैं। उनके काम को सही member से जोड़ें।",

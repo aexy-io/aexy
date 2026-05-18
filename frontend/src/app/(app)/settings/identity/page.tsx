@@ -18,6 +18,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useClaimGhostCommits, useGhostClaimPreview } from "@/hooks/useIdentity";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 
+import { EmailAliasesSection } from "./EmailAliasesSection";
+
 function MetricChip({
   icon: Icon,
   label,
@@ -197,6 +199,8 @@ export default function IdentitySettingsPage() {
           </p>
         </section>
       )}
+
+      {hasGithub && !isLoading && <EmailAliasesSection />}
     </div>
   );
 }

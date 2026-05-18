@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -486,6 +486,26 @@ class SyncService:
             stmt = select(Developer).where(Developer.email == author_email)
             result = await db.execute(stmt)
             dev = result.scalar_one_or_none()
+            if dev:
+                self._dev_cache_by_email[author_email] = dev.id
+                if github_id:
+                    self._dev_cache_by_github_id[github_id] = dev.id
+                return dev.id, github_login, author_email
+
+            # 2.5. Try matching by alias email (case-insensitive). Lets
+            # `alt-commit-email@example.com` route to their canonical
+            # Developer without creating a pseudo-ghost.
+            from aexy.models.developer import DeveloperEmailAlias
+
+            alias_stmt = (
+                select(Developer)
+                .join(
+                    DeveloperEmailAlias,
+                    DeveloperEmailAlias.developer_id == Developer.id,
+                )
+                .where(func.lower(DeveloperEmailAlias.email) == author_email.lower())
+            )
+            dev = (await db.execute(alias_stmt)).scalar_one_or_none()
             if dev:
                 self._dev_cache_by_email[author_email] = dev.id
                 if github_id:

@@ -1,7 +1,7 @@
 """Database models for Aexy."""
 
 from aexy.models.plan import Plan, PlanTier, BillingModel, DEFAULT_PLANS
-from aexy.models.developer import Developer, GitHubConnection, GitHubInstallation, GoogleConnection, MicrosoftConnection
+from aexy.models.developer import Developer, DeveloperEmailAlias, GitHubConnection, GitHubInstallation, GoogleConnection, MicrosoftConnection
 from aexy.models.billing import (
     CustomerBilling,
     Subscription,
@@ -550,6 +550,7 @@ __all__ = [
     "UsageType",
     # Developer
     "Developer",
+    "DeveloperEmailAlias",
     "GitHubConnection",
     "GitHubInstallation",
     "GoogleConnection",

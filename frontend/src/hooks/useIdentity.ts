@@ -4,9 +4,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import {
+  EmailAlias,
+  EmailAliasAddResult,
+  EmailAliasPreview,
   GhostClaimPreview,
   GhostClaimResult,
   WorkspaceGhostDeveloper,
+  emailAliasApi,
   identityApi,
 } from "@/lib/identity-api";
 
@@ -53,6 +57,68 @@ export function useWorkspaceGhosts(workspaceId: string | null, limit = 50) {
     queryFn: () => identityApi.listWorkspaceGhosts(workspaceId!, limit),
     enabled: !!workspaceId,
     staleTime: 30 * 1000,
+  });
+}
+
+// ---------------------------------------------------------------
+// Email aliases
+// ---------------------------------------------------------------
+
+export function useEmailAliases() {
+  return useQuery<EmailAlias[]>({
+    queryKey: ["identity", "emailAliases"],
+    queryFn: () => emailAliasApi.list(),
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useEmailAliasPreview(email: string | null) {
+  return useQuery<EmailAliasPreview>({
+    queryKey: ["identity", "emailAliasPreview", email?.toLowerCase()],
+    queryFn: () => emailAliasApi.preview(email!),
+    enabled: !!email && email.includes("@"),
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useAddEmailAlias() {
+  const queryClient = useQueryClient();
+  return useMutation<EmailAliasAddResult, Error, { email: string }>({
+    mutationFn: ({ email }) => emailAliasApi.add(email),
+    onSuccess: (data) => {
+      const moved = data.backfill.commits;
+      if (moved > 0) {
+        toast.success(`Alias added — reclaimed ${moved} commits`);
+      } else {
+        toast.success("Alias added — no prior commits matched");
+      }
+      queryClient.invalidateQueries({ queryKey: ["identity"] });
+      queryClient.invalidateQueries({ queryKey: ["developerInsights"] });
+      queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
+    },
+    onError: (error) => {
+      const message =
+        error instanceof Error ? error.message : "Failed to add alias";
+      toast.error(message);
+    },
+  });
+}
+
+export function useRemoveEmailAlias() {
+  const queryClient = useQueryClient();
+  return useMutation<void, Error, { aliasId: string }>({
+    mutationFn: ({ aliasId }) => emailAliasApi.remove(aliasId),
+    onSuccess: () => {
+      toast.success("Alias removed");
+      queryClient.invalidateQueries({
+        queryKey: ["identity", "emailAliases"],
+      });
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to remove alias",
+      );
+    },
   });
 }
 

@@ -204,6 +204,51 @@ class Developer(Base):
     )
 
 
+class DeveloperEmailAlias(Base):
+    """Secondary email a developer commits under.
+
+    Solves the "a developer commits as `alt-commit-email@example.com`
+    but his canonical email is `name@company.com`" problem — without
+    this, the commit-author resolver creates a pseudo-ghost Developer and
+    those commits never show up on his analytics.
+
+    Unique on `lower(email)` globally: one email cannot point at two
+    humans. (Enforced at DB level by the `uq_developer_email_aliases_email_lower`
+    index, defined in `migrate_developer_email_aliases.sql`.)
+    """
+
+    __tablename__ = "developer_email_aliases"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    developer_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    email: Mapped[str] = mapped_column(String(255), nullable=False)
+    verified: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    developer: Mapped["Developer"] = relationship(
+        "Developer",
+        backref="email_aliases",
+    )
+
+
 class GitHubConnection(Base):
     """GitHub OAuth connection for a developer."""
 

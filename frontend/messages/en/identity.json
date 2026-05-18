@@ -27,6 +27,17 @@
     "successDetail": "{commits, plural, one {# commit} other {# commits}}, {prs, plural, one {# pull request} other {# pull requests}}, {reviews, plural, one {# review} other {# reviews}} moved to your account.",
     "successCta": "View your insights",
     "helpLink": "Why am I seeing this?",
+    "aliases": {
+      "title": "Email aliases",
+      "description": "Add every git-config email you commit under. Future commits with these emails are auto-attributed to you, and we'll reclaim any past commits sitting on placeholder rows.",
+      "addLabel": "Add another email I commit as",
+      "add": "Add alias",
+      "adding": "Adding…",
+      "remove": "Remove",
+      "removeTitle": "Stop auto-routing future commits with this email here. Past commits stay attributed.",
+      "previewReclaim": "Adding this alias will reclaim {count, plural, one {# commit} other {# commits}} from placeholder rows.",
+      "previewEmpty": "No prior commits match this email yet."
+    },
     "admin": {
       "title": "Workspace ghost developers",
       "intro": "Commits attributed to placeholder developers that touch your workspace's repos. Pick a target member to reattribute their work.",
