@@ -73,9 +73,10 @@ interface RepoItemProps {
   onRepoToggle: (repoId: string, enabled: boolean) => Promise<void>;
   onStartSync: (repoId: string) => Promise<void>;
   showOwner?: boolean;
+  isSyncing?: boolean;
 }
 
-function RepoItem({ repo, onRepoToggle, onStartSync, showOwner }: RepoItemProps) {
+function RepoItem({ repo, onRepoToggle, onStartSync, showOwner, isSyncing }: RepoItemProps) {
   return (
     <div className="p-3 px-4 flex items-start justify-between hover:bg-accent/30 gap-4">
       <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -121,10 +122,22 @@ function RepoItem({ repo, onRepoToggle, onStartSync, showOwner }: RepoItemProps)
              
               <button
                 onClick={() => onStartSync(repo.id)}
-                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition"
-                title="Start sync"
+                disabled={isSyncing || repo.sync_status === "syncing"}
+                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition disabled:opacity-50 disabled:cursor-not-allowed"
+                title={
+                  repo.sync_status === "syncing"
+                    ? "Sync already in progress"
+                    : "Sync now"
+                }
+                aria-label="Sync now"
               >
-                <RefreshCw className="h-4 w-4" />
+                <RefreshCw
+                  className={`h-4 w-4 ${
+                    isSyncing || repo.sync_status === "syncing"
+                      ? "animate-spin"
+                      : ""
+                  }`}
+                />
               </button>
             
           </>
@@ -289,6 +302,11 @@ export default function RepositorySettingsPage() {
   const [autoSyncEnabled, setAutoSyncEnabled] = useState(false);
   const [autoSyncFrequency, setAutoSyncFrequency] = useState("1h");
   const [workspaceCatalog, setWorkspaceCatalog] = useState<WorkspaceRepositoryItem[]>([]);
+  // Per-repo "manual sync request in flight" tracker — keyed by repo.id.
+  // Persists between the click and the next fetch finishing so the button
+  // can render disabled + spinning without depending on backend status
+  // catching up first.
+  const [syncingIds, setSyncingIds] = useState<Set<string>>(new Set());
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchData = useCallback(async (isPolling = false) => {
@@ -434,6 +452,15 @@ export default function RepositorySettingsPage() {
   };
 
   const handleStartSync = async (repoId: string) => {
+    // Guard against double-clicks: dispatch is fire-and-forget on the
+    // backend, but a second call would re-trigger the workflow.
+    if (syncingIds.has(repoId)) return;
+    setSyncingIds((prev) => {
+      const next = new Set(prev);
+      next.add(repoId);
+      return next;
+    });
+    const repo = repositories.find((r) => r.id === repoId);
     try {
       await repositoriesApi.startSync(repoId);
       setRepositories(repos =>
@@ -441,9 +468,23 @@ export default function RepositorySettingsPage() {
           repo.id === repoId ? { ...repo, sync_status: "syncing" } : repo
         )
       );
-    } catch (error) {
+      toast.success(
+        repo
+          ? `Sync started for ${repo.owner_login}/${repo.name}`
+          : "Sync started"
+      );
+    } catch (error: unknown) {
       console.error("Failed to start sync:", error);
-      toast.error("Failed to start sync");
+      const detail =
+        (error as { response?: { data?: { detail?: string } } })?.response?.data
+          ?.detail;
+      toast.error(detail ?? "Failed to start sync");
+    } finally {
+      setSyncingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(repoId);
+        return next;
+      });
     }
   };
 
@@ -628,6 +669,7 @@ export default function RepositorySettingsPage() {
                   onRepoToggle={handleRepoToggle}
                   onStartSync={handleStartSync}
                   showOwner={true}
+                  isSyncing={syncingIds.has(repo.id)}
                 />
               ))}
             </CollapsibleSection>
@@ -649,6 +691,7 @@ export default function RepositorySettingsPage() {
                   repo={repo}
                   onRepoToggle={handleRepoToggle}
                   onStartSync={handleStartSync}
+                  isSyncing={syncingIds.has(repo.id)}
                 />
               ))}
             </CollapsibleSection>
@@ -695,6 +738,7 @@ export default function RepositorySettingsPage() {
                       repo={repo}
                       onRepoToggle={handleRepoToggle}
                       onStartSync={handleStartSync}
+                      isSyncing={syncingIds.has(repo.id)}
                     />
                   ))}
                 </CollapsibleSection>
@@ -822,10 +866,20 @@ export default function RepositorySettingsPage() {
                       await handleStartSync(repo.id);
                     }
                   }}
-                  disabled={enabledRepos.some(r => r.sync_status === "syncing")}
+                  disabled={
+                    enabledRepos.some((r) => r.sync_status === "syncing") ||
+                    enabledRepos.some((r) => syncingIds.has(r.id))
+                  }
                   className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium transition disabled:opacity-50"
                 >
-                  <RefreshCw className={`h-4 w-4 ${enabledRepos.some(r => r.sync_status === "syncing") ? "animate-spin" : ""}`} />
+                  <RefreshCw
+                    className={`h-4 w-4 ${
+                      enabledRepos.some((r) => r.sync_status === "syncing") ||
+                      enabledRepos.some((r) => syncingIds.has(r.id))
+                        ? "animate-spin"
+                        : ""
+                    }`}
+                  />
                   Sync all
                 </button>
               </div>

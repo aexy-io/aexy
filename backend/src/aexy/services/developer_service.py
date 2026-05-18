@@ -483,31 +483,46 @@ class DeveloperService:
             "ghost_deleted": 1,
         }
 
-    async def preview_ghost_match(
+    async def _find_orphan_candidates(
         self,
         canonical_developer_id: str,
         github_username: str,
-    ) -> dict[str, Any]:
-        """Read-only preview of what `merge_ghost_into_developer` would do.
+    ) -> list[Developer]:
+        """Find every Developer row whose attribution plausibly belongs
+        to the caller's canonical identity, scoped to "no GitHubConnection
+        of its own" (so we never absorb a real account).
 
-        Returns the matching ghost developer's id (if any) plus the count
-        of activity rows currently attached to it. Used to show users
-        "we found N commits we can claim for you" before they hit the
-        merge button.
+        Matches THREE distinct ghost flavors that the two sync resolvers
+        create over time:
+
+          1. Email-NULL ghost from `_resolve_developer_for_pr` step 2 —
+             `name == github_username AND email IS NULL`.
+          2. Pseudo-ghost from `_resolve_developer_for_commit` step 3 with
+             a GitHub no-reply email — `email ~ %+{username}@users.noreply.github.com`.
+          3. Pseudo-ghost from `_resolve_developer_for_commit` step 3 with
+             an *arbitrary* email — caught data-driven, via the commits
+             those rows already own carrying our github_username.
+
+          (3) is the one that catches the `email-drift-case` style drift
+          where a contributor's git config changed email at some point
+          and a second pseudo-Developer row was created. Without (3) the
+          login-merge skips those rows and the alias_map at query time
+          is the only thing holding the leaderboard together.
+
+        All candidates are filtered to "no GitHubConnection" so real
+        accounts with matching usernames or emails are protected.
         """
         from sqlalchemy import or_
 
-        from aexy.models.activity import CodeReview, Commit, PullRequest
+        from aexy.models.activity import Commit
         from aexy.models.developer import GitHubConnection
 
-        # Same widened lookup as `merge_ghost_into_developer` — catches
-        # both email-NULL ghosts (PR-resolver) and no-reply-email
-        # pseudo-ghosts (commit-resolver). Aggregate counts across all
-        # of them so the preview reflects the full reclaimable scope.
         lower_username = github_username.lower()
         noreply_legacy = f"{lower_username}@users.noreply.github.com"
         noreply_modern = f"%+{lower_username}@users.noreply.github.com"
-        ghost_stmt = (
+
+        # Heuristic matches (PR-resolver ghost + no-reply commit-resolver).
+        heuristic_stmt = (
             select(Developer)
             .where(
                 Developer.id != canonical_developer_id,
@@ -521,7 +536,67 @@ class DeveloperService:
                 ),
             )
         )
-        ghosts = (await self.db.execute(ghost_stmt)).scalars().all()
+        heuristic_rows = (
+            await self.db.execute(heuristic_stmt)
+        ).scalars().all()
+
+        # Data-driven match: any Developer row that owns commits whose
+        # `author_github_login` matches our username. Catches step-3
+        # commit-resolver pseudo-ghosts with arbitrary emails.
+        attribution_stmt = (
+            select(Developer)
+            .where(
+                Developer.id != canonical_developer_id,
+                select(Commit.id)
+                .where(
+                    Commit.developer_id == Developer.id,
+                    func.lower(Commit.author_github_login) == lower_username,
+                )
+                .exists(),
+            )
+        )
+        attribution_rows = (
+            await self.db.execute(attribution_stmt)
+        ).scalars().all()
+
+        # Dedupe and filter out anything with its own GitHubConnection.
+        seen: set[str] = set()
+        result: list[Developer] = []
+        for dev in [*heuristic_rows, *attribution_rows]:
+            if dev.id in seen:
+                continue
+            seen.add(dev.id)
+            has_conn = (
+                await self.db.execute(
+                    select(GitHubConnection.id)
+                    .where(GitHubConnection.developer_id == dev.id)
+                    .limit(1)
+                )
+            ).first() is not None
+            if not has_conn:
+                result.append(dev)
+        return result
+
+    async def preview_ghost_match(
+        self,
+        canonical_developer_id: str,
+        github_username: str,
+    ) -> dict[str, Any]:
+        """Read-only preview of what `merge_ghost_into_developer` would do.
+
+        Returns the matching ghost developer's id (if any) plus the count
+        of activity rows currently attached to it. Used to show users
+        "we found N commits we can claim for you" before they hit the
+        merge button.
+        """
+        from aexy.models.activity import CodeReview, Commit, PullRequest
+
+        # Use the shared candidate finder so preview matches merge exactly —
+        # heuristic ghosts (email-NULL, no-reply email) plus data-driven
+        # commits whose `author_github_login` matches this username.
+        ghosts = await self._find_orphan_candidates(
+            canonical_developer_id, github_username
+        )
         if not ghosts:
             return {
                 "ghost_id": None,
@@ -530,27 +605,7 @@ class DeveloperService:
                 "reviews": 0,
             }
 
-        # Filter to true ghosts: any row that has its own GitHubConnection is
-        # a real account that happens to share a name and must be left alone.
-        ghost_ids: list[str] = []
-        for g in ghosts:
-            has_conn = (
-                await self.db.execute(
-                    select(GitHubConnection.id)
-                    .where(GitHubConnection.developer_id == g.id)
-                    .limit(1)
-                )
-            ).first() is not None
-            if not has_conn:
-                ghost_ids.append(g.id)
-
-        if not ghost_ids:
-            return {
-                "ghost_id": None,
-                "commits": 0,
-                "prs": 0,
-                "reviews": 0,
-            }
+        ghost_ids = [g.id for g in ghosts]
 
         commit_count = (
             await self.db.execute(
@@ -601,66 +656,20 @@ class DeveloperService:
 
         Returns counts of rows reassigned. Idempotent — if no ghost exists,
         returns zeros and does nothing.
+
+        Three flavors of ghost are caught (see `_find_orphan_candidates`):
+            1. Email-NULL ghost from the PR-resolver
+            2. No-reply-email pseudo-ghost from the commit-resolver
+            3. Arbitrary-email pseudo-ghost identified data-driven via
+               commits already carrying our github_username
         """
         from sqlalchemy import update
 
-        from sqlalchemy import or_
-
         from aexy.models.activity import CodeReview, Commit, PullRequest
-        from aexy.models.developer import GitHubConnection
 
-        # Find every orphan attribution row for this login. Two flavors:
-        #   1. Email-NULL ghost (created by `_resolve_developer_for_pr`)
-        #      — name == github_username, no email
-        #   2. Commit-resolver "pseudo-ghost" (created by step 3 of
-        #      `_resolve_developer_for_commit`) — has the GitHub no-reply
-        #      email set, name is the git-config commit name, no
-        #      GitHubConnection. Matched by email pattern only.
-        #
-        # GitHub no-reply emails come in two formats:
-        #     {username}@users.noreply.github.com               (legacy)
-        #     {numeric_id}+{username}@users.noreply.github.com  (modern)
-        # We match both with ILIKE.
-        lower_username = github_username.lower()
-        noreply_legacy = f"{lower_username}@users.noreply.github.com"
-        noreply_modern = f"%+{lower_username}@users.noreply.github.com"
-        ghost_stmt = (
-            select(Developer)
-            .where(
-                Developer.id != canonical_developer_id,
-                or_(
-                    # email-NULL ghost (PR-resolver path)
-                    and_(
-                        func.lower(Developer.name) == lower_username,
-                        Developer.email.is_(None),
-                    ),
-                    # no-reply-email pseudo-ghost (commit-resolver path)
-                    func.lower(Developer.email) == noreply_legacy,
-                    func.lower(Developer.email).like(noreply_modern),
-                ),
-            )
+        true_ghosts = await self._find_orphan_candidates(
+            canonical_developer_id, github_username
         )
-        ghosts = (await self.db.execute(ghost_stmt)).scalars().all()
-        if not ghosts:
-            return {"commits": 0, "prs": 0, "reviews": 0, "ghost_deleted": 0}
-
-        # Belt-and-suspenders: refuse to merge any "ghost" that has a
-        # GitHubConnection of its own (real account that shares a name).
-        # We filter the candidate set rather than skipping the whole
-        # operation, so a duplicate ghost alongside a real account still
-        # gets cleaned up.
-        true_ghosts: list[Developer] = []
-        for g in ghosts:
-            has_conn = (
-                await self.db.execute(
-                    select(GitHubConnection.id)
-                    .where(GitHubConnection.developer_id == g.id)
-                    .limit(1)
-                )
-            ).first() is not None
-            if not has_conn:
-                true_ghosts.append(g)
-
         if not true_ghosts:
             return {"commits": 0, "prs": 0, "reviews": 0, "ghost_deleted": 0}
 
