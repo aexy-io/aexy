@@ -281,6 +281,12 @@ class LimitsUsageTokens(BaseModel):
     output_cost_per_1k_cents: int
     enable_overage_billing: bool
     reset_at: datetime | None = None
+    # Where this block's numbers came from. "workspace" means the caller
+    # is a member of a workspace whose counters are aggregated by sync
+    # activities; "developer" is the legacy per-developer counter (always
+    # 0 today since no caller writes it). Lets the UI render a tooltip.
+    source: str = "developer"
+    source_workspace_id: str | None = None
 
 
 class LimitsUsageResponse(BaseModel):

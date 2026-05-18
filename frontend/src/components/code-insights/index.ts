@@ -14,3 +14,5 @@ export { ReviewDigestCard } from "./ReviewDigestCard";
 export { TeamReviewCard } from "./TeamReviewCard";
 export { LLMUsageCard } from "./LLMUsageCard";
 export { ClaimCommitsBanner } from "./ClaimCommitsBanner";
+export { DeveloperCommitsTable } from "./DeveloperCommitsTable";
+export { WorkspaceLLMUsageCard } from "./WorkspaceLLMUsageCard";

@@ -307,6 +307,136 @@ async def get_developer_insights(
 # Historical Trends
 # ---------------------------------------------------------------------------
 
+@router.get("/developers/{dev_id}/commits")
+async def list_developer_commits(
+    workspace_id: str,
+    dev_id: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    developer_id: Annotated[str, Depends(verify_workspace_membership)],
+    start_date: datetime | None = Query(default=None),
+    end_date: datetime | None = Query(default=None),
+    period_type: PeriodTypeParam = Query(default=PeriodTypeParam.weekly),
+    limit: int = Query(default=200, ge=1, le=1000),
+    offset: int = Query(default=0, ge=0),
+):
+    """Paginated raw commits attributed to a developer in a window.
+
+    Powers the "Synced commits" detail tab on the developer insights
+    page — gives reviewers the underlying rows behind the aggregate
+    velocity numbers so they can spot empty/null-login attribution
+    drift at a glance.
+
+    Filters to commits whose `repository` matches a repo this workspace
+    has adopted, so a developer's external open-source commits don't
+    leak in.
+    """
+    from aexy.models.activity import Commit
+    from aexy.models.repository import Repository, WorkspaceRepository
+
+    if not start_date or not end_date:
+        start_date, end_date = _default_range(period_type)
+    _validate_date_range(start_date, end_date)
+
+    # Build the repo allow-list once. Keeps the main query a single round-trip.
+    repo_names = (
+        await db.execute(
+            select(Repository.full_name)
+            .join(
+                WorkspaceRepository,
+                WorkspaceRepository.repository_id == Repository.id,
+            )
+            .where(
+                WorkspaceRepository.workspace_id == workspace_id,
+                WorkspaceRepository.is_active == True,  # noqa: E712
+            )
+        )
+    ).scalars().all()
+    if not repo_names:
+        return {
+            "developer_id": dev_id,
+            "workspace_id": workspace_id,
+            "period_start": start_date,
+            "period_end": end_date,
+            "total": 0,
+            "limit": limit,
+            "offset": offset,
+            "commits": [],
+        }
+
+    base_where = (
+        Commit.developer_id == dev_id,
+        Commit.repository.in_(repo_names),
+        Commit.committed_at >= start_date,
+        Commit.committed_at < end_date,
+    )
+
+    total = (
+        await db.execute(
+            select(func.count(Commit.id)).where(*base_where)
+        )
+    ).scalar_one()
+
+    rows = (
+        await db.execute(
+            select(
+                Commit.id,
+                Commit.sha,
+                Commit.message,
+                Commit.repository,
+                Commit.additions,
+                Commit.deletions,
+                Commit.files_changed,
+                Commit.committed_at,
+                Commit.author_github_login,
+                Commit.author_email,
+                Commit.is_merge,
+                Commit.change_class,
+                Commit.author_class,
+            )
+            .where(*base_where)
+            .order_by(Commit.committed_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+    ).all()
+
+    return {
+        "developer_id": dev_id,
+        "workspace_id": workspace_id,
+        "period_start": start_date,
+        "period_end": end_date,
+        "total": int(total or 0),
+        "limit": limit,
+        "offset": offset,
+        "commits": [
+            {
+                "id": r.id,
+                "sha": r.sha,
+                # Title-only — full message bodies blow up the response size
+                # for branches with verbose commit templates.
+                "message": (r.message or "").splitlines()[0][:200],
+                "repository": r.repository,
+                "additions": r.additions or 0,
+                "deletions": r.deletions or 0,
+                "files_changed": r.files_changed or 0,
+                "committed_at": r.committed_at.isoformat() if r.committed_at else None,
+                "author_github_login": r.author_github_login,
+                "author_email": r.author_email,
+                "is_merge": bool(r.is_merge),
+                "change_class": r.change_class,
+                "author_class": r.author_class,
+                # Convenience for the UI — every commit links back to GitHub.
+                "html_url": (
+                    f"https://github.com/{r.repository}/commit/{r.sha}"
+                    if r.repository and r.sha
+                    else None
+                ),
+            }
+            for r in rows
+        ],
+    }
+
+
 @router.get("/developers/{dev_id}/forecast")
 async def get_velocity_forecast(
     workspace_id: str,

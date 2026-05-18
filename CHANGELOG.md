@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.76] - 2026-05-18
+
+This release makes AI token usage visible and billable at the workspace
+level, and adds raw commit detail behind developer insights.
+
+### Added
+
+- Added workspace-level month-to-date LLM counters, provider breakdowns,
+  overage cost tracking, and an idempotent migration for the new workspace
+  usage columns.
+- Added `GET /workspaces/{workspace_id}/llm-usage` so any workspace
+  member can inspect current AI token consumption and reset timing.
+- Added workspace AI usage cards to billing and insights settings.
+- Added a developer commits endpoint and table so developer insights can
+  show the underlying synced commits behind aggregate metrics.
+
+### Changed
+
+- AI analysis activities now roll commit, PR, and review token usage into
+  every workspace that has adopted the analyzed repository.
+- Billing usage now reads workspace token counters when the caller belongs
+  to a workspace, while preserving legacy developer counters as fallback.
+
 ## [0.7.75] - 2026-05-17
 
 This release tightens the AI insights experience after the initial

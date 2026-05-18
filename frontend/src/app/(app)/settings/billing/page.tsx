@@ -27,6 +27,7 @@ import { UsageStatsCards } from "@/components/billing/UsageStatsCards";
 import { StorageUsageCard } from "@/components/billing/StorageUsageCard";
 import { UsageTrendChart } from "@/components/billing/UsageTrendChart";
 import { InvoiceList } from "@/components/billing/InvoiceList";
+import { WorkspaceLLMUsageCard } from "@/components/code-insights";
 
 function BillingContent() {
   const searchParams = useSearchParams();
@@ -362,6 +363,11 @@ function BillingContent() {
           <UsageStatsCards />
           <div className="mt-4">
             <StorageUsageCard />
+          </div>
+          {/* Workspace-level AI token consumption — month-to-date counters
+              written inline by the GitHub-sync AI activities. */}
+          <div className="mt-4">
+            <WorkspaceLLMUsageCard workspaceId={currentWorkspaceId} />
           </div>
         </div>
 

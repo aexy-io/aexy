@@ -170,6 +170,43 @@ async def get_workspace(
     return workspace_to_response(workspace, member_count, team_count)
 
 
+@router.get("/{workspace_id}/llm-usage")
+async def get_workspace_llm_usage(
+    workspace_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Month-to-date LLM token usage for this workspace.
+
+    Aggregated across every analyze_commit / analyze_pr / analyze_review
+    activity that ran for any of the workspace's adopted repos. Resets
+    lazily at the first call past the month boundary.
+
+    Visible to any workspace member ("viewer" or above) — usage is a
+    transparency feature, not a billing-action.
+    """
+    from aexy.services.limits_service import LimitsService
+
+    service = WorkspaceService(db)
+    if not await service.check_permission(
+        workspace_id, str(current_user.id), "viewer"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not a member of this workspace",
+        )
+
+    limits = LimitsService(db)
+    usage = await limits.get_workspace_llm_usage(workspace_id)
+    if not usage:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Workspace not found",
+        )
+    await db.commit()
+    return usage
+
+
 @router.patch("/{workspace_id}", response_model=WorkspaceResponse)
 async def update_workspace(
     workspace_id: str,

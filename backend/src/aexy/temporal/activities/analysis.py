@@ -187,6 +187,14 @@ async def analyze_commit(input: AnalyzeCommitInput) -> dict[str, Any]:
             token_usage=token_usage,
         )
 
+        await _record_workspace_llm_usage(
+            db,
+            repository_full_name=commit.repository,
+            provider=_provider_name_from_gateway(gateway),
+            input_tokens=int(result.input_tokens or 0),
+            output_tokens=int(result.output_tokens or 0),
+        )
+
         # Merge the deterministic security block on top of the LLM output before
         # persisting so a single read of `semantic_analysis` gives reviewers both.
         analysis_json["security"] = security_block
@@ -312,6 +320,14 @@ async def analyze_pr(input: AnalyzePRInput) -> dict[str, Any]:
             token_usage=token_usage,
         )
 
+        await _record_workspace_llm_usage(
+            db,
+            repository_full_name=pr.repository,
+            provider=_provider_name_from_gateway(gateway),
+            input_tokens=int(result.input_tokens or 0),
+            output_tokens=int(result.output_tokens or 0),
+        )
+
         analysis_json["security"] = security_block
         pr.ai_analysis = analysis_json
         pr.ai_analyzed_at = datetime.now(timezone.utc)
@@ -329,6 +345,83 @@ async def analyze_pr(input: AnalyzePRInput) -> dict[str, Any]:
             "status": "analyzed",
             "token_usage": token_usage,
         }
+
+
+async def _record_workspace_llm_usage(
+    db,
+    repository_full_name: str | None,
+    provider: str,
+    input_tokens: int,
+    output_tokens: int,
+) -> None:
+    """Roll one LLM call into every workspace's monthly counters.
+
+    Resolves `repo → all WorkspaceRepository rows that adopted it` and
+    records the tokens against each. A repo can sit in multiple workspaces
+    (rare but supported) — each one paid for the analysis indirectly, so
+    each one gets credited.
+
+    NEVER raises. Billing telemetry must never break an analysis. On any
+    error we log + swallow so the calling activity returns successfully.
+    """
+    if not repository_full_name:
+        return
+    try:
+        from sqlalchemy import select as _select
+
+        from aexy.models.repository import Repository, WorkspaceRepository
+        from aexy.services.limits_service import LimitsService
+
+        workspace_ids = (
+            await db.execute(
+                _select(WorkspaceRepository.workspace_id)
+                .join(
+                    Repository,
+                    Repository.id == WorkspaceRepository.repository_id,
+                )
+                .where(
+                    Repository.full_name == repository_full_name,
+                    WorkspaceRepository.is_active == True,  # noqa: E712
+                )
+            )
+        ).scalars().all()
+        if not workspace_ids:
+            return
+        limits = LimitsService(db)
+        for ws_id in workspace_ids:
+            await limits.record_workspace_token_usage(
+                workspace_id=str(ws_id),
+                provider=provider,
+                input_tokens=int(input_tokens or 0),
+                output_tokens=int(output_tokens or 0),
+            )
+    except Exception:
+        logger.exception(
+            "Failed to record workspace LLM usage for "
+            f"repo={repository_full_name!r}; swallowing so analysis succeeds"
+        )
+
+
+def _provider_name_from_gateway(gateway) -> str:
+    """Best-effort resolution of a stable provider key for telemetry.
+
+    Tries `gateway.provider.provider_name` first (every concrete
+    LLMProvider exposes it). Falls back to the configured llm provider
+    string. Unknown → "unknown" — the column tolerates anything.
+    """
+    try:
+        provider = getattr(gateway, "provider", None)
+        name = getattr(provider, "provider_name", None)
+        if name:
+            return str(name).lower()
+    except Exception:
+        pass
+    try:
+        from aexy.core.config import get_settings
+
+        return (get_settings().llm.provider or "unknown").lower()
+    except Exception:
+        return "unknown"
 
 
 async def _call_llm_with_rate_limit_wait(callable_, *args, **kwargs):
@@ -484,6 +577,14 @@ async def analyze_review(input: AnalyzeReviewInput) -> dict[str, Any]:
             model=result.model or "",
             prompt_version=REVIEW_PROMPT_VERSION,
             token_usage=token_usage,
+        )
+
+        await _record_workspace_llm_usage(
+            db,
+            repository_full_name=review.repository,
+            provider=_provider_name_from_gateway(gateway),
+            input_tokens=int(result.input_tokens or 0),
+            output_tokens=int(result.output_tokens or 0),
         )
 
         review.quality_metrics = analysis_json
