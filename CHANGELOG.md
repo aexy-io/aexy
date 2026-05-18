@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.77] - 2026-05-18
+
+This release improves performance review workflows with peer-review
+detail pages, manager assignment tools, phase controls, and automated
+deadline reminders.
+
+### Added
+
+- Added peer-review request detail pages where reviewers can accept,
+  decline, and submit focused feedback from a notification link.
+- Added manager peer-reviewer assignment UI on individual review pages.
+- Added review-cycle activation and deadline-reminder notification types
+  with templates and delivery helpers.
+- Added a daily Temporal deadline sweep for T-7, T-3, and T-1 review
+  reminders, plus a migration to track sent reminders per cycle.
+
+### Changed
+
+- Review cycle list and detail pages now expose activate and advance-phase
+  actions with refreshed table/menu behavior.
+- Review cycle activation now notifies enrolled participants when the
+  cycle opens.
+
 ## [0.7.76] - 2026-05-18
 
 This release makes AI token usage visible and billable at the workspace

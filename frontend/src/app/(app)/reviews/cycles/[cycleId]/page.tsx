@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
   Calendar,
   Users,
@@ -13,8 +15,10 @@ import {
   MessageSquare,
   Settings,
   Play,
-  Pause,
+  FastForward,
   Loader2,
+  Bell,
+  ChevronDown,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useReviewCycle } from "@/hooks/useReviews";
@@ -29,6 +33,24 @@ const statusLabels: Record<string, string> = {
   manager_review: "Manager Review",
   completed: "Completed",
 };
+
+// Mirrors backend `advance_review_phase` ordering so the Advance Phase
+// confirmation can name the destination phase concretely.
+const PHASE_ORDER = [
+  "draft",
+  "active",
+  "self_review",
+  "peer_review",
+  "manager_review",
+  "completed",
+] as const;
+
+function nextPhaseLabel(status: string): string | null {
+  const idx = (PHASE_ORDER as readonly string[]).indexOf(status);
+  if (idx < 0 || idx >= PHASE_ORDER.length - 1) return null;
+  const next = PHASE_ORDER[idx + 1];
+  return statusLabels[next] ?? next;
+}
 
 // Cycle type labels
 const cycleTypeLabels: Record<string, string> = {
@@ -45,8 +67,36 @@ export default function CycleDetailPage() {
   const { cycle, isLoading, error, refetch } = useReviewCycle(cycleId);
 
   const [isActivating, setIsActivating] = useState(false);
+  const [isAdvancing, setIsAdvancing] = useState(false);
+  const [isResending, setIsResending] = useState<null | "activation" | "deadline" | "phase_change">(null);
   const [showStartConfirm, setShowStartConfirm] = useState(false);
+  const [showAdvanceConfirm, setShowAdvanceConfirm] = useState(false);
   const [activateError, setActivateError] = useState<string | null>(null);
+
+  const handleResend = async (
+    kind: "activation" | "deadline" | "phase_change",
+  ) => {
+    if (!cycleId || isResending) return;
+    setIsResending(kind);
+    try {
+      const result = await reviewsApi.resendCycleNotifications(cycleId, { kind });
+      if (result.sent > 0) {
+        toast.success(
+          `Sent ${result.sent} ${kind.replace("_", " ")} notification${result.sent === 1 ? "" : "s"}`,
+        );
+      } else {
+        toast.info(
+          result.reason
+            ? `No notifications sent — ${result.reason}`
+            : "No eligible recipients for this notification",
+        );
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || "Failed to resend notifications");
+    } finally {
+      setIsResending(null);
+    }
+  };
 
   const handleStartCycle = async () => {
     if (!cycleId) return;
@@ -60,6 +110,21 @@ export default function CycleDetailPage() {
       setActivateError(err?.response?.data?.detail || "Failed to start cycle");
     } finally {
       setIsActivating(false);
+    }
+  };
+
+  const handleAdvancePhase = async () => {
+    if (!cycleId || isAdvancing) return;
+    setIsAdvancing(true);
+    try {
+      await reviewsApi.advanceCyclePhase(cycleId);
+      await refetch();
+      setShowAdvanceConfirm(false);
+      toast.success("Cycle advanced to the next phase");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || "Failed to advance phase");
+    } finally {
+      setIsAdvancing(false);
     }
   };
 
@@ -141,10 +206,78 @@ export default function CycleDetailPage() {
                 </button>
               )}
               {cycle.status !== "completed" && cycle.status !== "draft" && (
-                <button className="px-4 py-2 text-sm bg-accent hover:bg-muted text-foreground rounded-lg transition flex items-center gap-2">
-                  <Pause className="h-4 w-4" />
-                  Pause
+                <button
+                  onClick={() => setShowAdvanceConfirm(true)}
+                  disabled={isAdvancing}
+                  className="px-4 py-2 text-sm bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white rounded-lg transition flex items-center gap-2"
+                >
+                  {isAdvancing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <FastForward className="h-4 w-4" />
+                  )}
+                  Advance Phase
                 </button>
+              )}
+              {cycle.status !== "draft" && cycle.status !== "completed" && (
+                <DropdownMenu.Root>
+                  <DropdownMenu.Trigger asChild>
+                    <button
+                      disabled={isResending !== null}
+                      className="px-3 py-2 text-sm bg-accent hover:bg-muted disabled:opacity-50 text-foreground rounded-lg transition flex items-center gap-2"
+                      title="Resend a cycle notification to participants"
+                    >
+                      {isResending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Bell className="h-4 w-4" />
+                      )}
+                      Notify
+                      <ChevronDown className="h-3 w-3 opacity-60" />
+                    </button>
+                  </DropdownMenu.Trigger>
+                  <DropdownMenu.Portal>
+                    <DropdownMenu.Content
+                      align="end"
+                      sideOffset={4}
+                      className="min-w-[14rem] z-50 bg-popover text-popover-foreground border border-border rounded-lg shadow-xl py-1"
+                    >
+                      <DropdownMenu.Label className="px-3 py-1.5 text-xs text-muted-foreground">
+                        Resend notification
+                      </DropdownMenu.Label>
+                      <DropdownMenu.Item
+                        onSelect={(e) => {
+                          e.preventDefault();
+                          handleResend("activation");
+                        }}
+                        disabled={isResending !== null}
+                        className="px-3 py-2 text-sm hover:bg-accent transition outline-none cursor-pointer data-[disabled]:opacity-50"
+                      >
+                        Cycle started — all enrolled
+                      </DropdownMenu.Item>
+                      <DropdownMenu.Item
+                        onSelect={(e) => {
+                          e.preventDefault();
+                          handleResend("deadline");
+                        }}
+                        disabled={isResending !== null}
+                        className="px-3 py-2 text-sm hover:bg-accent transition outline-none cursor-pointer data-[disabled]:opacity-50"
+                      >
+                        Deadline reminder — pending only
+                      </DropdownMenu.Item>
+                      <DropdownMenu.Item
+                        onSelect={(e) => {
+                          e.preventDefault();
+                          handleResend("phase_change");
+                        }}
+                        disabled={isResending !== null}
+                        className="px-3 py-2 text-sm hover:bg-accent transition outline-none cursor-pointer data-[disabled]:opacity-50"
+                      >
+                        Phase change — all enrolled
+                      </DropdownMenu.Item>
+                    </DropdownMenu.Content>
+                  </DropdownMenu.Portal>
+                </DropdownMenu.Root>
               )}
             </div>
           </div>
@@ -413,6 +546,55 @@ export default function CycleDetailPage() {
                     <>
                       <Play className="h-4 w-4" />
                       Start Cycle
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Advance Phase Confirmation Modal */}
+        {showAdvanceConfirm && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-muted rounded-xl border border-border p-6 max-w-md w-full mx-4">
+              <h3 className="text-lg font-medium text-foreground mb-2">
+                Advance to next phase?
+              </h3>
+              <p className="text-muted-foreground text-sm mb-4">
+                Moves this cycle from{" "}
+                <span className="font-medium text-foreground">
+                  {statusLabels[cycle.status] || cycle.status}
+                </span>{" "}
+                →{" "}
+                <span className="font-medium text-foreground">
+                  {nextPhaseLabel(cycle.status) ?? "next phase"}
+                </span>
+                . Participants will be notified and the relevant submission
+                forms will open / close.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowAdvanceConfirm(false)}
+                  disabled={isAdvancing}
+                  className="px-4 py-2 text-sm bg-accent hover:bg-muted text-foreground rounded-lg transition disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAdvancePhase}
+                  disabled={isAdvancing}
+                  className="px-4 py-2 text-sm bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isAdvancing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Advancing...
+                    </>
+                  ) : (
+                    <>
+                      <FastForward className="h-4 w-4" />
+                      Advance Phase
                     </>
                   )}
                 </button>

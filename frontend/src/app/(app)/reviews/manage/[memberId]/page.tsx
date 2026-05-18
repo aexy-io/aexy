@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { redirect, useParams } from "next/navigation";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
   ClipboardCheck,
@@ -41,6 +41,7 @@ import { reviewsApi, IndividualReviewDetail, WorkGoal, GoalSuggestion } from "@/
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { ReviewDigestCard } from "@/components/code-insights";
 import { GOAL_TYPE_COLORS, GOAL_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
+import { AssignPeerReviewersModal } from "./AssignPeerReviewersModal";
 
 // Extra statuses specific to the manage view (at_risk, pending not in centralized GOAL_STATUS_COLORS)
 const extraGoalStatusColors: Record<string, { bg: string; text: string }> = {
@@ -178,12 +179,23 @@ export default function MemberDetailPage() {
 
   const [activeTab, setActiveTab] = useState<"overview" | "goals" | "contributions" | "feedback">("overview");
   const [showAddGoalFromSuggestion, setShowAddGoalFromSuggestion] = useState<string | null>(null);
+  const [showInviteReviewers, setShowInviteReviewers] = useState(false);
+
+  const queryClient = useQueryClient();
 
   // Fetch review details
   const { data: review, isLoading: reviewLoading, error: reviewError } = useQuery({
     queryKey: ["review", reviewId],
     queryFn: () => reviewsApi.getReview(reviewId),
     enabled: !!reviewId && isAuthenticated,
+  });
+
+  // Pull cycle settings so the peer-reviewer picker can soft-enforce the
+  // per-cycle min/max reviewer config instead of hardcoded 1/5 defaults.
+  const { data: reviewCycle } = useQuery({
+    queryKey: ["reviewCycle", review?.review_cycle_id],
+    queryFn: () => reviewsApi.getCycle(review!.review_cycle_id),
+    enabled: !!review?.review_cycle_id,
   });
 
   // Fetch goal suggestions
@@ -557,9 +569,12 @@ export default function MemberDetailPage() {
               <div className="bg-muted rounded-xl border border-border p-4">
                 <h3 className="text-foreground font-medium mb-3">Quick Actions</h3>
                 <div className="space-y-2">
-                  <button className="w-full flex items-center gap-2 px-3 py-2 bg-accent hover:bg-muted text-foreground rounded-lg text-sm transition">
+                  <button
+                    onClick={() => setShowInviteReviewers(true)}
+                    className="w-full flex items-center gap-2 px-3 py-2 bg-accent hover:bg-muted text-foreground rounded-lg text-sm transition"
+                  >
                     <UserCheck className="h-4 w-4" />
-                    Request Peer Review
+                    Invite Peer Reviewers
                   </button>
                   <button className="w-full flex items-center gap-2 px-3 py-2 bg-accent hover:bg-muted text-foreground rounded-lg text-sm transition">
                     <Calendar className="h-4 w-4" />
@@ -839,6 +854,25 @@ export default function MemberDetailPage() {
               </div>
             )}
           </div>
+        )}
+
+        {review && user?.id && (
+          <AssignPeerReviewersModal
+            open={showInviteReviewers}
+            onClose={() => setShowInviteReviewers(false)}
+            reviewId={review.id}
+            managerId={user.id}
+            workspaceId={currentWorkspace?.id ?? null}
+            revieweeDeveloperId={review.developer_id}
+            minReviewers={reviewCycle?.settings?.min_peer_reviewers}
+            maxReviewers={reviewCycle?.settings?.max_peer_reviewers}
+            onAssigned={() => {
+              // Refresh the review so the peer-review counter updates
+              // immediately. The modal's own existing-invites list
+              // re-fetches the next time it's opened.
+              queryClient.invalidateQueries({ queryKey: ["review", reviewId] });
+            }}
+          />
         )}
       </main>
     </div>

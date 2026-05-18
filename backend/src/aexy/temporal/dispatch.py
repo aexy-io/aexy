@@ -71,6 +71,7 @@ ACTIVITY_CONFIG: dict[str, dict[str, Any]] = {
     "compose_developer_review_period": {"retry": LLM_RETRY, "timeout": timedelta(minutes=20)},
     "compose_team_review_period": {"retry": LLM_RETRY, "timeout": timedelta(minutes=20)},
     "enqueue_review_cycle_digests": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=10)},
+    "check_review_deadlines": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=10)},
     "batch_profile_sync": {"retry": STANDARD_RETRY, "timeout": timedelta(hours=2), "heartbeat": timedelta(minutes=5)},
     "extract_knowledge_from_document": {"retry": LLM_RETRY, "timeout": timedelta(minutes=30)},
     "rebuild_workspace_graph": {"retry": LLM_RETRY, "timeout": timedelta(hours=2), "heartbeat": timedelta(minutes=5)},

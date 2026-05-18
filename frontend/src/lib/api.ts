@@ -5301,6 +5301,32 @@ export const reviewsApi = {
     return response.data;
   },
 
+  getPeerRequest: async (requestId: string): Promise<ReviewRequest> => {
+    const response = await api.get(`/reviews/peer-requests/${requestId}`);
+    return response.data;
+  },
+
+  listPeerRequestsForReview: async (
+    reviewId: string,
+  ): Promise<ReviewRequest[]> => {
+    const response = await api.get(`/reviews/${reviewId}/peer-requests`);
+    return response.data;
+  },
+
+  resendCycleNotifications: async (
+    cycleId: string,
+    payload: {
+      kind: "activation" | "deadline" | "phase_change";
+      recipient_ids?: string[];
+    },
+  ): Promise<{ sent: number; kind: string; recipient_count?: number; reason?: string }> => {
+    const response = await api.post(
+      `/reviews/cycles/${cycleId}/resend-notifications`,
+      payload,
+    );
+    return response.data;
+  },
+
   respondToPeerRequest: async (
     requestId: string,
     data: { accept: boolean; decline_reason?: string }

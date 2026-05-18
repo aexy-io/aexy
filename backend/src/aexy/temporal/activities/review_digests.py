@@ -716,3 +716,188 @@ async def enqueue_review_cycle_digests(
             "developer_digests": dispatches,
             "team_digest": 1,
         }
+
+
+# ─── Deadline reminders ─────────────────────────────────────────────────
+
+
+@dataclass
+class CheckReviewDeadlinesInput:
+    """No input — the activity scans every active cycle. Trigger via the
+    `review-deadline-reminders` schedule defined in `temporal/schedules.py`."""
+
+
+# Days-out thresholds we fire reminders at, plus the human-readable
+# phase labels we put into the notification body. Ordered descending so
+# the sweep picks the earliest unsent bell that's already in scope.
+_REMINDER_DAYS = (7, 3, 1)
+_PHASE_LABELS = {
+    "self_review": "Self-review",
+    "peer_review": "Peer review",
+    "manager_review": "Manager review",
+}
+
+
+async def _resolve_deadline_recipients(db, cycle_id, phase: str) -> list[str]:
+    """Recipient set for a given phase's deadline reminder."""
+    from sqlalchemy import select as _select
+
+    from aexy.models.review import IndividualReview, ReviewRequest
+
+    if phase == "self_review":
+        rows = (
+            await db.execute(
+                _select(IndividualReview.developer_id).where(
+                    IndividualReview.review_cycle_id == cycle_id
+                )
+            )
+        ).scalars().all()
+        return [str(r) for r in rows if r]
+    if phase == "peer_review":
+        rows = (
+            await db.execute(
+                _select(ReviewRequest.reviewer_id)
+                .join(
+                    IndividualReview,
+                    IndividualReview.id == ReviewRequest.individual_review_id,
+                )
+                .where(
+                    IndividualReview.review_cycle_id == cycle_id,
+                    ReviewRequest.status.in_(["pending", "accepted"]),
+                )
+            )
+        ).scalars().all()
+        return list({str(r) for r in rows if r})
+    if phase == "manager_review":
+        rows = (
+            await db.execute(
+                _select(IndividualReview.manager_id).where(
+                    IndividualReview.review_cycle_id == cycle_id,
+                    IndividualReview.manager_id.is_not(None),
+                )
+            )
+        ).scalars().all()
+        return list({str(r) for r in rows if r})
+    return []
+
+
+@activity.defn
+async def check_review_deadlines(input: CheckReviewDeadlinesInput) -> dict[str, Any]:
+    """Daily sweep: for every non-completed ReviewCycle, fire a reminder
+    notification at T-7 / T-3 / T-1 days before each phase deadline that
+    is still in the future. Idempotent via `ReviewCycle.reminders_sent`
+    JSONB — a key `<phase>:<days>` present in that dict means "already
+    sent."
+
+    Missed-day handling: thresholds are checked descending (7 → 3 → 1)
+    and we fire the largest unsent threshold whose window we're inside
+    (i.e. days_remaining <= threshold). If the daily sweep is skipped
+    one day, the next run still catches up — the days_remaining shown
+    in the message is always the actual delta to deadline, not the
+    threshold value, so reminders never lie about urgency.
+
+    Recipient selection per phase:
+      * self_review  → every IndividualReview.developer_id in the cycle
+      * peer_review  → every ReviewRequest.reviewer_id with status
+                       in {pending, accepted} for reviews in the cycle
+      * manager_review → every IndividualReview.manager_id, deduped
+    """
+    from datetime import date as _date, datetime as _datetime, timezone as _tz
+
+    from sqlalchemy import select as _select
+
+    from aexy.models.review import ReviewCycle
+    from aexy.services.notification_service import notify_review_deadline
+
+    today = _date.today()
+    total_sent = 0
+    cycles_processed = 0
+
+    async with async_session_maker() as db:
+        # Active cycles only — completed/draft cycles have no live deadlines.
+        cycles = (
+            await db.execute(
+                _select(ReviewCycle).where(
+                    ReviewCycle.status.in_(
+                        ["active", "self_review", "peer_review", "manager_review"]
+                    )
+                )
+            )
+        ).scalars().all()
+
+        for cycle in cycles:
+            cycles_processed += 1
+            reminders = dict(cycle.reminders_sent or {})
+
+            phase_deadlines: list[tuple[str, _date | None]] = [
+                ("self_review", cycle.self_review_deadline),
+                ("peer_review", cycle.peer_review_deadline),
+                ("manager_review", cycle.manager_review_deadline),
+            ]
+
+            recipients_cache: dict[str, list[str]] = {}
+
+            for phase, deadline in phase_deadlines:
+                if deadline is None:
+                    continue
+                days_remaining = (deadline - today).days
+                if days_remaining < 0:
+                    continue  # deadline passed; let escalation handle this
+
+                # Largest unsent threshold whose window we're already inside.
+                # Descending order means "fire T-7 before T-3 before T-1" so
+                # users get the earliest applicable bell first — and a single
+                # missed-day catch-up only fires one notification per phase.
+                chosen: int | None = None
+                for threshold in _REMINDER_DAYS:  # 7, 3, 1
+                    key = f"{phase}:{threshold}"
+                    if key in reminders:
+                        continue
+                    if days_remaining <= threshold:
+                        chosen = threshold
+                        break
+
+                if chosen is None:
+                    continue
+                key = f"{phase}:{chosen}"
+
+                if phase not in recipients_cache:
+                    recipients_cache[phase] = await _resolve_deadline_recipients(
+                        db, cycle.id, phase
+                    )
+                recipient_ids = recipients_cache[phase]
+
+                if not recipient_ids:
+                    # Still mark sent so we don't keep rechecking each day.
+                    reminders[key] = _datetime.now(_tz.utc).isoformat()
+                    continue
+                try:
+                    await notify_review_deadline(
+                        db=db,
+                        recipient_ids=recipient_ids,
+                        cycle_id=str(cycle.id),
+                        cycle_name=cycle.name,
+                        phase_label=_PHASE_LABELS.get(phase, phase),
+                        # Show real remaining days, not the threshold — a
+                        # catch-up fire after a missed day must not claim
+                        # "due in 7 days" when it's actually due in 5.
+                        days_remaining=days_remaining,
+                        deadline_iso=deadline.isoformat(),
+                    )
+                    total_sent += len(recipient_ids)
+                    reminders[key] = _datetime.now(_tz.utc).isoformat()
+                except Exception:
+                    logger.exception(
+                        f"Failed to send deadline reminder "
+                        f"cycle={cycle.id} phase={phase} t-{chosen}"
+                    )
+
+            # Persist the updated reminders_sent dict only if it grew.
+            if reminders != (cycle.reminders_sent or {}):
+                cycle.reminders_sent = reminders
+        await db.commit()
+
+    return {
+        "cycles_processed": cycles_processed,
+        "notifications_sent": total_sent,
+    }

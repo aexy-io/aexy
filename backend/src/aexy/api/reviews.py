@@ -4,6 +4,7 @@ from datetime import date
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.core.database import get_db
@@ -195,6 +196,207 @@ async def advance_review_phase(
     if not new_status:
         raise HTTPException(status_code=404, detail="Review cycle not found")
     return {"status": new_status}
+
+
+class ResendNotificationsRequest(BaseModel):
+    """Admin trigger to re-fire one of the review-cycle notification
+    flows on demand. Useful when:
+      * a newly-joined member missed the activation broadcast,
+      * a deadline is looming and the T-7 / T-3 reminder hasn't hit yet,
+      * an admin manually wants to nudge stragglers.
+    """
+
+    # Which notification flow to re-fire.
+    kind: str  # "activation" | "deadline" | "phase_change"
+    # Optional explicit recipient set. Empty → activity computes its own
+    # natural recipient list for that kind (all enrollees / pending
+    # reviewers / participants).
+    recipient_ids: list[str] | None = None
+
+
+@router.post("/cycles/{cycle_id}/resend-notifications")
+async def resend_cycle_notifications(
+    cycle_id: str,
+    payload: ResendNotificationsRequest,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Re-fire a review-cycle notification flow. Workspace admin/owner only.
+
+    The deadline-reminder daily sweep already runs at T-7/T-3/T-1 from
+    each phase deadline — this endpoint is the "force send NOW" escape
+    hatch alongside it. Idempotency state in `ReviewCycle.reminders_sent`
+    is **not** updated by manual resends, so the scheduled sweep still
+    fires on its own cadence afterward.
+    """
+    from aexy.models.review import (
+        IndividualReview as _IndividualReview,
+        ReviewCycle as _ReviewCycleModel,
+        ReviewRequest as _ReviewRequestModel,
+    )
+    from aexy.services.notification_service import (
+        notify_review_cycle_activated,
+        notify_review_cycle_phase_changed,
+        notify_review_deadline,
+    )
+    from aexy.services.workspace_service import WorkspaceService
+
+    cycle = await db.get(_ReviewCycleModel, cycle_id)
+    if not cycle:
+        raise HTTPException(status_code=404, detail="Review cycle not found")
+
+    # Admin-only — we don't want a regular member spamming notifications.
+    workspace_service = WorkspaceService(db)
+    if not await workspace_service.check_permission(
+        str(cycle.workspace_id), str(current_user.id), "admin"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Workspace admin or owner role required to resend",
+        )
+
+    kind = (payload.kind or "").strip().lower()
+    if kind not in {"activation", "deadline", "phase_change"}:
+        raise HTTPException(
+            status_code=400,
+            detail="kind must be one of: activation, deadline, phase_change",
+        )
+
+    # Deadline reminders on a completed cycle have no meaningful target —
+    # all work is done. Refuse rather than fan out a misleading
+    # "deadline approaching" to managers of a closed cycle.
+    if kind == "deadline" and cycle.status == "completed":
+        raise HTTPException(
+            status_code=409,
+            detail="Cannot send deadline reminders on a completed cycle",
+        )
+
+    # Compute the natural recipient set for this cycle/kind. We always
+    # compute it — even when the caller pinned an explicit list — so we
+    # can intersect against it (otherwise an admin could fan out the
+    # notification to any developer ID they paste in, which sidesteps
+    # the workspace-membership boundary the cycle implies).
+    async def _natural_recipients() -> list[str]:
+        if kind in {"activation", "phase_change"}:
+            rows = (
+                await db.execute(
+                    select(_IndividualReview.developer_id).where(
+                        _IndividualReview.review_cycle_id == cycle_id
+                    )
+                )
+            ).scalars().all()
+            return [str(r) for r in rows if r]
+        # deadline — recipient set depends on the currently-open phase.
+        if cycle.status == "manager_review":
+            rows = (
+                await db.execute(
+                    select(_IndividualReview.manager_id).where(
+                        _IndividualReview.review_cycle_id == cycle_id,
+                        _IndividualReview.manager_id.is_not(None),
+                    )
+                )
+            ).scalars().all()
+            return list({str(r) for r in rows if r})
+        if cycle.status == "peer_review":
+            rows = (
+                await db.execute(
+                    select(_ReviewRequestModel.reviewer_id)
+                    .join(
+                        _IndividualReview,
+                        _IndividualReview.id
+                        == _ReviewRequestModel.individual_review_id,
+                    )
+                    .where(
+                        _IndividualReview.review_cycle_id == cycle_id,
+                        _ReviewRequestModel.status.in_(["pending", "accepted"]),
+                    )
+                )
+            ).scalars().all()
+            return list({str(r) for r in rows if r})
+        # self_review or active — everyone with an open self-review.
+        rows = (
+            await db.execute(
+                select(_IndividualReview.developer_id).where(
+                    _IndividualReview.review_cycle_id == cycle_id,
+                    _IndividualReview.status.in_(
+                        ["pending", "self_review_submitted"]
+                    ),
+                )
+            )
+        ).scalars().all()
+        return [str(r) for r in rows if r]
+
+    natural = await _natural_recipients()
+    natural_set = set(natural)
+
+    if payload.recipient_ids:
+        # Intersect with the natural set — silently drop anything outside
+        # so admins can't broadcast to arbitrary developer IDs.
+        recipient_ids = [
+            str(rid) for rid in payload.recipient_ids if str(rid) in natural_set
+        ]
+    else:
+        recipient_ids = natural
+
+    if not recipient_ids:
+        return {"sent": 0, "kind": kind, "reason": "no eligible recipients"}
+
+    sent = 0
+    if kind == "activation":
+        results = await notify_review_cycle_activated(
+            db=db,
+            recipient_ids=recipient_ids,
+            cycle_id=str(cycle.id),
+            cycle_name=cycle.name,
+        )
+        sent = len(results)
+    elif kind == "phase_change":
+        results = await notify_review_cycle_phase_changed(
+            db=db,
+            recipient_ids=recipient_ids,
+            cycle_id=str(cycle.id),
+            cycle_name=cycle.name,
+            new_phase=cycle.status,
+        )
+        sent = len(results)
+    else:  # deadline
+        # Pick the deadline that maps to the current phase.
+        from datetime import date as _date
+
+        phase_map = {
+            "self_review": ("Self-review", cycle.self_review_deadline),
+            "peer_review": ("Peer review", cycle.peer_review_deadline),
+            "manager_review": ("Manager review", cycle.manager_review_deadline),
+        }
+        # `active` shows the self-review deadline because that's the next
+        # phase that opens; admins firing pre-emptive nudges land here.
+        phase_label, deadline = phase_map.get(
+            cycle.status, ("Self-review", cycle.self_review_deadline)
+        )
+        if deadline is None:
+            return {
+                "sent": 0,
+                "kind": kind,
+                "reason": "no deadline set for current phase",
+            }
+        days_remaining = max(0, (deadline - _date.today()).days)
+        results = await notify_review_deadline(
+            db=db,
+            recipient_ids=recipient_ids,
+            cycle_id=str(cycle.id),
+            cycle_name=cycle.name,
+            phase_label=phase_label,
+            days_remaining=days_remaining,
+            deadline_iso=deadline.isoformat(),
+        )
+        sent = len(results)
+
+    await db.commit()
+    return {
+        "sent": sent,
+        "kind": kind,
+        "recipient_count": len(recipient_ids),
+    }
 
 
 # ============ Individual Review Endpoints ============
@@ -662,6 +864,75 @@ async def assign_peer_reviewers(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.get("/{review_id}/peer-requests", response_model=list[ReviewRequestResponse])
+async def list_peer_requests_for_review(
+    review_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """List all peer review requests for a single IndividualReview.
+
+    Powers the "Invite peer reviewers" modal so managers can see who has
+    already been invited (and the status of each request) before
+    sending more invites — without it the modal happily creates
+    duplicate requests for the same reviewer.
+    """
+    from sqlalchemy.orm import selectinload as _selectinload
+
+    from aexy.models.review import (
+        IndividualReview as _IndividualReview,
+        ReviewCycle as _ReviewCycle,
+        ReviewRequest as _ReviewRequestModel,
+    )
+
+    # Authorize: caller must be the reviewee, the manager on the review,
+    # or a workspace admin/owner of the cycle's workspace.
+    review = await db.get(_IndividualReview, review_id)
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+
+    caller_id = str(current_user.id)
+    is_party = caller_id in {str(review.developer_id), str(review.manager_id or "")}
+    if not is_party:
+        cycle_workspace_id = (
+            await db.execute(
+                select(_ReviewCycle.workspace_id).where(
+                    _ReviewCycle.id == review.review_cycle_id
+                )
+            )
+        ).scalar_one_or_none()
+        if not cycle_workspace_id:
+            raise HTTPException(status_code=404, detail="Review not found")
+        from aexy.services.workspace_service import WorkspaceService
+        if not await WorkspaceService(db).check_permission(
+            str(cycle_workspace_id), caller_id, "admin"
+        ):
+            raise HTTPException(status_code=404, detail="Review not found")
+
+    stmt = (
+        select(_ReviewRequestModel)
+        .options(
+            _selectinload(_ReviewRequestModel.requester),
+            _selectinload(_ReviewRequestModel.reviewer),
+        )
+        .where(_ReviewRequestModel.individual_review_id == review_id)
+        .order_by(_ReviewRequestModel.created_at.desc())
+    )
+    requests = (await db.execute(stmt)).scalars().all()
+
+    out: list[ReviewRequestResponse] = []
+    for r in requests:
+        resp = ReviewRequestResponse.model_validate(r)
+        requester = getattr(r, "requester", None)
+        reviewer = getattr(r, "reviewer", None)
+        if requester is not None and not resp.requester_name:
+            resp.requester_name = requester.name or requester.email
+        if reviewer is not None and not resp.reviewer_name:
+            resp.reviewer_name = reviewer.name or reviewer.email
+        out.append(resp)
+    return out
+
+
 @router.get("/peer-requests/pending", response_model=list[ReviewRequestResponse])
 async def get_pending_peer_requests(
     reviewer_id: str,
@@ -670,7 +941,109 @@ async def get_pending_peer_requests(
     """Get pending peer review requests for a reviewer."""
     service = ReviewService(db)
     requests = await service.get_pending_peer_requests(reviewer_id)
-    return [ReviewRequestResponse.model_validate(r) for r in requests]
+    # Hydrate the optional requester/reviewer names from the loaded
+    # relationships so the UI doesn't render "Unknown" for everyone.
+    out: list[ReviewRequestResponse] = []
+    for r in requests:
+        resp = ReviewRequestResponse.model_validate(r)
+        requester = getattr(r, "requester", None)
+        reviewer = getattr(r, "reviewer", None)
+        if requester is not None and not resp.requester_name:
+            resp.requester_name = requester.name or requester.email
+        if reviewer is not None and not resp.reviewer_name:
+            resp.reviewer_name = reviewer.name or reviewer.email
+        out.append(resp)
+    return out
+
+
+# Declared AFTER `/peer-requests/pending` because FastAPI matches in
+# declaration order — a dynamic `{request_id}` route placed first would
+# swallow the literal `/pending` segment as `request_id="pending"` and
+# 404 every list call.
+@router.get("/peer-requests/{request_id}", response_model=ReviewRequestResponse)
+async def get_peer_request(
+    request_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a single peer review request by id.
+
+    Powers the `/reviews/peer-requests/[requestId]` detail page so a
+    reviewer can land on a request via notification or list link and
+    see context (requester, cycle, message, status) before deciding
+    accept / decline / submit.
+
+    Authorization: caller must be the request's requester, reviewer,
+    or a workspace admin/owner of the workspace owning the parent
+    review cycle. Without this an unauthenticated UUID guess would
+    leak reviewer/requester identity, message body, and status.
+    """
+    from sqlalchemy.orm import selectinload as _selectinload
+
+    from aexy.models.review import (
+        IndividualReview as _IndividualReview,
+        ReviewCycle as _ReviewCycle,
+        ReviewRequest as _ReviewRequestModel,
+    )
+    from aexy.services.workspace_service import WorkspaceService
+
+    # Eager-load requester + reviewer so we can both authorize and
+    # populate the response's display-name fields without a second
+    # round-trip.
+    stmt = (
+        select(_ReviewRequestModel)
+        .options(
+            _selectinload(_ReviewRequestModel.requester),
+            _selectinload(_ReviewRequestModel.reviewer),
+        )
+        .where(_ReviewRequestModel.id == request_id)
+    )
+    request = (await db.execute(stmt)).scalar_one_or_none()
+    if not request:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    caller_id = str(current_user.id)
+    is_party = caller_id in {str(request.requester_id), str(request.reviewer_id)}
+
+    is_admin = False
+    if not is_party:
+        # Resolve the workspace via the parent review cycle so we can
+        # check admin role. Avoids hitting the WorkspaceMember table
+        # for ordinary requester/reviewer access.
+        review_row = (
+            await db.execute(
+                select(_IndividualReview.review_cycle_id).where(
+                    _IndividualReview.id == request.individual_review_id
+                )
+            )
+        ).scalar_one_or_none()
+        if review_row:
+            cycle_row = (
+                await db.execute(
+                    select(_ReviewCycle.workspace_id).where(
+                        _ReviewCycle.id == review_row
+                    )
+                )
+            ).scalar_one_or_none()
+            if cycle_row:
+                workspace_service = WorkspaceService(db)
+                is_admin = await workspace_service.check_permission(
+                    str(cycle_row), caller_id, "admin"
+                )
+
+    if not (is_party or is_admin):
+        # 404 rather than 403 so we don't confirm the request exists
+        # to unauthorized callers (avoids UUID-existence oracles).
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    resp = ReviewRequestResponse.model_validate(request)
+    requester = getattr(request, "requester", None)
+    reviewer = getattr(request, "reviewer", None)
+    if requester is not None and not resp.requester_name:
+        resp.requester_name = requester.name or requester.email
+    if reviewer is not None and not resp.reviewer_name:
+        resp.reviewer_name = reviewer.name or reviewer.email
+    return resp
 
 
 @router.post("/peer-requests/{request_id}/respond", response_model=ReviewRequestResponse)

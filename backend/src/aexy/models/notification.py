@@ -27,7 +27,9 @@ class NotificationEventType(str, Enum):
     # Review-related
     PEER_REVIEW_REQUESTED = "peer_review_requested"
     PEER_REVIEW_RECEIVED = "peer_review_received"
+    REVIEW_CYCLE_ACTIVATED = "review_cycle_activated"
     REVIEW_CYCLE_PHASE_CHANGED = "review_cycle_phase_changed"
+    REVIEW_DEADLINE_REMINDER = "review_deadline_reminder"
     MANAGER_REVIEW_COMPLETED = "manager_review_completed"
     REVIEW_ACKNOWLEDGED = "review_acknowledged"
 
@@ -394,7 +396,9 @@ NOTIFICATION_CATEGORIES: dict[str, list[str]] = {
     "reviews_and_goals": [
         NotificationEventType.PEER_REVIEW_REQUESTED.value,
         NotificationEventType.PEER_REVIEW_RECEIVED.value,
+        NotificationEventType.REVIEW_CYCLE_ACTIVATED.value,
         NotificationEventType.REVIEW_CYCLE_PHASE_CHANGED.value,
+        NotificationEventType.REVIEW_DEADLINE_REMINDER.value,
         NotificationEventType.MANAGER_REVIEW_COMPLETED.value,
         NotificationEventType.REVIEW_ACKNOWLEDGED.value,
         NotificationEventType.GOAL_AUTO_LINKED.value,
@@ -508,7 +512,9 @@ EVENT_TYPE_TO_CATEGORY: dict[str, str] = {
 DEFAULT_NOTIFICATION_PREFERENCES = {
     NotificationEventType.PEER_REVIEW_REQUESTED: {"in_app": True, "email": True, "slack": False, "web_push": False},
     NotificationEventType.PEER_REVIEW_RECEIVED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.REVIEW_CYCLE_ACTIVATED: {"in_app": True, "email": True, "slack": False, "web_push": False},
     NotificationEventType.REVIEW_CYCLE_PHASE_CHANGED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.REVIEW_DEADLINE_REMINDER: {"in_app": True, "email": True, "slack": False, "web_push": False},
     NotificationEventType.MANAGER_REVIEW_COMPLETED: {"in_app": True, "email": True, "slack": False, "web_push": False},
     NotificationEventType.REVIEW_ACKNOWLEDGED: {"in_app": True, "email": False, "slack": False, "web_push": False},
     NotificationEventType.DEADLINE_REMINDER_1_DAY: {"in_app": True, "email": True, "slack": False, "web_push": False},

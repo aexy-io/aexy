@@ -58,6 +58,14 @@ class ReviewCycle(Base):
     peer_review_deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
     manager_review_deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
 
+    # Per-cycle idempotency state for the deadline-reminder schedule.
+    # Shape: { "self_review:7": "2026-05-11T...Z", "self_review:3": "...",
+    #         "self_review:1": "...", "peer_review:7": "...", ... }
+    # The activity reads this before sending; presence == "already sent".
+    reminders_sent: Mapped[dict] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default="{}"
+    )
+
     # Configuration (JSONB)
     settings: Mapped[dict] = mapped_column(
         JSONB,

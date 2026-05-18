@@ -720,6 +720,70 @@ async def notify_peer_review_received(
     )
 
 
+async def notify_review_deadline(
+    db: AsyncSession,
+    recipient_ids: list[str],
+    cycle_id: str,
+    cycle_name: str,
+    phase_label: str,
+    days_remaining: int,
+    deadline_iso: str,
+) -> list[Notification]:
+    """Fan-out 'Your <phase> is due in N days' to relevant participants.
+
+    Phase choice (self / peer / manager) determines who gets notified —
+    the deadline-checker activity decides the recipient set and passes
+    it here. This helper only handles delivery + template rendering.
+    """
+    service = NotificationService(db)
+    notifications = []
+    for recipient_id in recipient_ids:
+        notification = await service.create_notification_from_event(
+            recipient_id=recipient_id,
+            event_type=NotificationEventType.REVIEW_DEADLINE_REMINDER,
+            context={
+                "cycle_id": cycle_id,
+                "cycle_name": cycle_name,
+                "phase_label": phase_label,
+                "days_remaining": days_remaining,
+                "deadline": deadline_iso,
+                "action_url": f"/reviews/cycles/{cycle_id}",
+            },
+        )
+        if notification:
+            notifications.append(notification)
+    return notifications
+
+
+async def notify_review_cycle_activated(
+    db: AsyncSession,
+    recipient_ids: list[str],
+    cycle_id: str,
+    cycle_name: str,
+) -> list[Notification]:
+    """Fan-out 'Your review cycle has started' notifications.
+
+    Called from ReviewService.activate_review_cycle after the individual
+    review rows are created. Without this, devs only discover their cycle
+    has activated by stumbling onto the reviews page.
+    """
+    service = NotificationService(db)
+    notifications = []
+    for recipient_id in recipient_ids:
+        notification = await service.create_notification_from_event(
+            recipient_id=recipient_id,
+            event_type=NotificationEventType.REVIEW_CYCLE_ACTIVATED,
+            context={
+                "cycle_id": cycle_id,
+                "cycle_name": cycle_name,
+                "action_url": f"/reviews/cycles/{cycle_id}",
+            },
+        )
+        if notification:
+            notifications.append(notification)
+    return notifications
+
+
 async def notify_review_cycle_phase_changed(
     db: AsyncSession,
     recipient_ids: list[str],

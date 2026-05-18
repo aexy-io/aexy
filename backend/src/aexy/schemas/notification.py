@@ -12,7 +12,9 @@ class NotificationEventType(str, Enum):
     # Review-related
     PEER_REVIEW_REQUESTED = "peer_review_requested"
     PEER_REVIEW_RECEIVED = "peer_review_received"
+    REVIEW_CYCLE_ACTIVATED = "review_cycle_activated"
     REVIEW_CYCLE_PHASE_CHANGED = "review_cycle_phase_changed"
+    REVIEW_DEADLINE_REMINDER = "review_deadline_reminder"
     MANAGER_REVIEW_COMPLETED = "manager_review_completed"
     REVIEW_ACKNOWLEDGED = "review_acknowledged"
 
@@ -341,10 +343,20 @@ NOTIFICATION_TEMPLATES = {
         "body_template": "You received new peer feedback for your performance review",
         "email_subject": "New Peer Feedback Received",
     },
+    NotificationEventType.REVIEW_CYCLE_ACTIVATED: {
+        "title": "Review Cycle Started",
+        "body_template": "The {cycle_name} review cycle is now active. Open it to start your self-review.",
+        "email_subject": "Review Cycle Started: {cycle_name}",
+    },
     NotificationEventType.REVIEW_CYCLE_PHASE_CHANGED: {
         "title": "Review Cycle Update",
         "body_template": "The {cycle_name} review cycle has moved to {new_phase} phase",
         "email_subject": "Review Cycle Phase Change: {cycle_name}",
+    },
+    NotificationEventType.REVIEW_DEADLINE_REMINDER: {
+        "title": "Review deadline approaching",
+        "body_template": "{phase_label} for {cycle_name} is due in {days_remaining} day(s) ({deadline})",
+        "email_subject": "Reminder: {phase_label} due in {days_remaining} day(s)",
     },
     NotificationEventType.MANAGER_REVIEW_COMPLETED: {
         "title": "Manager Review Completed",

@@ -71,6 +71,16 @@ SCHEDULES: list[dict] = [
         "interval": timedelta(weeks=1),
         "queue": TaskQueue.ANALYSIS,
     },
+    # Daily sweep that fires T-7 / T-3 / T-1 deadline reminders for every
+    # active review cycle. Idempotent via ReviewCycle.reminders_sent.
+    {
+        "id": "review-deadline-reminders",
+        "activity": "check_review_deadlines",
+        "input_module": "aexy.temporal.activities.review_digests",
+        "input_class": "CheckReviewDeadlinesInput",
+        "interval": timedelta(hours=24),
+        "queue": TaskQueue.ANALYSIS,
+    },
     # Phase 4 / C2 — 30-min poll of every open PR across AI-enabled
     # workspaces. Cheap (one GitHub call per PR); only fans out re-analysis
     # when title/description actually changed since last poll.

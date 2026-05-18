@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import type { ReactNode } from "react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
   Calendar,
   Plus,
@@ -16,7 +19,7 @@ import {
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useReviewCycles } from "@/hooks/useReviews";
-import { ReviewCycle } from "@/lib/api";
+import { ReviewCycle, reviewsApi } from "@/lib/api";
 import { REVIEW_CYCLE_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 import { DataTable, DataTableColumn } from "@/components/ui/data-table";
 import { useTranslations } from "next-intl";
@@ -46,10 +49,80 @@ const statusSortOrder: Record<string, number> = {
   completed: 5,
 };
 
-function ActionsCell({ cycle }: { cycle: ReviewCycle }) {
-  const [showMenu, setShowMenu] = useState(false);
+// Mirrors backend `advance_review_phase` ordering — used to label the
+// "Advance Phase" confirmation modal with the destination phase so the
+// admin knows exactly what they're triggering.
+const PHASE_ORDER: ReviewCycle["status"][] = [
+  "draft",
+  "active",
+  "self_review",
+  "peer_review",
+  "manager_review",
+  "completed",
+];
+
+function nextPhaseLabel(status: ReviewCycle["status"]): string | null {
+  const idx = PHASE_ORDER.indexOf(status);
+  if (idx < 0 || idx >= PHASE_ORDER.length - 1) return null;
+  return statusLabels[PHASE_ORDER[idx + 1]] ?? PHASE_ORDER[idx + 1];
+}
+
+function ActionsCell({
+  cycle,
+  onRefetch,
+}: {
+  cycle: ReviewCycle;
+  onRefetch: () => void;
+}) {
+  // Confirmation step prevents a single accidental click from broadcasting
+  // notifications (activate) or moving every participant to the next phase
+  // (advance). Both backend endpoints are not safely idempotent on intent.
+  const [confirming, setConfirming] = useState<null | "activate" | "advance">(null);
+  const [pending, setPending] = useState<null | "activate" | "advance">(null);
+
+  const handleActivate = async () => {
+    if (pending) return;
+    setPending("activate");
+    try {
+      await reviewsApi.activateCycle(cycle.id);
+      toast.success(`Activated "${cycle.name}"`);
+      onRefetch();
+      setConfirming(null);
+    } catch (err: unknown) {
+      const detail =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data
+          ?.detail;
+      toast.error(detail ?? "Failed to activate cycle");
+    } finally {
+      setPending(null);
+    }
+  };
+
+  const handleAdvance = async () => {
+    if (pending) return;
+    setPending("advance");
+    try {
+      await reviewsApi.advanceCyclePhase(cycle.id);
+      toast.success(`Advanced "${cycle.name}" to the next phase`);
+      onRefetch();
+      setConfirming(null);
+    } catch (err: unknown) {
+      const detail =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data
+          ?.detail;
+      toast.error(detail ?? "Failed to advance phase");
+    } finally {
+      setPending(null);
+    }
+  };
+
+  const advanceTo = nextPhaseLabel(cycle.status);
 
   return (
+    // Radix DropdownMenu portals to <body> by default, which escapes the
+    // table card's `overflow-hidden` + `overflow-x-auto` clip context.
+    // Hand-rolled `absolute` dropdowns were being clipped at the row's
+    // bottom edge (Screenshot 2026-05-18).
     <div className="flex items-center justify-end gap-2">
       <Link
         href={`/reviews/cycles/${cycle.id}`}
@@ -57,40 +130,150 @@ function ActionsCell({ cycle }: { cycle: ReviewCycle }) {
       >
         View
       </Link>
-      <div className="relative">
-        <button
-          aria-label="More actions"
-          onClick={() => setShowMenu(!showMenu)}
-          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
-        >
-          <MoreVertical className="h-4 w-4" />
-        </button>
-        {showMenu && (
-          <div className="absolute right-0 mt-1 w-40 bg-muted border border-border rounded-lg shadow-xl z-10">
-            <Link
-              href={`/reviews/cycles/${cycle.id}`}
-              className="block px-4 py-2 text-sm text-foreground hover:text-foreground hover:bg-accent transition"
-            >
-              View Details
-            </Link>
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger asChild>
+          <button
+            aria-label="More actions"
+            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
+          >
+            <MoreVertical className="h-4 w-4" />
+          </button>
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content
+            align="end"
+            sideOffset={4}
+            className="min-w-[10rem] z-50 bg-popover text-popover-foreground border border-border rounded-lg shadow-xl py-1"
+          >
+            <DropdownMenu.Item asChild>
+              <Link
+                href={`/reviews/cycles/${cycle.id}`}
+                className="block px-4 py-2 text-sm hover:bg-accent transition outline-none cursor-pointer"
+              >
+                View Details
+              </Link>
+            </DropdownMenu.Item>
             {cycle.status === "draft" && (
-              <button className="w-full text-left px-4 py-2 text-sm text-green-400 hover:bg-accent transition">
-                Activate Cycle
-              </button>
+              <DropdownMenu.Item
+                onSelect={(e) => {
+                  e.preventDefault();
+                  setConfirming("activate");
+                }}
+                className="w-full text-left px-4 py-2 text-sm hover:bg-accent transition outline-none cursor-pointer"
+              >
+                Activate Cycle…
+              </DropdownMenu.Item>
             )}
-            {(cycle.status === "self_review" || cycle.status === "peer_review") && (
-              <button className="w-full text-left px-4 py-2 text-sm text-amber-400 hover:bg-accent transition">
-                Advance Phase
-              </button>
+            {(cycle.status === "self_review" ||
+              cycle.status === "peer_review" ||
+              cycle.status === "active") && (
+              <DropdownMenu.Item
+                onSelect={(e) => {
+                  e.preventDefault();
+                  setConfirming("advance");
+                }}
+                className="w-full text-left px-4 py-2 text-sm hover:bg-accent transition outline-none cursor-pointer"
+              >
+                Advance Phase…
+              </DropdownMenu.Item>
             )}
-          </div>
-        )}
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
+
+      {confirming === "activate" && (
+        <ConfirmModal
+          title={`Activate "${cycle.name}"?`}
+          body={
+            <>
+              This opens the cycle and emails every enrolled developer that
+              their review is live. Notifications can&apos;t be unsent.
+            </>
+          }
+          confirmLabel={pending === "activate" ? "Activating…" : "Activate"}
+          onConfirm={handleActivate}
+          onCancel={() => setConfirming(null)}
+          isPending={pending === "activate"}
+        />
+      )}
+      {confirming === "advance" && (
+        <ConfirmModal
+          title={`Advance "${cycle.name}" to next phase?`}
+          body={
+            <>
+              Moves from{" "}
+              <span className="font-medium text-foreground">
+                {statusLabels[cycle.status] || cycle.status}
+              </span>{" "}
+              →{" "}
+              <span className="font-medium text-foreground">
+                {advanceTo ?? "next phase"}
+              </span>
+              . Participants are notified and the relevant submission forms
+              open / close.
+            </>
+          }
+          confirmLabel={pending === "advance" ? "Advancing…" : "Advance"}
+          onConfirm={handleAdvance}
+          onCancel={() => setConfirming(null)}
+          isPending={pending === "advance"}
+        />
+      )}
+    </div>
+  );
+}
+
+function ConfirmModal({
+  title,
+  body,
+  confirmLabel,
+  onConfirm,
+  onCancel,
+  isPending,
+}: {
+  title: string;
+  body: ReactNode;
+  confirmLabel: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  isPending: boolean;
+}) {
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      onClick={onCancel}
+    >
+      <div
+        className="bg-card rounded-xl border border-border p-6 max-w-md w-full mx-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-base font-semibold text-foreground mb-2">{title}</h3>
+        <p className="text-sm text-muted-foreground mb-4">{body}</p>
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={onCancel}
+            disabled={isPending}
+            className="px-4 py-2 text-sm rounded-lg border border-border hover:bg-accent transition disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={isPending}
+            className="px-4 py-2 text-sm rounded-lg bg-purple-600 hover:bg-purple-500 text-white transition disabled:opacity-50"
+          >
+            {confirmLabel}
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-const cycleColumns: DataTableColumn<ReviewCycle>[] = [
+function buildCycleColumns(
+  onRefetch: () => void,
+): DataTableColumn<ReviewCycle>[] {
+  return [
   {
     id: "cycle",
     header: "Cycle",
@@ -179,9 +362,10 @@ const cycleColumns: DataTableColumn<ReviewCycle>[] = [
     header: "Actions",
     headerClassName: "text-right",
     cellClassName: "text-right",
-    cell: (cycle) => <ActionsCell cycle={cycle} />,
+    cell: (cycle) => <ActionsCell cycle={cycle} onRefetch={onRefetch} />,
   },
-];
+  ];
+}
 
 export default function ReviewCyclesPage() {
   const t = useTranslations("reviews.cycles");
@@ -190,6 +374,10 @@ export default function ReviewCyclesPage() {
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
 
   const { cycles, isLoading, error, refetch } = useReviewCycles(currentWorkspaceId, statusFilter);
+
+  // Capture refetch in the column factory so ActionsCell can refresh
+  // the list after activate / advance mutations succeed.
+  const cycleColumns = useMemo(() => buildCycleColumns(refetch), [refetch]);
 
   if (authLoading || currentWorkspaceLoading) {
     return (

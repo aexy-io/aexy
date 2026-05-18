@@ -59,6 +59,7 @@ def get_all_activities() -> list:
         enqueue_workspace_weekly_digests,
     )
     from aexy.temporal.activities.review_digests import (
+        check_review_deadlines,
         compose_developer_review_period,
         compose_team_review_period,
         enqueue_review_cycle_digests,
@@ -266,6 +267,8 @@ def get_all_activities() -> list:
         compose_developer_review_period,
         compose_team_review_period,
         enqueue_review_cycle_digests,
+        # Daily deadline-reminder sweep
+        check_review_deadlines,
         reset_daily_limits,
         batch_report_usage,
         aggregate_billing_usage,

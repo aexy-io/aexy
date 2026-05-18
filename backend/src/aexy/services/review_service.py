@@ -29,6 +29,7 @@ from aexy.services.notification_service import (
     notify_peer_review_requested,
     notify_peer_review_received,
     notify_manager_review_completed,
+    notify_review_cycle_activated,
     notify_review_cycle_phase_changed,
 )
 
@@ -227,6 +228,27 @@ class ReviewService:
         cycle.status = "active"
         cycle.updated_at = datetime.utcnow()
         await self.db.flush()
+
+        # Tell every enrolled developer their cycle just opened. Without
+        # this they only discover the cycle by stumbling onto /reviews.
+        # Best-effort: notification failure must not block activation.
+        try:
+            review_stmt = select(IndividualReview.developer_id).where(
+                IndividualReview.review_cycle_id == cycle.id
+            )
+            result = await self.db.execute(review_stmt)
+            recipient_ids = [str(row[0]) for row in result.fetchall()]
+            if recipient_ids:
+                await notify_review_cycle_activated(
+                    db=self.db,
+                    recipient_ids=recipient_ids,
+                    cycle_id=str(cycle.id),
+                    cycle_name=cycle.name,
+                )
+        except Exception as e:
+            logger.warning(
+                f"Failed to send cycle-activated notifications for {cycle.id}: {e}"
+            )
 
         # Phase B — auto-fire AI review-summary fan-out so per-developer +
         # team digests are ready as soon as managers open the review forms.
