@@ -78,8 +78,8 @@ export const identityApi = {
 };
 
 // ---------------------------------------------------------------
-// Email aliases — secondary git-config emails I commit under.
-// Fixes the "<developer>'s `secondary email patterns` commits are invisible"
+// Email aliases — secondary git-config emails a developer commits under.
+// Fixes the "this person's commits to a secondary email are invisible"
 // class of attribution failure.
 // ---------------------------------------------------------------
 

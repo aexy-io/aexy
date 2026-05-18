@@ -207,10 +207,10 @@ class Developer(Base):
 class DeveloperEmailAlias(Base):
     """Secondary email a developer commits under.
 
-    Solves the "a developer commits as `alt-commit-email@example.com`
-    but his canonical email is `name@company.com`" problem — without
-    this, the commit-author resolver creates a pseudo-ghost Developer and
-    those commits never show up on his analytics.
+    Solves the "developer commits under `alt-email@example.com` but their
+    canonical email is `name@company.com`" problem — without this, the
+    commit-author resolver creates a pseudo-ghost Developer and those
+    commits never show up on their analytics.
 
     Unique on `lower(email)` globally: one email cannot point at two
     humans. (Enforced at DB level by the `uq_developer_email_aliases_email_lower`

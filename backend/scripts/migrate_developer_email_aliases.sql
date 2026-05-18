@@ -1,8 +1,8 @@
 -- Migration: developer_email_aliases
 -- Adds a per-developer secondary-email table so commit-author attribution
 -- can resolve git-config emails that don't match Developer.email exactly
--- (e.g., legacy noreply formats, work-laptop git configs, the
--- "secondary email patterns" pattern developers commit with).
+-- (e.g., legacy noreply formats, work-laptop git configs, and other
+-- secondary email patterns developers commit under).
 --
 -- The unique index is on `lower(email)` globally — a single email
 -- shouldn't claim two humans. (DB enforces; the API also checks for a

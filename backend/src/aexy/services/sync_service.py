@@ -493,8 +493,8 @@ class SyncService:
                 return dev.id, github_login, author_email
 
             # 2.5. Try matching by alias email (case-insensitive). Lets
-            # `alt-commit-email@example.com` route to their canonical
-            # Developer without creating a pseudo-ghost.
+            # a developer's secondary git-config email route to their
+            # canonical Developer without creating a pseudo-ghost.
             from aexy.models.developer import DeveloperEmailAlias
 
             alias_stmt = (

@@ -503,9 +503,9 @@ class DeveloperService:
              an *arbitrary* email — caught data-driven, via the commits
              those rows already own carrying our github_username.
 
-          (3) is the one that catches the `email-drift-case` style drift
-          where a contributor's git config changed email at some point
-          and a second pseudo-Developer row was created. Without (3) the
+          (3) is the one that catches the email-drift case where a
+          contributor's git config changed email at some point and a
+          second pseudo-Developer row was created. Without (3) the
           login-merge skips those rows and the alias_map at query time
           is the only thing holding the leaderboard together.
 

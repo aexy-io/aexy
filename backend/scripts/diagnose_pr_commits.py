@@ -9,15 +9,15 @@ a collaborator with a different GitHub identity.
 
 Usage:
     docker exec aexy-backend python scripts/diagnose_pr_commits.py \\
-        --repo <owner>/<repo> --pr 2973
+        --repo <owner>/<repo> --pr <number>
 
 Multiple PRs at once:
     docker exec aexy-backend python scripts/diagnose_pr_commits.py \\
-        --repo <owner>/<repo> --pr 2973 --pr 2914 --pr 2940
+        --repo <owner>/<repo> --pr 123 --pr 124 --pr 125
 
 Pipe-form (no file deploy needed):
     cat scripts/diagnose_pr_commits.py | docker exec -i aexy-backend \\
-        python - --repo <owner>/<repo> --pr 2973
+        python - --repo <owner>/<repo> --pr <number>
 """
 
 from __future__ import annotations
@@ -185,7 +185,7 @@ def main() -> None:
     parser.add_argument(
         "--repo",
         required=True,
-        help="owner/name of the repository (e.g., <owner>/<repo>)",
+        help="owner/name of the repository (e.g., acme/codebase)",
     )
     parser.add_argument(
         "--pr",
