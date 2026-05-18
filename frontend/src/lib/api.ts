@@ -2051,6 +2051,10 @@ export interface Workspace {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  // Some workspace endpoints return an embedded member list (e.g. for
+  // settings/email-delivery permission checks). Optional because most
+  // list endpoints omit it.
+  members?: WorkspaceMember[];
 }
 
 export interface WorkspaceListItem {
@@ -2166,7 +2170,9 @@ export interface PlanFeatures {
   max_commits_per_repo: number;
   max_prs_per_repo: number;
   sync_history_days: number;
-  max_storage_gb: number;
+  // Optional because older plan fixtures and pre-quota plan rows in the
+  // DB don't populate it; UI tolerates absence.
+  max_storage_gb?: number;
   llm_requests_per_day: number;
   llm_provider_access: string[];
   free_llm_tokens_per_month: number;
@@ -3570,7 +3576,16 @@ export const sprintApi = {
   startPokerSession: async (sprintId: string): Promise<{
     session_id: string;
     sprint_id: string;
-    tasks: { id: string; title: string; description: string | null }[];
+    tasks: {
+      id: string;
+      title: string;
+      description: string | null;
+      priority: string | null;
+      task_type: string | null;
+      labels: string[];
+      story_points: number | null;
+      status: string | null;
+    }[];
     total_tasks: number;
   }> => {
     const response = await api.post(`/sprints/${sprintId}/planning-poker/start`);
@@ -5016,6 +5031,11 @@ export interface ReviewResponses {
   question_responses: Record<string, string>;
   strengths: string[];
   growth_areas: string[];
+  // Optional COIN-format top-level fields used by the manager-finalize
+  // view as a free-text fallback when no structured Achievement /
+  // GrowthArea rows have been supplied. Backend tolerates missing keys.
+  context?: string;
+  observation?: string;
 }
 
 export interface Achievement {
@@ -10562,7 +10582,7 @@ export interface CRMAgent {
   is_system: boolean;
 
   // LLM Configuration (optional for backwards compatibility)
-  llm_provider?: "claude" | "gemini" | "ollama";
+  llm_provider?: "claude" | "gemini" | "ollama" | "openrouter";
   llm_model?: string;
   temperature?: number;
   max_tokens?: number;
@@ -10932,7 +10952,7 @@ export interface AgentCreateData {
   description?: string;
   agent_type?: AgentType;
   mention_handle?: string;
-  llm_provider?: "claude" | "gemini" | "ollama";
+  llm_provider?: "claude" | "gemini" | "ollama" | "openrouter";
   llm_model?: string;
   temperature?: number;
   max_tokens?: number;
@@ -10947,6 +10967,12 @@ export interface AgentCreateData {
   working_hours?: WorkingHoursConfig | null;
   escalation_email?: string;
   escalation_slack_channel?: string;
+  // Email integration (matches CRMAgent shape so the edit form can
+  // round-trip these fields without a separate update payload type).
+  email_address?: string | null;
+  email_enabled?: boolean;
+  auto_reply_enabled?: boolean;
+  email_signature?: string | null;
   crm_sync?: boolean;
   calendar_sync?: boolean;
   calendar_id?: string;
@@ -12634,6 +12660,10 @@ export interface OKRGoal {
   period_type: OKRPeriodType;
   period_start?: string;
   period_end?: string;
+  // Aliases the backend exposes alongside period_start/period_end so the
+  // sprint-goals page can render date pickers without re-mapping keys.
+  start_date?: string;
+  end_date?: string;
   metric_type: OKRMetricType;
   target_value: number;
   current_value: number;
@@ -12667,6 +12697,7 @@ export interface OKRGoalUpdate {
   owner_id?: string;
   start_date?: string;
   end_date?: string;
+  period_type?: OKRPeriodType;
   target_value?: number;
   unit?: string;
   status?: OKRGoalStatus;
@@ -13378,6 +13409,7 @@ export interface EmailCampaign {
   workspace_id: string;
   name: string;
   subject?: string;
+  preview_text?: string | null;
   template_id?: string | null;
   template_name?: string;
   html_content?: string | null;
@@ -13466,6 +13498,10 @@ export interface CampaignAnalytics {
   click_to_open_rate: number;
   bounce_rate: number;
   unsubscribe_rate: number;
+  // Optional breakdowns returned for campaigns once tracking events
+  // have aggregated. UI guards on presence before rendering.
+  device_stats?: Record<string, number> | null;
+  link_stats?: Array<{ url: string; clicks: number; unique_clicks?: number }> | null;
 }
 
 export interface AnalyticsOverview {
@@ -17124,6 +17160,10 @@ export interface GamingFlag {
   severity: "low" | "medium" | "high";
   evidence: string;
   value?: number;
+  // Index signature so callers iterating heterogeneous flag rows (the
+  // insights/developers page does this via `Record<string, unknown>`)
+  // can read fields without per-field narrowing.
+  [key: string]: unknown;
 }
 
 export interface GamingFlagsResponse {
@@ -19557,7 +19597,9 @@ export interface CompetitorResponse {
   workspace_id: string;
   name: string;
   domain: string;
-  tracked_pages: Record<string, unknown>[];
+  // List of tracked URLs as strings — backend may also include richer
+  // metadata objects later, but today the field is a flat URL array.
+  tracked_pages: string[];
   current_snapshot: Record<string, unknown>;
   is_active: boolean;
   created_at: string;
@@ -19725,8 +19767,10 @@ export interface ABMAccountListResponse {
 export interface ABMOverviewResponse {
   total_lists: number;
   total_accounts: number;
-  stage_distribution: Record<string, unknown>[];
-  tier_distribution: Record<string, unknown>[];
+  // Backend returns these as `{ stage_name: count }` / `{ tier_name: count }` maps,
+  // not arrays — the page indexes them by stage/tier key.
+  stage_distribution: Record<string, number>;
+  tier_distribution: Record<string, number>;
   avg_engagement_score: number;
   top_accounts: Record<string, unknown>[];
   penetration_metrics: Record<string, unknown>;
@@ -20364,6 +20408,9 @@ export interface TableField {
   id: string;
   name: string;
   slug: string;
+  // Owning object/table — surfaced on field rows so editors can route
+  // field-level mutations without holding a separate parent reference.
+  object_id?: string;
   attribute_type: string;
   description: string | null;
   is_required: boolean;
@@ -20713,7 +20760,7 @@ export const tablesApi = {
     },
     create: async (workspaceId: string, tableId: string, data: {
       name: string;
-      view_type?: "table" | "board" | "gallery" | "timeline";
+      view_type?: "table" | "kanban" | "board" | "gallery" | "timeline";
       filters?: Record<string, unknown>[];
       sorts?: Record<string, unknown>[];
       visible_attributes?: string[];
@@ -20726,7 +20773,7 @@ export const tablesApi = {
     },
     update: async (workspaceId: string, tableId: string, viewId: string, data: Partial<{
       name: string;
-      view_type: "table" | "board" | "gallery" | "timeline";
+      view_type: "table" | "kanban" | "board" | "gallery" | "timeline";
       filters: Record<string, unknown>[];
       sorts: Record<string, unknown>[];
       visible_attributes: string[];
@@ -20881,6 +20928,9 @@ export interface ChatSender {
   id: string;
   name: string | null;
   avatar_url?: string | null;
+  // Chat renderers cast sender into `Record<string, unknown>` to pass
+  // it through a generic avatar / mention helper — match that shape.
+  [key: string]: unknown;
 }
 
 export interface ChatMessage {
@@ -21504,7 +21554,9 @@ export const driveApi = {
       t_start_ms: number;
       t_end_ms: number;
       label: string;
-      description: string;
+      // Allow null so callers can clear an existing description; this
+      // matches the VideoAnnotation type the hook accepts as `Partial<>`.
+      description: string | null;
       tags: string[];
     }>,
   ): Promise<VideoAnnotation> => {

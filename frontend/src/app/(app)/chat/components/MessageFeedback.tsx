@@ -18,7 +18,7 @@ export function MessageFeedback({ workspaceId, entityType, entityId }: MessageFe
   const [showComment, setShowComment] = useState(false);
   const [comment, setComment] = useState("");
   const [justSubmitted, setJustSubmitted] = useState<1 | -1 | null>(null);
-  const flashTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const flashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {

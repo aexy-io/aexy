@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -542,8 +543,10 @@ function ContentPreview({ content }: { content: Record<string, unknown> }) {
         );
 
       case "heading": {
-        const level = (node.attrs as Record<string, unknown>)?.level || 1;
-        const Tag = `h${level}` as keyof JSX.IntrinsicElements;
+        const rawLevel = (node.attrs as Record<string, unknown>)?.level;
+        const level = typeof rawLevel === "number" ? rawLevel : 1;
+        // React 19 dropped the global `JSX` namespace, use the React-scoped one.
+        const Tag = `h${level}` as keyof React.JSX.IntrinsicElements;
         return (
           <Tag key={index}>
             {Array.isArray(node.content)

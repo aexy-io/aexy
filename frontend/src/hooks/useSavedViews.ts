@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { savedViewsApi, SavedViewEntityType, TableSavedView, ColumnDisplayConfig } from "@/lib/api";
 
 export function useSavedViews(
-  workspaceId: string | undefined,
+  workspaceId: string | null | undefined,
   entityType: SavedViewEntityType,
   scopeId?: string,
 ) {

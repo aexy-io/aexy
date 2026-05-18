@@ -45,7 +45,10 @@ function CustomAngleTick({
   payload: { value: string };
   x: number;
   y: number;
-  textAnchor: string;
+  // Recharts' tick callback ships an `SVGAttributes.textAnchor` value, not a
+  // plain string — accept the same union here so we can pass it through to
+  // the <text> element without an extra cast.
+  textAnchor: "end" | "inherit" | "start" | "middle" | undefined;
   descMap: Record<string, string>;
 }) {
   const desc = descMap[payload.value];
@@ -92,8 +95,16 @@ export function MetricsRadar({
         <PolarGrid stroke="#334155" />
         <PolarAngleAxis
           dataKey="metric"
-          tick={(props: Record<string, unknown>) => (
-            <CustomAngleTick {...(props as { payload: { value: string }; x: number; y: number; textAnchor: string })} descMap={descMap} />
+          tick={(props) => (
+            <CustomAngleTick
+              {...(props as unknown as {
+                payload: { value: string };
+                x: number;
+                y: number;
+                textAnchor: "end" | "inherit" | "start" | "middle" | undefined;
+              })}
+              descMap={descMap}
+            />
           )}
         />
         <PolarRadiusAxis

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Bell, CheckCircle2, Crosshair, Eye, GitBranch, Mail, Route, Shield, Target, TrendingUp } from "lucide-react";
 import { LandingHeader, LandingFooter } from "@/components/landing/LandingHeader";
+import type { IconCapability } from "@/components/landing/marketing-types";
 
 export const metadata: Metadata = {
   title: "GTM Intelligence Platform",
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
     "Turn website visits and customer signals into pipeline with visitor identification, ICP scoring, lead routing, outreach, alerts, and CRM-connected GTM workflows.",
 };
 
-const workflow = [
+const workflow: readonly IconCapability[] = [
   ["Capture", "Track page views, UTMs, scroll depth, forms, email clicks, and high-intent events.", Eye],
   ["Identify", "Resolve anonymous visits into company/account context and link known contacts into CRM.", Target],
   ["Score", "Combine firmographic, behavioral, engagement, and ICP signals into lead/account scores.", TrendingUp],
@@ -99,7 +100,7 @@ export default function GTMIntelligenceProductPage() {
             </h2>
             <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               {workflow.map(([title, body, Icon]) => (
-                <div key={title as string} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+                <div key={title} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
                   <Icon className="h-6 w-6 text-indigo-300" />
                   <h3 className="mt-5 text-xl font-semibold">{title}</h3>
                   <p className="mt-3 text-sm leading-6 text-white/55">{body}</p>
@@ -130,12 +131,12 @@ export default function GTMIntelligenceProductPage() {
 
         <section className="px-4 py-20 sm:px-6">
           <div className="mx-auto grid max-w-7xl gap-4 md:grid-cols-3">
-            {[
+            {([
               ["Connected to CRM", "Every signal can attach to records, accounts, contacts, deals, activities, and automations.", GitBranch],
               ["Compliance-aware", "Consent, suppression, audit checks, and routing rules keep GTM automation controlled.", Shield],
               ["Email and outreach", "Sequences, reply classification, alerts, and handoffs keep momentum after the signal.", Mail],
-            ].map(([title, body, Icon]) => (
-              <div key={title as string} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+            ] as readonly IconCapability[]).map(([title, body, Icon]) => (
+              <div key={title} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
                 <Icon className="h-6 w-6 text-violet-300" />
                 <h3 className="mt-5 text-xl font-semibold">{title}</h3>
                 <p className="mt-3 text-sm leading-6 text-white/55">{body}</p>

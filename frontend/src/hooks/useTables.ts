@@ -350,7 +350,7 @@ export function useSavedViews(workspaceId: string | null, tableId: string | null
   const createMutation = useMutation({
     mutationFn: (data: {
       name: string;
-      view_type?: "table" | "board" | "gallery" | "timeline";
+      view_type?: "table" | "kanban" | "board" | "gallery" | "timeline";
       filters?: Record<string, unknown>[];
       sorts?: Record<string, unknown>[];
       visible_attributes?: string[];
@@ -372,7 +372,7 @@ export function useSavedViews(workspaceId: string | null, tableId: string | null
       viewId: string;
       data: Partial<{
         name: string;
-        view_type: "table" | "board" | "gallery" | "timeline";
+        view_type: "table" | "kanban" | "board" | "gallery" | "timeline";
         filters: Record<string, unknown>[];
         sorts: Record<string, unknown>[];
         visible_attributes: string[];

@@ -81,7 +81,7 @@ export interface PokerState {
 
 export function usePlanningPoker(sprintId: string) {
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [state, setState] = useState<PokerState>({
     sessionId: null,

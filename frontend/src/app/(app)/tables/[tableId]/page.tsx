@@ -408,7 +408,7 @@ export default function TableDetailPage() {
   const attributes: CRMAttribute[] = useMemo(() => {
     return fields.map((f, i) => ({
       id: f.id,
-      object_id: f.object_id,
+      object_id: f.object_id ?? "",
       name: f.name,
       slug: f.slug,
       attribute_type: f.attribute_type as CRMAttributeType,

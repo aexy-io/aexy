@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Bot, Building2, Calendar, CheckCircle2, Database, Mail, Network, Rows3, Workflow } from "lucide-react";
 import { LandingHeader, LandingFooter } from "@/components/landing/LandingHeader";
+import type { IconCapability, IconRow } from "@/components/landing/marketing-types";
 
 export const metadata: Metadata = {
   title: "Agent-Native CRM",
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
     "A flexible CRM for humans and AI agents with custom objects, Gmail and calendar sync, activity timelines, automations, sequences, and GTM intelligence.",
 };
 
-const capabilities = [
+const capabilities: readonly IconCapability[] = [
   ["Custom objects", "Model companies, people, deals, projects, renewals, partners, or any custom business object.", Database],
   ["Activity timeline", "Emails, meetings, notes, field changes, enrichment, sequences, and automation runs live on the record.", Rows3],
   ["Agent-ready tools", "Agents can search, summarize, enrich, create, and update records through governed tools.", Bot],
@@ -74,13 +75,13 @@ export default function CRMProductPage() {
                 <div className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs text-emerald-300">Healthy</div>
               </div>
               <div className="space-y-3">
-                {[
+                {([
                   ["Email synced", Mail],
                   ["Meeting linked", Calendar],
                   ["GTM score updated", Network],
                   ["Agent summary generated", Bot],
-                ].map(([event, Icon]) => (
-                  <div key={event as string} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-white/68">
+                ] as readonly IconRow[]).map(([event, Icon]) => (
+                  <div key={event} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-white/68">
                     <Icon className="h-4 w-4 text-violet-300" />
                     {event}
                   </div>
@@ -97,7 +98,7 @@ export default function CRMProductPage() {
             </h2>
             <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               {capabilities.map(([title, body, Icon]) => (
-                <div key={title as string} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+                <div key={title} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
                   <Icon className="h-6 w-6 text-violet-300" />
                   <h3 className="mt-5 text-xl font-semibold">{title}</h3>
                   <p className="mt-3 text-sm leading-6 text-white/55">{body}</p>

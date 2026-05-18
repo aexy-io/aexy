@@ -161,17 +161,10 @@ export default function ReposSelection() {
   };
 
   const handleContinue = async () => {
-    // Save selected repos to context
+    // Save selected repos to context — actual enablement happens later
+    // via workspaceRepositoriesApi.adopt once a workspace exists; the
+    // legacy per-developer enable endpoint was removed in 0.7.72.
     updateData({ githubRepos: Array.from(selectedRepos) });
-
-    // Enable selected repos
-    try {
-      for (const repoId of selectedRepos) {
-        await repositoriesApi.enableRepository(repoId);
-      }
-    } catch (error) {
-      console.error("Failed to enable repos:", error);
-    }
 
     // Navigate to next step
     if (data.connections.google) {

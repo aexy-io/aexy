@@ -82,9 +82,10 @@ export function SeverityBadge({
         className
       )}
     >
-      {showIcon && React.cloneElement(config.icon as React.ReactElement, {
-        className: iconSizes[size],
-      })}
+      {showIcon && React.cloneElement(
+        config.icon as React.ReactElement<{ className?: string }>,
+        { className: iconSizes[size] },
+      )}
       {config.label}
     </span>
   );

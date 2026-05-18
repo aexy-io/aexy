@@ -167,7 +167,7 @@ export default function GTMAnalyticsPage() {
                 />
                 <Tooltip
                   {...chartTooltipStyle}
-                  formatter={(value: number | undefined, _name: string, props: unknown) => [
+                  formatter={(value: number | undefined, _name: string | undefined, props: unknown) => [
                     `${value ?? 0} (${(((props as { payload?: { conversion_rate?: number } })?.payload?.conversion_rate ?? 0) * 100).toFixed(1)}% conv.)`,
                     "Count",
                   ]}
@@ -352,7 +352,7 @@ export default function GTMAnalyticsPage() {
                 <YAxis tick={{ fill: "#a1a1aa", fontSize: 12 }} />
                 <Tooltip
                   {...chartTooltipStyle}
-                  formatter={(value: number | undefined, _name: string, props: unknown) => [
+                  formatter={(value: number | undefined, _name: string | undefined, props: unknown) => [
                     `${value ?? 0} (${((props as { payload?: { percentage?: number } })?.payload?.percentage ?? 0).toFixed(1)}%)`,
                     "Conversions",
                   ]}

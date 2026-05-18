@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { SiGithub } from "@icons-pack/react-simple-icons";
 import { LandingHeader, LandingFooter } from "@/components/landing/LandingHeader";
+import type { IconCapability } from "@/components/landing/marketing-types";
 
 export const metadata: Metadata = {
   title: "AI Company Operating System",
@@ -23,7 +24,7 @@ export const metadata: Metadata = {
     "Aexy is an open-source AI company operating system for engineering, CRM, GTM, people, docs, workflows, and governed AI agents.",
 };
 
-const modules = [
+const modules: readonly IconCapability[] = [
   ["Engineering", "Sprints, tasks, releases, tickets, developer insights, reviews, uptime.", Code2],
   ["Revenue", "CRM, GTM intelligence, visitor identification, lead scoring, sequences, routing.", BriefcaseBusiness],
   ["Operations", "Forms, workflows, automations, reminders, approvals, notifications, handoffs.", Workflow],
@@ -121,7 +122,7 @@ export default function AICompanyOSPage() {
             </div>
             <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {modules.map(([title, body, Icon]) => (
-                <div key={title as string} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+                <div key={title} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
                   <Icon className="h-6 w-6 text-cyan-300" />
                   <h3 className="mt-5 text-xl font-semibold">{title}</h3>
                   <p className="mt-3 text-sm leading-6 text-white/55">{body}</p>

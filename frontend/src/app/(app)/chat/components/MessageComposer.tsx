@@ -78,7 +78,7 @@ export function MessageComposer({
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [isExpanded, setIsExpanded] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState(false);
-  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTypingRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -92,7 +92,7 @@ export function MessageComposer({
   const [mentionIndex, setMentionIndex] = useState(0);
   const [mentionLoading, setMentionLoading] = useState(false);
   const mentionRef = useRef<HTMLDivElement>(null);
-  const mentionFetchRef = useRef<ReturnType<typeof setTimeout>>();
+  const mentionFetchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Track inserted mentions: unique placeholder token -> { displayText, markdown }
   const mentionCounterRef = useRef(0);
   const mentionsMapRef = useRef<Map<string, { display: string; markdown: string }>>(new Map());

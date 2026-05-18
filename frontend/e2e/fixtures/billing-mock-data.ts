@@ -2,6 +2,8 @@
  * Mock data fixtures for billing E2E tests
  */
 
+import type { PlanFeatures, SubscriptionStatus } from "@/lib/api";
+
 export const mockUser = {
   id: "test-user-123",
   name: "Test Developer",
@@ -54,7 +56,7 @@ export const mockWorkspaceMembers = [
 
 // ──── Plans ────
 
-export const mockFreePlan = {
+export const mockFreePlan: PlanFeatures = {
   id: "plan-free",
   name: "Free",
   tier: "free",
@@ -84,7 +86,7 @@ export const mockFreePlan = {
   payment_timing: "prepaid",
 };
 
-export const mockPerSeatPlan = {
+export const mockPerSeatPlan: PlanFeatures = {
   id: "plan-pro",
   name: "Pro",
   tier: "pro",
@@ -114,7 +116,7 @@ export const mockPerSeatPlan = {
   payment_timing: "prepaid",
 };
 
-export const mockFlatUsagePlan = {
+export const mockFlatUsagePlan: PlanFeatures = {
   id: "plan-flat",
   name: "Flat + Usage",
   tier: "flat_plus_usage",
@@ -144,7 +146,7 @@ export const mockFlatUsagePlan = {
   payment_timing: "prepaid",
 };
 
-export const mockPostpaidPlan = {
+export const mockPostpaidPlan: PlanFeatures = {
   id: "plan-postpaid",
   name: "Postpaid",
   tier: "postpaid",
@@ -174,7 +176,7 @@ export const mockPostpaidPlan = {
   payment_timing: "postpaid",
 };
 
-export const mockEnterprisePlan = {
+export const mockEnterprisePlan: PlanFeatures = {
   id: "plan-enterprise",
   name: "Enterprise",
   tier: "enterprise",
@@ -214,7 +216,11 @@ export const allPlans = [
 
 // ──── Subscription Statuses ────
 
-export const mockFreeSubscriptionStatus = {
+// Subscription fixtures share a common shape — annotate as
+// SubscriptionStatus so callers (e2e specs) widen the inferred
+// subscription/customer fields to the lib's nullable unions instead of
+// the narrow literal `null` TypeScript picks from the free fixture.
+export const mockFreeSubscriptionStatus: SubscriptionStatus = {
   has_subscription: false,
   billing_model: "free",
   subscription: null,
@@ -224,7 +230,7 @@ export const mockFreeSubscriptionStatus = {
   postpaid_summary: null,
 };
 
-export const mockPerSeatSubscriptionStatus = {
+export const mockPerSeatSubscriptionStatus: SubscriptionStatus = {
   has_subscription: true,
   billing_model: "per_seat",
   subscription: {
@@ -250,7 +256,7 @@ export const mockPerSeatSubscriptionStatus = {
   postpaid_summary: null,
 };
 
-export const mockFlatUsageSubscriptionStatus = {
+export const mockFlatUsageSubscriptionStatus: SubscriptionStatus = {
   has_subscription: true,
   billing_model: "flat_plus_usage",
   subscription: {
@@ -270,7 +276,7 @@ export const mockFlatUsageSubscriptionStatus = {
   postpaid_summary: null,
 };
 
-export const mockPostpaidSubscriptionStatus = {
+export const mockPostpaidSubscriptionStatus: SubscriptionStatus = {
   has_subscription: true,
   billing_model: "postpaid",
   subscription: {

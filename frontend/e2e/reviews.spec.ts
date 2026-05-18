@@ -20,7 +20,19 @@ const mockWorkspace = {
   slug: "test-workspace",
 };
 
-const mockWorkspaceMember = {
+// `joined_at` widened to `string | null` here so both mocks share one
+// inferred shape — otherwise the helper's `members?: typeof X[]` narrows
+// to `string` and the null-date fixture below stops type-checking.
+const mockWorkspaceMember: {
+  id: string;
+  workspace_id: string;
+  developer_id: string;
+  developer_name: string;
+  developer_email: string;
+  developer_avatar_url: string;
+  role: string;
+  joined_at: string | null;
+} = {
   id: "member-1",
   workspace_id: "ws-1",
   developer_id: "test-user-123",
@@ -31,7 +43,7 @@ const mockWorkspaceMember = {
   joined_at: "2025-06-15T10:00:00Z",
 };
 
-const mockWorkspaceMemberNoDate = {
+const mockWorkspaceMemberNoDate: typeof mockWorkspaceMember = {
   id: "member-2",
   workspace_id: "ws-1",
   developer_id: "user-no-date",

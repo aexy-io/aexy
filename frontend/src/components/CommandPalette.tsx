@@ -60,6 +60,10 @@ interface CommandItem {
 
 interface CommandPaletteProps {
   projectId?: string;
+  // Optional workspace scope passed by sprint pages so future palette
+  // sources can filter by workspace; currently unused inside the
+  // component but accepted to keep callers strongly typed.
+  workspaceId?: string | null;
   onCreateTask?: () => void;
 }
 

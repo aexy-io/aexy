@@ -29,7 +29,7 @@ export function AskAIChatPanel({ workspaceId, conversationId, currentDeveloperId
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const userScrolledRef = useRef(false);
-  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isCollaborative = conversation?.is_collaborative ?? false;
   const isOwner = currentDeveloperId ? conversation?.developer_id === currentDeveloperId : false;

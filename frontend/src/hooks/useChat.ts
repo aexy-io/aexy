@@ -122,7 +122,7 @@ export function useJoinChannel(workspaceId: string) {
 
 export function useChatWebSocket(workspaceId: string | undefined) {
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const reconnectAttemptRef = useRef(0);
   const queryClient = useQueryClient();

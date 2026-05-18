@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.78] - 2026-05-18
+
+This release resolves frontend TypeScript drift across app surfaces and
+centralizes repeated marketing-page icon tuple types.
+
+### Added
+
+- Added shared landing-page marketing types for icon rows and capability
+  cards so AI Company OS, AI Agents, CRM, and GTM Intelligence pages can
+  reuse one typed tuple shape.
+
+### Changed
+
+- Updated frontend API types to match current backend response shapes for
+  workspaces, plans, reviews, OKRs, campaigns, tables, agents, GTM,
+  planning poker, chat, and analytics payloads.
+- Adjusted React 19 ref and JSX namespace usage, Recharts formatter
+  signatures, cloneElement icon typing, and fixture annotations so
+  TypeScript can validate without local casts.
+- Removed stale onboarding use of the removed repository-enable API and
+  aligned sprint backlog deletion with the existing archive task action.
+
+### Fixed
+
+- Fixed TypeScript errors across chat, reminders, docs, CRM/tables,
+  onboarding, sprint, GTM, insights, e2e fixtures, and marketing pages.
+
 ## [0.7.77] - 2026-05-18
 
 This release improves performance review workflows with peer-review

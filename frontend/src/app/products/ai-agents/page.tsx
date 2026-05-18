@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Bot, CheckCircle2, LockKeyhole, Mail, Shield, Workflow, Wrench } from "lucide-react";
 import { LandingHeader, LandingFooter } from "@/components/landing/LandingHeader";
+import type { IconCapability } from "@/components/landing/marketing-types";
 
 export const metadata: Metadata = {
   title: "AI Agents for Business Workflows",
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
     "Build governed AI agents that work across CRM, email, Slack, enrichment, docs, and workflows with approvals, policy gates, and audit history.",
 };
 
-const capabilities = [
+const capabilities: readonly IconCapability[] = [
   ["Tool access", "Give agents approved access to CRM records, email history, enrichment tools, Slack, workflows, and company context.", Wrench],
   ["Policy gates", "Block tools, require approval, restrict fields, rate-limit actions, and cap token budgets before agents act.", LockKeyhole],
   ["Workflow triggers", "Run agents when leads reply, deals change, forms arrive, tickets escalate, or workflows branch.", Workflow],
@@ -93,7 +94,7 @@ export default function AIAgentsProductPage() {
             </h2>
             <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               {capabilities.map(([title, body, Icon]) => (
-                <div key={title as string} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+                <div key={title} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
                   <Icon className="h-6 w-6 text-violet-300" />
                   <h3 className="mt-5 text-xl font-semibold">{title}</h3>
                   <p className="mt-3 text-sm leading-6 text-white/55">{body}</p>

@@ -495,7 +495,7 @@ export default function BacklogPage({
     updateTaskStatus,
     addTask,
     isAddingTask,
-    deleteTask,
+    archiveTask: deleteTask,
   } = useProjectBoard(currentWorkspaceId, projectId);
 
   const { epics } = useEpics(currentWorkspaceId);

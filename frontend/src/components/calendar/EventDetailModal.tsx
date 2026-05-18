@@ -144,7 +144,7 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
                           <span className="text-foreground">
                             {String(event.metadata.total_days)} day
                             {Number(event.metadata.total_days) !== 1 ? "s" : ""}
-                            {event.metadata.is_half_day && ` (${event.metadata.half_day_period === "first_half" ? "AM" : "PM"})`}
+                            {Boolean(event.metadata.is_half_day) && ` (${event.metadata.half_day_period === "first_half" ? "AM" : "PM"})`}
                           </span>
                         </div>
                       )}
