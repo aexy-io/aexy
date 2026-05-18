@@ -80,6 +80,17 @@ class WorkspaceMemberUpdate(BaseModel):
     role: str  # "admin" | "member" | "viewer"
 
 
+class WorkspaceMemberStatusUpdate(BaseModel):
+    """Schema for the admin "Mark as left" / "Restore" toggle.
+
+    Only flips between "active" and "removed" — the other statuses
+    (pending, suspended) are driven by other flows (invite acceptance,
+    moderation) and shouldn't be reachable through this endpoint.
+    """
+
+    status: str  # "active" | "removed"
+
+
 class WorkspaceMemberResponse(BaseModel):
     """Schema for workspace member response."""
 

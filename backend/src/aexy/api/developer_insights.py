@@ -732,27 +732,37 @@ async def get_team_insights(
     dev_ids = await _get_all_contributor_ids(db, dev_ids, start_date, end_date)
 
     service = DeveloperInsightsService(db)
-    distribution = await service.compute_team_distribution(dev_ids, start_date, end_date)
+    # Pass workspace_id so the service can populate membership_status on
+    # each MemberSummary — without it every contributor is tagged
+    # "external" by default, which breaks the picker's "hide past
+    # members" filter.
+    distribution = await service.compute_team_distribution(
+        dev_ids, start_date, end_date, workspace_id=workspace_id
+    )
 
     total_commits = sum(m.commits_count for m in distribution.member_metrics)
     total_prs = sum(m.prs_merged for m in distribution.member_metrics)
     total_lines = sum(m.lines_changed for m in distribution.member_metrics)
     total_reviews = sum(m.reviews_given for m in distribution.member_metrics)
 
+    # Denominator for "per member" averages: post-rollup row count, so
+    # that collapsing 4 dup rows for one person doesn't artificially
+    # lower the average.
+    member_n = len(distribution.member_metrics) or 1
     response = TeamInsightsResponse(
         workspace_id=workspace_id,
         team_id=team_id,
         period_start=start_date,
         period_end=end_date,
         period_type=period_type.value,
-        member_count=len(dev_ids),
+        member_count=len(distribution.member_metrics),
         aggregate=TeamAggregate(
             total_commits=total_commits,
             total_prs_merged=total_prs,
             total_lines_changed=total_lines,
             total_reviews=total_reviews,
-            avg_commits_per_member=round(total_commits / len(dev_ids), 2) if dev_ids else 0,
-            avg_prs_per_member=round(total_prs / len(dev_ids), 2) if dev_ids else 0,
+            avg_commits_per_member=round(total_commits / member_n, 2),
+            avg_prs_per_member=round(total_prs / member_n, 2),
         ),
         distribution=TeamDistributionSchema(
             gini_coefficient=distribution.gini_coefficient,

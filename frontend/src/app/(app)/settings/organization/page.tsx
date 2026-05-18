@@ -74,16 +74,27 @@ interface MemberRowProps {
   onUpdateRole: (developerId: string, role: string) => void;
   onRemove: (developerId: string) => void;
   onResendInvite: (developerId: string) => Promise<void>;
+  onSetStatus: (developerId: string, status: "active" | "removed") => Promise<void>;
 }
 
-function MemberRow({ member, currentUserId, isCurrentUserAdmin, onUpdateRole, onRemove, onResendInvite }: MemberRowProps) {
+function MemberRow({
+  member,
+  currentUserId,
+  isCurrentUserAdmin,
+  onUpdateRole,
+  onRemove,
+  onResendInvite,
+  onSetStatus,
+}: MemberRowProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [isTogglingStatus, setIsTogglingStatus] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
   const buttonRef = useRef<HTMLButtonElement>(null);
   const isCurrentUser = member.developer_id === currentUserId;
   const canModify = isCurrentUserAdmin && member.role !== "owner" && !isCurrentUser;
   const isPending = member.status === "pending";
+  const isRemoved = member.status === "removed";
 
   const handleOpenMenu = () => {
     if (buttonRef.current) {
@@ -102,6 +113,19 @@ function MemberRow({ member, currentUserId, isCurrentUserAdmin, onUpdateRole, on
       await onResendInvite(member.developer_id);
     } finally {
       setIsResending(false);
+      setShowMenu(false);
+    }
+  };
+
+  const handleToggleStatus = async () => {
+    setIsTogglingStatus(true);
+    try {
+      await onSetStatus(
+        member.developer_id,
+        isRemoved ? "active" : "removed",
+      );
+    } finally {
+      setIsTogglingStatus(false);
       setShowMenu(false);
     }
   };
@@ -190,6 +214,19 @@ function MemberRow({ member, currentUserId, isCurrentUserAdmin, onUpdateRole, on
                         {isResending ? 'Resending...' : 'Resend Invite'}
                       </button>
                     )}
+                    {/* Soft-remove flow that preserves the member's
+                        history. Distinct from "Remove from workspace"
+                        below which is a hard delete used during invite
+                        cleanup; this one is the regular
+                        "this teammate has left" flow. */}
+                    <button
+                      onClick={handleToggleStatus}
+                      disabled={isTogglingStatus}
+                      className="w-full px-3 py-2 text-left text-sm text-amber-400 hover:bg-accent flex items-center gap-2 disabled:opacity-50"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${isTogglingStatus ? 'animate-spin' : ''}`} />
+                      {isRemoved ? "Restore as active" : "Mark as left"}
+                    </button>
                     <button
                       onClick={() => {
                         onRemove(member.developer_id);
@@ -636,15 +673,17 @@ export default function OrganizationSettingsPage() {
     hasWorkspaces,
   } = useWorkspace();
 
+  const [showPastMembers, setShowPastMembers] = useState(false);
   const {
     members,
     isLoading: membersLoading,
     inviteMember,
     updateMemberRole,
     removeMember,
+    setMemberStatus,
     resendMemberInvite,
     isInviting,
-  } = useWorkspaceMembers(currentWorkspaceId);
+  } = useWorkspaceMembers(currentWorkspaceId, { includeRemoved: showPastMembers });
 
   const {
     pendingInvites,
@@ -690,6 +729,13 @@ export default function OrganizationSettingsPage() {
     if (confirm("Are you sure you want to remove this member from the workspace?")) {
       await removeMember(developerId);
     }
+  };
+
+  const handleSetStatus = async (
+    developerId: string,
+    status: "active" | "removed",
+  ) => {
+    await setMemberStatus({ developerId, status });
   };
 
   const handleResendMemberInvite = async (developerId: string) => {
@@ -929,32 +975,58 @@ export default function OrganizationSettingsPage() {
                   <Users className="h-5 w-5 text-muted-foreground" />
                   <div>
                     <h3 className="text-foreground font-medium">Team Members</h3>
-                    <p className="text-muted-foreground text-sm">{members.length} members</p>
+                    <p className="text-muted-foreground text-sm">
+                      {members.filter((m) => m.status !== "removed").length} active
+                      {showPastMembers && (() => {
+                        const past = members.filter((m) => m.status === "removed").length;
+                        return past > 0 ? ` · ${past} past` : "";
+                      })()}
+                    </p>
                   </div>
                 </div>
-                {isAdmin && (
-                  <button
-                    onClick={() => setShowInviteModal(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition text-sm"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Invite Member
-                  </button>
-                )}
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={showPastMembers}
+                      onChange={(e) => setShowPastMembers(e.target.checked)}
+                      className="h-3.5 w-3.5"
+                    />
+                    Show past members
+                  </label>
+                  {isAdmin && (
+                    <button
+                      onClick={() => setShowInviteModal(true)}
+                      className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition text-sm"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Invite Member
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="divide-y divide-border/50">
                 {members.length > 0 ? (
-                  members.map((member) => (
-                    <MemberRow
-                      key={member.id}
-                      member={member}
-                      currentUserId={user?.id}
-                      isCurrentUserAdmin={isAdmin}
-                      onUpdateRole={handleUpdateRole}
-                      onRemove={handleRemove}
-                      onResendInvite={handleResendMemberInvite}
-                    />
-                  ))
+                  // Push "removed" members to the bottom so the active
+                  // team list reads cleanly even with the toggle on.
+                  [...members]
+                    .sort((a, b) => {
+                      const aRemoved = a.status === "removed" ? 1 : 0;
+                      const bRemoved = b.status === "removed" ? 1 : 0;
+                      return aRemoved - bRemoved;
+                    })
+                    .map((member) => (
+                      <MemberRow
+                        key={member.id}
+                        member={member}
+                        currentUserId={user?.id}
+                        isCurrentUserAdmin={isAdmin}
+                        onUpdateRole={handleUpdateRole}
+                        onRemove={handleRemove}
+                        onResendInvite={handleResendMemberInvite}
+                        onSetStatus={handleSetStatus}
+                      />
+                    ))
                 ) : (
                   <div className="p-8 text-center text-muted-foreground">
                     No members found

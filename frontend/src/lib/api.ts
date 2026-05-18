@@ -2793,9 +2793,16 @@ export const workspaceApi = {
   },
 
   // Members
-  getMembers: async (workspaceId: string, includePending = false): Promise<WorkspaceMember[]> => {
+  getMembers: async (
+    workspaceId: string,
+    includePending = false,
+    includeRemoved = false,
+  ): Promise<WorkspaceMember[]> => {
     const response = await api.get(`/workspaces/${workspaceId}/members`, {
-      params: { include_pending: includePending },
+      params: {
+        include_pending: includePending,
+        include_removed: includeRemoved,
+      },
     });
     return response.data;
   },
@@ -2818,6 +2825,20 @@ export const workspaceApi = {
 
   updateMemberRole: async (workspaceId: string, developerId: string, role: string): Promise<WorkspaceMember> => {
     const response = await api.patch(`/workspaces/${workspaceId}/members/${developerId}`, { role });
+    return response.data;
+  },
+
+  // Toggle "active" ↔ "removed" without dropping the member's history.
+  // Used by the admin "Mark as left" / "Restore" row action.
+  setMemberStatus: async (
+    workspaceId: string,
+    developerId: string,
+    status: "active" | "removed",
+  ): Promise<WorkspaceMember> => {
+    const response = await api.patch(
+      `/workspaces/${workspaceId}/members/${developerId}/status`,
+      { status },
+    );
     return response.data;
   },
 
@@ -16891,6 +16912,15 @@ export interface DeveloperSnapshotResponse {
 export interface MemberSummary {
   developer_id: string;
   developer_name?: string | null;
+  // Identity hints — populated by the backend so the comparison
+  // picker can search across name/email/github_login and dedupe any
+  // residual duplicates by identity_key.
+  email?: string | null;
+  github_login?: string | null;
+  avatar_url?: string | null;
+  identity_key?: string;
+  // "active" | "pending" | "suspended" | "removed" | "external"
+  membership_status?: string;
   commits_count: number;
   prs_merged: number;
   lines_changed: number;

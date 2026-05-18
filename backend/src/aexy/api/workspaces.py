@@ -16,6 +16,7 @@ from aexy.schemas.workspace import (
     WorkspaceListResponse,
     WorkspaceMemberAdd,
     WorkspaceMemberInvite,
+    WorkspaceMemberStatusUpdate,
     WorkspaceMemberUpdate,
     WorkspaceMemberResponse,
     WorkspaceMemberAppPermissions,
@@ -426,10 +427,16 @@ async def update_ai_analysis_settings(
 async def list_members(
     workspace_id: str,
     include_pending: bool = False,
+    include_removed: bool = False,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """List all members of a workspace."""
+    """List all members of a workspace.
+
+    Set `include_removed=true` to also surface members whose status was
+    flipped to "removed" — used by the admin members page so the
+    "Mark as left" toggle has something to render against.
+    """
     service = WorkspaceService(db)
 
     if not await service.check_permission(workspace_id, str(current_user.id), "viewer"):
@@ -438,7 +445,11 @@ async def list_members(
             detail="Not a member of this workspace",
         )
 
-    members = await service.get_members(workspace_id, include_pending=include_pending)
+    members = await service.get_members(
+        workspace_id,
+        include_pending=include_pending,
+        include_removed=include_removed,
+    )
     return [member_to_response(m) for m in members]
 
 
@@ -692,6 +703,54 @@ async def update_member_role(
             workspace_id=workspace_id,
             developer_id=developer_id,
             new_role=data.role,
+        )
+        if not member:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Member not found",
+            )
+        await db.commit()
+        await db.refresh(member)
+        return member_to_response(member)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+
+@router.patch(
+    "/{workspace_id}/members/{developer_id}/status",
+    response_model=WorkspaceMemberResponse,
+)
+async def update_member_status(
+    workspace_id: str,
+    developer_id: str,
+    data: WorkspaceMemberStatusUpdate,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Toggle a member between "active" and "removed".
+
+    Powers the admin "Mark as left" / "Restore" actions on the
+    workspace members page. Distinct from `DELETE …/members/{id}`
+    because it preserves the WorkspaceMember row (and therefore the
+    member's history) and supports flipping the state back to
+    "active" without a fresh invite.
+    """
+    service = WorkspaceService(db)
+
+    if not await service.check_permission(workspace_id, str(current_user.id), "admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin permission required",
+        )
+
+    try:
+        member = await service.set_member_status(
+            workspace_id=workspace_id,
+            developer_id=developer_id,
+            new_status=data.status,
         )
         if not member:
             raise HTTPException(

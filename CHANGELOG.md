@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.80] - 2026-05-19
+
+This release improves developer identity handling in insights and adds
+soft member offboarding for workspaces.
+
+### Added
+
+- Added a developer ghost dedupe utility for merging name-variant ghost
+  contributors into canonical workspace members after safe dry-run review.
+- Added workspace member status toggles so admins can mark teammates as
+  left and restore them later without deleting membership history.
+- Added member identity metadata to team insights responses, including
+  email, GitHub login, avatar, identity key, and membership status.
+
+### Changed
+
+- Team insights now roll up duplicate contributor rows by identity and
+  compute per-member averages from the rolled-up contributor set.
+- The compare page now deduplicates remaining identity twins, supports
+  search across identity fields, and hides past or external contributors
+  behind explicit toggles.
+- Organization settings can show past members and sorts removed members
+  below active teammates.
+
 ## [0.7.79] - 2026-05-18
 
 This release improves the employee-facing review experience and reuses

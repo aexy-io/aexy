@@ -84,6 +84,24 @@ class SprintProductivityMetrics(BaseModel):
 class MemberSummary(BaseModel):
     developer_id: str
     developer_name: str | None = None
+    # Identity hints so the frontend can dedupe across ghost rows that
+    # weren't resolved server-side and surface a useful search corpus
+    # (name + email + github_login) in the comparison picker.
+    email: str | None = None
+    github_login: str | None = None
+    avatar_url: str | None = None
+    # Stable grouping key the client uses to collapse remaining
+    # duplicates. Server already merges ghost stats into the canonical
+    # row when it can; identity_key is the breadcrumb so clients can
+    # still group display rows that share an identity but slipped
+    # past server-side rollup.
+    identity_key: str = ""
+    # Membership status against the workspace this insights call
+    # belongs to. "external" = the developer contributed but isn't a
+    # workspace_members row (e.g. open-source contributor, unmerged
+    # ghost). "removed" = was a member, has left. Frontend hides
+    # "removed" by default behind a toggle.
+    membership_status: str = "active"
     commits_count: int = 0
     prs_merged: int = 0
     lines_changed: int = 0

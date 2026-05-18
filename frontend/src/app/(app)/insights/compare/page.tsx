@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { redirect } from "next/navigation";
@@ -13,11 +13,13 @@ import {
   X,
   ChevronDown,
   Info,
+  Search,
 } from "lucide-react";
 import {
   insightsApi,
   InsightsPeriodType,
   DeveloperInsightsResponse,
+  MemberSummary,
 } from "@/lib/api";
 import { useTeamInsights } from "@/hooks/useInsights";
 import {
@@ -28,6 +30,33 @@ import {
   ActivityHeatmap,
   HeatmapCell,
 } from "@/components/insights/ActivityHeatmap";
+
+// Same honorific-stripping pass the dedupe script uses server-side.
+// Acts as a fallback when the API didn't supply `identity_key` (older
+// caches, custom integrations) so the picker still collapses obvious
+// name twins.
+const _HONORIFICS = new Set([
+  "md", "mr", "mrs", "ms", "dr", "mohd", "mohammed", "muhammad",
+  "smt", "sri", "prof",
+]);
+
+function normalizeName(name: string | null | undefined): string | null {
+  if (!name) return null;
+  const cleaned = name.replace(/[^A-Za-z0-9]+/g, " ").toLowerCase().trim();
+  if (!cleaned) return null;
+  const tokens = cleaned.split(/\s+/).filter((t) => t && !_HONORIFICS.has(t));
+  if (tokens.length === 0) return null;
+  return tokens.join("");
+}
+
+function identityKeyFor(m: MemberSummary): string {
+  if (m.identity_key) return m.identity_key;
+  if (m.github_login) return `gh:${m.github_login.toLowerCase()}`;
+  if (m.email) return `email:${m.email.toLowerCase()}`;
+  const norm = normalizeName(m.developer_name);
+  if (norm) return `name:${norm}`;
+  return `dev:${m.developer_id}`;
+}
 
 const PERIOD_OPTIONS: { value: InsightsPeriodType; label: string }[] = [
   { value: "weekly", label: "Weekly" },
@@ -75,20 +104,88 @@ export default function ComparePage() {
     DeveloperInsightsResponse[]
   >([]);
   const [loading, setLoading] = useState(false);
-  const [showPicker, setShowPicker] = useState(false);
 
   const { teamInsights } = useTeamInsights(currentWorkspaceId, {
     period_type: periodType,
   });
 
-  const availableMembers = teamInsights?.distribution?.member_metrics ?? [];
+  // Toggles default to the "least confusing" state: hide past members,
+  // hide external contributors. Power users flip them on as needed.
+  const [includePastMembers, setIncludePastMembers] = useState(false);
+  const [includeExternal, setIncludeExternal] = useState(false);
 
-  // Build name lookup from available members
-  const devNameMap: Record<string, string> = {};
-  availableMembers.forEach((m) => {
-    devNameMap[m.developer_id] = m.developer_name || m.developer_id.slice(0, 8);
-  });
-  const devName = (id: string) => devNameMap[id] || id.slice(0, 8);
+  const rawMembers = teamInsights?.distribution?.member_metrics ?? [];
+
+  // Client-side identity rollup. Backend already does the same pass,
+  // but we keep a fallback here for two reasons:
+  //   1. Older cached responses may pre-date the backend rollup field.
+  //   2. Name-twin ghosts that share neither email nor github_login
+  //      still get collapsed by the normalized-name path in
+  //      `identityKeyFor` — the server's identity_key only kicks in
+  //      when one of those stable IDs exists.
+  const availableMembers = useMemo<MemberSummary[]>(() => {
+    if (!rawMembers.length) return [];
+    const groups = new Map<string, MemberSummary[]>();
+    for (const m of rawMembers) {
+      const key = identityKeyFor(m);
+      const list = groups.get(key);
+      if (list) list.push(m);
+      else groups.set(key, [m]);
+    }
+    // Membership rank mirrors the backend's _rollup_by_identity so the
+    // "canonical" row in a group is the same on both sides.
+    const rank: Record<string, number> = {
+      active: 4, pending: 3, suspended: 2, removed: 1, external: 0,
+    };
+    const out: MemberSummary[] = [];
+    for (const list of groups.values()) {
+      if (list.length === 1) {
+        out.push(list[0]);
+        continue;
+      }
+      const sorted = [...list].sort((a, b) => {
+        const ra = rank[a.membership_status ?? "external"] ?? 0;
+        const rb = rank[b.membership_status ?? "external"] ?? 0;
+        if (ra !== rb) return rb - ra;
+        return b.commits_count - a.commits_count;
+      });
+      const canonical = { ...sorted[0] };
+      for (const extra of sorted.slice(1)) {
+        canonical.commits_count += extra.commits_count;
+        canonical.prs_merged += extra.prs_merged;
+        canonical.lines_changed += extra.lines_changed;
+        canonical.reviews_given += extra.reviews_given;
+        if (!canonical.email && extra.email) canonical.email = extra.email;
+        if (!canonical.avatar_url && extra.avatar_url) {
+          canonical.avatar_url = extra.avatar_url;
+        }
+      }
+      out.push(canonical);
+    }
+    out.sort((a, b) => b.commits_count - a.commits_count);
+    return out;
+  }, [rawMembers]);
+
+  // Filter for visibility (selecting + listing in picker). Selected
+  // developers stay visible even when their group is filtered out so a
+  // chip never silently disappears.
+  const visibleMembers = useMemo<MemberSummary[]>(() => {
+    return availableMembers.filter((m) => {
+      if (selectedDevIds.includes(m.developer_id)) return true;
+      if (!includePastMembers && m.membership_status === "removed") return false;
+      if (!includeExternal && m.membership_status === "external") return false;
+      return true;
+    });
+  }, [availableMembers, selectedDevIds, includePastMembers, includeExternal]);
+
+  // Display name and lookup by developer_id (selected chips use this).
+  const memberById = useMemo(() => {
+    const map = new Map<string, MemberSummary>();
+    for (const m of availableMembers) map.set(m.developer_id, m);
+    return map;
+  }, [availableMembers]);
+  const devName = (id: string) =>
+    memberById.get(id)?.developer_name || id.slice(0, 8);
 
   const fetchComparison = useCallback(async () => {
     if (!currentWorkspaceId || selectedDevIds.length < 2) return;
@@ -120,7 +217,6 @@ export default function ComparePage() {
     if (!selectedDevIds.includes(devId)) {
       setSelectedDevIds([...selectedDevIds, devId]);
     }
-    setShowPicker(false);
   };
 
   const removeDeveloper = (devId: string) => {
@@ -236,65 +332,74 @@ export default function ComparePage() {
 
       {/* Developer Selector */}
       <div className="bg-muted rounded-xl p-4 border border-border">
-        <div className="flex items-center gap-2 mb-3">
-          <Users className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm text-foreground">
-            Select developers to compare (2-6)
-          </span>
+        <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-foreground">
+              Select developers to compare (2-6)
+            </span>
+          </div>
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={includePastMembers}
+                onChange={(e) => setIncludePastMembers(e.target.checked)}
+                className="h-3.5 w-3.5"
+              />
+              Include past members
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={includeExternal}
+                onChange={(e) => setIncludeExternal(e.target.checked)}
+                className="h-3.5 w-3.5"
+              />
+              Include external contributors
+            </label>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {selectedDevIds.map((devId) => (
-            <div
-              key={devId}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600/20 border border-indigo-500/30 rounded-lg"
-            >
-              <span className="text-sm text-indigo-300">
-                {devName(devId)}
-              </span>
-              <button
-                onClick={() => removeDeveloper(devId)}
-                className="text-indigo-400 hover:text-foreground transition"
+          {selectedDevIds.map((devId) => {
+            const m = memberById.get(devId);
+            const isRemoved = m?.membership_status === "removed";
+            const isExternal = m?.membership_status === "external";
+            return (
+              <div
+                key={devId}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border ${
+                  isRemoved
+                    ? "bg-muted-foreground/10 border-muted-foreground/20"
+                    : "bg-indigo-600/20 border-indigo-500/30"
+                }`}
               >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ))}
+                <span className="text-sm text-indigo-300">{devName(devId)}</span>
+                {isRemoved && (
+                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    left
+                  </span>
+                )}
+                {isExternal && (
+                  <span className="text-[10px] uppercase tracking-wide text-amber-400">
+                    external
+                  </span>
+                )}
+                <button
+                  onClick={() => removeDeveloper(devId)}
+                  className="text-indigo-400 hover:text-foreground transition"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            );
+          })}
           {selectedDevIds.length < 6 && (
-            <div className="relative">
-              <button
-                onClick={() => setShowPicker(!showPicker)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-accent hover:bg-muted border border-border rounded-lg text-sm text-foreground transition"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add Developer
-                <ChevronDown className="h-3.5 w-3.5" />
-              </button>
-              {showPicker && (
-                <div className="absolute top-full left-0 mt-1 w-56 bg-muted border border-border rounded-lg shadow-xl z-10 max-h-60 overflow-y-auto">
-                  {availableMembers
-                    .filter((m) => !selectedDevIds.includes(m.developer_id))
-                    .map((m) => (
-                      <button
-                        key={m.developer_id}
-                        onClick={() => addDeveloper(m.developer_id)}
-                        className="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-accent transition"
-                      >
-                        {m.developer_name || m.developer_id.slice(0, 8)}
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          ({m.commits_count}c, {m.prs_merged}pr)
-                        </span>
-                      </button>
-                    ))}
-                  {availableMembers.filter(
-                    (m) => !selectedDevIds.includes(m.developer_id)
-                  ).length === 0 && (
-                    <div className="px-4 py-3 text-xs text-muted-foreground">
-                      No more developers available
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            <DeveloperPicker
+              members={visibleMembers}
+              selectedDevIds={selectedDevIds}
+              onAdd={addDeveloper}
+            />
           )}
         </div>
       </div>
@@ -487,5 +592,165 @@ function getISOWeek(date: Date): number {
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
   return Math.ceil(
     ((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7
+  );
+}
+
+interface DeveloperPickerProps {
+  members: MemberSummary[];
+  selectedDevIds: string[];
+  onAdd: (developerId: string) => void;
+}
+
+// Searchable picker. Replaces the previous unfiltered dropdown so a
+// workspace with dozens of contributors doesn't force scroll-hunting.
+// Search corpus = name + email + github_login so the user can find the
+// same person under whichever identity they remember.
+function DeveloperPicker({ members, selectedDevIds, onAdd }: DeveloperPickerProps) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Close on outside click / Esc.
+  useEffect(() => {
+    if (!open) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (!containerRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [open]);
+
+  useEffect(() => {
+    if (open) {
+      // Focus input on open; reset query so prior search doesn't leak
+      // into the next selection session.
+      setQuery("");
+      setActiveIndex(0);
+      requestAnimationFrame(() => inputRef.current?.focus());
+    }
+  }, [open]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const pool = members.filter((m) => !selectedDevIds.includes(m.developer_id));
+    if (!q) return pool;
+    return pool.filter((m) => {
+      const haystack = [
+        m.developer_name,
+        m.email,
+        m.github_login,
+        m.developer_id,
+      ]
+        .filter(Boolean)
+        .map((s) => (s as string).toLowerCase());
+      return haystack.some((s) => s.includes(q));
+    });
+  }, [members, selectedDevIds, query]);
+
+  // Keep activeIndex in range when filter shrinks.
+  useEffect(() => {
+    if (activeIndex >= filtered.length) setActiveIndex(0);
+  }, [filtered.length, activeIndex]);
+
+  const handleSelect = (id: string) => {
+    onAdd(id);
+    setOpen(false);
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.min(i + 1, Math.max(0, filtered.length - 1)));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.max(0, i - 1));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const target = filtered[activeIndex];
+      if (target) handleSelect(target.developer_id);
+    } else if (e.key === "Escape") {
+      setOpen(false);
+    }
+  };
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1.5 px-3 py-1.5 bg-accent hover:bg-muted border border-border rounded-lg text-sm text-foreground transition"
+      >
+        <Plus className="h-3.5 w-3.5" />
+        Add Developer
+        <ChevronDown className="h-3.5 w-3.5" />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 w-80 bg-popover border border-border rounded-lg shadow-xl z-20 overflow-hidden">
+          <div className="px-3 py-2 border-b border-border flex items-center gap-2">
+            <Search className="h-3.5 w-3.5 text-muted-foreground" />
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setActiveIndex(0);
+              }}
+              onKeyDown={onKeyDown}
+              placeholder="Search name, email, or GitHub login"
+              className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground"
+            />
+          </div>
+          <div className="max-h-72 overflow-y-auto">
+            {filtered.length === 0 ? (
+              <div className="px-4 py-3 text-xs text-muted-foreground">
+                {query
+                  ? "No matches. Try a different name or toggle past / external."
+                  : "No developers available."}
+              </div>
+            ) : (
+              filtered.map((m, i) => {
+                const isRemoved = m.membership_status === "removed";
+                const isExternal = m.membership_status === "external";
+                return (
+                  <button
+                    key={m.developer_id}
+                    onClick={() => handleSelect(m.developer_id)}
+                    onMouseEnter={() => setActiveIndex(i)}
+                    className={`w-full text-left px-3 py-2 transition ${
+                      i === activeIndex ? "bg-accent" : "hover:bg-accent/60"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm text-foreground truncate">
+                        {m.developer_name || m.github_login || m.developer_id.slice(0, 8)}
+                      </span>
+                      {isRemoved && (
+                        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                          left
+                        </span>
+                      )}
+                      {isExternal && (
+                        <span className="text-[10px] uppercase tracking-wide text-amber-400">
+                          external
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground flex items-center gap-2 mt-0.5">
+                      {m.github_login && <span>@{m.github_login}</span>}
+                      {m.email && <span className="truncate">{m.email}</span>}
+                      <span className="ml-auto whitespace-nowrap">
+                        {m.commits_count}c · {m.prs_merged}pr
+                      </span>
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

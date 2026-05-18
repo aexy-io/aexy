@@ -166,8 +166,12 @@ export function useWorkspace() {
 }
 
 // Hook for workspace members
-export function useWorkspaceMembers(workspaceId: string | null) {
+export function useWorkspaceMembers(
+  workspaceId: string | null,
+  options?: { includeRemoved?: boolean },
+) {
   const queryClient = useQueryClient();
+  const includeRemoved = !!options?.includeRemoved;
 
   const {
     data: members,
@@ -175,8 +179,12 @@ export function useWorkspaceMembers(workspaceId: string | null) {
     error,
     refetch,
   } = useQuery({
-    queryKey: ["workspaceMembers", workspaceId],
-    queryFn: () => workspaceApi.getMembers(workspaceId!, true),
+    // includeRemoved is part of the cache key so toggling the admin
+    // "Show past members" switch refetches with the right query param
+    // instead of silently reusing the active-only cache.
+    queryKey: ["workspaceMembers", workspaceId, { includeRemoved }],
+    queryFn: () =>
+      workspaceApi.getMembers(workspaceId!, true, includeRemoved),
     enabled: !!workspaceId,
   });
 
@@ -218,6 +226,31 @@ export function useWorkspaceMembers(workspaceId: string | null) {
     },
   });
 
+  // "Mark as left" / "Restore" — flips WorkspaceMember.status without
+  // dropping history. Distinct from removeMember (DELETE) which is the
+  // hard-delete flow used during invite-state cleanup.
+  const setStatusMutation = useMutation({
+    mutationFn: ({
+      developerId,
+      status,
+    }: {
+      developerId: string;
+      status: "active" | "removed";
+    }) => workspaceApi.setMemberStatus(workspaceId!, developerId, status),
+    onSuccess: (_data, vars) => {
+      toast.success(
+        vars.status === "removed" ? "Marked as left" : "Member restored",
+      );
+      queryClient.invalidateQueries({ queryKey: ["workspaceMembers", workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ["workspace", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update member status",
+      );
+    },
+  });
+
   const resendInviteMutation = useMutation({
     mutationFn: (developerId: string) => workspaceApi.resendMemberInvite(workspaceId!, developerId),
     onSuccess: () => {
@@ -237,10 +270,12 @@ export function useWorkspaceMembers(workspaceId: string | null) {
     inviteMember: inviteMutation.mutateAsync,
     updateMemberRole: updateRoleMutation.mutateAsync,
     removeMember: removeMutation.mutateAsync,
+    setMemberStatus: setStatusMutation.mutateAsync,
     resendMemberInvite: resendInviteMutation.mutateAsync,
     isInviting: inviteMutation.isPending,
     isUpdatingRole: updateRoleMutation.isPending,
     isRemoving: removeMutation.isPending,
+    isSettingStatus: setStatusMutation.isPending,
     isResendingInvite: resendInviteMutation.isPending,
   };
 }
