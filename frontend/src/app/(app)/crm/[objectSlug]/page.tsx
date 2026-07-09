@@ -36,10 +36,6 @@ const objectTypeIcons: Record<CRMObjectType, React.ReactNode> = {
   custom: <LayoutGrid className="h-5 w-5" />,
 };
 
-function tableAttributes(attributes: CRMAttribute[] = []) {
-  return attributes.filter((attr) => !attr.is_system && attr.slug !== "name");
-}
-
 function CreateRecordModal({
   isOpen,
   onClose,
@@ -160,12 +156,12 @@ export default function RecordsPage() {
   // Initialize columns when object loads
   useEffect(() => {
     if (currentObject?.attributes) {
-      const columns = tableAttributes(currentObject.attributes);
+      const nonSystemAttrs = currentObject.attributes.filter((a) => !a.is_system);
       if (visibleColumns.length === 0) {
-        setVisibleColumns(columns.slice(0, 5).map((a) => a.slug));
+        setVisibleColumns(nonSystemAttrs.slice(0, 5).map((a) => a.slug));
       }
       if (columnOrder.length === 0) {
-        setColumnOrder(columns.map((a) => a.slug));
+        setColumnOrder(nonSystemAttrs.map((a) => a.slug));
       }
     }
   }, [currentObject?.attributes, visibleColumns.length, columnOrder.length]);
@@ -176,9 +172,9 @@ export default function RecordsPage() {
       setActiveViewId(null);
       // Reset to defaults
       if (currentObject?.attributes) {
-        const columns = tableAttributes(currentObject.attributes);
-        setVisibleColumns(columns.slice(0, 5).map((a) => a.slug));
-        setColumnOrder(columns.map((a) => a.slug));
+        const nonSystemAttrs = currentObject.attributes.filter((a) => !a.is_system);
+        setVisibleColumns(nonSystemAttrs.slice(0, 5).map((a) => a.slug));
+        setColumnOrder(nonSystemAttrs.map((a) => a.slug));
       }
       setSortConfig(null);
       return;
@@ -422,10 +418,10 @@ export default function RecordsPage() {
             {/* Column visibility (table view only) */}
             {viewMode === "table" && currentObject?.attributes && (
               <ColumnVisibilityMenu
-                attributes={tableAttributes(currentObject.attributes)}
+                attributes={currentObject.attributes}
                 visibleColumns={visibleColumns}
                 onToggleColumn={handleToggleColumn}
-                onShowAll={() => setVisibleColumns(tableAttributes(currentObject.attributes).map((a) => a.slug))}
+                onShowAll={() => setVisibleColumns(currentObject.attributes?.filter((a) => !a.is_system).map((a) => a.slug) || [])}
                 onHideAll={() => setVisibleColumns([])}
               />
             )}

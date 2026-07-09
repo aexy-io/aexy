@@ -1,7 +1,5 @@
 """CRM API endpoints."""
 
-import re
-
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -100,94 +98,6 @@ async def _assert_record_in_workspace(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Record not found",
         )
-
-
-def _normalize_template_attribute_type(attribute_type: str) -> str:
-    """Normalize legacy template field type names to CRM attribute types."""
-    if attribute_type == "multiselect":
-        return "multi_select"
-    if attribute_type == "datetime":
-        return "timestamp"
-    return attribute_type
-
-
-def _normalize_template_attribute_config(config: dict | None) -> dict | None:
-    """Normalize template config shape before storing it as attribute metadata."""
-    if not config:
-        return config
-
-    normalized = dict(config)
-    options = normalized.get("options")
-    if not isinstance(options, list):
-        return normalized
-
-    normalized_options = []
-    for option in options:
-        if isinstance(option, str) or isinstance(option, int) or isinstance(option, float):
-            label = str(option)
-            value = re.sub(r"[^a-z0-9]+", "_", label.lower()).strip("_") or label
-            normalized_options.append({"value": value, "label": label})
-            continue
-
-        if not isinstance(option, dict):
-            continue
-
-        value_source = option.get("value") or option.get("label")
-        label_source = option.get("label") or option.get("value")
-        if value_source is None or label_source is None:
-            continue
-
-        normalized_option = {
-            "value": str(value_source),
-            "label": str(label_source),
-        }
-        if isinstance(option.get("color"), str):
-            normalized_option["color"] = option["color"]
-        normalized_options.append(normalized_option)
-
-    normalized["options"] = normalized_options
-    return normalized
-
-
-async def _get_attribute_in_workspace(
-    db: AsyncSession, workspace_id: str, attribute_id: str
-):
-    """Fetch an attribute only if its object belongs to the workspace."""
-    from sqlalchemy import select
-    from aexy.models.crm import CRMAttribute, CRMObject
-
-    result = await db.execute(
-        select(CRMAttribute)
-        .join(CRMObject, CRMAttribute.object_id == CRMObject.id)
-        .where(
-            CRMAttribute.id == attribute_id,
-            CRMObject.workspace_id == workspace_id,
-        )
-    )
-    return result.scalar_one_or_none()
-
-
-def _crm_attribute_response(attr) -> CRMAttributeResponse:
-    return CRMAttributeResponse(
-        id=str(attr.id),
-        object_id=str(attr.object_id),
-        name=attr.name,
-        slug=attr.slug,
-        description=attr.description,
-        attribute_type=attr.attribute_type,
-        config=attr.config,
-        is_required=attr.is_required,
-        is_unique=attr.is_unique,
-        default_value=attr.default_value,
-        position=attr.position,
-        is_visible=attr.is_visible,
-        is_filterable=attr.is_filterable,
-        is_sortable=attr.is_sortable,
-        column_width=attr.column_width,
-        is_system=attr.is_system,
-        created_at=attr.created_at,
-        updated_at=attr.updated_at,
-    )
 
 
 # =============================================================================
@@ -1051,10 +961,10 @@ async def seed_from_template(
             await attr_service.create_attribute(
                 object_id=str(obj.id),
                 name=attr_config["name"],
-                attribute_type=_normalize_template_attribute_type(attr_config["attribute_type"]),
+                attribute_type=attr_config["attribute_type"],
                 description=attr_config.get("description"),
                 is_required=attr_config.get("is_required", False),
-                config=_normalize_template_attribute_config(attr_config.get("config")),
+                config=attr_config.get("config"),
                 position=i,
             )
 
@@ -1278,77 +1188,6 @@ async def delete_attribute(
         )
 
 
-@router.patch("/attributes/{attribute_id}", response_model=CRMAttributeResponse)
-async def update_attribute_by_id(
-    workspace_id: str,
-    attribute_id: str,
-    data: CRMAttributeUpdate,
-    current_user: Developer = Depends(get_current_developer),
-    db: AsyncSession = Depends(get_db),
-):
-    """Update an attribute by ID (without requiring object_id)."""
-    await check_workspace_permission(workspace_id, current_user, db, "admin")
-
-    attr = await _get_attribute_in_workspace(db, workspace_id, attribute_id)
-    if not attr:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Attribute not found",
-        )
-
-    service = CRMAttributeService(db)
-    try:
-        attr = await service.update_attribute(
-            attribute_id=attribute_id,
-            name=data.name,
-            description=data.description,
-            config=data.config.model_dump() if data.config else None,
-            is_required=data.is_required,
-            default_value=data.default_value,
-            position=data.position,
-            is_visible=data.is_visible,
-            is_filterable=data.is_filterable,
-            is_sortable=data.is_sortable,
-            column_width=data.column_width,
-        )
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-
-    await db.commit()
-    return _crm_attribute_response(attr)
-
-
-@router.delete("/attributes/{attribute_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_attribute_by_id(
-    workspace_id: str,
-    attribute_id: str,
-    current_user: Developer = Depends(get_current_developer),
-    db: AsyncSession = Depends(get_db),
-):
-    """Delete an attribute by ID (without requiring object_id)."""
-    await check_workspace_permission(workspace_id, current_user, db, "admin")
-
-    attr = await _get_attribute_in_workspace(db, workspace_id, attribute_id)
-    if not attr:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Attribute not found",
-        )
-
-    service = CRMAttributeService(db)
-    try:
-        await service.delete_attribute(attribute_id)
-        await db.commit()
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-
-
 @router.post("/objects/{object_id}/attributes/reorder", response_model=list[CRMAttributeResponse])
 async def reorder_attributes(
     workspace_id: str,
@@ -1553,50 +1392,6 @@ async def get_record_by_id(
     )
 
 
-@router.patch("/records/{record_id}", response_model=CRMRecordResponse)
-async def update_record_by_id(
-    workspace_id: str,
-    record_id: str,
-    data: CRMRecordUpdate,
-    current_user: Developer = Depends(get_current_developer),
-    db: AsyncSession = Depends(get_db),
-):
-    """Update a record by ID (without requiring object_id)."""
-    await check_workspace_permission(workspace_id, current_user, db)
-
-    service = CRMRecordService(db)
-    record = await service.get_record(record_id)
-
-    if not record or str(record.workspace_id) != workspace_id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Record not found",
-        )
-
-    record = await service.update_record(
-        record_id=record_id,
-        values=data.values,
-        owner_id=data.owner_id,
-        updated_by_id=str(current_user.id),
-    )
-
-    await db.commit()
-
-    return CRMRecordResponse(
-        id=str(record.id),
-        workspace_id=str(record.workspace_id),
-        object_id=str(record.object_id),
-        values=record.values,
-        display_name=record.display_name,
-        owner_id=str(record.owner_id) if record.owner_id else None,
-        created_by_id=str(record.created_by_id) if record.created_by_id else None,
-        is_archived=record.is_archived,
-        archived_at=record.archived_at,
-        created_at=record.created_at,
-        updated_at=record.updated_at,
-    )
-
-
 @router.patch("/objects/{object_id}/records/{record_id}", response_model=CRMRecordResponse)
 async def update_record(
     workspace_id: str,
@@ -1640,30 +1435,6 @@ async def update_record(
         created_at=record.created_at,
         updated_at=record.updated_at,
     )
-
-
-@router.delete("/records/{record_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_record_by_id(
-    workspace_id: str,
-    record_id: str,
-    permanent: bool = False,
-    current_user: Developer = Depends(get_current_developer),
-    db: AsyncSession = Depends(get_db),
-):
-    """Delete a record by ID (archive by default)."""
-    await check_workspace_permission(workspace_id, current_user, db)
-
-    service = CRMRecordService(db)
-    record = await service.get_record(record_id)
-
-    if not record or str(record.workspace_id) != workspace_id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Record not found",
-        )
-
-    await service.delete_record(record_id, permanent, str(current_user.id))
-    await db.commit()
 
 
 @router.delete("/objects/{object_id}/records/{record_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -1818,73 +1589,6 @@ async def delete_note(
     await db.commit()
 
 
-@router.patch("/notes/{note_id}", response_model=CRMNoteResponse)
-async def update_note_by_id(
-    workspace_id: str,
-    note_id: str,
-    data: CRMNoteUpdate,
-    current_user: Developer = Depends(get_current_developer),
-    db: AsyncSession = Depends(get_db),
-):
-    """Update a note by ID (without requiring record_id)."""
-    await check_workspace_permission(workspace_id, current_user, db)
-
-    service = CRMNoteService(db)
-    existing = await service.get_note(note_id)
-    if not existing:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Note not found",
-        )
-    await _assert_record_in_workspace(db, workspace_id, str(existing.record_id))
-
-    note = await service.update_note(
-        note_id=note_id,
-        content=data.content,
-        is_pinned=data.is_pinned,
-    )
-
-    await db.commit()
-
-    return CRMNoteResponse(
-        id=str(note.id),
-        record_id=str(note.record_id),
-        content=note.content,
-        author_id=str(note.author_id) if note.author_id else None,
-        is_pinned=note.is_pinned,
-        created_at=note.created_at,
-        updated_at=note.updated_at,
-    )
-
-
-@router.delete("/notes/{note_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_note_by_id(
-    workspace_id: str,
-    note_id: str,
-    current_user: Developer = Depends(get_current_developer),
-    db: AsyncSession = Depends(get_db),
-):
-    """Delete a note by ID (without requiring record_id)."""
-    await check_workspace_permission(workspace_id, current_user, db)
-
-    service = CRMNoteService(db)
-    existing = await service.get_note(note_id)
-    if not existing:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Note not found",
-        )
-    await _assert_record_in_workspace(db, workspace_id, str(existing.record_id))
-
-    if not await service.delete_note(note_id):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Note not found",
-        )
-
-    await db.commit()
-
-
 # =============================================================================
 # ACTIVITY ENDPOINTS
 # =============================================================================
@@ -1922,7 +1626,7 @@ async def list_workspace_activities(
                 actor_name=a.actor_name,
                 title=a.title,
                 description=a.description,
-                metadata=a.activity_metadata,
+                metadata=a.metadata,
                 occurred_at=a.occurred_at,
                 created_at=a.created_at,
             )
@@ -1966,7 +1670,7 @@ async def list_activities(
                 actor_name=a.actor_name,
                 title=a.title,
                 description=a.description,
-                metadata=a.activity_metadata,
+                metadata=a.metadata,
                 occurred_at=a.occurred_at,
                 created_at=a.created_at,
             )

@@ -3,42 +3,9 @@
 import { StatusBadge } from "@/components/crm/CRMBadge";
 import { FieldViewProps, FieldEditProps } from "../types";
 
-type NormalizedOption = {
-  value: string;
-  label: string;
-  color?: string;
-};
-
-function normalizeOptions(options: unknown): NormalizedOption[] {
-  if (!Array.isArray(options)) return [];
-
-  return options.flatMap((option): NormalizedOption[] => {
-    if (typeof option === "string" || typeof option === "number") {
-      const value = String(option);
-      return value ? [{ value, label: value }] : [];
-    }
-
-    if (!option || typeof option !== "object") return [];
-
-    const raw = option as Record<string, unknown>;
-    const valueSource = raw.value ?? raw.label;
-    const labelSource = raw.label ?? raw.value;
-
-    if (valueSource === undefined && labelSource === undefined) return [];
-
-    return [{
-      value: String(valueSource ?? labelSource),
-      label: String(labelSource ?? valueSource),
-      color: typeof raw.color === "string" ? raw.color : undefined,
-    }];
-  });
-}
-
 /** Variants: "pills" (default), "comma_text", "count_badge" */
 export function MultiSelectFieldView({ value, config, surface, displayConfig }: FieldViewProps) {
   const variant = displayConfig?.variant;
-  const options = normalizeOptions(config.options);
-
   if (value === null || value === undefined) {
     return <span className="text-muted-foreground">{surface === "highlights" ? "Not set" : "—"}</span>;
   }
@@ -50,7 +17,7 @@ export function MultiSelectFieldView({ value, config, surface, displayConfig }: 
   // Comma-separated text
   if (variant === "comma_text") {
     const labels = values.map((v) => {
-      const option = options.find((o) => o.value === String(v));
+      const option = config.options?.find((o) => o.value === v);
       return option?.label || String(v);
     });
     return <span className="text-sm text-foreground truncate">{labels.join(", ")}</span>;
@@ -69,7 +36,7 @@ export function MultiSelectFieldView({ value, config, surface, displayConfig }: 
   return (
     <div className="flex flex-wrap gap-1">
       {values.map((v) => {
-        const option = options.find((o) => o.value === String(v));
+        const option = config.options?.find((o) => o.value === v);
         return (
           <StatusBadge
             key={String(v)}
@@ -85,7 +52,6 @@ export function MultiSelectFieldView({ value, config, surface, displayConfig }: 
 
 export function MultiSelectFieldEdit({ value, config, onChange }: FieldEditProps) {
   const selected = Array.isArray(value) ? (value as string[]) : [];
-  const options = normalizeOptions(config.options);
 
   const toggle = (optValue: string) => {
     if (selected.includes(optValue)) {
@@ -97,7 +63,7 @@ export function MultiSelectFieldEdit({ value, config, onChange }: FieldEditProps
 
   return (
     <div className="space-y-1.5">
-      {options.map((opt) => (
+      {(config.options || []).map((opt) => (
         <label key={opt.value} className="flex items-center gap-2 cursor-pointer text-sm">
           <input
             type="checkbox"

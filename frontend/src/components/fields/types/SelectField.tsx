@@ -3,43 +3,11 @@
 import { StatusBadge } from "@/components/crm/CRMBadge";
 import { FieldViewProps, FieldEditProps } from "../types";
 
-type NormalizedOption = {
-  value: string;
-  label: string;
-  color?: string;
-};
-
-function normalizeOptions(options: unknown): NormalizedOption[] {
-  if (!Array.isArray(options)) return [];
-
-  return options.flatMap((option): NormalizedOption[] => {
-    if (typeof option === "string" || typeof option === "number") {
-      const value = String(option);
-      return value ? [{ value, label: value }] : [];
-    }
-
-    if (!option || typeof option !== "object") return [];
-
-    const raw = option as Record<string, unknown>;
-    const valueSource = raw.value ?? raw.label;
-    const labelSource = raw.label ?? raw.value;
-
-    if (valueSource === undefined && labelSource === undefined) return [];
-
-    return [{
-      value: String(valueSource ?? labelSource),
-      label: String(labelSource ?? valueSource),
-      color: typeof raw.color === "string" ? raw.color : undefined,
-    }];
-  });
-}
-
 export function SelectFieldView({ value, config, surface, displayConfig }: FieldViewProps) {
   if (value === null || value === undefined || value === "") {
     return <span className="text-muted-foreground">{surface === "highlights" ? "Not set" : "—"}</span>;
   }
-  const options = normalizeOptions(config.options);
-  const option = options.find((o) => o.value === String(value));
+  const option = config.options?.find((o) => o.value === value);
   const colorMap = displayConfig?.colorMap;
   const color = colorMap?.[String(value)] || option?.color || "#6366f1";
   const label = option?.label || String(value);
@@ -77,8 +45,6 @@ export function SelectFieldView({ value, config, surface, displayConfig }: Field
 }
 
 export function SelectFieldEdit({ value, config, onChange, required, className }: FieldEditProps) {
-  const options = normalizeOptions(config.options);
-
   return (
     <select
       value={(value as string) || ""}
@@ -87,7 +53,7 @@ export function SelectFieldEdit({ value, config, onChange, required, className }
       className={className || "w-full px-3 py-1.5 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all"}
     >
       <option value="">Select...</option>
-      {options.map((opt) => (
+      {(config.options || []).map((opt) => (
         <option key={opt.value} value={opt.value}>
           {opt.label}
         </option>

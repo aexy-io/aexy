@@ -64,10 +64,6 @@ interface DataTableProps {
   className?: string;
 }
 
-function isDisplayNameAttribute(attr: CRMAttribute, showNameColumn: boolean) {
-  return showNameColumn && (attr.is_system || attr.slug === "name");
-}
-
 export function DataTable({
   records,
   attributes,
@@ -101,17 +97,12 @@ export function DataTable({
   showNameColumn = true,
   className,
 }: DataTableProps) {
-  const selectableAttributes = useMemo(
-    () => attributes.filter((attr) => !isDisplayNameAttribute(attr, showNameColumn)),
-    [attributes, showNameColumn]
-  );
-
   // Internal state for uncontrolled mode
   const [internalVisibleColumns, setInternalVisibleColumns] = useState<string[]>(() =>
-    selectableAttributes.slice(0, 5).map((a) => a.slug)
+    attributes.filter((a) => !a.is_system).slice(0, 5).map((a) => a.slug)
   );
   const [internalColumnOrder, setInternalColumnOrder] = useState<string[]>(() =>
-    selectableAttributes.map((a) => a.slug)
+    attributes.filter((a) => !a.is_system).map((a) => a.slug)
   );
 
   // Use external or internal state
@@ -129,9 +120,13 @@ export function DataTable({
       if (!ordered.includes(slug)) ordered.push(slug);
     });
     return ordered
-      .map((slug) => selectableAttributes.find((a) => a.slug === slug))
+      .map((slug) => attributes.find((a) => a.slug === slug))
       .filter((a): a is CRMAttribute => a !== undefined)
-  }, [selectableAttributes, visibleColumns, columnOrder]);
+      // The hardcoded "Name" column already renders the record's primary/system
+      // name; drop any system attribute here so it isn't shown a second time
+      // when a saved view's visible columns include it.
+      .filter((a) => !(showNameColumn && a.is_system));
+  }, [attributes, visibleColumns, columnOrder, showNameColumn]);
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -176,8 +171,8 @@ export function DataTable({
 
   // Show/hide all columns
   const handleShowAll = useCallback(() => {
-    setVisibleColumns(selectableAttributes.map((a) => a.slug));
-  }, [selectableAttributes, setVisibleColumns]);
+    setVisibleColumns(attributes.filter((a) => !a.is_system).map((a) => a.slug));
+  }, [attributes, setVisibleColumns]);
 
   const handleHideAll = useCallback(() => {
     setVisibleColumns([]);
@@ -286,7 +281,7 @@ export function DataTable({
                 {/* Add column button */}
                 {enableColumnSelector && (
                   <ColumnSelector
-                    attributes={selectableAttributes}
+                    attributes={attributes}
                     visibleColumns={visibleColumns}
                     onToggleColumn={handleToggleColumn}
                     onShowAll={handleShowAll}
