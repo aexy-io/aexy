@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.58] - 2026-07-18
+
+### Feature: Community page becomes a logged-in member hub
+
+Extends the public `/community/{slug}` forum so that, once you sign in, it stops
+being a read-only crawlable page and becomes a hub: members see their internal
+(non web-public) threads inline, can start new threads without leaving the page,
+and non-members get a CTA to spin up their own community. The public shell stays
+anonymously ISR-cached — all member content hydrates client-side from a new
+authenticated endpoint, so nothing private ever touches the shared cache.
+
+**Authenticated member context.** New `GET /public/community/{slug}/me` resolves
+the caller's workspace membership and returns the internal channels/topics they
+may access, their role, and what they may do (`can_create_thread`,
+`can_post_public`). Access mirrors in-app chat exactly — never the public
+predicates: DMs and archived channels are excluded, web-public channels are
+omitted (they're already in the public view), a `private` channel needs
+membership, a `private` topic needs channel membership, and a `restricted` topic
+needs an access grant. Non-members get an `is_member:false` payload with no
+`workspace_id` and no channels (a 200, not a 403), so the client can offer the
+"start your own community" CTA without leaking anything. A web-public topic
+nested in an otherwise-internal channel is kept but flagged `is_web_public` so
+the UI can badge it. Backed by a dedicated `CommunityMemberService`, kept
+separate from the deliberately-anonymous `PublicCommunityService`.
+
+**Inline member layer (frontend).** A client island (`CommunityMemberPanel`)
+reads the token from `localStorage`, calls `/me`, and renders one of: the
+signed-out / non-member "start your own community" CTA (→ Settings → Community),
+or — for members — an **Internal threads** section listing their accessible
+channels/topics with unread badges and "Public" flags, deep-linking each topic
+into the full in-app chat (`/chat/{channelSlug}/{topicId}`).
+
+**New-thread composer.** Members start a thread in an existing channel or a
+brand-new one via a dialog that reuses the existing chat create endpoints;
+workspace admins get a "Post publicly on the web" toggle that publishes the new
+topic (`web_public`) in one step. Publishing stays server-side admin-gated — the
+toggle is only a convenience, the API returns 403 for non-admins.
+
+**Public page polish.** A sticky header with the community logo/monogram + name,
+a stats line, a dedicated "Channels" section, richer channel cards (icon tile,
+last-activity date, pluralised topic/message counts), and a proper empty state.
+All strings are internationalised (new `community` i18n namespace, en + hi); the
+previously-hardcoded header/footer/auth strings now go through next-intl too.
+
 ## [0.8.57] - 2026-07-16
 
 ### Feature: Public community forum (opt-in, SEO-friendly, Slack/Discord-style)
