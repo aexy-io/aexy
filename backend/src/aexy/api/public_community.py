@@ -13,6 +13,7 @@ from aexy.api.developers import get_current_developer
 from aexy.core.database import get_db
 from aexy.models.developer import Developer
 from aexy.schemas.chat import (
+    CommunityMemberContextResponse,
     PublicChannelResponse,
     PublicCommunityChannel,
     PublicCommunityResponse,
@@ -23,6 +24,7 @@ from aexy.schemas.chat import (
     PublicTopicResponse,
     PublicTopicSummary,
 )
+from aexy.services.community_member_service import CommunityMemberService
 from aexy.services.community_participation_service import (
     CommunityParticipationService,
     ParticipationError,
@@ -75,6 +77,26 @@ async def get_community(community_slug: str, db: AsyncSession = Depends(get_db))
         allow_participation=community.allow_participation,
         channels=[PublicCommunityChannel(**c) for c in channels],
     )
+
+
+@router.get("/{community_slug}/me", response_model=CommunityMemberContextResponse)
+async def get_member_context(
+    community_slug: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Signed-in view of a community: whether the caller is a workspace member,
+    what they may do, and the internal (non web-public) threads they can access.
+
+    Authenticated but membership-agnostic — a non-member gets an
+    ``is_member=false`` payload with no internal data, so the client can offer a
+    "start your own community" CTA without a 403 round-trip.
+    """
+    service = CommunityMemberService(db)
+    context = await service.get_context(community_slug, str(current_user.id))
+    if context is None:
+        raise HTTPException(status_code=404, detail="Community not found")
+    return CommunityMemberContextResponse(**context)
 
 
 @router.get("/{community_slug}/channels/{channel_slug}", response_model=PublicChannelResponse)

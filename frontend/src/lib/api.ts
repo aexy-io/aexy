@@ -22188,6 +22188,51 @@ export const communityPublicApi = {
   },
 };
 
+// ── Community member context (authenticated) ─────────────────────────
+
+export interface CommunityMemberTopic {
+  id: string;
+  slug: string | null;
+  short_id: string | null;
+  name: string;
+  visibility: string;
+  is_web_public: boolean;
+  message_count: number;
+  unread_count: number;
+  last_message_at: string | null;
+}
+
+export interface CommunityMemberChannel {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  visibility: string;
+  is_member: boolean;
+  topic_count: number;
+  unread_count: number;
+  topics: CommunityMemberTopic[];
+}
+
+export interface CommunityMemberContext {
+  is_member: boolean;
+  role: string | null;
+  workspace_id: string | null;
+  can_create_thread: boolean;
+  can_post_public: boolean;
+  internal_channels: CommunityMemberChannel[];
+}
+
+// Signed-in view of a community: membership, capabilities, and the internal
+// (non web-public) threads the caller may access. Uses the shared axios client,
+// which attaches the auth token when present.
+export const communityMemberApi = {
+  getContext: async (communitySlug: string): Promise<CommunityMemberContext> => {
+    const response = await api.get(`/public/community/${communitySlug}/me`);
+    return response.data;
+  },
+};
+
 // ── Ask AI Types ─────────────────────────────────────────────────────
 
 export interface AskConversation {

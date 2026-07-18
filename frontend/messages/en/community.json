@@ -1,0 +1,55 @@
+{
+  "community": {
+    "home": {
+      "channels": "Channels",
+      "channelsSubtitle": "Public discussions anyone can read.",
+      "noChannels": "No public channels yet.",
+      "noChannelsHint": "Once channels are published, they'll show up here.",
+      "topics": "{count, plural, =0 {No topics} one {# topic} other {# topics}}",
+      "messages": "{count, plural, =0 {No messages} one {# message} other {# messages}}",
+      "updated": "Updated {date}",
+      "communityFallback": "Community",
+      "poweredBy": "Powered by Aexy"
+    },
+    "auth": {
+      "signIn": "Sign in",
+      "signInToJoin": "Sign in to join",
+      "openApp": "Open app"
+    },
+    "internal": {
+      "title": "Internal threads",
+      "subtitle": "Members-only discussions in this community.",
+      "membersOnly": "Members only",
+      "publicBadge": "Public",
+      "empty": "No internal threads yet.",
+      "error": "Couldn't load your threads.",
+      "retry": "Try again",
+      "topicCount": "{count, plural, =0 {No threads} one {# thread} other {# threads}}",
+      "unread": "{count} unread",
+      "openInChat": "Open in chat"
+    },
+    "compose": {
+      "newThread": "New thread",
+      "title": "Start a new thread",
+      "channelLabel": "Channel",
+      "newChannelOption": "New channel…",
+      "newChannelPlaceholder": "Channel name",
+      "threadTitleLabel": "Thread title",
+      "threadTitlePlaceholder": "What's this about?",
+      "messageLabel": "First message",
+      "messagePlaceholder": "Write your first message…",
+      "postPublicly": "Post publicly on the web",
+      "postPubliclyHint": "This thread and its replies become visible to anyone and may be indexed by search engines.",
+      "submit": "Create thread",
+      "submitting": "Creating…",
+      "success": "Thread created",
+      "error": "Couldn't create the thread."
+    },
+    "start": {
+      "title": "Start your own community",
+      "body": "Publish your team's channels as a public, SEO-friendly forum like this one.",
+      "createButton": "Create a community",
+      "signInButton": "Sign in to get started"
+    }
+  }
+}

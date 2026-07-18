@@ -336,6 +336,56 @@ class PublicTopicResponse(BaseModel):
     allow_participation: bool = False
 
 
+# ── Authenticated member context (internal threads) ──────────────────
+
+class CommunityMemberTopic(BaseModel):
+    """A topic a signed-in member can access inside an internal channel."""
+
+    id: str
+    slug: str | None = None
+    short_id: str | None = None
+    name: str
+    visibility: str
+    # True when this topic is (also) exposed on the public web forum — lets the
+    # UI badge it, since a member's internal list can include explicitly
+    # web-public topics that live inside an otherwise-internal channel.
+    is_web_public: bool = False
+    message_count: int = 0
+    unread_count: int = 0
+    last_message_at: datetime | None = None
+
+
+class CommunityMemberChannel(BaseModel):
+    """An internal (non web-public) channel the member can access."""
+
+    id: str
+    slug: str
+    name: str
+    description: str | None = None
+    visibility: str
+    is_member: bool = False
+    topic_count: int = 0
+    unread_count: int = 0
+    topics: list[CommunityMemberTopic] = Field(default_factory=list)
+
+
+class CommunityMemberContextResponse(BaseModel):
+    """What a signed-in visitor may see/do on a community beyond the public view.
+
+    Returned for any authenticated caller: non-members get ``is_member=false``
+    with an empty channel list (and no ``workspace_id``), so the client can show
+    a "start your own community" CTA instead of leaking anything internal.
+    """
+
+    is_member: bool = False
+    role: str | None = None
+    workspace_id: str | None = None
+    can_create_thread: bool = False
+    # Only workspace admins/owners may publish a thread straight to the web.
+    can_post_public: bool = False
+    internal_channels: list[CommunityMemberChannel] = Field(default_factory=list)
+
+
 # ── WebSocket event schemas ──────────────────────────────────────────
 
 class WSMessage(BaseModel):

@@ -1,0 +1,55 @@
+{
+  "community": {
+    "home": {
+      "channels": "चैनल",
+      "channelsSubtitle": "सार्वजनिक चर्चाएँ जिन्हें कोई भी पढ़ सकता है।",
+      "noChannels": "अभी तक कोई सार्वजनिक चैनल नहीं है।",
+      "noChannelsHint": "चैनल प्रकाशित होने के बाद यहाँ दिखाई देंगे।",
+      "topics": "{count, plural, =0 {कोई विषय नहीं} one {# विषय} other {# विषय}}",
+      "messages": "{count, plural, =0 {कोई संदेश नहीं} one {# संदेश} other {# संदेश}}",
+      "updated": "{date} को अपडेट किया गया",
+      "communityFallback": "समुदाय",
+      "poweredBy": "Aexy द्वारा संचालित"
+    },
+    "auth": {
+      "signIn": "साइन इन करें",
+      "signInToJoin": "शामिल होने के लिए साइन इन करें",
+      "openApp": "ऐप खोलें"
+    },
+    "internal": {
+      "title": "आंतरिक थ्रेड",
+      "subtitle": "इस समुदाय में केवल सदस्यों के लिए चर्चाएँ।",
+      "membersOnly": "केवल सदस्य",
+      "publicBadge": "सार्वजनिक",
+      "empty": "अभी तक कोई आंतरिक थ्रेड नहीं है।",
+      "error": "आपके थ्रेड लोड नहीं हो सके।",
+      "retry": "फिर से कोशिश करें",
+      "topicCount": "{count, plural, =0 {कोई थ्रेड नहीं} one {# थ्रेड} other {# थ्रेड}}",
+      "unread": "{count} अपठित",
+      "openInChat": "चैट में खोलें"
+    },
+    "compose": {
+      "newThread": "नया थ्रेड",
+      "title": "नया थ्रेड शुरू करें",
+      "channelLabel": "चैनल",
+      "newChannelOption": "नया चैनल…",
+      "newChannelPlaceholder": "चैनल का नाम",
+      "threadTitleLabel": "थ्रेड शीर्षक",
+      "threadTitlePlaceholder": "यह किस बारे में है?",
+      "messageLabel": "पहला संदेश",
+      "messagePlaceholder": "अपना पहला संदेश लिखें…",
+      "postPublicly": "वेब पर सार्वजनिक रूप से पोस्ट करें",
+      "postPubliclyHint": "यह थ्रेड और इसके जवाब किसी को भी दिखाई देंगे और search engines द्वारा index किए जा सकते हैं।",
+      "submit": "थ्रेड बनाएँ",
+      "submitting": "बना रहे हैं…",
+      "success": "थ्रेड बन गया",
+      "error": "थ्रेड नहीं बन सका।"
+    },
+    "start": {
+      "title": "अपना खुद का समुदाय शुरू करें",
+      "body": "अपनी टीम के चैनल को इस जैसे सार्वजनिक, SEO-अनुकूल फ़ोरम के रूप में प्रकाशित करें।",
+      "createButton": "समुदाय बनाएँ",
+      "signInButton": "शुरू करने के लिए साइन इन करें"
+    }
+  }
+}
