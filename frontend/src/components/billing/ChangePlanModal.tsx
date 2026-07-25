@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useState } from "react";
 import { AlertTriangle, Sparkles, Loader2, ArrowRight } from "lucide-react";
 import { PlanFeatures } from "@/lib/api";
@@ -42,7 +43,7 @@ export function ChangePlanModal({
       await onConfirm();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to change plan. Please try again.");
+      setError(getApiErrorMessage(err, "Failed to change plan. Please try again."));
     } finally {
       setIsLoading(false);
     }

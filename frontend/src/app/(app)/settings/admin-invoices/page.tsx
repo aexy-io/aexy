@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -201,7 +202,7 @@ export default function AdminInvoicesPage() {
     },
     onError: (err) => {
       toast.error(
-        err instanceof Error ? err.message : "Failed to create invoice"
+        getApiErrorMessage(err, "Failed to create invoice")
       );
     },
   });
@@ -217,7 +218,7 @@ export default function AdminInvoicesPage() {
     },
     onError: (err) => {
       toast.error(
-        err instanceof Error ? err.message : "Failed to mark invoice as paid"
+        getApiErrorMessage(err, "Failed to mark invoice as paid")
       );
     },
   });
@@ -230,7 +231,7 @@ export default function AdminInvoicesPage() {
     },
     onError: (err) => {
       toast.error(
-        err instanceof Error ? err.message : "Failed to void invoice"
+        getApiErrorMessage(err, "Failed to void invoice")
       );
     },
   });

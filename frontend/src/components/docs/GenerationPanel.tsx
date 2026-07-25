@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useState, useCallback } from "react";
 import {
   X,
@@ -105,7 +106,7 @@ export function GenerationPanel({
         onClose();
       }, 1500);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to generate documentation");
+      setError(getApiErrorMessage(err, "Failed to generate documentation"));
     } finally {
       setIsGenerating(false);
     }

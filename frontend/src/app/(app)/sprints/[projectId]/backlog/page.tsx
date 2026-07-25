@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { use, useState, useMemo, useCallback, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -310,7 +311,7 @@ function AddBacklogItemModal({ onClose, onAdd, isAdding, sprints, epics }: AddBa
       });
       onClose();
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to add item";
+      const errorMessage = getApiErrorMessage(err, "Failed to add item");
       setError(errorMessage);
     }
   };

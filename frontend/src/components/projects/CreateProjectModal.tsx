@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useState } from "react";
 import { Plus, RefreshCw } from "lucide-react";
 
@@ -50,7 +51,7 @@ export function CreateProjectModal({ onClose, onCreate, isCreating }: CreateProj
       });
       onClose();
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to create project";
+      const errorMessage = getApiErrorMessage(err, "Failed to create project");
       setError(errorMessage);
     }
   };

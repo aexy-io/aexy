@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -69,7 +70,7 @@ export function useReminders(
       queryClient.invalidateQueries({ queryKey: ["reminderDashboard", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to create reminder");
+      toast.error(getApiErrorMessage(error, "Failed to create reminder"));
     },
   });
 
@@ -83,7 +84,7 @@ export function useReminders(
       queryClient.invalidateQueries({ queryKey: ["reminderDashboard", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update reminder");
+      toast.error(getApiErrorMessage(error, "Failed to update reminder"));
     },
   });
 
@@ -95,7 +96,7 @@ export function useReminders(
       queryClient.invalidateQueries({ queryKey: ["reminderDashboard", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete reminder");
+      toast.error(getApiErrorMessage(error, "Failed to delete reminder"));
     },
   });
 
@@ -141,7 +142,7 @@ export function useReminder(workspaceId: string | null, reminderId: string | nul
       queryClient.invalidateQueries({ queryKey: ["reminderDashboard", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update reminder");
+      toast.error(getApiErrorMessage(error, "Failed to update reminder"));
     },
   });
 
@@ -153,7 +154,7 @@ export function useReminder(workspaceId: string | null, reminderId: string | nul
       queryClient.invalidateQueries({ queryKey: ["reminderDashboard", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete reminder");
+      toast.error(getApiErrorMessage(error, "Failed to delete reminder"));
     },
   });
 
@@ -208,7 +209,7 @@ export function useReminderInstances(
       queryClient.invalidateQueries({ queryKey: ["myReminders", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to acknowledge reminder");
+      toast.error(getApiErrorMessage(error, "Failed to acknowledge reminder"));
     },
   });
 
@@ -229,7 +230,7 @@ export function useReminderInstances(
       queryClient.invalidateQueries({ queryKey: ["myReminders", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to complete reminder");
+      toast.error(getApiErrorMessage(error, "Failed to complete reminder"));
     },
   });
 
@@ -243,7 +244,7 @@ export function useReminderInstances(
       queryClient.invalidateQueries({ queryKey: ["myReminders", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to skip reminder");
+      toast.error(getApiErrorMessage(error, "Failed to skip reminder"));
     },
   });
 
@@ -263,7 +264,7 @@ export function useReminderInstances(
       queryClient.invalidateQueries({ queryKey: ["myReminders", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to reassign reminder");
+      toast.error(getApiErrorMessage(error, "Failed to reassign reminder"));
     },
   });
 
@@ -345,7 +346,7 @@ export function useMyReminders(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["reminderDashboard", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to acknowledge reminder");
+      toast.error(getApiErrorMessage(error, "Failed to acknowledge reminder"));
     },
   });
 
@@ -365,7 +366,7 @@ export function useMyReminders(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["reminderDashboard", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to complete reminder");
+      toast.error(getApiErrorMessage(error, "Failed to complete reminder"));
     },
   });
 
@@ -434,7 +435,7 @@ export function useControlOwners(workspaceId: string | null, domain?: string) {
       queryClient.invalidateQueries({ queryKey: ["controlOwners", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to create control owner");
+      toast.error(getApiErrorMessage(error, "Failed to create control owner"));
     },
   });
 
@@ -446,7 +447,7 @@ export function useControlOwners(workspaceId: string | null, domain?: string) {
       queryClient.invalidateQueries({ queryKey: ["controlOwners", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update control owner");
+      toast.error(getApiErrorMessage(error, "Failed to update control owner"));
     },
   });
 
@@ -457,7 +458,7 @@ export function useControlOwners(workspaceId: string | null, domain?: string) {
       queryClient.invalidateQueries({ queryKey: ["controlOwners", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete control owner");
+      toast.error(getApiErrorMessage(error, "Failed to delete control owner"));
     },
   });
 
@@ -498,7 +499,7 @@ export function useDomainTeamMappings(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["domainTeamMappings", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to create domain mapping");
+      toast.error(getApiErrorMessage(error, "Failed to create domain mapping"));
     },
   });
 
@@ -509,7 +510,7 @@ export function useDomainTeamMappings(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["domainTeamMappings", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete domain mapping");
+      toast.error(getApiErrorMessage(error, "Failed to delete domain mapping"));
     },
   });
 
@@ -548,7 +549,7 @@ export function useAssignmentRules(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["assignmentRules", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to create assignment rule");
+      toast.error(getApiErrorMessage(error, "Failed to create assignment rule"));
     },
   });
 
@@ -560,7 +561,7 @@ export function useAssignmentRules(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["assignmentRules", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update assignment rule");
+      toast.error(getApiErrorMessage(error, "Failed to update assignment rule"));
     },
   });
 
@@ -571,7 +572,7 @@ export function useAssignmentRules(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["assignmentRules", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete assignment rule");
+      toast.error(getApiErrorMessage(error, "Failed to delete assignment rule"));
     },
   });
 
@@ -623,7 +624,7 @@ export function useReminderSuggestions(
       queryClient.invalidateQueries({ queryKey: ["reminderDashboard", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to accept suggestion");
+      toast.error(getApiErrorMessage(error, "Failed to accept suggestion"));
     },
   });
 
@@ -634,7 +635,7 @@ export function useReminderSuggestions(
       queryClient.invalidateQueries({ queryKey: ["reminderSuggestions", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to reject suggestion");
+      toast.error(getApiErrorMessage(error, "Failed to reject suggestion"));
     },
   });
 
@@ -672,7 +673,7 @@ export function useBulkReminderOperations(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["myReminders", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to assign reminders");
+      toast.error(getApiErrorMessage(error, "Failed to assign reminders"));
     },
   });
 
@@ -686,7 +687,7 @@ export function useBulkReminderOperations(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["myReminders", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to complete reminders");
+      toast.error(getApiErrorMessage(error, "Failed to complete reminders"));
     },
   });
 

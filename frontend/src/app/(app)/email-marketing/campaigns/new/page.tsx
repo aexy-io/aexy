@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -113,7 +114,7 @@ export default function NewCampaignPage() {
         router.push(`/email-marketing/campaigns/${campaign.id}`);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create campaign");
+      setError(getApiErrorMessage(err, "Failed to create campaign"));
     } finally {
       setIsSubmitting(false);
     }

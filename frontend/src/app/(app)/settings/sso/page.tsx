@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useState, useEffect, useCallback } from "react";
 import {
   ShieldCheck,
@@ -115,7 +116,7 @@ function ConfigureForm({
         auto_provision_users: autoProvision,
       });
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to save configuration");
+      setError(getApiErrorMessage(err, "Failed to save configuration"));
     } finally {
       setSaving(false);
     }

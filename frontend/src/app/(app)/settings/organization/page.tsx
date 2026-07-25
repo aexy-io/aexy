@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useState, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -332,7 +333,7 @@ function InviteMemberModal({ onClose, onInvite, isInviting }: InviteMemberModalP
       await onInvite(email.trim(), role);
       onClose();
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to invite member";
+      const errorMessage = getApiErrorMessage(err, "Failed to invite member");
       setError(errorMessage);
     }
   };
@@ -435,7 +436,7 @@ function CreateWorkspaceModal({ onClose, onCreate, isCreating, organizations }: 
       });
       onClose();
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to create workspace";
+      const errorMessage = getApiErrorMessage(err, "Failed to create workspace");
       setError(errorMessage);
     }
   };

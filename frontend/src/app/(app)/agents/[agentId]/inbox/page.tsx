@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -1131,7 +1132,7 @@ export default function AgentInboxPage() {
               toast.success("Message restored");
             } catch (err) {
               toast.error(
-                err instanceof Error ? err.message : "Failed to restore message",
+                getApiErrorMessage(err, "Failed to restore message"),
               );
             }
           },

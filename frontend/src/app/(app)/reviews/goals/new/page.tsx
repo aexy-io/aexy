@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/useAuth";
@@ -163,7 +164,7 @@ export default function NewGoalPage() {
       router.push("/reviews/goals");
     } catch (err) {
       console.error("Failed to create goal:", err);
-      setError(err instanceof Error ? err.message : "Failed to create goal. Please try again.");
+      setError(getApiErrorMessage(err, "Failed to create goal. Please try again."));
     } finally {
       setIsSubmitting(false);
     }

@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -190,7 +191,7 @@ export default function WorkspaceStep() {
       setMode("select");
     } catch (err: unknown) {
       console.error("Failed to send join request:", err);
-      const errorMessage = err instanceof Error ? err.message : "Workspace not found or join request failed";
+      const errorMessage = getApiErrorMessage(err, "Workspace not found or join request failed");
       setError(errorMessage);
     } finally {
       setIsLoading(false);

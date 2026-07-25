@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { agentsApi, AgentMessage, ChatStreamEvent, AgentConversationWithMessages } from "@/lib/api";
@@ -266,7 +267,7 @@ export function useAgentChatStream(
           setIsStreaming(false);
           return;
         }
-        setError(err instanceof Error ? err.message : "Stream failed");
+        setError(getApiErrorMessage(err, "Stream failed"));
         setIsStreaming(false);
       } finally {
         abortRef.current = null;

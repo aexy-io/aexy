@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { use, useState } from "react";
 import Link from "next/link";
 import {
@@ -256,7 +257,7 @@ function CreateSprintModal({ onClose, onCreate, isCreating }: CreateSprintModalP
       });
       onClose();
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to create sprint";
+      const errorMessage = getApiErrorMessage(err, "Failed to create sprint");
       setError(errorMessage);
     }
   };

@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -486,7 +487,7 @@ export default function ConnectIntegrations() {
       setShowJiraModal(false);
     } catch (err: unknown) {
       console.error("Failed to connect Jira:", err);
-      const errorMessage = err instanceof Error ? err.message : "Failed to connect Jira. Please check your credentials.";
+      const errorMessage = getApiErrorMessage(err, "Failed to connect Jira. Please check your credentials.");
       setModalError(errorMessage);
     } finally {
       setModalLoading(false);
@@ -509,7 +510,7 @@ export default function ConnectIntegrations() {
       setShowLinearModal(false);
     } catch (err: unknown) {
       console.error("Failed to connect Linear:", err);
-      const errorMessage = err instanceof Error ? err.message : "Failed to connect Linear. Please check your API key.";
+      const errorMessage = getApiErrorMessage(err, "Failed to connect Linear. Please check your API key.");
       setModalError(errorMessage);
     } finally {
       setModalLoading(false);

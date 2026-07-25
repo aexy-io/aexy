@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -408,7 +409,7 @@ export default function EditAgentPage() {
       setTimeout(() => setSaveSuccess(false), 2000);
     } catch (err) {
       console.error("Failed to save agent:", err);
-      setError(err instanceof Error ? err.message : "Failed to save changes");
+      setError(getApiErrorMessage(err, "Failed to save changes"));
     }
   };
 
@@ -879,7 +880,7 @@ export default function EditAgentPage() {
             setNewEmailDomain("");
           } catch (err) {
             console.error("Failed to enable email:", err);
-            setError(err instanceof Error ? err.message : "Failed to enable email");
+            setError(getApiErrorMessage(err, "Failed to enable email"));
           }
         };
 
@@ -1396,7 +1397,7 @@ export default function EditAgentPage() {
             setEmailEnabled(false);
           } catch (err) {
             console.error("Failed to disable email:", err);
-            setError(err instanceof Error ? err.message : "Failed to disable email");
+            setError(getApiErrorMessage(err, "Failed to disable email"));
           }
         }}
       />
@@ -1467,7 +1468,7 @@ function PromptPreviewPanel({
       // the message so they can fix config + retry.
       const detail =
         (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
-        (err instanceof Error ? err.message : "Preview failed");
+        (getApiErrorMessage(err, "Preview failed"));
       setError(detail);
     } finally {
       setIsRunning(false);

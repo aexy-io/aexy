@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -39,7 +40,7 @@ export function useProjects(workspaceId: string | null, status?: ProjectStatus) 
       queryClient.invalidateQueries({ queryKey: ["projects", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to create project");
+      toast.error(getApiErrorMessage(error, "Failed to create project"));
     },
   });
 
@@ -50,7 +51,7 @@ export function useProjects(workspaceId: string | null, status?: ProjectStatus) 
       queryClient.invalidateQueries({ queryKey: ["projects", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete project");
+      toast.error(getApiErrorMessage(error, "Failed to delete project"));
     },
   });
 
@@ -91,7 +92,7 @@ export function useProject(workspaceId: string | null, projectId: string | null)
       queryClient.invalidateQueries({ queryKey: ["projects", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update project");
+      toast.error(getApiErrorMessage(error, "Failed to update project"));
     },
   });
 
@@ -103,7 +104,7 @@ export function useProject(workspaceId: string | null, projectId: string | null)
       queryClient.invalidateQueries({ queryKey: ["projects", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to toggle project visibility");
+      toast.error(getApiErrorMessage(error, "Failed to toggle project visibility"));
     },
   });
 
@@ -145,7 +146,7 @@ export function useProjectMembers(workspaceId: string | null, projectId: string 
       queryClient.invalidateQueries({ queryKey: ["projects", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to add member");
+      toast.error(getApiErrorMessage(error, "Failed to add member"));
     },
   });
 
@@ -158,7 +159,7 @@ export function useProjectMembers(workspaceId: string | null, projectId: string 
       queryClient.invalidateQueries({ queryKey: ["myProjectPermissions", workspaceId, projectId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update member");
+      toast.error(getApiErrorMessage(error, "Failed to update member"));
     },
   });
 
@@ -172,7 +173,7 @@ export function useProjectMembers(workspaceId: string | null, projectId: string 
       queryClient.invalidateQueries({ queryKey: ["projects", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to remove member");
+      toast.error(getApiErrorMessage(error, "Failed to remove member"));
     },
   });
 
@@ -187,7 +188,7 @@ export function useProjectMembers(workspaceId: string | null, projectId: string 
       queryClient.invalidateQueries({ queryKey: ["projects", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to invite members");
+      toast.error(getApiErrorMessage(error, "Failed to invite members"));
     },
   });
 
@@ -234,7 +235,7 @@ export function useProjectTeams(workspaceId: string | null, projectId: string | 
       queryClient.invalidateQueries({ queryKey: ["projects", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to add team");
+      toast.error(getApiErrorMessage(error, "Failed to add team"));
     },
   });
 
@@ -247,7 +248,7 @@ export function useProjectTeams(workspaceId: string | null, projectId: string | 
       queryClient.invalidateQueries({ queryKey: ["projects", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to remove team");
+      toast.error(getApiErrorMessage(error, "Failed to remove team"));
     },
   });
 

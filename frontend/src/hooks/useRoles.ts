@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -36,7 +37,7 @@ export function useRoles(workspaceId: string | null, includeInactive = false) {
       queryClient.invalidateQueries({ queryKey: ["roles", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to create role");
+      toast.error(getApiErrorMessage(error, "Failed to create role"));
     },
   });
 
@@ -48,7 +49,7 @@ export function useRoles(workspaceId: string | null, includeInactive = false) {
       queryClient.invalidateQueries({ queryKey: ["roles", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update role");
+      toast.error(getApiErrorMessage(error, "Failed to update role"));
     },
   });
 
@@ -59,7 +60,7 @@ export function useRoles(workspaceId: string | null, includeInactive = false) {
       queryClient.invalidateQueries({ queryKey: ["roles", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete role");
+      toast.error(getApiErrorMessage(error, "Failed to delete role"));
     },
   });
 
@@ -71,7 +72,7 @@ export function useRoles(workspaceId: string | null, includeInactive = false) {
       queryClient.invalidateQueries({ queryKey: ["roles", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to duplicate role");
+      toast.error(getApiErrorMessage(error, "Failed to duplicate role"));
     },
   });
 
@@ -82,7 +83,7 @@ export function useRoles(workspaceId: string | null, includeInactive = false) {
       queryClient.invalidateQueries({ queryKey: ["roles", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to reset role");
+      toast.error(getApiErrorMessage(error, "Failed to reset role"));
     },
   });
 
@@ -129,7 +130,7 @@ export function useRole(workspaceId: string | null, roleId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["roles", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update role");
+      toast.error(getApiErrorMessage(error, "Failed to update role"));
     },
   });
 
@@ -242,7 +243,7 @@ export function useCreateRoleFromTemplate(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["roles", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to create role from template");
+      toast.error(getApiErrorMessage(error, "Failed to create role from template"));
     },
   });
 

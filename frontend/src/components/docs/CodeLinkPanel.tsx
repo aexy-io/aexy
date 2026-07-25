@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useState, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -157,7 +158,7 @@ export function CodeLinkPanel({
       });
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create link");
+      setError(getApiErrorMessage(err, "Failed to create link"));
     } finally {
       setIsLinking(false);
     }

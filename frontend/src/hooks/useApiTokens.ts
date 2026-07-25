@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -89,7 +90,7 @@ export function useApiTokens() {
     },
     onError: (error) => {
       toast.error(
-        error instanceof Error ? error.message : "Failed to create token"
+        getApiErrorMessage(error, "Failed to create token")
       );
     },
   });
@@ -102,7 +103,7 @@ export function useApiTokens() {
     },
     onError: (error) => {
       toast.error(
-        error instanceof Error ? error.message : "Failed to revoke token"
+        getApiErrorMessage(error, "Failed to revoke token")
       );
     },
   });
@@ -115,7 +116,7 @@ export function useApiTokens() {
     },
     onError: (error) => {
       toast.error(
-        error instanceof Error ? error.message : "Failed to delete token"
+        getApiErrorMessage(error, "Failed to delete token")
       );
     },
   });
