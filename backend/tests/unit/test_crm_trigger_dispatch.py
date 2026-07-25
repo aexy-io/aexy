@@ -71,6 +71,33 @@ async def test_emit_record_created_trigger_data_type_is_consistent():
     assert trigger_data["trigger_type"] == CRMAutomationTriggerType.RECORD_CREATED.value
 
 
+@pytest.mark.asyncio
+async def test_emit_list_entry_added_dispatches_with_registry_trigger_type():
+    svc = CRMEventService(db=MagicMock())
+
+    with patch(
+        "aexy.services.crm_automation_service.CRMAutomationService.process_trigger",
+        new_callable=AsyncMock,
+    ) as mock_process, patch(
+        "aexy.services.crm_automation_service.CRMWebhookService.emit_event",
+        new_callable=AsyncMock,
+    ):
+        await svc.emit_list_entry_added(
+            workspace_id="ws1",
+            object_id="obj1",
+            record_id="rec1",
+            list_id="list1",
+            list_name="VIPs",
+            added_by_id="dev1",
+        )
+
+    mock_process.assert_awaited_once()
+    kwargs = mock_process.await_args.kwargs
+    assert kwargs["trigger_type"] == CRMAutomationTriggerType.LIST_ENTRY_ADDED.value
+    assert kwargs["trigger_type"] == "list_entry.added"
+    assert kwargs["trigger_type"] in get_trigger_ids("crm")
+
+
 def test_every_offered_trigger_has_a_backing_enum():
     """Anything the registry offers must correspond to a real trigger enum.
 
@@ -87,11 +114,32 @@ def test_every_offered_trigger_has_a_backing_enum():
 
 
 def test_offered_triggers_are_the_ones_with_emitters():
-    """The offered set is exactly what CRMEventEmitter actually dispatches."""
+    """The offered set is exactly what something actually dispatches.
+
+    Extend this ONLY together with a real dispatch path. It is the guard that
+    keeps dead entries out of the palette — status.changed and email.replied
+    sat in the builder for weeks because this test was stale, not because
+    anyone chose to ship them.
+    """
     assert set(get_trigger_ids("crm")) == {
+        # Emitted by the shared record save path
         CRMAutomationTriggerType.RECORD_CREATED.value,
         CRMAutomationTriggerType.RECORD_UPDATED.value,
         CRMAutomationTriggerType.RECORD_DELETED.value,
         CRMAutomationTriggerType.FIELD_CHANGED.value,
         CRMAutomationTriggerType.STAGE_CHANGED.value,
+        # Emitted by list membership changes
+        CRMAutomationTriggerType.LIST_ENTRY_ADDED.value,
+        CRMAutomationTriggerType.LIST_ENTRY_REMOVED.value,
+        # Emitted by the form submission handler
+        CRMAutomationTriggerType.FORM_SUBMITTED.value,
+        # Emitted by the email tracking endpoints
+        CRMAutomationTriggerType.EMAIL_OPENED.value,
+        CRMAutomationTriggerType.EMAIL_CLICKED.value,
+        # Dispatched by the per-minute schedule runner
+        CRMAutomationTriggerType.SCHEDULE_DAILY.value,
+        CRMAutomationTriggerType.SCHEDULE_WEEKLY.value,
+        CRMAutomationTriggerType.DATE_APPROACHING.value,
+        CRMAutomationTriggerType.DATE_PASSED.value,
+        # webhook.received is withheld separately (see get_trigger_ids).
     }

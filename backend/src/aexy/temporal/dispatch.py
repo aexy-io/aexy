@@ -120,6 +120,7 @@ ACTIVITY_CONFIG: dict[str, dict[str, Any]] = {
     "process_agent_chat_mention": {"retry": LLM_RETRY, "timeout": timedelta(minutes=10)},
     "process_chat_all_mention": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)},
     "execute_workflow_action": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)},
+    "mark_crm_automation_run": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=1)},
 
     # Reminders (on-demand)
     "process_auto_assignment": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)},

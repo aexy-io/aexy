@@ -17,6 +17,8 @@ from temporalio.client import (
     ScheduleIntervalSpec,
     ScheduleSpec,
     ScheduleState,
+    ScheduleUpdate,
+    ScheduleUpdateInput,
 )
 
 from aexy.temporal.task_queues import TaskQueue
@@ -547,6 +549,16 @@ SCHEDULES: list[dict] = [
         "queue": TaskQueue.OPERATIONS,
     },
 
+    # === CRM schedule/date triggers (per-minute tick, self-filters by local time) ===
+    {
+        "id": "crm-dispatch-schedules",
+        "activity": "dispatch_crm_schedules",
+        "input_module": "aexy.temporal.activities.crm_automation_schedule",
+        "input_class": "DispatchCRMSchedulesInput",
+        "interval": timedelta(minutes=1),
+        "queue": TaskQueue.OPERATIONS,
+    },
+
     # === Aexy Tracker enrich/attribute safety-net sweep (every 5 min) ===
     # Ingest dispatches per-project enrichment in real time; this sweep
     # catches anything left un-enriched (e.g. a missed dispatch).
@@ -653,7 +665,10 @@ async def register_schedules(client: Client) -> None:
                 intervals=[ScheduleIntervalSpec(every=schedule_def["interval"])],
             )
 
-            # Try to create, update if exists
+            # Create, or push the current spec onto an existing schedule.
+            # Skipping on "already exists" meant a changed interval in code
+            # never reached a running environment — the schedule kept whatever
+            # cadence it was first registered with, silently.
             try:
                 await client.create_schedule(
                     schedule_id,
@@ -661,7 +676,17 @@ async def register_schedules(client: Client) -> None:
                 )
                 logger.info(f"Created schedule: {schedule_id}")
             except ScheduleAlreadyRunningError:
-                logger.info(f"Schedule already exists, skipping: {schedule_id}")
+                handle = client.get_schedule_handle(schedule_id)
+
+                async def _apply(
+                    inp: ScheduleUpdateInput, _action=action, _spec=spec
+                ) -> ScheduleUpdate:
+                    inp.description.schedule.action = _action
+                    inp.description.schedule.spec = _spec
+                    return ScheduleUpdate(schedule=inp.description.schedule)
+
+                await handle.update(_apply)
+                logger.info(f"Updated existing schedule: {schedule_id}")
 
         except Exception:
             logger.exception(f"Failed to register schedule: {schedule_id}")
