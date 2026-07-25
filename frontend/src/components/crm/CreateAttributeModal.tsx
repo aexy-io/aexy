@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CRMAttributeType } from "@/lib/api";
+import { useCRMObjects } from "@/hooks/useCRM";
 import { ColorPicker, STATUS_COLORS } from "./ColorPicker";
 import {
   Dialog,
@@ -113,6 +114,7 @@ interface CreateAttributeModalProps {
     config?: Record<string, unknown>;
   }) => Promise<void>;
   isCreating?: boolean;
+  workspaceId?: string | null;
 }
 
 export function CreateAttributeModal({
@@ -120,6 +122,7 @@ export function CreateAttributeModal({
   onClose,
   onCreate,
   isCreating = false,
+  workspaceId = null,
 }: CreateAttributeModalProps) {
   const [step, setStep] = useState<"type" | "configure">("type");
   const [selectedType, setSelectedType] = useState<CRMAttributeType | null>(null);
@@ -133,6 +136,10 @@ export function CreateAttributeModal({
     { value: "", label: "", color: STATUS_COLORS[0].color },
   ]);
   const [defaultValue, setDefaultValue] = useState<string>("");
+  const [targetObjectId, setTargetObjectId] = useState<string>("");
+  const [allowMultiple, setAllowMultiple] = useState(false);
+
+  const { objects: workspaceObjects } = useCRMObjects(workspaceId);
 
   // Reset when opening
   useEffect(() => {
@@ -145,6 +152,8 @@ export function CreateAttributeModal({
       setIsUnique(false);
       setOptions([{ value: "", label: "", color: STATUS_COLORS[0].color }]);
       setDefaultValue("");
+      setTargetObjectId("");
+      setAllowMultiple(false);
     }
   }, [isOpen]);
 
@@ -176,6 +185,7 @@ export function CreateAttributeModal({
 
   const handleCreate = async () => {
     if (!selectedType || !name) return;
+    if (selectedType === "record_reference" && !targetObjectId) return;
 
     const config: Record<string, unknown> = {};
 
@@ -186,6 +196,11 @@ export function CreateAttributeModal({
 
     if (defaultValue) {
       config.default_value = defaultValue;
+    }
+
+    if (selectedType === "record_reference") {
+      config.target_object_id = targetObjectId;
+      config.allow_multiple = allowMultiple;
     }
 
     await onCreate({
@@ -201,6 +216,7 @@ export function CreateAttributeModal({
   };
 
   const needsOptions = selectedType && ["select", "multi_select", "status"].includes(selectedType);
+  const needsTargetObject = selectedType === "record_reference";
   const typeInfo = selectedType ? attributeTypes.find((t) => t.value === selectedType) : null;
 
   return (
@@ -343,6 +359,46 @@ export function CreateAttributeModal({
                 </div>
               )}
 
+              {/* Target object for record reference types */}
+              {needsTargetObject && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">
+                      Links to *
+                    </label>
+                    <select
+                      value={targetObjectId}
+                      onChange={(e) => setTargetObjectId(e.target.value)}
+                      className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option value="">Select a record type...</option>
+                      {workspaceObjects.map((object) => (
+                        <option key={object.id} value={object.id}>
+                          {object.name}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Which kind of record this field points to
+                    </p>
+                  </div>
+                  <label className="flex items-center gap-3 p-3 rounded-lg border border-border cursor-pointer hover:bg-accent/30">
+                    <input
+                      type="checkbox"
+                      checked={allowMultiple}
+                      onChange={(e) => setAllowMultiple(e.target.checked)}
+                      className="w-4 h-4 rounded border-border bg-accent text-purple-500 focus:ring-purple-500"
+                    />
+                    <div>
+                      <span className="font-medium text-foreground">Allow multiple</span>
+                      <div className="text-xs text-muted-foreground">
+                        Let this field link to more than one record at once
+                      </div>
+                    </div>
+                  </label>
+                </div>
+              )}
+
               {/* Constraints */}
               <div className="space-y-3 pt-4 border-t border-border">
                 <label className="block text-sm font-medium text-foreground">
@@ -403,7 +459,7 @@ export function CreateAttributeModal({
             </button>
             <button
               onClick={handleCreate}
-              disabled={!name || isCreating}
+              disabled={!name || isCreating || (needsTargetObject && !targetObjectId)}
               className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 text-white rounded-lg transition-colors"
             >
               {isCreating ? "Creating..." : "Create Attribute"}

@@ -126,6 +126,8 @@ interface FieldEditorProps {
   placeholder?: string;
   autoFocus?: boolean;
   className?: string;
+  /** Passed through to record_reference's picker so it can search this workspace. */
+  workspaceId?: string | null;
 }
 
 /**
@@ -134,7 +136,7 @@ interface FieldEditorProps {
  * Usage:
  *   <FieldEditor value={values[attr.slug]} attribute={attr} onChange={(v) => setValue(attr.slug, v)} />
  */
-export function FieldEditor({ value, attribute, onChange, required, placeholder, autoFocus, className }: FieldEditorProps) {
+export function FieldEditor({ value, attribute, onChange, required, placeholder, autoFocus, className, workspaceId }: FieldEditorProps) {
   const fieldType = getFieldTypeOrFallback(attribute.attribute_type);
   const Edit = fieldType.edit;
   const config = (attribute.config || {}) as AttributeConfig;
@@ -147,6 +149,7 @@ export function FieldEditor({ value, attribute, onChange, required, placeholder,
       placeholder={placeholder || attribute.description || undefined}
       autoFocus={autoFocus}
       className={className}
+      workspaceId={workspaceId}
     />
   );
 }

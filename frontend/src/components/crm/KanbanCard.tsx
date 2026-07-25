@@ -40,7 +40,52 @@ export function KanbanCard({
     transition,
   };
 
-  // Get attribute values to display
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...dragAttributes}
+      {...listeners}
+      className={cn(
+        // Only colours transition. A catch-all transition also eased the
+        // card's position, so it lagged behind the cursor while dragging
+        // instead of tracking it.
+        "bg-muted border border-border rounded-lg p-3 cursor-pointer",
+        "hover:border-border hover:bg-muted/80 transition-colors",
+        // select-none: without it the browser begins selecting the card's text
+        // as soon as you press and move, so the gesture becomes a text
+        // selection instead of a drag.
+        "group touch-none select-none",
+        isDragging && "opacity-50 shadow-lg ring-2 ring-purple-500/50",
+        className
+      )}
+      onClick={() => onClick?.(record)}
+    >
+      <KanbanCardBody
+        record={record}
+        attributes={attributes}
+        showOwner={showOwner}
+        highlightAttributes={highlightAttributes}
+        onMenuClick={onMenuClick}
+      />
+    </div>
+  );
+}
+
+/** The card's visuals with no drag wiring.
+ *
+ * The floating card shown while dragging must use this, not the draggable
+ * card: rendering the draggable one registered the same record twice at
+ * once, and the copy meant to follow the cursor was simultaneously trying to
+ * sit in the list, so it barely moved.
+ */
+export function KanbanCardBody({
+  record,
+  attributes = [],
+  onMenuClick,
+  showOwner = true,
+  highlightAttributes = [],
+}: Omit<KanbanCardProps, "onClick" | "className">) {
   const displayValues = highlightAttributes
     .map((slug) => {
       const attr = attributes.find((a) => a.slug === slug);
@@ -49,26 +94,15 @@ export function KanbanCard({
       return { attr, value: value as unknown };
     })
     .filter((v): v is { attr: CRMAttribute; value: unknown } => v !== null)
-    .slice(0, 3); // Max 3 fields
+    .slice(0, 3);
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...dragAttributes}
-      className={cn(
-        "bg-muted border border-border rounded-lg p-3 cursor-pointer",
-        "hover:border-border hover:bg-muted/80 transition-all",
-        "group",
-        isDragging && "opacity-50 shadow-lg ring-2 ring-purple-500/50",
-        className
-      )}
-      onClick={() => onClick?.(record)}
-    >
+    <>
       {/* Header with drag handle and menu */}
       <div className="flex items-start gap-2 mb-2">
         <button
-          {...listeners}
+          aria-hidden
+          tabIndex={-1}
           className="p-0.5 -ml-1 cursor-grab opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity"
           onClick={(e) => e.stopPropagation()}
         >
@@ -115,7 +149,7 @@ export function KanbanCard({
           </span>
         </div>
       )}
-    </div>
+    </>
   );
 }
 

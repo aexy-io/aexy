@@ -35,6 +35,11 @@ interface RecordSidebarProps {
   onDeleteNote?: (noteId: string) => void;
   // Lists the record belongs to
   lists?: { id: string; name: string; color?: string }[];
+  availableLists?: { id: string; name: string; color?: string }[];
+  onAddToList?: (listId: string) => Promise<void> | void;
+  onRemoveFromList?: (listId: string) => Promise<void> | void;
+  onCreateList?: (name: string) => Promise<void> | void;
+  isUpdatingLists?: boolean;
   className?: string;
 }
 
@@ -85,12 +90,21 @@ export function RecordSidebar({
   onTogglePin,
   onDeleteNote,
   lists = [],
+  availableLists = [],
+  onAddToList,
+  onRemoveFromList,
+  onCreateList,
+  isUpdatingLists,
   className,
 }: RecordSidebarProps) {
   const [activeTab, setActiveTab] = useState<SidebarTab>("details");
+  const [showAddPicker, setShowAddPicker] = useState(false);
+  const [newListName, setNewListName] = useState("");
 
   const editableAttributes = attributes.filter((a) => !a.is_system);
   const pinnedNotesCount = notes.filter((n) => n.is_pinned).length;
+  const memberListIds = new Set(lists.map((l) => l.id));
+  const addableLists = availableLists.filter((l) => !memberListIds.has(l.id));
 
   // Collapsed state
   if (isCollapsed) {
@@ -259,6 +273,7 @@ export function RecordSidebar({
                         attribute={attr}
                         value={editedValues[attr.slug] ?? record.values[attr.slug]}
                         onChange={(val) => onValueChange?.(attr.slug, val)}
+                        workspaceId={record.workspace_id}
                       />
                     ) : (
                       <div className="text-foreground">
@@ -332,29 +347,112 @@ export function RecordSidebar({
         )}
 
         {activeTab === "lists" && (
-          <div className="p-4">
+          <div className="p-4 space-y-3">
             {lists.length === 0 ? (
-              <div className="text-center py-12">
+              <div className="text-center py-8">
                 <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-muted/50 flex items-center justify-center">
                   <LayoutList className="h-6 w-6 text-muted-foreground" />
                 </div>
                 <p className="text-sm text-muted-foreground mb-1">Not in any lists</p>
-                <p className="text-xs text-muted-foreground">Add to lists to organize records</p>
+                <p className="text-xs text-muted-foreground">Add this record to a membership list</p>
               </div>
             ) : (
               <div className="space-y-2">
                 {lists.map((list) => (
                   <div
                     key={list.id}
-                    className="flex items-center gap-3 p-3 bg-muted/30 hover:bg-muted/50 rounded-xl transition-colors cursor-pointer group"
+                    className="flex items-center gap-3 p-3 bg-muted/30 hover:bg-muted/50 rounded-xl transition-colors group"
                   >
                     <div
                       className="w-3 h-3 rounded-full ring-2 ring-offset-2 ring-offset-background"
                       style={{ backgroundColor: list.color || "#6366f1", ["--tw-ring-color" as string]: list.color || "#6366f1" }}
                     />
-                    <span className="text-sm text-foreground group-hover:text-purple-300 transition-colors">{list.name}</span>
+                    <span className="text-sm text-foreground flex-1 truncate">{list.name}</span>
+                    {onRemoveFromList && (
+                      <button
+                        type="button"
+                        disabled={isUpdatingLists}
+                        onClick={() => void onRemoveFromList(list.id)}
+                        className="text-xs text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        Remove
+                      </button>
+                    )}
                   </div>
                 ))}
+              </div>
+            )}
+
+            {(onAddToList || onCreateList) && (
+              <div className="pt-2 border-t border-border/50 space-y-2">
+                {!showAddPicker ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowAddPicker(true)}
+                    className="w-full px-3 py-2 text-sm text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-colors"
+                  >
+                    Add to list
+                  </button>
+                ) : (
+                  <div className="space-y-2">
+                    {addableLists.map((list) => (
+                      <button
+                        key={list.id}
+                        type="button"
+                        disabled={isUpdatingLists}
+                        onClick={async () => {
+                          await onAddToList?.(list.id);
+                          setShowAddPicker(false);
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-accent rounded-lg"
+                      >
+                        <span
+                          className="w-2.5 h-2.5 rounded-full"
+                          style={{ backgroundColor: list.color || "#6366f1" }}
+                        />
+                        {list.name}
+                      </button>
+                    ))}
+                    {onCreateList && (
+                      <div className="flex gap-2">
+                        <input
+                          value={newListName}
+                          onChange={(e) => setNewListName(e.target.value)}
+                          placeholder="New list name..."
+                          className="flex-1 px-2 py-1.5 text-sm bg-muted border border-border rounded-lg"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && newListName.trim()) {
+                              void (async () => {
+                                await onCreateList(newListName.trim());
+                                setNewListName("");
+                                setShowAddPicker(false);
+                              })();
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          disabled={!newListName.trim() || isUpdatingLists}
+                          onClick={async () => {
+                            await onCreateList(newListName.trim());
+                            setNewListName("");
+                            setShowAddPicker(false);
+                          }}
+                          className="px-2 py-1.5 text-xs bg-indigo-600 text-white rounded-lg disabled:opacity-50"
+                        >
+                          Create
+                        </button>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowAddPicker(false)}
+                      className="w-full text-xs text-muted-foreground hover:text-foreground py-1"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

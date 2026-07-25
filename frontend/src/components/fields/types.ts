@@ -21,7 +21,8 @@ export interface AttributeConfig {
   date_format?: string; // 'relative' | 'YYYY-MM-DD' | etc.
 
   // Record reference
-  reference_object_id?: string;
+  target_object_id?: string;
+  allow_multiple?: boolean;
 
   // Generic
   [key: string]: unknown;
@@ -107,6 +108,8 @@ export interface FieldEditProps {
   placeholder?: string;
   autoFocus?: boolean;
   className?: string;
+  /** Workspace to search within — record_reference needs this to look up candidates. */
+  workspaceId?: string | null;
 }
 
 /**
