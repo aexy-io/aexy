@@ -520,6 +520,7 @@ class CRMListEntryResponse(BaseModel):
     list_values: dict
     added_by_id: str | None = None
     created_at: datetime
+    record: CRMRecordListResponse | None = None
 
 
 # =============================================================================

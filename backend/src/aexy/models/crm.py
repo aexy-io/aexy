@@ -797,6 +797,7 @@ class CRMListEntry(Base):
 
     # Relationships
     list: Mapped["CRMList"] = relationship("CRMList", back_populates="entries")
+    record: Mapped["CRMRecord"] = relationship("CRMRecord")
 
     __table_args__ = (
         UniqueConstraint("list_id", "record_id", name="uq_crm_list_entry"),

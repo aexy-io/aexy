@@ -40,6 +40,34 @@ PERMISSION_LEVELS = {
 }
 
 
+# Attribute types compared case-insensitively for uniqueness.
+_CASE_INSENSITIVE_TYPES = {
+    CRMAttributeType.EMAIL.value,
+    CRMAttributeType.URL.value,
+}
+
+
+# =============================================================================
+# EXCEPTIONS
+# =============================================================================
+
+class DuplicateValueError(Exception):
+    """A write would duplicate a value on an attribute marked is_unique.
+
+    Deliberately not a ValueError: several routes map ValueError to 400, and a
+    duplicate should surface as 409.
+    """
+
+    def __init__(self, field: str, value: Any, existing_record_id: str):
+        self.field = field
+        self.value = value
+        self.existing_record_id = existing_record_id
+        super().__init__(
+            f"A record with {field} = {value!r} already exists "
+            f"(record {existing_record_id})"
+        )
+
+
 # =============================================================================
 # DATA CLASSES
 # =============================================================================
@@ -537,6 +565,8 @@ class DataTableService:
         if not table:
             raise ValueError("Table not found")
 
+        await self._assert_unique(table_id, workspace_id, values)
+
         display_name = self._compute_display_name(table, values)
 
         record = CRMRecord(
@@ -555,6 +585,60 @@ class DataTableService:
         await self.db.flush()
         await self.db.refresh(record)
         return record
+
+    async def _assert_unique(
+        self,
+        table_id: str,
+        workspace_id: str,
+        values: dict[str, Any],
+        exclude_record_id: str | None = None,
+    ) -> None:
+        """Reject writes that duplicate a value on an is_unique attribute.
+
+        Scope is (workspace_id, table_id, attribute slug). Archived records
+        don't block — a duplicate of something in the trash is allowed.
+
+        ponytail: check-then-write, so two concurrent requests can still race
+        past each other. A per-attribute partial unique index on
+        ((values->>'slug')) would close it, but that needs runtime DDL when an
+        attribute is flagged unique plus a backfill that fails on existing
+        duplicates. Add it when concurrent duplicate creates show up in practice.
+        """
+        unique_attrs = (
+            await self.db.execute(
+                select(CRMAttribute).where(
+                    CRMAttribute.object_id == table_id,
+                    CRMAttribute.is_unique == True,  # noqa: E712
+                )
+            )
+        ).scalars().all()
+
+        for attr in unique_attrs:
+            if attr.slug not in values:
+                continue
+            value = values[attr.slug]
+            if value is None or value == "" or isinstance(value, (list, dict)):
+                continue
+
+            column = CRMRecord.values[attr.slug].astext
+            text_value = str(value)
+            if attr.attribute_type in _CASE_INSENSITIVE_TYPES:
+                condition = func.lower(column) == text_value.lower()
+            else:
+                condition = column == text_value
+
+            stmt = select(CRMRecord.id).where(
+                CRMRecord.workspace_id == workspace_id,
+                CRMRecord.object_id == table_id,
+                CRMRecord.is_archived == False,  # noqa: E712
+                condition,
+            )
+            if exclude_record_id:
+                stmt = stmt.where(CRMRecord.id != exclude_record_id)
+
+            existing_id = (await self.db.execute(stmt.limit(1))).scalar_one_or_none()
+            if existing_id:
+                raise DuplicateValueError(attr.slug, value, str(existing_id))
 
     async def get_record(self, record_id: str) -> CRMRecord | None:
         """Get a record by ID."""
@@ -633,6 +717,12 @@ class DataTableService:
         old_values = record.values.copy()
 
         if values is not None:
+            await self._assert_unique(
+                record.object_id,
+                record.workspace_id,
+                values,
+                exclude_record_id=record_id,
+            )
             new_values = {**record.values, **values}
             record.values = new_values
 

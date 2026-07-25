@@ -1354,7 +1354,25 @@ class CRMListService:
         list_values: dict | None = None,
         added_by_id: str | None = None,
     ) -> CRMListEntry:
-        """Add a record to a list."""
+        """Add a record to a list.
+
+        Validated here, not just at the API boundary, so every caller
+        (the HTTP route, automation actions, workflow actions) gets the
+        same guarantee: a list can only gain members from its own
+        workspace and its own object.
+        """
+        lst = await self.get_list(list_id)
+        if not lst:
+            raise LookupError("List not found")
+
+        record = await CRMRecordService(self.db).get_record(record_id)
+        if (
+            not record
+            or str(record.workspace_id) != str(lst.workspace_id)
+            or str(record.object_id) != str(lst.object_id)
+        ):
+            raise LookupError("Record not found")
+
         # Check if already in list
         existing = await self.db.execute(
             select(CRMListEntry).where(
@@ -1385,15 +1403,31 @@ class CRMListService:
         self.db.add(entry)
 
         # Update list entry count
-        lst = await self.get_list(list_id)
-        if lst:
-            lst.entry_count = lst.entry_count + 1
+        lst.entry_count = lst.entry_count + 1
 
         await self.db.flush()
         await self.db.refresh(entry)
+
+        if lst:
+            try:
+                from aexy.services.crm_events import CRMEventService
+                event_service = CRMEventService(self.db)
+                await event_service.emit_list_entry_added(
+                    workspace_id=lst.workspace_id,
+                    object_id=lst.object_id,
+                    record_id=record_id,
+                    list_id=list_id,
+                    list_name=lst.name,
+                    added_by_id=added_by_id,
+                )
+            except Exception:
+                pass
+
         return entry
 
-    async def remove_entry(self, list_id: str, record_id: str) -> bool:
+    async def remove_entry(
+        self, list_id: str, record_id: str, removed_by_id: str | None = None
+    ) -> bool:
         """Remove a record from a list."""
         stmt = delete(CRMListEntry).where(
             CRMListEntry.list_id == list_id,
@@ -1407,6 +1441,22 @@ class CRMListService:
             if lst:
                 lst.entry_count = max(0, lst.entry_count - 1)
             await self.db.flush()
+
+            if lst:
+                try:
+                    from aexy.services.crm_events import CRMEventService
+                    event_service = CRMEventService(self.db)
+                    await event_service.emit_list_entry_removed(
+                        workspace_id=lst.workspace_id,
+                        object_id=lst.object_id,
+                        record_id=record_id,
+                        list_id=list_id,
+                        list_name=lst.name,
+                        removed_by_id=removed_by_id,
+                    )
+                except Exception:
+                    pass
+
             return True
 
         return False
@@ -1428,6 +1478,7 @@ class CRMListService:
         # Get entries
         stmt = (
             select(CRMListEntry)
+            .options(selectinload(CRMListEntry.record))
             .where(CRMListEntry.list_id == list_id)
             .order_by(CRMListEntry.position)
             .limit(limit)
@@ -1437,6 +1488,24 @@ class CRMListService:
         entries = list(result.scalars().all())
 
         return entries, total
+
+    async def get_lists_for_record(
+        self,
+        record_id: str,
+        workspace_id: str,
+    ) -> list[CRMList]:
+        """Return membership lists that include the given record."""
+        stmt = (
+            select(CRMList)
+            .join(CRMListEntry, CRMListEntry.list_id == CRMList.id)
+            .where(
+                CRMListEntry.record_id == record_id,
+                CRMList.workspace_id == workspace_id,
+            )
+            .order_by(CRMList.name)
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
 
 
 class CRMNoteService:

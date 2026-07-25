@@ -9912,8 +9912,14 @@ export interface CRMListEntry {
   list_id: string;
   record_id: string;
   record?: CRMRecord;
-  order: number;
-  added_at: string;
+  position: number;
+  list_values?: Record<string, unknown>;
+  added_by_id?: string | null;
+  created_at: string;
+  /** @deprecated use position */
+  order?: number;
+  /** @deprecated use created_at */
+  added_at?: string;
 }
 
 // ==================== Pipelines ====================
@@ -10103,37 +10109,56 @@ export interface CRMSequence {
   object_id: string;
   name: string;
   description: string | null;
+  exit_conditions: Record<string, unknown>[];
+  settings: Record<string, unknown>;
   is_active: boolean;
-  enrollment_count: number;
-  steps?: CRMSequenceStep[];
   created_by_id: string | null;
+  total_enrollments: number;
+  active_enrollments: number;
+  completed_enrollments: number;
   created_at: string;
   updated_at: string;
 }
 
+export type CRMSequenceStepType = "email" | "task" | "wait" | "condition" | "action";
+
+export type CRMSequenceDelayUnit = "minutes" | "hours" | "days";
+
 export interface CRMSequenceStep {
   id: string;
   sequence_id: string;
-  step_type: string;
+  step_type: CRMSequenceStepType;
+  position: number;
   config: Record<string, unknown>;
-  delay_days: number;
-  delay_hours: number;
-  order: number;
+  delay_value: number;
+  delay_unit: CRMSequenceDelayUnit;
+  total_executions: number;
+  successful_executions: number;
   created_at: string;
+  updated_at: string;
 }
+
+export type CRMSequenceEnrollmentStatus =
+  | "active"
+  | "paused"
+  | "completed"
+  | "exited"
+  | "failed";
 
 export interface CRMSequenceEnrollment {
   id: string;
   sequence_id: string;
   record_id: string;
-  record?: CRMRecord;
-  current_step: number;
-  status: "active" | "paused" | "completed" | "unenrolled" | "failed";
-  enrolled_at: string;
-  last_step_at: string | null;
-  next_step_at: string | null;
-  completed_at: string | null;
+  status: CRMSequenceEnrollmentStatus;
+  current_step_id: string | null;
+  next_step_scheduled_at: string | null;
+  exit_reason: string | null;
+  steps_completed: Record<string, unknown>[];
   enrolled_by_id: string | null;
+  enrolled_by_automation_id: string | null;
+  enrolled_at: string;
+  completed_at: string | null;
+  exited_at: string | null;
 }
 
 export interface CRMWebhook {
@@ -10286,7 +10311,14 @@ export const crmApi = {
       objectId: string,
       params?: { filters?: Record<string, unknown>[]; sorts?: Record<string, unknown>[]; skip?: number; limit?: number; include_archived?: boolean }
     ): Promise<{ records: CRMRecord[]; total: number }> => {
-      const response = await api.get(`/workspaces/${workspaceId}/crm/objects/${objectId}/records`, { params });
+      // filters/sorts are lists of objects, which don't survive plain query-string
+      // encoding, so send them JSON-encoded. `skip` maps to the API's `offset`.
+      const { filters, sorts, skip, ...rest } = params ?? {};
+      const query: Record<string, unknown> = { ...rest };
+      if (filters?.length) query.filters = JSON.stringify(filters);
+      if (sorts?.length) query.sorts = JSON.stringify(sorts);
+      if (skip !== undefined) query.offset = skip;
+      const response = await api.get(`/workspaces/${workspaceId}/crm/objects/${objectId}/records`, { params: query });
       return response.data;
     },
 
@@ -10417,9 +10449,18 @@ export const crmApi = {
         filters?: Record<string, unknown>[];
         sorts?: Record<string, unknown>[];
         columns?: string[];
+        is_private?: boolean;
       }
     ): Promise<CRMList> => {
-      const response = await api.post(`/workspaces/${workspaceId}/crm/lists`, data);
+      const { object_id, columns, is_smart: _isSmart, ...body } = data;
+      const response = await api.post(
+        `/workspaces/${workspaceId}/crm/lists`,
+        {
+          ...body,
+          ...(columns ? { visible_attributes: columns } : {}),
+        },
+        { params: { object_id } }
+      );
       return response.data;
     },
 
@@ -10461,6 +10502,11 @@ export const crmApi = {
 
     removeEntry: async (workspaceId: string, listId: string, recordId: string): Promise<void> => {
       await api.delete(`/workspaces/${workspaceId}/crm/lists/${listId}/entries/${recordId}`);
+    },
+
+    forRecord: async (workspaceId: string, recordId: string): Promise<CRMList[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/crm/records/${recordId}/lists`);
+      return response.data;
     },
   },
 
@@ -10764,7 +10810,13 @@ export const crmAutomationApi = {
     addStep: async (
       workspaceId: string,
       sequenceId: string,
-      data: { step_type: string; config: Record<string, unknown>; delay_days?: number; delay_hours?: number; order?: number }
+      data: {
+        step_type: CRMSequenceStepType;
+        config?: Record<string, unknown>;
+        delay_value?: number;
+        delay_unit?: CRMSequenceDelayUnit;
+        position?: number;
+      }
     ): Promise<CRMSequenceStep> => {
       const response = await api.post(`/workspaces/${workspaceId}/crm/sequences/${sequenceId}/steps`, data);
       return response.data;
@@ -10773,7 +10825,12 @@ export const crmAutomationApi = {
     updateStep: async (
       workspaceId: string,
       stepId: string,
-      data: Partial<{ step_type: string; config: Record<string, unknown>; delay_days: number; delay_hours: number }>
+      data: Partial<{
+        config: Record<string, unknown>;
+        delay_value: number;
+        delay_unit: CRMSequenceDelayUnit;
+        position: number;
+      }>
     ): Promise<CRMSequenceStep> => {
       const response = await api.patch(`/workspaces/${workspaceId}/crm/sequence-steps/${stepId}`, data);
       return response.data;
@@ -20147,6 +20204,7 @@ export interface SequenceStep {
   action: string;
   delay_days: number;
   delay_hours: number;
+  delay_minutes: number;
   config: Record<string, unknown>;
   conditions: Record<string, unknown>;
 }
