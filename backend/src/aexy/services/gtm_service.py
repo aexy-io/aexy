@@ -71,6 +71,21 @@ class GTMProviderService:
         # If credentials were provided, mark as active immediately
         initial_status = "active" if credentials else "pending_setup"
 
+        # A sequence resolves its provider through the default for the slot.
+        # The first configured provider must therefore become the default
+        # automatically; otherwise a saved, active integration cannot run.
+        if not data.get("is_default"):
+            default_result = await self.db.execute(
+                select(GTMProviderConfig.id).where(
+                    and_(
+                        GTMProviderConfig.workspace_id == workspace_id,
+                        GTMProviderConfig.slot == data["slot"],
+                        GTMProviderConfig.is_default == True,
+                    )
+                ).limit(1)
+            )
+            data["is_default"] = default_result.scalar_one_or_none() is None
+
         config = GTMProviderConfig(
             id=str(uuid4()),
             workspace_id=workspace_id,
@@ -98,7 +113,13 @@ class GTMProviderService:
 
         # Handle credentials update
         if "credentials" in data and data["credentials"] is not None:
-            config.credentials = encrypt_credentials(data.pop("credentials"))
+            # The configuration screen lets an administrator change one
+            # LinkedIn agent ID without re-entering the stored API key.
+            credentials = {
+                **decrypt_credentials(config.credentials or {}),
+                **data.pop("credentials"),
+            }
+            config.credentials = encrypt_credentials(credentials)
             # Mark as active when credentials are (re-)provided
             if config.status in ("pending_setup", "error"):
                 config.status = "active"

@@ -34,7 +34,9 @@ async def check_send_permission(
     """Check if we're allowed to send to this contact."""
     await check_workspace_permission(workspace_id, current_user, db)
     service = GTMComplianceService(db)
-    result = await service.check_send_permission(workspace_id, email, record_id=record_id)
+    result = await service.check_send_permission(
+        workspace_id, email, record_id=record_id, record_decision=False,
+    )
     return result
 
 
@@ -48,14 +50,17 @@ async def record_consent(
     """Record consent for a contact."""
     await check_workspace_permission(workspace_id, current_user, db)
     service = GTMComplianceService(db)
-    await service.record_consent(
-        workspace_id=workspace_id,
-        email=data.email,
-        consent_type=data.consent_type.value,
-        source=data.consent_source,
-        jurisdiction=data.jurisdiction.value,
-        record_id=data.record_id,
-    )
+    try:
+        await service.record_consent(
+            workspace_id=workspace_id,
+            email=data.email,
+            consent_type=data.consent_type.value,
+            source=data.consent_source,
+            jurisdiction=data.jurisdiction.value,
+            record_id=data.record_id,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
     await db.commit()
     return await service.get_consent_status(workspace_id, data.email)
 

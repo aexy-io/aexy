@@ -34,6 +34,7 @@ class GTMComplianceService:
         workspace_id: str,
         email: str,
         record_id: str | None = None,
+        record_decision: bool = True,
     ) -> dict:
         """Check if we're allowed to send to this contact.
 
@@ -111,16 +112,18 @@ class GTMComplianceService:
                 blocked = True
                 block_reason = f"Send frequency limit reached ({send_count}/3 in 7 days)"
 
-        # 5. Log the decision
+        # 5. Log only real delivery decisions. A preview or enrollment
+        # pre-flight must not consume a contact's weekly send allowance.
         action = "send_blocked" if blocked else "send_approved"
         reason = block_reason if blocked else "All compliance checks passed"
-        await self._log_audit(
-            workspace_id=workspace_id,
-            email=email,
-            record_id=record_id,
-            action=action,
-            reason=reason,
-        )
+        if record_decision:
+            await self._log_audit(
+                workspace_id=workspace_id,
+                email=email,
+                record_id=record_id,
+                action=action,
+                reason=reason,
+            )
 
         return {
             "allowed": not blocked,
@@ -142,6 +145,18 @@ class GTMComplianceService:
         record_id: str | None = None,
     ) -> ContactConsent:
         """Record consent for a contact."""
+        if not record_id:
+            record = (await self.db.execute(
+                select(CRMRecord).where(
+                    CRMRecord.workspace_id == workspace_id,
+                    CRMRecord.values["email"].astext == email,
+                    CRMRecord.is_archived.is_(False),
+                ).limit(1)
+            )).scalar_one_or_none()
+            if not record:
+                raise ValueError("Create the CRM person with this email before recording consent")
+            record_id = record.id
+
         now = datetime.now(timezone.utc)
 
         # Calculate expiry for CASL implied consent (2 years)

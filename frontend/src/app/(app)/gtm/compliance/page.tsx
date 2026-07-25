@@ -37,6 +37,7 @@ export default function CompliancePage() {
   const [checkEmail, setCheckEmail] = useState("");
   const [checkResult, setCheckResult] = useState<SendPermissionCheck | null>(null);
   const [isChecking, setIsChecking] = useState(false);
+  const [isRecordingTestConsent, setIsRecordingTestConsent] = useState(false);
   const [addEmail, setAddEmail] = useState("");
   const [addReason, setAddReason] = useState("manual");
 
@@ -86,6 +87,25 @@ export default function CompliancePage() {
       toast.error("Failed to check send permission");
     } finally {
       setIsChecking(false);
+    }
+  };
+
+  const recordTestConsent = async () => {
+    if (!checkEmail.trim() || !workspaceId) return;
+    setIsRecordingTestConsent(true);
+    try {
+      await gtmApi.compliance.recordConsent(workspaceId, {
+        email: checkEmail.trim(),
+        consent_type: "explicit_opt_in",
+        consent_source: "manual_test",
+        jurisdiction: "other",
+      });
+      toast.success("Test consent recorded for this address");
+      await handleCheck();
+    } catch {
+      toast.error("Could not record test consent. Create the CRM person first.");
+    } finally {
+      setIsRecordingTestConsent(false);
     }
   };
 
@@ -496,6 +516,18 @@ export default function CompliancePage() {
                 >
                   {isChecking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                   Check
+                </button>
+              </div>
+              <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+                <p className="text-xs text-muted-foreground">
+                  For a local test only: confirm that you own this email address before recording consent.
+                </p>
+                <button
+                  onClick={recordTestConsent}
+                  disabled={!checkEmail.trim() || isRecordingTestConsent}
+                  className="shrink-0 px-3 py-2 text-xs font-medium text-amber-300 border border-amber-500/30 rounded-lg hover:bg-amber-500/10 disabled:opacity-50"
+                >
+                  {isRecordingTestConsent ? "Recording..." : "I own this test address"}
                 </button>
               </div>
             </div>

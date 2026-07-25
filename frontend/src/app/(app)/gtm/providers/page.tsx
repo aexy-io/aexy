@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
@@ -117,7 +118,7 @@ interface ConfigureModalProps {
   slot: string;
   existingProvider: GTMProviderConfig | null;
   onClose: () => void;
-  onSave: (providerName: string, apiKey: string) => Promise<void>;
+  onSave: (providerName: string, credentials: Record<string, string>) => Promise<void>;
   onTestCredentials: (slot: string, providerName: string, credentials: Record<string, string>) => Promise<{ success: boolean; message: string }>;
   isSaving: boolean;
   isTesting: boolean;
@@ -137,6 +138,9 @@ function ConfigureModal({
   );
   const [apiKey, setApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
+  const [profileViewerAgentId, setProfileViewerAgentId] = useState("");
+  const [connectionAgentId, setConnectionAgentId] = useState("");
+  const [messageAgentId, setMessageAgentId] = useState("");
   const [testResult, setTestResult] = useState<{
     success: boolean;
     message: string;
@@ -144,13 +148,21 @@ function ConfigureModal({
   const hasExistingKey = !!existingProvider;
 
   const [saveError, setSaveError] = useState<string | null>(null);
+  const isLinkedIn = slot === "linkedin_automation";
+  const credentials = {
+    ...(apiKey ? { api_key: apiKey } : {}),
+    ...(profileViewerAgentId ? { profile_viewer_agent_id: profileViewerAgentId } : {}),
+    ...(connectionAgentId ? { connection_agent_id: connectionAgentId } : {}),
+    ...(messageAgentId ? { message_agent_id: messageAgentId } : {}),
+  };
+  const hasLinkedInAgentId = Boolean(profileViewerAgentId || connectionAgentId || messageAgentId);
 
   async function handleTest() {
-    if (!providerName || !apiKey) return;
+    if (!providerName || !apiKey || (isLinkedIn && !hasLinkedInAgentId)) return;
     setTestResult(null);
     setSaveError(null);
     try {
-      const result = await onTestCredentials(slot, providerName, { api_key: apiKey });
+      const result = await onTestCredentials(slot, providerName, credentials);
       setTestResult(result);
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
@@ -165,7 +177,7 @@ function ConfigureModal({
   async function handleSave() {
     setSaveError(null);
     try {
-      await onSave(providerName, apiKey);
+      await onSave(providerName, credentials);
       onClose();
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
@@ -179,7 +191,7 @@ function ConfigureModal({
         } else if (Array.isArray(detail)) {
           message = detail.map((d: { msg?: string }) => d.msg || String(d)).join("; ");
         } else {
-          message = err instanceof Error ? err.message : "Failed to save provider configuration.";
+          message = getApiErrorMessage(err, "Failed to save provider configuration.");
         }
         setSaveError(message);
       }
@@ -202,6 +214,26 @@ function ConfigureModal({
               {SLOT_DESCRIPTIONS[slot] || "Configure this provider slot."}
             </p>
           </div>
+
+          {isLinkedIn && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Add the three PhantomBuster agents you created for viewing profiles, connection requests, and messages.
+              </p>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">Profile viewer agent ID</label>
+                <input type="text" value={profileViewerAgentId} onChange={(e) => setProfileViewerAgentId(e.target.value)} placeholder="PhantomBuster agent ID" className="w-full px-3 py-2.5 bg-muted/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-colors text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">Connection request agent ID</label>
+                <input type="text" value={connectionAgentId} onChange={(e) => setConnectionAgentId(e.target.value)} placeholder="PhantomBuster agent ID" className="w-full px-3 py-2.5 bg-muted/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-colors text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">Message agent ID</label>
+                <input type="text" value={messageAgentId} onChange={(e) => setMessageAgentId(e.target.value)} placeholder="PhantomBuster agent ID" className="w-full px-3 py-2.5 bg-muted/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-colors text-sm" />
+              </div>
+            </div>
+          )}
           <button
             onClick={onClose}
             className="text-muted-foreground hover:text-foreground transition-colors"
@@ -302,7 +334,7 @@ function ConfigureModal({
         <div className="flex items-center justify-between px-6 py-4 border-t border-border">
           <button
             onClick={handleTest}
-            disabled={!providerName || !apiKey || isTesting}
+            disabled={!providerName || !apiKey || (isLinkedIn && !hasLinkedInAgentId) || isTesting}
             className="inline-flex items-center gap-2 px-4 py-2 bg-muted/50 hover:bg-muted border border-border text-foreground rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isTesting ? (
@@ -322,7 +354,7 @@ function ConfigureModal({
             <button
               onClick={handleSave}
               disabled={
-                !providerName || (!apiKey && !hasExistingKey) || isSaving
+                !providerName || (!apiKey && !hasExistingKey) || (isLinkedIn && !hasLinkedInAgentId) || isSaving
               }
               className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
@@ -377,7 +409,7 @@ export default function GTMProvidersPage() {
     return providers.find((p) => p.slot === slot) || null;
   }
 
-  async function handleSave(providerName: string, apiKey: string) {
+  async function handleSave(providerName: string, credentials: Record<string, string>) {
     if (!configuringSlot) return;
     const existing = getProviderForSlot(configuringSlot);
 
@@ -386,7 +418,7 @@ export default function GTMProvidersPage() {
         slot: existing.slot,
         name: existing.provider_name,
         data: {
-          credentials: apiKey ? { api_key: apiKey } : undefined,
+          credentials: Object.keys(credentials).length ? credentials : undefined,
           display_name: providerName,
         },
       });
@@ -395,7 +427,7 @@ export default function GTMProvidersPage() {
         slot: configuringSlot as GTMProviderConfig["slot"],
         provider_name: providerName,
         display_name: providerName,
-        credentials: { api_key: apiKey },
+        credentials,
       });
     }
   }
