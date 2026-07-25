@@ -985,6 +985,7 @@ function WorkflowCanvasInner({
                   padding: 0.4,
                 });
               }}
+              workspaceId={workspaceId}
               onSave={handleSave}
               onPublish={onPublish}
               onUnpublish={onUnpublish}
@@ -1026,6 +1027,12 @@ function WorkflowCanvasInner({
           node={selectedNode}
           workspaceId={workspaceId}
           automationId={automationId}
+          triggerObjectId={
+            // A blank canvas carries a starter trigger node with no object;
+            // prefer whichever trigger actually has one chosen.
+            (nodes.find((n) => n.type === "trigger" && n.data?.object_id)?.data
+              ?.object_id as string) || undefined
+          }
           module={module}
           onUpdate={(data) => updateNodeData(selectedNode.id, data)}
           onDelete={() => deleteNode(selectedNode.id)}

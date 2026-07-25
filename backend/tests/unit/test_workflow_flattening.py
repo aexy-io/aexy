@@ -112,3 +112,21 @@ def test_validation_accepts_a_plain_trigger_plus_action_flow():
 
     assert [e.error_type for e in result.errors] == []
     assert result.is_valid is True
+
+
+def test_validation_accepts_a_wait_node():
+    """Wait runs on the durable engine now, so a wait canvas must save/publish."""
+    service = WorkflowService(db=None)
+    nodes = [
+        _node("trigger", "trigger", trigger_type="record.created"),
+        _node("w", "wait", wait_type="duration", duration_value=1, duration_unit="hours"),
+        _node("act", "action", action_type="send_email", to="a@b.com",
+              email_subject="s", email_body="b"),
+    ]
+    edges = [_edge("trigger", "w"), _edge("w", "act")]
+
+    result = service.validate_workflow(nodes, edges)
+
+    unsupported = [e for e in result.errors if e.error_type == "unsupported_node_type"]
+    assert unsupported == []
+    assert result.is_valid is True

@@ -29,6 +29,39 @@ class CleanupOldExecutionsInput:
     days: int = 30
 
 
+@dataclass
+class MarkAutomationRunInput:
+    run_id: str
+    status: str  # "completed" | "failed"
+    error: str | None = None
+
+
+@activity.defn
+async def mark_crm_automation_run(input: MarkAutomationRunInput) -> dict[str, Any]:
+    """Close out a CRMAutomationRun after the durable workflow finishes.
+
+    Live triggers create the run row up front and hand execution to Temporal;
+    without this the row would sit at "running" forever, so run history would
+    lie about anything containing a wait.
+    """
+    from sqlalchemy import select
+    from datetime import datetime, timezone
+    from aexy.models.crm import CRMAutomationRun
+
+    async with async_session_maker() as db:
+        run = (await db.execute(
+            select(CRMAutomationRun).where(CRMAutomationRun.id == input.run_id)
+        )).scalar_one_or_none()
+        if not run:
+            return {"updated": False}
+        run.status = input.status
+        run.completed_at = datetime.now(timezone.utc)
+        if input.error:
+            run.error = input.error
+        await db.commit()
+        return {"updated": True}
+
+
 @activity.defn
 async def execute_workflow_action(input: ExecuteWorkflowActionInput) -> dict[str, Any]:
     """Execute a single CRM workflow action node.

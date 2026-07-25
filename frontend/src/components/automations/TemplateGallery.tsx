@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import * as React from "react";
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -104,7 +105,7 @@ export function TemplateGallery({
       // back to a template.
       const detail =
         (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
-        (err instanceof Error ? err.message : "Generation failed");
+        (getApiErrorMessage(err, "Generation failed"));
       toast.error(detail);
     } finally {
       setIsGenerating(false);

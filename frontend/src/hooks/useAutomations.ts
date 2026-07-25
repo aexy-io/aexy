@@ -6,6 +6,7 @@
  * these hooks internally with module='crm'.
  */
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -90,7 +91,7 @@ export function useAutomations(
       queryClient.invalidateQueries({ queryKey: ["automations", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to create automation");
+      toast.error(getApiErrorMessage(error, "Failed to create automation"));
     },
   });
 
@@ -117,7 +118,7 @@ export function useAutomations(
       queryClient.invalidateQueries({ queryKey: ["automations", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update automation");
+      toast.error(getApiErrorMessage(error, "Failed to update automation"));
     },
   });
 
@@ -128,7 +129,7 @@ export function useAutomations(
       queryClient.invalidateQueries({ queryKey: ["automations", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete automation");
+      toast.error(getApiErrorMessage(error, "Failed to delete automation"));
     },
   });
 
@@ -160,7 +161,7 @@ export function useAutomations(
       context?.snapshots.forEach(([key, list]) => {
         if (list) queryClient.setQueryData(key, list);
       });
-      toast.error(error instanceof Error ? error.message : "Failed to toggle automation");
+      toast.error(getApiErrorMessage(error, "Failed to toggle automation"));
     },
     onSuccess: (updatedAutomation) => {
       const isActive = updatedAutomation?.is_active;
@@ -176,7 +177,7 @@ export function useAutomations(
       toast.success("Automation triggered");
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to trigger automation");
+      toast.error(getApiErrorMessage(error, "Failed to trigger automation"));
     },
   });
 

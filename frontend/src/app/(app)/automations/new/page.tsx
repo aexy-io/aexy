@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -10,7 +11,6 @@ import { Node, Edge } from "@xyflow/react";
 
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { api, AutomationModule, GeneratedWorkflow } from "@/lib/api";
-import { getApiErrorMessage } from "@/lib/utils";
 import {
   AutomationTemplate,
   CRM_TEMPLATE_LIST,

@@ -4,22 +4,26 @@ import asyncio
 import httpx
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import select, func, and_
+from sqlalchemy.exc import IntegrityError
 
 logger = logging.getLogger(__name__)
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from aexy.models.crm import (
+    CRMAttributeType,
     CRMAutomation,
     CRMAutomationRun,
     CRMAutomationEmailOutbox,
     CRMAutomationTriggerType,
+    CRMObject,
     CRMRecord,
+    CRMRecordRelation,
     CRMSequence,
     CRMSequenceStep,
     CRMSequenceEnrollment,
@@ -27,13 +31,77 @@ from aexy.models.crm import (
     CRMWebhookDelivery,
     CRMActivity,
     CRMList,
-    CRMListEntry,
     CRMSequenceEnrollmentStatus,
 )
 from aexy.services.crm_service import CRMRecordService, CRMActivityService
 from aexy.services.slack_integration import SlackIntegrationService
 from aexy.schemas.integrations import SlackMessage, SlackNotificationType
 from aexy.models.developer import Developer
+from aexy.models.workspace import WorkspaceMember
+
+
+# =============================================================================
+# TRIGGER NARROWING
+# =============================================================================
+#
+# A trigger's config may narrow when it fires (only this field, only that list).
+# Leave it unset and the trigger fires for every event of its type; set it and
+# only matching events fire.
+#
+# The builder, the API and older automations have each written these settings
+# under different names, so every alias is accepted on read. New writes use the
+# first (canonical) name in each tuple.
+
+_CONFIG_ALIASES: dict[str, tuple[str, ...]] = {
+    "fields": ("fields", "field", "field_slug", "attribute_slug", "attributeSlug"),
+    "list_id": ("list_id", "listId"),
+    "form_id": ("form_id", "formId"),
+    "from_stage": ("from_stage", "fromStage"),
+    "to_stage": ("to_stage", "toStage"),
+}
+
+# trigger type -> [(config setting, matching key in the event payload)]
+_TRIGGER_NARROWING: dict[str, tuple[tuple[str, str], ...]] = {
+    CRMAutomationTriggerType.FIELD_CHANGED.value: (("fields", "changed_field"),),
+    CRMAutomationTriggerType.LIST_ENTRY_ADDED.value: (("list_id", "list_id"),),
+    CRMAutomationTriggerType.LIST_ENTRY_REMOVED.value: (("list_id", "list_id"),),
+    CRMAutomationTriggerType.STAGE_CHANGED.value: (
+        ("from_stage", "old_stage"),
+        ("to_stage", "new_stage"),
+    ),
+    CRMAutomationTriggerType.FORM_SUBMITTED.value: (("form_id", "form_id"),),
+}
+
+
+def selected_values(trigger_config: dict, setting: str) -> list[str]:
+    """The values chosen for one narrowing setting, always as a list.
+
+    Empty means "not configured" — i.e. fire for everything. Accepts a single
+    value or a list, so one field or several read the same way.
+    """
+    for alias in _CONFIG_ALIASES.get(setting, (setting,)):
+        if alias not in trigger_config:
+            continue
+        raw = trigger_config[alias]
+        if raw is None or raw == "":
+            return []
+        values = raw if isinstance(raw, (list, tuple, set)) else [raw]
+        return [str(v) for v in values if v not in (None, "")]
+    return []
+
+
+def trigger_matches(
+    trigger_type: str, trigger_config: dict, trigger_data: dict | None
+) -> bool:
+    """Whether an event should run an automation, given its narrowing config."""
+    for setting, event_key in _TRIGGER_NARROWING.get(trigger_type, ()):
+        chosen = selected_values(trigger_config or {}, setting)
+        if not chosen:
+            continue  # not narrowed — fire for all
+        actual = (trigger_data or {}).get(event_key)
+        if actual is None or str(actual) not in chosen:
+            return False
+    return True
 
 
 class CRMAutomationService:
@@ -200,30 +268,12 @@ class CRMAutomationService:
 
         runs = []
         for automation in automations:
-            # Check trigger config to see if this specific trigger matches
-            trigger_config = automation.trigger_config or {}
-
-            # For field_changed trigger, check if the specific field matches.
-            # (Compare against the enum value "field.changed", not "field_changed"
-            # — the latter never equals the dispatched trigger_type, so the field
-            # filter was silently never applied.)
-            if trigger_type == CRMAutomationTriggerType.FIELD_CHANGED.value:
-                watched_field = trigger_config.get("field")
-                changed_field = (trigger_data or {}).get("changed_field")
-                if watched_field and watched_field != changed_field:
-                    continue
-
-            # For stage_changed trigger, check if stages match
-            if trigger_type == CRMAutomationTriggerType.STAGE_CHANGED.value:
-                from_stage = trigger_config.get("from_stage")
-                to_stage = trigger_config.get("to_stage")
-                actual_old = (trigger_data or {}).get("old_stage")
-                actual_new = (trigger_data or {}).get("new_stage")
-
-                if from_stage and from_stage != actual_old:
-                    continue
-                if to_stage and to_stage != actual_new:
-                    continue
+            # Unconfigured narrowing = fire for every event of this type;
+            # configured = fire only on a match. One rule for every trigger.
+            if not trigger_matches(
+                trigger_type, automation.trigger_config or {}, trigger_data
+            ):
+                continue
 
             try:
                 run = await self.trigger_automation(
@@ -275,6 +325,15 @@ class CRMAutomationService:
         self.db.add(run)
         await self.db.flush()
 
+        # A canvas with a wait (or other timing/logic node) can't run in the
+        # inline executor — it has no durable timer and would just drop the
+        # node. Hand those off to the Temporal workflow, which sleeps durably
+        # and runs the same CRM actions. Plain action-only automations keep the
+        # fast inline path untouched.
+        if await self._dispatch_durably_if_needed(automation, run, record_id):
+            await self._log_run_activity(automation, run, record_id)
+            return run
+
         # Execute the automation
         await self._execute_automation(automation, run, record_id)
 
@@ -283,6 +342,77 @@ class CRMAutomationService:
         await self._log_run_activity(automation, run, record_id)
 
         return run
+
+    # Node types the inline executor can't run; these need the durable workflow.
+    _DURABLE_NODE_TYPES = {"wait"}
+
+    async def _dispatch_durably_if_needed(
+        self, automation: CRMAutomation, run: CRMAutomationRun, record_id: str | None
+    ) -> bool:
+        """Hand off to the Temporal workflow when the canvas needs durable timing.
+
+        Returns True if execution was handed off (run left as "running", closed
+        later by the workflow), False to fall through to the inline executor.
+        """
+        from aexy.services.workflow_service import WorkflowService
+
+        workflow_def = await WorkflowService(self.db).get_workflow_by_automation(
+            automation.id
+        )
+        if not workflow_def or not workflow_def.nodes:
+            return False
+        if not any(
+            n.get("type") in self._DURABLE_NODE_TYPES for n in workflow_def.nodes
+        ):
+            return False
+
+        record_data: dict = {}
+        if record_id:
+            rec = await CRMRecordService(self.db).get_record(record_id)
+            if rec:
+                record_data = {"id": rec.id, **(rec.values or {})}
+
+        run.status = "running"
+        run.started_at = datetime.now(timezone.utc)
+        run.steps_executed = [
+            *(run.steps_executed or []),
+            {
+                "type": "handoff",
+                "status": "dispatched",
+                "detail": "Running durably (contains a wait); "
+                "outcome recorded on completion.",
+                "executed_at": datetime.now(timezone.utc).isoformat(),
+            },
+        ]
+        await self.db.flush()
+        # No explicit commit: the run row is closed by mark_crm_automation_run,
+        # which fires only after the (durable) wait completes — long after the
+        # request's own commit has persisted this row for the worker to see.
+
+        from aexy.temporal.client import get_temporal_client
+        from aexy.temporal.workflows.crm_workflow import (
+            CRMAutomationWorkflow,
+            CRMWorkflowInput,
+        )
+
+        client = await get_temporal_client()
+        await client.start_workflow(
+            CRMAutomationWorkflow.run,
+            CRMWorkflowInput(
+                execution_id=str(run.id),
+                workflow_id=str(workflow_def.id),
+                workspace_id=automation.workspace_id,
+                trigger_data=run.trigger_data or {},
+                record_id=record_id,
+                record_data=record_data,
+                nodes=workflow_def.nodes or [],
+                edges=workflow_def.edges or [],
+                crm_run_id=str(run.id),
+            ),
+            id=f"crm-live-{run.id}",
+            task_queue="workflows",
+        )
+        return True
 
     async def _log_run_activity(
         self,
@@ -364,6 +494,16 @@ class CRMAutomationService:
                     "executed_at": datetime.now(timezone.utc).isoformat(),
                 }
 
+                # Per-step gate: a step may declare it only runs when a field
+                # on the triggering record passes a check. Not met => the step
+                # is recorded skipped (never "success", never failed) and the
+                # rest of the automation continues.
+                if not self._run_if_allows(action_config, record):
+                    step_result["status"] = "skipped"
+                    step_result["reason"] = "Run-if condition not met"
+                    run.steps_executed = [*(run.steps_executed or []), step_result]
+                    continue
+
                 try:
                     result = await self._execute_action(
                         action_type,
@@ -374,7 +514,10 @@ class CRMAutomationService:
                         run_id=str(run.id),
                         action_index=i,
                     )
-                    if action_type in {"send_email", "notify_user"} and result.get("error"):
+                    # Every action must turn a reported error into a failed
+                    # run. Treating an unsupported or invalid action as a
+                    # success makes the history untrustworthy.
+                    if result.get("error"):
                         raise ValueError(str(result["error"]))
 
                     step_result["status"] = "queued" if result.get("queued") else "success"
@@ -463,6 +606,32 @@ class CRMAutomationService:
 
         await self.db.flush()
 
+    def _run_if_allows(self, config: dict, record: CRMRecord | None) -> bool:
+        """Per-step gate saved by the builder as run_if_field/operator/value.
+
+        No field configured means no gate. No record (e.g. schedule triggers
+        with no record context) runs the step — matching how automation-level
+        conditions treat a missing record. The field arrives as the picker's
+        {{record.values.slug}} form or a bare slug; both resolve.
+        """
+        raw_field = str(config.get("run_if_field") or "").strip()
+        if not raw_field:
+            return True
+        if not record:
+            return True
+
+        match = re.fullmatch(r"(?:\{\{)?(?:record\.)?(?:values\.)?(.+?)(?:\}\})?", raw_field)
+        slug = match.group(1) if match else raw_field
+        record_value = (record.values or {}).get(slug)
+
+        operator = str(config.get("run_if_operator") or "equals")
+        try:
+            return self._check_condition(record_value, operator, config.get("run_if_value"))
+        except (TypeError, ValueError):
+            # e.g. a numeric comparison against a non-numeric field value:
+            # an unevaluable gate withholds the step rather than crashing the run
+            return False
+
     async def _evaluate_conditions(
         self,
         conditions: list[dict],
@@ -535,15 +704,23 @@ class CRMAutomationService:
     ) -> dict:
         """Execute a single automation action."""
         if action_type == "update_record":
-            return await self._action_update_record(config, record)
+            return await self._action_update_record(config, record, trigger_data)
         elif action_type == "create_record":
-            return await self._action_create_record(config, workspace_id)
+            return await self._action_create_record(config, record, workspace_id, trigger_data)
+        elif action_type == "delete_record":
+            return await self._action_delete_record(config, record)
+        elif action_type == "assign_owner":
+            return await self._action_assign_owner(config, record, workspace_id)
+        elif action_type == "link_records":
+            return await self._action_link_records(config, record, workspace_id)
         elif action_type == "add_to_list":
             return await self._action_add_to_list(config, record)
         elif action_type == "remove_from_list":
             return await self._action_remove_from_list(config, record)
         elif action_type == "enroll_in_sequence":
-            return await self._action_enroll_in_sequence(config, record)
+            return await self._action_enroll_in_sequence(config, record, workspace_id)
+        elif action_type == "remove_from_sequence":
+            return await self._action_remove_from_sequence(config, record, workspace_id)
         elif action_type == "webhook_call":
             return await self._action_webhook_call(config, record, trigger_data)
         elif action_type == "create_task":
@@ -617,12 +794,38 @@ class CRMAutomationService:
         self,
         config: dict,
         record: CRMRecord | None,
+        trigger_data: dict | None = None,
     ) -> dict:
-        """Update record fields."""
+        """Update record fields.
+
+        The builder's config panel saves update_field/update_value, not the
+        legacy fields dict this used to read exclusively — same mismatch
+        shape as _action_create_record had. Kept the old key as a fallback
+        for any automation already hand-built against it.
+        """
         if not record:
             return {"error": "No record to update"}
 
-        fields = config.get("fields", {})
+        fields = dict(config.get("fields") or {})
+
+        update_field = str(config.get("update_field") or "").strip()
+        if update_field:
+            # Same record./record.values. prefix-stripping _action_link_records
+            # already does for link_field — the picker can save either a bare
+            # slug or a dotted record.values.<slug> path.
+            match = re.fullmatch(r"(?:record\.)?(?:values\.)?(.+)", update_field)
+            slug = match.group(1) if match else update_field
+            raw_value = config.get("update_value")
+            value = (
+                self._replace_placeholders(raw_value, record, trigger_data)
+                if isinstance(raw_value, str)
+                else raw_value
+            )
+            fields[slug] = value
+
+        if not fields:
+            return {"error": "No field specified to update"}
+
         record_service = CRMRecordService(self.db)
         await record_service.update_record(record.id, values=fields)
         return {"updated_fields": list(fields.keys())}
@@ -630,14 +833,67 @@ class CRMAutomationService:
     async def _action_create_record(
         self,
         config: dict,
+        record: CRMRecord | None,
         workspace_id: str,
+        trigger_data: dict | None = None,
     ) -> dict:
-        """Create a new record."""
-        object_id = config.get("object_id")
-        values = config.get("values", {})
+        """Create a new record, optionally relating it back to the triggering record.
 
+        The builder's config panel saves target_object_id/record_name/
+        link_to_current (not object_id/values) — read the panel's own keys
+        rather than renaming them on the frontend side.
+
+        When link_to_current is set, this is idempotent per (source record,
+        relation_type): the target can't be known before creation, so unlike
+        _action_link_records the existing-relation lookup filters on source +
+        type only. That's the right question to ask — "has this source already
+        gotten one of these" — and it's what stops a no-filter record.updated
+        trigger from spawning a fresh duplicate on every edit.
+        """
+        object_id = config.get("target_object_id") or config.get("object_id")
         if not object_id:
             return {"error": "No object_id specified"}
+
+        link_to_current = bool(config.get("link_to_current")) and record is not None
+        relation_type = str(config.get("relation_type") or "created").strip() or "created"
+
+        if link_to_current:
+            existing = (await self.db.execute(
+                select(CRMRecordRelation).where(
+                    CRMRecordRelation.source_record_id == record.id,
+                    CRMRecordRelation.relation_type == relation_type,
+                )
+            )).scalar_one_or_none()
+            if existing:
+                return {"relation_id": existing.id, "already_linked": True}
+
+        target_object = (await self.db.execute(
+            select(CRMObject).where(
+                CRMObject.id == object_id,
+                CRMObject.workspace_id == workspace_id,
+            )
+        )).scalar_one_or_none()
+        if not target_object:
+            return {"error": "Target object type was not found in this workspace"}
+
+        values = dict(config.get("values") or {})
+        record_name = str(config.get("record_name") or "").strip()
+        if record_name:
+            record_name = self._replace_placeholders(record_name, record, trigger_data)
+
+            name_slug = None
+            if target_object.primary_attribute_id:
+                for attr in target_object.attributes or []:
+                    if attr.id == target_object.primary_attribute_id:
+                        name_slug = attr.slug
+                        break
+            if not name_slug:
+                for attr in target_object.attributes or []:
+                    if attr.attribute_type == CRMAttributeType.TEXT.value:
+                        name_slug = attr.slug
+                        break
+            if name_slug:
+                values.setdefault(name_slug, record_name)
 
         record_service = CRMRecordService(self.db)
         new_record = await record_service.create_record(
@@ -645,14 +901,214 @@ class CRMAutomationService:
             object_id=object_id,
             values=values,
         )
-        return {"created_record_id": new_record.id}
+        result: dict = {"created_record_id": new_record.id}
+
+        if link_to_current:
+            relation = CRMRecordRelation(
+                id=str(uuid4()),
+                source_record_id=record.id,
+                target_record_id=new_record.id,
+                relation_type=relation_type,
+            )
+            self.db.add(relation)
+            await self.db.flush()
+            result["relation_id"] = relation.id
+
+        return result
+
+    async def _action_delete_record(
+        self,
+        config: dict,
+        record: CRMRecord | None,
+    ) -> dict:
+        """Archive the triggering record after the builder's explicit confirmation."""
+        if not record:
+            return {"error": "No record to delete"}
+        if not config.get("confirm_delete"):
+            return {"error": "Delete action requires confirmation"}
+
+        deleted = await CRMRecordService(self.db).delete_record(
+            record.id,
+            permanent=False,
+        )
+        if not deleted:
+            return {"error": "Record was not found"}
+        return {"record_id": record.id, "archived": True}
+
+    def _resolve_field_reference(
+        self, record: CRMRecord, raw_path: str
+    ) -> tuple[object, str | None]:
+        """Resolve a field-picker placeholder to the value it actually points at.
+
+        The builder's field picker emits paths like ``{{record.values.<slug>}}``
+        (or the record-level shortcuts ``record.id`` / ``record.owner_id`` /
+        ``record.object_id`` that the same field-schema endpoint advertises),
+        not a bare slug — a value/list-value action reading straight from
+        ``record.values`` using the picker's own field name always missed.
+        Returns ``(value, error)``; error is only set when the field holds
+        more than one value and the caller needs exactly one.
+        """
+        path = str(raw_path or "").strip()
+        match = re.fullmatch(r"\{\{(?:record\.)?(.+?)\}\}", path)
+        path = match.group(1) if match else path
+
+        if path == "id":
+            value = record.id
+        elif path == "owner_id":
+            value = record.owner_id
+        elif path == "object_id":
+            value = record.object_id
+        elif path.startswith("values."):
+            value = (record.values or {}).get(path[len("values.") :])
+        else:
+            value = (record.values or {}).get(path)
+
+        if isinstance(value, list):
+            if len(value) == 1:
+                return value[0], None
+            if not value:
+                return None, None
+            return None, "The selected field holds more than one value; pick a single-value field instead"
+
+        return value, None
+
+    async def _action_assign_owner(
+        self,
+        config: dict,
+        record: CRMRecord | None,
+        workspace_id: str,
+    ) -> dict:
+        """Assign the triggering record to an active member of its workspace."""
+        if not record:
+            return {"error": "No record to assign"}
+
+        owner_value = config.get("owner_id") or config.get("owner_email")
+        if config.get("assign_type") == "field":
+            owner_value, field_error = self._resolve_field_reference(
+                record, str(config.get("owner_field") or "")
+            )
+            if field_error:
+                return {"error": field_error}
+
+        if not owner_value:
+            return {"error": "No owner ID or email specified"}
+
+        member_query = (
+            select(Developer)
+            .join(WorkspaceMember, WorkspaceMember.developer_id == Developer.id)
+            .where(
+                WorkspaceMember.workspace_id == workspace_id,
+                WorkspaceMember.status == "active",
+            )
+        )
+        owner_value = str(owner_value).strip()
+        if "@" in owner_value:
+            member_query = member_query.where(func.lower(Developer.email) == owner_value.lower())
+        else:
+            member_query = member_query.where(Developer.id == owner_value)
+
+        owner = (await self.db.execute(member_query)).scalar_one_or_none()
+        if not owner:
+            return {"error": "Owner is not an active member of this workspace"}
+
+        record.owner_id = owner.id
+        await self.db.flush()
+        return {"record_id": record.id, "owner_id": owner.id}
+
+    async def _action_link_records(
+        self,
+        config: dict,
+        record: CRMRecord | None,
+        workspace_id: str,
+    ) -> dict:
+        """Create one deduplicated relationship from the triggering record."""
+        if not record:
+            return {"error": "No record to link"}
+
+        # Default must match what the builder panel displays for a fresh step
+        # (field mode). A config saved without an explicit mode used to fall
+        # back to "specific" here while the panel showed "Record from Field
+        # Value" — every such automation failed with "no target specified".
+        # Inferring from which key is present also keeps any hand-built
+        # specific-mode config without the mode key working.
+        link_type = config.get("link_type") or (
+            "specific" if config.get("link_record_id") else "field"
+        )
+        if link_type == "field":
+            target_record_id, field_error = self._resolve_field_reference(
+                record, str(config.get("link_field") or "")
+            )
+            if field_error:
+                return {"error": field_error}
+        elif link_type == "specific":
+            target_record_id = config.get("link_record_id")
+        else:
+            return {"error": "Linking a newly created record is not supported yet"}
+
+        if not target_record_id:
+            return {"error": "No target record ID specified"}
+        if str(target_record_id) == record.id:
+            return {"error": "A record cannot be linked to itself"}
+
+        target = (await self.db.execute(
+            select(CRMRecord).where(
+                CRMRecord.id == str(target_record_id),
+                CRMRecord.workspace_id == workspace_id,
+                CRMRecord.is_archived == False,
+            )
+        )).scalar_one_or_none()
+        if not target:
+            return {"error": "Target record was not found in this workspace"}
+
+        relation_type = str(config.get("relation_type") or "related").strip() or "related"
+        existing = (await self.db.execute(
+            select(CRMRecordRelation).where(
+                CRMRecordRelation.source_record_id == record.id,
+                CRMRecordRelation.target_record_id == target.id,
+                CRMRecordRelation.relation_type == relation_type,
+            )
+        )).scalar_one_or_none()
+        if existing:
+            return {"relation_id": existing.id, "already_linked": True}
+
+        relation = CRMRecordRelation(
+            id=str(uuid4()),
+            source_record_id=record.id,
+            target_record_id=target.id,
+            relation_type=relation_type,
+        )
+        # Two concurrent fires can both pass the existence check above; the
+        # uq_crm_record_relation constraint then rejects the loser. Without the
+        # savepoint that rollback also destroys the run row, so the losing run
+        # silently vanishes from history instead of reporting already_linked.
+        try:
+            async with self.db.begin_nested():
+                self.db.add(relation)
+        except IntegrityError:
+            existing = (await self.db.execute(
+                select(CRMRecordRelation).where(
+                    CRMRecordRelation.source_record_id == record.id,
+                    CRMRecordRelation.target_record_id == target.id,
+                    CRMRecordRelation.relation_type == relation_type,
+                )
+            )).scalar_one_or_none()
+            if existing:
+                return {"relation_id": existing.id, "already_linked": True}
+            raise
+        return {"relation_id": relation.id, "target_record_id": target.id}
 
     async def _action_add_to_list(
         self,
         config: dict,
         record: CRMRecord | None,
     ) -> dict:
-        """Add record to a list."""
+        """Add record to a list.
+
+        Routed through CRMListService.add_entry rather than inserting
+        directly, so this path gets the same membership validation, entry
+        count bookkeeping, and list_entry.added trigger every other way of
+        joining a list already gets.
+        """
         if not record:
             return {"error": "No record to add"}
 
@@ -660,24 +1116,18 @@ class CRMAutomationService:
         if not list_id:
             return {"error": "No list_id specified"}
 
-        # Check if already in list
-        existing = await self.db.execute(
-            select(CRMListEntry).where(
-                CRMListEntry.list_id == list_id,
-                CRMListEntry.record_id == record.id,
-            )
-        )
-        if existing.scalar_one_or_none():
-            return {"message": "Record already in list"}
+        from aexy.services.crm_service import CRMListService
 
-        entry = CRMListEntry(
-            id=str(uuid4()),
-            list_id=list_id,
-            record_id=record.id,
-            position=0,
-            list_values={},
-        )
-        self.db.add(entry)
+        try:
+            await CRMListService(self.db).add_entry(
+                list_id=list_id,
+                record_id=record.id,
+            )
+        except ValueError:
+            return {"message": "Record already in list"}
+        except LookupError as exc:
+            return {"error": str(exc)}
+
         return {"added_to_list": list_id}
 
     async def _action_remove_from_list(
@@ -693,15 +1143,10 @@ class CRMAutomationService:
         if not list_id:
             return {"error": "No list_id specified"}
 
-        stmt = select(CRMListEntry).where(
-            CRMListEntry.list_id == list_id,
-            CRMListEntry.record_id == record.id,
-        )
-        result = await self.db.execute(stmt)
-        entry = result.scalar_one_or_none()
+        from aexy.services.crm_service import CRMListService
 
-        if entry:
-            await self.db.delete(entry)
+        removed = await CRMListService(self.db).remove_entry(list_id, record.id)
+        if removed:
             return {"removed_from_list": list_id}
 
         return {"message": "Record not in list"}
@@ -710,8 +1155,9 @@ class CRMAutomationService:
         self,
         config: dict,
         record: CRMRecord | None,
+        workspace_id: str,
     ) -> dict:
-        """Enroll record in a sequence."""
+        """Enroll a CRM record in an active GTM outreach sequence."""
         if not record:
             return {"error": "No record to enroll"}
 
@@ -719,12 +1165,67 @@ class CRMAutomationService:
         if not sequence_id:
             return {"error": "No sequence_id specified"}
 
-        sequence_service = CRMSequenceService(self.db)
-        enrollment = await sequence_service.enroll_record(
-            sequence_id=sequence_id,
-            record_id=record.id,
+        email_field = config.get("email_field", "email")
+        email = record.values.get(email_field) if record.values else None
+        if not email:
+            return {"error": f"No recipient email found in {email_field}"}
+
+        from aexy.services.outreach_sequence_service import OutreachSequenceService
+
+        sequence_service = OutreachSequenceService(self.db)
+        try:
+            enrollment = await sequence_service.enroll_contact(
+                workspace_id=workspace_id,
+                sequence_id=sequence_id,
+                record_id=record.id,
+                email=str(email),
+                contact_name=record.display_name,
+            )
+        except ValueError as error:
+            if "already enrolled" in str(error).lower() and config.get("skip_if_enrolled", True):
+                return {"sequence_id": sequence_id, "already_enrolled": True}
+            return {"error": str(error)}
+        return {"sequence_id": sequence_id, "enrollment_id": enrollment.id}
+
+    async def _action_remove_from_sequence(
+        self,
+        config: dict,
+        record: CRMRecord | None,
+        workspace_id: str,
+    ) -> dict:
+        """Unenroll the triggering record from one GTM outreach sequence."""
+        if not record:
+            return {"error": "No record to remove from sequence"}
+
+        sequence_id = config.get("sequence_id")
+        if not sequence_id:
+            return {"error": "No sequence_id specified"}
+
+        from aexy.models.gtm_outreach import EnrollmentStatus, OutreachEnrollment
+        from aexy.services.outreach_sequence_service import OutreachSequenceService
+
+        enrollments = (await self.db.execute(
+            select(OutreachEnrollment).where(
+                OutreachEnrollment.workspace_id == workspace_id,
+                OutreachEnrollment.sequence_id == sequence_id,
+                OutreachEnrollment.record_id == record.id,
+                OutreachEnrollment.status.in_([
+                    EnrollmentStatus.ACTIVE.value,
+                    EnrollmentStatus.PAUSED.value,
+                ]),
+            ).limit(1)
+        )).scalars().all()
+        if not enrollments:
+            return {"sequence_id": sequence_id, "unenrolled": False}
+
+        removed = await OutreachSequenceService(self.db).unenroll_contact(
+            workspace_id,
+            enrollments[0].id,
+            exit_reason="automation",
         )
-        return {"enrollment_id": enrollment.id}
+        if not removed:
+            return {"error": "Active sequence enrollment was not found"}
+        return {"sequence_id": sequence_id, "unenrolled": True}
 
     async def _action_webhook_call(
         self,
@@ -797,9 +1298,46 @@ class CRMAutomationService:
 
         priority = config.get("task_priority") or config.get("priority", "medium")
         assignee_id = config.get("assignee_id")
+        # The config panel's "Assign To" collects an email, but only an ID was
+        # ever read here, so every builder-set assignee was silently dropped
+        # and the task arrived unassigned. Resolve the email to an active
+        # member of this workspace, mirroring how owner assignment works.
+        if not assignee_id and config.get("assignee_email"):
+            assignee_email = str(config["assignee_email"]).strip()
+            assignee = (await self.db.execute(
+                select(Developer)
+                .join(WorkspaceMember, WorkspaceMember.developer_id == Developer.id)
+                .where(
+                    WorkspaceMember.workspace_id == workspace_id,
+                    WorkspaceMember.status == "active",
+                    func.lower(Developer.email) == assignee_email.lower(),
+                )
+            )).scalar_one_or_none()
+            if not assignee:
+                return {
+                    "error": f"'{assignee_email}' is not an active member of this workspace"
+                }
+            assignee_id = assignee.id
         project_id = config.get("project_id")
         sprint_id = config.get("sprint_id")
         labels = config.get("labels", [])
+
+        # The builder collected a due offset but nothing ever read it, so every
+        # task was created with no date at all. Zero is allowed and means due
+        # immediately, which is what a "do this now" automation needs.
+        due_date = None
+        if config.get("due_in_value") is not None:
+            try:
+                due_amount = int(config["due_in_value"])
+            except (TypeError, ValueError):
+                due_amount = None
+            if due_amount is not None and due_amount >= 0:
+                unit = str(config.get("due_in_unit") or "days").lower()
+                per_unit = {"minutes": 1, "hours": 60, "days": 1440, "weeks": 10080}
+                if unit in per_unit:
+                    due_date = datetime.now(timezone.utc) + timedelta(
+                        minutes=due_amount * per_unit[unit]
+                    )
 
         # If project_id is provided, get the first team from that project
         team_id = None
@@ -836,6 +1374,7 @@ class CRMAutomationService:
                 assignee_id=assignee_id,
                 labels=labels if isinstance(labels, list) else [],
                 status="todo",
+                end_date=due_date,
             )
             self.db.add(task)
             await self.db.flush()
@@ -935,41 +1474,11 @@ class CRMAutomationService:
         if not target_id:
             return {"error": "No channel, user_email, or user_email_field specified for Slack notification"}
 
-        # Replace placeholders in message with values from trigger_data and record
-        message = message_template
-
-        # First, replace {{trigger.field}} placeholders from trigger_data
-        if trigger_data:
-            import re
-            # Match {{trigger.field}} or {{trigger.nested.field}} patterns
-            trigger_pattern = re.compile(r"\{\{trigger\.([a-zA-Z0-9_.]+)\}\}")
-            for match in trigger_pattern.finditer(message_template):
-                field_path = match.group(1)
-                # Support nested fields like "entity.name"
-                value = trigger_data
-                for part in field_path.split("."):
-                    if isinstance(value, dict):
-                        value = value.get(part)
-                    else:
-                        value = None
-                        break
-                if value is not None:
-                    message = message.replace(match.group(0), str(value))
-
-        # Also support simple {field} placeholders from trigger_data (for backwards compatibility)
-        if trigger_data:
-            for key, value in trigger_data.items():
-                if isinstance(value, (str, int, float, bool)):
-                    message = message.replace(f"{{{key}}}", str(value))
-
-        # Replace {field} placeholders from record values
-        if record:
-            for key, value in record.values.items():
-                message = message.replace(f"{{{key}}}", str(value or ""))
-            # Also support record metadata placeholders
-            message = message.replace("{record_id}", record.id)
-            if hasattr(record, "name") and record.name:
-                message = message.replace("{record_name}", record.name)
+        # Routed through the shared placeholder helper rather than a private
+        # copy, so Slack supports the same set every other action does —
+        # notably {{record.name}} and {{record.values.x}}, which the previous
+        # local implementation left in the message as literal text.
+        message = self._replace_placeholders(message_template, record, trigger_data)
 
         # Send the message
         slack_message = SlackMessage(text=message)
