@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -98,7 +99,7 @@ export function useWorkspace() {
       switchWorkspace(newWorkspace.id);
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to create workspace");
+      toast.error(getApiErrorMessage(error, "Failed to create workspace"));
     },
   });
 
@@ -112,7 +113,7 @@ export function useWorkspace() {
       queryClient.invalidateQueries({ queryKey: ["workspace", variables.workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update workspace");
+      toast.error(getApiErrorMessage(error, "Failed to update workspace"));
     },
   });
 
@@ -129,7 +130,7 @@ export function useWorkspace() {
       }
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete workspace");
+      toast.error(getApiErrorMessage(error, "Failed to delete workspace"));
     },
   });
 
@@ -198,7 +199,7 @@ export function useWorkspaceMembers(
       queryClient.invalidateQueries({ queryKey: ["workspace", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to invite member");
+      toast.error(getApiErrorMessage(error, "Failed to invite member"));
     },
   });
 
@@ -210,7 +211,7 @@ export function useWorkspaceMembers(
       queryClient.invalidateQueries({ queryKey: ["workspaceMembers", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update member role");
+      toast.error(getApiErrorMessage(error, "Failed to update member role"));
     },
   });
 
@@ -222,7 +223,7 @@ export function useWorkspaceMembers(
       queryClient.invalidateQueries({ queryKey: ["workspace", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to remove member");
+      toast.error(getApiErrorMessage(error, "Failed to remove member"));
     },
   });
 
@@ -246,7 +247,7 @@ export function useWorkspaceMembers(
     },
     onError: (error) => {
       toast.error(
-        error instanceof Error ? error.message : "Failed to update member status",
+        getApiErrorMessage(error, "Failed to update member status"),
       );
     },
   });
@@ -258,7 +259,7 @@ export function useWorkspaceMembers(
       queryClient.invalidateQueries({ queryKey: ["workspaceMembers", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to resend invite");
+      toast.error(getApiErrorMessage(error, "Failed to resend invite"));
     },
   });
 
@@ -339,7 +340,7 @@ export function useCustomTaskStatuses(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["customTaskStatuses", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to create status");
+      toast.error(getApiErrorMessage(error, "Failed to create status"));
     },
   });
 
@@ -359,7 +360,7 @@ export function useCustomTaskStatuses(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["customTaskStatuses", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update status");
+      toast.error(getApiErrorMessage(error, "Failed to update status"));
     },
   });
 
@@ -370,7 +371,7 @@ export function useCustomTaskStatuses(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["customTaskStatuses", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete status");
+      toast.error(getApiErrorMessage(error, "Failed to delete status"));
     },
   });
 
@@ -381,7 +382,7 @@ export function useCustomTaskStatuses(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["customTaskStatuses", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to reorder statuses");
+      toast.error(getApiErrorMessage(error, "Failed to reorder statuses"));
     },
   });
 
@@ -433,7 +434,7 @@ export function usePendingInvites(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["pendingInvites", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to revoke invite");
+      toast.error(getApiErrorMessage(error, "Failed to revoke invite"));
     },
   });
 
@@ -444,7 +445,7 @@ export function usePendingInvites(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["pendingInvites", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to resend invite");
+      toast.error(getApiErrorMessage(error, "Failed to resend invite"));
     },
   });
 
@@ -482,7 +483,7 @@ export function useWorkspaceAppSettings(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["appAccess"] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update app settings");
+      toast.error(getApiErrorMessage(error, "Failed to update app settings"));
     },
   });
 
@@ -494,7 +495,7 @@ export function useWorkspaceAppSettings(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["workspaceMembers", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update member permissions");
+      toast.error(getApiErrorMessage(error, "Failed to update member permissions"));
     },
   });
 

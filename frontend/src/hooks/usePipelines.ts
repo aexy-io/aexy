@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { crmApi, CRMPipeline, CRMPipelineStage, CRMStageType } from "@/lib/api";
@@ -34,14 +35,14 @@ export function usePipelines(workspaceId: string | null, objectId: string | null
       toast.success("Pipeline created");
       invalidate();
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to create pipeline"),
+    onError: (e) => toast.error(getApiErrorMessage(e, "Failed to create pipeline")),
   });
 
   const updatePipeline = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Parameters<typeof crmApi.pipelines.update>[2] }) =>
       crmApi.pipelines.update(workspaceId!, id, data),
     onSuccess: () => invalidate(),
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to update pipeline"),
+    onError: (e) => toast.error(getApiErrorMessage(e, "Failed to update pipeline")),
   });
 
   const deletePipeline = useMutation({
@@ -50,7 +51,7 @@ export function usePipelines(workspaceId: string | null, objectId: string | null
       toast.success("Pipeline deleted");
       invalidate();
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to delete pipeline"),
+    onError: (e) => toast.error(getApiErrorMessage(e, "Failed to delete pipeline")),
   });
 
   const setDefault = useMutation({
@@ -70,7 +71,7 @@ export function usePipelines(workspaceId: string | null, objectId: string | null
       toast.success("Stage added");
       invalidate();
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to add stage"),
+    onError: (e) => toast.error(getApiErrorMessage(e, "Failed to add stage")),
   });
 
   const updateStage = useMutation({
@@ -84,7 +85,7 @@ export function usePipelines(workspaceId: string | null, objectId: string | null
       data: Partial<{ name: string; color: string; stage_type: CRMStageType; probability: number; rotting_days: number }>;
     }) => crmApi.pipelines.updateStage(workspaceId!, pipelineId, stageId, data),
     onSuccess: () => invalidate(),
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to update stage"),
+    onError: (e) => toast.error(getApiErrorMessage(e, "Failed to update stage")),
   });
 
   const deleteStage = useMutation({
@@ -101,7 +102,7 @@ export function usePipelines(workspaceId: string | null, objectId: string | null
       toast.success("Stage deleted");
       invalidate();
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to delete stage"),
+    onError: (e) => toast.error(getApiErrorMessage(e, "Failed to delete stage")),
   });
 
   const reorderStages = useMutation({
@@ -120,7 +121,7 @@ export function usePipelines(workspaceId: string | null, objectId: string | null
       recordId: string;
       toStageKey: string;
     }) => crmApi.pipelines.moveRecord(workspaceId!, pipelineId, recordId, toStageKey),
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to move record"),
+    onError: (e) => toast.error(getApiErrorMessage(e, "Failed to move record")),
   });
 
   return {
@@ -180,7 +181,7 @@ export function useConvertLead(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["crmRecords", workspaceId] });
       return result;
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to convert lead"),
+    onError: (e) => toast.error(getApiErrorMessage(e, "Failed to convert lead")),
   });
 }
 

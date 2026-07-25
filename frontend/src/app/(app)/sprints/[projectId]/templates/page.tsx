@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { use, useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -218,7 +219,7 @@ function TemplateFormModal({ template, onClose, onSave, isSaving }: TemplateForm
         checklist: checklist.split("\n").map((c) => c.trim()).filter(Boolean),
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save template");
+      setError(getApiErrorMessage(err, "Failed to save template"));
     }
   };
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { redirect } from "next/navigation";
@@ -62,7 +63,7 @@ function CreateTrainingModal({
       onCreated();
       onClose();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to create training");
+      setError(getApiErrorMessage(err, "Failed to create training"));
     } finally {
       setSubmitting(false);
     }
@@ -207,7 +208,7 @@ function AssignTrainingModal({
       onAssigned();
       onClose();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to assign training");
+      setError(getApiErrorMessage(err, "Failed to assign training"));
     } finally {
       setSubmitting(false);
     }

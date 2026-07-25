@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { billingApi, SubscriptionStatus, PlanFeatures } from "@/lib/api";
@@ -135,7 +136,7 @@ export function useChangePlan(workspaceId?: string | null) {
       queryClient.invalidateQueries({ queryKey: ["subscriptionStatus"] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to change plan");
+      toast.error(getApiErrorMessage(error, "Failed to change plan"));
     },
   });
 }
@@ -163,7 +164,7 @@ export function useCheckout() {
         seat_count: seatCount,
       }),
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to start checkout");
+      toast.error(getApiErrorMessage(error, "Failed to start checkout"));
     },
   });
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useCallback } from "react";
 import {
@@ -311,7 +312,7 @@ export function useDocumentUpload(workspaceId: string | null) {
 
         return document;
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Upload failed";
+        const message = getApiErrorMessage(err, "Upload failed");
         setError(message);
         return null;
       } finally {

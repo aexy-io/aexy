@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -134,7 +135,7 @@ export function useUpdateWorkspaceAISettings(workspaceId: string | null) {
     },
     onError: (error) => {
       toast.error(
-        error instanceof Error ? error.message : "Failed to save AI settings",
+        getApiErrorMessage(error, "Failed to save AI settings"),
       );
     },
   });

@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -46,7 +47,7 @@ export function useTables(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["tables", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to create table");
+      toast.error(getApiErrorMessage(error, "Failed to create table"));
     },
   });
 
@@ -71,7 +72,7 @@ export function useTables(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["tables", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update table");
+      toast.error(getApiErrorMessage(error, "Failed to update table"));
     },
   });
 
@@ -82,7 +83,7 @@ export function useTables(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["tables", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete table");
+      toast.error(getApiErrorMessage(error, "Failed to delete table"));
     },
   });
 
@@ -127,7 +128,7 @@ export function useTableFields(workspaceId: string | null, tableId: string | nul
       queryClient.invalidateQueries({ queryKey: ["tableFields", workspaceId, tableId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to add field");
+      toast.error(getApiErrorMessage(error, "Failed to add field"));
     },
   });
 
@@ -150,7 +151,7 @@ export function useTableFields(workspaceId: string | null, tableId: string | nul
       queryClient.invalidateQueries({ queryKey: ["tableFields", workspaceId, tableId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update field");
+      toast.error(getApiErrorMessage(error, "Failed to update field"));
     },
   });
 
@@ -161,7 +162,7 @@ export function useTableFields(workspaceId: string | null, tableId: string | nul
       queryClient.invalidateQueries({ queryKey: ["tableFields", workspaceId, tableId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete field");
+      toast.error(getApiErrorMessage(error, "Failed to delete field"));
     },
   });
 
@@ -206,7 +207,7 @@ export function useTableRecords(
       queryClient.invalidateQueries({ queryKey: ["tables", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to create record");
+      toast.error(getApiErrorMessage(error, "Failed to create record"));
     },
   });
 
@@ -218,7 +219,7 @@ export function useTableRecords(
       queryClient.invalidateQueries({ queryKey: ["tableRecords", workspaceId, tableId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update record");
+      toast.error(getApiErrorMessage(error, "Failed to update record"));
     },
   });
 
@@ -231,7 +232,7 @@ export function useTableRecords(
       queryClient.invalidateQueries({ queryKey: ["tables", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete record");
+      toast.error(getApiErrorMessage(error, "Failed to delete record"));
     },
   });
 
@@ -244,7 +245,7 @@ export function useTableRecords(
       queryClient.invalidateQueries({ queryKey: ["tables", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete records");
+      toast.error(getApiErrorMessage(error, "Failed to delete records"));
     },
   });
 
@@ -297,7 +298,7 @@ export function useTableCollaborators(workspaceId: string | null, tableId: strin
       queryClient.invalidateQueries({ queryKey: ["tableCollaborators", workspaceId, tableId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to add collaborator");
+      toast.error(getApiErrorMessage(error, "Failed to add collaborator"));
     },
   });
 
@@ -311,7 +312,7 @@ export function useTableCollaborators(workspaceId: string | null, tableId: strin
       queryClient.invalidateQueries({ queryKey: ["tableCollaborators", workspaceId, tableId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update collaborator");
+      toast.error(getApiErrorMessage(error, "Failed to update collaborator"));
     },
   });
 
@@ -323,7 +324,7 @@ export function useTableCollaborators(workspaceId: string | null, tableId: strin
       queryClient.invalidateQueries({ queryKey: ["tableCollaborators", workspaceId, tableId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to remove collaborator");
+      toast.error(getApiErrorMessage(error, "Failed to remove collaborator"));
     },
   });
 
@@ -363,7 +364,7 @@ export function useSavedViews(workspaceId: string | null, tableId: string | null
       queryClient.invalidateQueries({ queryKey: ["tableViews", workspaceId, tableId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to save view");
+      toast.error(getApiErrorMessage(error, "Failed to save view"));
     },
   });
 
@@ -386,7 +387,7 @@ export function useSavedViews(workspaceId: string | null, tableId: string | null
       queryClient.invalidateQueries({ queryKey: ["tableViews", workspaceId, tableId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update view");
+      toast.error(getApiErrorMessage(error, "Failed to update view"));
     },
   });
 
@@ -397,7 +398,7 @@ export function useSavedViews(workspaceId: string | null, tableId: string | null
       queryClient.invalidateQueries({ queryKey: ["tableViews", workspaceId, tableId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete view");
+      toast.error(getApiErrorMessage(error, "Failed to delete view"));
     },
   });
 
@@ -437,7 +438,7 @@ export function useTableShareLinks(workspaceId: string | null, tableId: string |
       queryClient.invalidateQueries({ queryKey: ["tableShareLinks", workspaceId, tableId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to create share link");
+      toast.error(getApiErrorMessage(error, "Failed to create share link"));
     },
   });
 
@@ -449,7 +450,7 @@ export function useTableShareLinks(workspaceId: string | null, tableId: string |
       queryClient.invalidateQueries({ queryKey: ["tableShareLinks", workspaceId, tableId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to revoke share link");
+      toast.error(getApiErrorMessage(error, "Failed to revoke share link"));
     },
   });
 
@@ -512,7 +513,7 @@ export function useCustomFieldTypes(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["customFieldTypes", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to create custom field type");
+      toast.error(getApiErrorMessage(error, "Failed to create custom field type"));
     },
   });
 
@@ -534,7 +535,7 @@ export function useCustomFieldTypes(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["customFieldTypes", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update custom field type");
+      toast.error(getApiErrorMessage(error, "Failed to update custom field type"));
     },
   });
 
@@ -545,7 +546,7 @@ export function useCustomFieldTypes(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["customFieldTypes", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete custom field type");
+      toast.error(getApiErrorMessage(error, "Failed to delete custom field type"));
     },
   });
 

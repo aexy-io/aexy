@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
@@ -380,7 +381,7 @@ export function AgentCreationWizard({
       router.push(`/agents/${newAgent.id}`);
     } catch (err) {
       console.error("Failed to create agent:", err);
-      setError(err instanceof Error ? err.message : "Failed to create agent");
+      setError(getApiErrorMessage(err, "Failed to create agent"));
     }
   };
 

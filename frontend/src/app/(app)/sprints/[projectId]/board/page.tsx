@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { use, useState, useMemo, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -631,7 +632,7 @@ function AddTaskModal({ onClose, onAdd, isAdding, sprints, epics, defaultStatus 
 
       onClose();
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to add task";
+      const errorMessage = getApiErrorMessage(err, "Failed to add task");
       setError(errorMessage);
     }
   };
@@ -1504,7 +1505,7 @@ function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, sprints,
       clearCache();
       onClose();
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to update task";
+      const errorMessage = getApiErrorMessage(err, "Failed to update task");
       setError(errorMessage);
     }
   };

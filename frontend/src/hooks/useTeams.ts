@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { teamApi, TeamListItem, Team, TeamMember, TeamProfile } from "@/lib/api";
@@ -26,7 +27,7 @@ export function useTeams(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["workspace", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to create team");
+      toast.error(getApiErrorMessage(error, "Failed to create team"));
     },
   });
 
@@ -38,7 +39,7 @@ export function useTeams(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["workspace", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete team");
+      toast.error(getApiErrorMessage(error, "Failed to delete team"));
     },
   });
 
@@ -51,7 +52,7 @@ export function useTeams(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["workspace", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to create team from repository");
+      toast.error(getApiErrorMessage(error, "Failed to create team from repository"));
     },
   });
 
@@ -90,7 +91,7 @@ export function useTeam(workspaceId: string | null, teamId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["teams", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update team");
+      toast.error(getApiErrorMessage(error, "Failed to update team"));
     },
   });
 
@@ -102,7 +103,7 @@ export function useTeam(workspaceId: string | null, teamId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["teamMembers", workspaceId, teamId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to sync team");
+      toast.error(getApiErrorMessage(error, "Failed to sync team"));
     },
   });
 
@@ -142,7 +143,7 @@ export function useTeamMembers(workspaceId: string | null, teamId: string | null
       queryClient.invalidateQueries({ queryKey: ["teams", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to add member");
+      toast.error(getApiErrorMessage(error, "Failed to add member"));
     },
   });
 
@@ -154,7 +155,7 @@ export function useTeamMembers(workspaceId: string | null, teamId: string | null
       queryClient.invalidateQueries({ queryKey: ["teamMembers", workspaceId, teamId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update member role");
+      toast.error(getApiErrorMessage(error, "Failed to update member role"));
     },
   });
 
@@ -167,7 +168,7 @@ export function useTeamMembers(workspaceId: string | null, teamId: string | null
       queryClient.invalidateQueries({ queryKey: ["teams", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to remove member");
+      toast.error(getApiErrorMessage(error, "Failed to remove member"));
     },
   });
 

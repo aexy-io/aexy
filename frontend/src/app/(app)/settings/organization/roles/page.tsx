@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useState } from "react";
 import Link from "next/link";
 import {
@@ -191,7 +192,7 @@ function CreateRoleModal({
       });
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create role");
+      setError(getApiErrorMessage(err, "Failed to create role"));
     }
   };
 

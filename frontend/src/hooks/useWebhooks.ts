@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { webhooksApi, BookingWebhook, WebhookTestResult } from "@/lib/api";
@@ -21,7 +22,7 @@ export function useBookingWebhooks(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["bookingWebhooks", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to create webhook");
+      toast.error(getApiErrorMessage(error, "Failed to create webhook"));
     },
   });
 
@@ -33,7 +34,7 @@ export function useBookingWebhooks(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["bookingWebhooks", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update webhook");
+      toast.error(getApiErrorMessage(error, "Failed to update webhook"));
     },
   });
 
@@ -45,7 +46,7 @@ export function useBookingWebhooks(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["bookingWebhooks", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete webhook");
+      toast.error(getApiErrorMessage(error, "Failed to delete webhook"));
     },
   });
 
@@ -60,7 +61,7 @@ export function useBookingWebhooks(workspaceId: string | null) {
       }
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Webhook test failed");
+      toast.error(getApiErrorMessage(error, "Webhook test failed"));
     },
   });
 
@@ -72,7 +73,7 @@ export function useBookingWebhooks(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["bookingWebhooks", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to rotate webhook secret");
+      toast.error(getApiErrorMessage(error, "Failed to rotate webhook secret"));
     },
   });
 

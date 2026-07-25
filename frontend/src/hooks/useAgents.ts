@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -50,7 +51,7 @@ export function useAgents(
       queryClient.invalidateQueries({ queryKey: ["agents", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to create agent");
+      toast.error(getApiErrorMessage(error, "Failed to create agent"));
     },
   });
 
@@ -68,7 +69,7 @@ export function useAgents(
       queryClient.invalidateQueries({ queryKey: ["agent", workspaceId, variables.agentId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update agent");
+      toast.error(getApiErrorMessage(error, "Failed to update agent"));
     },
   });
 
@@ -79,7 +80,7 @@ export function useAgents(
       queryClient.invalidateQueries({ queryKey: ["agents", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete agent");
+      toast.error(getApiErrorMessage(error, "Failed to delete agent"));
     },
   });
 
@@ -124,7 +125,7 @@ export function useAgents(
       if (context?.previousDetail) {
         queryClient.setQueryData(context.detailKey, context.previousDetail);
       }
-      toast.error(error instanceof Error ? error.message : "Failed to toggle agent");
+      toast.error(getApiErrorMessage(error, "Failed to toggle agent"));
     },
     onSuccess: (updatedAgent, agentId) => {
       const isActive = updatedAgent?.is_active;
@@ -153,7 +154,7 @@ export function useAgents(
       queryClient.invalidateQueries({ queryKey: ["agentMetrics", workspaceId, variables.agentId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to execute agent");
+      toast.error(getApiErrorMessage(error, "Failed to execute agent"));
     },
   });
 
@@ -196,7 +197,7 @@ export function useAgent(workspaceId: string | null, agentId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["agents", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update agent");
+      toast.error(getApiErrorMessage(error, "Failed to update agent"));
     },
   });
 
@@ -235,7 +236,7 @@ export function useAgent(workspaceId: string | null, agentId: string | null) {
       if (context?.previousList) {
         queryClient.setQueryData(context.listKey, context.previousList);
       }
-      toast.error(error instanceof Error ? error.message : "Failed to toggle agent");
+      toast.error(getApiErrorMessage(error, "Failed to toggle agent"));
     },
     onSuccess: (updatedAgent) => {
       const isActive = updatedAgent?.is_active;
@@ -252,7 +253,7 @@ export function useAgent(workspaceId: string | null, agentId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["agents", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete agent");
+      toast.error(getApiErrorMessage(error, "Failed to delete agent"));
     },
   });
 
@@ -268,7 +269,7 @@ export function useAgent(workspaceId: string | null, agentId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["agentMetrics", workspaceId, agentId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to execute agent");
+      toast.error(getApiErrorMessage(error, "Failed to execute agent"));
     },
   });
 
@@ -279,7 +280,7 @@ export function useAgent(workspaceId: string | null, agentId: string | null) {
       toast.success("Agent test completed");
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to test agent");
+      toast.error(getApiErrorMessage(error, "Failed to test agent"));
     },
   });
 
@@ -446,7 +447,7 @@ export function useWritingStyle(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["writingStyle", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to analyze writing style");
+      toast.error(getApiErrorMessage(error, "Failed to analyze writing style"));
     },
   });
 
@@ -461,7 +462,7 @@ export function useWritingStyle(workspaceId: string | null) {
       toast.success("Email generated");
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to generate email");
+      toast.error(getApiErrorMessage(error, "Failed to generate email"));
     },
   });
 

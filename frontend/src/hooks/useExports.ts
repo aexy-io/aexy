@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { exportsApi, ExportJob } from "@/lib/api";
@@ -23,7 +24,7 @@ export function useExports(limit = 20) {
       queryClient.invalidateQueries({ queryKey: ["exports"] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to start export");
+      toast.error(getApiErrorMessage(error, "Failed to start export"));
     },
   });
 
@@ -34,7 +35,7 @@ export function useExports(limit = 20) {
       queryClient.invalidateQueries({ queryKey: ["exports"] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete export");
+      toast.error(getApiErrorMessage(error, "Failed to delete export"));
     },
   });
 

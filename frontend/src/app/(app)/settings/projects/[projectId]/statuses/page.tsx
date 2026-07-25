@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -159,7 +160,7 @@ export default function ProjectStatusesPage() {
       await deleteCategory(cat.id);
       toast.success("Category deleted");
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to delete";
+      const msg = getApiErrorMessage(err, "Failed to delete");
       toast.error(/category_in_use/i.test(msg)
         ? "This category is still in use by one or more statuses."
         : msg);
@@ -176,7 +177,7 @@ export default function ProjectStatusesPage() {
       toast.success("Status deleted");
       setDeletingStatus(null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to delete status";
+      const message = getApiErrorMessage(err, "Failed to delete status");
       toast.error(message);
     }
   };

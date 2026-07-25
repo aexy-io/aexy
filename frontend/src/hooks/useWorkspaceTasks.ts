@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useCallback, useMemo, useState } from "react";
@@ -248,7 +249,7 @@ export function useWorkspaceTasks(
       return workspaceTasksApi.create(workspaceId, payload);
     },
     onError: (err) => {
-      const message = err instanceof Error ? err.message : "Failed to create task";
+      const message = getApiErrorMessage(err, "Failed to create task");
       toast.error(message);
     },
     onSettled: () => {

@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { Loader2, Save, Shield } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -29,7 +30,7 @@ export default function AdminPlansPage() {
         setDraft(plans[0]);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load plans");
+      setError(getApiErrorMessage(e, "Failed to load plans"));
     } finally {
       setLoading(false);
     }
@@ -63,7 +64,7 @@ export default function AdminPlansPage() {
       setPlans((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
       setSavedAt(Date.now());
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Save failed");
+      setError(getApiErrorMessage(e, "Save failed"));
     } finally {
       setSaving(false);
     }
@@ -283,7 +284,7 @@ function BackfillPanel() {
       await start.mutateAsync({});
       setFeedback("Backfill queued — see status below.");
     } catch (e) {
-      setFeedback(e instanceof Error ? e.message : "Failed to start backfill");
+      setFeedback(getApiErrorMessage(e, "Failed to start backfill"));
     }
   };
 

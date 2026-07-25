@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -183,7 +184,7 @@ export default function NewTemplatePage() {
       const template = await createTemplate(data);
       router.push(`/email-marketing/templates/${template.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create template");
+      setError(getApiErrorMessage(err, "Failed to create template"));
     } finally {
       setIsSubmitting(false);
     }

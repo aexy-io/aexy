@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useState } from "react";
 import { AlertCircle, Check, RefreshCw } from "lucide-react";
 
@@ -74,7 +75,7 @@ export function CategoryModal({ category, onClose, onSave, isSaving }: CategoryM
       });
       onClose();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to save category";
+      const msg = getApiErrorMessage(err, "Failed to save category");
       // Surface category_slug_exists distinctly so the operator picks a new label.
       if (/category_slug_exists/i.test(msg)) {
         setError("A category with that slug already exists.");

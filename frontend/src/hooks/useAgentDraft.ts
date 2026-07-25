@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { agentsApi } from "@/lib/api";
 
@@ -107,7 +108,7 @@ export function useAgentDraft(
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : "Failed to load draft");
+        setError(getApiErrorMessage(err, "Failed to load draft"));
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
@@ -164,7 +165,7 @@ export function useAgentDraft(
           setError(null);
         } catch (err) {
           if (!mountedRef.current || seq !== saveSeqRef.current) return;
-          setError(err instanceof Error ? err.message : "Save failed");
+          setError(getApiErrorMessage(err, "Save failed"));
         } finally {
           if (mountedRef.current && seq === saveSeqRef.current) {
             setIsSaving(false);
@@ -190,7 +191,7 @@ export function useAgentDraft(
       setLastSavedAt(null);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Clear failed");
+      setError(getApiErrorMessage(err, "Clear failed"));
     }
   }, [workspaceId]);
 

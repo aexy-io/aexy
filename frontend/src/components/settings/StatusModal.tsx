@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useState } from "react";
 import { AlertCircle, Check, RefreshCw } from "lucide-react";
 
@@ -68,7 +69,7 @@ export function StatusModal({
       await onSave({ name: name.trim(), category, color, is_default: isDefault });
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save status");
+      setError(getApiErrorMessage(err, "Failed to save status"));
     }
   };
 
