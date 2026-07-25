@@ -1,8 +1,10 @@
 """CRM API endpoints."""
 
+import json
 import re
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.core.database import get_db
@@ -1395,23 +1397,64 @@ async def reorder_attributes(
 # RECORD ENDPOINTS
 # =============================================================================
 
+def _parse_json_list_param(raw: str | None, name: str) -> list[dict] | None:
+    """Parse a JSON-encoded list-of-objects query param, or 400 if malformed.
+
+    Filters/sorts are sent as a JSON string because they are lists of objects,
+    which don't survive plain query-string encoding.
+    """
+    if not raw:
+        return None
+    try:
+        parsed = json.loads(raw)
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid {name}: not valid JSON",
+        ) from exc
+    if not isinstance(parsed, list) or not all(isinstance(i, dict) for i in parsed):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid {name}: expected a list of objects",
+        )
+    return parsed or None
+
+
 @router.get("/objects/{object_id}/records")
 async def list_records(
     workspace_id: str,
     object_id: str,
     include_archived: bool = False,
-    limit: int = Query(default=50, le=100),
+    filters: str | None = Query(
+        default=None,
+        description='JSON array of {"attribute","operator","value"} applied in the database',
+    ),
+    sorts: str | None = Query(
+        default=None,
+        description='JSON array of {"attribute","direction"}',
+    ),
+    limit: int = Query(default=50, le=200),
     offset: int = Query(default=0, ge=0),
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """List records for an object."""
+    """List records for an object.
+
+    Filtering and sorting are applied in the database over the whole object, and
+    ``total`` is the count of records matching the filters — not the page size —
+    so callers can report truthful counts.
+    """
     await check_workspace_permission(workspace_id, current_user, db)
+
+    parsed_filters = _parse_json_list_param(filters, "filters")
+    parsed_sorts = _parse_json_list_param(sorts, "sorts")
 
     service = CRMRecordService(db)
     records, total = await service.list_records(
         workspace_id=workspace_id,
         object_id=object_id,
+        filters=parsed_filters,
+        sorts=parsed_sorts,
         include_archived=include_archived,
         limit=limit,
         offset=offset,
@@ -2209,3 +2252,180 @@ async def delete_list(
 
     await service.delete_list(list_id)
     await db.commit()
+
+
+@router.get("/lists/{list_id}/entries")
+async def list_entries(
+    workspace_id: str,
+    list_id: str,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=500),
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """List membership entries for a CRM list."""
+    await check_workspace_permission(workspace_id, current_user, db)
+
+    service = CRMListService(db)
+    lst = await service.get_list(list_id)
+    if not lst or str(lst.workspace_id) != workspace_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="List not found",
+        )
+
+    entries, total = await service.get_entries(list_id, limit=limit, offset=skip)
+    return {
+        "entries": [
+            CRMListEntryResponse(
+                id=str(e.id),
+                list_id=str(e.list_id),
+                record_id=str(e.record_id),
+                position=e.position,
+                list_values=e.list_values or {},
+                added_by_id=str(e.added_by_id) if e.added_by_id else None,
+                created_at=e.created_at,
+                record=CRMRecordListResponse(
+                    id=str(e.record.id),
+                    object_id=str(e.record.object_id),
+                    values=e.record.values,
+                    display_name=e.record.display_name,
+                    owner_id=str(e.record.owner_id) if e.record.owner_id else None,
+                    is_archived=e.record.is_archived,
+                    created_at=e.record.created_at,
+                    updated_at=e.record.updated_at,
+                )
+                if e.record
+                else None,
+            )
+            for e in entries
+        ],
+        "total": total,
+    }
+
+
+@router.post(
+    "/lists/{list_id}/entries",
+    response_model=CRMListEntryResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_list_entry(
+    workspace_id: str,
+    list_id: str,
+    data: CRMListEntryCreate,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Add a record to a CRM list."""
+    await check_workspace_permission(workspace_id, current_user, db)
+
+    service = CRMListService(db)
+    lst = await service.get_list(list_id)
+    if not lst or str(lst.workspace_id) != workspace_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="List not found",
+        )
+
+    try:
+        entry = await service.add_entry(
+            list_id=list_id,
+            record_id=data.record_id,
+            position=data.position,
+            list_values=data.list_values,
+            added_by_id=str(current_user.id),
+        )
+    except LookupError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Record not found",
+        ) from exc
+    except (ValueError, IntegrityError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Record is already in this list",
+        ) from exc
+
+    await db.commit()
+
+    return CRMListEntryResponse(
+        id=str(entry.id),
+        list_id=str(entry.list_id),
+        record_id=str(entry.record_id),
+        position=entry.position,
+        list_values=entry.list_values or {},
+        added_by_id=str(entry.added_by_id) if entry.added_by_id else None,
+        created_at=entry.created_at,
+    )
+
+
+@router.delete(
+    "/lists/{list_id}/entries/{record_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def remove_list_entry(
+    workspace_id: str,
+    list_id: str,
+    record_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Remove a record from a CRM list."""
+    await check_workspace_permission(workspace_id, current_user, db)
+
+    service = CRMListService(db)
+    lst = await service.get_list(list_id)
+    if not lst or str(lst.workspace_id) != workspace_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="List not found",
+        )
+
+    removed = await service.remove_entry(list_id, record_id, removed_by_id=str(current_user.id))
+    if not removed:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Entry not found",
+        )
+
+    await db.commit()
+
+
+@router.get("/records/{record_id}/lists", response_model=list[CRMListResponse])
+async def list_record_lists(
+    workspace_id: str,
+    record_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """List CRM lists that include a given record."""
+    await check_workspace_permission(workspace_id, current_user, db)
+
+    service = CRMListService(db)
+    lists = await service.get_lists_for_record(record_id, workspace_id)
+    return [
+        CRMListResponse(
+            id=str(lst.id),
+            workspace_id=str(lst.workspace_id),
+            object_id=str(lst.object_id) if lst.object_id else None,
+            name=lst.name,
+            slug=lst.slug,
+            description=lst.description,
+            icon=lst.icon,
+            color=lst.color,
+            view_type=lst.view_type,
+            filters=lst.filters,
+            sorts=lst.sorts,
+            visible_attributes=lst.visible_attributes,
+            group_by_attribute=lst.group_by_attribute,
+            kanban_settings=lst.kanban_settings,
+            date_attribute=lst.date_attribute,
+            end_date_attribute=lst.end_date_attribute,
+            is_private=lst.is_private,
+            owner_id=str(lst.owner_id) if lst.owner_id else None,
+            entry_count=lst.entry_count,
+            created_at=lst.created_at,
+            updated_at=lst.updated_at,
+        )
+        for lst in lists
+    ]

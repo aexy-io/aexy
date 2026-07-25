@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -16,6 +17,8 @@ import {
   CRMAutomationRun,
   CRMSequence,
   CRMSequenceStep,
+  CRMSequenceStepType,
+  CRMSequenceDelayUnit,
   CRMSequenceEnrollment,
   CRMWebhook,
   CRMWebhookDelivery,
@@ -55,7 +58,7 @@ export function useCRMObjects(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["crmObjects", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to create object");
+      toast.error(getApiErrorMessage(error, "Failed to create object"));
     },
   });
 
@@ -72,7 +75,7 @@ export function useCRMObjects(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["crmObjects", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update object");
+      toast.error(getApiErrorMessage(error, "Failed to update object"));
     },
   });
 
@@ -83,7 +86,7 @@ export function useCRMObjects(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["crmObjects", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete object");
+      toast.error(getApiErrorMessage(error, "Failed to delete object"));
     },
   });
 
@@ -94,7 +97,7 @@ export function useCRMObjects(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["crmObjects", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to seed objects");
+      toast.error(getApiErrorMessage(error, "Failed to seed objects"));
     },
   });
 
@@ -105,7 +108,7 @@ export function useCRMObjects(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["crmObjects", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to recalculate counts");
+      toast.error(getApiErrorMessage(error, "Failed to recalculate counts"));
     },
   });
 
@@ -150,7 +153,7 @@ export function useCRMObject(workspaceId: string | null, objectId: string | null
       queryClient.invalidateQueries({ queryKey: ["crmObjects", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update object");
+      toast.error(getApiErrorMessage(error, "Failed to update object"));
     },
   });
 
@@ -195,7 +198,7 @@ export function useCRMAttributes(workspaceId: string | null, objectId: string | 
       queryClient.invalidateQueries({ queryKey: ["crmObject", workspaceId, objectId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to create attribute");
+      toast.error(getApiErrorMessage(error, "Failed to create attribute"));
     },
   });
 
@@ -221,7 +224,7 @@ export function useCRMAttributes(workspaceId: string | null, objectId: string | 
       queryClient.invalidateQueries({ queryKey: ["crmAttributes", workspaceId, objectId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update attribute");
+      toast.error(getApiErrorMessage(error, "Failed to update attribute"));
     },
   });
 
@@ -232,7 +235,7 @@ export function useCRMAttributes(workspaceId: string | null, objectId: string | 
       queryClient.invalidateQueries({ queryKey: ["crmAttributes", workspaceId, objectId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete attribute");
+      toast.error(getApiErrorMessage(error, "Failed to delete attribute"));
     },
   });
 
@@ -279,7 +282,7 @@ export function useCRMRecords(
       queryClient.invalidateQueries({ queryKey: ["crmObjects", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to create record");
+      toast.error(getApiErrorMessage(error, "Failed to create record"));
     },
   });
 
@@ -291,12 +294,48 @@ export function useCRMRecords(
       recordId: string;
       data: { values?: Record<string, unknown>; owner_id?: string };
     }) => crmApi.records.update(workspaceId!, recordId, recordData),
-    onSuccess: () => {
-      toast.success("Record updated");
-      queryClient.invalidateQueries({ queryKey: ["crmRecords", workspaceId, objectId] });
+    // Show the change straight away. Without this a dragged board card
+    // snapped back to its old column, waited for the round trip, and only
+    // moved once the whole list had been refetched.
+    onMutate: async ({ recordId, data: recordData }) => {
+      await queryClient.cancelQueries({ queryKey: ["crmRecords", workspaceId, objectId] });
+      const previous = queryClient.getQueriesData<{ records: CRMRecord[]; total: number }>({
+        queryKey: ["crmRecords", workspaceId, objectId],
+      });
+
+      queryClient.setQueriesData<{ records: CRMRecord[]; total: number }>(
+        { queryKey: ["crmRecords", workspaceId, objectId] },
+        (old) => {
+          if (!old?.records) return old;
+          return {
+            ...old,
+            records: old.records.map((record) =>
+              record.id === recordId
+                ? {
+                    ...record,
+                    values: { ...record.values, ...(recordData.values || {}) },
+                    ...(recordData.owner_id !== undefined
+                      ? { owner_id: recordData.owner_id }
+                      : {}),
+                  }
+                : record
+            ),
+          };
+        }
+      );
+
+      return { previous };
     },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update record");
+    onError: (error, _variables, context) => {
+      // Put the record back where it was, so a failed save is visible
+      // rather than leaving the board showing a change that did not stick.
+      context?.previous?.forEach(([key, value]) => {
+        queryClient.setQueryData(key, value);
+      });
+      toast.error(getApiErrorMessage(error, "Failed to update record"));
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["crmRecords", workspaceId, objectId] });
     },
   });
 
@@ -309,7 +348,7 @@ export function useCRMRecords(
       queryClient.invalidateQueries({ queryKey: ["crmObjects", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete record");
+      toast.error(getApiErrorMessage(error, "Failed to delete record"));
     },
   });
 
@@ -322,7 +361,7 @@ export function useCRMRecords(
       queryClient.invalidateQueries({ queryKey: ["crmObjects", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete records");
+      toast.error(getApiErrorMessage(error, "Failed to delete records"));
     },
   });
 
@@ -365,7 +404,7 @@ export function useCRMRecord(workspaceId: string | null, recordId: string | null
       queryClient.invalidateQueries({ queryKey: ["crmRecords", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update record");
+      toast.error(getApiErrorMessage(error, "Failed to update record"));
     },
   });
 
@@ -376,7 +415,7 @@ export function useCRMRecord(workspaceId: string | null, recordId: string | null
       queryClient.invalidateQueries({ queryKey: ["crmRecords", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete record");
+      toast.error(getApiErrorMessage(error, "Failed to delete record"));
     },
   });
 
@@ -417,7 +456,7 @@ export function useCRMNotes(workspaceId: string | null, recordId: string | null)
       queryClient.invalidateQueries({ queryKey: ["crmActivities", workspaceId, recordId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to add note");
+      toast.error(getApiErrorMessage(error, "Failed to add note"));
     },
   });
 
@@ -434,7 +473,7 @@ export function useCRMNotes(workspaceId: string | null, recordId: string | null)
       queryClient.invalidateQueries({ queryKey: ["crmNotes", workspaceId, recordId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update note");
+      toast.error(getApiErrorMessage(error, "Failed to update note"));
     },
   });
 
@@ -445,7 +484,7 @@ export function useCRMNotes(workspaceId: string | null, recordId: string | null)
       queryClient.invalidateQueries({ queryKey: ["crmNotes", workspaceId, recordId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete note");
+      toast.error(getApiErrorMessage(error, "Failed to delete note"));
     },
   });
 
@@ -517,7 +556,7 @@ export function useCRMLists(workspaceId: string | null, objectId?: string) {
       queryClient.invalidateQueries({ queryKey: ["crmLists", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to create list");
+      toast.error(getApiErrorMessage(error, "Failed to create list"));
     },
   });
 
@@ -543,7 +582,7 @@ export function useCRMLists(workspaceId: string | null, objectId?: string) {
       queryClient.invalidateQueries({ queryKey: ["crmLists", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update list");
+      toast.error(getApiErrorMessage(error, "Failed to update list"));
     },
   });
 
@@ -554,7 +593,67 @@ export function useCRMLists(workspaceId: string | null, objectId?: string) {
       queryClient.invalidateQueries({ queryKey: ["crmLists", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete list");
+      toast.error(getApiErrorMessage(error, "Failed to delete list"));
+    },
+  });
+
+  const addToListMutation = useMutation({
+    mutationFn: async ({
+      listId,
+      recordIds,
+    }: {
+      listId: string;
+      recordIds: string[];
+    }) => {
+      const results = { added: 0, skipped: 0, failed: 0 };
+      for (const recordId of recordIds) {
+        try {
+          await crmApi.lists.addEntry(workspaceId!, listId, recordId);
+          results.added += 1;
+        } catch (err: unknown) {
+          const status = (err as { response?: { status?: number } })?.response?.status;
+          const message = err instanceof Error ? err.message : String(err);
+          if (status === 409 || /already/i.test(message)) {
+            results.skipped += 1;
+          } else {
+            results.failed += 1;
+          }
+        }
+      }
+      return results;
+    },
+    onSuccess: (results) => {
+      if (results.failed > 0) {
+        toast.error(`Added ${results.added}, skipped ${results.skipped}, failed ${results.failed}`);
+      } else if (results.added > 0) {
+        toast.success(
+          results.skipped > 0
+            ? `Added ${results.added} (${results.skipped} already on list)`
+            : `Added ${results.added} to list`
+        );
+      } else if (results.skipped > 0) {
+        toast.success("Already on this list");
+      }
+      queryClient.invalidateQueries({ queryKey: ["crmLists", workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ["crmListEntries", workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ["crmRecordLists", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, "Failed to add to list"));
+    },
+  });
+
+  const removeFromListMutation = useMutation({
+    mutationFn: ({ listId, recordId }: { listId: string; recordId: string }) =>
+      crmApi.lists.removeEntry(workspaceId!, listId, recordId),
+    onSuccess: () => {
+      toast.success("Removed from list");
+      queryClient.invalidateQueries({ queryKey: ["crmLists", workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ["crmListEntries", workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ["crmRecordLists", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, "Failed to remove from list"));
     },
   });
 
@@ -566,9 +665,13 @@ export function useCRMLists(workspaceId: string | null, objectId?: string) {
     createList: createMutation.mutateAsync,
     updateList: updateMutation.mutateAsync,
     deleteList: deleteMutation.mutateAsync,
+    addToList: addToListMutation.mutateAsync,
+    removeFromList: removeFromListMutation.mutateAsync,
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
+    isAddingToList: addToListMutation.isPending,
+    isRemovingFromList: removeFromListMutation.isPending,
   };
 }
 
@@ -603,7 +706,7 @@ export function useCRMList(workspaceId: string | null, listId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["crmLists", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update list");
+      toast.error(getApiErrorMessage(error, "Failed to update list"));
     },
   });
 
@@ -627,31 +730,79 @@ export function useCRMListEntries(workspaceId: string | null, listId: string | n
     refetch,
   } = useQuery<{ entries: CRMListEntry[]; total: number }>({
     queryKey: ["crmListEntries", workspaceId, listId, params],
-    queryFn: () => crmApi.lists.getEntries(workspaceId!, listId!, params),
+    queryFn: () =>
+      crmApi.lists.getEntries(workspaceId!, listId!, {
+        skip: params?.skip ?? 0,
+        limit: params?.limit ?? 500,
+      }),
     enabled: !!workspaceId && !!listId,
   });
 
   const addEntryMutation = useMutation({
     mutationFn: (recordId: string) => crmApi.lists.addEntry(workspaceId!, listId!, recordId),
     onSuccess: () => {
-      toast.success("Entry added to list");
+      toast.success("Added to list");
       queryClient.invalidateQueries({ queryKey: ["crmListEntries", workspaceId, listId] });
       queryClient.invalidateQueries({ queryKey: ["crmList", workspaceId, listId] });
+      queryClient.invalidateQueries({ queryKey: ["crmLists", workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ["crmRecordLists", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to add entry to list");
+      toast.error(getApiErrorMessage(error, "Failed to add entry to list"));
     },
   });
 
   const removeEntryMutation = useMutation({
     mutationFn: (recordId: string) => crmApi.lists.removeEntry(workspaceId!, listId!, recordId),
     onSuccess: () => {
-      toast.success("Entry removed from list");
+      toast.success("Removed from list");
       queryClient.invalidateQueries({ queryKey: ["crmListEntries", workspaceId, listId] });
       queryClient.invalidateQueries({ queryKey: ["crmList", workspaceId, listId] });
+      queryClient.invalidateQueries({ queryKey: ["crmLists", workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ["crmRecordLists", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to remove entry from list");
+      toast.error(getApiErrorMessage(error, "Failed to remove entry from list"));
+    },
+  });
+
+  const addManyMutation = useMutation({
+    mutationFn: async (recordIds: string[]) => {
+      const results = { added: 0, skipped: 0, failed: 0 };
+      for (const recordId of recordIds) {
+        try {
+          await crmApi.lists.addEntry(workspaceId!, listId!, recordId);
+          results.added += 1;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          if (/already/i.test(message) || /409/.test(message)) {
+            results.skipped += 1;
+          } else {
+            results.failed += 1;
+          }
+        }
+      }
+      return results;
+    },
+    onSuccess: (results) => {
+      if (results.failed > 0) {
+        toast.error(`Added ${results.added}, skipped ${results.skipped}, failed ${results.failed}`);
+      } else if (results.added > 0) {
+        toast.success(
+          results.skipped > 0
+            ? `Added ${results.added} (${results.skipped} already on list)`
+            : `Added ${results.added} to list`
+        );
+      } else if (results.skipped > 0) {
+        toast.success("Already on this list");
+      }
+      queryClient.invalidateQueries({ queryKey: ["crmListEntries", workspaceId, listId] });
+      queryClient.invalidateQueries({ queryKey: ["crmList", workspaceId, listId] });
+      queryClient.invalidateQueries({ queryKey: ["crmLists", workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ["crmRecordLists", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, "Failed to add to list"));
     },
   });
 
@@ -662,10 +813,19 @@ export function useCRMListEntries(workspaceId: string | null, listId: string | n
     error,
     refetch,
     addEntry: addEntryMutation.mutateAsync,
+    addEntries: addManyMutation.mutateAsync,
     removeEntry: removeEntryMutation.mutateAsync,
-    isAdding: addEntryMutation.isPending,
+    isAdding: addEntryMutation.isPending || addManyMutation.isPending,
     isRemoving: removeEntryMutation.isPending,
   };
+}
+
+export function useCRMRecordLists(workspaceId: string | null, recordId: string | null) {
+  return useQuery<CRMList[]>({
+    queryKey: ["crmRecordLists", workspaceId, recordId],
+    queryFn: () => crmApi.lists.forRecord(workspaceId!, recordId!),
+    enabled: !!workspaceId && !!recordId,
+  });
 }
 
 // ==================== Automation Hooks ====================
@@ -699,7 +859,7 @@ export function useCRMAutomations(workspaceId: string | null, params?: { object_
       queryClient.invalidateQueries({ queryKey: ["crmAutomations", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to create automation");
+      toast.error(getApiErrorMessage(error, "Failed to create automation"));
     },
   });
 
@@ -726,7 +886,7 @@ export function useCRMAutomations(workspaceId: string | null, params?: { object_
       queryClient.invalidateQueries({ queryKey: ["crmAutomations", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update automation");
+      toast.error(getApiErrorMessage(error, "Failed to update automation"));
     },
   });
 
@@ -737,7 +897,7 @@ export function useCRMAutomations(workspaceId: string | null, params?: { object_
       queryClient.invalidateQueries({ queryKey: ["crmAutomations", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete automation");
+      toast.error(getApiErrorMessage(error, "Failed to delete automation"));
     },
   });
 
@@ -748,7 +908,7 @@ export function useCRMAutomations(workspaceId: string | null, params?: { object_
       queryClient.invalidateQueries({ queryKey: ["crmAutomations", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to toggle automation");
+      toast.error(getApiErrorMessage(error, "Failed to toggle automation"));
     },
   });
 
@@ -759,7 +919,7 @@ export function useCRMAutomations(workspaceId: string | null, params?: { object_
       toast.success("Automation triggered");
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to trigger automation");
+      toast.error(getApiErrorMessage(error, "Failed to trigger automation"));
     },
   });
 
@@ -825,7 +985,7 @@ export function useCRMSequences(workspaceId: string | null, params?: { object_id
       queryClient.invalidateQueries({ queryKey: ["crmSequences", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to create sequence");
+      toast.error(getApiErrorMessage(error, "Failed to create sequence"));
     },
   });
 
@@ -842,7 +1002,7 @@ export function useCRMSequences(workspaceId: string | null, params?: { object_id
       queryClient.invalidateQueries({ queryKey: ["crmSequences", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update sequence");
+      toast.error(getApiErrorMessage(error, "Failed to update sequence"));
     },
   });
 
@@ -853,7 +1013,7 @@ export function useCRMSequences(workspaceId: string | null, params?: { object_id
       queryClient.invalidateQueries({ queryKey: ["crmSequences", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete sequence");
+      toast.error(getApiErrorMessage(error, "Failed to delete sequence"));
     },
   });
 
@@ -864,7 +1024,7 @@ export function useCRMSequences(workspaceId: string | null, params?: { object_id
       queryClient.invalidateQueries({ queryKey: ["crmSequences", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to toggle sequence");
+      toast.error(getApiErrorMessage(error, "Failed to toggle sequence"));
     },
   });
 
@@ -899,14 +1059,19 @@ export function useCRMSequenceSteps(workspaceId: string | null, sequenceId: stri
   });
 
   const addStepMutation = useMutation({
-    mutationFn: (data: { step_type: string; config: Record<string, unknown>; delay_days?: number; delay_hours?: number; order?: number }) =>
-      crmAutomationApi.sequences.addStep(workspaceId!, sequenceId!, data),
+    mutationFn: (data: {
+      step_type: CRMSequenceStepType;
+      config?: Record<string, unknown>;
+      delay_value?: number;
+      delay_unit?: CRMSequenceDelayUnit;
+      position?: number;
+    }) => crmAutomationApi.sequences.addStep(workspaceId!, sequenceId!, data),
     onSuccess: () => {
       toast.success("Step added");
       queryClient.invalidateQueries({ queryKey: ["crmSequenceSteps", workspaceId, sequenceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to add step");
+      toast.error(getApiErrorMessage(error, "Failed to add step"));
     },
   });
 
@@ -916,14 +1081,19 @@ export function useCRMSequenceSteps(workspaceId: string | null, sequenceId: stri
       data,
     }: {
       stepId: string;
-      data: Partial<{ step_type: string; config: Record<string, unknown>; delay_days: number; delay_hours: number }>;
+      data: Partial<{
+        config: Record<string, unknown>;
+        delay_value: number;
+        delay_unit: CRMSequenceDelayUnit;
+        position: number;
+      }>;
     }) => crmAutomationApi.sequences.updateStep(workspaceId!, stepId, data),
     onSuccess: () => {
       toast.success("Step updated");
       queryClient.invalidateQueries({ queryKey: ["crmSequenceSteps", workspaceId, sequenceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update step");
+      toast.error(getApiErrorMessage(error, "Failed to update step"));
     },
   });
 
@@ -934,7 +1104,7 @@ export function useCRMSequenceSteps(workspaceId: string | null, sequenceId: stri
       queryClient.invalidateQueries({ queryKey: ["crmSequenceSteps", workspaceId, sequenceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete step");
+      toast.error(getApiErrorMessage(error, "Failed to delete step"));
     },
   });
 
@@ -974,7 +1144,7 @@ export function useCRMSequenceEnrollments(workspaceId: string | null, sequenceId
       queryClient.invalidateQueries({ queryKey: ["crmSequences", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to enroll in sequence");
+      toast.error(getApiErrorMessage(error, "Failed to enroll in sequence"));
     },
   });
 
@@ -985,7 +1155,7 @@ export function useCRMSequenceEnrollments(workspaceId: string | null, sequenceId
       queryClient.invalidateQueries({ queryKey: ["crmSequenceEnrollments", workspaceId, sequenceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to pause enrollment");
+      toast.error(getApiErrorMessage(error, "Failed to pause enrollment"));
     },
   });
 
@@ -996,7 +1166,7 @@ export function useCRMSequenceEnrollments(workspaceId: string | null, sequenceId
       queryClient.invalidateQueries({ queryKey: ["crmSequenceEnrollments", workspaceId, sequenceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to resume enrollment");
+      toast.error(getApiErrorMessage(error, "Failed to resume enrollment"));
     },
   });
 
@@ -1008,7 +1178,7 @@ export function useCRMSequenceEnrollments(workspaceId: string | null, sequenceId
       queryClient.invalidateQueries({ queryKey: ["crmSequences", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to unenroll from sequence");
+      toast.error(getApiErrorMessage(error, "Failed to unenroll from sequence"));
     },
   });
 
@@ -1058,7 +1228,7 @@ export function useCRMWebhooks(workspaceId: string | null, params?: { object_id?
       queryClient.invalidateQueries({ queryKey: ["crmWebhooks", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to create webhook");
+      toast.error(getApiErrorMessage(error, "Failed to create webhook"));
     },
   });
 
@@ -1082,7 +1252,7 @@ export function useCRMWebhooks(workspaceId: string | null, params?: { object_id?
       queryClient.invalidateQueries({ queryKey: ["crmWebhooks", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update webhook");
+      toast.error(getApiErrorMessage(error, "Failed to update webhook"));
     },
   });
 
@@ -1093,7 +1263,7 @@ export function useCRMWebhooks(workspaceId: string | null, params?: { object_id?
       queryClient.invalidateQueries({ queryKey: ["crmWebhooks", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete webhook");
+      toast.error(getApiErrorMessage(error, "Failed to delete webhook"));
     },
   });
 
@@ -1104,7 +1274,7 @@ export function useCRMWebhooks(workspaceId: string | null, params?: { object_id?
       queryClient.invalidateQueries({ queryKey: ["crmWebhooks", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to toggle webhook");
+      toast.error(getApiErrorMessage(error, "Failed to toggle webhook"));
     },
   });
 
@@ -1115,7 +1285,7 @@ export function useCRMWebhooks(workspaceId: string | null, params?: { object_id?
       queryClient.invalidateQueries({ queryKey: ["crmWebhooks", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to rotate webhook secret");
+      toast.error(getApiErrorMessage(error, "Failed to rotate webhook secret"));
     },
   });
 
@@ -1125,7 +1295,7 @@ export function useCRMWebhooks(workspaceId: string | null, params?: { object_id?
       toast.success("Webhook test sent");
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to test webhook");
+      toast.error(getApiErrorMessage(error, "Failed to test webhook"));
     },
   });
 
@@ -1170,7 +1340,7 @@ export function useCRMWebhookDeliveries(workspaceId: string | null, webhookId: s
       queryClient.invalidateQueries({ queryKey: ["crmWebhookDeliveries", workspaceId, webhookId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to retry delivery");
+      toast.error(getApiErrorMessage(error, "Failed to retry delivery"));
     },
   });
 
