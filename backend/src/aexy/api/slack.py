@@ -41,6 +41,13 @@ OAUTH_STATE_PREFIX = "slack:oauth_state:"
 OAUTH_STATE_TTL = 600  # 10 minutes
 
 
+class SlackInstallURLRequest(BaseModel):
+    """Authenticated request to start a workspace Slack installation."""
+
+    organization_id: str
+    redirect_url: str | None = None
+
+
 async def _get_redis() -> aioredis.Redis:
     return aioredis.from_url(settings.redis_url)
 
@@ -124,6 +131,7 @@ async def start_oauth_install(
     organization_id: str,
     redirect_url: str | None = None,
     current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
     service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
 ):
     """Start Slack OAuth installation flow."""
@@ -132,6 +140,8 @@ async def start_oauth_install(
             status_code=500,
             detail="Slack integration is not configured. Please set SLACK_CLIENT_ID and SLACK_CLIENT_SECRET environment variables.",
         )
+
+    await _require_workspace_admin(organization_id, current_user.id, db)
 
     state = secrets.token_urlsafe(32)
     await _store_oauth_state(state, {
@@ -142,6 +152,36 @@ async def start_oauth_install(
 
     install_url = service.get_install_url(state)
     return RedirectResponse(url=install_url)
+
+
+@router.post("/install-url")
+async def create_oauth_install_url(
+    request: SlackInstallURLRequest,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+    service: Annotated[SlackIntegrationService, Depends(get_slack_service)] = None,
+):
+    """Create the Slack OAuth URL through an authenticated app request.
+
+    The browser cannot attach Aexy's bearer token to an external navigation,
+    so the frontend first asks this endpoint to create a short-lived, stored
+    OAuth state.  Only then does it navigate to Slack's URL.
+    """
+    if not settings.slack_client_id or not settings.slack_client_secret:
+        raise HTTPException(
+            status_code=500,
+            detail="Slack integration is not configured. Please set SLACK_CLIENT_ID and SLACK_CLIENT_SECRET environment variables.",
+        )
+
+    await _require_workspace_admin(request.organization_id, current_user.id, db)
+
+    state = secrets.token_urlsafe(32)
+    await _store_oauth_state(state, {
+        "organization_id": request.organization_id,
+        "installer_id": current_user.id,
+        "redirect_url": request.redirect_url or f"{settings.frontend_url}/settings/integrations",
+    })
+    return {"install_url": service.get_install_url(state)}
 
 
 @router.get("/connect")
