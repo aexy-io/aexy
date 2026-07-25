@@ -25,6 +25,10 @@
         "description": "When a specific field value changes on a record"
       },
       {
+        "id": "list_entry.added",
+        "description": "When a record is added to a list"
+      },
+      {
         "id": "stage.changed",
         "description": "When a record moves to a different pipeline stage"
       }

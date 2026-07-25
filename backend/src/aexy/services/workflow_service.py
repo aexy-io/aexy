@@ -38,7 +38,10 @@ _ACTION_REQUIRED_FIELDS: dict[str, tuple[tuple[str, ...], str, str]] = {
                            "Email action requires a recipient (to or email_field)"),
     "webhook_call": (("url",), "missing_webhook_url",
                      "Webhook action requires a URL"),
-    "create_task": (("title",), "missing_task_title",
+    # Both spellings are accepted because the config panel saves task_title
+    # while the executor reads either. Checking only "title" made every
+    # builder-configured task step impossible to save.
+    "create_task": (("task_title", "title"), "missing_task_title",
                     "Create-task action requires a title"),
     "add_to_list": (("list_id",), "missing_list",
                     "List action requires a list"),
@@ -49,11 +52,12 @@ _ACTION_REQUIRED_FIELDS: dict[str, tuple[tuple[str, ...], str, str]] = {
 # Fields whose literal values should be validated as email addresses.
 _EMAIL_LITERAL_FIELDS = ("to", "email_to", "email", "notify_email")
 
-# Node types that survive flattening onto automation.actions and can actually
-# run when published. Everything else (condition/wait/agent/branch/join) is
-# silently dropped by the flattener, so publishing one is rejected instead.
-# Widen this only when the published executor gains a matching case.
-_EXECUTABLE_NODE_TYPES = ("trigger", "action")
+# Node types allowed in a published automation. trigger/action run on the
+# inline executor; wait runs on the durable Temporal engine (a canvas with a
+# wait is routed there — see CRMAutomationService._dispatch_durably_if_needed).
+# condition/agent/branch/join are still rejected: nothing executes them yet.
+# Widen this only when a matching executor path exists.
+_EXECUTABLE_NODE_TYPES = ("trigger", "action", "wait")
 
 # Namespaces a {{variable}} reference may resolve against at execution time.
 _VARIABLE_NAMESPACES = {"record", "trigger", "variables"}

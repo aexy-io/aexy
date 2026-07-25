@@ -466,6 +466,15 @@ export function FieldPicker({
                     }
                   }
                 }}
+                // Commit on blur too: typing a path and clicking straight on
+                // Save used to silently discard it, leaving the old selection.
+                onBlur={(e) => {
+                  const input = e.currentTarget.value.trim();
+                  if (input) {
+                    selectField(input);
+                    e.currentTarget.value = "";
+                  }
+                }}
               />
             </div>
           )}

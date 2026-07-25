@@ -104,7 +104,19 @@ const validateActionNode = (node: Node): ValidationError[] => {
 
   // Slack actions
   if (data.action_type === "send_slack") {
-    if (!data.channel && !data.channel_id) {
+    // The target requirement follows the chosen mode. Demanding a channel in
+    // DM mode made direct messages impossible to publish, since that mode
+    // never collects one.
+    if (data.slack_target_type === "dm") {
+      if (!data.user_email && !data.user_email_field) {
+        errors.push({
+          nodeId: node.id,
+          field: "user_email_field",
+          message: "Slack recipient is required",
+          severity: "error",
+        });
+      }
+    } else if (!data.channel && !data.channel_id) {
       errors.push({
         nodeId: node.id,
         field: "channel",
@@ -149,6 +161,29 @@ const validateActionNode = (node: Node): ValidationError[] => {
         nodeId: node.id,
         field: "webhook_url",
         message: "Webhook URL is required",
+        severity: "error",
+      });
+    }
+  }
+
+  // Link records actions — the required input follows the chosen mode, like
+  // Slack's channel/DM split above. An unset mode means field mode (the
+  // panel's and executor's shared default).
+  if (data.action_type === "link_records") {
+    if ((data.link_type || "field") === "field") {
+      if (!data.link_field) {
+        errors.push({
+          nodeId: node.id,
+          field: "link_field",
+          message: "Field containing the record to link is required",
+          severity: "error",
+        });
+      }
+    } else if (!data.link_record_id) {
+      errors.push({
+        nodeId: node.id,
+        field: "link_record_id",
+        message: "Target record is required",
         severity: "error",
       });
     }
@@ -341,9 +376,11 @@ const validateNode = (node: Node): ValidationError[] => {
   }
 };
 
-// Node types the published executor can actually run. Everything else is
-// dropped when the canvas is flattened onto the automation's action list.
-const EXECUTABLE_NODE_TYPES = new Set(["trigger", "action"]);
+// Node types allowed in a published automation. trigger/action run inline;
+// wait runs on the durable engine (a wait-containing canvas is routed there).
+// condition/agent/branch/join are still rejected — nothing executes them.
+// Mirrors _EXECUTABLE_NODE_TYPES in backend workflow_service.py.
+const EXECUTABLE_NODE_TYPES = new Set(["trigger", "action", "wait"]);
 
 const validateWorkflowStructure = (nodes: Node[], edges: Edge[]): ValidationError[] => {
   const errors: ValidationError[] = [];

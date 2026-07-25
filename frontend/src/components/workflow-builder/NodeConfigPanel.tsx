@@ -4,8 +4,42 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { Node } from "@xyflow/react";
 import { X, Trash2, ChevronDown, Plus, Database, Copy, Check, ExternalLink, Code } from "lucide-react";
 import { FieldPicker, InlineFieldPicker } from "./FieldPicker";
-import { api } from "@/lib/api";
+import { api, CRMAttribute, CRMObject } from "@/lib/api";
 import { HelpTooltip } from "@/components/ui/tooltip";
+import { FieldEditor } from "@/components/fields/FieldRenderer";
+
+// Trigger ids saved by older builds used underscores where the registry uses dots.
+const TRIGGER_ID_ALIASES: Record<string, string> = {
+  record_created: "record.created",
+  record_updated: "record.updated",
+  record_deleted: "record.deleted",
+  field_changed: "field.changed",
+  stage_changed: "stage.changed",
+  status_changed: "status.changed",
+  list_entry_added: "list_entry.added",
+  list_entry_removed: "list_entry.removed",
+  form_submitted: "form.submitted",
+  schedule_daily: "schedule.daily",
+  schedule_weekly: "schedule.weekly",
+  date_approaching: "date.approaching",
+  date_passed: "date.passed",
+};
+
+const WEEKDAYS = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
+
+// Schedules run in the builder user's own time — no timezone picker to get wrong.
+const deviceTimezone =
+  typeof Intl !== "undefined"
+    ? Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
+    : "UTC";
 
 interface FieldSchema {
   path: string;
@@ -29,6 +63,8 @@ interface NodeConfigPanelProps {
   node: Node;
   workspaceId: string;
   automationId: string;
+  /** The trigger's CRM object — lets pickers show real fields before first save */
+  triggerObjectId?: string;
   module: string;
   onUpdate: (data: Record<string, unknown>) => void;
   onDelete: () => void;
@@ -202,6 +238,7 @@ export function NodeConfigPanel({
   node,
   workspaceId,
   automationId,
+  triggerObjectId,
   module = "crm",
   onUpdate,
   onDelete,
@@ -230,9 +267,28 @@ export function NodeConfigPanel({
   const [moduleObjects, setModuleObjects] = useState<Array<{ id: string; name: string; slug: string }>>([]);
   const [objectsLoading, setObjectsLoading] = useState(false);
 
+  // create_record's own target object, for the additional-fields picker
+  // (separate from the trigger's own fieldSchema fetch above, which is
+  // keyed to the trigger's object, not this action's).
+  const [targetObject, setTargetObject] = useState<CRMObject | null>(null);
+
   // Projects for task creation
   const [projects, setProjects] = useState<Array<{ id: string; name: string; slug: string }>>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
+
+  // CRM sequences for membership actions. A picker prevents users from having
+  // to discover and paste an internal sequence identifier.
+  const [sequences, setSequences] = useState<Array<{ id: string; name: string; status: string }>>([]);
+  const [sequencesLoading, setSequencesLoading] = useState(false);
+
+  // Options for the list / stage trigger pickers.
+  const [crmLists, setCrmLists] = useState<Array<{ id: string; name: string }>>([]);
+  const [pipelineStages, setPipelineStages] = useState<Array<{ key: string; name: string }>>([]);
+
+  // Slack channels for the send-Slack picker, so a channel can be chosen by
+  // name instead of hunting for its ID inside Slack.
+  const [slackChannels, setSlackChannels] = useState<Array<{ id: string; name: string; is_private: boolean }>>([]);
+  const [slackChannelsLoading, setSlackChannelsLoading] = useState(false);
 
   const triggerType = node.data.trigger_type as string;
   const actionType = node.data.action_type as string;
@@ -240,7 +296,7 @@ export function NodeConfigPanel({
   // Fetch projects when action is create_task
   useEffect(() => {
     async function fetchProjects() {
-      if (!workspaceId || actionType !== "create_task") return;
+      if (!workspaceId || actionType !== "create_task" || module === "crm") return;
 
       setProjectsLoading(true);
       try {
@@ -254,6 +310,48 @@ export function NodeConfigPanel({
     }
 
     fetchProjects();
+  }, [workspaceId, actionType, module]);
+
+  useEffect(() => {
+    async function fetchSequences() {
+      if (!workspaceId || !["enroll_in_sequence", "enroll_sequence", "remove_from_sequence", "unenroll_sequence"].includes(actionType)) return;
+
+      setSequencesLoading(true);
+      try {
+        const response = await api.get(`/workspaces/${workspaceId}/gtm/sequences`, {
+          params: { per_page: 100 },
+        });
+        setSequences(response.data?.items || []);
+      } catch (error) {
+        console.error("Failed to fetch CRM sequences:", error);
+      } finally {
+        setSequencesLoading(false);
+      }
+    }
+
+    fetchSequences();
+  }, [workspaceId, actionType]);
+
+  useEffect(() => {
+    async function fetchSlackChannels() {
+      if (!workspaceId || actionType !== "send_slack") return;
+
+      setSlackChannelsLoading(true);
+      try {
+        const integration = await api.get(`/slack/integration/org/${workspaceId}`);
+        const integrationId = integration.data?.id;
+        if (!integrationId) return;
+
+        const response = await api.get(`/slack/integration/${integrationId}/channels`);
+        setSlackChannels(response.data?.channels || []);
+      } catch (error) {
+        console.error("Failed to fetch Slack channels:", error);
+      } finally {
+        setSlackChannelsLoading(false);
+      }
+    }
+
+    fetchSlackChannels();
   }, [workspaceId, actionType]);
 
   // Fetch objects based on module - module-aware object loading
@@ -356,6 +454,52 @@ export function NodeConfigPanel({
   // Re-fetch when object_id changes to get the correct fields
   const selectedObjectId = node.data.object_id as string | undefined;
 
+  // Trigger ids are dotted ("field.changed"); nodes saved by older builds used
+  // underscores. Normalise so one branch handles both.
+  const trig = TRIGGER_ID_ALIASES[triggerType] ?? triggerType;
+
+  // Watched fields accept one value or many — always work with a list.
+  const watchedFields = useMemo(() => {
+    const raw = node.data.fields ?? node.data.field_slug ?? node.data.field;
+    if (Array.isArray(raw)) return raw.map(String).filter(Boolean);
+    return raw ? [String(raw)] : [];
+  }, [node.data.fields, node.data.field_slug, node.data.field]);
+
+  const toggleField = (slug: string) =>
+    watchedFields.includes(slug)
+      ? watchedFields.filter((f) => f !== slug)
+      : [...watchedFields, slug];
+
+  // Lists and pipeline stages for the trigger pickers.
+  useEffect(() => {
+    if (!workspaceId) return;
+    if (!["list_entry.added", "list_entry.removed", "stage.changed"].includes(trig)) return;
+
+    async function fetchTriggerOptions() {
+      try {
+        if (trig === "stage.changed") {
+          const { data } = await api.get(`/workspaces/${workspaceId}/crm/pipelines`, {
+            params: selectedObjectId ? { object_id: selectedObjectId } : undefined,
+          });
+          const pipelines = Array.isArray(data) ? data : [];
+          const stages = pipelines.flatMap((p: { stages?: Array<{ value_key: string; name: string }> }) =>
+            (p.stages || []).map((s) => ({ key: s.value_key, name: s.name }))
+          );
+          // Same stage key can appear in several pipelines; show each once.
+          const seen = new Set<string>();
+          setPipelineStages(stages.filter((s) => !seen.has(s.key) && seen.add(s.key)));
+        } else {
+          const { data } = await api.get(`/workspaces/${workspaceId}/crm/lists`);
+          setCrmLists(Array.isArray(data) ? data : data?.lists || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch trigger options:", error);
+      }
+    }
+
+    fetchTriggerOptions();
+  }, [workspaceId, trig, selectedObjectId]);
+
   useEffect(() => {
     async function fetchFieldSchema() {
       if (!workspaceId) return;
@@ -403,6 +547,53 @@ export function NodeConfigPanel({
 
     fetchFieldSchema();
   }, [workspaceId, automationId, selectedObjectId]);
+
+  // Attributes for create_record's own target object — same object-fetch
+  // call the fieldSchema effect above makes, just keyed to a different id
+  // (the action's target object, not the trigger's).
+  const createRecordTargetObjectId = node.data.target_object_id as string | undefined;
+  useEffect(() => {
+    if (actionType !== "create_record" || !workspaceId || !createRecordTargetObjectId) {
+      setTargetObject(null);
+      return;
+    }
+
+    let cancelled = false;
+    async function fetchTargetObject() {
+      try {
+        const response = await api.get(
+          `/workspaces/${workspaceId}/crm/objects/${createRecordTargetObjectId}`
+        );
+        if (!cancelled) setTargetObject(response.data || null);
+      } catch (error) {
+        console.error("Failed to fetch target object:", error);
+        if (!cancelled) setTargetObject(null);
+      }
+    }
+
+    fetchTargetObject();
+    return () => {
+      cancelled = true;
+    };
+  }, [actionType, workspaceId, createRecordTargetObjectId]);
+
+  // Same primary-attribute-or-first-text-attribute resolution the backend
+  // uses for the Record Name field — excluded from the additional-fields
+  // picker below so the same field can't be set from two controls at once.
+  const createRecordNameSlug = useMemo(() => {
+    if (!targetObject) return null;
+    const byPrimary = targetObject.attributes?.find(
+      (attr) => attr.id === targetObject.primary_attribute_id
+    );
+    if (byPrimary) return byPrimary.slug;
+    const firstText = targetObject.attributes?.find((attr) => attr.attribute_type === "text");
+    return firstText?.slug ?? null;
+  }, [targetObject]);
+
+  const createRecordExtraFieldSlugs = useMemo(
+    () => Object.keys((node.data.values as Record<string, unknown>) || {}),
+    [node.data.values]
+  );
 
   // Helper to get field info by path
   const getFieldByPath = useMemo(() => {
@@ -522,20 +713,30 @@ export function NodeConfigPanel({
     // Record-based triggers need an object selector
     // Check if trigger is record-based (needs object selector)
     // This includes CRM record triggers, ticket triggers, candidate triggers, etc.
+    // Matched on the normalised id so dotted and underscored nodes behave alike.
+    // Stage and date triggers belong here too: the date runner skips any
+    // automation with no object, and the stage picker needs one to find stages.
     const isRecordTrigger =
-      // CRM record triggers
-      ["record_created", "record_updated", "record_deleted", "field_changed", "status_changed"].includes(triggerType) ||
-      triggerType?.startsWith("record.") ||
+      [
+        "record.created",
+        "record.updated",
+        "record.deleted",
+        "field.changed",
+        "status.changed",
+        "stage.changed",
+        "date.approaching",
+        "date.passed",
+        "form.submitted",
+      ].includes(trig) ||
+      trig?.startsWith("record.") ||
       // Ticket triggers
-      triggerType?.startsWith("ticket.") ||
+      trig?.startsWith("ticket.") ||
       // Hiring triggers
-      triggerType?.startsWith("candidate.") ||
+      trig?.startsWith("candidate.") ||
       // Sprint triggers
-      triggerType?.startsWith("task.") ||
+      trig?.startsWith("task.") ||
       // Booking triggers
-      triggerType?.startsWith("booking.") ||
-      // Form triggers
-      triggerType === "form.submitted" || triggerType === "form_submitted";
+      trig?.startsWith("booking.");
 
     return (
       <div className="space-y-4">
@@ -568,33 +769,196 @@ export function NodeConfigPanel({
           </div>
         )}
 
-        {triggerType === "field_changed" && (
+        {trig === "field.changed" && (
           <div>
-            <label className="block text-sm text-muted-foreground mb-1">Field to Watch</label>
+            <label className="block text-sm text-muted-foreground mb-1">
+              Fields to Watch
+            </label>
             {selectedObjectId ? (
+              <div className="max-h-56 overflow-y-auto rounded-lg border border-border bg-accent p-2 space-y-1">
+                {fieldSchema.record?.fields
+                  ?.filter((f) => f.path.startsWith("record.values."))
+                  .map((field) => {
+                    const slug = field.path.replace("record.values.", "");
+                    return (
+                      <label
+                        key={field.path}
+                        className="flex items-center gap-2 text-sm text-foreground cursor-pointer px-1 py-0.5 rounded hover:bg-muted"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={watchedFields.includes(slug)}
+                          onChange={() => onUpdate({ fields: toggleField(slug) })}
+                        />
+                        {field.name}
+                      </label>
+                    );
+                  })}
+              </div>
+            ) : (
+              <input
+                type="text"
+                value={watchedFields.join(", ")}
+                onChange={(e) =>
+                  onUpdate({
+                    fields: e.target.value
+                      .split(",")
+                      .map((s) => s.trim())
+                      .filter(Boolean),
+                  })
+                }
+                placeholder="e.g., status, amount (select object type first)"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
+              />
+            )}
+            <p className="text-xs text-muted-foreground mt-1">
+              {watchedFields.length === 0
+                ? "Nothing selected — fires on any field change."
+                : `Fires only when ${watchedFields.join(", ")} change${
+                    watchedFields.length === 1 ? "s" : ""
+                  }.`}
+            </p>
+          </div>
+        )}
+
+        {(trig === "list_entry.added" || trig === "list_entry.removed") && (
+          <div>
+            <label className="block text-sm text-muted-foreground mb-1">List</label>
+            <select
+              value={(node.data.list_id as string) || ""}
+              onChange={(e) => onUpdate({ list_id: e.target.value })}
+              className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
+            >
+              <option value="">Any list</option>
+              {crmLists.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground mt-1">
+              {node.data.list_id
+                ? "Fires only for this list."
+                : "No list chosen — fires for every list."}
+            </p>
+          </div>
+        )}
+
+        {trig === "stage.changed" && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm text-muted-foreground mb-1">From Stage</label>
               <select
-                value={(node.data.field_slug as string) || ""}
-                onChange={(e) => onUpdate({ field_slug: e.target.value })}
+                value={(node.data.from_stage as string) || ""}
+                onChange={(e) => onUpdate({ from_stage: e.target.value })}
                 className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               >
-                <option value="">Select field...</option>
+                <option value="">Any stage</option>
+                {pipelineStages.map((s) => (
+                  <option key={`from-${s.key}`} value={s.key}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm text-muted-foreground mb-1">To Stage</label>
+              <select
+                value={(node.data.to_stage as string) || ""}
+                onChange={(e) => onUpdate({ to_stage: e.target.value })}
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
+              >
+                <option value="">Any stage</option>
+                {pipelineStages.map((s) => (
+                  <option key={`to-${s.key}`} value={s.key}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Leave either as "Any stage" to ignore that side of the move.
+            </p>
+          </div>
+        )}
+
+        {(trig === "schedule.daily" || trig === "schedule.weekly") && (
+          <div className="space-y-4">
+            {trig === "schedule.weekly" && (
+              <div>
+                <label className="block text-sm text-muted-foreground mb-1">Day</label>
+                <select
+                  value={String(node.data.weekday ?? 0)}
+                  onChange={(e) => onUpdate({ weekday: Number(e.target.value) })}
+                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
+                >
+                  {WEEKDAYS.map((day, i) => (
+                    <option key={day} value={i}>
+                      {day}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div>
+              <label className="block text-sm text-muted-foreground mb-1">Time</label>
+              <input
+                type="time"
+                value={(node.data.time as string) || ""}
+                onChange={(e) =>
+                  onUpdate({ time: e.target.value, timezone: deviceTimezone })
+                }
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Hour and minute, in your device's time ({deviceTimezone}).
+              </p>
+            </div>
+          </div>
+        )}
+
+        {(trig === "date.approaching" || trig === "date.passed") && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm text-muted-foreground mb-1">Date Field</label>
+              <select
+                value={(node.data.attributeSlug as string) || ""}
+                onChange={(e) => onUpdate({ attributeSlug: e.target.value })}
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
+              >
+                <option value="">Select a date field...</option>
                 {fieldSchema.record?.fields
                   ?.filter((f) => f.path.startsWith("record.values."))
                   .map((field) => (
-                    <option key={field.path} value={field.path.replace("record.values.", "")}>
+                    <option
+                      key={field.path}
+                      value={field.path.replace("record.values.", "")}
+                    >
                       {field.name}
                     </option>
                   ))}
               </select>
-            ) : (
-              <input
-                type="text"
-                value={(node.data.field_slug as string) || ""}
-                onChange={(e) => onUpdate({ field_slug: e.target.value })}
-                placeholder="e.g., status (select object type first)"
-                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
-              />
+            </div>
+            {trig === "date.approaching" && (
+              <div>
+                <label className="block text-sm text-muted-foreground mb-1">
+                  Days Before
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  value={String(node.data.offsetDays ?? 0)}
+                  onChange={(e) => onUpdate({ offsetDays: Number(e.target.value) })}
+                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Fires when the date is exactly this many days away. 0 = on the day.
+                </p>
+              </div>
             )}
+            <p className="text-xs text-muted-foreground">
+              Checked every minute; each record fires at most once a day.
+            </p>
           </div>
         )}
 
@@ -746,6 +1110,7 @@ export function NodeConfigPanel({
                 <InlineFieldPicker
                   workspaceId={workspaceId}
                   automationId={automationId}
+                  objectId={triggerObjectId}
                   nodeId={node.id}
                   onInsert={(value) => insertAtCursor(emailBodyRef, value, "email_body")}
                 />
@@ -781,6 +1146,7 @@ export function NodeConfigPanel({
               <InlineFieldPicker
                 workspaceId={workspaceId}
                 automationId={automationId}
+                objectId={triggerObjectId}
                 nodeId={node.id}
                 onInsert={(value) => insertAtCursor(messageTemplateRef, value, "message_template")}
               />
@@ -820,17 +1186,41 @@ export function NodeConfigPanel({
             {/* Channel Config */}
             {((node.data.slack_target_type as string) || "channel") === "channel" && (
               <div>
-                <label className="block text-sm text-muted-foreground mb-1">Channel ID</label>
-                <input
-                  type="text"
-                  value={(node.data.channel as string) || ""}
-                  onChange={(e) => onUpdate({ channel: e.target.value })}
-                  placeholder="C1234567890"
-                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Find Channel ID in Slack: right-click channel → View channel details → scroll to bottom
-                </p>
+                <label className="block text-sm text-muted-foreground mb-1">Channel</label>
+                {slackChannels.length > 0 ? (
+                  <>
+                    <select
+                      value={(node.data.channel as string) || ""}
+                      onChange={(e) => onUpdate({ channel: e.target.value })}
+                      className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
+                    >
+                      <option value="">Select a channel...</option>
+                      {slackChannels.map((channel) => (
+                        <option key={channel.id} value={channel.id}>
+                          {channel.is_private ? "🔒" : "#"} {channel.name}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      The Aexy app must be in the channel to post there. Invite it with /invite @Aexy.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <input
+                      type="text"
+                      value={(node.data.channel as string) || ""}
+                      onChange={(e) => onUpdate({ channel: e.target.value })}
+                      placeholder="C1234567890"
+                      className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {slackChannelsLoading
+                        ? "Loading channels from Slack..."
+                        : "Could not load channels — connect Slack in Settings → Integrations, or paste a channel ID (right-click channel → View channel details)."}
+                    </p>
+                  </>
+                )}
               </div>
             )}
 
@@ -895,6 +1285,7 @@ export function NodeConfigPanel({
                 <InlineFieldPicker
                   workspaceId={workspaceId}
                   automationId={automationId}
+                  objectId={triggerObjectId}
                   nodeId={node.id}
                   onInsert={(value) => insertAtCursor(messageTemplateRef, value, "message_template")}
                 />
@@ -943,6 +1334,7 @@ export function NodeConfigPanel({
                 <InlineFieldPicker
                   workspaceId={workspaceId}
                   automationId={automationId}
+                  objectId={triggerObjectId}
                   nodeId={node.id}
                   onInsert={(value) => insertAtCursor(webhookBodyRef, value, "body_template")}
                 />
@@ -966,6 +1358,7 @@ export function NodeConfigPanel({
               <FieldPicker
                 workspaceId={workspaceId}
                 automationId={automationId}
+                objectId={triggerObjectId}
                 nodeId={node.id}
                 value={(node.data.update_field as string) || ""}
                 onChange={(value) => {
@@ -1038,30 +1431,114 @@ export function NodeConfigPanel({
                 Link to triggering record
               </label>
             </div>
+
+            {createRecordTargetObjectId && (
+              <div>
+                <label className="block text-sm text-muted-foreground mb-1">
+                  Additional fields
+                </label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Set literal values on the new record. Doesn&apos;t support
+                  referencing the triggering record&apos;s fields yet — only
+                  Record Name does.
+                </p>
+
+                {createRecordExtraFieldSlugs.length > 0 && (
+                  <div className="space-y-2 mb-2">
+                    {createRecordExtraFieldSlugs.map((slug) => {
+                      const attribute = targetObject?.attributes?.find((a) => a.slug === slug);
+                      if (!attribute) return null;
+                      const values = (node.data.values as Record<string, unknown>) || {};
+                      return (
+                        <div key={slug} className="flex items-start gap-2">
+                          <div className="flex-1">
+                            <label className="block text-[11px] text-muted-foreground mb-1">
+                              {attribute.name}
+                            </label>
+                            <FieldEditor
+                              attribute={attribute}
+                              value={values[slug]}
+                              onChange={(value) =>
+                                onUpdate({ values: { ...values, [slug]: value } })
+                              }
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = { ...values };
+                              delete next[slug];
+                              onUpdate({ values: next });
+                            }}
+                            className="mt-6 p-1.5 text-muted-foreground hover:text-red-400 rounded transition-colors"
+                            title="Remove field"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {(() => {
+                  const available = (targetObject?.attributes || []).filter(
+                    (attr) =>
+                      attr.slug !== createRecordNameSlug &&
+                      !createRecordExtraFieldSlugs.includes(attr.slug)
+                  );
+                  if (available.length === 0) return null;
+                  return (
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        const slug = e.target.value;
+                        if (!slug) return;
+                        const values = (node.data.values as Record<string, unknown>) || {};
+                        onUpdate({ values: { ...values, [slug]: "" } });
+                      }}
+                      className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
+                    >
+                      <option value="">+ Add a field...</option>
+                      {available.map((attr) => (
+                        <option key={attr.id} value={attr.slug}>
+                          {attr.name}
+                        </option>
+                      ))}
+                    </select>
+                  );
+                })()}
+              </div>
+            )}
           </>
         )}
 
         {actionType === "create_task" && (
           <>
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1">Project</label>
-              <select
-                value={(node.data.project_id as string) || ""}
-                onChange={(e) => onUpdate({ project_id: e.target.value || null })}
-                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
-                disabled={projectsLoading}
-              >
-                <option value="">Workspace Backlog (No Project)</option>
-                {projects.map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.name}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-muted-foreground mt-1">
-                {projectsLoading ? "Loading projects..." : "Select a project for this task"}
-              </p>
-            </div>
+            {/* Project belongs to the engineering module's planning model
+                (project -> team -> sprint). A CRM follow-up has no such
+                context, so it is offered only outside CRM. */}
+            {module !== "crm" && (
+              <div>
+                <label className="block text-sm text-muted-foreground mb-1">Project</label>
+                <select
+                  value={(node.data.project_id as string) || ""}
+                  onChange={(e) => onUpdate({ project_id: e.target.value || null })}
+                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
+                  disabled={projectsLoading}
+                >
+                  <option value="">Workspace Backlog (No Project)</option>
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {projectsLoading ? "Loading projects..." : "Select a project for this task"}
+                </p>
+              </div>
+            )}
             <div>
               <label className="block text-sm text-muted-foreground mb-1">Task Title</label>
               <input
@@ -1087,9 +1564,12 @@ export function NodeConfigPanel({
               <div className="flex gap-2">
                 <input
                   type="number"
-                  min="1"
-                  value={(node.data.due_in_value as number) || 1}
-                  onChange={(e) => onUpdate({ due_in_value: parseInt(e.target.value) || 1 })}
+                  min="0"
+                  value={(node.data.due_in_value as number) ?? 1}
+                  onChange={(e) => {
+                    const parsed = parseInt(e.target.value);
+                    onUpdate({ due_in_value: Number.isNaN(parsed) ? 0 : Math.max(0, parsed) });
+                  }}
                   className="flex-1 bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
                 />
                 <select
@@ -1097,6 +1577,7 @@ export function NodeConfigPanel({
                   onChange={(e) => onUpdate({ due_in_unit: e.target.value })}
                   className="flex-1 bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
                 >
+                  <option value="minutes">Minutes</option>
                   <option value="hours">Hours</option>
                   <option value="days">Days</option>
                   <option value="weeks">Weeks</option>
@@ -1249,8 +1730,6 @@ export function NodeConfigPanel({
               >
                 <option value="specific">Specific User</option>
                 <option value="field">From Record Field</option>
-                <option value="round_robin">Round Robin</option>
-                <option value="least_busy">Least Busy</option>
               </select>
             </div>
             {(node.data.assign_type as string) === "specific" && (
@@ -1271,41 +1750,12 @@ export function NodeConfigPanel({
                 <FieldPicker
                   workspaceId={workspaceId}
                   automationId={automationId}
+                  objectId={triggerObjectId}
                   nodeId={node.id}
                   value={(node.data.owner_field as string) || ""}
                   onChange={(value) => onUpdate({ owner_field: value })}
                   placeholder="Select field containing owner..."
                 />
-              </div>
-            )}
-            {(node.data.assign_type as string) === "round_robin" && (
-              <div>
-                <label className="block text-sm text-muted-foreground mb-1">Team Members</label>
-                <textarea
-                  value={(node.data.team_emails as string) || ""}
-                  onChange={(e) => onUpdate({ team_emails: e.target.value })}
-                  placeholder="user1@company.com&#10;user2@company.com&#10;user3@company.com"
-                  rows={3}
-                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  One email per line. Assignments rotate evenly.
-                </p>
-              </div>
-            )}
-            {(node.data.assign_type as string) === "least_busy" && (
-              <div>
-                <label className="block text-sm text-muted-foreground mb-1">Team Members</label>
-                <textarea
-                  value={(node.data.team_emails as string) || ""}
-                  onChange={(e) => onUpdate({ team_emails: e.target.value })}
-                  placeholder="user1@company.com&#10;user2@company.com&#10;user3@company.com"
-                  rows={3}
-                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Assigns to the team member with fewest open records.
-                </p>
               </div>
             )}
           </>
@@ -1351,23 +1801,17 @@ export function NodeConfigPanel({
           <>
             <div>
               <label className="block text-sm text-muted-foreground mb-1">Sequence</label>
-              <input
-                type="text"
+              <select
                 value={(node.data.sequence_id as string) || ""}
                 onChange={(e) => onUpdate({ sequence_id: e.target.value })}
-                placeholder="Enter sequence ID"
                 className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1">Start At Step</label>
-              <input
-                type="number"
-                min="1"
-                value={(node.data.start_step as number) || 1}
-                onChange={(e) => onUpdate({ start_step: parseInt(e.target.value) || 1 })}
-                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
-              />
+                disabled={sequencesLoading}
+              >
+                <option value="">{sequencesLoading ? "Loading sequences..." : "Choose a sequence"}</option>
+                {sequences.filter((sequence) => sequence.status === "active").map((sequence) => (
+                  <option key={sequence.id} value={sequence.id}>{sequence.name}</option>
+                ))}
+              </select>
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -1388,15 +1832,19 @@ export function NodeConfigPanel({
           <>
             <div>
               <label className="block text-sm text-muted-foreground mb-1">Sequence</label>
-              <input
-                type="text"
+              <select
                 value={(node.data.sequence_id as string) || ""}
                 onChange={(e) => onUpdate({ sequence_id: e.target.value })}
-                placeholder="Enter sequence ID (leave empty for all)"
                 className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
-              />
+                disabled={sequencesLoading}
+              >
+                <option value="">{sequencesLoading ? "Loading sequences..." : "Choose a sequence"}</option>
+                {sequences.map((sequence) => (
+                  <option key={sequence.id} value={sequence.id}>{sequence.name}</option>
+                ))}
+              </select>
               <p className="text-xs text-muted-foreground mt-1">
-                Leave empty to remove from all active sequences
+                The record will be removed from this active sequence
               </p>
             </div>
           </>
@@ -1490,6 +1938,7 @@ export function NodeConfigPanel({
               <FieldPicker
                 workspaceId={workspaceId}
                 automationId={automationId}
+                objectId={triggerObjectId}
                 nodeId={node.id}
                 value={(node.data.result_field as string) || ""}
                 onChange={(value) => {
@@ -1545,6 +1994,7 @@ export function NodeConfigPanel({
               <FieldPicker
                 workspaceId={workspaceId}
                 automationId={automationId}
+                objectId={triggerObjectId}
                 nodeId={node.id}
                 value={(node.data.summary_field as string) || ""}
                 onChange={(value) => {
@@ -1562,7 +2012,7 @@ export function NodeConfigPanel({
           <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
             <p className="text-sm text-red-400 font-medium mb-1">Warning</p>
             <p className="text-xs text-muted-foreground">
-              This action will permanently delete the record. This cannot be undone.
+              This action archives the record. It disappears from normal CRM views but can be restored later.
             </p>
             <div className="flex items-center gap-2 mt-3">
               <input
@@ -1573,7 +2023,7 @@ export function NodeConfigPanel({
                 className="rounded bg-accent border-border"
               />
               <label htmlFor="confirm-delete" className="text-sm text-foreground">
-                I understand this will delete records
+                I understand this will archive records
               </label>
             </div>
           </div>
@@ -1583,6 +2033,11 @@ export function NodeConfigPanel({
           <>
             <div>
               <label className="block text-sm text-muted-foreground mb-1">Link To</label>
+              {/* One resolved mode drives both the dropdown and the inputs
+                  below. Reading the raw stored value in the conditionals meant
+                  a fresh node displayed "Record from Field Value" but rendered
+                  no field picker (nothing stored yet), and then executed in
+                  the other mode. */}
               <select
                 value={(node.data.link_type as string) || "field"}
                 onChange={(e) => onUpdate({ link_type: e.target.value })}
@@ -1590,15 +2045,15 @@ export function NodeConfigPanel({
               >
                 <option value="field">Record from Field Value</option>
                 <option value="specific">Specific Record</option>
-                <option value="created">Newly Created Record (from previous step)</option>
               </select>
             </div>
-            {(node.data.link_type as string) === "field" && (
+            {((node.data.link_type as string) || "field") === "field" && (
               <div>
                 <label className="block text-sm text-muted-foreground mb-1">Record ID Field</label>
                 <FieldPicker
                   workspaceId={workspaceId}
                   automationId={automationId}
+                  objectId={triggerObjectId}
                   nodeId={node.id}
                   value={(node.data.link_field as string) || ""}
                   onChange={(value) => onUpdate({ link_field: value })}
@@ -1606,16 +2061,19 @@ export function NodeConfigPanel({
                 />
               </div>
             )}
-            {(node.data.link_type as string) === "specific" && (
+            {((node.data.link_type as string) || "field") === "specific" && (
               <div>
                 <label className="block text-sm text-muted-foreground mb-1">Record ID</label>
-                <input
-                  type="text"
-                  value={(node.data.link_record_id as string) || ""}
-                  onChange={(e) => onUpdate({ link_record_id: e.target.value })}
-                  placeholder="Enter record ID"
-                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
-                />
+              <input
+                type="text"
+                value={(node.data.link_record_id as string) || ""}
+                onChange={(e) => onUpdate({ link_record_id: e.target.value })}
+                placeholder="Paste the target record ID from its CRM page URL"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Open the record you want to link and copy the final ID from its browser address.
+              </p>
               </div>
             )}
             <div>
@@ -1712,6 +2170,7 @@ export function NodeConfigPanel({
                 <InlineFieldPicker
                   workspaceId={workspaceId}
                   automationId={automationId}
+                  objectId={triggerObjectId}
                   nodeId={node.id}
                   onInsert={(value) => insertAtCursor(webhookBodyRef, value, "api_body")}
                 />
@@ -1794,6 +2253,7 @@ export function NodeConfigPanel({
                   <FieldPicker
                     workspaceId={workspaceId}
                     automationId={automationId}
+                    objectId={triggerObjectId}
                     nodeId={node.id}
                     value={condition.field}
                     onChange={(value) => {
@@ -1916,9 +2376,9 @@ export function NodeConfigPanel({
             onChange={(e) => onUpdate({ wait_type: e.target.value })}
             className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
           >
+            {/* Only Duration is wired end-to-end for live triggers. Until-Date
+                and Until-Event are hidden until they execute durably too. */}
             <option value="duration">Duration</option>
-            <option value="datetime">Until Date/Time</option>
-            <option value="event">Until Event</option>
           </select>
         </div>
 
@@ -1941,6 +2401,7 @@ export function NodeConfigPanel({
                 onChange={(e) => onUpdate({ duration_unit: e.target.value })}
                 className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               >
+                <option value="seconds">Seconds</option>
                 <option value="minutes">Minutes</option>
                 <option value="hours">Hours</option>
                 <option value="days">Days</option>
@@ -2241,6 +2702,7 @@ export function NodeConfigPanel({
               <FieldPicker
                 workspaceId={workspaceId}
                 automationId={automationId}
+                objectId={triggerObjectId}
                 nodeId={node.id}
                 value={(node.data.score_field as string) || ""}
                 onChange={(value) => {
@@ -2503,6 +2965,7 @@ export function NodeConfigPanel({
             <FieldPicker
               workspaceId={workspaceId}
               automationId={automationId}
+              objectId={triggerObjectId}
               nodeId={node.id}
               value={(node.data.output_field as string) || ""}
               onChange={(value) => {
@@ -2749,6 +3212,58 @@ export function NodeConfigPanel({
 
         {/* Node-specific config */}
         {renderConfigFields()}
+
+        {/* Per-step gate — available on every action step. Saved as flat
+            run_if_* keys, which the publish flattening carries into the
+            executed step's config untouched. */}
+        {node.type === "action" && (
+          <div className="pt-4 border-t border-border space-y-2">
+            <label className="block text-sm text-muted-foreground">
+              Only run if <span className="text-xs">(optional)</span>
+            </label>
+            <FieldPicker
+              workspaceId={workspaceId}
+              automationId={automationId}
+              objectId={triggerObjectId}
+              nodeId={node.id}
+              value={(node.data.run_if_field as string) || ""}
+              onChange={(value) => onUpdate({ run_if_field: value })}
+              placeholder="Any record field..."
+            />
+            {(node.data.run_if_field as string) && (
+              <>
+                <select
+                  value={(node.data.run_if_operator as string) || "equals"}
+                  onChange={(e) => onUpdate({ run_if_operator: e.target.value })}
+                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
+                >
+                  <option value="equals">equals</option>
+                  <option value="not_equals">does not equal</option>
+                  <option value="contains">contains</option>
+                  <option value="is_empty">is empty</option>
+                  <option value="is_not_empty">is not empty</option>
+                  <option value="gt">is greater than</option>
+                  <option value="lt">is less than</option>
+                </select>
+                {!["is_empty", "is_not_empty"].includes(
+                  (node.data.run_if_operator as string) || "equals"
+                ) && (
+                  <input
+                    type="text"
+                    value={(node.data.run_if_value as string) || ""}
+                    onChange={(e) => onUpdate({ run_if_value: e.target.value })}
+                    placeholder="Value to compare against"
+                    className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
+                  />
+                )}
+                <p className="text-xs text-muted-foreground">
+                  When the check fails, this step is skipped and the rest of the
+                  automation still runs.
+                </p>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Delete button */}
         <div className="pt-4 border-t border-border">

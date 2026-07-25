@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useState, useCallback, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
@@ -11,7 +12,6 @@ import { Node, Edge } from "@xyflow/react";
 
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { api, AutomationModule } from "@/lib/api";
-import { getApiErrorMessage } from "@/lib/utils";
 
 // WorkflowCanvas + @xyflow/react together are ~150 KB. Defer the load
 // so the detail page's metadata (name / description / module) renders
@@ -108,7 +108,7 @@ export default function EditAutomationPage() {
           setWorkflow(null);
         }
       } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : "Failed to load automation";
+        const errorMessage = getApiErrorMessage(err, "Failed to load automation");
         setError(errorMessage);
       } finally {
         setIsLoading(false);

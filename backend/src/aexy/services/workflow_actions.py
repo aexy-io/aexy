@@ -28,6 +28,11 @@ from aexy.schemas.workflow import WorkflowExecutionContext, NodeExecutionResult
 class WorkflowActionHandler:
     """Handles execution of workflow action nodes."""
 
+    # Actions that inspect context.is_dry_run themselves and can produce a
+    # useful preview without touching anything outside the database session.
+    # Everything absent from this set is treated as unsafe during a test.
+    DRY_RUN_AWARE_ACTIONS: frozenset[str] = frozenset({"enroll_in_sequence"})
+
     def __init__(self, db: AsyncSession):
         self.db = db
 
@@ -47,6 +52,8 @@ class WorkflowActionHandler:
             "remove_from_list": self._remove_from_list,
             "enroll_sequence": self._enroll_sequence,
             "unenroll_sequence": self._unenroll_sequence,
+            "enroll_in_sequence": self._enroll_in_outreach_sequence,
+            "remove_from_sequence": self._remove_from_outreach_sequence,
             "assign_owner": self._assign_owner,
             # Communication actions
             "send_email": self._send_email,
@@ -108,6 +115,23 @@ class WorkflowActionHandler:
                 node_id="",
                 status="failed",
                 error=f"Unknown action type: {action_type}",
+            )
+
+        # A test run must not reach the outside world. The guard lives here,
+        # at the single dispatch point, rather than in each handler: an action
+        # added later is then safe by default instead of quietly sending,
+        # charging or deleting the first time somebody presses Test.
+        # Reported as "skipped", never "success", so a test can never be read
+        # as evidence that the step actually worked.
+        if context.is_dry_run and action_type not in self.DRY_RUN_AWARE_ACTIONS:
+            return NodeExecutionResult(
+                node_id="",
+                status="skipped",
+                output={
+                    "dry_run": True,
+                    "action_type": action_type,
+                    "message": f"Test run: '{action_type}' was not performed.",
+                },
             )
 
         return await handler(data, context)
@@ -1007,6 +1031,112 @@ class WorkflowActionHandler:
             node_id="",
             status="success",
             output={"sequence_id": sequence_id, "unenrolled": enrollment is not None},
+        )
+
+    async def _enroll_in_outreach_sequence(
+        self, data: dict, context: WorkflowExecutionContext
+    ) -> NodeExecutionResult:
+        """Enroll the triggering CRM record in a GTM outreach sequence."""
+        config = data.get("config") or {}
+        sequence_id = data.get("sequence_id") or config.get("sequence_id")
+        if not sequence_id or not context.record_id:
+            return NodeExecutionResult(
+                node_id="", status="failed", error="Missing sequence ID or record ID",
+            )
+
+        record = (await self.db.execute(
+            select(CRMRecord).where(
+                CRMRecord.id == context.record_id,
+                CRMRecord.workspace_id == context.workspace_id,
+            )
+        )).scalar_one_or_none()
+        email_field = data.get("email_field") or config.get("email_field", "email")
+        email = (record.values or {}).get(email_field) if record else None
+        if not email:
+            return NodeExecutionResult(
+                node_id="", status="failed", error=f"No recipient email found in {email_field}",
+            )
+
+        from aexy.services.outreach_sequence_service import OutreachSequenceService
+
+        if context.is_dry_run:
+            sequence = await OutreachSequenceService(self.db).get_sequence(
+                context.workspace_id, sequence_id,
+            )
+            if not sequence:
+                return NodeExecutionResult(
+                    node_id="", status="failed", error="Selected sequence no longer exists",
+                )
+            if sequence.status != "active":
+                return NodeExecutionResult(
+                    node_id="", status="failed", error="Selected sequence is not active",
+                )
+            return NodeExecutionResult(
+                node_id="", status="success",
+                output={"sequence_id": sequence_id, "would_enroll": True},
+            )
+
+        try:
+            enrollment = await OutreachSequenceService(self.db).enroll_contact(
+                workspace_id=context.workspace_id,
+                sequence_id=sequence_id,
+                record_id=context.record_id,
+                email=str(email),
+                contact_name=record.display_name,
+            )
+        except ValueError as error:
+            if "already enrolled" in str(error).lower():
+                return NodeExecutionResult(
+                    node_id="", status="success",
+                    output={"sequence_id": sequence_id, "already_enrolled": True},
+                )
+            return NodeExecutionResult(node_id="", status="failed", error=str(error))
+
+        return NodeExecutionResult(
+            node_id="", status="success",
+            output={"sequence_id": sequence_id, "enrollment_id": enrollment.id},
+        )
+
+    async def _remove_from_outreach_sequence(
+        self, data: dict, context: WorkflowExecutionContext
+    ) -> NodeExecutionResult:
+        """Remove the triggering record from one active GTM outreach sequence."""
+        config = data.get("config") or {}
+        sequence_id = data.get("sequence_id") or config.get("sequence_id")
+        if not sequence_id or not context.record_id:
+            return NodeExecutionResult(
+                node_id="", status="failed", error="Missing sequence ID or record ID",
+            )
+
+        from aexy.models.gtm_outreach import EnrollmentStatus, OutreachEnrollment
+        from aexy.services.outreach_sequence_service import OutreachSequenceService
+
+        enrollment = (await self.db.execute(
+            select(OutreachEnrollment).where(
+                OutreachEnrollment.workspace_id == context.workspace_id,
+                OutreachEnrollment.sequence_id == sequence_id,
+                OutreachEnrollment.record_id == context.record_id,
+                OutreachEnrollment.status.in_([
+                    EnrollmentStatus.ACTIVE.value, EnrollmentStatus.PAUSED.value,
+                ]),
+            ).limit(1)
+        )).scalar_one_or_none()
+        if not enrollment:
+            return NodeExecutionResult(
+                node_id="", status="success",
+                output={"sequence_id": sequence_id, "unenrolled": False},
+            )
+
+        removed = await OutreachSequenceService(self.db).unenroll_contact(
+            context.workspace_id, enrollment.id, exit_reason="automation",
+        )
+        if not removed:
+            return NodeExecutionResult(
+                node_id="", status="failed", error="Active sequence enrollment was not found",
+            )
+        return NodeExecutionResult(
+            node_id="", status="success",
+            output={"sequence_id": sequence_id, "unenrolled": True},
         )
 
     async def _webhook_call(

@@ -128,6 +128,13 @@ def sync_workflow_to_automation(
     automation.trigger_config = trigger_config
     automation.actions = actions
 
+    # The object chosen on the trigger node must reach the automation row, not
+    # just its config: the date runner skips automations with no object, and the
+    # builder's field picker resolves its schema from this column.
+    chosen_object_id = trigger_config.get("object_id")
+    if chosen_object_id:
+        automation.object_id = chosen_object_id
+
 
 # =============================================================================
 # WORKFLOW DEFINITION ROUTES
@@ -454,6 +461,7 @@ async def execute_workflow(
             record_data=record_data,
             trigger_data=trigger_data,
             variables=data.variables,
+            is_dry_run=True,
         )
 
         executor = WorkflowExecutor(db)

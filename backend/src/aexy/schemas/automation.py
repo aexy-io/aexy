@@ -46,7 +46,8 @@ TRIGGER_REGISTRY: dict[str, list[dict[str, str]]] = {
         {"id": "field.changed", "description": "When a specific field value changes on a record"},
         {"id": "list_entry.added", "description": "When a record is added to a list"},
         {"id": "list_entry.removed", "description": "When a record is removed from a list"},
-        {"id": "status.changed", "description": "When a record status changes"},
+        # status.changed omitted on purpose: nothing emits it, and pipeline
+        # status moves already surface as stage.changed. Re-add with an emitter.
         {"id": "stage.changed", "description": "When a record moves to a different pipeline stage"},
         {"id": "schedule.daily", "description": "When the daily schedule fires"},
         {"id": "schedule.weekly", "description": "When the weekly schedule fires"},
@@ -56,7 +57,8 @@ TRIGGER_REGISTRY: dict[str, list[dict[str, str]]] = {
         {"id": "form.submitted", "description": "When a linked form submission is received"},
         {"id": "email.opened", "description": "When a tracked email is opened by a contact"},
         {"id": "email.clicked", "description": "When a link in a tracked email is clicked"},
-        {"id": "email.replied", "description": "When a contact replies to a tracked email"},
+        # email.replied omitted on purpose: the dispatcher exists but no inbound
+        # mail path calls it, so offering it would build automations that never run.
     ],
     "tickets": [
         {"id": "ticket.created", "description": "When a new support ticket is created"},
@@ -199,6 +201,7 @@ ACTION_REGISTRY: dict[str, list[dict[str, str]]] = {
         {"id": "update_record", "description": "Update fields on an existing CRM record"},
         {"id": "delete_record", "description": "Delete a CRM record"},
         {"id": "link_records", "description": "Link two CRM records together"},
+        {"id": "assign_owner", "description": "Assign a CRM record to a workspace member"},
         {"id": "add_to_list", "description": "Add a record to a CRM list"},
         {"id": "remove_from_list", "description": "Remove a record from a CRM list"},
         {"id": "enroll_in_sequence", "description": "Enroll a contact in an email sequence"},
@@ -290,22 +293,20 @@ ACTION_REGISTRY: dict[str, list[dict[str, str]]] = {
 ENABLED_MODULES: tuple[str, ...] = ("crm",)
 
 HIDDEN_TRIGGERS: frozenset[str] = frozenset({
-    # Unwired CRM triggers: config saves but nothing dispatches them yet.
-    "schedule.daily", "schedule.weekly", "date.approaching", "date.passed",
-    "webhook.received", "email.opened", "email.clicked", "email.replied",
-    # Trim 2026-07-19: nothing emits these, so an automation built on one
-    # never runs and reports no reason why.
-    "list_entry.added",   # no emitter; the list-entry paths don't dispatch
-    "list_entry.removed",  # no emitter
-    "status.changed",     # no CRM emitter (sprint/bug status is unrelated)
-    # Emitted, but announced as belonging to the forms module while the
-    # builder only creates CRM automations, and dispatch matches on module —
-    # so a CRM automation listening for it can never match.
-    "form.submitted",
-    # record.deleted was withheld here on 2026-07-19 pending proof that
-    # deletion actually happens in the product. Confirmed the same day and
-    # un-hidden: both delete routes go through CRMService.delete_record,
-    # which emits, and bulk delete loops through that same method.
+    # schedule.daily/weekly, date.approaching/passed un-hidden 2026-07-23:
+    # the hourly dispatch_crm_schedules runner now fires them.
+    # webhook.received: no inbound endpoint dispatches it yet.
+    "webhook.received",
+    # email.replied: no reply-detection source event exists yet (deferred).
+    "email.replied",
+    # status.changed retired for CRM 2026-07-23: a record's status IS its
+    # pipeline stage, already covered by stage.changed; other categorical
+    # fields are covered by field.changed. No distinct CRM use case.
+    "status.changed",
+    # list_entry.added un-hidden 2026-07-20; list_entry.removed, form.submitted,
+    # email.opened, email.clicked un-hidden 2026-07-23 now that CRMEventService
+    # emits CRM-scoped events for each (routed through process_trigger, which
+    # ignores the module column).
 })
 
 HIDDEN_ACTIONS: frozenset[str] = frozenset({
@@ -316,9 +317,10 @@ HIDDEN_ACTIONS: frozenset[str] = frozenset({
     # Trim 2026-07-19: no case in the published executor, so these fall to
     # its catch-all and are recorded as SUCCESS while doing nothing.
     "send_sms",
-    "delete_record",
-    "link_records",
-    "remove_from_sequence",
+    # Un-hidden 2026-07-24: the 2026-07-19 "falls to the catch-all" claim no
+    # longer holds — process_trigger's dispatch table has real cases for both
+    # (_action_delete_record archives behind a confirm flag, _action_link_records
+    # rejects self/cross-workspace links and dedupes repeats).
     # Hidden 2026-07-19: the config panel writes webhook_url / http_method /
     # body_template, but _action_webhook_call reads url / method and sends a
     # fixed payload, so a builder-configured webhook finds no URL, never
@@ -338,7 +340,6 @@ HIDDEN_ACTIONS: frozenset[str] = frozenset({
     # at something real.
     "add_to_list",
     "remove_from_list",
-    "enroll_in_sequence",
     # Handler exists, but the config panel has no agent picker, so there is
     # no way to choose an agent — the step could only ever fail for want of
     # one. Restore alongside an agent selector.
