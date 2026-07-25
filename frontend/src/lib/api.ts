@@ -7635,9 +7635,13 @@ export interface SlackIntegration {
 }
 
 export const slackApi = {
-  // Get install URL
-  getInstallUrl: (organizationId: string, installerId: string) => {
-    return `${API_BASE_URL}/slack/install?organization_id=${organizationId}&installer_id=${installerId}`;
+  // Create a short-lived OAuth URL through an authenticated API call.
+  createInstallUrl: async (organizationId: string, redirectUrl?: string): Promise<{ install_url: string }> => {
+    const response = await api.post("/slack/install-url", {
+      organization_id: organizationId,
+      ...(redirectUrl ? { redirect_url: redirectUrl } : {}),
+    });
+    return response.data;
   },
 
   // Get integration by organization

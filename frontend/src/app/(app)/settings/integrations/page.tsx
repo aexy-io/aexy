@@ -1,6 +1,7 @@
 "use client";
 
-import { Suspense, useState, useEffect, useCallback } from "react";
+import { getApiErrorMessage } from "@/lib/utils";
+import { Suspense, useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
@@ -82,7 +83,7 @@ function JiraConnectForm({ onConnect, onTest, isConnecting, isTesting }: JiraCon
       await onTest({ site_url: siteUrl, user_email: userEmail, api_token: apiToken });
       setTestSuccess(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Connection test failed");
+      setError(getApiErrorMessage(err, "Connection test failed"));
     }
   };
 
@@ -97,7 +98,7 @@ function JiraConnectForm({ onConnect, onTest, isConnecting, isTesting }: JiraCon
     try {
       await onConnect({ site_url: siteUrl, user_email: userEmail, api_token: apiToken });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Connection failed");
+      setError(getApiErrorMessage(err, "Connection failed"));
     }
   };
 
@@ -224,7 +225,7 @@ function LinearConnectForm({ onConnect, onTest, isConnecting, isTesting }: Linea
       await onTest({ api_key: apiKey });
       setTestSuccess(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Connection test failed");
+      setError(getApiErrorMessage(err, "Connection test failed"));
     }
   };
 
@@ -239,7 +240,7 @@ function LinearConnectForm({ onConnect, onTest, isConnecting, isTesting }: Linea
     try {
       await onConnect({ api_key: apiKey });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Connection failed");
+      setError(getApiErrorMessage(err, "Connection failed"));
     }
   };
 
@@ -595,7 +596,6 @@ function IntegrationsPageContent() {
     integration: slackIntegration,
     isLoading: slackLoading,
     isConnected: slackConnected,
-    getInstallUrl: getSlackInstallUrl,
     disconnect: disconnectSlack,
     update: updateSlack,
     isDisconnecting: isDisconnectingSlack,
@@ -638,6 +638,8 @@ function IntegrationsPageContent() {
   const [selectedSlackChannel, setSelectedSlackChannel] = useState("");
   const [slackImportDays, setSlackImportDays] = useState(30);
   const [defaultChannelId, setDefaultChannelId] = useState<string | null>(null);
+  const [isStartingSlackInstall, setIsStartingSlackInstall] = useState(false);
+  const hasHandledSlackInstall = useRef(false);
 
   // Initialize default channel from integration data
   useEffect(() => {
@@ -646,15 +648,31 @@ function IntegrationsPageContent() {
     }
   }, [slackIntegration?.default_channel_id]);
 
-  // Auto-switch to Slack tab when redirected from OAuth
+  // Show the Slack tab once after OAuth, then remove the one-time callback flag.
   useEffect(() => {
-    if (searchParams.get("slack_installed") === "true") {
-      setActiveTab("slack");
-    }
-  }, [searchParams, setActiveTab]);
+    if (searchParams.get("slack_installed") !== "true" || hasHandledSlackInstall.current) return;
+
+    hasHandledSlackInstall.current = true;
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("slack_installed");
+    params.set("tab", "slack");
+    router.replace(`${pathname}?${params.toString()}`);
+  }, [pathname, router, searchParams]);
 
   const currentMember = workspaceMembers.find((m) => m.developer_id === user?.id);
   const isAdmin = currentMember?.role === "owner" || currentMember?.role === "admin";
+
+  const startSlackInstall = async () => {
+    if (!currentWorkspaceId) return;
+    setIsStartingSlackInstall(true);
+    try {
+      const { install_url } = await slackApi.createInstallUrl(currentWorkspaceId);
+      window.location.assign(install_url);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Could not start the Slack connection"));
+      setIsStartingSlackInstall(false);
+    }
+  };
 
   const isLoading = currentWorkspaceLoading || jiraLoading || linearLoading;
 
@@ -988,13 +1006,15 @@ function IntegrationsPageContent() {
                         Connect your Slack workspace to enable slash commands for standups,
                         task updates, and blocker reporting directly from Slack.
                       </p>
-                      <a
-                        href={getSlackInstallUrl(user.id) || "#"}
+                      <button
+                        type="button"
+                        onClick={startSlackInstall}
+                        disabled={isStartingSlackInstall}
                         className="inline-flex items-center gap-2 px-4 py-2 bg-[#4A154B] hover:bg-[#611f64] text-[#E01E5A] rounded-lg transition font-medium"
                       >
-                        <Slack className="h-5 w-5" />
-                        Add to Slack
-                      </a>
+                        {isStartingSlackInstall ? <Loader2 className="h-5 w-5 animate-spin" /> : <Slack className="h-5 w-5" />}
+                        {isStartingSlackInstall ? "Opening Slack…" : "Add to Slack"}
+                      </button>
                     </div>
                   )}
 

@@ -112,6 +112,7 @@ class TestSlackIntegrationService:
         assert result.team_id == "T12345"
         assert result.team_name == "Test Workspace"
         assert result.is_active is True
+        assert result.organization_id == "00000000-0000-0000-0000-000000000001"
 
     @pytest.mark.asyncio
     async def test_complete_oauth_invalid_code(self, service, db_session):
@@ -151,6 +152,7 @@ class TestSlackIntegrationService:
         integration = await service.get_integration(result.id, db_session)
         assert integration is not None
         assert integration.team_id == "T99999"
+        assert integration.workspace_id == "00000000-0000-0000-0000-000000000001"
 
     # Message Sending Tests
 
