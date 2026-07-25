@@ -127,6 +127,7 @@ const crmItems: SidebarItemConfig[] = [
     { href: "/crm/inbox", label: "Inbox", icon: Inbox },
     { href: "/crm/activities", label: "Activities", icon: Activity },
     { href: "/crm/calendar", label: "Calendar", icon: Calendar },
+    { href: "/crm/sequences", label: "Sequences", icon: Repeat },
 ];
 
 const emailItems: SidebarItemConfig[] = [

@@ -20,6 +20,16 @@ from aexy.services.gtm_compliance_service import GTMComplianceService
 logger = logging.getLogger(__name__)
 
 
+def _validate_active_sequence_steps(steps: list) -> None:
+    """Prevent active sequences from silently sending empty emails."""
+    for index, step in enumerate(steps):
+        if step.get("channel") != "email" or step.get("action") != "send_email":
+            continue
+        config = step.get("config") or {}
+        if not str(config.get("subject", "")).strip() or not str(config.get("html_body", "")).strip():
+            raise ValueError(f"Email step {index + 1} needs both a subject and a message")
+
+
 class OutreachSequenceService:
     """Service for multi-channel outreach sequence operations."""
 
@@ -65,13 +75,18 @@ class OutreachSequenceService:
     ) -> OutreachSequence:
         """Update an existing outreach sequence.
 
-        Only allows updates when sequence is in draft or paused status.
+        Changes apply to future enrollments. Existing enrollment workflows
+        already carry their own saved copy of the sequence steps.
         """
         sequence = await self.get_sequence(workspace_id, sequence_id)
         if not sequence:
             raise ValueError(f"Sequence {sequence_id} not found")
 
-        if sequence.status not in (SequenceStatus.DRAFT.value, SequenceStatus.PAUSED.value):
+        if sequence.status not in (
+            SequenceStatus.DRAFT.value,
+            SequenceStatus.PAUSED.value,
+            SequenceStatus.ACTIVE.value,
+        ):
             raise ValueError(
                 f"Cannot update sequence in {sequence.status} status. "
                 "Pause the sequence first."
@@ -80,6 +95,8 @@ class OutreachSequenceService:
         allowed_fields = {
             "name", "description", "steps", "settings", "channels", "status",
         }
+        if "steps" in kwargs and sequence.status == SequenceStatus.ACTIVE.value:
+            _validate_active_sequence_steps(kwargs["steps"])
         for key, value in kwargs.items():
             if key in allowed_fields:
                 setattr(sequence, key, value)
@@ -175,6 +192,7 @@ class OutreachSequenceService:
 
         if not sequence.steps or len(sequence.steps) == 0:
             raise ValueError("Cannot activate a sequence with no steps.")
+        _validate_active_sequence_steps(sequence.steps)
 
         sequence.status = SequenceStatus.ACTIVE.value
         await self.db.flush()
@@ -279,7 +297,9 @@ class OutreachSequenceService:
 
         # Compliance check
         compliance = GTMComplianceService(self.db)
-        permission = await compliance.check_send_permission(workspace_id, email, record_id)
+        permission = await compliance.check_send_permission(
+            workspace_id, email, record_id, record_decision=False,
+        )
         if not permission.get("allowed"):
             raise ValueError(
                 f"Compliance check failed: {permission.get('reason', 'Unknown reason')}"
@@ -356,6 +376,7 @@ class OutreachSequenceService:
         self,
         workspace_id: str,
         enrollment_id: str,
+        exit_reason: str = "manual_unenroll",
     ) -> bool:
         """Unenroll a contact from a sequence by signaling the Temporal workflow to exit."""
         enrollment = (await self.db.execute(
@@ -388,7 +409,7 @@ class OutreachSequenceService:
                 )
 
         enrollment.status = EnrollmentStatus.EXITED.value
-        enrollment.exit_reason = "manual_unenroll"
+        enrollment.exit_reason = exit_reason
         enrollment.completed_at = datetime.now(timezone.utc)
         await self.db.flush()
         logger.info(f"Unenrolled contact from enrollment {enrollment_id}")

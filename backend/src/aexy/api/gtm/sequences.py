@@ -116,10 +116,14 @@ async def update_sequence(
         kwargs["settings"] = data.settings.model_dump()
     if data.channels is not None:
         kwargs["channels"] = data.channels
-    sequence = await service.update_sequence(workspace_id, sequence_id, **kwargs)
+    try:
+        sequence = await service.update_sequence(workspace_id, sequence_id, **kwargs)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
     if not sequence:
         raise HTTPException(status_code=404, detail="Sequence not found")
     await db.commit()
+    await db.refresh(sequence)
     return sequence
 
 

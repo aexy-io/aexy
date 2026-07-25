@@ -88,6 +88,15 @@ def _seconds_until_send_window(
     return max(delta, 60)  # At least 60s to avoid tight loops
 
 
+def _delay_seconds(step: dict) -> int:
+    """Convert a sequence step's saved delay into one exact timer length."""
+    return (
+        int(step.get("delay_days", 0)) * 86400
+        + int(step.get("delay_hours", 0)) * 3600
+        + int(step.get("delay_minutes", 0)) * 60
+    )
+
+
 def _select_variant(step: dict, enrollment_id: str = "") -> tuple[dict, int | None]:
     """If step has A/B variants, select one deterministically. Returns (config, variant_index).
 
@@ -183,7 +192,7 @@ class OutreachSequenceWorkflow:
                 break
 
             # ---- Handle delay between steps ----
-            delay_seconds = step.get("delay_days", 0) * 86400 + step.get("delay_hours", 0) * 3600
+            delay_seconds = _delay_seconds(step)
             if delay_seconds > 0:
                 try:
                     await workflow.wait_condition(
@@ -256,6 +265,9 @@ class OutreachSequenceWorkflow:
             # Track thread_id from the execution result for reply threading
             if isinstance(result, dict):
                 last_thread_id = result.get("thread_id") or result.get("provider_message_id") or last_thread_id
+                if result.get("status") == "failed":
+                    self._exit_reason = "failed"
+                    break
 
             executed += 1
 
