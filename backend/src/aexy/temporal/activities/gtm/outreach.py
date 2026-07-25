@@ -69,8 +69,52 @@ async def execute_outreach_step(input: ExecuteStepInput) -> dict:
         OutreachStepExecution,
         StepExecutionStatus,
     )
+    from aexy.models.crm import CRMRecord
     from aexy.services.gtm_compliance_service import GTMComplianceService
     from aexy.services.email_campaign_service import EmailCampaignService
+
+    async def resolve_linkedin_profile_url(config: dict) -> tuple[str, str | None]:
+        """Use the saved CRM link, or enrich the record from its email once."""
+        profile_url_field = config.get("profile_url_field", "linkedin")
+        profile_url = config.get("profile_url", "")
+        record = None
+        if not profile_url and enrollment.record_id:
+            record = (await db.execute(
+                select(CRMRecord).where(
+                    CRMRecord.id == enrollment.record_id,
+                    CRMRecord.workspace_id == input.workspace_id,
+                )
+            )).scalar_one_or_none()
+            profile_url = (record.values or {}).get(profile_url_field, "") if record else ""
+
+        if profile_url:
+            return str(profile_url), None
+        if config.get("find_profile_from_email", True) is False:
+            return "", f"No LinkedIn profile link found in CRM field '{profile_url_field}'"
+
+        # The enrichment provider searches by the captured email address and
+        # returns a profile URL when it has a confident match. The URL is
+        # saved back to the CRM record, so later sequence steps do not search
+        # again or spend another enrichment credit.
+        import aexy.integrations.providers.contact_enrichment  # noqa: F401
+        enrichment_provider = await ProviderRegistry.get_provider(
+            db, input.workspace_id, "contact_enrichment",
+        )
+        if not enrichment_provider:
+            return "", "No LinkedIn profile link and no contact-enrichment provider configured"
+
+        enrichment = await enrichment_provider.enrich_by_email(enrollment.email)
+        if not enrichment.success or not enrichment.linkedin_url:
+            reason = enrichment.error or "No matching LinkedIn profile found for this email"
+            return "", reason
+
+        profile_url = enrichment.linkedin_url
+        if record:
+            values = dict(record.values or {})
+            values[profile_url_field] = profile_url
+            record.values = values
+            await db.flush()
+        return profile_url, None
 
     async with async_session_maker() as db:
         # 1. Get enrollment
@@ -161,6 +205,7 @@ async def execute_outreach_step(input: ExecuteStepInput) -> dict:
                     error_message = result.get("error", "Email send failed")
 
             elif input.channel == "linkedin":
+                import aexy.integrations.providers.linkedin_automation  # noqa: F401
                 provider = await ProviderRegistry.get_provider(
                     db, input.workspace_id, "linkedin_automation",
                 )
@@ -169,19 +214,24 @@ async def execute_outreach_step(input: ExecuteStepInput) -> dict:
                     error_message = "No linkedin_automation provider configured"
                 else:
                     config = input.config
-                    if input.action == "linkedin_connect":
+                    profile_url, profile_error = await resolve_linkedin_profile_url(config)
+                    if profile_error:
+                        status = StepExecutionStatus.FAILED.value
+                        error_message = profile_error
+                        result = None
+                    elif input.action == "linkedin_connect":
                         result = await provider.send_connection_request(
-                            linkedin_url=config.get("profile_url", ""),
+                            linkedin_url=profile_url,
                             message=config.get("message", ""),
                         )
                     elif input.action == "linkedin_message":
                         result = await provider.send_message(
-                            linkedin_url=config.get("profile_url", ""),
+                            linkedin_url=profile_url,
                             message=config.get("message", ""),
                         )
                     elif input.action == "linkedin_view":
                         result = await provider.view_profile(
-                            linkedin_url=config.get("profile_url", ""),
+                            linkedin_url=profile_url,
                         )
                     else:
                         status = StepExecutionStatus.FAILED.value

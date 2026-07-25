@@ -426,9 +426,9 @@ async def create_sequence_step(
         sequence_id=sequence_id,
         step_type=data.step_type,
         config=data.config,
-        delay_days=data.delay_days,
-        delay_hours=data.delay_hours,
-        order=data.order,
+        delay_value=data.delay_value,
+        delay_unit=data.delay_unit,
+        position=data.position,
     )
     return step
 
