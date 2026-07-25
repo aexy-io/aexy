@@ -196,14 +196,138 @@ async def drain_automation_email_outbox(
     return result
 
 
+def _is_final_activity_attempt() -> bool:
+    """Whether Temporal will not schedule another attempt after this one fails.
+
+    Outside an activity (unit tests calling the function directly) treat the
+    attempt as final so a single-shot invocation still records a failure.
+    """
+    try:
+        info = activity.info()
+    except RuntimeError:
+        return True
+    policy = info.retry_policy
+    if policy is None:
+        return True
+    # maximum_attempts == 0 means unlimited retries in Temporal.
+    if policy.maximum_attempts == 0:
+        return False
+    return info.attempt >= policy.maximum_attempts
+
+
+def _matching_email_step(
+    steps: list[dict], input: SendWorkflowEmailInput
+) -> dict | None:
+    for step in steps:
+        if (
+            step.get("type") in {"send_email", "notify_user"}
+            and step.get("order") == input.automation_step_order
+        ):
+            return step
+    return None
+
+
+async def _prepare_automation_email_send(
+    db: Any, input: SendWorkflowEmailInput
+) -> str:
+    """Claim the step before contacting the provider, or refuse a re-send.
+
+    Returns one of:
+    - ``none``: not an automation send (or no step); caller may send normally
+    - ``claimed``: step moved queued/failed → sending; safe to contact provider
+    - ``already_sent``: do not send; return success
+    - ``refuse_resend``: prior attempt may have reached the provider; do not send
+    """
+    if not input.automation_run_id:
+        return "none"
+
+    from aexy.models.crm import CRMAutomationRun
+
+    run = await db.get(CRMAutomationRun, input.automation_run_id)
+    if not run:
+        return "none"
+
+    steps = [dict(step) for step in (run.steps_executed or [])]
+    step = _matching_email_step(steps, input)
+    if step is None:
+        return "none"
+
+    status = step.get("status")
+    if status == "sent":
+        return "already_sent"
+    if status in {"sending", "needs_review"}:
+        # A previous attempt claimed the step (and may have delivered) without
+        # a durable terminal write. Re-sending would risk a duplicate email.
+        return "refuse_resend"
+    if status in {"queued", "failed"}:
+        # ``failed`` is claimable so a success after an intermediate failure
+        # write (or a recovered final write path) can still attempt once more
+        # only when Temporal retries; the usual path leaves the step queued
+        # until a terminal outcome.
+        step["status"] = "sending"
+        run.steps_executed = steps
+        return "claimed"
+    return "refuse_resend"
+
+
+async def _release_automation_email_claim(
+    db: Any, input: SendWorkflowEmailInput
+) -> None:
+    """Return a claimed step to queued so a later Temporal attempt can re-send.
+
+    Used only on non-final failures where we did not record a terminal outcome.
+    If the provider actually accepted the message and then we raised, a later
+    attempt may still double-send; the refuse_resend path covers the case where
+    the step stayed ``sending`` (success path that failed while writing back).
+    """
+    if not input.automation_run_id:
+        return
+
+    from aexy.models.crm import CRMAutomationRun
+
+    run = await db.get(CRMAutomationRun, input.automation_run_id)
+    if not run:
+        return
+
+    steps = [dict(step) for step in (run.steps_executed or [])]
+    step = _matching_email_step(steps, input)
+    if step is None or step.get("status") != "sending":
+        return
+    step["status"] = "queued"
+    run.steps_executed = steps
+
+
 @activity.defn
 async def send_workflow_email(input: SendWorkflowEmailInput) -> dict[str, Any]:
-    """Send tracked email from workflow action."""
+    """Send tracked email from workflow action.
+
+    Automation runs are reconciled under Temporal retries without permanently
+    stamping a failure that a later success cannot correct, and without
+    re-contacting the provider when a prior attempt already claimed the step
+    and may have delivered.
+    """
     logger.info(f"Sending workflow email to {input.to_email}")
 
     from aexy.services.email_campaign_service import EmailCampaignService
 
     async with async_session_maker() as db:
+        prep = await _prepare_automation_email_send(db, input)
+        if prep != "none":
+            await db.commit()
+
+        if prep == "already_sent":
+            return {"status": "sent", "to": input.to_email, "deduped": True}
+
+        if prep == "refuse_resend":
+            result = {
+                "status": "needs_review",
+                "reason": "prior_send_attempt_uncertain",
+                "to": input.to_email,
+            }
+            await _record_automation_email_result(db, input, result)
+            await db.commit()
+            return result
+
         service = EmailCampaignService(db)
         try:
             result = await service.send_workflow_email(
@@ -219,16 +343,30 @@ async def send_workflow_email(input: SendWorkflowEmailInput) -> dict[str, Any]:
                 track_clicks=input.track_clicks,
             )
         except Exception as error:
-            try:
-                await _record_automation_email_result(
-                    db,
-                    input,
-                    {"status": "failed", "error": str(error), "to": input.to_email},
-                )
-                await db.commit()
-            except Exception:
-                await db.rollback()
-                logger.exception("Could not record failed workflow email result")
+            if _is_final_activity_attempt():
+                try:
+                    await _record_automation_email_result(
+                        db,
+                        input,
+                        {
+                            "status": "failed",
+                            "error": str(error),
+                            "to": input.to_email,
+                        },
+                    )
+                    await db.commit()
+                except Exception:
+                    await db.rollback()
+                    logger.exception("Could not record failed workflow email result")
+            else:
+                # Keep the step retryable; do not commit a terminal failure that
+                # would block a later success from finalizing the run.
+                try:
+                    await _release_automation_email_claim(db, input)
+                    await db.commit()
+                except Exception:
+                    await db.rollback()
+                    logger.exception("Could not release automation email claim")
             raise
 
         await _record_automation_email_result(db, input, result)
@@ -241,7 +379,14 @@ async def _record_automation_email_result(
     input: SendWorkflowEmailInput,
     result: dict[str, Any],
 ) -> None:
-    """Write the provider's final email outcome back to a CRM automation run."""
+    """Write the provider's final email outcome back to a CRM automation run.
+
+    Step transitions are monotonic for delivery honesty:
+    - ``queued`` / ``sending`` / ``failed`` may become ``sent`` (retry recovered)
+    - ``sent`` never regresses
+    - intermediate Temporal failures should leave the step ``queued`` (see
+      ``send_workflow_email``); a terminal failure may set ``failed``
+    """
     if not input.automation_run_id:
         return
 
@@ -253,68 +398,122 @@ async def _record_automation_email_result(
         return
 
     email_sent = result.get("status") == "sent"
+    needs_review = result.get("status") == "needs_review"
     reason = result.get("reason") or result.get("error")
     steps = [dict(step) for step in (run.steps_executed or [])]
+    prior_run_status = run.status
 
-    for step in steps:
-        if (
-            step.get("type") in {"send_email", "notify_user"}
-            and step.get("order") == input.automation_step_order
-        ):
-            if step.get("status") != "queued":
-                logger.info(
-                    "Ignoring duplicate email result for automation run %s step %s",
-                    run.id,
-                    input.automation_step_order,
-                )
-                return
-            step["status"] = "sent" if email_sent else "failed"
-            step["result"] = result
-            if not email_sent:
-                step["error"] = str(reason or "Email was not sent")
-            break
-    else:
+    step = _matching_email_step(steps, input)
+    if step is None:
         logger.warning("No queued email step found for automation run %s", run.id)
         return
+
+    current = step.get("status")
+    prior_step_status = current
+    if current == "sent":
+        logger.info(
+            "Ignoring duplicate email result for automation run %s step %s",
+            run.id,
+            input.automation_step_order,
+        )
+        return
+    if current not in {"queued", "sending", "failed"}:
+        # needs_review or unknown terminal: do not regress or re-finalize.
+        logger.info(
+            "Ignoring email result for automation run %s step %s in status %s",
+            run.id,
+            input.automation_step_order,
+            current,
+        )
+        return
+    # Same terminal failure again (e.g. activity retried the write): no-op.
+    if current == "failed" and not email_sent and not needs_review:
+        logger.info(
+            "Ignoring duplicate failed email result for automation run %s step %s",
+            run.id,
+            input.automation_step_order,
+        )
+        return
+
+    if email_sent:
+        step["status"] = "sent"
+        step.pop("error", None)
+    elif needs_review:
+        step["status"] = "needs_review"
+        step["error"] = str(reason or "Send outcome uncertain")
+    else:
+        step["status"] = "failed"
+        step["error"] = str(reason or "Email was not sent")
+    step["result"] = result
 
     run.steps_executed = steps
     email_steps = [
         step for step in steps if step.get("type") in {"send_email", "notify_user"}
     ]
-    if any(step.get("status") == "queued" for step in email_steps):
+    # Still waiting on another in-flight email (or a claim not yet finalized).
+    if any(step.get("status") in {"queued", "sending"} for step in email_steps):
         return
 
     automation = await db.get(CRMAutomation, run.automation_id)
 
     # The executor already counted this run if it reached a verdict of its own
     # (a later step failing under "stop" finalizes the run while an earlier
-    # email is still in flight). Counting again here would double it.
-    already_counted = run.status in {"completed", "failed"}
+    # email is still in flight). Counting again here would double it — unless
+    # this email step itself was counted failed and a later success recovers it.
+    already_counted = prior_run_status in {"completed", "failed"}
 
     run.completed_at = datetime.now(timezone.utc)
     run.duration_ms = int(
         (run.completed_at - run.started_at).total_seconds() * 1000
     ) if run.started_at else None
 
-    # Any failed step fails the run, not just a failed email: under
+    # Any failed or uncertain step fails the run, not just a failed email: under
     # error_handling="continue" an earlier step can have failed and still
     # reach here, and reporting the run completed would contradict it.
-    failed_steps = [step for step in steps if step.get("status") == "failed"]
+    failed_steps = [
+        step
+        for step in steps
+        if step.get("status") in {"failed", "needs_review"}
+    ]
     if failed_steps:
-        run.status = "failed"
-        if any(step.get("status") == "failed" for step in email_steps):
+        new_status = "failed"
+        if any(step.get("status") in {"failed", "needs_review"} for step in email_steps):
             run.error_message = str(reason or "Email was not sent")
         else:
             run.error_message = str(failed_steps[0].get("error") or "A step failed")
-        if automation and not already_counted:
-            automation.failed_runs += 1
     else:
-        run.status = "completed"
-        if automation and not already_counted:
+        new_status = "completed"
+        run.error_message = None
+
+    run.status = new_status
+
+    if automation:
+        if already_counted:
+            # Only reverse counters when THIS step was failed and is now sent —
+            # not when the executor failed the run for another reason while the
+            # email was still queued/sending.
+            if (
+                prior_run_status == "failed"
+                and new_status == "completed"
+                and prior_step_status == "failed"
+            ):
+                automation.failed_runs = max(0, (automation.failed_runs or 0) - 1)
+                automation.successful_runs = (automation.successful_runs or 0) + 1
+        elif new_status == "failed":
+            automation.failed_runs += 1
+        else:
             automation.successful_runs += 1
 
     if input.record_id and automation:
-        outcome = "email sent" if email_sent else "email not sent"
+        if email_sent:
+            outcome = "email sent"
+            email_status = "sent"
+        elif needs_review:
+            outcome = "email needs review"
+            email_status = "needs_review"
+        else:
+            outcome = "email not sent"
+            email_status = "not_sent"
         db.add(
             CRMActivity(
                 id=str(uuid4()),
@@ -329,7 +528,7 @@ async def _record_automation_email_result(
                 activity_metadata={
                     "automation_id": automation.id,
                     "run_id": run.id,
-                    "email_status": "sent" if email_sent else "not_sent",
+                    "email_status": email_status,
                     "reason": reason,
                     "to": result.get("to", input.to_email),
                 },
