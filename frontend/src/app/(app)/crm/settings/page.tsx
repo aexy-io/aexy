@@ -356,6 +356,7 @@ function AttributesTab({ objectId }: { objectId: string }) {
         onClose={() => setShowCreateModal(false)}
         onCreate={handleCreate}
         isCreating={isCreating}
+        workspaceId={workspaceId}
       />
     </div>
   );

@@ -3,7 +3,6 @@
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Plus } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { CRMRecord, CRMAttribute } from "@/lib/api";
 import { KanbanCard, KanbanCardSkeleton } from "./KanbanCard";
@@ -96,25 +95,21 @@ export function KanbanColumn({
               <KanbanCardSkeleton />
             </>
           ) : (
-            <AnimatePresence mode="popLayout">
-              {records.map((record) => (
-                <motion.div
-                  key={record.id}
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.15 }}
-                >
-                  <KanbanCard
-                    record={record}
-                    attributes={attributes}
-                    highlightAttributes={highlightAttributes}
-                    onClick={onRecordClick}
-                    onMenuClick={onRecordMenuClick}
-                  />
-                </motion.div>
-              ))}
-            </AnimatePresence>
+            /* No entry/exit animation wrapper here on purpose: it took cards
+               out of normal flow while dragging, and drag positioning is
+               measured from real DOM positions. The two fought, which made
+               drops land in the wrong column. Sortable supplies its own
+               movement transition. */
+            records.map((record) => (
+              <KanbanCard
+                key={record.id}
+                record={record}
+                attributes={attributes}
+                highlightAttributes={highlightAttributes}
+                onClick={onRecordClick}
+                onMenuClick={onRecordMenuClick}
+              />
+            ))
           )}
 
           {!isLoading && records.length === 0 && (

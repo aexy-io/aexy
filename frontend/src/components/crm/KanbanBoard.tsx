@@ -10,13 +10,15 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  closestCorners,
+  pointerWithin,
+  rectIntersection,
+  CollisionDetection,
 } from "@dnd-kit/core";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CRMRecord, CRMAttribute } from "@/lib/api";
 import { KanbanColumn } from "./KanbanColumn";
-import { KanbanCard } from "./KanbanCard";
+import { KanbanCardBody } from "./KanbanCard";
 
 interface StatusOption {
   value: string;
@@ -158,6 +160,17 @@ export function KanbanBoard({
     setOverId(null);
   };
 
+  // closestCorners scored a small card rect in the source column above the
+  // large empty target column (its far corners dominate the average), so a
+  // drop inside "Qualified" resolved to a sibling card in "Negotiation" and
+  // the move no-oped. Prefer whatever the pointer is actually inside, then
+  // fall back to rect overlap for drops just outside a column.
+  const collisionDetection: CollisionDetection = useCallback((args) => {
+    const withinPointer = pointerWithin(args);
+    if (withinPointer.length > 0) return withinPointer;
+    return rectIntersection(args);
+  }, []);
+
   // No status attribute found
   if (!statusAttr) {
     return (
@@ -175,7 +188,7 @@ export function KanbanBoard({
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={collisionDetection}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
@@ -232,14 +245,13 @@ export function KanbanBoard({
       </div>
 
       {/* Drag overlay */}
-      <DragOverlay>
+      <DragOverlay dropAnimation={null}>
         {activeRecord && (
-          <div className="transform rotate-3 shadow-2xl">
-            <KanbanCard
+          <div className="w-[284px] rotate-3 shadow-2xl opacity-90 bg-muted border border-border rounded-lg p-3 cursor-grabbing">
+            <KanbanCardBody
               record={activeRecord}
               attributes={attributes}
               highlightAttributes={highlightAttributes}
-              className="opacity-90"
             />
           </div>
         )}
