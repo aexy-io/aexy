@@ -42,6 +42,9 @@ class CRMWorkflowInput:
     nodes: list[dict[str, Any]] = field(default_factory=list)
     edges: list[dict[str, Any]] = field(default_factory=list)
     execution_order: list[str] = field(default_factory=list)
+    # Set when a live CRM trigger handed off to this workflow: the run row is
+    # created inline before dispatch and closed here when the workflow ends.
+    crm_run_id: str | None = None
 
 
 @dataclass
@@ -207,6 +210,7 @@ class CRMAutomationWorkflow:
 
             except Exception as e:
                 logger.error(f"Workflow node {node_id} failed: {e}")
+                await self._close_crm_run(input, "failed", str(e))
                 return CRMWorkflowResult(
                     status="failed",
                     results=results,
@@ -215,7 +219,21 @@ class CRMAutomationWorkflow:
                 )
 
         self._status = {"status": "completed"}
+        await self._close_crm_run(input, "completed", None)
         return CRMWorkflowResult(status="completed", results=results)
+
+    async def _close_crm_run(
+        self, input: "CRMWorkflowInput", status: str, error: str | None
+    ) -> None:
+        """Mark the inline-created CRMAutomationRun done (live-trigger path only)."""
+        if not input.crm_run_id:
+            return
+        await workflow.execute_activity(
+            "mark_crm_automation_run",
+            {"run_id": input.crm_run_id, "status": status, "error": error},
+            start_to_close_timeout=timedelta(minutes=1),
+            retry_policy=STANDARD_RETRY,
+        )
 
     def _evaluate_condition(self, data: dict, context: dict) -> bool:
         """Evaluate a condition node."""
@@ -279,8 +297,16 @@ class CRMAutomationWorkflow:
         return default
 
     def _calculate_duration(self, data: dict) -> int:
-        """Calculate wait duration in seconds."""
-        amount = data.get("duration_amount", 1)
+        """Calculate wait duration in seconds.
+
+        The config panel writes `duration_value`; older/other callers used
+        `duration_amount`. Accept both so the user's number is never dropped.
+        """
+        amount = data.get("duration_value", data.get("duration_amount", 1))
+        try:
+            amount = int(amount)
+        except (TypeError, ValueError):
+            amount = 1
         unit = data.get("duration_unit", "hours")
         multipliers = {"seconds": 1, "minutes": 60, "hours": 3600, "days": 86400}
         return amount * multipliers.get(unit, 3600)

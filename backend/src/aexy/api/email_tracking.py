@@ -132,6 +132,28 @@ async def _record_open_event(
             except Exception as e:
                 logger.error(f"Failed to dispatch email.opened for pixel {pixel_id}: {e}")
 
+            # Bridge to CRM automations: the dispatch above is module="email_marketing"
+            # and never reaches CRM automations. When the email is tied to a CRM record,
+            # resolve its object and emit a CRM-scoped email.opened so CRM automations match.
+            try:
+                if pixel and pixel.record_id and pixel.workspace_id:
+                    from aexy.models.crm import CRMRecord
+                    from aexy.services.crm_events import CRMEventService
+
+                    object_id = (await db.execute(
+                        select(CRMRecord.object_id).where(CRMRecord.id == pixel.record_id)
+                    )).scalar_one_or_none()
+                    if object_id:
+                        await CRMEventService(db).emit_email_opened(
+                            workspace_id=str(pixel.workspace_id),
+                            object_id=str(object_id),
+                            record_id=str(pixel.record_id),
+                            campaign_id=str(pixel.campaign_id) if pixel.campaign_id else None,
+                            pixel_id=pixel_id,
+                        )
+            except Exception as e:
+                logger.debug(f"Failed to bridge email.opened to CRM for pixel {pixel_id}: {e}")
+
             # Re-score lead if linked to a CRM record
             try:
                 if pixel and pixel.record_id and pixel.workspace_id:
@@ -287,6 +309,28 @@ async def _record_click_event(
                     )
             except Exception as e:
                 logger.error(f"Failed to dispatch email.clicked for link {link_id}: {e}")
+
+            # Bridge to CRM automations (see email.opened above): when the link is tied
+            # to a CRM record, resolve its object and emit a CRM-scoped email.clicked.
+            try:
+                if link and link.record_id and link.workspace_id:
+                    from aexy.models.crm import CRMRecord
+                    from aexy.services.crm_events import CRMEventService
+
+                    object_id = (await db.execute(
+                        select(CRMRecord.object_id).where(CRMRecord.id == link.record_id)
+                    )).scalar_one_or_none()
+                    if object_id:
+                        await CRMEventService(db).emit_email_clicked(
+                            workspace_id=str(link.workspace_id),
+                            object_id=str(object_id),
+                            record_id=str(link.record_id),
+                            url=link.original_url,
+                            campaign_id=str(link.campaign_id) if link.campaign_id else None,
+                            link_id=link_id,
+                        )
+            except Exception as e:
+                logger.debug(f"Failed to bridge email.clicked to CRM for link {link_id}: {e}")
 
             # Re-score lead if linked to a CRM record
             try:
