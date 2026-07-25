@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 from typing import Any
+from uuid import uuid4
 
 import httpx
 
@@ -55,12 +56,10 @@ class PhantomBusterProvider(LinkedInAutomationProvider):
     NAME = "phantombuster"
     DISPLAY_NAME = "PhantomBuster"
     MONTHLY_COST_CENTS = 0  # varies by plan
-    REQUIRED_CREDENTIALS = [
-        "api_key",
-        "profile_viewer_agent_id",
-        "connection_agent_id",
-        "message_agent_id",
-    ]
+    # An account can be set up incrementally: each LinkedIn action checks for
+    # its own agent ID when it runs. Requiring every agent here made it
+    # impossible to save and test a profile-viewer-only setup.
+    REQUIRED_CREDENTIALS = ["api_key"]
 
     API_BASE = "https://api.phantombuster.com/api/v2"
     _POLL_INTERVAL_S = 5
@@ -80,12 +79,12 @@ class PhantomBusterProvider(LinkedInAutomationProvider):
                 error="profile_viewer_agent_id not configured",
             )
 
-        argument = {"linkedinUrl": linkedin_url}
-        return await self._launch_and_wait(
+        return await self._launch_linkedin_list_agent(
             agent_id=agent_id,
-            argument=argument,
             action="profile_view",
             target_url=linkedin_url,
+            input_field="spreadsheetUrl",
+            list_name="Aexy profile visit",
         )
 
     async def send_connection_request(
@@ -100,15 +99,11 @@ class PhantomBusterProvider(LinkedInAutomationProvider):
                 error="connection_agent_id not configured",
             )
 
-        argument: dict[str, Any] = {"linkedinUrl": linkedin_url}
-        if message:
-            argument["message"] = message
-
-        return await self._launch_and_wait(
+        return await self._launch_linkedin_direct_profile_agent(
             agent_id=agent_id,
-            argument=argument,
             action="connection_request",
             target_url=linkedin_url,
+            argument_overrides={"message": message} if message else None,
         )
 
     async def send_message(self, linkedin_url: str, message: str) -> LinkedInAutomationResult:
@@ -121,12 +116,13 @@ class PhantomBusterProvider(LinkedInAutomationProvider):
                 error="message_agent_id not configured",
             )
 
-        argument = {"linkedinUrl": linkedin_url, "message": message}
-        return await self._launch_and_wait(
+        return await self._launch_linkedin_list_agent(
             agent_id=agent_id,
-            argument=argument,
             action="message",
             target_url=linkedin_url,
+            input_field="spreadsheetUrl",
+            list_name="Aexy LinkedIn message",
+            argument_overrides={"message": message},
         )
 
     async def test_connection(self) -> dict[str, Any]:
@@ -175,6 +171,149 @@ class PhantomBusterProvider(LinkedInAutomationProvider):
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    async def _launch_linkedin_list_agent(
+        self,
+        *,
+        agent_id: str,
+        action: str,
+        target_url: str,
+        input_field: str,
+        list_name: str,
+        argument_overrides: dict[str, Any] | None = None,
+    ) -> LinkedInAutomationResult:
+        """Give a list-based LinkedIn Phantom one CRM profile, then launch it.
+
+        Each Phantom keeps its own saved settings, including its LinkedIn
+        session.  For a workflow run we create a one-profile dynamic list and
+        replace only that Phantom's list input.  Different Phantom types use
+        different input field names, such as ``spreadsheetUrl`` or ``leadList``.
+        """
+        api_key = self.credentials.get("api_key", "")
+        if not api_key:
+            return LinkedInAutomationResult(
+                action=action, target_url=target_url, error="API key not configured",
+            )
+
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                lead_response = await client.post(
+                    f"{self.API_BASE}/org-storage/leads/save",
+                    headers=self._headers(api_key),
+                    json={"linkedinProfileUrl": target_url},
+                )
+                lead_error = self._check_error_status(
+                    lead_response, action=action, target_url=target_url, context="save lead",
+                )
+                if lead_error is not None:
+                    return lead_error
+
+                list_response = await client.post(
+                    f"{self.API_BASE}/org-storage/lists/save",
+                    headers=self._headers(api_key),
+                    json={
+                        "name": f"{list_name} {uuid4().hex[:8]}",
+                        "filter": {
+                            "filter": {
+                                "linkedinProfileUrl": {
+                                    "operator": "equals",
+                                    "valueToCompare": target_url,
+                                }
+                            }
+                        },
+                        "tags": ["workflow"],
+                    },
+                )
+                list_error = self._check_error_status(
+                    list_response, action=action, target_url=target_url, context="create lead list",
+                )
+                if list_error is not None:
+                    return list_error
+
+                list_id = list_response.json().get("id")
+                if not list_id:
+                    return LinkedInAutomationResult(
+                        action=action,
+                        target_url=target_url,
+                        raw_response=list_response.json(),
+                        error="PhantomBuster did not return a lead-list ID",
+                    )
+
+                agent_response = await client.get(
+                    f"{self.API_BASE}/agents/fetch",
+                    params={"id": agent_id},
+                    headers=self._headers(api_key),
+                )
+                agent_error = self._check_error_status(
+                    agent_response, action=action, target_url=target_url, context="fetch agent",
+                )
+                if agent_error is not None:
+                    return agent_error
+
+                argument = json.loads(agent_response.json().get("argument") or "{}")
+                argument[input_field] = f"org-storage://leads/by-list/{list_id}"
+                if argument_overrides:
+                    argument.update(argument_overrides)
+
+            return await self._launch_and_wait(
+                agent_id=agent_id,
+                argument=argument,
+                action=action,
+                target_url=target_url,
+            )
+        except (TypeError, ValueError) as exc:
+            return LinkedInAutomationResult(
+                action=action,
+                target_url=target_url,
+                error=f"Could not prepare PhantomBuster profile input: {exc}",
+            )
+
+    async def _launch_linkedin_direct_profile_agent(
+        self,
+        *,
+        agent_id: str,
+        action: str,
+        target_url: str,
+        argument_overrides: dict[str, Any] | None = None,
+    ) -> LinkedInAutomationResult:
+        """Launch a Phantom configured to accept one LinkedIn profile URL."""
+        api_key = self.credentials.get("api_key", "")
+        if not api_key:
+            return LinkedInAutomationResult(
+                action=action, target_url=target_url, error="API key not configured",
+            )
+
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                agent_response = await client.get(
+                    f"{self.API_BASE}/agents/fetch",
+                    params={"id": agent_id},
+                    headers=self._headers(api_key),
+                )
+                agent_error = self._check_error_status(
+                    agent_response, action=action, target_url=target_url, context="fetch agent",
+                )
+                if agent_error is not None:
+                    return agent_error
+
+                argument = json.loads(agent_response.json().get("argument") or "{}")
+                argument.update({"inputType": "profileUrl", "profileUrl": target_url})
+                if argument_overrides:
+                    argument.update(argument_overrides)
+
+            return await self._launch_and_wait(
+                agent_id=agent_id,
+                argument=argument,
+                action=action,
+                target_url=target_url,
+            )
+        except (TypeError, ValueError) as exc:
+            return LinkedInAutomationResult(
+                action=action,
+                target_url=target_url,
+                error=f"Could not prepare PhantomBuster direct profile input: {exc}",
+            )
+
 
     @staticmethod
     def _headers(api_key: str) -> dict[str, str]:

@@ -602,6 +602,7 @@ class SequenceStepConfig(BaseModel):
     action: str  # send_email, linkedin_view, linkedin_connect, linkedin_message, send_sms, wait
     delay_days: int = 0
     delay_hours: int = 0
+    delay_minutes: int = Field(default=0, ge=0, le=59)
     config: dict = Field(default_factory=dict)
     conditions: dict = Field(default_factory=dict)
 
