@@ -83,11 +83,21 @@ def test_unreachable_nodes_go_last_rather_than_disappearing():
     assert types[-1] == "send_sms" or types[0] == "send_sms"  # present, not dropped
 
 
-def test_validation_rejects_node_types_the_executor_cannot_run():
+def test_validation_accepts_condition_nodes_the_executor_can_run():
     service = WorkflowService(db=None)
     nodes = [
         _node("trigger", "trigger", trigger_type="record.created"),
-        _node("cond", "condition", conditions=[]),
+        _node(
+            "cond",
+            "condition",
+            conditions=[
+                {
+                    "field": "record.values.status",
+                    "operator": "equals",
+                    "value": "qualified",
+                }
+            ],
+        ),
         _node("act", "action", action_type="send_email", to="a@b.com",
               email_subject="s", email_body="b"),
     ]
@@ -95,9 +105,22 @@ def test_validation_rejects_node_types_the_executor_cannot_run():
 
     result = service.validate_workflow(nodes, edges)
 
-    assert result.is_valid is False
     unsupported = [e for e in result.errors if e.error_type == "unsupported_node_type"]
-    assert [e.node_id for e in unsupported] == ["cond"]
+    assert unsupported == []
+    assert result.is_valid is True
+
+
+def test_validation_still_rejects_unknown_structural_nodes():
+    service = WorkflowService(db=None)
+    nodes = [
+        _node("trigger", "trigger", trigger_type="record.created"),
+        _node("join", "join"),
+    ]
+
+    result = service.validate_workflow(nodes, [_edge("trigger", "join")])
+
+    unsupported = [e for e in result.errors if e.error_type == "unsupported_node_type"]
+    assert [e.node_id for e in unsupported] == ["join"]
 
 
 def test_validation_accepts_a_plain_trigger_plus_action_flow():
