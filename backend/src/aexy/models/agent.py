@@ -410,3 +410,15 @@ class UserWritingStyle(Base):
     # Relationships
     developer: Mapped["Developer"] = relationship("Developer", lazy="selectin")
     workspace: Mapped["Workspace"] = relationship("Workspace", lazy="selectin")
+
+
+# CRMAgent.inbox_messages names "AgentInboxMessage" as a string, so the class
+# must be in the registry before any mapper configures — otherwise the first
+# flush in the process raises "failed to locate a name" and, because a failed
+# configure poisons the whole registry, EVERY later query fails too. Importing
+# it here means the guarantee holds for all ~15 importers of this module
+# instead of only the ones that happened to remember. Bottom of the file, and
+# module-only (no from-import), so the reverse import order still works:
+# agent_inbox imports this module, and by the time mappers configure both
+# classes are registered.
+import aexy.models.agent_inbox  # noqa: E402,F401

@@ -54,10 +54,22 @@ async def mark_crm_automation_run(input: MarkAutomationRunInput) -> dict[str, An
         )).scalar_one_or_none()
         if not run:
             return {"updated": False}
+        # A run the executor (or the outbox) already decided must not be
+        # reopened or overwritten here — this activity retries, and a second
+        # pass would otherwise restamp a finished run.
+        if run.status in {"completed", "failed"}:
+            return {"updated": False, "reason": "already final"}
         run.status = input.status
         run.completed_at = datetime.now(timezone.utc)
+        if run.started_at:
+            run.duration_ms = int(
+                (run.completed_at - run.started_at).total_seconds() * 1000
+            )
         if input.error:
-            run.error = input.error
+            # error_message is the column; assigning `run.error` set a plain
+            # Python attribute that was never persisted, so every durable run
+            # that failed showed a bare "failed" with no reason anywhere.
+            run.error_message = str(input.error)[:500]
         await db.commit()
         return {"updated": True}
 

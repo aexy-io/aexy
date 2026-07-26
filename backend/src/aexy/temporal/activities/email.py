@@ -187,12 +187,27 @@ async def drain_automation_email_outbox(
     The request path drains the outbox itself right after committing, so this
     normally finds nothing. It exists for when that never happened - process
     killed between commit and handoff, or the worker unreachable at the time.
+
+    Also reaps runs abandoned without an outcome. It rides this schedule rather
+    than its own because both are the same kind of backstop on the same cadence,
+    and an un-decided run is usually a lost email handover anyway.
     """
+    from aexy.core.database import async_session_maker
     from aexy.services.automation_email_outbox import drain_outbox
+    from aexy.services.automation_run_reaper import reap_stalled_runs
 
     result = await drain_outbox()
     if result["dispatched"] or result["failed"]:
         logger.info("Outbox sweep: %s", result)
+
+    # Guarded separately: reaping must not be able to break the drain, which is
+    # the part that actually gets mail out.
+    try:
+        async with async_session_maker() as db:
+            result |= await reap_stalled_runs(db)
+    except Exception:
+        logger.exception("Stalled automation run reap failed")
+
     return result
 
 

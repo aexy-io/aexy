@@ -12,6 +12,11 @@ from sqlalchemy import select, func, and_
 from sqlalchemy.exc import IntegrityError
 
 logger = logging.getLogger(__name__)
+
+# Step orders for the 2nd..Nth recipient of one notification. Far above any real
+# action index so a synthetic order can never be mistaken for another step's.
+_SIBLING_STEP_ORDER_BASE = 1_000_000
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -522,6 +527,12 @@ class CRMAutomationService:
 
                     step_result["status"] = "queued" if result.get("queued") else "success"
                     step_result["result"] = result
+                    # Surface the target at the top level of the step. Reading a
+                    # run should not require digging into a nested result blob to
+                    # answer "who did this actually go to".
+                    target = result.get("to") or result.get("record_id")
+                    if target:
+                        step_result["recipient" if result.get("to") else "target"] = target
                 except Exception as e:
                     step_result["status"] = "failed"
                     step_result["error"] = str(e)
@@ -788,7 +799,10 @@ class CRMAutomationService:
         elif action_type == "run_agent":
             return await self._action_run_agent(config, record, workspace_id, trigger_data, run_id)
         else:
-            return {"message": f"Action type {action_type} not implemented"}
+            # "error", not "message": the executor only fails a step on an
+            # "error" key, so a step type this build cannot run was recorded as
+            # a success and the run reported completed having done nothing.
+            return {"error": f"Action type '{action_type}' is not supported"}
 
     async def _action_update_record(
         self,
@@ -1907,7 +1921,19 @@ class CRMAutomationService:
             else:
                 recipient_emails = [str(user_email)]
 
-        for recipient_email in recipient_emails:
+        # Each recipient reconciles against its own step, so no recipient's
+        # outcome can close the run while another is still in flight. Recipient
+        # 0 uses the step the executor writes for this action; the rest get
+        # their own, offset far above any real action index so they cannot
+        # collide with another step's order.
+        def _step_order_for(index: int) -> int | None:
+            if automation_step_order is None:
+                return None
+            if index == 0:
+                return automation_step_order
+            return _SIBLING_STEP_ORDER_BASE + automation_step_order * 1000 + index
+
+        for recipient_index, recipient_email in enumerate(recipient_emails):
             # Send Slack notification
             if channel in ("slack", "both"):
                 slack_result = await self._action_send_slack(
@@ -1931,11 +1957,8 @@ class CRMAutomationService:
                     record,
                     workspace_id,
                     trigger_data,
-                    automation_run_id if len(recipient_emails) == 1 else None,
-                    automation_step_order if len(recipient_emails) == 1 else None,
-                    # The row still belongs to this run even when the worker
-                    # must not reconcile against it, so a rolled-back record
-                    # change takes every recipient's email with it.
+                    automation_run_id,
+                    _step_order_for(recipient_index),
                     outbox_run_id=automation_run_id,
                 )
                 if email_result.get("success"):
@@ -1949,9 +1972,58 @@ class CRMAutomationService:
         # notification that delivered nothing is recorded as a success.
         if not results["channels_notified"]:
             results["error"] = "No notification could be delivered"
-        if len(recipient_emails) == 1 and results.get("email", {}).get("queued"):
+        if results.get("email", {}).get("queued"):
+            # Queued, not success - for every recipient count. Reporting a
+            # multi-admin notification as delivered the moment it was handed
+            # over meant the run read completed before a single admin's send
+            # outcome was known, and the later outcomes had nowhere to land.
             results["queued"] = True
+            await self._add_sibling_email_steps(
+                automation_run_id,
+                [
+                    (_step_order_for(i), email)
+                    for i, email in enumerate(recipient_emails)
+                    if i > 0
+                ],
+            )
         return results
+
+    async def _add_sibling_email_steps(
+        self,
+        automation_run_id: str | None,
+        siblings: list[tuple[int | None, str]],
+    ) -> None:
+        """Give recipients past the first a queued step of their own.
+
+        The executor writes one step per action, so without this the second and
+        later recipients of one notification have no step to report back into -
+        their results are dropped and the run is decided by the first recipient
+        alone.
+        """
+        if not automation_run_id or not siblings:
+            return
+
+        run = await self.db.get(CRMAutomationRun, automation_run_id)
+        if not run:
+            return
+
+        existing = {step.get("order") for step in (run.steps_executed or [])}
+        now = datetime.now(timezone.utc).isoformat()
+        run.steps_executed = [
+            *(run.steps_executed or []),
+            *(
+                {
+                    "type": "notify_user",
+                    "order": order,
+                    "status": "queued",
+                    "recipient": email,
+                    "executed_at": now,
+                }
+                for order, email in siblings
+                if order is not None and order not in existing
+            ),
+        ]
+        await self.db.flush()
 
     async def _action_notify_team(
         self,
