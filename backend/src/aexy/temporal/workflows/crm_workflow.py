@@ -210,7 +210,8 @@ class CRMAutomationWorkflow:
 
             except Exception as e:
                 logger.error(f"Workflow node {node_id} failed: {e}")
-                await self._close_crm_run(input, "failed", str(e))
+                results.append({"node_id": node_id, "status": "failed", "error": str(e)})
+                await self._close_crm_run(input, "failed", str(e), results)
                 return CRMWorkflowResult(
                     status="failed",
                     results=results,
@@ -219,18 +220,32 @@ class CRMAutomationWorkflow:
                 )
 
         self._status = {"status": "completed"}
-        await self._close_crm_run(input, "completed", None)
+        await self._close_crm_run(input, "completed", None, results)
         return CRMWorkflowResult(status="completed", results=results)
 
     async def _close_crm_run(
-        self, input: "CRMWorkflowInput", status: str, error: str | None
+        self,
+        input: "CRMWorkflowInput",
+        status: str,
+        error: str | None,
+        steps: list | None = None,
     ) -> None:
-        """Mark the inline-created CRMAutomationRun done (live-trigger path only)."""
+        """Mark the inline-created CRMAutomationRun done (live-trigger path only).
+
+        The node outcomes travel with the verdict. Without them the run's step
+        log holds only the handoff entry, so a durable run can say it finished
+        but not what it actually did.
+        """
         if not input.crm_run_id:
             return
         await workflow.execute_activity(
             "mark_crm_automation_run",
-            {"run_id": input.crm_run_id, "status": status, "error": error},
+            {
+                "run_id": input.crm_run_id,
+                "status": status,
+                "error": error,
+                "steps": steps or [],
+            },
             start_to_close_timeout=timedelta(minutes=1),
             retry_policy=STANDARD_RETRY,
         )

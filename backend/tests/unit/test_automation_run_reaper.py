@@ -15,11 +15,19 @@ from aexy.models.crm import (
     CRMAutomationEmailOutbox,
     CRMAutomationRun,
 )
+from aexy.services import automation_run_reaper as reaper
 from aexy.services.automation_run_reaper import STALLED_AFTER, reap_stalled_runs
 
 pytestmark = pytest.mark.asyncio
 
 LONG_AGO = datetime.now(timezone.utc) - STALLED_AFTER - timedelta(minutes=5)
+
+
+def _answer(still_running: bool):
+    """Stand in for the Temporal lookup, which needs a live server."""
+    async def _stub(_run_id):
+        return still_running
+    return _stub
 
 
 async def _automation(db) -> CRMAutomation:
@@ -114,8 +122,25 @@ async def test_recent_run_is_left_alone(db_session):
     assert run.status == "queued"
 
 
-async def test_durable_run_is_never_reaped(db_session):
-    """A wait node can legitimately sleep for days."""
+async def test_durable_run_whose_workflow_died_is_decided(db_session, monkeypatch):
+    """A wait node can sleep for days, so only a dead workflow frees the run."""
+    monkeypatch.setattr(reaper, "_durable_workflow_still_running", _answer(False))
+    automation = await _automation(db_session)
+    run = await _run(
+        db_session, automation, status="running",
+        steps=[{"type": "handoff", "status": "dispatched"}],
+    )
+
+    assert await reap_stalled_runs(db_session) == {"reaped": 1}
+    await db_session.refresh(run)
+    assert run.status == "failed"
+    assert run.error_message and "No outcome" in run.error_message
+
+
+async def test_durable_run_is_left_alone_while_its_workflow_runs(
+    db_session, monkeypatch
+):
+    monkeypatch.setattr(reaper, "_durable_workflow_still_running", _answer(True))
     automation = await _automation(db_session)
     run = await _run(
         db_session, automation, status="running",

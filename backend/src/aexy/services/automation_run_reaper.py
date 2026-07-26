@@ -32,6 +32,30 @@ STALLED_AFTER = timedelta(minutes=15)
 _NON_TERMINAL = ("pending", "running", "queued")
 
 
+async def _durable_workflow_still_running(run_id: str) -> bool:
+    """Whether the Temporal workflow for this run is still going.
+
+    Errs on the side of "yes": if Temporal cannot be reached, or the answer is
+    unclear, the run is left alone. Reaping a run whose workflow is merely
+    unreachable would report a failure for work that is still happening.
+    """
+    try:
+        from temporalio.client import WorkflowExecutionStatus
+
+        from aexy.temporal.client import get_temporal_client
+
+        client = await get_temporal_client()
+        # Set by _dispatch_durably_if_needed when it hands the run over.
+        described = await client.get_workflow_handle(f"crm-live-{run_id}").describe()
+    except Exception:
+        logger.warning(
+            "Could not determine workflow state for run %s; leaving it alone", run_id
+        )
+        return True
+
+    return described.status in (None, WorkflowExecutionStatus.RUNNING)
+
+
 async def reap_stalled_runs(db, limit: int = 100) -> dict:
     """Write a failure onto runs that were abandoned without an outcome."""
     cutoff = datetime.now(timezone.utc) - STALLED_AFTER
@@ -52,13 +76,12 @@ async def reap_stalled_runs(db, limit: int = 100) -> dict:
         steps = list(run.steps_executed or [])
 
         # A run handed to the durable workflow is legitimately long-lived: a
-        # wait node can sleep for days, and mark_crm_automation_run closes it.
-        # Timing it out here would fail runs that are working correctly.
-        # ponytail: durable runs are never reaped, so a workflow that dies
-        # outright still strands its run. Reap on Temporal workflow state
-        # (describe the handle) if that turns out to happen in practice.
+        # wait node can sleep for days. Age says nothing about it, so ask
+        # Temporal whether its workflow is still going. Only a workflow that is
+        # definitively gone leaves the run to be decided here.
         if any(step.get("type") == "handoff" for step in steps):
-            continue
+            if await _durable_workflow_still_running(run.id):
+                continue
 
         # An email still pending or mid-handover will decide this run itself.
         still_working = (
