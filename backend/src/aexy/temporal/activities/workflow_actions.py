@@ -18,11 +18,13 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ExecuteWorkflowActionInput:
     node_type: str
+    node_id: str = ""
     node_data: dict[str, Any] = field(default_factory=dict)
     context: dict[str, Any] = field(default_factory=dict)
     execution_id: str = ""
     workspace_id: str = ""
     record_id: str | None = None
+    retry_failures: bool = False
 
 
 @dataclass
@@ -58,8 +60,11 @@ def _as_run_steps(node_results: list[dict[str, Any]]) -> list[dict[str, Any]]:
         }
         if node.get("error") or output.get("error"):
             step["error"] = str(node.get("error") or output.get("error"))
+        if output:
+            step["result"] = output
+        if node.get("attempts"):
+            step["attempts"] = node["attempts"]
         if inner:
-            step["result"] = inner
             # Same top-level target the inline path surfaces, so "who did this
             # go to" is answerable without opening the result.
             if inner.get("to"):
@@ -129,6 +134,13 @@ async def execute_workflow_action(input: ExecuteWorkflowActionInput) -> dict[str
     from aexy.services.workflow_actions import WorkflowActionHandler
 
     context = input.context or {}
+    trigger_data = dict(context.get("trigger_data") or {})
+    trigger_data.update(
+        {
+            "execution_id": input.execution_id,
+            "node_id": input.node_id,
+        }
+    )
 
     async with async_session_maker() as db:
         handler = WorkflowActionHandler(db)
@@ -139,7 +151,7 @@ async def execute_workflow_action(input: ExecuteWorkflowActionInput) -> dict[str
                 workspace_id=input.workspace_id,
                 record_id=input.record_id,
                 record_data=context.get("record_data") or {},
-                trigger_data=context.get("trigger_data") or {},
+                trigger_data=trigger_data,
                 variables=context.get("variables") or {},
             ),
         )
@@ -153,10 +165,12 @@ async def execute_workflow_action(input: ExecuteWorkflowActionInput) -> dict[str
         raise ApplicationError(
             result.error or f"Action '{action_type}' failed",
             type="WorkflowActionFailed",
-            non_retryable=True,
+            non_retryable=not input.retry_failures,
         )
 
-    return result.model_dump(mode="json")
+    payload = result.model_dump(mode="json")
+    payload["attempt"] = activity.info().attempt
+    return payload
 
 
 @activity.defn

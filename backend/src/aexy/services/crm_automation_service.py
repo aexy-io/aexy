@@ -110,6 +110,46 @@ def trigger_matches(
 
 
 class CRMAutomationService:
+    INLINE_ACTION_TYPES: frozenset[str] = frozenset(
+        {
+            "update_record",
+            "create_record",
+            "delete_record",
+            "assign_owner",
+            "link_records",
+            "add_to_list",
+            "remove_from_list",
+            "enroll_in_sequence",
+            "remove_from_sequence",
+            "webhook_call",
+            "create_task",
+            "send_sms",
+            "send_slack",
+            "send_email",
+            "notify_user",
+            "notify_team",
+            "run_agent",
+            "pause_monitor",
+            "resume_monitor",
+            "create_incident",
+            "resolve_incident",
+            "update_task",
+            "assign_task",
+            "move_task",
+            "create_subtask",
+            "update_ticket",
+            "assign_ticket",
+            "escalate",
+            "change_priority",
+            "update_candidate",
+            "move_stage",
+            "schedule_interview",
+            "confirm_booking",
+            "cancel_booking",
+            "reschedule_booking",
+        }
+    )
+
     """Service for CRM automation CRUD and execution."""
 
     def __init__(self, db: AsyncSession):
@@ -348,8 +388,10 @@ class CRMAutomationService:
 
         return run
 
-    # Node types the inline executor can't run; these need the durable workflow.
-    _DURABLE_NODE_TYPES = {"wait"}
+    # Structural nodes need the persisted graph and durable workflow. Keeping
+    # condition/branch/agent on the inline flattened action list would drop the
+    # node and run later actions unconditionally.
+    _DURABLE_NODE_TYPES = {"wait", "condition", "branch", "agent"}
 
     async def _dispatch_durably_if_needed(
         self, automation: CRMAutomation, run: CRMAutomationRun, record_id: str | None
@@ -375,7 +417,12 @@ class CRMAutomationService:
         if record_id:
             rec = await CRMRecordService(self.db).get_record(record_id)
             if rec:
-                record_data = {"id": rec.id, **(rec.values or {})}
+                record_data = {
+                    "id": rec.id,
+                    "object_id": rec.object_id,
+                    "owner_id": rec.owner_id,
+                    "values": rec.values or {},
+                }
 
         run.status = "running"
         run.started_at = datetime.now(timezone.utc)
@@ -384,7 +431,7 @@ class CRMAutomationService:
             {
                 "type": "handoff",
                 "status": "dispatched",
-                "detail": "Running durably (contains a wait); "
+                "detail": "Running the persisted workflow graph durably; "
                 "outcome recorded on completion.",
                 "executed_at": datetime.now(timezone.utc).isoformat(),
             },
@@ -412,7 +459,14 @@ class CRMAutomationService:
                 record_data=record_data,
                 nodes=workflow_def.nodes or [],
                 edges=workflow_def.edges or [],
+                execution_order=(
+                    workflow_def.execution_order
+                    or WorkflowService(self.db).topological_sort(
+                        workflow_def.nodes or [], workflow_def.edges or []
+                    )
+                ),
                 crm_run_id=str(run.id),
+                error_handling=automation.error_handling or "stop",
             ),
             id=f"crm-live-{run.id}",
             task_queue="workflows",
@@ -509,11 +563,11 @@ class CRMAutomationService:
                     run.steps_executed = [*(run.steps_executed or []), step_result]
                     continue
 
-                # stop / continue / retry: retry re-attempts a failed step once
-                # before applying stop-or-continue. continue records the failure
-                # and moves on; stop aborts the run.
-                max_attempts = 2 if automation.error_handling == "retry" else 1
+                # Retry is bounded and re-enters only this failed action. Steps
+                # that already succeeded are never replayed.
+                max_attempts = 3 if automation.error_handling == "retry" else 1
                 attempt = 0
+                attempt_history: list[dict[str, Any]] = []
                 while attempt < max_attempts:
                     attempt += 1
                     try:
@@ -532,6 +586,9 @@ class CRMAutomationService:
                         if result.get("error"):
                             raise ValueError(str(result["error"]))
 
+                        attempt_history.append(
+                            {"attempt": attempt, "status": "success"}
+                        )
                         step_result["status"] = "queued" if result.get("queued") else "success"
                         step_result["result"] = result
                         # Surface the target at the top level of the step. Reading a
@@ -544,6 +601,13 @@ class CRMAutomationService:
                             step_result["retried"] = True
                         break
                     except Exception as e:
+                        attempt_history.append(
+                            {
+                                "attempt": attempt,
+                                "status": "failed",
+                                "error": str(e),
+                            }
+                        )
                         step_result["status"] = "failed"
                         step_result["error"] = str(e)
                         step_result["attempts"] = attempt
@@ -554,6 +618,8 @@ class CRMAutomationService:
                             raise
                         # continue (and exhausted retry): keep going
 
+                step_result["attempt_history"] = attempt_history
+                step_result["attempts"] = attempt
                 run.steps_executed = [*(run.steps_executed or []), step_result]
 
             # Sending an email is asynchronous. A queued email is not yet a
@@ -722,9 +788,22 @@ class CRMAutomationService:
         elif action_type == "remove_from_sequence":
             return await self._action_remove_from_sequence(config, record, workspace_id)
         elif action_type == "webhook_call":
-            return await self._action_webhook_call(config, record, trigger_data)
+            return await self._action_webhook_call(
+                config, record, trigger_data, run_id, action_index
+            )
         elif action_type == "create_task":
-            return await self._action_create_task(config, record, workspace_id, trigger_data)
+            return await self._action_create_task(
+                config,
+                record,
+                workspace_id,
+                trigger_data,
+                run_id,
+                action_index,
+            )
+        elif action_type == "send_sms":
+            return await self._action_send_sms(
+                config, record, workspace_id, trigger_data
+            )
         elif action_type == "send_slack":
             return await self._action_send_slack(config, record, workspace_id, trigger_data)
         elif action_type == "send_email":
@@ -1242,6 +1321,8 @@ class CRMAutomationService:
         config: dict,
         record: CRMRecord | None,
         trigger_data: dict | None = None,
+        run_id: str | None = None,
+        action_index: int | None = None,
     ) -> dict:
         """Make a webhook HTTP call.
 
@@ -1250,17 +1331,51 @@ class CRMAutomationService:
         configured in the builder actually fires on a published run.
         """
         url = config.get("webhook_url") or config.get("url")
-        method = config.get("http_method") or config.get("method") or "POST"
+        method = str(
+            config.get("http_method") or config.get("method") or "POST"
+        ).upper()
         headers = config.get("headers") or {}
 
         if not url:
             return {"error": "No URL specified"}
+        from urllib.parse import urlparse
+        import json as _json
+
+        parsed_url = urlparse(str(url))
+        if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
+            return {"error": "Webhook URL must use HTTP or HTTPS"}
+        if method not in {"GET", "POST", "PUT", "PATCH", "DELETE"}:
+            return {"error": f"Unsupported webhook method: {method}"}
+        try:
+            timeout_seconds = float(config.get("timeout_seconds", 30))
+        except (TypeError, ValueError):
+            return {"error": "Webhook timeout must be a number"}
+        if timeout_seconds < 1 or timeout_seconds > 60:
+            return {"error": "Webhook timeout must be between 1 and 60 seconds"}
+        if isinstance(headers, str):
+            try:
+                headers = _json.loads(headers or "{}")
+            except _json.JSONDecodeError as error:
+                return {"error": f"Webhook headers are invalid JSON: {error.msg}"}
+        if not isinstance(headers, dict):
+            return {"error": "Webhook headers must be a JSON object"}
+        try:
+            rendered_headers = {
+                str(key): self._replace_placeholders(
+                    str(value), record, trigger_data
+                )
+                for key, value in headers.items()
+            }
+        except ValueError as error:
+            return {"error": str(error)}
+        if run_id is not None and action_index is not None:
+            rendered_headers.setdefault(
+                "Idempotency-Key", f"aexy-{run_id}-{action_index}"
+            )
 
         body_template = config.get("body_template")
         if isinstance(body_template, str) and body_template.strip():
             try:
-                import json as _json
-
                 payload = _json.loads(
                     self._replace_placeholders(body_template, record, trigger_data)
                     if record is not None or trigger_data
@@ -1282,19 +1397,41 @@ class CRMAutomationService:
             }
 
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=timeout_seconds) as client:
                 response = await client.request(
                     method=method,
                     url=url,
-                    headers=headers,
+                    headers=rendered_headers,
                     json=payload,
                 )
-                return {
+                result = {
                     "status_code": response.status_code,
                     "success": response.is_success,
+                    "method": method,
+                    "url": str(url),
+                    "response": response.text[:1000],
                 }
-        except Exception as e:
-            return {"error": str(e)}
+                if not response.is_success:
+                    result["error"] = (
+                        f"Webhook returned HTTP {response.status_code}"
+                    )
+                return result
+        except httpx.TimeoutException:
+            return {
+                "error": (
+                    f"Webhook timed out after {timeout_seconds:g} seconds"
+                )
+            }
+        except httpx.RequestError as error:
+            return {
+                "error": f"Webhook request failed: {type(error).__name__}"
+            }
+        except Exception:
+            return {
+                "error": (
+                    "Webhook request failed before a response was received"
+                )
+            }
 
     async def _action_create_task(
         self,
@@ -1302,6 +1439,8 @@ class CRMAutomationService:
         record: CRMRecord | None,
         workspace_id: str,
         trigger_data: dict | None = None,
+        run_id: str | None = None,
+        action_index: int | None = None,
     ) -> dict:
         """Create a sprint task.
 
@@ -1391,6 +1530,29 @@ class CRMAutomationService:
 
         logger.info(f"[CREATE_TASK] Creating task: title='{title}', project_id={project_id}, team_id={team_id}, sprint_id={sprint_id}, workspace_id={workspace_id}")
 
+        source_id = (
+            f"{run_id}:{action_index}"
+            if run_id is not None and action_index is not None
+            else str(uuid4())
+        )
+        if run_id is not None and action_index is not None:
+            existing = (
+                await self.db.execute(
+                    select(SprintTask).where(
+                        SprintTask.workspace_id == workspace_id,
+                        SprintTask.source_type == "automation",
+                        SprintTask.source_id == source_id,
+                    )
+                )
+            ).scalar_one_or_none()
+            if existing:
+                return {
+                    "success": True,
+                    "task_id": existing.id,
+                    "title": existing.title,
+                    "deduplicated": True,
+                }
+
         try:
             # Create the task
             task = SprintTask(
@@ -1399,7 +1561,10 @@ class CRMAutomationService:
                 team_id=team_id,  # From project lookup, or None for workspace-level tasks
                 sprint_id=sprint_id,  # Can be None for backlog tasks
                 source_type="automation",
-                source_id=str(uuid4()),  # Unique ID for this automated task
+                source_id=source_id,
+                source_url=(
+                    f"/crm/automations/runs/{run_id}" if run_id else None
+                ),
                 title=title,
                 description=description,
                 priority=priority,
@@ -1427,6 +1592,56 @@ class CRMAutomationService:
         except Exception as e:
             logger.error(f"[CREATE_TASK] Failed to create task: {e}", exc_info=True)
             return {"error": str(e)}
+
+    async def _action_send_sms(
+        self,
+        config: dict,
+        record: CRMRecord | None,
+        workspace_id: str,
+        trigger_data: dict | None = None,
+    ) -> dict:
+        """Send one SMS and return only an observed provider handoff result."""
+        recipient_type = str(config.get("recipient_type") or "field")
+        phone_to = config.get("phone_number")
+        if recipient_type == "field" or not phone_to:
+            phone_field = str(config.get("phone_field") or "phone")
+            phone_to = record.values.get(phone_field) if record else None
+        if not phone_to:
+            return {"error": "No phone number for SMS"}
+        phone_to = str(phone_to).strip()
+        if not re.fullmatch(r"\+[1-9]\d{7,14}", phone_to):
+            return {
+                "error": (
+                    "SMS recipient must be an E.164 number such as +14155552671"
+                )
+            }
+        message_template = str(config.get("message_template") or "")
+        if not message_template.strip():
+            return {"error": "SMS message cannot be empty"}
+        message = self._replace_placeholders(
+            message_template, record, trigger_data
+        )
+
+        from aexy.services.twilio_service import TwilioService
+
+        result = await TwilioService(self.db).send_sms(
+            to=phone_to,
+            body=message,
+            record_id=record.id if record else None,
+            workspace_id=workspace_id,
+        )
+        if result.get("error"):
+            return {
+                "error": f"SMS provider refused the message: {result['error']}",
+                "to": phone_to,
+                "provider_status": result.get("status"),
+            }
+        return {
+            "to": phone_to,
+            "provider_message_id": result.get("sid"),
+            "provider_status": result.get("status"),
+            "accepted": True,
+        }
 
     async def _action_send_slack(
         self,
@@ -2135,7 +2350,9 @@ class CRMAutomationService:
             else:
                 return match.group(0)
 
-            return "" if value is None else str(value)
+            if value is None:
+                raise ValueError(f"Dynamic value '{{{{{path}}}}}' is missing")
+            return str(value)
 
         message = re.sub(
             r"\{\{([^{}]+)\}\}",
