@@ -32,11 +32,11 @@ from aexy.schemas.workflow import (
 # Required fields per action type. Value is (field-alternatives, error_type, message).
 # An action is valid if at least one of the listed fields is present and truthy.
 _ACTION_REQUIRED_FIELDS: dict[str, tuple[tuple[str, ...], str, str]] = {
-    "send_email": (("to", "email_field"), "missing_email_recipient",
+    "send_email": (("to", "email_field", "email"), "missing_email_recipient",
                    "Email action requires a recipient (to or email_field)"),
-    "send_tracked_email": (("to", "email_field"), "missing_email_recipient",
+    "send_tracked_email": (("to", "email_field", "email"), "missing_email_recipient",
                            "Email action requires a recipient (to or email_field)"),
-    "webhook_call": (("url",), "missing_webhook_url",
+    "webhook_call": (("url", "webhook_url"), "missing_webhook_url",
                      "Webhook action requires a URL"),
     # Both spellings are accepted because the config panel saves task_title
     # while the executor reads either. Checking only "title" made every
@@ -47,6 +47,27 @@ _ACTION_REQUIRED_FIELDS: dict[str, tuple[tuple[str, ...], str, str]] = {
                     "List action requires a list"),
     "remove_from_list": (("list_id",), "missing_list",
                           "List action requires a list"),
+    "create_record": (("target_object_id", "object_id"), "missing_target_object",
+                      "Create-record action requires a target object"),
+    "update_record": (("update_field", "fields", "field_mappings"), "missing_update_field",
+                      "Update-record action requires a field to update"),
+    "delete_record": (("confirm_delete",), "missing_delete_confirmation",
+                      "Delete-record action requires confirmation"),
+    "assign_owner": (("owner_id", "owner_email", "owner_field"), "missing_owner",
+                     "Assign-owner action requires an owner"),
+    "link_records": (
+        ("link_record_id", "link_field", "target_record_id", "target_field"),
+        "missing_link_target",
+        "Link-records action requires a target record or field",
+    ),
+    "send_slack": (("channel", "channel_id", "user_email", "user_email_field"), "missing_slack_target",
+                   "Slack action requires a channel or user"),
+    "enroll_in_sequence": (("sequence_id",), "missing_sequence",
+                           "Sequence action requires a sequence"),
+    "remove_from_sequence": (("sequence_id",), "missing_sequence",
+                             "Sequence action requires a sequence"),
+    "notify_user": (("notify_email", "user_email", "user_id"), "missing_notification_recipient",
+                    "Notify-user action requires a recipient"),
 }
 
 # Fields whose literal values should be validated as email addresses.
@@ -57,7 +78,9 @@ _EMAIL_LITERAL_FIELDS = ("to", "email_to", "email", "notify_email")
 # wait is routed there — see CRMAutomationService._dispatch_durably_if_needed).
 # condition/agent/branch/join are still rejected: nothing executes them yet.
 # Widen this only when a matching executor path exists.
-_EXECUTABLE_NODE_TYPES = ("trigger", "action", "wait")
+# condition + branch execute in the workflow/Temporal engines; wait is durable.
+# join/agent still need fuller runtime support — leave rejected at publish.
+_EXECUTABLE_NODE_TYPES = ("trigger", "action", "wait", "condition", "branch")
 
 # Namespaces a {{variable}} reference may resolve against at execution time.
 _VARIABLE_NAMESPACES = {"record", "trigger", "variables"}
@@ -79,6 +102,37 @@ def _is_valid_email(addr: str) -> bool:
         return True
     except EmailNotValidError:
         return False
+
+
+def validate_action_configs(actions: list[dict]) -> list[str]:
+    """Validate action dicts from the automations API (non-canvas path).
+
+    Enforces the same required-field and literal-email rules the builder
+    enforces at publish, so a direct API create cannot bypass them.
+    Returns a list of human-readable error strings (empty = ok).
+    """
+    errors: list[str] = []
+    for i, action in enumerate(actions or []):
+        action_type = action.get("type") or action.get("action_type") or ""
+        config = action.get("config") if isinstance(action.get("config"), dict) else action
+        label = f"action[{i}] ({action_type})"
+
+        required = _ACTION_REQUIRED_FIELDS.get(action_type)
+        if required:
+            fields, _error_type, message = required
+            if not any(config.get(f) for f in fields):
+                errors.append(f"{label}: {message}")
+
+        for field in _EMAIL_LITERAL_FIELDS:
+            value = config.get(field)
+            if (
+                isinstance(value, str)
+                and value
+                and not _is_variable(value)
+                and not _is_valid_email(value)
+            ):
+                errors.append(f"{label}: '{value}' is not a valid email address")
+    return errors
 
 
 def _variable_root(expr: str) -> str:
@@ -1080,8 +1134,20 @@ class WorkflowExecutor:
     async def _execute_condition(
         self, data: dict, context: WorkflowExecutionContext
     ) -> NodeExecutionResult:
-        """Execute a condition node."""
-        conditions = data.get("conditions", [])
+        """Execute a condition node.
+
+        Supports both a list of conditions (builder) and a single
+        field/operator/value triple (older Temporal-shaped config).
+        """
+        from aexy.services.condition_eval import (
+            UnknownOperatorError,
+            condition_field_key,
+        )
+
+        conditions = data.get("conditions") or []
+        if not conditions and (data.get("field") or data.get("attribute") or data.get("operator")):
+            conditions = [data]
+
         conjunction = data.get("conjunction", "and")
 
         if not conditions:
@@ -1092,15 +1158,21 @@ class WorkflowExecutor:
             )
 
         results = []
-        for cond in conditions:
-            field = cond.get("field")
-            operator = cond.get("operator")
-            value = cond.get("value")
-
-            # Get actual value from record or context
-            actual_value = self._get_field_value(field, context)
-            result = self._evaluate_condition(actual_value, operator, value)
-            results.append(result)
+        try:
+            for cond in conditions:
+                field = condition_field_key(cond) or cond.get("field")
+                operator = cond.get("operator")
+                value = cond.get("value")
+                actual_value = self._get_field_value(field, context)
+                result = self._evaluate_condition(actual_value, operator, value)
+                results.append(result)
+        except UnknownOperatorError as e:
+            return NodeExecutionResult(
+                node_id="",
+                status="failed",
+                error=str(e),
+                condition_result=False,
+            )
 
         if conjunction == "and":
             final_result = all(results)
@@ -1117,13 +1189,31 @@ class WorkflowExecutor:
     async def _execute_wait(
         self, data: dict, context: WorkflowExecutionContext
     ) -> NodeExecutionResult:
-        """Execute a wait node (schedules for later)."""
+        """Execute a wait node.
+
+        Dry-run: never pretends a wait succeeded — report skipped. Live path
+        reports the resolved duration so the durable engine can sleep the
+        correct unit (days/hours/minutes/zero).
+        """
+        from aexy.services.condition_eval import wait_duration_seconds
+
+        if context.is_dry_run:
+            return NodeExecutionResult(
+                node_id="",
+                status="skipped",
+                output={
+                    "dry_run": True,
+                    "message": "skipped — not simulated",
+                    "action_type": "wait",
+                },
+            )
+
         wait_type = data.get("wait_type", "duration")
 
         if wait_type == "duration":
-            duration_value = data.get("duration_value", 1)
-            duration_unit = data.get("duration_unit", "days")
-            # This would schedule the continuation via Temporal
+            seconds = wait_duration_seconds(data)
+            duration_value = data.get("duration_value", data.get("duration_amount", 1))
+            duration_unit = data.get("duration_unit", data.get("wait_unit", "days"))
             return NodeExecutionResult(
                 node_id="",
                 status="success",
@@ -1131,17 +1221,32 @@ class WorkflowExecutor:
                     "wait_type": "duration",
                     "duration_value": duration_value,
                     "duration_unit": duration_unit,
+                    "duration_seconds": seconds,
                 },
             )
-        elif wait_type == "datetime":
-            wait_until = data.get("wait_until")
+        elif wait_type in ("datetime", "date", "until_date"):
+            wait_until = data.get("wait_until") or data.get("until_date") or data.get("date")
+            if not wait_until:
+                return NodeExecutionResult(
+                    node_id="",
+                    status="failed",
+                    error="Wait-until-date requires wait_until / until_date",
+                )
             return NodeExecutionResult(
                 node_id="",
                 status="success",
                 output={"wait_type": "datetime", "wait_until": wait_until},
             )
         elif wait_type == "event":
-            wait_for_event = data.get("wait_for_event")
+            wait_for_event = (
+                data.get("wait_for_event") or data.get("event_type") or data.get("event")
+            )
+            if not wait_for_event:
+                return NodeExecutionResult(
+                    node_id="",
+                    status="failed",
+                    error="Wait-for-event requires wait_for_event / event_type",
+                )
             timeout_hours = data.get("timeout_hours")
             return NodeExecutionResult(
                 node_id="",
@@ -1163,6 +1268,17 @@ class WorkflowExecutor:
         self, data: dict, context: WorkflowExecutionContext
     ) -> NodeExecutionResult:
         """Execute an AI agent node."""
+        if context.is_dry_run:
+            return NodeExecutionResult(
+                node_id="",
+                status="skipped",
+                output={
+                    "dry_run": True,
+                    "message": "skipped — not simulated",
+                    "action_type": "run_agent",
+                },
+            )
+
         agent_type = data.get("agent_type")
         agent_id = data.get("agent_id")
         input_mapping = data.get("input_mapping", {})
@@ -1188,65 +1304,114 @@ class WorkflowExecutor:
     async def _execute_branch(
         self, data: dict, context: WorkflowExecutionContext
     ) -> NodeExecutionResult:
-        """Execute a branch node."""
-        branches = data.get("branches", [])
+        """Execute a branch node.
 
-        for branch in branches:
-            branch_id = branch.get("id")
-            conditions = branch.get("conditions", [])
+        Each path may carry selection rules under `conditions`, `rules`, or a
+        single `condition`. Paths without rules are the default fallback after
+        rule-bearing paths are checked — so a builder that only names paths
+        still selects the first path rather than none.
 
-            # Evaluate branch conditions
-            if not conditions:
-                # First branch without conditions is the default
-                return NodeExecutionResult(
-                    node_id="",
-                    status="success",
-                    selected_branch=branch_id,
+        Behaviour: branches are exclusive (one selected path). Parallel fan-out
+        of multiple edges from a non-branch node is handled separately in the
+        main executor; a branch node always picks exactly one path.
+        """
+        from aexy.services.condition_eval import (
+            UnknownOperatorError,
+            condition_field_key,
+        )
+
+        branches = data.get("branches") or data.get("paths") or []
+        default_id = data.get("default_branch")
+        fallback_id = None
+
+        try:
+            for branch in branches:
+                branch_id = branch.get("id") or branch.get("name") or branch.get("label")
+                conditions = (
+                    branch.get("conditions")
+                    or branch.get("rules")
+                    or (
+                        [branch["condition"]]
+                        if isinstance(branch.get("condition"), dict)
+                        and (
+                            branch["condition"].get("field")
+                            or branch["condition"].get("attribute")
+                            or branch["condition"].get("operator")
+                        )
+                        else []
+                    )
                 )
 
-            all_match = True
-            for cond in conditions:
-                field = cond.get("field")
-                operator = cond.get("operator")
-                value = cond.get("value")
-                actual_value = self._get_field_value(field, context)
-                if not self._evaluate_condition(actual_value, operator, value):
-                    all_match = False
-                    break
+                if not conditions:
+                    # Default / fallback path — remember the first one.
+                    if fallback_id is None:
+                        fallback_id = branch_id
+                    continue
 
-            if all_match:
-                return NodeExecutionResult(
-                    node_id="",
-                    status="success",
-                    selected_branch=branch_id,
-                )
+                all_match = True
+                for cond in conditions:
+                    field = condition_field_key(cond) or cond.get("field")
+                    operator = cond.get("operator")
+                    value = cond.get("value")
+                    actual_value = self._get_field_value(field, context)
+                    if not self._evaluate_condition(actual_value, operator, value):
+                        all_match = False
+                        break
 
-        # No branch matched
+                if all_match:
+                    return NodeExecutionResult(
+                        node_id="",
+                        status="success",
+                        selected_branch=branch_id,
+                        output={"selected_branch": branch_id, "mode": "exclusive"},
+                    )
+        except UnknownOperatorError as e:
+            return NodeExecutionResult(
+                node_id="",
+                status="failed",
+                error=str(e),
+                selected_branch=None,
+            )
+
+        selected = default_id or fallback_id
         return NodeExecutionResult(
             node_id="",
             status="success",
-            selected_branch=None,
+            selected_branch=selected,
+            output={"selected_branch": selected, "mode": "exclusive"},
         )
 
     def _get_field_value(self, field_path: str, context: WorkflowExecutionContext) -> Any:
-        """Get a value from context using dot notation path."""
+        """Get a value from context using dot notation path.
+
+        Bare slugs resolve against ``record_data.values`` so a condition that
+        says ``stage`` (or ``record.values.stage``) actually sees the CRM field.
+        """
         if not field_path:
             return None
 
-        parts = field_path.split(".")
+        path = str(field_path).strip()
+        if path.startswith("{{") and path.endswith("}}"):
+            path = path[2:-2].strip()
+
+        parts = path.split(".")
         current = None
 
         if parts[0] == "record":
-            current = context.record_data
+            current = context.record_data or {}
             parts = parts[1:]
         elif parts[0] == "trigger":
-            current = context.trigger_data
+            current = context.trigger_data or {}
             parts = parts[1:]
         elif parts[0] == "variables":
-            current = context.variables
+            current = context.variables or {}
             parts = parts[1:]
         else:
-            current = context.record_data
+            # Bare slug / values.X — prefer the values map
+            values = (context.record_data or {}).get("values")
+            if isinstance(values, dict) and path in values:
+                return values.get(path)
+            current = context.record_data or {}
 
         for part in parts:
             if isinstance(current, dict):
@@ -1257,36 +1422,14 @@ class WorkflowExecutor:
         return current
 
     def _evaluate_condition(self, actual: Any, operator: str, expected: Any) -> bool:
-        """Evaluate a condition."""
-        if operator == "equals":
-            return actual == expected
-        elif operator == "not_equals":
-            return actual != expected
-        elif operator == "contains":
-            return expected in str(actual) if actual else False
-        elif operator == "not_contains":
-            return expected not in str(actual) if actual else True
-        elif operator == "starts_with":
-            return str(actual).startswith(expected) if actual else False
-        elif operator == "ends_with":
-            return str(actual).endswith(expected) if actual else False
-        elif operator == "is_empty":
-            return actual is None or actual == "" or actual == []
-        elif operator == "is_not_empty":
-            return actual is not None and actual != "" and actual != []
-        elif operator == "gt":
-            return float(actual) > float(expected) if actual else False
-        elif operator == "gte":
-            return float(actual) >= float(expected) if actual else False
-        elif operator == "lt":
-            return float(actual) < float(expected) if actual else False
-        elif operator == "lte":
-            return float(actual) <= float(expected) if actual else False
-        elif operator == "in":
-            return actual in expected if isinstance(expected, list) else False
-        elif operator == "not_in":
-            return actual not in expected if isinstance(expected, list) else True
-        return False
+        """Evaluate a condition via the shared operator table.
+
+        Unknown operators raise so a step fails loudly instead of silently
+        taking the true or false path.
+        """
+        from aexy.services.condition_eval import evaluate_condition
+
+        return evaluate_condition(actual, operator, expected)
 
     def _get_branch_targets(
         self, node_id: str, edges: list[dict], handle: str

@@ -124,13 +124,19 @@ class WorkflowActionHandler:
         # Reported as "skipped", never "success", so a test can never be read
         # as evidence that the step actually worked.
         if context.is_dry_run and action_type not in self.DRY_RUN_AWARE_ACTIONS:
+            # Wait and AI-agent steps must never look like a green success on
+            # Test — they are not simulated.
+            if action_type in {"wait", "run_agent"}:
+                message = "skipped — not simulated"
+            else:
+                message = f"Test run: '{action_type}' was not performed."
             return NodeExecutionResult(
                 node_id="",
                 status="skipped",
                 output={
                     "dry_run": True,
                     "action_type": action_type,
-                    "message": f"Test run: '{action_type}' was not performed.",
+                    "message": message,
                 },
             )
 

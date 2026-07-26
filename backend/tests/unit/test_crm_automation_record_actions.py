@@ -34,7 +34,10 @@ async def test_delete_action_archives_after_confirmation():
             "delete_record", {"confirm_delete": True}, SimpleNamespace(id="record-1"), "workspace-1"
         )
 
-    assert result == {"record_id": "record-1", "archived": True}
+    assert result["record_id"] == "record-1"
+    assert result["archived"] is True
+    assert result["message"] == "archived"
+    assert result["result"] == "archived"
     record_service.delete_record.assert_awaited_once_with("record-1", permanent=False)
 
 

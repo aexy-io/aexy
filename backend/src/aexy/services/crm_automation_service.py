@@ -504,31 +504,44 @@ class CRMAutomationService:
                     run.steps_executed = [*(run.steps_executed or []), step_result]
                     continue
 
-                try:
-                    result = await self._execute_action(
-                        action_type,
-                        action_config,
-                        record,
-                        automation.workspace_id,
-                        trigger_data=run.trigger_data,
-                        run_id=str(run.id),
-                        action_index=i,
-                    )
-                    # Every action must turn a reported error into a failed
-                    # run. Treating an unsupported or invalid action as a
-                    # success makes the history untrustworthy.
-                    if result.get("error"):
-                        raise ValueError(str(result["error"]))
+                # stop / continue / retry: retry re-attempts a failed step once
+                # before applying stop-or-continue. continue records the failure
+                # and moves on; stop aborts the run.
+                max_attempts = 2 if automation.error_handling == "retry" else 1
+                attempt = 0
+                while attempt < max_attempts:
+                    attempt += 1
+                    try:
+                        result = await self._execute_action(
+                            action_type,
+                            action_config,
+                            record,
+                            automation.workspace_id,
+                            trigger_data=run.trigger_data,
+                            run_id=str(run.id),
+                            action_index=i,
+                        )
+                        # Every action must turn a reported error into a failed
+                        # run. Treating an unsupported or invalid action as a
+                        # success makes the history untrustworthy.
+                        if result.get("error"):
+                            raise ValueError(str(result["error"]))
 
-                    step_result["status"] = "queued" if result.get("queued") else "success"
-                    step_result["result"] = result
-                except Exception as e:
-                    step_result["status"] = "failed"
-                    step_result["error"] = str(e)
-
-                    if automation.error_handling == "stop":
-                        run.steps_executed = [*(run.steps_executed or []), step_result]
-                        raise
+                        step_result["status"] = "queued" if result.get("queued") else "success"
+                        step_result["result"] = result
+                        if attempt > 1:
+                            step_result["retried"] = True
+                        break
+                    except Exception as e:
+                        step_result["status"] = "failed"
+                        step_result["error"] = str(e)
+                        step_result["attempts"] = attempt
+                        if attempt < max_attempts:
+                            continue
+                        if automation.error_handling == "stop":
+                            run.steps_executed = [*(run.steps_executed or []), step_result]
+                            raise
+                        # continue (and exhausted retry): keep going
 
                 run.steps_executed = [*(run.steps_executed or []), step_result]
 
@@ -614,19 +627,27 @@ class CRMAutomationService:
         conditions treat a missing record. The field arrives as the picker's
         {{record.values.slug}} form or a bare slug; both resolve.
         """
+        from aexy.services.condition_eval import (
+            UnknownOperatorError,
+            condition_field_key,
+            evaluate_condition,
+            resolve_record_value,
+        )
+
         raw_field = str(config.get("run_if_field") or "").strip()
         if not raw_field:
             return True
         if not record:
             return True
 
-        match = re.fullmatch(r"(?:\{\{)?(?:record\.)?(?:values\.)?(.+?)(?:\}\})?", raw_field)
-        slug = match.group(1) if match else raw_field
-        record_value = (record.values or {}).get(slug)
-
+        slug = condition_field_key({"field": raw_field})
+        record_value = resolve_record_value(record.values, slug)
         operator = str(config.get("run_if_operator") or "equals")
         try:
-            return self._check_condition(record_value, operator, config.get("run_if_value"))
+            return evaluate_condition(record_value, operator, config.get("run_if_value"))
+        except UnknownOperatorError:
+            # Unknown operator on a gate must not quietly allow the step.
+            return False
         except (TypeError, ValueError):
             # e.g. a numeric comparison against a non-numeric field value:
             # an unevaluable gate withholds the step rather than crashing the run
@@ -637,60 +658,28 @@ class CRMAutomationService:
         conditions: list[dict],
         record: CRMRecord | None,
     ) -> bool:
-        """Evaluate automation conditions."""
+        """Evaluate automation-level conditions (AND).
+
+        Accepts both `attribute` (API schema) and `field` (builder) keys so a
+        condition that is true on the record actually takes the true path.
+        Unknown operators raise — the run fails loudly rather than lying.
+        """
+        from aexy.services.condition_eval import evaluate_condition_dict
+
         if not record:
             return True
 
         for condition in conditions:
-            attr = condition.get("attribute")
-            operator = condition.get("operator")
-            value = condition.get("value")
-
-            record_value = record.values.get(attr)
-
-            if not self._check_condition(record_value, operator, value):
+            if not evaluate_condition_dict(condition, record.values):
                 return False
 
         return True
 
     def _check_condition(self, record_value: Any, operator: str, value: Any) -> bool:
-        """Check a single condition."""
-        if operator == "equals":
-            return record_value == value
-        elif operator == "not_equals":
-            return record_value != value
-        elif operator == "contains":
-            return value in str(record_value) if record_value else False
-        elif operator == "is_empty":
-            return not record_value
-        elif operator == "is_not_empty":
-            return bool(record_value)
-        elif operator == "gt":
-            return float(record_value or 0) > float(value or 0)
-        elif operator == "gte":
-            return float(record_value or 0) >= float(value or 0)
-        elif operator == "lt":
-            return float(record_value or 0) < float(value or 0)
-        elif operator == "lte":
-            return float(record_value or 0) <= float(value or 0)
-        elif operator == "in":
-            return record_value in (value if isinstance(value, list) else [value])
-        elif operator == "not_in":
-            return record_value not in (value if isinstance(value, list) else [value])
-        elif operator == "starts_with":
-            return str(record_value).lower().startswith(str(value).lower()) if record_value else False
-        elif operator == "ends_with":
-            return str(record_value).lower().endswith(str(value).lower()) if record_value else False
-        elif operator == "not_contains":
-            return str(value).lower() not in str(record_value).lower() if record_value else True
-        elif operator == "between":
-            if isinstance(value, list) and len(value) == 2:
-                try:
-                    return float(value[0]) <= float(record_value or 0) <= float(value[1])
-                except (ValueError, TypeError):
-                    return False
-            return False
-        return True
+        """Check a single condition (shared evaluator)."""
+        from aexy.services.condition_eval import evaluate_condition
+
+        return evaluate_condition(record_value, operator, value)
 
     async def _execute_action(
         self,
@@ -933,7 +922,14 @@ class CRMAutomationService:
         )
         if not deleted:
             return {"error": "Record was not found"}
-        return {"record_id": record.id, "archived": True}
+        # Keep archive semantics; surface the word "archived" so run history
+        # never claims the record was hard-deleted.
+        return {
+            "record_id": record.id,
+            "archived": True,
+            "message": "archived",
+            "result": "archived",
+        }
 
     def _resolve_field_reference(
         self, record: CRMRecord, raw_path: str
@@ -1233,21 +1229,43 @@ class CRMAutomationService:
         record: CRMRecord | None,
         trigger_data: dict | None = None,
     ) -> dict:
-        """Make a webhook HTTP call."""
-        url = config.get("url")
-        method = config.get("method", "POST")
-        headers = config.get("headers", {})
+        """Make a webhook HTTP call.
+
+        Reads both the panel keys (webhook_url / http_method / body_template)
+        and the legacy executor keys (url / method / headers) so a step
+        configured in the builder actually fires on a published run.
+        """
+        url = config.get("webhook_url") or config.get("url")
+        method = config.get("http_method") or config.get("method") or "POST"
+        headers = config.get("headers") or {}
 
         if not url:
             return {"error": "No URL specified"}
 
-        payload = {
-            "event": "automation.triggered",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "record": record.values if record else None,
-            "record_id": record.id if record else None,
-            "trigger_data": trigger_data,
-        }
+        body_template = config.get("body_template")
+        if isinstance(body_template, str) and body_template.strip():
+            try:
+                import json as _json
+
+                payload = _json.loads(
+                    self._replace_placeholders(body_template, record, trigger_data)
+                    if record is not None or trigger_data
+                    else body_template
+                )
+            except Exception:
+                payload = {
+                    "body": self._replace_placeholders(body_template, record, trigger_data)
+                    if record is not None or trigger_data
+                    else body_template
+                }
+        else:
+            payload = {
+                "event": "automation.triggered",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "record": record.values if record else None,
+                "record_id": record.id if record else None,
+                "trigger_data": trigger_data,
+            }
 
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:

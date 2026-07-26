@@ -73,6 +73,12 @@ async def create_automation(
     conditions = [c.model_dump() for c in data.conditions] if data.conditions else None
     actions = [a.model_dump() for a in data.actions]
 
+    from aexy.services.workflow_service import validate_action_configs
+
+    action_errors = validate_action_configs(actions)
+    if action_errors:
+        raise HTTPException(status_code=400, detail="; ".join(action_errors))
+
     automation = await service.create_automation(
         workspace_id=workspace_id,
         name=data.name,
@@ -82,6 +88,9 @@ async def create_automation(
         trigger_config=data.trigger_config,
         conditions=conditions,
         actions=actions,
+        error_handling=data.error_handling,
+        run_limit_per_month=data.run_limit_per_month,
+        is_active=data.is_active if data.is_active is not None else True,
         created_by_id=current_user.id,
     )
     return automation
@@ -145,9 +154,22 @@ async def update_automation(
         raise HTTPException(status_code=404, detail="Automation not found")
 
     # model_dump() recursively converts nested Pydantic models to dicts
+    payload = data.model_dump(exclude_unset=True)
+    if "actions" in payload and payload["actions"] is not None:
+        from aexy.services.workflow_service import validate_action_configs
+
+        actions = payload["actions"]
+        # nested models already dumped
+        if actions and hasattr(actions[0], "model_dump"):
+            actions = [a.model_dump() for a in actions]
+            payload["actions"] = actions
+        action_errors = validate_action_configs(actions)
+        if action_errors:
+            raise HTTPException(status_code=400, detail="; ".join(action_errors))
+
     automation = await service.update_automation(
         automation_id=automation_id,
-        **data.model_dump(exclude_unset=True),
+        **payload,
     )
     return automation
 

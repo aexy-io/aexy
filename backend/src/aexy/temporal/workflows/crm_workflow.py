@@ -236,44 +236,77 @@ class CRMAutomationWorkflow:
         )
 
     def _evaluate_condition(self, data: dict, context: dict) -> bool:
-        """Evaluate a condition node."""
-        field_path = data.get("field", "")
-        operator = data.get("operator", "equals")
-        value = data.get("value", "")
+        """Evaluate a condition node (list or single field/operator/value).
 
-        actual_value = self._resolve_field(field_path, context)
+        Uses the shared operator table so Temporal and the inline executor
+        agree. Unknown operators raise — the activity/workflow surfaces a
+        failed step rather than silently taking a path.
+        """
+        from aexy.services.condition_eval import (
+            condition_field_key,
+            evaluate_condition,
+        )
 
-        if operator == "equals":
-            return str(actual_value) == str(value)
-        elif operator == "not_equals":
-            return str(actual_value) != str(value)
-        elif operator == "contains":
-            return str(value) in str(actual_value)
-        elif operator == "is_empty":
-            return not actual_value
-        elif operator == "is_not_empty":
-            return bool(actual_value)
-        elif operator == "greater_than":
-            try:
-                return float(actual_value or 0) > float(value or 0)
-            except (ValueError, TypeError):
-                return False
-        elif operator == "less_than":
-            try:
-                return float(actual_value or 0) < float(value or 0)
-            except (ValueError, TypeError):
-                return False
+        conditions = data.get("conditions") or []
+        if not conditions and (
+            data.get("field") or data.get("attribute") or data.get("operator")
+        ):
+            conditions = [data]
 
-        return True
+        if not conditions:
+            return True
+
+        conjunction = data.get("conjunction", "and")
+        results = []
+        for cond in conditions:
+            field_path = condition_field_key(cond) or cond.get("field") or ""
+            actual_value = self._resolve_field(str(field_path), context)
+            results.append(
+                evaluate_condition(actual_value, cond.get("operator"), cond.get("value"))
+            )
+
+        return all(results) if conjunction == "and" else any(results)
 
     def _resolve_field(self, field_path: str, context: dict) -> Any:
-        """Resolve a field path from context."""
+        """Resolve a field path from workflow context.
+
+        Accepts bare slugs (looked up under record_data.values),
+        ``record.values.X``, ``record_data.values.X``, and dotted paths.
+        """
         if not field_path:
             return None
 
-        parts = field_path.split(".")
-        current = context
+        path = field_path.strip()
+        # Normalise builder paths
+        if path.startswith("{{") and path.endswith("}}"):
+            path = path[2:-2].strip()
 
+        # Common aliases for the record payload
+        record_blob = (
+            context.get("record_data")
+            or context.get("record")
+            or {}
+        )
+        if isinstance(record_blob, dict):
+            values = record_blob.get("values") if "values" in record_blob else record_blob
+        else:
+            values = {}
+
+        if path in ("id", "record.id") and isinstance(record_blob, dict):
+            return record_blob.get("id")
+
+        bare = path
+        for prefix in ("record.values.", "record_data.values.", "values.", "record."):
+            if bare.startswith(prefix):
+                bare = bare[len(prefix) :]
+                break
+
+        if isinstance(values, dict) and bare in values:
+            return values.get(bare)
+
+        # Generic dotted walk from context root
+        parts = path.split(".")
+        current: Any = context
         for part in parts:
             if isinstance(current, dict):
                 current = current.get(part)
@@ -281,35 +314,51 @@ class CRMAutomationWorkflow:
                 return None
             if current is None:
                 return None
-
         return current
 
     def _evaluate_branches(self, data: dict, context: dict) -> str | None:
-        """Evaluate branch conditions and return selected branch ID."""
-        branches = data.get("branches", [])
+        """Pick one exclusive branch by selection rules.
+
+        Paths with rules are evaluated first; the first match wins. Paths
+        without rules are the fallback default (first such path, or
+        ``default_branch``). Documented behaviour: exclusive selection —
+        never run multiple branch arms from a branch node.
+        """
+        branches = data.get("branches") or data.get("paths") or []
+        default_id = data.get("default_branch")
+        fallback_id = None
+
         for branch in branches:
-            branch_id = branch.get("id")
-            condition = branch.get("condition", {})
-            if self._evaluate_condition(condition, context):
+            branch_id = branch.get("id") or branch.get("name") or branch.get("label")
+            conditions = (
+                branch.get("conditions")
+                or branch.get("rules")
+                or (
+                    [branch["condition"]]
+                    if isinstance(branch.get("condition"), dict)
+                    and (
+                        branch["condition"].get("field")
+                        or branch["condition"].get("attribute")
+                        or branch["condition"].get("operator")
+                    )
+                    else []
+                )
+            )
+            if not conditions:
+                if fallback_id is None:
+                    fallback_id = branch_id
+                continue
+            # Reuse list evaluation by wrapping
+            if self._evaluate_condition({"conditions": conditions}, context):
                 return branch_id
 
-        default = data.get("default_branch")
-        return default
+        return default_id or fallback_id
 
     def _calculate_duration(self, data: dict) -> int:
-        """Calculate wait duration in seconds.
+        """Calculate wait duration in seconds (all unit/key aliases)."""
+        from aexy.services.condition_eval import wait_duration_seconds
 
-        The config panel writes `duration_value`; older/other callers used
-        `duration_amount`. Accept both so the user's number is never dropped.
-        """
-        amount = data.get("duration_value", data.get("duration_amount", 1))
-        try:
-            amount = int(amount)
-        except (TypeError, ValueError):
-            amount = 1
-        unit = data.get("duration_unit", "hours")
-        multipliers = {"seconds": 1, "minutes": 60, "hours": 3600, "days": 86400}
-        return amount * multipliers.get(unit, 3600)
+        return wait_duration_seconds(data)
 
     def _get_branch_targets(self, node_id: str, edges: list, label: str) -> list[str]:
         """Get target nodes for a specific branch label."""

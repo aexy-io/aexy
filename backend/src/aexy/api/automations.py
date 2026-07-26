@@ -148,6 +148,12 @@ async def create_automation(
     conditions = [c.model_dump() for c in data.conditions] if data.conditions else None
     actions = [a.model_dump() for a in data.actions]
 
+    from aexy.services.workflow_service import validate_action_configs
+
+    action_errors = validate_action_configs(actions)
+    if action_errors:
+        raise HTTPException(status_code=400, detail="; ".join(action_errors))
+
     automation = await service.create_automation(
         workspace_id=workspace_id,
         name=data.name,
