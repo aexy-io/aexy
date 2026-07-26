@@ -87,10 +87,10 @@ def sync_workflow_to_automation(
     steps in the order they were dropped onto the canvas — rewiring a flow
     changed the picture and nothing else.
 
-    Only `action` nodes survive the flattening: the published executor
-    (`CRMAutomationService._execute_action`) has no case for condition/wait/
-    agent/branch, so they cannot run. `validate_workflow` now rejects those
-    before this is reached, so the drop here is a backstop, not the enforcement.
+    Only `action` nodes need the flattened compatibility list. Canvases with
+    condition/wait/agent/branch nodes execute their persisted graph through
+    Temporal, so those structural nodes intentionally remain in the workflow
+    definition rather than being duplicated into `automation.actions`.
     """
     order = service.topological_sort(nodes, edges)
     position = {node_id: i for i, node_id in enumerate(order)}
@@ -129,13 +129,14 @@ def sync_workflow_to_automation(
         # here is stored fine but poisons every later fetch/list of the
         # workspace's automations (the response contract rejects it), so the
         # canvas-save path must refuse it up front too.
-        valid_triggers = get_trigger_ids(automation.module or "crm")
+        module = getattr(automation, "module", None) or "crm"
+        valid_triggers = get_trigger_ids(module)
         if trigger_type not in valid_triggers:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=(
                     f"Unsupported trigger '{trigger_type}' for module "
-                    f"'{automation.module or 'crm'}'. Choose a trigger from the automation registry."
+                    f"'{module}'. Choose a trigger from the automation registry."
                 ),
             )
         automation.trigger_type = trigger_type
@@ -201,6 +202,10 @@ async def update_workflow(
     # Validate if nodes and edges are provided
     if nodes_data is not None and edges_data is not None:
         validation = service.validate_workflow(nodes_data, edges_data)
+        validation.errors.extend(
+            await service.validate_agent_references(nodes_data, workspace_id)
+        )
+        validation.is_valid = len(validation.errors) == 0
         if not validation.is_valid:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -287,7 +292,12 @@ async def validate_workflow(
     service = WorkflowService(db)
     nodes = [n.model_dump() for n in data.nodes]
     edges = [e.model_dump(by_alias=True) for e in data.edges]
-    return service.validate_workflow(nodes, edges)
+    validation = service.validate_workflow(nodes, edges)
+    validation.errors.extend(
+        await service.validate_agent_references(nodes, workspace_id)
+    )
+    validation.is_valid = len(validation.errors) == 0
+    return validation
 
 
 @router.post("/publish", response_model=WorkflowDefinitionResponse)
@@ -312,6 +322,10 @@ async def publish_workflow(
 
     # Validate before publishing
     validation = service.validate_workflow(workflow.nodes, workflow.edges)
+    validation.errors.extend(
+        await service.validate_agent_references(workflow.nodes, workspace_id)
+    )
+    validation.is_valid = len(validation.errors) == 0
     if not validation.is_valid:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

@@ -904,38 +904,59 @@ const ACTION_ICONS: Record<string, React.ElementType> = {
   send_compliance_digest: Mail,
 };
 
-// Fixed categories that don't change by module
-//
-// Condition / Wait / AI Agents / Branch removed (2026-07-19), same reason as
-// Join before them: publishing flattens the canvas onto the automation's
-// action list, which keeps ONLY trigger + action nodes. These four were
-// dropped on publish and the automation then ran every action
-// unconditionally — a filter that silently didn't filter, with no error
-// anywhere. Per US-1.5 (P0), the palette must not offer what can't execute.
-// Restoring them is Epic 4 (logic & timing) / Epic 5 (agents), not a palette
-// change: the published executor needs matching cases first.
-const FIXED_CATEGORIES: Omit<NodeCategory, "subtypes">[] = [
-  // Join node removed (2026-07-15): the execution engine silently skips it.
-  // Implementation deferred — see prds/automations-noncrm-deferred.md.
-];
+const STRUCTURAL_CAPABILITIES: Record<
+  string,
+  Omit<NodeCategory, "subtypes"> & { registryAction: string }
+> = {
+  condition: {
+    registryAction: "condition",
+    type: "condition",
+    label: "Condition",
+    icon: GitBranch,
+    color: "text-amber-600 dark:text-amber-400",
+    bgColor: "bg-amber-500/20",
+  },
+  wait: {
+    registryAction: "wait",
+    type: "wait",
+    label: "Wait",
+    icon: Clock,
+    color: "text-violet-600 dark:text-violet-400",
+    bgColor: "bg-violet-500/20",
+  },
+  agent: {
+    registryAction: "run_agent",
+    type: "agent",
+    label: "AI Agent",
+    icon: Bot,
+    color: "text-fuchsia-600 dark:text-fuchsia-400",
+    bgColor: "bg-fuchsia-500/20",
+  },
+  branch: {
+    registryAction: "branch",
+    type: "branch",
+    label: "Branch",
+    icon: Merge,
+    color: "text-orange-600 dark:text-orange-400",
+    bgColor: "bg-orange-500/20",
+  },
+};
 
-// Fixed subtypes for non-dynamic categories
-const FIXED_SUBTYPES: Record<string, { value: string; label: string; icon: React.ElementType }[]> = {
+const STRUCTURAL_ACTION_IDS = new Set(
+  Object.values(STRUCTURAL_CAPABILITIES).map((item) => item.registryAction)
+);
+
+const FIXED_SUBTYPES: Record<
+  string,
+  { value: string; label: string; icon: React.ElementType }[]
+> = {
   condition: [],
   wait: [
     { value: "duration", label: "Wait Duration", icon: Clock },
     { value: "datetime", label: "Wait Until Date", icon: Calendar },
-    { value: "event", label: "Wait for Event", icon: Bell },
   ],
-  agent: [
-    { value: "sales_outreach", label: "Sales Outreach", icon: Target },
-    { value: "lead_scoring", label: "Lead Scoring", icon: Sparkles },
-    { value: "email_drafter", label: "Email Drafter", icon: Mail },
-    { value: "data_enrichment", label: "Data Enrichment", icon: Database },
-    { value: "custom", label: "Custom Agent", icon: Bot },
-  ],
+  agent: [],
   branch: [],
-  // join subtypes removed (2026-07-15) — see FIXED_CATEGORIES note.
 };
 
 function getTriggerLabel(module: string, triggerType: string): string {
@@ -1020,14 +1041,27 @@ export function NodePalette({
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(["trigger"]));
 
   // Fetch triggers and actions from the registry
-  const { triggers: registryTriggers, descriptions: triggerApiDescs, isLoading: triggersLoading } = useModuleTriggers(workspaceId, module);
-  const { actions: registryActions, descriptions: actionApiDescs, isLoading: actionsLoading } = useModuleActions(workspaceId, module);
+  const {
+    triggers: registryTriggers,
+    descriptions: triggerApiDescs,
+    isLoading: triggersLoading,
+    error: triggersError,
+  } = useModuleTriggers(workspaceId, module);
+  const {
+    actions: registryActions,
+    descriptions: actionApiDescs,
+    isLoading: actionsLoading,
+    error: actionsError,
+  } = useModuleActions(workspaceId, module);
 
   // Build dynamic categories based on registry data
   const nodeCategories = useMemo(() => {
     // The server registry is the capability contract.  Do not render a
     // client-side fallback while it loads or fails: offering a capability the
     // server cannot run is worse than showing an empty, retryable palette.
+    if (triggersLoading || actionsLoading || triggersError || actionsError) {
+      return [];
+    }
     const triggers = registryTriggers;
     const actions = registryActions;
 
@@ -1040,12 +1074,21 @@ export function NodePalette({
     }));
 
     // Build action subtypes
-    const actionSubtypes: NodeSubtype[] = actions.map((a) => ({
-      value: a,
-      label: getActionLabel(module, a),
-      icon: getActionIcon(a),
-      description: getActionDescription(module, a, actionApiDescs),
-    }));
+    const actionSubtypes: NodeSubtype[] = actions
+      .filter((action) => !STRUCTURAL_ACTION_IDS.has(action))
+      .map((a) => ({
+        value: a,
+        label: getActionLabel(module, a),
+        icon: getActionIcon(a),
+        description: getActionDescription(module, a, actionApiDescs),
+      }));
+
+    const structuralCategories = Object.values(STRUCTURAL_CAPABILITIES)
+      .filter((category) => actions.includes(category.registryAction))
+      .map(({ registryAction: _registryAction, ...category }) => ({
+        ...category,
+        subtypes: FIXED_SUBTYPES[category.type] || [],
+      }));
 
     // Build categories
     const categories: NodeCategory[] = [
@@ -1065,15 +1108,21 @@ export function NodePalette({
         bgColor: "bg-blue-500/20",
         subtypes: actionSubtypes,
       },
-      // Add fixed categories with their subtypes
-      ...FIXED_CATEGORIES.map((cat) => ({
-        ...cat,
-        subtypes: FIXED_SUBTYPES[cat.type] || [],
-      })),
+      ...structuralCategories,
     ];
 
     return categories;
-  }, [module, registryTriggers, registryActions, triggerApiDescs, actionApiDescs]);
+  }, [
+    module,
+    registryTriggers,
+    registryActions,
+    triggerApiDescs,
+    actionApiDescs,
+    triggersLoading,
+    actionsLoading,
+    triggersError,
+    actionsError,
+  ]);
 
   const toggleCategory = (type: string) => {
     setExpandedCategories((prev) => {
