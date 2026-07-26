@@ -148,22 +148,25 @@ async def create_automation(
     conditions = [c.model_dump() for c in data.conditions] if data.conditions else None
     actions = [a.model_dump() for a in data.actions]
 
-    automation = await service.create_automation(
-        workspace_id=workspace_id,
-        name=data.name,
-        description=data.description,
-        module=data.module,
-        module_config=data.module_config,
-        object_id=data.object_id,
-        trigger_type=data.trigger_type,
-        trigger_config=data.trigger_config,
-        conditions=conditions,
-        actions=actions,
-        error_handling=data.error_handling,
-        run_limit_per_month=data.run_limit_per_month,
-        is_active=data.is_active,
-        created_by_id=current_user.id,
-    )
+    try:
+        automation = await service.create_automation(
+            workspace_id=workspace_id,
+            name=data.name,
+            description=data.description,
+            module=data.module,
+            module_config=data.module_config,
+            object_id=data.object_id,
+            trigger_type=data.trigger_type,
+            trigger_config=data.trigger_config,
+            conditions=conditions,
+            actions=actions,
+            error_handling=data.error_handling,
+            run_limit_per_month=data.run_limit_per_month,
+            is_active=data.is_active,
+            created_by_id=current_user.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     return automation
 
 

@@ -59,8 +59,28 @@ interface Automation {
   description: string | null;
   module: AutomationModule;
   is_active: boolean;
+  trigger_type?: string;
+  trigger_config?: Record<string, unknown>;
+  actions?: Array<{ type: string; config?: Record<string, unknown> }>;
 }
 
+/** Older automations predate the visual workflow record.  Reconstruct a
+ * readable graph from their persisted execution contract instead of showing a
+ * misleading blank canvas. */
+export function deriveWorkflowNodes(automation: Automation): Node[] {
+  const trigger: Node = {
+    id: "derived-trigger",
+    type: "trigger",
+    position: { x: 80, y: 120 },
+    data: { trigger_type: automation.trigger_type, ...(automation.trigger_config || {}) },
+  };
+  return [trigger, ...(automation.actions || []).map((action, index) => ({
+    id: `derived-action-${index}`,
+    type: "action",
+    position: { x: 360 + index * 280, y: 120 },
+    data: { action_type: action.type, ...(action.config || {}) },
+  }))];
+}
 
 export default function EditAutomationPage() {
   const t = useTranslations("automations");
@@ -350,7 +370,7 @@ export default function EditAutomationPage() {
             automationId={automationId}
             workspaceId={workspaceId}
             module={automation?.module || "crm"}
-            initialNodes={workflow?.nodes || []}
+            initialNodes={workflow?.nodes?.length ? workflow.nodes : automation ? deriveWorkflowNodes(automation) : []}
             initialEdges={workflow?.edges || []}
             initialViewport={workflow?.viewport || { x: 0, y: 0, zoom: 1 }}
             isPublished={workflow?.is_published || false}
