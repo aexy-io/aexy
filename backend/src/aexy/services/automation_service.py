@@ -177,9 +177,11 @@ class AutomationService:
         """Create a new automation with module context."""
         # Validate trigger type for module
         valid_triggers = get_trigger_ids(module)
-        if valid_triggers and trigger_type not in valid_triggers:
-            # Allow any trigger for now, just log warning
-            pass
+        if trigger_type not in valid_triggers:
+            raise ValueError(
+                f"Unsupported trigger '{trigger_type}' for module '{module}'. "
+                "Choose a trigger from the automation registry."
+            )
 
         # Create automation using base service
         automation = CRMAutomation(

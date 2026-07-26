@@ -69,6 +69,7 @@ def expand_activity_category(value: str | None) -> list[str] | None:
 CRMAutomationTriggerType = Literal[
     "record.created", "record.updated", "record.deleted", "field.changed",
     "list_entry.added", "list_entry.removed", "status.changed",
+    "stage.changed",
     "schedule.daily", "schedule.weekly", "date.approaching", "date.passed",
     "webhook.received", "form.submitted",
     "email.opened", "email.clicked", "email.replied"

@@ -938,42 +938,6 @@ const FIXED_SUBTYPES: Record<string, { value: string; label: string; icon: React
   // join subtypes removed (2026-07-15) — see FIXED_CATEGORIES note.
 };
 
-// Fallback triggers for when API fails or during loading.
-//
-// MUST stay a subset of what the backend registry exposes (HIDDEN_TRIGGERS in
-// schemas/automation.py). This list is what the palette renders before the
-// registry request resolves, so anything extra here is briefly offered and
-// then vanishes.
-const FALLBACK_TRIGGERS: Record<string, string[]> = {
-  // Trimmed 2026-07-19 to the triggers something actually emits AND that a
-  // CRM automation can match. Removed: list add/remove and status change (no
-  // emitter), form submission (emitted against the forms module, so a CRM
-  // automation never matches it).
-  crm: [
-    "record.created",
-    "record.updated",
-    "record.deleted",
-    "field.changed",
-    "stage.changed",
-  ],
-};
-
-// Fallback actions for when API fails or during loading.
-//
-// Same subset rule as the triggers above. Send Slack is deliberately absent:
-// it depends on a per-workspace integration the backend resolves, which this
-// static list cannot know, so it is under-offered until the registry answers.
-const FALLBACK_ACTIONS: Record<string, string[]> = {
-  crm: [
-    "send_email",
-    "create_task",
-    "notify_user",
-    "notify_team",
-    "create_record",
-    "update_record",
-  ],
-};
-
 function getTriggerLabel(module: string, triggerType: string): string {
   // Check module-specific labels first
   const moduleLabels = TRIGGER_LABELS[module];
@@ -1061,9 +1025,11 @@ export function NodePalette({
 
   // Build dynamic categories based on registry data
   const nodeCategories = useMemo(() => {
-    // Use registry data if available, otherwise fallback
-    const triggers = registryTriggers.length > 0 ? registryTriggers : (FALLBACK_TRIGGERS[module] || []);
-    const actions = registryActions.length > 0 ? registryActions : (FALLBACK_ACTIONS[module] || []);
+    // The server registry is the capability contract.  Do not render a
+    // client-side fallback while it loads or fails: offering a capability the
+    // server cannot run is worse than showing an empty, retryable palette.
+    const triggers = registryTriggers;
+    const actions = registryActions;
 
     // Build trigger subtypes
     const triggerSubtypes: NodeSubtype[] = triggers.map((t) => ({

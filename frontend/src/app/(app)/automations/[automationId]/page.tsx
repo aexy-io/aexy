@@ -59,8 +59,54 @@ interface Automation {
   description: string | null;
   module: AutomationModule;
   is_active: boolean;
+  trigger_type?: string;
+  trigger_config?: Record<string, unknown>;
+  actions?: Array<{ type: string; config?: Record<string, unknown> }>;
 }
 
+/** "record.created" / "send_email" → "Record Created" / "Send Email" — the
+ * node components render data.label as the node's title. */
+function humanizeStepType(stepType: string | undefined): string {
+  return (stepType || "")
+    .split(/[._]/)
+    .filter(Boolean)
+    .map((word) => word[0].toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+/** Older automations predate the visual workflow record.  Reconstruct a
+ * readable graph from their persisted execution contract instead of showing a
+ * misleading blank canvas. */
+export function deriveWorkflowGraph(automation: Automation): { nodes: Node[]; edges: Edge[] } {
+  const trigger: Node = {
+    id: "derived-trigger",
+    type: "trigger",
+    position: { x: 80, y: 120 },
+    data: {
+      label: humanizeStepType(automation.trigger_type),
+      trigger_type: automation.trigger_type,
+      ...(automation.trigger_config || {}),
+    },
+  };
+  const nodes = [trigger, ...(automation.actions || []).map((action, index): Node => ({
+    id: `derived-action-${index}`,
+    type: "action",
+    position: { x: 360 + index * 280, y: 120 },
+    data: {
+      label: humanizeStepType(action.type),
+      action_type: action.type,
+      ...(action.config || {}),
+    },
+  }))];
+  // Chain trigger → action1 → action2 …, matching the sequential order the
+  // published executor runs the stored actions list in.
+  const edges: Edge[] = nodes.slice(1).map((node, index) => ({
+    id: `derived-edge-${index}`,
+    source: index === 0 ? "derived-trigger" : `derived-action-${index - 1}`,
+    target: node.id,
+  }));
+  return { nodes, edges };
+}
 
 export default function EditAutomationPage() {
   const t = useTranslations("automations");
@@ -350,8 +396,8 @@ export default function EditAutomationPage() {
             automationId={automationId}
             workspaceId={workspaceId}
             module={automation?.module || "crm"}
-            initialNodes={workflow?.nodes || []}
-            initialEdges={workflow?.edges || []}
+            initialNodes={workflow?.nodes?.length ? workflow.nodes : automation ? deriveWorkflowGraph(automation).nodes : []}
+            initialEdges={workflow?.nodes?.length ? (workflow.edges || []) : automation ? deriveWorkflowGraph(automation).edges : []}
             initialViewport={workflow?.viewport || { x: 0, y: 0, zoom: 1 }}
             isPublished={workflow?.is_published || false}
             onSave={handleSave}
