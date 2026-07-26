@@ -23,6 +23,7 @@ from aexy.services.workflow_service import WorkflowService, WorkflowExecutor
 from aexy.services.workspace_service import WorkspaceService
 from aexy.services.crm_automation_service import CRMAutomationService
 from aexy.services.activity_logger import log_activity
+from aexy.schemas.automation import get_trigger_ids
 from aexy.schemas.workflow import (
     WorkflowDefinitionCreate,
     WorkflowDefinitionUpdate,
@@ -124,6 +125,19 @@ def sync_workflow_to_automation(
                 })
 
     if trigger_type:
+        # Same registry gate as the create endpoint: an unknown value written
+        # here is stored fine but poisons every later fetch/list of the
+        # workspace's automations (the response contract rejects it), so the
+        # canvas-save path must refuse it up front too.
+        valid_triggers = get_trigger_ids(automation.module or "crm")
+        if trigger_type not in valid_triggers:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"Unsupported trigger '{trigger_type}' for module "
+                    f"'{automation.module or 'crm'}'. Choose a trigger from the automation registry."
+                ),
+            )
         automation.trigger_type = trigger_type
     automation.trigger_config = trigger_config
     automation.actions = actions
