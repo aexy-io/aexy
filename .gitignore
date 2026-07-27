@@ -55,3 +55,7 @@ reviews-ux-tracker.md
 audit-in-app-docs.md
 # macOS app bundle (built artifact)
 aexy-mac/Aexy.app
+
+# Local per-run comparison exports; not release material.
+*_round1.csv
+*_update.csv

@@ -156,7 +156,12 @@ async def test_retried_failed_email_does_not_create_a_second_activity_entry():
 
 @pytest.mark.asyncio
 async def test_success_after_failed_step_recovers_the_run():
-    """Bhanu #203: a delivered retry must not leave the run permanently failed."""
+    """A delivered retry must not leave the run permanently failed.
+
+    A send that fails and then succeeds on retry previously left the run
+    stuck at failed, because the later success never cleared the earlier
+    step outcome. The run must reflect the final state of each step.
+    """
     run = _run(status="failed")
     run.steps_executed = [
         {
