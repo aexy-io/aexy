@@ -2582,9 +2582,16 @@ class WorkflowActionHandler:
                 if email_result.status == "success":
                     channels_notified.append("email")
 
+            # A notification that reached nobody is not a success. Both channel
+            # sends above swallow their own failure into the tally, so without
+            # this gate a Slack outage or a bad address produced a green step
+            # and the run history claimed the user had been told. The
+            # notify-admins handler directly below has always gated this way.
             return NodeExecutionResult(
-                node_id="", status="success",
+                node_id="",
+                status="success" if channels_notified else "failed",
                 output={"user_id": developer.id, "channels_notified": channels_notified},
+                error=None if channels_notified else "No notification could be delivered",
             )
         except Exception as e:
             return NodeExecutionResult(node_id="", status="failed", error=str(e))

@@ -3144,6 +3144,25 @@ class CRMAutomationService:
                 wait_for_completion=wait_for_completion,
                 timeout_seconds=timeout_seconds,
             )
+            # When the step waited for the agent, the agent's verdict is the
+            # step's verdict. Reporting success on a failed or timed-out agent
+            # made the run history claim work happened that did not, and any
+            # later step reading the agent's output got nothing. Not waiting is
+            # still a success: the step's job was only to start the agent.
+            #
+            # The error key is what the executor's gate reads, so a bare
+            # "success": False would be invisible to it.
+            if wait_for_completion and execution.status != "completed":
+                return {
+                    "success": False,
+                    "execution_id": str(execution.id),
+                    "agent_id": agent_id,
+                    "status": execution.status,
+                    "error": (
+                        execution.error_message
+                        or f"Agent execution {execution.status}"
+                    ),
+                }
             return {
                 "success": True,
                 "execution_id": str(execution.id),
