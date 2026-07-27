@@ -1,7 +1,8 @@
 -- One-off repair for legacy CRM automation trigger values.
 --
--- Run manually with psql against the target database. This script is not
--- picked up by the Alembic migration runner.
+-- This filename intentionally sits outside the custom migration runner's
+-- automatic migrate*.sql scan. Run it explicitly with:
+--   python scripts/run_migrations.py --file normalize_crm_automation_trigger_types.sql
 -- Review the SELECT first in the target database; do not run blindly:
 --   SELECT id, trigger_type FROM crm_automations WHERE trigger_type LIKE '%\_%';
 --

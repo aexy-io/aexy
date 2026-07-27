@@ -108,17 +108,15 @@ current behaviour retries. Gap 2 tracks this.
 
 ## Deployment requirements
 
-- **Two SQL scripts must be applied manually.** They live in `backend/scripts/`
-  and are **not** Alembic revisions, so the migration runner will not apply
-  them:
-  - `migrate_automation_email_outbox.sql` creates the outbox table. Apply it
-    before starting the new backend, or automation email cannot claim a send.
-  - `normalize_crm_automation_trigger_types.sql` repairs legacy underscore
-    trigger values to their canonical dotted form. An automation holding a
-    legacy value will not match its trigger until this runs. The script opens
-    with a SELECT to review against the target database first, and maps values
-    explicitly, because a blanket replacement would corrupt the two
-    list-membership values that legitimately retain an underscore.
+- Run the repository's custom SQL migration runner before starting the new
+  backend. It automatically discovers
+  `migrate_automation_email_outbox.sql`, which creates the outbox table.
+- `normalize_crm_automation_trigger_types.sql` intentionally sits outside the
+  automatic `migrate*.sql` scan. Review its opening SELECT against the target
+  database, then run it explicitly with
+  `python scripts/run_migrations.py --file normalize_crm_automation_trigger_types.sql`.
+  It maps legacy trigger values individually because a blanket replacement
+  would corrupt the two list-membership values that retain an underscore.
 - Backend and durable worker must be restarted **together**; their execution
   contract changed.
 - **Allow in-flight automations to drain before deploying.** The durable
