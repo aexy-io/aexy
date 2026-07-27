@@ -63,34 +63,18 @@ aexy-mac/Aexy.app
 # Per-run exports and comparison spreadsheets
 *_round1.csv
 *_update.csv
-three-way-update-comparison.csv
-CRM_Automations.xlsx
-my_eval.xlsx
+# Office lock files left behind next to an open spreadsheet
 ~$*
-
-# Draft release material assembled locally
-/pr-drafts/
-/pr-assets/
-
-# Local planning and session notes
-*HANDOFF*.md
-*HANDOVER*.md
-NEXT-SESSION.md
-AEXY_SESSION_CONTEXT.md
-PLAN-crm-automations-all-green.md
-AEXY_TEST_FRAMEWORK.md
-PR-GUIDE-PLAIN-ENGLISH.md
-Untitled.md
-jeez.md
-nothing.md
-
-# Editor vault files kept alongside the repository
-.obsidian/
-*.canvas
-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].md
 
 # Screen recordings
 *.mov
 
+# Verification captures belong on the pull request, not in git history.
+verification-screenshots/
+
 # Environment backups (also guarded in backend/.gitignore)
 .env.bak*
+
+# Note: personal scratch files (session notes, editor vaults, one-off
+# spreadsheets) belong in .git/info/exclude or a global gitignore — this file
+# is shared, and one contributor's working habits should not be in it.

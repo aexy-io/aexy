@@ -89,3 +89,25 @@ def test_field_alias_attribute_and_field_keys_both_resolve():
 )
 def test_wait_duration_honours_unit_and_key_aliases(data, seconds):
     assert wait_duration_seconds(data) == seconds
+
+
+@pytest.mark.parametrize("empty", [None, "", [], {}])
+@pytest.mark.parametrize("operator", ["gt", "gte", "lt", "lte", "between"])
+def test_numeric_operators_never_fire_on_an_unset_field(operator, empty):
+    """An empty field is not zero.
+
+    Treating it as 0.0 made `amount < 100` true for every record with no
+    amount, so an automation meant for small deals ran against the whole table.
+    """
+    expected = [0, 100] if operator == "between" else 100
+
+    assert evaluate_condition(empty, operator, expected) is False
+
+
+@pytest.mark.parametrize(
+    "operator,expected_result",
+    [("gt", False), ("gte", True), ("lt", False), ("lte", True)],
+)
+def test_numeric_operators_still_compare_a_real_zero(operator, expected_result):
+    """Zero is a value, not an absence — it must still be compared."""
+    assert evaluate_condition(0, operator, 0) is expected_result

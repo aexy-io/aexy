@@ -1,10 +1,11 @@
 -- One-off repair for legacy CRM automation trigger values.
 --
--- This filename intentionally sits outside the custom migration runner's
--- automatic migrate*.sql scan. Run it explicitly with:
---   python scripts/run_migrations.py --file normalize_crm_automation_trigger_types.sql
--- Review the SELECT first in the target database; do not run blindly:
+-- Deliberately named outside the `migrate*.sql` pattern that
+-- scripts/run_migrations.py auto-discovers, so a routine migration run never
+-- rewrites trigger values on its own. Apply it explicitly, after reviewing the
+-- preview:
 --   SELECT id, trigger_type FROM crm_automations WHERE trigger_type LIKE '%\_%';
+--   python scripts/run_migrations.py --file normalize_crm_automation_trigger_types.sql
 --
 -- Explicit per-value mapping. A blanket underscore→dot replace would corrupt
 -- the two list-membership values, whose canonical form keeps one underscore

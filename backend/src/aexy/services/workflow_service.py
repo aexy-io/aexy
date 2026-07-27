@@ -80,9 +80,19 @@ _ACTION_REQUIRED_FIELDS: dict[str, tuple[tuple[str, ...], str, str]] = {
 # Fields whose literal values should be validated as email addresses.
 _EMAIL_LITERAL_FIELDS = ("to", "email_to", "email", "notify_email")
 
-# Node types allowed in a published automation. Any canvas containing timing,
-# logic, or AI nodes is routed to the durable Temporal executor; action-only
-# canvases retain the existing inline executor.
+# Node types allowed in a published automation. trigger/action run on the
+# inline executor; any canvas holding a timing, logic or AI node is routed to
+# the durable Temporal executor instead.
+#
+# Every entry here MUST also be routable: either the inline executor has a case
+# for it, or CRMAutomationService._DURABLE_NODE_TYPES lists it so the canvas is
+# handed to Temporal. Allowing a type here that is in neither is the silent
+# failure this constant exists to prevent — sync_workflow_to_automation keeps
+# only `action` nodes, so an unroutable structural node is dropped on publish
+# and the automation runs every action unconditionally with nothing reported.
+# test_every_publishable_node_type_has_somewhere_to_run holds the two in step;
+# the frontend's EXECUTABLE_NODE_TYPES (hooks/useWorkflowValidation.ts) mirrors
+# this list and has to move with it.
 _EXECUTABLE_NODE_TYPES = ("trigger", "action", "wait", "condition", "branch", "agent")
 
 # Namespaces a {{variable}} reference may resolve against at execution time.

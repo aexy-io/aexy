@@ -60,7 +60,10 @@ async def test_notifies_every_admin_by_email():
     # Subject/body come from the builder's field names, not blank defaults.
     sent = service._action_send_email.await_args_list[0].args[0]
     assert sent["email_subject"] == "Deal stage changed"
-    assert sent["email_body"] == "Acme moved on."
+    # Handed over unrendered on purpose: _action_send_email renders the body
+    # into html_body with per-value escaping. Substituting here would leave it
+    # nothing to escape and put raw record markup back into the email.
+    assert sent["email_body"] == "{{record.values.name}} moved on."
 
 
 @pytest.mark.asyncio

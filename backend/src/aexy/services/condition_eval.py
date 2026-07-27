@@ -62,6 +62,27 @@ def _as_float(value: Any) -> float:
     return float(value)
 
 
+def _is_unset(value: Any) -> bool:
+    """Whether a field holds no value at all, as opposed to a falsy one."""
+    return value is None or value == "" or value == [] or value == {}
+
+
+def _compare_numeric(actual: Any, expected: Any, compare) -> bool:
+    """Numeric comparison that refuses to invent a value for an empty field.
+
+    An unset field is not zero. Coercing it to 0.0 made ``amount < 100`` true
+    for every record that has no amount, so a discount/alert automation fired
+    on the whole table. Neither side being comparable means the condition is
+    simply not satisfied.
+    """
+    if _is_unset(actual) or _is_unset(expected):
+        return False
+    try:
+        return compare(_as_float(actual), _as_float(expected))
+    except (TypeError, ValueError):
+        return False
+
+
 def evaluate_condition(actual: Any, operator: str | None, expected: Any) -> bool:
     """Compare *actual* to *expected* with *operator*.
 
@@ -99,25 +120,13 @@ def evaluate_condition(actual: Any, operator: str | None, expected: Any) -> bool
     if op == "is_not_empty":
         return not (actual is None or actual == "" or actual == [] or actual == {})
     if op == "gt":
-        try:
-            return _as_float(actual) > _as_float(expected)
-        except (TypeError, ValueError):
-            return False
+        return _compare_numeric(actual, expected, lambda a, b: a > b)
     if op == "gte":
-        try:
-            return _as_float(actual) >= _as_float(expected)
-        except (TypeError, ValueError):
-            return False
+        return _compare_numeric(actual, expected, lambda a, b: a >= b)
     if op == "lt":
-        try:
-            return _as_float(actual) < _as_float(expected)
-        except (TypeError, ValueError):
-            return False
+        return _compare_numeric(actual, expected, lambda a, b: a < b)
     if op == "lte":
-        try:
-            return _as_float(actual) <= _as_float(expected)
-        except (TypeError, ValueError):
-            return False
+        return _compare_numeric(actual, expected, lambda a, b: a <= b)
     if op == "in":
         options = expected if isinstance(expected, (list, tuple, set)) else [expected]
         return actual in options
@@ -126,6 +135,10 @@ def evaluate_condition(actual: Any, operator: str | None, expected: Any) -> bool
         return actual not in options
     if op == "between":
         if not isinstance(expected, (list, tuple)) or len(expected) != 2:
+            return False
+        # Same rule as gt/lt: an unset field is not zero, so it is not "between"
+        # anything either.
+        if _is_unset(actual):
             return False
         try:
             return _as_float(expected[0]) <= _as_float(actual) <= _as_float(expected[1])

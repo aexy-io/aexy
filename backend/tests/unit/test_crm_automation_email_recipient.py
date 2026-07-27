@@ -80,6 +80,36 @@ async def test_email_action_dispatches_the_record_email_for_a_record_placeholder
 
 
 @pytest.mark.asyncio
+async def test_email_body_escapes_record_values_but_not_the_template():
+    """A record field is attacker-controllable; the template is not.
+
+    Anyone able to create a lead can put markup in a company name. Dropping
+    that straight into html_body ships it to the recipient as live markup, so
+    substituted values are escaped — while the admin-authored template keeps
+    the formatting it was written with.
+    """
+    service = CRMAutomationService(db=None)
+
+    with patch(
+        "aexy.temporal.dispatch.dispatch", new_callable=AsyncMock
+    ) as dispatch:
+        await service._action_send_email(
+            {
+                "to": "alex@example.com",
+                "email_subject": "Welcome",
+                "email_body": "<p>Hello {{record.values.name}}</p>",
+            },
+            _record(name='<img src=x onerror="alert(1)">', email="alex@example.com"),
+            "workspace-1",
+        )
+
+    html_body = dispatch.await_args.args[1].html_body
+    assert html_body == (
+        "<p>Hello &lt;img src=x onerror=&quot;alert(1)&quot;&gt;</p>"
+    )
+
+
+@pytest.mark.asyncio
 async def test_email_action_reports_a_missing_record_email_without_dispatching():
     """A record with no email must stop the send and say which value was missing.
 
