@@ -57,19 +57,22 @@ audit-in-app-docs.md
 aexy-mac/Aexy.app
 
 # =============================================================================
-# Internal working artifacts — must never reach a pull request.
-# These are coordination notes, per-session handoffs, and scratch files. They
-# carry internal planning language and are not part of the product.
+# Local working files. Not part of the product and not release material.
 # =============================================================================
 
-# Per-tool reports and cross-comparison working files
+# Per-run exports and comparison spreadsheets
+*_round1.csv
 *_update.csv
 three-way-update-comparison.csv
-grok*.md
-/pr-drafts/
-/pr-assets/codex-update-screenshots/
+CRM_Automations.xlsx
+my_eval.xlsx
+~$*
 
-# Session handoffs and planning notes
+# Draft release material assembled locally
+/pr-drafts/
+/pr-assets/
+
+# Local planning and session notes
 *HANDOFF*.md
 *HANDOVER*.md
 NEXT-SESSION.md
@@ -77,25 +80,17 @@ AEXY_SESSION_CONTEXT.md
 PLAN-crm-automations-all-green.md
 AEXY_TEST_FRAMEWORK.md
 PR-GUIDE-PLAIN-ENGLISH.md
-CRM_Automations.xlsx
-
-# Scratch
 Untitled.md
 jeez.md
 nothing.md
 
-# Local, personal, and recordings
+# Editor vault files kept alongside the repository
 .obsidian/
-*.mov
-my_eval.xlsx
-~$*
-
-# Credential backups (belt and braces; also in backend/.gitignore)
-.env.bak*
-
-# Internal review prompts — local only
-.review-prompts.md
-
-# Obsidian vault notes kept alongside the repo
 *.canvas
 [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].md
+
+# Screen recordings
+*.mov
+
+# Environment backups (also guarded in backend/.gitignore)
+.env.bak*
