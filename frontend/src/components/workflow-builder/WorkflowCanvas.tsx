@@ -1056,6 +1056,9 @@ function WorkflowCanvasInner({
           onSave={handleSave}
           isSaving={isSaving}
           hasChanges={hasChanges}
+          // Same source as the red state on the canvas node, so the panel and
+          // the node can never disagree about whether this step is valid.
+          nodeErrors={getNodeErrors(selectedNode.id)}
         />
       )}
 

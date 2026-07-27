@@ -81,6 +81,12 @@ interface NodeConfigPanelProps {
   isSaving?: boolean;
   /** True while the canvas holds edits that have not reached the server. */
   hasChanges?: boolean;
+  /**
+   * Blocking validation messages for this node — the same ones that colour it
+   * red on the canvas. Saving is disabled while any are present, because the
+   * save endpoint validates too and would reject the write anyway.
+   */
+  nodeErrors?: { field?: string; message: string }[];
 }
 
 // Trigger descriptions for the config panel
@@ -258,6 +264,7 @@ export function NodeConfigPanel({
   onSave,
   isSaving = false,
   hasChanges = false,
+  nodeErrors = [],
 }: NodeConfigPanelProps) {
   const [label, setLabel] = useState((node.data.label as string) || "");
   const [justSaved, setJustSaved] = useState(false);
@@ -3502,17 +3509,38 @@ export function NodeConfigPanel({
           </div>
         )}
 
-        {/* Save, then delete. Saving is the common action, so it sits above
-            the destructive one and carries the only visual emphasis. */}
+        {/* Save sits above the destructive action. It greys out while this
+            node carries a blocking error - the same condition that colours the
+            node red on the canvas and that stops Publish - because the save
+            endpoint validates too and would reject the write. */}
         {onSave && (
           <div className="pt-4 border-t border-border">
+            {nodeErrors.length > 0 && (
+              <div className="mb-3 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2">
+                <p className="text-xs font-medium text-red-400">
+                  Finish this step before saving
+                </p>
+                <ul className="mt-1 space-y-0.5">
+                  {nodeErrors.map((e, i) => (
+                    <li key={i} className="text-xs text-red-400">
+                      • {e.message}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <button
               onClick={() => onSave()}
-              disabled={isSaving || !hasChanges}
+              disabled={isSaving || !hasChanges || nodeErrors.length > 0}
               aria-label="Save automation"
+              title={
+                nodeErrors.length > 0
+                  ? "This step is missing required fields"
+                  : undefined
+              }
               className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                isSaving || !hasChanges
-                  ? "bg-accent text-muted-foreground cursor-not-allowed"
+                isSaving || !hasChanges || nodeErrors.length > 0
+                  ? "bg-accent text-muted-foreground cursor-not-allowed opacity-60"
                   : "bg-primary text-primary-foreground hover:opacity-90"
               }`}
             >
@@ -3521,7 +3549,7 @@ export function NodeConfigPanel({
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Saving…
                 </>
-              ) : hasChanges ? (
+              ) : nodeErrors.length > 0 || hasChanges ? (
                 <>
                   <Save className="h-4 w-4" />
                   Save changes
@@ -3540,11 +3568,13 @@ export function NodeConfigPanel({
             >
               {isSaving
                 ? "Saving this automation…"
-                : hasChanges
-                  ? "This node has unsaved changes."
-                  : justSaved
-                    ? "Saved. Your changes will survive a refresh."
-                    : "All changes saved."}
+                : nodeErrors.length > 0
+                  ? "Saving is unavailable until the fields above are filled in."
+                  : hasChanges
+                    ? "This node has unsaved changes."
+                    : justSaved
+                      ? "Saved. Your changes will survive a refresh."
+                      : "All changes saved."}
             </p>
           </div>
         )}
