@@ -35,10 +35,19 @@ _NON_TERMINAL = ("pending", "running", "queued")
 async def _durable_workflow_still_running(run_id: str) -> bool:
     """Whether the Temporal workflow for this run is still going.
 
-    Errs on the side of "yes": if Temporal cannot be reached, or the answer is
-    unclear, the run is left alone. Reaping a run whose workflow is merely
-    unreachable would report a failure for work that is still happening.
+    Errs on the side of "yes" for an *unclear* answer: if Temporal cannot be
+    reached, the run is left alone, because reaping a run whose workflow is
+    merely unreachable would report a failure for work that is still happening.
+
+    NOT_FOUND is not unclear, though, and must not be treated as one. The
+    handoff starts the workflow before the request commits, so a request that
+    then rolled back — or a start that never landed — leaves a run row carrying
+    a "handoff" step with no workflow behind it. Answering "still running" to
+    that leaves the run non-terminal forever, which is the exact stuck state
+    this reaper exists to clear.
     """
+    from temporalio.service import RPCError, RPCStatusCode
+
     try:
         from temporalio.client import WorkflowExecutionStatus
 
@@ -47,6 +56,18 @@ async def _durable_workflow_still_running(run_id: str) -> bool:
         client = await get_temporal_client()
         # Set by _dispatch_durably_if_needed when it hands the run over.
         described = await client.get_workflow_handle(f"crm-live-{run_id}").describe()
+    except RPCError as error:
+        if error.status == RPCStatusCode.NOT_FOUND:
+            logger.warning(
+                "Run %s was handed off but Temporal has no such workflow; "
+                "deciding it here",
+                run_id,
+            )
+            return False
+        logger.warning(
+            "Could not determine workflow state for run %s; leaving it alone", run_id
+        )
+        return True
     except Exception:
         logger.warning(
             "Could not determine workflow state for run %s; leaving it alone", run_id

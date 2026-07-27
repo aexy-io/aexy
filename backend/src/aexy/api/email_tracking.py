@@ -135,8 +135,21 @@ async def _record_open_event(
             # Bridge to CRM automations: the dispatch above is module="email_marketing"
             # and never reaches CRM automations. When the email is tied to a CRM record,
             # resolve its object and emit a CRM-scoped email.opened so CRM automations match.
+            #
+            # First open only. This endpoint takes no authentication and the
+            # pixel URL travels in the email body, where mail clients, security
+            # scanners and link previewers all fetch it repeatedly — and anyone
+            # holding the URL can replay it at will. Every hit past the first
+            # would otherwise start another automation run, each free to send
+            # mail, call a webhook or spend an LLM budget. Counting an open is
+            # cheap and idempotent; acting on one is neither.
             try:
-                if pixel and pixel.record_id and pixel.workspace_id:
+                if (
+                    pixel
+                    and pixel.record_id
+                    and pixel.workspace_id
+                    and pixel.open_count == 1
+                ):
                     from aexy.models.crm import CRMRecord
                     from aexy.services.crm_events import CRMEventService
 
@@ -312,8 +325,11 @@ async def _record_click_event(
 
             # Bridge to CRM automations (see email.opened above): when the link is tied
             # to a CRM record, resolve its object and emit a CRM-scoped email.clicked.
+            # First click only, for the same reason the open bridge is: the
+            # redirect is unauthenticated and replayable, so acting on every hit
+            # lets anyone holding the URL start unlimited automation runs.
             try:
-                if link and link.record_id and link.workspace_id:
+                if link and link.record_id and link.workspace_id and link.click_count == 1:
                     from aexy.models.crm import CRMRecord
                     from aexy.services.crm_events import CRMEventService
 

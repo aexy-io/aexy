@@ -76,11 +76,19 @@ _EMAIL_LITERAL_FIELDS = ("to", "email_to", "email", "notify_email")
 # Node types allowed in a published automation. trigger/action run on the
 # inline executor; wait runs on the durable Temporal engine (a canvas with a
 # wait is routed there — see CRMAutomationService._dispatch_durably_if_needed).
-# condition/agent/branch/join are still rejected: nothing executes them yet.
-# Widen this only when a matching executor path exists.
-# condition + branch execute in the workflow/Temporal engines; wait is durable.
-# join/agent still need fuller runtime support — leave rejected at publish.
-_EXECUTABLE_NODE_TYPES = ("trigger", "action", "wait", "condition", "branch")
+#
+# Every entry here MUST also be routable: either the inline executor has a case
+# for it, or CRMAutomationService._DURABLE_NODE_TYPES lists it so the canvas is
+# handed to Temporal. Allowing a type here that is in neither is the silent
+# failure this constant exists to prevent — sync_workflow_to_automation keeps
+# only `action` nodes, so an unroutable structural node is dropped on publish
+# and the automation runs every action unconditionally with nothing reported.
+#
+# condition/branch/agent/join stay rejected in this release: their executors
+# land with the durable-execution work, which also widens _DURABLE_NODE_TYPES.
+# Keep this tuple, _DURABLE_NODE_TYPES, and the frontend's
+# EXECUTABLE_NODE_TYPES (hooks/useWorkflowValidation.ts) in step.
+_EXECUTABLE_NODE_TYPES = ("trigger", "action", "wait")
 
 # Namespaces a {{variable}} reference may resolve against at execution time.
 _VARIABLE_NAMESPACES = {"record", "trigger", "variables"}

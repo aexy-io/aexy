@@ -1,6 +1,7 @@
 """CRM Automation service for managing and executing automation workflows."""
 
 import asyncio
+import html
 import httpx
 import logging
 import re
@@ -16,6 +17,12 @@ logger = logging.getLogger(__name__)
 # Step orders for the 2nd..Nth recipient of one notification. Far above any real
 # action index so a synthetic order can never be mistaken for another step's.
 _SIBLING_STEP_ORDER_BASE = 1_000_000
+# Room reserved per action for its recipients. A workspace can hold more admins
+# than this, and a stride the recipient index can overrun would hand two
+# different steps the same order — at which point one recipient's delivery
+# outcome silently overwrites another's. Recipients past the stride share the
+# parent step instead of colliding; see _step_order_for.
+_SIBLING_STEP_ORDER_STRIDE = 100_000
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -393,8 +400,14 @@ class CRMAutomationService:
         # No explicit commit: the run row is closed by mark_crm_automation_run,
         # which fires only after the (durable) wait completes — long after the
         # request's own commit has persisted this row for the worker to see.
+        #
+        # The handoff still precedes that commit, so a request that rolls back
+        # afterwards leaves a run row that never lands. The reaper covers it:
+        # a handoff whose workflow Temporal reports NOT_FOUND is decided there
+        # rather than left running forever.
 
         from aexy.temporal.client import get_temporal_client
+        from aexy.temporal.task_queues import TaskQueue
         from aexy.temporal.workflows.crm_workflow import (
             CRMAutomationWorkflow,
             CRMWorkflowInput,
@@ -415,7 +428,7 @@ class CRMAutomationService:
                 crm_run_id=str(run.id),
             ),
             id=f"crm-live-{run.id}",
-            task_queue="workflows",
+            task_queue=TaskQueue.WORKFLOWS,
         )
         return True
 
@@ -1591,8 +1604,14 @@ class CRMAutomationService:
         subject = self._replace_placeholders(
             str(config.get("email_subject") or ""), record, trigger_data
         )
+        # The body is sent as html_body, so record and trigger values are
+        # escaped on the way in. Without this, a record field holding markup
+        # is delivered as live markup to whoever receives the email.
         body = self._replace_placeholders(
-            str(config.get("email_body") or ""), record, trigger_data
+            str(config.get("email_body") or ""),
+            record,
+            trigger_data,
+            escape_html=True,
         )
 
         # Record the intent to send in this same transaction rather than
@@ -1603,11 +1622,11 @@ class CRMAutomationService:
         # run does, so that ordering problem cannot happen at all.
         #
         # Every automation email goes through here, including each recipient of
-        # a multi-recipient notification. Those carry no run reference in the
-        # payload, because the worker matches a result to one step and would
-        # let the first recipient's outcome close a run the others are still
-        # working through - but they are still written and committed with the
-        # run, so an undone record change undoes its emails too.
+        # a multi-recipient notification. Each of those carries the run id plus
+        # a step order of its own (see _step_order_for), so the worker matches
+        # a result to exactly one step and no recipient's outcome can close a
+        # run the others are still working through. They are written and
+        # committed with the run, so an undone record change undoes its emails.
         if outbox_run_id is not None:
             self.db.add(
                 CRMAutomationEmailOutbox(
@@ -1889,7 +1908,11 @@ class CRMAutomationService:
         subject = config.get("email_subject") or config.get("notify_title", "Notification")
         channel = config.get("channel", "email")
 
-        # Replace placeholders in message
+        # Slack takes plain text, so it gets the plain substitution. The email
+        # leg is handed the *unsubstituted* template instead, further down, so
+        # _action_send_email renders it into html_body with value escaping —
+        # passing this already-rendered string would leave nothing for it to
+        # escape and put raw record markup back in the email.
         message = self._replace_placeholders(message_template, record, trigger_data)
 
         results = {"channels_notified": []}
@@ -1944,12 +1967,21 @@ class CRMAutomationService:
         # 0 uses the step the executor writes for this action; the rest get
         # their own, offset far above any real action index so they cannot
         # collide with another step's order.
+        #
+        # Past the stride the offsets would start landing on the next action's
+        # block, so those recipients fall back to the parent step rather than
+        # taking over another step's identity. They then reconcile alongside
+        # recipient 0 — less granular history, but never a wrong one.
         def _step_order_for(index: int) -> int | None:
             if automation_step_order is None:
                 return None
-            if index == 0:
+            if index == 0 or index >= _SIBLING_STEP_ORDER_STRIDE:
                 return automation_step_order
-            return _SIBLING_STEP_ORDER_BASE + automation_step_order * 1000 + index
+            return (
+                _SIBLING_STEP_ORDER_BASE
+                + automation_step_order * _SIBLING_STEP_ORDER_STRIDE
+                + index
+            )
 
         for recipient_index, recipient_email in enumerate(recipient_emails):
             # Send Slack notification
@@ -1970,7 +2002,8 @@ class CRMAutomationService:
                     {
                         "to": recipient_email,
                         "email_subject": subject,
-                        "email_body": message,
+                        # Unrendered on purpose — see the note by `message`.
+                        "email_body": message_template,
                     },
                     record,
                     workspace_id,
@@ -2104,13 +2137,27 @@ class CRMAutomationService:
         template: str,
         record: CRMRecord | None,
         trigger_data: dict | None,
+        escape_html: bool = False,
     ) -> str:
-        """Replace supported record and trigger placeholders in a CRM action."""
+        """Replace supported record and trigger placeholders in a CRM action.
+
+        ``escape_html`` escapes the substituted *values* only, never the
+        template. A record field is attacker-controllable — anyone who can
+        create a lead can put markup in a company name — so dropping it raw
+        into an email body ships that markup to the recipient. The template
+        itself is written by a workspace admin in the builder and is meant to
+        contain markup, which is why the escaping is per-value and not a pass
+        over the finished string.
+        """
         record_values = record.values if record else {}
         record_name = (
             getattr(record, "name", None) or getattr(record, "display_name", None)
             if record else None
         )
+
+        def render(value: Any) -> str:
+            text = str(value)
+            return html.escape(text, quote=True) if escape_html else text
 
         def lookup(data: dict | None, path: str) -> Any:
             value: Any = data or {}
@@ -2135,7 +2182,7 @@ class CRMAutomationService:
             else:
                 return match.group(0)
 
-            return "" if value is None else str(value)
+            return "" if value is None else render(value)
 
         message = re.sub(
             r"\{\{([^{}]+)\}\}",
@@ -2144,16 +2191,16 @@ class CRMAutomationService:
         )
 
         if record:
-            message = message.replace("{record_id}", str(record.id))
+            message = message.replace("{record_id}", render(record.id))
             if record_name:
-                message = message.replace("{record_name}", str(record_name))
+                message = message.replace("{record_name}", render(record_name))
 
         def replace_legacy_field(match: re.Match[str]) -> str:
             field = match.group(1)
             value = (trigger_data or {}).get(field)
             if value is None:
                 value = record_values.get(field)
-            return match.group(0) if value is None else str(value)
+            return match.group(0) if value is None else render(value)
 
         return re.sub(r"\{([a-zA-Z0-9_]+)\}", replace_legacy_field, message)
 

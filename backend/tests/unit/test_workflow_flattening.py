@@ -21,8 +21,16 @@ def _edge(source, target):
     return {"source": source, "target": target}
 
 
-def _flatten(nodes, edges):
-    automation = SimpleNamespace(trigger_type=None, trigger_config=None, actions=None)
+def _flatten(nodes, edges, module="crm"):
+    # `module` is read to pick the trigger registry the flattened trigger_type
+    # is checked against, so the stand-in has to carry it like the ORM row does.
+    automation = SimpleNamespace(
+        module=module,
+        object_id=None,
+        trigger_type=None,
+        trigger_config=None,
+        actions=None,
+    )
     sync_workflow_to_automation(automation, nodes, edges, WorkflowService(db=None))
     return automation
 
@@ -130,3 +138,30 @@ def test_validation_accepts_a_wait_node():
     unsupported = [e for e in result.errors if e.error_type == "unsupported_node_type"]
     assert unsupported == []
     assert result.is_valid is True
+
+
+def test_every_publishable_node_type_has_somewhere_to_run():
+    """The drop in sync_workflow_to_automation must never outrun the gate.
+
+    Only `action` nodes survive flattening onto automation.actions, so a node
+    type that publish accepts but neither executor claims is dropped in silence
+    and the automation runs its remaining actions unconditionally. Publishing a
+    structural node is therefore only safe while the canvas is also routed to
+    the durable engine.
+    """
+    from aexy.services.crm_automation_service import CRMAutomationService
+    from aexy.services.workflow_service import _EXECUTABLE_NODE_TYPES
+
+    inline_runnable = {"trigger", "action"}
+    unroutable = [
+        node_type
+        for node_type in _EXECUTABLE_NODE_TYPES
+        if node_type not in inline_runnable
+        and node_type not in CRMAutomationService._DURABLE_NODE_TYPES
+    ]
+
+    assert unroutable == [], (
+        f"{unroutable} can be published but neither executor runs them. Either "
+        "add them to CRMAutomationService._DURABLE_NODE_TYPES or drop them from "
+        "_EXECUTABLE_NODE_TYPES."
+    )

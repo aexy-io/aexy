@@ -1,9 +1,19 @@
 """The stalled-run reaper must decide a run only when nothing else can.
 
-Needs real JSONB, so it runs against the Postgres test DB:
+The database-backed cases run against Postgres only:
     TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/aexy_test
+
+They turn on a run's *age*, which the tests force with a raw UPDATE. SQLite
+stores that timestamp without its offset, so the reaper's ``created_at <
+cutoff`` filter matches nothing and every case comes back "reaped: 0" — the
+positive ones fail outright and the negative ones pass for the wrong reason,
+which is worse. Skipping is honest; asserting against a filter that cannot
+work is not.
+
+The Temporal-lookup cases at the bottom need no database and always run.
 """
 
+import os
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
@@ -19,6 +29,13 @@ from aexy.services import automation_run_reaper as reaper
 from aexy.services.automation_run_reaper import STALLED_AFTER, reap_stalled_runs
 
 pytestmark = pytest.mark.asyncio
+
+_IS_SQLITE = os.environ.get("TEST_DATABASE_URL", "sqlite").startswith("sqlite")
+
+requires_postgres = pytest.mark.skipif(
+    _IS_SQLITE,
+    reason="the reaper's created_at age filter needs Postgres timestamptz",
+)
 
 LONG_AGO = datetime.now(timezone.utc) - STALLED_AFTER - timedelta(minutes=5)
 
@@ -87,6 +104,7 @@ async def _run(db, automation, *, status, steps, created_at=LONG_AGO):
     return run
 
 
+@requires_postgres
 async def test_abandoned_run_is_failed_with_a_reason(db_session):
     automation = await _automation(db_session)
     run = await _run(
@@ -110,6 +128,7 @@ async def test_abandoned_run_is_failed_with_a_reason(db_session):
     assert automation.failed_runs == 1
 
 
+@requires_postgres
 async def test_recent_run_is_left_alone(db_session):
     automation = await _automation(db_session)
     run = await _run(
@@ -122,6 +141,7 @@ async def test_recent_run_is_left_alone(db_session):
     assert run.status == "queued"
 
 
+@requires_postgres
 async def test_durable_run_whose_workflow_died_is_decided(db_session, monkeypatch):
     """A wait node can sleep for days, so only a dead workflow frees the run."""
     monkeypatch.setattr(reaper, "_durable_workflow_still_running", _answer(False))
@@ -137,6 +157,7 @@ async def test_durable_run_whose_workflow_died_is_decided(db_session, monkeypatc
     assert run.error_message and "No outcome" in run.error_message
 
 
+@requires_postgres
 async def test_durable_run_is_left_alone_while_its_workflow_runs(
     db_session, monkeypatch
 ):
@@ -152,6 +173,7 @@ async def test_durable_run_is_left_alone_while_its_workflow_runs(
     assert run.status == "running"
 
 
+@requires_postgres
 async def test_run_with_an_email_still_in_flight_is_left_alone(db_session):
     """That email will decide the run itself; reaping would pre-empt it."""
     automation = await _automation(db_session)
@@ -175,6 +197,7 @@ async def test_run_with_an_email_still_in_flight_is_left_alone(db_session):
     assert run.status == "queued"
 
 
+@requires_postgres
 async def test_already_decided_run_is_not_touched(db_session):
     automation = await _automation(db_session)
     run = await _run(db_session, automation, status="completed", steps=[])
@@ -184,3 +207,57 @@ async def test_already_decided_run_is_not_touched(db_session):
     assert run.status == "completed"
     await db_session.refresh(automation)
     assert automation.failed_runs == 0
+
+
+# ---------------------------------------------------------------------------
+# The Temporal lookup itself. No database: these pin how each answer from the
+# server is read, which is what decides whether a run can ever be freed.
+# ---------------------------------------------------------------------------
+
+
+def _temporal_raising(error: BaseException, monkeypatch):
+    """Point the reaper's client lookup at a server that fails this way."""
+    import aexy.temporal.client as temporal_client
+
+    class _Handle:
+        async def describe(self):
+            raise error
+
+    class _Client:
+        def get_workflow_handle(self, _workflow_id):
+            return _Handle()
+
+    async def _get_client():
+        return _Client()
+
+    monkeypatch.setattr(temporal_client, "get_temporal_client", _get_client)
+
+
+async def test_missing_workflow_frees_the_run(monkeypatch):
+    """NOT_FOUND is a definitive answer: nothing is running, so decide the run.
+
+    Reading it as "still running" is what left a handoff whose start never
+    landed stuck in `running` for good.
+    """
+    from temporalio.service import RPCError, RPCStatusCode
+
+    _temporal_raising(
+        RPCError("workflow not found", RPCStatusCode.NOT_FOUND, b""), monkeypatch
+    )
+
+    assert await reaper._durable_workflow_still_running("run-1") is False
+
+
+async def test_unreachable_temporal_leaves_the_run_alone(monkeypatch):
+    """An unclear answer must never be read as "dead"; the work may be live."""
+    from temporalio.service import RPCError, RPCStatusCode
+
+    _temporal_raising(
+        RPCError("unavailable", RPCStatusCode.UNAVAILABLE, b""), monkeypatch
+    )
+
+    assert await reaper._durable_workflow_still_running("run-1") is True
+
+    _temporal_raising(OSError("connection refused"), monkeypatch)
+
+    assert await reaper._durable_workflow_still_running("run-1") is True
