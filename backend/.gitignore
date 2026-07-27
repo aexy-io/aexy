@@ -1,0 +1,4 @@
+
+# Credential backups must never be committed
+.env.bak*
+.env.bak-*
