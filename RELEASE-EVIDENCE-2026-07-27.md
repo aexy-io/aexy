@@ -1,143 +1,156 @@
-# CRM Automations — Release Evidence (27 July 2026)
+# CRM Automations — validation evidence
 
-Release candidate: `integration/crm-automations-r2` @ **94ea7210**
-Live checkout was detached onto that exact commit and driven in a real browser
-against real PostgreSQL, a real Temporal worker, a real language model, a real
-SMS provider and a real email provider.
+This records what was exercised, how, and what remains unproven. Status
+language is deliberate and used consistently throughout:
 
-Four defect fixes were made on top of that commit and are included here. All
-other findings below are configuration or direct observation.
+- **Live verified** — driven in a running browser against a live database, a
+  live durable worker and live external providers, with the stated result
+  observed.
+- **Automated** — named tests were executed and their outcome observed.
+- **Implemented** — the code path exists and is reachable, but was not driven
+  end to end.
+- **Not verified** — the check was not performed.
 
-Coverage is the full story set: 30 user stories plus one milestone story.
-
----
-
-## Verified by direct observation
-
-| # | Capability | Evidence |
-|---|---|---|
-| 1 | AI agent executes in a published automation | Real DeepSeek generation, 12.9s and 14.5s across runs, attempt 1, execution id and token counts recorded. Output reasoned about the record's actual `title` field. |
-| 2 | Agent output consumed downstream | Agent result reached an email body via `{{variables.agent_result.output.content}}`; delivered email contained the analysis with zero unresolved placeholders. |
-| 3 | Unknown agent rejected before publish | Save refused with "The selected AI agent no longer exists in this workspace". |
-| 4 | Deactivated agent fails the run with a named cause | Run marked `failed` with error `Agent Data Enrichment is not active`, not a generic wrapper message. |
-| 5 | Webhook executes for real | Local receiver got a genuine POST, HTTP 202, body template rendered with real record values. |
-| 6 | Webhook carries idempotency + hides secrets | `Idempotency-Key` header present. Authorization header **not** present anywhere in stored run history (explicitly checked). |
-| 7 | Task creation persists | Real row in `sprint_tasks` with rendered title "Research new company: Northwind Logistics", priority `high`, correct workspace. |
-| 8 | Branch picks exactly one path | Deals at 250000 / 45000 / 3000 routed to `enterprise` (rule 0), `midmarket` (rule 1), `other` (Else, no rule). Exactly one email per run. Each run records `branch_id`, `rule_index`, `path_label`. |
-| 9 | Waits are durable | 3-minute wait; worker killed 60s in; automation resumed unaided and completed at the 3-minute mark; post-wait email delivered. |
-| 10 | Retry retries only the failed step | Step 1 succeeded on attempt 1 — receiver logged **exactly one** request, not three. Step 2 recorded three separate failed attempts. Run marked `failed`. |
-| 11 | SMS delivers for real | Twilio status **delivered**, no error code, charged $0.0832, from an owned US number to a verified recipient. |
-| 12 | SMS rejects bad input locally | Malformed number rejected before reaching Twilio: "SMS recipient must be an E.164 number such as +14155552671". |
-| 13 | SMS surfaces provider refusals | Twilio invalid-number and region-not-permitted refusals both returned readable reasons into the step result. |
-| 14 | Email delivers via a real provider | Brevo SMTP authenticated and accepted mail for delivery to a real inbox. |
-| 15 | Dynamic values resolve | `record.*`, `trigger.*` and `variables.*` all rendered correctly in subjects and bodies. |
-| 16 | Save/publish validation is honest | Five distinct bad configurations refused **before** anything could run: invalid email domain, branch with no Else path, wait with no duration, agent node with no agent selected, SMS with no message. |
-| 17 | Palette reflects real capability | Wait, Condition, Branch and AI Agent render only when the backend registry reports them available; a frontend test asserts no client-side fallback list can leak hidden items. |
-| 18 | Run history is truthful | Per-step status, attempt counts, and the recipient surfaced at step level rather than buried in a nested blob. |
-| 20 | Email open tracking fires a downstream automation | Tracked email sent, pixel requested, open recorded with device detection, `email.opened` trigger fired, task created with the record's name resolved into its title. |
-| 21 | Bulk stage moves validate once, not per record | Destination validated a single time for a batch; previously ~402 queries to move 100 records, now ~103. Invalid stage still fails before any record is touched. |
-| 19 | LinkedIn sequence steps (GTM, adjacent) | Database records from 24 July show View Profile (5x) and Connection Request (2x) with status `sent`. Failure rows carry specific reasons. |
+Environment: a running application with PostgreSQL, a durable workflow worker,
+an SMTP provider, an SMS provider and a language-model provider configured and
+reachable. Provider selection is deployment configuration and is not part of
+this change.
 
 ---
 
-## Known gaps and limitations
+## Live verified
 
-1. **Open tracking needs a publicly reachable tracking domain.** Opens are
-   recorded by the application server via an invisible image, so a mail client
-   on the public internet cannot reach a local address. A setting for the
-   tracking domain already exists — a deployment concern, not a code gap.
+| Capability | What was observed |
+|---|---|
+| An AI agent runs inside a published automation | Real generation, 12.9s and 14.5s across runs, first attempt, with execution id and token counts recorded. The output referenced the triggering record's own field values. |
+| Agent output reaches a later step | The agent result rendered into an email body through a workflow variable; the delivered message contained the analysis and no unresolved placeholders. |
+| An unknown agent is refused before publish | Save rejected with a message naming the missing agent. |
+| A deactivated agent fails the run with its real cause | The run recorded `failed` with `Agent Data Enrichment is not active`, rather than the workflow engine's generic wrapper text. |
+| A webhook step performs a real call | A local receiver recorded a genuine POST returning 202, with the body template rendered from live record values. |
+| Webhook requests carry idempotency and do not leak secrets | An `Idempotency-Key` header was present. The Authorization header was explicitly checked for and found absent from stored run history. |
+| Task creation persists | A row was written with the rendered title, the configured priority and the correct workspace. |
+| A branch selects exactly one path | Three deals at differing values routed to three distinct paths, two by explicit rules and one by the Else fallback. Each run recorded its branch identifier, rule index and path label, and produced exactly one message. |
+| Waits are durable | A three-minute wait was interrupted by killing the worker at sixty seconds. The automation resumed without intervention and completed at the three-minute mark; the post-wait email was delivered. |
+| A retry re-enters only the failed step | The succeeding step's receiver logged exactly one request, not three. The failing step recorded three separate attempts and the run finished `failed`. |
+| SMS delivers through the configured provider | Provider status `delivered`, no error code. |
+| Malformed SMS input is refused locally | Rejected before the provider was contacted, with a message stating the required international format. |
+| Provider refusals surface readably | Invalid-number and region-not-permitted refusals both reached the step result in readable form. |
+| Email delivers through the configured provider | The SMTP relay authenticated and accepted the message for delivery to a real mailbox. |
+| Dynamic values resolve | Record, trigger and workflow-variable references all rendered correctly in subjects and bodies. |
+| Save and publish validation is honest | Five distinct invalid configurations were refused before anything could run: an invalid recipient domain, a branch with no Else path, a wait with no duration, an agent node with no agent selected, and an SMS step with no message. |
+| The palette reflects real capability | Structural steps render only when the backend registry reports them available. A frontend test asserts that no client-side fallback list can reintroduce a hidden capability. |
+| Run history is truthful at step level | Per-step status, attempt counts and the delivery target are surfaced on the step itself rather than nested inside a result blob. |
+| Email open tracking reaches CRM automations | A tracked message was sent, the tracking pixel was requested, the open was recorded, the corresponding trigger fired, and a downstream automation created a task with the record's name resolved into its title. |
 
-2. **GTM provider health dashboard reads a table nothing writes.** The panel
-   will always show empty. Observability only; execution and step records are
-   unaffected.
+## Automated
 
-3. **Two independent SMS paths exist.** CRM automation SMS uses global
-   environment credentials. GTM sequence SMS uses a per-workspace provider
+| Capability | Evidence |
+|---|---|
+| Bulk stage moves validate once per batch | Destination validation was hoisted out of the per-record loop. Two tests assert validation runs exactly once for a multi-record batch, and that an invalid destination fails before any record is modified. |
+| A step reports success only when delivery occurred | Notifying a user previously discarded its own delivery tally and returned success regardless; running an agent previously reported the agent's status without checking it. Five tests cover both gates, including that starting an agent without waiting remains a success. |
+| Required fields, literal email validation, dynamic type checks | Covered by the existing save and publish validation suites. |
+| Dry run performs no side effects | Covered, including that an AI step reports it was not executed. |
+
+## Implemented, not driven end to end
+
+- Record create, update, delete, link and assign as a connected journey. The
+  handlers are shared with the inline path and are covered by tests, but the
+  full sequence was not exercised in a browser.
+- List add and remove events bridged into CRM trigger matching.
+- The scheduled and date-based trigger runner. The durable wait-until-a-date
+  step inside a running automation is live verified; the runner that *starts*
+  an automation from a schedule is not.
+- Form submission creating a CRM record. The trigger is selectable and the
+  bridge exists; a real submission was not driven through.
+
+## Known gaps
+
+1. **Open tracking requires a publicly reachable tracking host.** Opens are
+   recorded through an invisible image served by the application, so a mail
+   client on the public internet cannot reach a private address. The setting
+   exists; this is a deployment prerequisite, not a code gap.
+
+2. **A retried send can duplicate an already-accepted message.** If a provider
+   accepts a message and the local write immediately afterwards fails, the step
+   records a failure and the retry sends again. This is reproducible.
+
+3. **Durable runs do not advance the monthly run counter.** The limit reads a
+   counter that only the inline path updates, so the limit can be exceeded and
+   activity totals can read zero.
+
+4. **The durable handoff starts before its run row commits.** A workflow that
+   completes immediately can fail to observe the run that created it.
+
+5. **Provider health metrics are read but never written.** That panel is
+   permanently empty. Observability only; execution records are unaffected.
+
+6. **Two independent SMS configurations exist.** Automation SMS reads global
+   environment settings; outreach sequence SMS reads a per-workspace provider
    registry. Configuring one does not configure the other.
 
-4. **Not driven live:** the assign, delete and link record actions; LinkedIn
-   Send Message; individual template-gallery items.
+7. **Sequence step advancement does not exist.** Enrolling a record works;
+   advancing it through sequence steps is a separate engine that has not been
+   built.
 
-5. **Provider constraints, not defects:** US-destination SMS requires A2P 10DLC
-   registration (days, with fees). Twilio trial accounts can only message
-   verified recipients.
+8. **Not exercised:** individual template-gallery entries, the click half of
+   engagement tracking, and permission behaviour across two concurrent sessions
+   at different privilege levels.
 
----
+## What the duplicate-send protection does and does not cover
 
-## Configuration applied (no code)
+The email outbox claims each queued send inside the same transaction that
+creates the run, and the durable start rejects a duplicate workflow for the
+same claim. That prevents the same queued send from being dispatched twice.
 
-- DeepSeek key moved into the settings file the backend actually reads; a live
-  provider call was confirmed before relying on it.
-- All four workspace agents switched from Claude to `deepseek` /
-  `deepseek-chat`. A Claude model id sent to DeepSeek is rejected, so both
-  fields had to change.
-- Twilio live credentials plus an owned US sending number.
-- Brevo SMTP. Two values as originally saved would have failed every send:
-  TLS was off (port 587 needs STARTTLS) and the sender was an unverifiable
-  `.test` address.
-- Three automations' email recipients repointed off `sales-team@example.com`,
-  a permanently undeliverable reserved domain that would have hard-bounced on
-  every run and damaged a brand-new sending reputation.
+It does **not** cover a provider that has already accepted a message when the
+following local write fails. That outcome is genuinely ambiguous and the
+current behaviour retries. Gap 2 tracks this.
 
-## Operational notes for deployment
+## Deployment requirements
 
-- No database migration is required. The change stores additional shapes inside
-  existing JSON columns and adds no model or column.
-- Backend and Temporal worker must restart **together**; their execution
-  contract changed in this release candidate. Restarting them together is
-  necessary but not sufficient — see the in-flight note below.
-- **Drain in-flight automation workflows before deploying.** The durable
-  workflow's step semantics changed, and the workflow carries no version gate.
-  A workflow that is mid-execution when the worker restarts replays its recorded
-  history against the new code; where the two disagree the workflow task fails
-  and retries rather than progressing, so the run appears stuck. The affected
-  population is automations currently sitting inside a wait. Either let those
-  drain before deploying or accept that they stall. This applies to every future
-  deploy that touches the workflow definition, not only this one.
-- `docker restart` does **not** reload the settings file. Containers must be
-  recreated for credential changes to take effect.
-- The worker must consume both the `workflows` and `integrations` queues. Every
-  target the new code dispatches has a registered handler — verified by direct
-  observation against the worker's registration list.
-- Missing credentials fail loudly rather than silently succeeding: absent SMS
-  credentials produce a failed step, and an unreachable language model produces
-  a failed run. Neither is recorded as a success.
-- **This deploy is forward-only.** See below.
+- **Two SQL scripts must be applied manually.** They live in `backend/scripts/`
+  and are **not** Alembic revisions, so the migration runner will not apply
+  them:
+  - `migrate_automation_email_outbox.sql` creates the outbox table. Apply it
+    before starting the new backend, or automation email cannot claim a send.
+  - `normalize_crm_automation_trigger_types.sql` repairs legacy underscore
+    trigger values to their canonical dotted form. An automation holding a
+    legacy value will not match its trigger until this runs. The script opens
+    with a SELECT to review against the target database first, and maps values
+    explicitly, because a blanket replacement would corrupt the two
+    list-membership values that legitimately retain an underscore.
+- Backend and durable worker must be restarted **together**; their execution
+  contract changed.
+- **Allow in-flight automations to drain before deploying.** The durable
+  workflow carries no version gate, so an automation paused inside a wait when
+  the worker restarts replays its recorded history against changed code and
+  stalls rather than resuming.
+- Containers must be recreated for configuration changes to take effect;
+  restarting them alone does not reload settings.
+- The worker must consume both the workflow and integration queues.
 
 ## Rollback constraint
 
-Structural canvas nodes are the reason. The previous release routes only a wait
-node to the durable workflow and flattens the graph into a plain action list for
-everything else; that flattening keeps only trigger and action nodes. A
-condition, branch or agent node therefore does not survive the flattening at all.
+This release is forward-only.
 
-If this release is rolled back after users have built automations containing
-those nodes, three silent behaviour changes follow:
+The previous release routes only a wait step to the durable workflow and
+flattens the remaining graph into a plain action list. That flattening keeps
+only trigger and action nodes, so condition, branch and agent nodes do not
+survive it.
 
-- A **condition** node disappears and the actions after it run unconditionally,
-  so a message intended only for qualifying records goes to every record.
-- A **branch** node disappears and the actions on every path run, so a record
-  that should receive one branch's message receives all of them.
-- A **wait-until-a-date** node completes immediately, so a message scheduled for
-  a future date sends the moment the run starts.
+If the release is rolled back after automations containing those steps exist:
 
-An **agent** node is the safe case: it also disappears, but any later step
-referring to its output fails loudly on the missing value rather than sending
+- A **condition** disappears and the steps after it run unconditionally, so a
+  message intended only for qualifying records reaches every record.
+- A **branch** disappears and every path's steps run, so a record receives all
+  branch messages instead of one.
+- A **wait until a date** completes immediately, so a message scheduled for a
+  future date sends at once.
+
+An **agent** step is the safe case: it also disappears, but a later step that
+references its output fails loudly on the missing value rather than sending
 something incomplete.
 
-None of this is recoverable by restarting forward, because the messages have
-already gone out. If a rollback becomes necessary, pause automations containing
-structural nodes first, then roll back.
-
-## Suggested PR split
-
-- **PR 1 — CRM functional foundation**, ending at baseline `adb2bc99`:
-  trigger contracts, registry honesty, email durability, terminal run verdicts,
-  reaper behaviour, conditions, required fields, existing CRM actions.
-- **PR 2 — CRM automations functional release**, the three commits up to
-  `94ea7210`: structural palette nodes, AI agent execution, durable waits,
-  branches, SMS, retry-safe tasks, aligned webhooks, dynamic-value validation,
-  retries, tests, and this evidence document.
-- **PR 3 — GTM LinkedIn and sequences** (adjacent, separate review): carries
-  the LinkedIn provider and sequence actions with the 24 July evidence and the
-  health-dashboard gap stated.
+None of this is recoverable by rolling forward again, because the messages have
+already been sent. Pause automations containing structural steps before any
+rollback.
