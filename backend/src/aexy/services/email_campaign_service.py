@@ -816,6 +816,33 @@ class EmailCampaignService:
         subscriber = await self._ensure_subscriber(workspace_id, to_email, record_id)
         unsubscribe_url = self._build_unsubscribe_url(subscriber)
 
+        # Automation mail now carries the same open/click tracking as campaign
+        # mail. Both flags were always accepted here and never applied, so
+        # email.opened / email.clicked could never fire for an automation's own
+        # email - the palette offered triggers nothing could ever satisfy.
+        #
+        # No recipient_id: that column is a FK to campaign recipients and
+        # automation mail has no campaign. The CRM bridge keys off record_id,
+        # which is what resolves an open back to the right record.
+        #
+        # Deliberately non-fatal: tracking is an enhancement, and a tracking
+        # failure must never stop a customer's email from being sent.
+        if track_opens or track_clicks:
+            try:
+                from aexy.services.tracking_service import TrackingService
+
+                html_body, _ = await TrackingService(self.db).process_email_body(
+                    html_body=html_body,
+                    workspace_id=workspace_id,
+                    record_id=record_id,
+                    inject_pixel=track_opens,
+                    track_links=track_clicks,
+                )
+            except Exception as tracking_error:
+                logger.warning(
+                    "Email tracking not applied for %s: %s", to_email, tracking_error
+                )
+
         message_id = None
         send_success = False
 
