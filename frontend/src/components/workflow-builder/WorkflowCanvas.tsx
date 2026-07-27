@@ -1048,6 +1048,14 @@ function WorkflowCanvasInner({
           onUpdate={(data) => updateNodeData(selectedNode.id, data)}
           onDelete={() => deleteNode(selectedNode.id)}
           onClose={() => setSelectedNode(null)}
+          // The same handler the toolbar and the keyboard shortcut use, so a
+          // save started from the node panel is the identical request and
+          // cannot drift from the rest of the builder. It covers a brand-new
+          // automation too: the parent's save creates it before writing the
+          // graph, which is why the panel needs no id of its own.
+          onSave={handleSave}
+          isSaving={isSaving}
+          hasChanges={hasChanges}
         />
       )}
 

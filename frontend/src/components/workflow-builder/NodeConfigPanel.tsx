@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Node } from "@xyflow/react";
-import { X, Trash2, ChevronDown, Plus, Database, Copy, Check, ExternalLink, Code } from "lucide-react";
+import { X, Trash2, ChevronDown, Plus, Database, Copy, Check, ExternalLink, Code, Save, Loader2 } from "lucide-react";
 import { FieldPicker, InlineFieldPicker } from "./FieldPicker";
 import { api, CRMAttribute, CRMObject } from "@/lib/api";
 import { HelpTooltip } from "@/components/ui/tooltip";
@@ -70,6 +70,17 @@ interface NodeConfigPanelProps {
   onUpdate: (data: Record<string, unknown>) => void;
   onDelete: () => void;
   onClose: () => void;
+  /**
+   * The canvas's own save. Deliberately the same handler the toolbar and the
+   * keyboard shortcut call, so a node-level save is not a second code path
+   * with its own idea of what "saved" means. Optional so the panel still
+   * renders for any caller that does not offer saving.
+   */
+  onSave?: () => void | Promise<void>;
+  /** True while that save is in flight. */
+  isSaving?: boolean;
+  /** True while the canvas holds edits that have not reached the server. */
+  hasChanges?: boolean;
 }
 
 // Trigger descriptions for the config panel
@@ -244,8 +255,12 @@ export function NodeConfigPanel({
   onUpdate,
   onDelete,
   onClose,
+  onSave,
+  isSaving = false,
+  hasChanges = false,
 }: NodeConfigPanelProps) {
   const [label, setLabel] = useState((node.data.label as string) || "");
+  const [justSaved, setJustSaved] = useState(false);
   const emailBodyRef = useRef<HTMLTextAreaElement>(null);
   const messageTemplateRef = useRef<HTMLTextAreaElement>(null);
   const webhookBodyRef = useRef<HTMLTextAreaElement>(null);
@@ -254,6 +269,20 @@ export function NodeConfigPanel({
   useEffect(() => {
     setLabel((node.data.label as string) || "");
   }, [node.id, node.data.label]);
+
+  // Confirm a save only once the canvas says the edits actually reached the
+  // server. The canvas clears its pending-changes flag on success and leaves
+  // it set on failure, so watching that flag - rather than the click - keeps
+  // the panel from reporting "Saved" after a save that did not happen.
+  const wasSaving = useRef(isSaving);
+  useEffect(() => {
+    const finished = wasSaving.current && !isSaving;
+    wasSaving.current = isSaving;
+    if (!finished || hasChanges) return;
+    setJustSaved(true);
+    const timer = setTimeout(() => setJustSaved(false), 2500);
+    return () => clearTimeout(timer);
+  }, [isSaving, hasChanges]);
 
   // Webhook trigger state
   const [webhookUrl, setWebhookUrl] = useState<string | null>(null);
@@ -3470,6 +3499,53 @@ export function NodeConfigPanel({
                 </p>
               </>
             )}
+          </div>
+        )}
+
+        {/* Save, then delete. Saving is the common action, so it sits above
+            the destructive one and carries the only visual emphasis. */}
+        {onSave && (
+          <div className="pt-4 border-t border-border">
+            <button
+              onClick={() => onSave()}
+              disabled={isSaving || !hasChanges}
+              aria-label="Save automation"
+              className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                isSaving || !hasChanges
+                  ? "bg-accent text-muted-foreground cursor-not-allowed"
+                  : "bg-primary text-primary-foreground hover:opacity-90"
+              }`}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Saving…
+                </>
+              ) : hasChanges ? (
+                <>
+                  <Save className="h-4 w-4" />
+                  Save changes
+                </>
+              ) : (
+                <>
+                  <Check className="h-4 w-4" />
+                  Saved
+                </>
+              )}
+            </button>
+            <p
+              role="status"
+              aria-live="polite"
+              className="mt-2 text-xs text-center min-h-4 text-muted-foreground"
+            >
+              {isSaving
+                ? "Saving this automation…"
+                : hasChanges
+                  ? "This node has unsaved changes."
+                  : justSaved
+                    ? "Saved. Your changes will survive a refresh."
+                    : "All changes saved."}
+            </p>
           </div>
         )}
 
