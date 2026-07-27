@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.59] - 2026-07-28
+
+### Fix: opening a task from All Tasks stranded you on a project board
+
+Clicking any task on `/sprints?tab=tasks` navigated to that task's project
+board (`/sprints/{projectId}/board?task={taskId}`) and opened the detail modal
+there. Closing it left you on a board you never asked for — the only way back
+to All Tasks was the browser button, and every filter, search term and view
+you'd set up on the tab was gone. The tab was doing this to avoid duplicating
+the board's task detail modal.
+
+- **`EditTaskModal` is now a shared component** at
+  `components/sprints/EditTaskModal.tsx`, extracted verbatim out of
+  `sprints/[projectId]/board/page.tsx` (~1.3k lines) along with its
+  `AssignmentHistoryPanel` helper. It was already route-agnostic — every
+  scoped call derives its ids from `task.sprint_id` / `task.team_id` — so no
+  behavior changed on the board. The `STATUS_CONFIG` / `PRIORITY_CONFIG` /
+  `SPRINT_STATUS_COLORS` maps both files need moved to
+  `components/sprints/taskFieldConfig.ts`.
+- **The Tasks tab opens that same modal in place.** The selected id lives in
+  `?task={id}` (via `replace`, not `push`, so closing doesn't need two Backs),
+  so refresh and link-share reopen the same task over the same filtered view.
+  Lookup prefers the already-loaded workspace list and falls back to an
+  archive-inclusive fetch, so a deep link opens even when the task is archived
+  or sits past the 1000-row cap. The sprint picker is scoped to the task's own
+  project — the workspace list spans all of them.
+- **`useWorkspaceTasks` gained `updateTask` / `archiveTask`**, routed to the
+  sprint or project API the way `useProjectBoard` does but taking the owning
+  project id per call, since this tab spans projects. Also exposes `epics` for
+  the modal.
+- **`/sprints?task={id}` still redirects to the board** for activity-feed and
+  chat deep links, but skips that redirect on the Tasks tab, which now owns the
+  param. Switching tabs drops `task` so it can't re-arm the redirect elsewhere.
+- Two fixes fell out of the reuse: the tab's `n` / `/` hotkeys are now disabled
+  while the detail modal is up (the shortcut hook only ignores keystrokes from
+  inputs, not a focused `<select>`), and the modal's attachment add/delete
+  invalidate through `invalidateTaskCaches` so the workspace list refreshes
+  too, not just the sprint/project ones.
+
 ## [0.8.58] - 2026-07-18
 
 ### Feature: Community page becomes a logged-in member hub
