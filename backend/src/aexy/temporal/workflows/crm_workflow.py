@@ -283,16 +283,21 @@ class CRMAutomationWorkflow:
                 context["executed_nodes"].append(node_id)
 
             except Exception as e:
-                logger.error(f"Workflow node {node_id} failed: {e}")
-                results.append({"node_id": node_id, "status": "failed", "error": str(e)})
+                # Temporal wraps an activity failure, so str(e) is the useless
+                # "Activity task failed". Unwrap to the innermost cause so the
+                # run names what actually went wrong ("Agent X is not active")
+                # instead of something a user cannot act on.
+                detail = self._failure_detail(e)
+                logger.error(f"Workflow node {node_id} failed: {detail}")
+                results.append({"node_id": node_id, "status": "failed", "error": detail})
                 context["executed_nodes"].append(node_id)
                 if input.error_handling == "continue":
                     continue
-                await self._close_crm_run(input, "failed", str(e), results)
+                await self._close_crm_run(input, "failed", detail, results)
                 return CRMWorkflowResult(
                     status="failed",
                     results=results,
-                    error=str(e),
+                    error=detail,
                     error_node_id=node_id,
                 )
 
@@ -527,6 +532,31 @@ class CRMAutomationWorkflow:
             e["target"] for e in edges
             if e.get("source") == node_id and e.get("sourceHandle", "") == label
         ]
+
+    @staticmethod
+    def _failure_detail(exc: BaseException) -> str:
+        """Innermost meaningful message from a wrapped activity failure.
+
+        Temporal reports an activity error as "Activity task failed" and hangs
+        the real reason off ``__cause__``. Reporting the wrapper makes every
+        failure look identical, so a run says nothing a user can act on. Walk
+        the chain and keep the deepest message that is not just wrapper noise.
+        """
+        wrapper_noise = {
+            "activity task failed",
+            "workflow task failed",
+            "child workflow task failed",
+        }
+        best = ""
+        seen: set[int] = set()
+        current: BaseException | None = exc
+        while current is not None and id(current) not in seen:
+            seen.add(id(current))
+            message = str(current).strip()
+            if message and message.lower() not in wrapper_noise:
+                best = message
+            current = current.__cause__
+        return best or str(exc).strip() or "Step failed"
 
     def _get_all_branch_targets(self, node_id: str, edges: list) -> dict[str, list[str]]:
         """Get all branch targets grouped by handle."""
