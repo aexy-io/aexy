@@ -695,6 +695,24 @@ class WorkflowService:
             warnings=warnings,
         )
 
+    async def validate_workflow_for_workspace(
+        self, nodes: list[dict], edges: list[dict], workspace_id: str
+    ) -> WorkflowValidationResult:
+        """Full validation: the static rules plus the checks that need the database.
+
+        Save, publish and the explicit validate endpoint must all apply the same
+        rules. Each of them re-running validate_workflow and then remembering to
+        append the agent checks — and to recompute is_valid afterwards — is one
+        forgotten line away from a publish path that skips them, so the two
+        halves are joined here instead of at each call site.
+        """
+        validation = self.validate_workflow(nodes, edges)
+        validation.errors.extend(
+            await self.validate_agent_references(nodes, workspace_id)
+        )
+        validation.is_valid = len(validation.errors) == 0
+        return validation
+
     async def validate_agent_references(
         self, nodes: list[dict], workspace_id: str
     ) -> list[WorkflowValidationError]:

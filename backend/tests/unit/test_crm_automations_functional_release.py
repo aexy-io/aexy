@@ -265,7 +265,15 @@ async def test_webhook_uses_dynamic_headers_timeout_and_safe_history():
             return FakeResponse()
 
     handler = WorkflowActionHandler(MagicMock())
-    with patch("aexy.services.workflow_actions.httpx.AsyncClient", FakeClient):
+    # example.test does not resolve, and the step now refuses a target it
+    # cannot confirm is public. This test is about the request it builds, so
+    # stand the target check down rather than depend on a live resolver.
+    with patch(
+        "aexy.services.workflow_actions.httpx.AsyncClient", FakeClient
+    ), patch(
+        "aexy.services.crm_automation_service.resolve_public_webhook_host",
+        AsyncMock(return_value=None),
+    ):
         result = await handler.execute_action(
             "webhook_call",
             {
@@ -314,7 +322,15 @@ async def test_webhook_non_2xx_is_a_failed_step():
             return FakeResponse()
 
     handler = WorkflowActionHandler(MagicMock())
-    with patch("aexy.services.workflow_actions.httpx.AsyncClient", FakeClient):
+    # example.test does not resolve, and the step now refuses a target it
+    # cannot confirm is public. This test is about the request it builds, so
+    # stand the target check down rather than depend on a live resolver.
+    with patch(
+        "aexy.services.workflow_actions.httpx.AsyncClient", FakeClient
+    ), patch(
+        "aexy.services.crm_automation_service.resolve_public_webhook_host",
+        AsyncMock(return_value=None),
+    ):
         result = await handler.execute_action(
             "webhook_call",
             {
@@ -447,12 +463,66 @@ async def test_agent_generation_failure_is_readable():
     assert result.error == "Agent execution failed: model generation failed"
 
 
-def test_agent_retry_policy_is_bounded_to_three_attempts():
-    retry_policy = CRMAutomationWorkflow._step_retry_policy(True)
-    no_retry_policy = CRMAutomationWorkflow._step_retry_policy(False)
+def test_step_retry_policy_is_bounded_to_three_attempts():
+    """The attempt budget covers infrastructure failures and is not optional.
 
-    assert retry_policy.maximum_attempts == 3
-    assert no_retry_policy.maximum_attempts == 1
+    It used to collapse to a single attempt unless the automation asked for
+    retries, which made a dropped connection or a worker restart permanently
+    fail a run under the default error_handling="stop". "Stop on error" means
+    stop when a step reaches a verdict, not when the network hiccups.
+
+    A step that *did* reach a failing verdict is held back separately:
+    execute_workflow_action marks its ApplicationError non_retryable unless
+    retries were requested, so no handler side effect is ever repeated.
+    """
+    assert CRMAutomationWorkflow._step_retry_policy().maximum_attempts == 3
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "retry_failures,expected_non_retryable", [(False, True), (True, False)]
+)
+async def test_a_handler_verdict_is_only_replayed_when_retries_were_asked_for(
+    retry_failures, expected_non_retryable
+):
+    """The verdict, not the retry policy, decides whether a step runs again.
+
+    A handler that reached "this failed" may already have had a side effect, so
+    replaying it is only safe when the automation opted in.
+    """
+    from temporalio.exceptions import ApplicationError
+
+    from aexy.schemas.workflow import NodeExecutionResult
+    from aexy.temporal.activities.workflow_actions import (
+        ExecuteWorkflowActionInput,
+        execute_workflow_action,
+    )
+
+    failed = NodeExecutionResult(node_id="", status="failed", error="receiver said no")
+
+    db = MagicMock()
+    db.commit = AsyncMock()
+    session = MagicMock()
+    session.__aenter__ = AsyncMock(return_value=db)
+    session.__aexit__ = AsyncMock(return_value=False)
+
+    with patch(
+        "aexy.services.workflow_actions.WorkflowActionHandler.execute_action",
+        AsyncMock(return_value=failed),
+    ), patch(
+        "aexy.temporal.activities.workflow_actions.async_session_maker",
+        MagicMock(return_value=session),
+    ):
+        with pytest.raises(ApplicationError) as caught:
+            await execute_workflow_action(
+                ExecuteWorkflowActionInput(
+                    node_type="action",
+                    node_data={"action_type": "webhook_call"},
+                    retry_failures=retry_failures,
+                )
+            )
+
+    assert caught.value.non_retryable is expected_non_retryable
 
 
 @pytest.mark.asyncio

@@ -201,11 +201,9 @@ async def update_workflow(
 
     # Validate if nodes and edges are provided
     if nodes_data is not None and edges_data is not None:
-        validation = service.validate_workflow(nodes_data, edges_data)
-        validation.errors.extend(
-            await service.validate_agent_references(nodes_data, workspace_id)
+        validation = await service.validate_workflow_for_workspace(
+            nodes_data, edges_data, workspace_id
         )
-        validation.is_valid = len(validation.errors) == 0
         if not validation.is_valid:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -292,12 +290,7 @@ async def validate_workflow(
     service = WorkflowService(db)
     nodes = [n.model_dump() for n in data.nodes]
     edges = [e.model_dump(by_alias=True) for e in data.edges]
-    validation = service.validate_workflow(nodes, edges)
-    validation.errors.extend(
-        await service.validate_agent_references(nodes, workspace_id)
-    )
-    validation.is_valid = len(validation.errors) == 0
-    return validation
+    return await service.validate_workflow_for_workspace(nodes, edges, workspace_id)
 
 
 @router.post("/publish", response_model=WorkflowDefinitionResponse)
@@ -321,11 +314,9 @@ async def publish_workflow(
         )
 
     # Validate before publishing
-    validation = service.validate_workflow(workflow.nodes, workflow.edges)
-    validation.errors.extend(
-        await service.validate_agent_references(workflow.nodes, workspace_id)
+    validation = await service.validate_workflow_for_workspace(
+        workflow.nodes, workflow.edges, workspace_id
     )
-    validation.is_valid = len(validation.errors) == 0
     if not validation.is_valid:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

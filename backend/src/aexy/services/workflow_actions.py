@@ -1263,6 +1263,23 @@ class WorkflowActionHandler:
                 status="failed",
                 error="Webhook timeout must be between 1 and 60 seconds",
             )
+        # Same target check the inline executor applies. A canvas with a wait
+        # or condition runs here instead, so leaving it out would mean the
+        # request-forgery guard could be sidestepped by adding a wait node.
+        from aexy.services.crm_automation_service import resolve_public_webhook_host
+
+        try:
+            unreachable = await resolve_public_webhook_host(
+                parsed_url.hostname or "",
+                parsed_url.port or (443 if parsed_url.scheme == "https" else 80),
+            )
+        except Exception:
+            logger.exception("Webhook target check failed for %s", url)
+            unreachable = "Webhook target could not be verified"
+        if unreachable:
+            return NodeExecutionResult(
+                node_id="", status="failed", error=unreachable
+            )
         if isinstance(headers, str):
             try:
                 headers = json.loads(headers or "{}")

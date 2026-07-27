@@ -3,14 +3,18 @@
 import asyncio
 import html
 import httpx
+import ipaddress
 import logging
 import re
+import socket
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import select, func, and_
 from sqlalchemy.exc import IntegrityError
+
+from aexy.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -116,7 +120,88 @@ def trigger_matches(
     return True
 
 
+# =============================================================================
+# WEBHOOK TARGET SAFETY
+# =============================================================================
+#
+# A webhook step's URL comes from whoever built the automation, and the request
+# leaves from inside our network with headers they also chose. Unrestricted,
+# that is a request-forgery primitive pointed at everything the backend can
+# reach but the author cannot: the cloud metadata endpoint (169.254.169.254),
+# Redis, Temporal, the database's admin surface, other tenants' internal APIs.
+# Validating the scheme is not enough — the host has to resolve somewhere
+# public.
+
+
+def _address_is_internal(ip: "ipaddress._BaseAddress") -> bool:
+    """Whether an address belongs to the network rather than the internet."""
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped:
+        # ::ffff:127.0.0.1 is loopback wearing a v6 hat.
+        ip = ip.ipv4_mapped
+    return (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_reserved
+        or ip.is_multicast
+        or ip.is_unspecified
+    )
+
+
+async def resolve_public_webhook_host(host: str, port: int) -> str | None:
+    """Reason the host may not be called, or None when it is allowed.
+
+    Resolution is part of the check on purpose: an attacker does not need a
+    literal 169.254.169.254 when any domain they control can be pointed at it.
+
+    This closes the reachable-by-name hole, not TOCTOU. The name is resolved
+    here and again by the HTTP client, so a record that changes in between can
+    still land somewhere internal. Pinning the checked address into the
+    connection is the complete fix and wants a custom transport; deployments
+    that need that guarantee should also keep the worker off the internal
+    network.
+    """
+    if get_settings().allow_private_webhook_targets:
+        return None
+
+    try:
+        literal = ipaddress.ip_address(host.strip("[]"))
+    except ValueError:
+        literal = None
+    if literal is not None:
+        return (
+            "Webhook URL points at an internal address"
+            if _address_is_internal(literal)
+            else None
+        )
+
+    try:
+        infos = await asyncio.get_running_loop().getaddrinfo(
+            host, port, type=socket.SOCK_STREAM
+        )
+    except OSError:
+        return f"Webhook host '{host}' could not be resolved"
+
+    addresses = {info[4][0] for info in infos}
+    if not addresses:
+        return f"Webhook host '{host}' could not be resolved"
+
+    # Every answer has to be public. One internal record among several is
+    # enough for the client to pick it.
+    for address in addresses:
+        try:
+            if _address_is_internal(ipaddress.ip_address(address)):
+                return f"Webhook host '{host}' resolves to an internal address"
+        except ValueError:
+            return f"Webhook host '{host}' resolved to an unusable address"
+    return None
+
+
 class CRMAutomationService:
+    """Service for CRM automation CRUD and execution."""
+
+    # Action types the inline executor has a case for. Anything outside this
+    # set reaches _execute_action's catch-all and is reported unsupported.
     INLINE_ACTION_TYPES: frozenset[str] = frozenset(
         {
             "update_record",
@@ -156,8 +241,6 @@ class CRMAutomationService:
             "reschedule_booking",
         }
     )
-
-    """Service for CRM automation CRUD and execution."""
 
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -1360,6 +1443,17 @@ class CRMAutomationService:
         if method not in {"GET", "POST", "PUT", "PATCH", "DELETE"}:
             return {"error": f"Unsupported webhook method: {method}"}
         try:
+            unreachable = await resolve_public_webhook_host(
+                parsed_url.hostname or "",
+                parsed_url.port or (443 if parsed_url.scheme == "https" else 80),
+            )
+        except Exception:
+            # The guard failing open would be worse than the step failing.
+            logger.exception("Webhook target check failed for %s", url)
+            return {"error": "Webhook target could not be verified"}
+        if unreachable:
+            return {"error": unreachable}
+        try:
             timeout_seconds = float(config.get("timeout_seconds", 30))
         except (TypeError, ValueError):
             return {"error": "Webhook timeout must be a number"}
@@ -1388,18 +1482,23 @@ class CRMAutomationService:
 
         body_template = config.get("body_template")
         if isinstance(body_template, str) and body_template.strip():
+            # Render once. Rendering again inside the fallback would re-raise a
+            # missing-variable error from the handler that was meant to catch
+            # it, turning a body that is merely not-JSON into a hard failure.
+            if record is not None or trigger_data:
+                try:
+                    rendered_body = self._replace_placeholders(
+                        body_template, record, trigger_data
+                    )
+                except ValueError as error:
+                    return {"error": str(error)}
+            else:
+                rendered_body = body_template
             try:
-                payload = _json.loads(
-                    self._replace_placeholders(body_template, record, trigger_data)
-                    if record is not None or trigger_data
-                    else body_template
-                )
-            except Exception:
-                payload = {
-                    "body": self._replace_placeholders(body_template, record, trigger_data)
-                    if record is not None or trigger_data
-                    else body_template
-                }
+                payload = _json.loads(rendered_body)
+            except _json.JSONDecodeError:
+                # Not JSON: send it as a body field rather than refusing.
+                payload = {"body": rendered_body}
         else:
             payload = {
                 "event": "automation.triggered",

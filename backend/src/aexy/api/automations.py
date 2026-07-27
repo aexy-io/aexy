@@ -241,15 +241,35 @@ async def update_automation(
 
     payload = data.model_dump(exclude_unset=True)
     target_module = payload.get("module") or automation.module or "crm"
-    target_trigger = payload.get("trigger_type") or automation.trigger_type
-    if target_trigger not in get_trigger_ids(target_module):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=(
-                f"Unsupported trigger '{target_trigger}' for module "
-                f"'{target_module}'. Choose a trigger from the automation registry."
-            ),
-        )
+
+    # Only gate a trigger the caller is actually setting. Validating the stored
+    # value on every update would strand any automation whose trigger has since
+    # been retired from the registry: renaming it, disabling it, or fixing its
+    # actions would all 422, leaving no way to change it but a direct SQL edit.
+    # A trigger already in the database has to stay editable, especially when
+    # it is the thing that needs correcting.
+    if payload.get("trigger_type") is not None:
+        target_trigger = payload["trigger_type"]
+        if target_trigger not in get_trigger_ids(target_module):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"Unsupported trigger '{target_trigger}' for module "
+                    f"'{target_module}'. Choose a trigger from the automation registry."
+                ),
+            )
+    elif payload.get("module") is not None:
+        # Moving an automation to another module has to carry a trigger that
+        # module actually offers, so this one does need re-checking.
+        if automation.trigger_type not in get_trigger_ids(target_module):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"Trigger '{automation.trigger_type}' is not available in "
+                    f"module '{target_module}'. Set a trigger from that module's "
+                    "registry in the same request."
+                ),
+            )
     if "actions" in payload and payload["actions"] is not None:
         from aexy.services.workflow_service import validate_action_configs
 

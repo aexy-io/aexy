@@ -129,7 +129,7 @@ class CRMAutomationWorkflow:
                             "retry_failures": should_retry,
                         },
                         start_to_close_timeout=timedelta(minutes=5),
-                        retry_policy=self._step_retry_policy(should_retry),
+                        retry_policy=self._step_retry_policy(),
                     )
                     context["variables"][node_id] = result
                     output_variable = data.get("output_variable")
@@ -263,7 +263,7 @@ class CRMAutomationWorkflow:
                         start_to_close_timeout=timedelta(
                             seconds=timeout_seconds
                         ),
-                        retry_policy=self._step_retry_policy(should_retry),
+                        retry_policy=self._step_retry_policy(),
                     )
                     context["variables"][node_id] = result
                     output_variable = data.get("output_variable")
@@ -317,12 +317,25 @@ class CRMAutomationWorkflow:
         )
 
     @staticmethod
-    def _step_retry_policy(should_retry: bool) -> RetryPolicy:
-        """Bound retries to the failed activity; Temporal retains earlier results."""
+    def _step_retry_policy() -> RetryPolicy:
+        """Bound retries to the failed activity; Temporal retains earlier results.
+
+        The attempt budget covers *infrastructure* failures — a dropped database
+        connection, a worker restarted mid-activity — and stays in place whether
+        or not the automation opted into retries. Capping it at one attempt for
+        error_handling="stop" would let a momentary blip permanently fail a run,
+        which is not what "stop on error" asks for; it asks the engine to stop
+        when a step reaches a real verdict.
+
+        That verdict is carried separately: execute_workflow_action raises its
+        ApplicationError as non_retryable unless retries were requested, so a
+        handler that decided "this failed" is never re-run and its side effects
+        are never repeated. Only the raise-before-a-verdict cases come back here.
+        """
         return RetryPolicy(
             initial_interval=timedelta(seconds=1),
             maximum_interval=timedelta(seconds=30),
-            maximum_attempts=3 if should_retry else 1,
+            maximum_attempts=3,
         )
 
     def _build_agent_context(self, data: dict, context: dict) -> dict:
