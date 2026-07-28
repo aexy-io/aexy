@@ -76,9 +76,13 @@ async function createAutomation(
 }
 
 /**
- * Run a one-step webhook canvas against the dry-run executor and return
- * the node's result. /execute is the closest thing to "press Test" and
- * exercises the same handler a published run uses.
+ * Run a one-step webhook canvas for real and return the node's outcome.
+ *
+ * Not the dry run: a test run deliberately skips webhook_call ("was not
+ * performed"), so it can never show whether the target guard fired. The
+ * live path is publish → execute → poll, which is asynchronous through
+ * Temporal, so the verdict arrives on the execution row rather than in
+ * the execute response.
  */
 async function runWebhookStep(
   request: APIRequestContext,
@@ -123,21 +127,49 @@ async function runWebhookStep(
   }
   expect(put.ok(), `workflow save returned ${put.status()}`).toBeTruthy();
 
+  const publish = await request.post(
+    `${API_BASE}/workspaces/${REAL_BACKEND_WORKSPACE_ID}` +
+      `/crm/automations/${automationId}/workflow/publish`,
+    { headers: authHeaders() },
+  );
+  if (publish.status() === 400) {
+    return { status: "failed", error: await publish.text() };
+  }
+  expect(publish.ok(), `publish returned ${publish.status()}`).toBeTruthy();
+
   const exec = await request.post(
     `${API_BASE}/workspaces/${REAL_BACKEND_WORKSPACE_ID}` +
       `/crm/automations/${automationId}/workflow/execute`,
     { headers: authHeaders(), data: { variables: {} } },
   );
   expect(exec.ok(), `execute returned ${exec.status()}`).toBeTruthy();
+  const executionId = (await exec.json()).execution_id as string;
 
-  const body = await exec.json();
-  const results = (body.node_results ?? body.results ?? []) as {
-    node_id?: string;
+  // The run is handed to Temporal, so the response is only an
+  // acknowledgement. Poll the execution row for the verdict.
+  const deadline = Date.now() + 60_000;
+  let detail: {
     status?: string;
     error?: string;
-  }[];
-  const node = results.find((r) => r.node_id === "action-1") ?? {};
-  return { status: node.status ?? "unknown", error: node.error ?? "" };
+    steps?: { node_id?: string; status?: string; error?: string }[];
+  } = {};
+  while (Date.now() < deadline) {
+    const resp = await request.get(
+      `${API_BASE}/workspaces/${REAL_BACKEND_WORKSPACE_ID}` +
+        `/crm/automations/${automationId}/workflow/executions/${executionId}`,
+      { headers: authHeaders() },
+    );
+    expect(resp.ok(), `execution fetch returned ${resp.status()}`).toBeTruthy();
+    detail = await resp.json();
+    if (detail.status && !["pending", "running"].includes(detail.status)) break;
+    await new Promise((r) => setTimeout(r, 1_000));
+  }
+
+  const node = (detail.steps ?? []).find((s) => s.node_id === "action-1");
+  return {
+    status: node?.status ?? detail.status ?? "unknown",
+    error: node?.error ?? detail.error ?? "",
+  };
 }
 
 test.describe("AI / Automation webhook target safety (live)", () => {
@@ -164,7 +196,15 @@ test.describe("AI / Automation webhook target safety (live)", () => {
       expect(
         result.status,
         `${target.url} (${target.why}) must not be dialled by a webhook step`,
-      ).not.toBe("success");
+      ).toBe("failed");
+      // Assert the reason too. "Not success" alone would also be satisfied by
+      // the run failing for some unrelated cause — a step that never ran, a
+      // publish that was rejected — and the guard could be gone without this
+      // test noticing.
+      expect(
+        result.error ?? "",
+        `${target.url} was refused, but not by the target check — got: ${result.error}`,
+      ).toMatch(/internal address|must use HTTP|could not be (resolved|verified)/i);
     }
   });
 
@@ -173,7 +213,11 @@ test.describe("AI / Automation webhook target safety (live)", () => {
 
     for (const url of NON_HTTP_TARGETS) {
       const result = await runWebhookStep(request, automationId, url);
-      expect(result.status, `${url} must be refused`).not.toBe("success");
+      expect(result.status, `${url} must be refused`).toBe("failed");
+      expect(
+        result.error ?? "",
+        `${url} was refused, but not for its scheme — got: ${result.error}`,
+      ).toMatch(/must use HTTP|internal address/i);
     }
   });
 
@@ -193,7 +237,9 @@ test.describe("AI / Automation webhook target safety (live)", () => {
     );
     await webhookRow.click();
 
-    await page.locator('.react-flow__node[data-id^="action-"]').first().click();
+    // Adding a node selects it, so the config panel opens on its own. Clicking
+    // the canvas node here would fight the panel's own `fixed inset-0 z-40`
+    // backdrop, which swallows pointer events across the whole viewport.
     const panel = page.getByTestId("node-config-panel");
     await expect(panel).toBeVisible({ timeout: 10_000 });
 

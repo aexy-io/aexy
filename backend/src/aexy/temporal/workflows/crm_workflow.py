@@ -361,18 +361,27 @@ class CRMAutomationWorkflow:
         error: str | None,
         steps: list | None = None,
     ) -> None:
-        """Mark the inline-created CRMAutomationRun done (live-trigger path only).
+        """Close whichever row is tracking this run.
 
-        The node outcomes travel with the verdict. Without them the run's step
-        log holds only the handoff entry, so a durable run can say it finished
-        but not what it actually did.
+        A live CRM trigger creates a CRMAutomationRun; the builder's Run button
+        creates a WorkflowExecution. Both are written before the handoff and
+        neither resolves on its own.
+
+        The node outcomes travel with the verdict. Without them the row holds
+        only the handoff entry, so a durable run can say it finished but not
+        what it actually did.
         """
-        if not input.crm_run_id:
+        if not input.crm_run_id and not input.execution_id:
             return
         await workflow.execute_activity(
             "mark_crm_automation_run",
             {
                 "run_id": input.crm_run_id,
+                # The builder's Run button creates a WorkflowExecution and no
+                # CRMAutomationRun. Without this it was never closed, so every
+                # live run started from the builder read "pending" for good,
+                # success and failure alike.
+                "execution_id": input.execution_id,
                 "status": status,
                 "error": error,
                 "steps": steps or [],
