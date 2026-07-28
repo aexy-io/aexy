@@ -7,6 +7,7 @@ import { useCallback, useMemo, useState } from "react";
 import {
   workspaceTasksApi,
   sprintApi,
+  projectTasksApi,
   epicApi,
   SprintTask,
   SprintListItem,
@@ -286,6 +287,58 @@ export function useWorkspaceTasks(
     },
   });
 
+  // Full task update — backs the EditTaskModal opened straight from this tab.
+  // The task can belong to any project in the workspace, so the caller passes
+  // the owning sprint/project ids alongside the patch rather than us closing
+  // over a single route-scoped project like `useProjectBoard` does.
+  const updateTaskMutation = useMutation({
+    mutationFn: async ({
+      taskId,
+      sprintId,
+      projectId,
+      updates,
+    }: {
+      taskId: string;
+      sprintId: string | null;
+      projectId: string | null;
+      updates: Parameters<typeof projectTasksApi.update>[2];
+    }) => {
+      if (sprintId) return sprintApi.updateTask(sprintId, taskId, updates);
+      if (projectId) return projectTasksApi.update(projectId, taskId, updates);
+      throw new Error("Either sprintId or projectId is required");
+    },
+    onError: () => {
+      toast.error("Failed to update task");
+    },
+    onSettled: () => {
+      invalidateTaskCaches(queryClient, workspaceId);
+    },
+  });
+
+  // Archive (soft delete). Same sprint-vs-project routing as the update above.
+  const archiveTaskMutation = useMutation({
+    mutationFn: async ({
+      taskId,
+      sprintId,
+      projectId,
+    }: {
+      taskId: string;
+      sprintId: string | null;
+      projectId: string | null;
+    }) => {
+      if (sprintId) return sprintApi.removeTask(sprintId, taskId);
+      if (projectId) return projectTasksApi.delete(projectId, taskId);
+      throw new Error("Either sprintId or projectId is required");
+    },
+    onError: () => {
+      toast.error("Failed to delete task");
+    },
+    onSettled: () => {
+      invalidateTaskCaches(queryClient, workspaceId);
+      queryClient.invalidateQueries({ queryKey: ["sprintStats"] });
+    },
+  });
+
   const updateFilters = useCallback((update: Partial<WorkspaceBoardFilters>) => {
     setFilters((prev) => ({ ...prev, ...update }));
   }, []);
@@ -313,6 +366,7 @@ export function useWorkspaceTasks(
     tasksByStatus,
     projects,
     sprints: allSprints || [],
+    epics: allEpics || [],
     filterOptions,
     filters,
     updateFilters,
@@ -323,6 +377,9 @@ export function useWorkspaceTasks(
     isUpdatingStatus: updateStatusMutation.isPending,
     createTask: createTaskMutation.mutateAsync,
     isCreatingTask: createTaskMutation.isPending,
+    updateTask: updateTaskMutation.mutateAsync,
+    isUpdatingTask: updateTaskMutation.isPending,
+    archiveTask: archiveTaskMutation.mutateAsync,
     truncated,
   };
 }

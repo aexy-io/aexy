@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -42,11 +42,18 @@ import {
   WorkspaceTasksView,
 } from "@/hooks/useWorkspaceTasks";
 import { useUnarchiveTask } from "@/hooks/useUnarchiveTask";
+import { useQuery } from "@tanstack/react-query";
 import {
   SprintTask,
   TaskPriority,
   TaskStatus,
+  workspaceTasksApi,
 } from "@/lib/api";
+import {
+  EditTaskModal,
+  EditTaskModalProps,
+} from "@/components/sprints/EditTaskModal";
+import { MentionUser } from "@/components/planning/TaskDescriptionEditor";
 import { TASK_STATUS_COLORS } from "@/lib/statusColors";
 import {
   AddWorkspaceTaskModal,
@@ -389,6 +396,7 @@ export function WorkspaceTasksTab({ workspaceId }: WorkspaceTasksTabProps) {
   );
 
   const {
+    tasks,
     filteredTasks,
     tasksByStatus,
     filters,
@@ -400,8 +408,12 @@ export function WorkspaceTasksTab({ workspaceId }: WorkspaceTasksTabProps) {
     updateTaskStatus,
     createTask,
     isCreatingTask,
+    updateTask,
+    isUpdatingTask,
+    archiveTask,
     projects,
     sprints,
+    epics,
     truncated,
   } = useWorkspaceTasks(workspaceId, view);
 
@@ -547,11 +559,107 @@ export function WorkspaceTasksTab({ workspaceId }: WorkspaceTasksTabProps) {
     return () => clearTimeout(handle);
   }, [filters, view, pathname, router]);
 
+  // ---------------------------------------------------------------------------
+  // Task detail modal, opened in place on this tab.
+  //
+  // The id lives in `?task=<id>` so refresh and link-share reopen the same
+  // task on top of the same filtered view. `router.replace` (not `push`) keeps
+  // it out of the history stack: closing the modal shouldn't need two Backs.
+  // ---------------------------------------------------------------------------
+  const selectedTaskId = searchParams.get("task");
+
+  const setSelectedTaskId = useCallback(
+    (taskId: string | null) => {
+      const params = new URLSearchParams(window.location.search);
+      if (taskId) params.set("task", taskId);
+      else params.delete("task");
+      const next = params.toString();
+      router.replace(`${pathname}${next ? `?${next}` : ""}`, { scroll: false });
+    },
+    [pathname, router],
+  );
+
+  // Prefer the copy already in the loaded workspace list — it stays in sync
+  // with drag/drop and inline edits. Look at the unfiltered `tasks`, not
+  // `filteredTasks`, so an active filter doesn't stop a deep link from opening.
+  const taskFromList = useMemo(
+    () => (selectedTaskId ? tasks.find((t) => t.id === selectedTaskId) : undefined),
+    [tasks, selectedTaskId],
+  );
+
+  // Not in the list: the task is archived (while we're on the active view, or
+  // vice versa), or sits past the 1000-row fetch cap. Resolve it with a
+  // one-off archive-inclusive lookup so deep links open regardless of state.
+  const needsDirectFetch = !!selectedTaskId && !taskFromList && !isLoading;
+  const { data: fetchedTask } = useQuery({
+    queryKey: ["workspaceTaskById", workspaceId, selectedTaskId],
+    queryFn: async () => {
+      const all = await workspaceTasksApi.list(workspaceId!, {
+        include_archived: true,
+        limit: 1000,
+      });
+      return all.find((t) => t.id === selectedTaskId) ?? null;
+    },
+    enabled: needsDirectFetch && !!workspaceId,
+    staleTime: 30_000,
+  });
+
+  const selectedTask = taskFromList ?? fetchedTask ?? null;
+
+  // Scope the modal's sprint picker to the task's own project — the workspace
+  // list spans every project, and offering a sprint from a different project
+  // would produce a move the backend rejects.
+  const sprintsForSelectedTask = useMemo(
+    () =>
+      selectedTask?.team_id
+        ? sprints.filter((s) => s.team_id === selectedTask.team_id)
+        : [],
+    [sprints, selectedTask?.team_id],
+  );
+
+  const mentionUsers: MentionUser[] = useMemo(
+    () =>
+      (members || [])
+        .filter((m) => m.status === "active")
+        .map((m) => ({
+          id: m.developer_id,
+          name: m.developer_name || m.developer_email?.split("@")[0] || "Unknown",
+          avatar_url: m.developer_avatar_url || undefined,
+        })),
+    [members],
+  );
+
+  // The modal's callbacks don't carry a project id (on a board it's implied by
+  // the route), so bind the selected task's owning project here.
+  const handleUpdateSelectedTask = useCallback<EditTaskModalProps["onUpdate"]>(
+    ({ taskId, sprintId, updates }) =>
+      updateTask({
+        taskId,
+        sprintId,
+        projectId: selectedTask?.team_id ?? null,
+        updates,
+      }),
+    [updateTask, selectedTask?.team_id],
+  );
+
+  const handleDeleteSelectedTask = useCallback<EditTaskModalProps["onDelete"]>(
+    async ({ taskId, sprintId }) => {
+      await archiveTask({
+        taskId,
+        sprintId,
+        projectId: selectedTask?.team_id ?? null,
+      });
+    },
+    [archiveTask, selectedTask?.team_id],
+  );
+
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // `n` opens the add-task modal pre-filtered to "To Do"; `/` focuses search.
-  // The modal handles its own Esc.
-  const hotkeysEnabled = addModalStatus === null;
+  // Each modal handles its own Esc. Disabled while any modal is up — the
+  // shortcut hook only ignores keystrokes from inputs, so a focused <select>
+  // or button inside the task detail would otherwise still trigger these.
+  const hotkeysEnabled = addModalStatus === null && !selectedTaskId;
   useShortcut("n", () => setAddModalStatus("todo"), { enabled: hotkeysEnabled });
   useShortcut("/", () => searchInputRef.current?.focus(), { enabled: hotkeysEnabled });
 
@@ -632,12 +740,11 @@ export function WorkspaceTasksTab({ workspaceId }: WorkspaceTasksTabProps) {
   };
 
   const handleTaskClick = (task: SprintTask) => {
-    // For v1, link to the task's project board where the user can edit it
-    // — avoids duplicating the full task detail modal here. Use the Next.js
-    // router so this stays a client-side transition (no full reload).
-    if (task.team_id) {
-      router.push(`/sprints/${task.team_id}/board?task=${task.id}`);
-    }
+    // Open the shared task detail modal right here rather than pushing the
+    // user onto the task's project board — that stranded them on a board they
+    // never asked for, with no way back to this tab but the browser button,
+    // and dropped every filter they'd set up.
+    setSelectedTaskId(task.id);
   };
 
   if (!workspaceId) {
@@ -1016,6 +1123,27 @@ export function WorkspaceTasksTab({ workspaceId }: WorkspaceTasksTabProps) {
             defaultProjectId={defaultProjectId || undefined}
             defaultStatus={addModalStatus}
             lockStatus
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Task detail — the same modal the project boards use, opened in place
+          so the user keeps this tab's filters and scroll position. */}
+      <AnimatePresence>
+        {selectedTask && (
+          <EditTaskModal
+            // Keyed by id so switching tasks remounts the form instead of
+            // carrying the previous task's field state (the modal seeds its
+            // state from props once, on mount).
+            key={selectedTask.id}
+            task={selectedTask}
+            onClose={() => setSelectedTaskId(null)}
+            onUpdate={handleUpdateSelectedTask}
+            onDelete={handleDeleteSelectedTask}
+            isUpdating={isUpdatingTask}
+            sprints={sprintsForSelectedTask}
+            epics={epics}
+            users={mentionUsers}
           />
         )}
       </AnimatePresence>
