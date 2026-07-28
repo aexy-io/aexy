@@ -92,6 +92,7 @@ async def test_run_cap_blocks_when_exceeded(db_session):
 async def test_error_handling_stop_halts_after_failed_step():
     service = CRMAutomationService(MagicMock())
     service.db.flush = AsyncMock()
+    service.db.execute = AsyncMock()
     auto = SimpleNamespace(
         id="a1",
         workspace_id="ws",
@@ -135,6 +136,7 @@ async def test_error_handling_stop_halts_after_failed_step():
 async def test_error_handling_continue_runs_remaining_steps():
     service = CRMAutomationService(MagicMock())
     service.db.flush = AsyncMock()
+    service.db.execute = AsyncMock()
     auto = SimpleNamespace(
         id="a1",
         workspace_id="ws",
@@ -180,6 +182,7 @@ async def test_error_handling_continue_runs_remaining_steps():
 async def test_error_handling_retry_retries_once_then_succeeds():
     service = CRMAutomationService(MagicMock())
     service.db.flush = AsyncMock()
+    service.db.execute = AsyncMock()
     auto = SimpleNamespace(
         id="a1",
         workspace_id="ws",
@@ -217,6 +220,11 @@ async def test_error_handling_retry_retries_once_then_succeeds():
     assert calls["n"] == 2
     assert run.steps_executed[0]["status"] == "success"
     assert run.steps_executed[0].get("retried") is True
+    assert run.steps_executed[0]["attempts"] == 2
+    assert [item["status"] for item in run.steps_executed[0]["attempt_history"]] == [
+        "failed",
+        "success",
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -240,6 +248,13 @@ async def test_error_handling_retry_retries_once_then_succeeds():
         ("notify_user", {"notify_email": "ada@example.com"}),
         ("add_to_list", {"list_id": "list-1"}),
         ("webhook_call", {"webhook_url": "https://example.com/hook"}),
+        (
+            "send_sms",
+            {
+                "phone_number": "+14155552671",
+                "message_template": "Hello",
+            },
+        ),
     ],
 )
 def test_action_config_accepted_when_panel_fields_present(action_type, good_config):

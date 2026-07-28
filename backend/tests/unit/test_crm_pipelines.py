@@ -232,3 +232,71 @@ async def test_convert_lead_creates_records(db_session):
     refreshed = await CRMRecordService(db_session).get_record(lead.id)
     assert refreshed.values["lead_status"] == "converted"
     assert refreshed.values.get("converted_deal") == result["deal_id"]
+
+
+@pytest.mark.asyncio
+async def test_bulk_move_validates_once_not_per_record(db_session, monkeypatch):
+    """Bulk stage moves must not re-validate the pipeline for every record.
+
+    Review finding: bulk_move called move_record_to_stage in a loop, so the
+    pipeline fetch, status-attribute lookup and active-stage query all ran
+    once per record — roughly four queries per record (~402 to move 100).
+    Validation is invariant across the batch, so it must happen exactly once
+    no matter how many records are moved.
+    """
+    ws, by_type = await _seed(db_session)
+    deal_obj = by_type[CRMObjectType.DEAL.value]
+    sales = await _deal_pipeline(db_session, ws.id, deal_obj.id)
+
+    records = []
+    for i in range(5):
+        records.append(
+            await CRMRecordService(db_session).create_record(
+                workspace_id=ws.id,
+                object_id=deal_obj.id,
+                values={"name": f"Deal {i}"},
+            )
+        )
+    await db_session.flush()
+
+    service = StageMovementService(db_session)
+    calls = {"n": 0}
+    original = service._resolve_stage_target
+
+    async def counting(pipeline_id, to_stage_key):
+        calls["n"] += 1
+        return await original(pipeline_id, to_stage_key)
+
+    monkeypatch.setattr(service, "_resolve_stage_target", counting)
+
+    moved = await service.bulk_move(
+        sales.id, [r.id for r in records], "qualified"
+    )
+
+    assert moved == 5
+    # The whole point: one validation for the batch, not one per record.
+    assert calls["n"] == 1
+
+
+@pytest.mark.asyncio
+async def test_bulk_move_rejects_unknown_stage_before_touching_records(db_session):
+    """An invalid destination must fail before any record is modified."""
+    ws, by_type = await _seed(db_session)
+    deal_obj = by_type[CRMObjectType.DEAL.value]
+    sales = await _deal_pipeline(db_session, ws.id, deal_obj.id)
+
+    record = await CRMRecordService(db_session).create_record(
+        workspace_id=ws.id,
+        object_id=deal_obj.id,
+        values={"name": "Untouched Deal"},
+    )
+    await db_session.flush()
+    before = dict(record.values or {})
+
+    with pytest.raises(ValueError, match="Unknown stage"):
+        await StageMovementService(db_session).bulk_move(
+            sales.id, [record.id], "not-a-real-stage"
+        )
+
+    await db_session.refresh(record)
+    assert dict(record.values or {}) == before

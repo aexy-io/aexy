@@ -19,14 +19,14 @@ Key improvements:
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
 with workflow.unsafe.imports_passed_through():
-    from aexy.temporal.dispatch import STANDARD_RETRY, LLM_RETRY
+    from aexy.temporal.dispatch import STANDARD_RETRY
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +45,7 @@ class CRMWorkflowInput:
     # Set when a live CRM trigger handed off to this workflow: the run row is
     # created inline before dispatch and closed here when the workflow ends.
     crm_run_id: str | None = None
+    error_handling: str = "stop"
 
 
 @dataclass
@@ -53,6 +54,23 @@ class CRMWorkflowResult:
     results: list[dict[str, Any]] = field(default_factory=list)
     error: str | None = None
     error_node_id: str | None = None
+
+
+# Temporal replays a running workflow's history against whatever code the
+# worker now has. A wait node can sleep for days, so a deploy lands mid-flight
+# routinely — and any change to the sequence of commands (activities, timers)
+# makes the replay disagree with the recorded history, which wedges the
+# execution rather than failing it.
+#
+# `workflow.patched` is how that is made safe: a history with no marker at this
+# point replays the pre-change branch, while a new execution records the marker
+# and takes the new one. Only command-affecting changes need a gate — building
+# a dict differently is invisible to replay; scheduling an activity or a timer
+# that the old code did not is not.
+#
+# Retire a gate with `workflow.deprecate_patch` only once no execution old
+# enough to need it can still be running.
+_DURABLE_EXECUTION_PATCH = "crm-durable-execution-2026-07"
 
 
 @workflow.defn
@@ -82,6 +100,7 @@ class CRMAutomationWorkflow:
 
         context: dict[str, Any] = {
             "record_data": input.record_data,
+            "trigger_data": input.trigger_data,
             "variables": {},
             "executed_nodes": [],
             "workspace_id": input.workspace_id,
@@ -113,21 +132,33 @@ class CRMAutomationWorkflow:
                     results.append({"node_id": node_id, "status": "completed", "type": "trigger"})
 
                 elif node_type == "action":
+                    should_retry = input.error_handling == "retry"
                     result = await workflow.execute_activity(
                         "execute_workflow_action",
                         {
                             "node_type": node_type,
+                            "node_id": node_id,
                             "node_data": data,
                             "context": context,
                             "execution_id": input.execution_id,
                             "workspace_id": input.workspace_id,
                             "record_id": input.record_id,
+                            "retry_failures": should_retry,
                         },
                         start_to_close_timeout=timedelta(minutes=5),
-                        retry_policy=STANDARD_RETRY,
+                        retry_policy=self._step_retry_policy(),
                     )
                     context["variables"][node_id] = result
-                    results.append({"node_id": node_id, "status": "completed", "output": result})
+                    output_variable = data.get("output_variable")
+                    if output_variable:
+                        context["variables"][output_variable] = result
+                    results.append({
+                        "node_id": node_id,
+                        "status": "completed",
+                        "type": data.get("action_type"),
+                        "attempts": result.get("attempt", 1),
+                        "output": result,
+                    })
 
                 elif node_type == "condition":
                     condition_result = self._evaluate_condition(data, context)
@@ -154,7 +185,7 @@ class CRMAutomationWorkflow:
                         await workflow.sleep(duration)
 
                     elif wait_type == "event":
-                        event_type = data.get("event_type", "")
+                        event_type = data.get("wait_for_event") or data.get("event_type", "")
                         timeout_hours = data.get("timeout_hours", 24)
                         self._event_received = False
                         self._status = {"status": "waiting", "wait_type": "event", "event_type": event_type}
@@ -168,18 +199,63 @@ class CRMAutomationWorkflow:
                             results.append({"node_id": node_id, "status": "completed", "event_data": self._event_data})
                         except asyncio.TimeoutError:
                             results.append({"node_id": node_id, "status": "timed_out"})
+                            await self._close_crm_run(
+                                input,
+                                "failed",
+                                f"Timeout waiting for event: {event_type}",
+                                results,
+                            )
                             return CRMWorkflowResult(
                                 status="failed",
                                 results=results,
                                 error=f"Timeout waiting for event: {event_type}",
                                 error_node_id=node_id,
                             )
+                    elif wait_type in {"datetime", "date", "until_date"} and (
+                        workflow.patched(_DURABLE_EXECUTION_PATCH)
+                    ):
+                        raw_wait_until = data.get("wait_until") or data.get("until_date")
+                        if not raw_wait_until:
+                            raise ValueError("Wait-until-date requires a date and time")
+                        wait_until = datetime.fromisoformat(
+                            str(raw_wait_until).replace("Z", "+00:00")
+                        )
+                        if wait_until.tzinfo is None:
+                            offset = int(data.get("timezone_offset_minutes", 0))
+                            wait_until = wait_until.replace(
+                                tzinfo=timezone(timedelta(minutes=-offset))
+                            )
+                        seconds = max(
+                            0,
+                            (wait_until - workflow.now()).total_seconds(),
+                        )
+                        self._status = {
+                            "status": "waiting",
+                            "wait_type": "datetime",
+                            "wait_until": wait_until.isoformat(),
+                        }
+                        await workflow.sleep(seconds)
                     else:
-                        results.append({"node_id": node_id, "status": "completed"})
+                        raise ValueError(f"Unknown wait type: {wait_type}")
+
+                    if wait_type != "event":
+                        results.append({
+                            "node_id": node_id,
+                            "status": "completed",
+                            "type": "wait",
+                            "output": {"wait_type": wait_type},
+                        })
 
                 elif node_type == "branch":
-                    selected = self._evaluate_branches(data, context)
-                    results.append({"node_id": node_id, "status": "completed", "selected_branch": selected})
+                    decision = self._evaluate_branches(data, context)
+                    selected = decision["branch_id"]
+                    results.append({
+                        "node_id": node_id,
+                        "status": "completed",
+                        "type": "branch",
+                        "selected_branch": selected,
+                        "output": decision,
+                    })
 
                     all_branches = self._get_all_branch_targets(node_id, input.edges)
                     for branch_id, targets in all_branches.items():
@@ -188,20 +264,37 @@ class CRMAutomationWorkflow:
                             skip_nodes.update(downstream)
 
                 elif node_type == "agent":
+                    agent_context = self._build_agent_context(data, context)
+                    should_retry = input.error_handling == "retry"
+                    timeout_seconds = max(
+                        1, min(600, int(data.get("timeout_seconds", 300)))
+                    )
                     result = await workflow.execute_activity(
                         "execute_agent",
                         {
                             "agent_id": data.get("agent_id", ""),
                             "record_id": input.record_id,
-                            "context": context,
+                            "context": agent_context,
                             "triggered_by": "workflow",
                             "trigger_id": input.execution_id,
+                            "retry_failures": should_retry,
                         },
-                        start_to_close_timeout=timedelta(minutes=10),
-                        retry_policy=LLM_RETRY,
+                        start_to_close_timeout=timedelta(
+                            seconds=timeout_seconds
+                        ),
+                        retry_policy=self._step_retry_policy(),
                     )
                     context["variables"][node_id] = result
-                    results.append({"node_id": node_id, "status": "completed", "output": result})
+                    output_variable = data.get("output_variable")
+                    if output_variable:
+                        context["variables"][output_variable] = result
+                    results.append({
+                        "node_id": node_id,
+                        "status": "completed",
+                        "type": "run_agent",
+                        "attempts": result.get("attempt", 1),
+                        "output": result,
+                    })
 
                 else:
                     results.append({"node_id": node_id, "status": "completed", "type": node_type})
@@ -209,19 +302,78 @@ class CRMAutomationWorkflow:
                 context["executed_nodes"].append(node_id)
 
             except Exception as e:
-                logger.error(f"Workflow node {node_id} failed: {e}")
-                results.append({"node_id": node_id, "status": "failed", "error": str(e)})
-                await self._close_crm_run(input, "failed", str(e), results)
+                # Temporal wraps an activity failure, so str(e) is the useless
+                # "Activity task failed". Unwrap to the innermost cause so the
+                # run names what actually went wrong ("Agent X is not active")
+                # instead of something a user cannot act on.
+                detail = self._failure_detail(e)
+                logger.error(f"Workflow node {node_id} failed: {detail}")
+                results.append({"node_id": node_id, "status": "failed", "error": detail})
+                context["executed_nodes"].append(node_id)
+                if input.error_handling == "continue" and workflow.patched(
+                    _DURABLE_EXECUTION_PATCH
+                ):
+                    continue
+                await self._close_crm_run(input, "failed", detail, results)
                 return CRMWorkflowResult(
                     status="failed",
                     results=results,
-                    error=str(e),
+                    error=detail,
                     error_node_id=node_id,
                 )
 
-        self._status = {"status": "completed"}
-        await self._close_crm_run(input, "completed", None, results)
-        return CRMWorkflowResult(status="completed", results=results)
+        failed_result = next(
+            (result for result in results if result.get("status") == "failed"),
+            None,
+        )
+        final_status = "failed" if failed_result else "completed"
+        final_error = failed_result.get("error") if failed_result else None
+        self._status = {"status": final_status}
+        await self._close_crm_run(input, final_status, final_error, results)
+        return CRMWorkflowResult(
+            status=final_status,
+            results=results,
+            error=final_error,
+            error_node_id=failed_result.get("node_id") if failed_result else None,
+        )
+
+    @staticmethod
+    def _step_retry_policy() -> RetryPolicy:
+        """Bound retries to the failed activity; Temporal retains earlier results.
+
+        The attempt budget covers *infrastructure* failures — a dropped database
+        connection, a worker restarted mid-activity — and stays in place whether
+        or not the automation opted into retries. Capping it at one attempt for
+        error_handling="stop" would let a momentary blip permanently fail a run,
+        which is not what "stop on error" asks for; it asks the engine to stop
+        when a step reaches a real verdict.
+
+        That verdict is carried separately: execute_workflow_action raises its
+        ApplicationError as non_retryable unless retries were requested, so a
+        handler that decided "this failed" is never re-run and its side effects
+        are never repeated. Only the raise-before-a-verdict cases come back here.
+        """
+        return RetryPolicy(
+            initial_interval=timedelta(seconds=1),
+            maximum_interval=timedelta(seconds=30),
+            maximum_attempts=3,
+        )
+
+    def _build_agent_context(self, data: dict, context: dict) -> dict:
+        """Build explicit, validated agent inputs from CRM and workflow context."""
+        agent_context = {
+            "record": context.get("record_data") or {},
+            "trigger": context.get("trigger_data") or {},
+            "variables": context.get("variables") or {},
+        }
+        for input_name, field_path in (data.get("input_mapping") or {}).items():
+            value = self._resolve_field(str(field_path), context)
+            if value is None:
+                raise ValueError(
+                    f"AI Agent input '{input_name}' could not resolve '{field_path}'"
+                )
+            agent_context[input_name] = value
+        return agent_context
 
     async def _close_crm_run(
         self,
@@ -230,22 +382,45 @@ class CRMAutomationWorkflow:
         error: str | None,
         steps: list | None = None,
     ) -> None:
-        """Mark the inline-created CRMAutomationRun done (live-trigger path only).
+        """Close whichever row is tracking this run.
 
-        The node outcomes travel with the verdict. Without them the run's step
-        log holds only the handoff entry, so a durable run can say it finished
-        but not what it actually did.
+        A live CRM trigger creates a CRMAutomationRun; the builder's Run button
+        creates a WorkflowExecution. Both are written before the handoff and
+        neither resolves on its own.
+
+        The node outcomes travel with the verdict. Without them the row holds
+        only the handoff entry, so a durable run can say it finished but not
+        what it actually did.
         """
-        if not input.crm_run_id:
+        # Closing the builder's WorkflowExecution is new, and it schedules an
+        # activity where the pre-change code returned having scheduled nothing.
+        # An execution recorded before the marker must keep doing nothing here,
+        # or its replay grows a command its history does not have.
+        closes_builder_execution = bool(
+            input.execution_id
+        ) and workflow.patched(_DURABLE_EXECUTION_PATCH)
+
+        if not input.crm_run_id and not closes_builder_execution:
             return
+
+        payload: dict[str, Any] = {
+            "run_id": input.crm_run_id,
+            "status": status,
+            "error": error,
+            "steps": steps or [],
+        }
+        # The extra key travels only on the new path, so a replayed activity
+        # input matches the one its history recorded.
+        if closes_builder_execution:
+            # The builder's Run button creates a WorkflowExecution and no
+            # CRMAutomationRun. Without this it was never closed, so every live
+            # run started from the builder read "pending" for good, success and
+            # failure alike.
+            payload["execution_id"] = input.execution_id
+
         await workflow.execute_activity(
             "mark_crm_automation_run",
-            {
-                "run_id": input.crm_run_id,
-                "status": status,
-                "error": error,
-                "steps": steps or [],
-            },
+            payload,
             start_to_close_timeout=timedelta(minutes=1),
             retry_policy=STANDARD_RETRY,
         )
@@ -331,7 +506,7 @@ class CRMAutomationWorkflow:
                 return None
         return current
 
-    def _evaluate_branches(self, data: dict, context: dict) -> str | None:
+    def _evaluate_branches(self, data: dict, context: dict) -> dict[str, Any]:
         """Pick one exclusive branch by selection rules.
 
         Paths with rules are evaluated first; the first match wins. Paths
@@ -343,7 +518,7 @@ class CRMAutomationWorkflow:
         default_id = data.get("default_branch")
         fallback_id = None
 
-        for branch in branches:
+        for index, branch in enumerate(branches):
             branch_id = branch.get("id") or branch.get("name") or branch.get("label")
             conditions = (
                 branch.get("conditions")
@@ -359,15 +534,48 @@ class CRMAutomationWorkflow:
                     else []
                 )
             )
+            if not conditions and (
+                branch.get("field")
+                or branch.get("attribute")
+                or branch.get("operator")
+            ):
+                conditions = [
+                    {
+                        "field": branch.get("field")
+                        or branch.get("attribute"),
+                        "operator": branch.get("operator"),
+                        "value": branch.get("value"),
+                    }
+                ]
             if not conditions:
                 if fallback_id is None:
                     fallback_id = branch_id
                 continue
             # Reuse list evaluation by wrapping
             if self._evaluate_condition({"conditions": conditions}, context):
-                return branch_id
+                return {
+                    "branch_id": branch_id,
+                    "path_label": branch.get("label") or branch_id,
+                    "rule_index": index,
+                    "matched": True,
+                }
 
-        return default_id or fallback_id
+        selected = default_id or fallback_id
+        selected_branch = next(
+            (
+                branch
+                for branch in branches
+                if (branch.get("id") or branch.get("name") or branch.get("label"))
+                == selected
+            ),
+            {},
+        )
+        return {
+            "branch_id": selected,
+            "path_label": selected_branch.get("label") or selected,
+            "rule_index": None,
+            "matched": False,
+        }
 
     def _calculate_duration(self, data: dict) -> int:
         """Calculate wait duration in seconds (all unit/key aliases)."""
@@ -381,6 +589,31 @@ class CRMAutomationWorkflow:
             e["target"] for e in edges
             if e.get("source") == node_id and e.get("sourceHandle", "") == label
         ]
+
+    @staticmethod
+    def _failure_detail(exc: BaseException) -> str:
+        """Innermost meaningful message from a wrapped activity failure.
+
+        Temporal reports an activity error as "Activity task failed" and hangs
+        the real reason off ``__cause__``. Reporting the wrapper makes every
+        failure look identical, so a run says nothing a user can act on. Walk
+        the chain and keep the deepest message that is not just wrapper noise.
+        """
+        wrapper_noise = {
+            "activity task failed",
+            "workflow task failed",
+            "child workflow task failed",
+        }
+        best = ""
+        seen: set[int] = set()
+        current: BaseException | None = exc
+        while current is not None and id(current) not in seen:
+            seen.add(id(current))
+            message = str(current).strip()
+            if message and message.lower() not in wrapper_noise:
+                best = message
+            current = current.__cause__
+        return best or str(exc).strip() or "Step failed"
 
     def _get_all_branch_targets(self, node_id: str, edges: list) -> dict[str, list[str]]:
         """Get all branch targets grouped by handle."""

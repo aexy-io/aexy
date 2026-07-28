@@ -1,11 +1,13 @@
 """Workflow action handlers for executing different action types."""
 
 import httpx
+import json
 import logging
 import re
 from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +30,62 @@ from aexy.schemas.workflow import WorkflowExecutionContext, NodeExecutionResult
 class WorkflowActionHandler:
     """Handles execution of workflow action nodes."""
 
+    ACTION_HANDLER_METHODS: dict[str, str] = {
+        "update_record": "_update_record",
+        "create_record": "_create_record",
+        "delete_record": "_delete_record",
+        "add_to_list": "_add_to_list",
+        "remove_from_list": "_remove_from_list",
+        "enroll_sequence": "_enroll_sequence",
+        "unenroll_sequence": "_unenroll_sequence",
+        "enroll_in_sequence": "_enroll_in_outreach_sequence",
+        "remove_from_sequence": "_remove_from_outreach_sequence",
+        "assign_owner": "_assign_owner",
+        "link_records": "_link_records",
+        "send_email": "_send_email",
+        "send_tracked_email": "_send_tracked_email",
+        "send_slack": "_send_slack",
+        "send_sms": "_send_sms",
+        "webhook_call": "_webhook_call",
+        "api_request": "_webhook_call",
+        "notify_user": "_notify_user",
+        "notify_team": "_notify_team",
+        "create_task": "_create_task",
+        "update_task": "_update_task",
+        "assign_task": "_assign_task",
+        "move_task": "_move_task",
+        "create_subtask": "_create_subtask",
+        "add_comment": "_add_comment",
+        "update_ticket": "_update_ticket",
+        "assign_ticket": "_assign_ticket",
+        "add_response": "_add_response",
+        "escalate": "_escalate",
+        "change_priority": "_change_priority",
+        "add_tag": "_add_tag",
+        "remove_tag": "_remove_tag",
+        "update_candidate": "_update_candidate",
+        "move_stage": "_move_stage",
+        "schedule_interview": "_schedule_interview",
+        "send_rejection": "_send_rejection",
+        "create_offer": "_create_offer",
+        "add_note": "_add_note",
+        "assign_recruiter": "_assign_recruiter",
+        "pause_monitor": "_pause_monitor",
+        "resume_monitor": "_resume_monitor",
+        "create_incident": "_create_incident",
+        "resolve_incident": "_resolve_incident",
+        "confirm_booking": "_confirm_booking",
+        "cancel_booking": "_cancel_booking",
+        "reschedule_booking": "_reschedule_booking",
+        "send_reminder": "_send_reminder",
+        "send_campaign": "_send_campaign",
+        "update_contact": "_update_contact",
+        "send_response": "_send_response",
+        "trigger_onboarding": "_trigger_onboarding",
+        "complete_onboarding_step": "_complete_onboarding_step",
+        "run_agent": "_execute_agent",
+    }
+
     # Actions that inspect context.is_dry_run themselves and can produce a
     # useful preview without touching anything outside the database session.
     # Everything absent from this set is treated as unsafe during a test.
@@ -43,79 +101,14 @@ class WorkflowActionHandler:
         context: WorkflowExecutionContext,
     ) -> NodeExecutionResult:
         """Execute an action based on type."""
-        handlers = {
-            # CRM actions
-            "update_record": self._update_record,
-            "create_record": self._create_record,
-            "delete_record": self._delete_record,
-            "add_to_list": self._add_to_list,
-            "remove_from_list": self._remove_from_list,
-            "enroll_sequence": self._enroll_sequence,
-            "unenroll_sequence": self._unenroll_sequence,
-            "enroll_in_sequence": self._enroll_in_outreach_sequence,
-            "remove_from_sequence": self._remove_from_outreach_sequence,
-            "assign_owner": self._assign_owner,
-            # Communication actions
-            "send_email": self._send_email,
-            "send_tracked_email": self._send_tracked_email,
-            "send_slack": self._send_slack,
-            "send_sms": self._send_sms,
-            "webhook_call": self._webhook_call,
-            "api_request": self._webhook_call,
-            "notify_user": self._notify_user,
-            "notify_team": self._notify_team,
-            # Task / Sprint actions
-            "create_task": self._create_task,
-            "update_task": self._update_task,
-            "assign_task": self._assign_task,
-            "move_task": self._move_task,
-            "create_subtask": self._create_subtask,
-            "add_comment": self._add_comment,
-            # Ticket actions
-            "update_ticket": self._update_ticket,
-            "assign_ticket": self._assign_ticket,
-            "add_response": self._add_response,
-            "escalate": self._escalate,
-            "change_priority": self._change_priority,
-            "add_tag": self._add_tag,
-            "remove_tag": self._remove_tag,
-            # Hiring actions
-            "update_candidate": self._update_candidate,
-            "move_stage": self._move_stage,
-            "schedule_interview": self._schedule_interview,
-            "send_rejection": self._send_rejection,
-            "create_offer": self._create_offer,
-            "add_note": self._add_note,
-            "assign_recruiter": self._assign_recruiter,
-            # Uptime actions
-            "pause_monitor": self._pause_monitor,
-            "resume_monitor": self._resume_monitor,
-            "create_incident": self._create_incident,
-            "resolve_incident": self._resolve_incident,
-            # Booking actions
-            "confirm_booking": self._confirm_booking,
-            "cancel_booking": self._cancel_booking,
-            "reschedule_booking": self._reschedule_booking,
-            "send_reminder": self._send_reminder,
-            # Email marketing actions
-            "send_campaign": self._send_campaign,
-            "update_contact": self._update_contact,
-            # Form actions
-            "send_response": self._send_response,
-            # Onboarding actions
-            "trigger_onboarding": self._trigger_onboarding,
-            "complete_onboarding_step": self._complete_onboarding_step,
-            # AI Agent actions
-            "run_agent": self._execute_agent,
-        }
-
-        handler = handlers.get(action_type)
-        if not handler:
+        handler_name = self.ACTION_HANDLER_METHODS.get(action_type)
+        if not handler_name:
             return NodeExecutionResult(
                 node_id="",
                 status="failed",
                 error=f"Unknown action type: {action_type}",
             )
+        handler = getattr(self, handler_name)
 
         # A test run must not reach the outside world. The guard lives here,
         # at the single dispatch point, rather than in each handler: an action
@@ -142,6 +135,35 @@ class WorkflowActionHandler:
 
         return await handler(data, context)
 
+    def _child_workflow_id(
+        self, context: WorkflowExecutionContext, kind: str
+    ) -> str | None:
+        """A stable Temporal id for child work this node hands off.
+
+        `dispatch` invents a random workflow id when none is given, so a node
+        that reaches the provider and then fails — or whose activity is simply
+        retried after an infrastructure blip — enqueues a *second* independent
+        child. The customer gets two emails, two Slack messages, two campaign
+        sends, and nothing links the duplicates back together.
+
+        (execution, node) is the identity that survives a retry of the same
+        step: the execution id is unique per run and the node id unique within
+        it, so a genuine second run of the same automation gets a different key
+        while a retry of the same step gets the same one. Paired with
+        `reject_duplicate_id`, a handoff that landed and lost its response is
+        refused rather than repeated.
+
+        Returns None on the inline and manual paths, which have no execution to
+        key off — those are not retried by Temporal, so there is nothing to
+        deduplicate.
+        """
+        execution_id = str(context.trigger_data.get("execution_id") or "")
+        node_id = str(context.trigger_data.get("node_id") or "")
+        if not execution_id or not node_id:
+            return None
+        return f"{kind}-{execution_id}-{node_id}"
+
+
     async def _update_record(
         self, data: dict, context: WorkflowExecutionContext
     ) -> NodeExecutionResult:
@@ -152,14 +174,6 @@ class WorkflowActionHandler:
                 node_id="",
                 status="failed",
                 error="No record ID in context",
-            )
-
-        field_mappings = data.get("field_mappings", {})
-        if not field_mappings:
-            return NodeExecutionResult(
-                node_id="",
-                status="success",
-                output={"message": "No fields to update"},
             )
 
         stmt = select(CRMRecord).where(CRMRecord.id == record_id)
@@ -173,30 +187,27 @@ class WorkflowActionHandler:
                 error=f"Record not found: {record_id}",
             )
 
-        # Resolve field values from context
-        updates = {}
-        for field, value_or_path in field_mappings.items():
-            if isinstance(value_or_path, str) and value_or_path.startswith("{{"):
-                # Template variable
-                path = value_or_path.strip("{}").strip()
-                updates[field] = self._get_context_value(path, context)
-            else:
-                updates[field] = value_or_path
+        from aexy.services.crm_automation_service import CRMAutomationService
 
-        record.values = {**record.values, **updates}
-        await self.db.flush()
+        outcome = await CRMAutomationService(self.db)._action_update_record(
+            data, record, context.trigger_data
+        )
+        if outcome.get("error"):
+            return NodeExecutionResult(
+                node_id="", status="failed", error=str(outcome["error"])
+            )
 
         return NodeExecutionResult(
             node_id="",
             status="success",
-            output={"record_id": record_id, "updated_fields": list(updates.keys())},
+            output={"record_id": record_id, **outcome},
         )
 
     async def _create_record(
         self, data: dict, context: WorkflowExecutionContext
     ) -> NodeExecutionResult:
         """Create a new CRM record."""
-        target_object_id = data.get("target_object_id")
+        target_object_id = data.get("target_object_id") or data.get("object_id")
         if not target_object_id:
             return NodeExecutionResult(
                 node_id="",
@@ -204,22 +215,7 @@ class WorkflowActionHandler:
                 error="No target object ID specified",
             )
 
-        field_mappings = data.get("field_mappings", {})
-        values = {}
-        for field, value_or_path in field_mappings.items():
-            if isinstance(value_or_path, str) and value_or_path.startswith("{{"):
-                path = value_or_path.strip("{}").strip()
-                values[field] = self._get_context_value(path, context)
-            else:
-                values[field] = value_or_path
-
-        # Get workspace_id from the original record
-        workspace_id = context.trigger_data.get("workspace_id")
-        if not workspace_id and context.record_id:
-            stmt = select(CRMRecord.workspace_id).where(CRMRecord.id == context.record_id)
-            result = await self.db.execute(stmt)
-            workspace_id = result.scalar_one_or_none()
-
+        workspace_id = context.workspace_id
         if not workspace_id:
             return NodeExecutionResult(
                 node_id="",
@@ -227,22 +223,33 @@ class WorkflowActionHandler:
                 error="Could not determine workspace ID",
             )
 
-        new_record = CRMRecord(
-            id=str(uuid4()),
-            workspace_id=workspace_id,
-            object_id=target_object_id,
-            values=values,
-        )
-        self.db.add(new_record)
-        await self.db.flush()
+        source_record = None
+        if context.record_id:
+            source_record = (
+                await self.db.execute(
+                    select(CRMRecord).where(CRMRecord.id == context.record_id)
+                )
+            ).scalar_one_or_none()
+        from aexy.services.crm_automation_service import CRMAutomationService
 
-        # Store new record ID in context for subsequent nodes
-        context.variables["created_record_id"] = new_record.id
+        outcome = await CRMAutomationService(self.db)._action_create_record(
+            data,
+            source_record,
+            workspace_id,
+            context.trigger_data,
+        )
+        if outcome.get("error"):
+            return NodeExecutionResult(
+                node_id="", status="failed", error=str(outcome["error"])
+            )
+        created_record_id = outcome.get("created_record_id")
+        if created_record_id:
+            context.variables["created_record_id"] = created_record_id
 
         return NodeExecutionResult(
             node_id="",
             status="success",
-            output={"record_id": new_record.id, "object_id": target_object_id},
+            output=outcome,
         )
 
     async def _delete_record(
@@ -268,14 +275,20 @@ class WorkflowActionHandler:
                 error=f"Record not found: {record_id}",
             )
 
-        record.is_archived = True
-        record.archived_at = datetime.now(timezone.utc)
-        await self.db.flush()
+        from aexy.services.crm_automation_service import CRMAutomationService
+
+        outcome = await CRMAutomationService(self.db)._action_delete_record(
+            data, record
+        )
+        if outcome.get("error"):
+            return NodeExecutionResult(
+                node_id="", status="failed", error=str(outcome["error"])
+            )
 
         return NodeExecutionResult(
             node_id="",
             status="success",
-            output={"record_id": record_id, "archived": True},
+            output=outcome,
         )
 
     async def _send_email(
@@ -328,6 +341,8 @@ class WorkflowActionHandler:
                 record_id=context.record_id,
             ),
             task_queue=TaskQueue.EMAIL,
+            workflow_id=self._child_workflow_id(context, "automation-email"),
+            reject_duplicate_id=True,
         )
 
         return NodeExecutionResult(
@@ -413,6 +428,8 @@ class WorkflowActionHandler:
                 record_id=context.record_id,
             ),
             task_queue=TaskQueue.EMAIL,
+            workflow_id=self._child_workflow_id(context, "automation-tracked-email"),
+            reject_duplicate_id=True,
         )
 
         return NodeExecutionResult(
@@ -498,6 +515,8 @@ class WorkflowActionHandler:
                     recipient_id=recipient.id,
                 ),
                 task_queue=TaskQueue.EMAIL,
+                workflow_id=self._child_workflow_id(context, "automation-campaign"),
+                reject_duplicate_id=True,
             )
 
             return NodeExecutionResult(
@@ -550,6 +569,8 @@ class WorkflowActionHandler:
                     record_id=context.record_id,
                 ),
                 task_queue=TaskQueue.EMAIL,
+                workflow_id=self._child_workflow_id(context, "automation-campaign-2"),
+                reject_duplicate_id=True,
             )
 
             return NodeExecutionResult(
@@ -758,6 +779,8 @@ class WorkflowActionHandler:
                 record_id=context.record_id,
             ),
             task_queue=TaskQueue.INTEGRATIONS,
+            workflow_id=self._child_workflow_id(context, "automation-slack"),
+            reject_duplicate_id=True,
         )
 
         return NodeExecutionResult(
@@ -769,12 +792,11 @@ class WorkflowActionHandler:
     async def _send_sms(
         self, data: dict, context: WorkflowExecutionContext
     ) -> NodeExecutionResult:
-        """Send an SMS via Twilio."""
+        """Send one SMS and report the provider handoff result truthfully."""
         phone_field = data.get("phone_field", "phone")
-        phone_to = context.record_data.get("values", {}).get(phone_field)
-
-        if not phone_to:
-            phone_to = data.get("phone_number")
+        phone_to = data.get("phone_number")
+        if data.get("recipient_type", "field") == "field" or not phone_to:
+            phone_to = context.record_data.get("values", {}).get(phone_field)
 
         if not phone_to:
             return NodeExecutionResult(
@@ -782,105 +804,138 @@ class WorkflowActionHandler:
                 status="failed",
                 error="No phone number for SMS",
             )
+        phone_to = str(phone_to).strip()
+        if not re.fullmatch(r"\+[1-9]\d{7,14}", phone_to):
+            return NodeExecutionResult(
+                node_id="",
+                status="failed",
+                error="SMS recipient must be an E.164 number such as +14155552671",
+            )
 
         message = data.get("message_template", "")
-        message = self._render_template(message, context)
+        if not str(message).strip():
+            return NodeExecutionResult(
+                node_id="", status="failed", error="SMS message cannot be empty"
+            )
+        message = self._render_template(str(message), context)
 
-        # Queue SMS via Temporal
-        from aexy.temporal.dispatch import dispatch
-        from aexy.temporal.task_queues import TaskQueue
-        from aexy.temporal.activities.integrations import SendSMSInput
-
-        await dispatch(
-            "send_sms",
-            SendSMSInput(
-                workspace_id=context.workspace_id,
-                to=phone_to,
-                body=message,
-                record_id=context.record_id,
-            ),
-            task_queue=TaskQueue.INTEGRATIONS,
+        from aexy.services.automation_delivery import (
+            claim_delivery,
+            delivery_key,
+            mark_delivered,
+            mark_refused,
         )
+        from aexy.services.twilio_service import TwilioService
+
+        # Same claim the inline path takes. This handler runs inside a Temporal
+        # activity that retries, so without it a provider acceptance followed
+        # by any later failure sends the customer a second text.
+        execution_id = str(context.trigger_data.get("execution_id") or "")
+        node_id = str(context.trigger_data.get("node_id") or "")
+        claim = None
+        if execution_id and node_id:
+            claim = await claim_delivery(
+                self.db,
+                channel="sms",
+                key=delivery_key("sms", execution_id, node_id, phone_to),
+                recipient=phone_to,
+            )
+            if claim.decision == "already_sent":
+                return NodeExecutionResult(
+                    node_id="",
+                    status="success",
+                    output={
+                        "to": phone_to,
+                        "provider_message_id": claim.provider_message_id,
+                        "accepted": True,
+                        "deduplicated": True,
+                    },
+                )
+            if claim.decision == "uncertain":
+                return NodeExecutionResult(
+                    node_id="",
+                    status="failed",
+                    error=(
+                        "A previous attempt reached the SMS provider and did "
+                        "not finish recording. Not re-sending — check the "
+                        "provider log before retrying."
+                    ),
+                    output={"to": phone_to, "needs_review": True},
+                )
+
+        result = await TwilioService(self.db).send_sms(
+            to=phone_to,
+            body=message,
+            record_id=context.record_id,
+            workspace_id=context.workspace_id,
+        )
+        if result.get("error"):
+            # Refused outright: nothing was delivered, so release the claim.
+            if claim:
+                await mark_refused(self.db, claim.attempt_id, str(result["error"]))
+            return NodeExecutionResult(
+                node_id="",
+                status="failed",
+                error=f"SMS provider refused the message: {result['error']}",
+                output={"to": phone_to, "provider_status": result.get("status")},
+            )
+        if claim:
+            await mark_delivered(self.db, claim.attempt_id, result.get("sid"))
 
         return NodeExecutionResult(
             node_id="",
             status="success",
-            output={"to": phone_to, "queued": True},
+            output={
+                "to": phone_to,
+                "provider_message_id": result.get("sid"),
+                "provider_status": result.get("status"),
+                "accepted": True,
+            },
         )
 
     async def _create_task(
         self, data: dict, context: WorkflowExecutionContext
     ) -> NodeExecutionResult:
-        """Create a sprint task."""
-        from aexy.models.sprint import SprintTask
-        from aexy.models.project import ProjectTeam
+        """Create a sprint task via the shared handler.
 
-        title = data.get("task_title") or data.get("title", "New Task")
-        description = data.get("task_description") or data.get("description", "")
-        title = self._render_template(title, context)
-        description = self._render_template(description, context)
+        Delegates like every other action here. It used to carry its own copy
+        of the assignee lookup, due-offset parsing and retry dedup, and the two
+        had already drifted: on a bad due value the inline path silently
+        created a task with no date while this one failed the step. Same
+        config, different outcome depending only on whether the canvas held a
+        wait node.
+        """
+        from aexy.services.crm_automation_service import CRMAutomationService
 
-        priority = data.get("task_priority") or data.get("priority", "medium")
-        assignee_id = data.get("assignee_id")
-        project_id = data.get("project_id")
-        sprint_id = data.get("sprint_id")
-        labels = data.get("labels", [])
+        record = None
+        if context.record_id:
+            record = (
+                await self.db.execute(
+                    select(CRMRecord).where(CRMRecord.id == context.record_id)
+                )
+            ).scalar_one_or_none()
 
-        workspace_id = context.workspace_id or context.trigger_data.get("workspace_id")
-        if not workspace_id:
+        if not context.workspace_id:
             return NodeExecutionResult(
                 node_id="", status="failed", error="No workspace_id in context",
             )
 
-        # Look up team from project
-        team_id = None
-        if project_id:
-            try:
-                result = await self.db.execute(
-                    select(ProjectTeam).where(ProjectTeam.project_id == project_id).limit(1)
-                )
-                project_team = result.scalar_one_or_none()
-                if project_team:
-                    team_id = project_team.team_id
-            except Exception as e:
-                logger.error(f"[CREATE_TASK] Failed to look up team for project: {e}")
-
-        try:
-            task = SprintTask(
-                id=str(uuid4()),
-                workspace_id=workspace_id,
-                team_id=team_id,
-                sprint_id=sprint_id,
-                source_type="automation",
-                source_id=str(uuid4()),
-                title=title,
-                description=description,
-                priority=priority,
-                assignee_id=assignee_id,
-                labels=labels if isinstance(labels, list) else [],
-                status="todo",
-            )
-            self.db.add(task)
-            await self.db.flush()
-
-            logger.info(f"[CREATE_TASK] Task created: id={task.id}, title='{task.title}'")
-
+        # The dedup identity for a durable run is (execution, node) — the
+        # inline path uses (run, action index). Both are stable across a retry
+        # of the same step, which is all the dedup needs.
+        outcome = await CRMAutomationService(self.db)._action_create_task(
+            data,
+            record,
+            context.workspace_id,
+            context.trigger_data,
+            str(context.trigger_data.get("execution_id") or "") or None,
+            str(context.trigger_data.get("node_id") or "") or None,
+        )
+        if outcome.get("error"):
             return NodeExecutionResult(
-                node_id="",
-                status="success",
-                output={
-                    "task_id": task.id,
-                    "title": task.title,
-                    "project_id": project_id,
-                    "team_id": team_id,
-                    "created": True,
-                },
+                node_id="", status="failed", error=str(outcome["error"])
             )
-        except Exception as e:
-            logger.error(f"[CREATE_TASK] Failed: {e}", exc_info=True)
-            return NodeExecutionResult(
-                node_id="", status="failed", error=f"Failed to create task: {str(e)}",
-            )
+        return NodeExecutionResult(node_id="", status="success", output=outcome)
 
     async def _add_to_list(
         self, data: dict, context: WorkflowExecutionContext
@@ -1149,10 +1204,14 @@ class WorkflowActionHandler:
         self, data: dict, context: WorkflowExecutionContext
     ) -> NodeExecutionResult:
         """Make an HTTP webhook call."""
-        url = data.get("webhook_url")
+        url = str(data.get("webhook_url") or data.get("url") or "").strip()
         method = data.get("http_method", "POST").upper()
         headers = data.get("headers", {})
         body_template = data.get("body_template", "{}")
+        try:
+            timeout_seconds = float(data.get("timeout_seconds", 30))
+        except (TypeError, ValueError):
+            timeout_seconds = 0
 
         if not url:
             return NodeExecutionResult(
@@ -1160,26 +1219,86 @@ class WorkflowActionHandler:
                 status="failed",
                 error="No webhook URL specified",
             )
-
-        # Render body template
-        body = self._render_template(body_template, context)
+        parsed_url = urlparse(url)
+        if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
+            return NodeExecutionResult(
+                node_id="", status="failed", error="Webhook URL must use HTTP or HTTPS"
+            )
+        if method not in {"GET", "POST", "PUT", "PATCH", "DELETE"}:
+            return NodeExecutionResult(
+                node_id="", status="failed", error=f"Unsupported webhook method: {method}"
+            )
+        if timeout_seconds < 1 or timeout_seconds > 60:
+            return NodeExecutionResult(
+                node_id="",
+                status="failed",
+                error="Webhook timeout must be between 1 and 60 seconds",
+            )
+        # Same target check the inline executor applies. A canvas with a wait
+        # or condition runs here instead, so leaving it out would mean the
+        # request-forgery guard could be sidestepped by adding a wait node.
+        from aexy.services.crm_automation_service import resolve_public_webhook_host
 
         try:
-            import json
+            unreachable = await resolve_public_webhook_host(
+                parsed_url.hostname or "",
+                parsed_url.port or (443 if parsed_url.scheme == "https" else 80),
+            )
+        except Exception:
+            logger.exception("Webhook target check failed for %s", url)
+            unreachable = "Webhook target could not be verified"
+        if unreachable:
+            return NodeExecutionResult(
+                node_id="", status="failed", error=unreachable
+            )
+        if isinstance(headers, str):
+            try:
+                headers = json.loads(headers or "{}")
+            except json.JSONDecodeError as error:
+                return NodeExecutionResult(
+                    node_id="", status="failed", error=f"Webhook headers are invalid JSON: {error.msg}"
+                )
+        if not isinstance(headers, dict):
+            return NodeExecutionResult(
+                node_id="", status="failed", error="Webhook headers must be a JSON object"
+            )
+        try:
+            rendered_headers = {
+                str(key): self._render_template(str(value), context)
+                for key, value in headers.items()
+            }
+        except ValueError as error:
+            return NodeExecutionResult(node_id="", status="failed", error=str(error))
+        execution_id = context.trigger_data.get("execution_id")
+        node_id = context.trigger_data.get("node_id")
+        if execution_id and node_id:
+            rendered_headers.setdefault(
+                "Idempotency-Key", f"aexy-{execution_id}-{node_id}"
+            )
 
-            async with httpx.AsyncClient(timeout=30.0) as client:
+        # Render body template
+        try:
+            body = self._render_template(str(body_template), context)
+            payload = json.loads(body) if body else None
+        except ValueError as error:
+            return NodeExecutionResult(
+                node_id="", status="failed", error=f"Webhook body is invalid: {error}"
+            )
+
+        try:
+            async with httpx.AsyncClient(timeout=timeout_seconds) as client:
                 if method in ["POST", "PUT", "PATCH"]:
                     response = await client.request(
                         method=method,
                         url=url,
-                        headers=headers,
-                        json=json.loads(body) if body else None,
+                        headers=rendered_headers,
+                        json=payload,
                     )
                 else:
                     response = await client.request(
                         method=method,
                         url=url,
-                        headers=headers,
+                        headers=rendered_headers,
                     )
 
             return NodeExecutionResult(
@@ -1188,13 +1307,32 @@ class WorkflowActionHandler:
                 output={
                     "status_code": response.status_code,
                     "response": response.text[:1000],  # Truncate response
+                    "method": method,
+                    "url": url,
                 },
+                error=(
+                    None
+                    if response.is_success
+                    else f"Webhook returned HTTP {response.status_code}"
+                ),
             )
-        except Exception as e:
+        except httpx.TimeoutException:
             return NodeExecutionResult(
                 node_id="",
                 status="failed",
-                error=f"Webhook call failed: {str(e)}",
+                error=f"Webhook timed out after {timeout_seconds:g} seconds",
+            )
+        except httpx.RequestError as error:
+            return NodeExecutionResult(
+                node_id="",
+                status="failed",
+                error=f"Webhook request failed: {type(error).__name__}",
+            )
+        except Exception:
+            return NodeExecutionResult(
+                node_id="",
+                status="failed",
+                error="Webhook request failed before a response was received",
             )
 
     async def _assign_owner(
@@ -1202,13 +1340,11 @@ class WorkflowActionHandler:
     ) -> NodeExecutionResult:
         """Assign a record owner."""
         record_id = context.record_id
-        owner_id = data.get("owner_id")
-
-        if not record_id or not owner_id:
+        if not record_id:
             return NodeExecutionResult(
                 node_id="",
                 status="failed",
-                error="Missing record ID or owner ID",
+                error="Missing record ID",
             )
 
         stmt = select(CRMRecord).where(CRMRecord.id == record_id)
@@ -1222,13 +1358,53 @@ class WorkflowActionHandler:
                 error=f"Record not found: {record_id}",
             )
 
-        record.owner_id = owner_id
-        await self.db.flush()
+        from aexy.services.crm_automation_service import CRMAutomationService
+
+        outcome = await CRMAutomationService(self.db)._action_assign_owner(
+            data, record, context.workspace_id
+        )
+        if outcome.get("error"):
+            return NodeExecutionResult(
+                node_id="", status="failed", error=str(outcome["error"])
+            )
 
         return NodeExecutionResult(
             node_id="",
             status="success",
-            output={"record_id": record_id, "owner_id": owner_id},
+            output=outcome,
+        )
+
+    async def _link_records(
+        self, data: dict, context: WorkflowExecutionContext
+    ) -> NodeExecutionResult:
+        """Link CRM records through the same deduplicating implementation."""
+        if not context.record_id:
+            return NodeExecutionResult(
+                node_id="", status="failed", error="Missing record ID"
+            )
+        record = (
+            await self.db.execute(
+                select(CRMRecord).where(CRMRecord.id == context.record_id)
+            )
+        ).scalar_one_or_none()
+        if not record:
+            return NodeExecutionResult(
+                node_id="",
+                status="failed",
+                error=f"Record not found: {context.record_id}",
+            )
+
+        from aexy.services.crm_automation_service import CRMAutomationService
+
+        outcome = await CRMAutomationService(self.db)._action_link_records(
+            data, record, context.workspace_id
+        )
+        if outcome.get("error"):
+            return NodeExecutionResult(
+                node_id="", status="failed", error=str(outcome["error"])
+            )
+        return NodeExecutionResult(
+            node_id="", status="success", output=outcome
         )
 
     async def _execute_agent(
@@ -1276,8 +1452,15 @@ class WorkflowActionHandler:
         if input_mapping:
             for key, path in input_mapping.items():
                 value = self._get_context_value(path, context)
-                if value is not None:
-                    agent_context[key] = value
+                if value is None:
+                    return NodeExecutionResult(
+                        node_id="",
+                        status="failed",
+                        error=(
+                            f"AI Agent input '{key}' could not resolve '{path}'"
+                        ),
+                    )
+                agent_context[key] = value
 
         # Get execution options
         wait_for_completion = data.get("wait_for_completion", True)
@@ -1316,6 +1499,10 @@ class WorkflowActionHandler:
                             "status": execution.status,
                             "result": execution.output_result,
                             "duration_ms": execution.duration_ms,
+                            "input_summary": {
+                                "keys": sorted(agent_context.keys()),
+                                "record_id": context.record_id,
+                            },
                         },
                     )
                 else:
@@ -2046,6 +2233,8 @@ class WorkflowActionHandler:
                         record_id=context.record_id,
                     ),
                     task_queue=TaskQueue.EMAIL,
+                    workflow_id=self._child_workflow_id(context, "automation-rejection"),
+                    reject_duplicate_id=True,
                 )
 
             return NodeExecutionResult(
@@ -2383,9 +2572,16 @@ class WorkflowActionHandler:
                 if email_result.status == "success":
                     channels_notified.append("email")
 
+            # A notification that reached nobody is not a success. Both channel
+            # sends above swallow their own failure into the tally, so without
+            # this gate a Slack outage or a bad address produced a green step
+            # and the run history claimed the user had been told. The
+            # notify-admins handler directly below has always gated this way.
             return NodeExecutionResult(
-                node_id="", status="success",
+                node_id="",
+                status="success" if channels_notified else "failed",
                 output={"user_id": developer.id, "channels_notified": channels_notified},
+                error=None if channels_notified else "No notification could be delivered",
             )
         except Exception as e:
             return NodeExecutionResult(node_id="", status="failed", error=str(e))
@@ -2533,6 +2729,8 @@ class WorkflowActionHandler:
                 record_id=context.record_id,
             ),
             task_queue=TaskQueue.EMAIL,
+            workflow_id=self._child_workflow_id(context, "automation-response"),
+            reject_duplicate_id=True,
         )
 
         return NodeExecutionResult(
@@ -2566,13 +2764,15 @@ class WorkflowActionHandler:
         return current
 
     def _render_template(self, template: str, context: WorkflowExecutionContext) -> str:
-        """Render a template string with context variables."""
+        """Render supported variables and fail clearly when a path is missing."""
         import re
 
         def replace_var(match: re.Match) -> str:
             path = match.group(1).strip()
             value = self._get_context_value(path, context)
-            return str(value) if value is not None else ""
+            if value is None:
+                raise ValueError(f"Dynamic value '{{{{{path}}}}}' is missing")
+            return str(value)
 
         # Replace {{path.to.value}} with actual values
         return re.sub(r"\{\{([^}]+)\}\}", replace_var, template)

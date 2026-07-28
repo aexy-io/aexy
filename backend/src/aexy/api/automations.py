@@ -33,6 +33,7 @@ from aexy.schemas.automation import (
     get_all_actions,
     get_triggers_for_module,
     get_actions_for_module,
+    get_trigger_ids,
 )
 
 logger = logging.getLogger(__name__)
@@ -150,7 +151,7 @@ async def create_automation(
 
     from aexy.services.workflow_service import validate_action_configs
 
-    action_errors = validate_action_configs(actions)
+    action_errors = validate_action_configs(actions, data.module)
     if action_errors:
         raise HTTPException(status_code=400, detail="; ".join(action_errors))
 
@@ -238,9 +239,51 @@ async def update_automation(
     if not automation or automation.workspace_id != workspace_id:
         raise HTTPException(status_code=404, detail="Automation not found")
 
+    payload = data.model_dump(exclude_unset=True)
+    target_module = payload.get("module") or automation.module or "crm"
+
+    # Only gate a trigger the caller is actually setting. Validating the stored
+    # value on every update would strand any automation whose trigger has since
+    # been retired from the registry: renaming it, disabling it, or fixing its
+    # actions would all 422, leaving no way to change it but a direct SQL edit.
+    # A trigger already in the database has to stay editable, especially when
+    # it is the thing that needs correcting.
+    if payload.get("trigger_type") is not None:
+        target_trigger = payload["trigger_type"]
+        if target_trigger not in get_trigger_ids(target_module):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"Unsupported trigger '{target_trigger}' for module "
+                    f"'{target_module}'. Choose a trigger from the automation registry."
+                ),
+            )
+    elif payload.get("module") is not None:
+        # Moving an automation to another module has to carry a trigger that
+        # module actually offers, so this one does need re-checking.
+        if automation.trigger_type not in get_trigger_ids(target_module):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"Trigger '{automation.trigger_type}' is not available in "
+                    f"module '{target_module}'. Set a trigger from that module's "
+                    "registry in the same request."
+                ),
+            )
+    if "actions" in payload and payload["actions"] is not None:
+        from aexy.services.workflow_service import validate_action_configs
+
+        actions = payload["actions"]
+        if actions and hasattr(actions[0], "model_dump"):
+            actions = [action.model_dump() for action in actions]
+            payload["actions"] = actions
+        action_errors = validate_action_configs(actions, target_module)
+        if action_errors:
+            raise HTTPException(status_code=400, detail="; ".join(action_errors))
+
     automation = await service.update_automation(
         automation_id=automation_id,
-        **data.model_dump(exclude_unset=True),
+        **payload,
     )
     return automation
 

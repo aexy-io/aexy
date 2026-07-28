@@ -136,11 +136,30 @@ const validateActionNode = (node: Node): ValidationError[] => {
 
   // SMS actions
   if (data.action_type === "send_sms") {
-    if (!data.phone_field && !data.to) {
+    const recipientType = data.recipient_type || "field";
+    if (
+      (recipientType === "field" && !data.phone_field) ||
+      (recipientType === "literal" && !data.phone_number)
+    ) {
       errors.push({
         nodeId: node.id,
-        field: "phone_field",
-        message: "Phone number field is required",
+        field: recipientType === "literal" ? "phone_number" : "phone_field",
+        message:
+          recipientType === "literal"
+            ? "An E.164 phone number is required"
+            : "Phone number field is required",
+        severity: "error",
+      });
+    }
+    if (
+      recipientType === "literal" &&
+      typeof data.phone_number === "string" &&
+      !/^\+[1-9]\d{7,14}$/.test(data.phone_number)
+    ) {
+      errors.push({
+        nodeId: node.id,
+        field: "phone_number",
+        message: "Phone number must use E.164 format, such as +14155552671",
         severity: "error",
       });
     }
@@ -161,6 +180,31 @@ const validateActionNode = (node: Node): ValidationError[] => {
         nodeId: node.id,
         field: "webhook_url",
         message: "Webhook URL is required",
+        severity: "error",
+      });
+    } else {
+      try {
+        const url = new URL(String(data.webhook_url));
+        if (!["http:", "https:"].includes(url.protocol)) {
+          throw new Error("unsupported protocol");
+        }
+      } catch {
+        errors.push({
+          nodeId: node.id,
+          field: "webhook_url",
+          message: "Webhook URL must use HTTP or HTTPS",
+          severity: "error",
+        });
+      }
+    }
+    if (
+      Number(data.timeout_seconds || 30) < 1 ||
+      Number(data.timeout_seconds || 30) > 60
+    ) {
+      errors.push({
+        nodeId: node.id,
+        field: "timeout_seconds",
+        message: "Webhook timeout must be between 1 and 60 seconds",
         severity: "error",
       });
     }
@@ -318,20 +362,11 @@ const validateAgentNode = (node: Node): ValidationError[] => {
   const errors: ValidationError[] = [];
   const data = node.data as Record<string, unknown>;
 
-  if (!data.agent_type) {
-    errors.push({
-      nodeId: node.id,
-      field: "agent_type",
-      message: "Agent type is required",
-      severity: "error",
-    });
-  }
-
-  if (data.agent_type === "custom" && !data.agent_id) {
+  if (!data.agent_id) {
     errors.push({
       nodeId: node.id,
       field: "agent_id",
-      message: "Custom agent selection is required",
+      message: "An existing active agent must be selected",
       severity: "error",
     });
   }
@@ -343,7 +378,9 @@ const validateBranchNode = (node: Node): ValidationError[] => {
   const errors: ValidationError[] = [];
   const data = node.data as Record<string, unknown>;
 
-  const branches = data.branches as Array<{ id: string; label: string }> | undefined;
+  const branches = data.branches as
+    | Array<{ id: string; label: string; is_else?: boolean }>
+    | undefined;
 
   if (!branches || branches.length < 2) {
     errors.push({
@@ -351,6 +388,46 @@ const validateBranchNode = (node: Node): ValidationError[] => {
       field: "branches",
       message: "At least 2 branches are required",
       severity: "error",
+    });
+  } else if (
+    !branches.some(
+      (branch) =>
+        branch.is_else || branch.label.trim().toLowerCase() === "else"
+    )
+  ) {
+    errors.push({
+      nodeId: node.id,
+      field: "branches",
+      message: "A final Else branch is required",
+      severity: "error",
+    });
+  } else {
+    const elseIndex = branches.findIndex(
+      (branch) =>
+        branch.is_else || branch.label.trim().toLowerCase() === "else"
+    );
+    if (elseIndex !== branches.length - 1) {
+      errors.push({
+        nodeId: node.id,
+        field: "branches",
+        message: "Else must be the final branch",
+        severity: "error",
+      });
+    }
+    branches.forEach((branch, index) => {
+      if (index === elseIndex) return;
+      const rule = branch as typeof branch & {
+        field?: string;
+        operator?: string;
+      };
+      if (!rule.field || !rule.operator) {
+        errors.push({
+          nodeId: node.id,
+          field: `branches.${index}`,
+          message: `Branch ${index + 1} requires a field and operator`,
+          severity: "error",
+        });
+      }
     });
   }
 
@@ -376,11 +453,15 @@ const validateNode = (node: Node): ValidationError[] => {
   }
 };
 
-// Node types allowed in a published automation. trigger/action run inline;
-// wait runs on the durable engine (a wait-containing canvas is routed there).
-// condition/agent/branch/join are still rejected — nothing executes them.
 // Mirrors _EXECUTABLE_NODE_TYPES in backend workflow_service.py.
-const EXECUTABLE_NODE_TYPES = new Set(["trigger", "action", "wait"]);
+const EXECUTABLE_NODE_TYPES = new Set([
+  "trigger",
+  "action",
+  "wait",
+  "condition",
+  "branch",
+  "agent",
+]);
 
 const validateWorkflowStructure = (nodes: Node[], edges: Edge[]): ValidationError[] => {
   const errors: ValidationError[] = [];
@@ -395,12 +476,8 @@ const validateWorkflowStructure = (nodes: Node[], edges: Edge[]): ValidationErro
     });
   }
 
-  // Only trigger + action nodes survive the flattening onto the automation's
-  // executable action list, and the published executor has no case for the
-  // rest — a condition/wait/agent/branch node is dropped on publish and the
-  // automation then runs every action unconditionally, with nothing reported.
-  // Flag it here so Publish disables and the toolbar lists the offending block
-  // (mirrors _EXECUTABLE_NODE_TYPES in backend workflow_service.py).
+  // Keep unknown structural blocks from disappearing during published
+  // execution. The listed node types are routed through the durable graph.
   nodes.forEach((node) => {
     if (node.type && !EXECUTABLE_NODE_TYPES.has(node.type)) {
       errors.push({

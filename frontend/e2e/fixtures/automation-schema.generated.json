@@ -77,6 +77,18 @@
         "description": "Send a Slack message to a channel or user"
       },
       {
+        "id": "send_sms",
+        "description": "Send an SMS text message"
+      },
+      {
+        "id": "webhook_call",
+        "description": "Call an external webhook URL"
+      },
+      {
+        "id": "run_agent",
+        "description": "Run an AI agent with the trigger context"
+      },
+      {
         "id": "create_task",
         "description": "Create a follow-up task"
       },
@@ -87,6 +99,18 @@
       {
         "id": "notify_team",
         "description": "Send an in-app notification to a team"
+      },
+      {
+        "id": "wait",
+        "description": "Wait for a specified duration before continuing"
+      },
+      {
+        "id": "condition",
+        "description": "Evaluate a condition to branch the workflow"
+      },
+      {
+        "id": "branch",
+        "description": "Route the workflow through the first matching path"
       }
     ],
     "crm": [

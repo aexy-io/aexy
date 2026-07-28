@@ -256,9 +256,10 @@ async def _prepare_automation_email_send(
     if not input.automation_run_id:
         return "none"
 
-    from aexy.models.crm import CRMAutomationRun
+    from aexy.models.crm import CRMAutomationRun  # noqa: F401
+    from aexy.services.automation_counters import load_run_for_update
 
-    run = await db.get(CRMAutomationRun, input.automation_run_id)
+    run = await load_run_for_update(db, input.automation_run_id)
     if not run:
         return "none"
 
@@ -298,9 +299,10 @@ async def _release_automation_email_claim(
     if not input.automation_run_id:
         return
 
-    from aexy.models.crm import CRMAutomationRun
+    from aexy.models.crm import CRMAutomationRun  # noqa: F401
+    from aexy.services.automation_counters import load_run_for_update
 
-    run = await db.get(CRMAutomationRun, input.automation_run_id)
+    run = await load_run_for_update(db, input.automation_run_id)
     if not run:
         return
 
@@ -405,9 +407,14 @@ async def _record_automation_email_result(
     if not input.automation_run_id:
         return
 
-    from aexy.models.crm import CRMAutomation, CRMAutomationRun, CRMActivity
+    from aexy.models.crm import CRMAutomation, CRMActivity
+    from aexy.services.automation_counters import (
+        correct_failure_to_success,
+        load_run_for_update,
+        record_run_outcome,
+    )
 
-    run = await db.get(CRMAutomationRun, input.automation_run_id)
+    run = await load_run_for_update(db, input.automation_run_id)
     if not run:
         logger.warning("Automation run %s was not found for email result", input.automation_run_id)
         return
@@ -512,12 +519,11 @@ async def _record_automation_email_result(
                 and new_status == "completed"
                 and prior_step_status == "failed"
             ):
-                automation.failed_runs = max(0, (automation.failed_runs or 0) - 1)
-                automation.successful_runs = (automation.successful_runs or 0) + 1
+                await correct_failure_to_success(db, automation.id)
         elif new_status == "failed":
-            automation.failed_runs += 1
+            await record_run_outcome(db, automation.id, succeeded=False)
         else:
-            automation.successful_runs += 1
+            await record_run_outcome(db, automation.id, succeeded=True)
 
     if input.record_id and automation:
         if email_sent:

@@ -541,13 +541,15 @@ class StageMovementService:
         self.db = db
         self.record_service = CRMRecordService(db)
 
-    async def move_record_to_stage(
-        self,
-        pipeline_id: str,
-        record_id: str,
-        to_stage_key: str,
-        actor_id: str | None = None,
-    ) -> CRMRecord | None:
+    async def _resolve_stage_target(
+        self, pipeline_id: str, to_stage_key: str
+    ) -> str:
+        """Validate a destination stage once and return the status attribute slug.
+
+        The pipeline row, its managed status attribute, and its active stage set
+        are all invariant for a given pipeline, so a caller moving many records
+        should pay for this lookup once rather than once per record.
+        """
         pipeline = (
             await self.db.execute(select(CRMPipeline).where(CRMPipeline.id == pipeline_id))
         ).scalar_one_or_none()
@@ -569,6 +571,16 @@ class StageMovementService:
         }
         if to_stage_key not in valid:
             raise ValueError(f"Unknown stage '{to_stage_key}' for this pipeline")
+        return slug
+
+    async def move_record_to_stage(
+        self,
+        pipeline_id: str,
+        record_id: str,
+        to_stage_key: str,
+        actor_id: str | None = None,
+    ) -> CRMRecord | None:
+        slug = await self._resolve_stage_target(pipeline_id, to_stage_key)
         return await self.record_service.update_record(
             record_id=record_id,
             values={slug: to_stage_key},
@@ -582,9 +594,24 @@ class StageMovementService:
         to_stage_key: str,
         actor_id: str | None = None,
     ) -> int:
+        """Move many records to one stage, validating the destination once.
+
+        Previously this called ``move_record_to_stage`` per record, which
+        re-ran the pipeline fetch, the status-attribute lookup and the active
+        stage query on every iteration — roughly four queries per record, so
+        ~402 queries to move 100 records. Validation is invariant across the
+        batch, so it is hoisted: the cost is now three queries plus one update
+        per record. Behaviour and error messages are unchanged, and an invalid
+        stage key still fails before any record is touched.
+        """
+        slug = await self._resolve_stage_target(pipeline_id, to_stage_key)
         moved = 0
         for rid in record_ids:
-            rec = await self.move_record_to_stage(pipeline_id, rid, to_stage_key, actor_id)
+            rec = await self.record_service.update_record(
+                record_id=rid,
+                values={slug: to_stage_key},
+                updated_by_id=actor_id,
+            )
             if rec:
                 moved += 1
         return moved

@@ -111,8 +111,15 @@ async def test_sibling_steps_are_appended_to_the_run_once():
         steps_executed=[{"type": "notify_user", "order": 0, "status": "queued"}]
     )
     service = CRMAutomationService(db=None)
+    # The run is loaded with SELECT ... FOR UPDATE now, so that the writers
+    # rewriting its step-log JSON from different processes queue rather than
+    # overwrite one another. That arrives as a statement, not a `get`.
     service.db = SimpleNamespace(
-        get=AsyncMock(return_value=run), flush=AsyncMock(return_value=None)
+        get=AsyncMock(return_value=run),
+        execute=AsyncMock(
+            return_value=SimpleNamespace(scalar_one_or_none=lambda: run)
+        ),
+        flush=AsyncMock(return_value=None),
     )
 
     siblings = [(1_000_001, "b@example.com"), (1_000_002, "c@example.com")]

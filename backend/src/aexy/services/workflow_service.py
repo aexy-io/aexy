@@ -1,5 +1,6 @@
 """Workflow service for visual automation builder."""
 
+import json
 import re
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -27,6 +28,11 @@ from aexy.schemas.workflow import (
     WorkflowValidationError,
     WorkflowValidationResult,
 )
+from aexy.schemas.automation import (
+    ACTION_REGISTRY,
+    get_action_ids,
+    get_trigger_ids,
+)
 
 
 # Required fields per action type. Value is (field-alternatives, error_type, message).
@@ -38,6 +44,8 @@ _ACTION_REQUIRED_FIELDS: dict[str, tuple[tuple[str, ...], str, str]] = {
                            "Email action requires a recipient (to or email_field)"),
     "webhook_call": (("url", "webhook_url"), "missing_webhook_url",
                      "Webhook action requires a URL"),
+    "send_sms": (("to", "phone_number", "phone_field"), "missing_sms_recipient",
+                 "SMS action requires a literal number or phone field"),
     # Both spellings are accepted because the config panel saves task_title
     # while the executor reads either. Checking only "title" made every
     # builder-configured task step impossible to save.
@@ -74,8 +82,8 @@ _ACTION_REQUIRED_FIELDS: dict[str, tuple[tuple[str, ...], str, str]] = {
 _EMAIL_LITERAL_FIELDS = ("to", "email_to", "email", "notify_email")
 
 # Node types allowed in a published automation. trigger/action run on the
-# inline executor; wait runs on the durable Temporal engine (a canvas with a
-# wait is routed there — see CRMAutomationService._dispatch_durably_if_needed).
+# inline executor; any canvas holding a timing, logic or AI node is routed to
+# the durable Temporal executor instead.
 #
 # Every entry here MUST also be routable: either the inline executor has a case
 # for it, or CRMAutomationService._DURABLE_NODE_TYPES lists it so the canvas is
@@ -83,12 +91,10 @@ _EMAIL_LITERAL_FIELDS = ("to", "email_to", "email", "notify_email")
 # failure this constant exists to prevent — sync_workflow_to_automation keeps
 # only `action` nodes, so an unroutable structural node is dropped on publish
 # and the automation runs every action unconditionally with nothing reported.
-#
-# condition/branch/agent/join stay rejected in this release: their executors
-# land with the durable-execution work, which also widens _DURABLE_NODE_TYPES.
-# Keep this tuple, _DURABLE_NODE_TYPES, and the frontend's
-# EXECUTABLE_NODE_TYPES (hooks/useWorkflowValidation.ts) in step.
-_EXECUTABLE_NODE_TYPES = ("trigger", "action", "wait")
+# test_every_publishable_node_type_has_somewhere_to_run holds the two in step;
+# the frontend's EXECUTABLE_NODE_TYPES (hooks/useWorkflowValidation.ts) mirrors
+# this list and has to move with it.
+_EXECUTABLE_NODE_TYPES = ("trigger", "action", "wait", "condition", "branch", "agent")
 
 # Namespaces a {{variable}} reference may resolve against at execution time.
 _VARIABLE_NAMESPACES = {"record", "trigger", "variables"}
@@ -112,7 +118,60 @@ def _is_valid_email(addr: str) -> bool:
         return False
 
 
-def validate_action_configs(actions: list[dict]) -> list[str]:
+# Header names whose value is a credential rather than metadata.
+_SECRET_HEADER_NAMES = ("authorization", "x-api-key", "api-key", "x-auth-token")
+
+
+def _literal_secret_warnings(node: dict) -> list[WorkflowValidationError]:
+    """Warn when a webhook header carries a literal credential.
+
+    Header templates are stored verbatim in the workflow definition, and any
+    workspace member who can open the builder can read them back. A
+    `{{trigger.token}}` reference resolves at run time and leaves nothing at
+    rest; a pasted token sits in the graph in plain text for everyone.
+
+    A warning, not an error: there is no secret store to point at yet, so
+    refusing the save would simply block a legitimate step. Once one exists
+    this should become an error.
+    """
+    data = node.get("data") or {}
+    if data.get("action_type") != "webhook_call":
+        return []
+
+    headers = data.get("headers")
+    if isinstance(headers, str):
+        try:
+            headers = json.loads(headers or "{}")
+        except json.JSONDecodeError:
+            return []
+    if not isinstance(headers, dict):
+        return []
+
+    flagged = [
+        name
+        for name, value in headers.items()
+        if str(name).lower() in _SECRET_HEADER_NAMES
+        and isinstance(value, str)
+        and value.strip()
+        and "{{" not in value
+    ]
+    if not flagged:
+        return []
+    return [
+        WorkflowValidationError(
+            node_id=node.get("id", ""),
+            error_type="literal_secret_in_header",
+            message=(
+                f"{', '.join(flagged)} contains a literal value. It is stored "
+                "in the automation and readable by anyone who can open this "
+                "builder — use a {{trigger.*}} reference instead."
+            ),
+            severity="warning",
+        )
+    ]
+
+
+def validate_action_configs(actions: list[dict], module: str = "crm") -> list[str]:
     """Validate action dicts from the automations API (non-canvas path).
 
     Enforces the same required-field and literal-email rules the builder
@@ -120,10 +179,21 @@ def validate_action_configs(actions: list[dict]) -> list[str]:
     Returns a list of human-readable error strings (empty = ok).
     """
     errors: list[str] = []
+    registered_action_ids = {
+        entry["id"]
+        for scope in ("common", module)
+        for entry in ACTION_REGISTRY.get(scope, [])
+    }
     for i, action in enumerate(actions or []):
         action_type = action.get("type") or action.get("action_type") or ""
         config = action.get("config") if isinstance(action.get("config"), dict) else action
         label = f"action[{i}] ({action_type})"
+
+        if action_type not in registered_action_ids:
+            errors.append(
+                f"{label}: action is unavailable; choose a capability from the server registry"
+            )
+            continue
 
         required = _ACTION_REQUIRED_FIELDS.get(action_type)
         if required:
@@ -140,6 +210,25 @@ def validate_action_configs(actions: list[dict]) -> list[str]:
                 and not _is_valid_email(value)
             ):
                 errors.append(f"{label}: '{value}' is not a valid email address")
+
+        if action_type == "send_sms" and not config.get("message_template"):
+            errors.append(f"{label}: SMS action requires a message")
+        if action_type == "send_sms" and config.get("phone_number"):
+            phone_number = str(config["phone_number"]).strip()
+            if not re.fullmatch(r"\+[1-9]\d{7,14}", phone_number):
+                errors.append(
+                    f"{label}: SMS recipient must use E.164 format"
+                )
+        if action_type == "webhook_call":
+            timeout = config.get("timeout_seconds", 30)
+            try:
+                timeout_value = float(timeout)
+            except (TypeError, ValueError):
+                timeout_value = 0
+            if timeout_value < 1 or timeout_value > 60:
+                errors.append(
+                    f"{label}: webhook timeout must be between 1 and 60 seconds"
+                )
     return errors
 
 
@@ -584,14 +673,9 @@ class WorkflowService:
                 )
             )
 
-        # Only trigger + action nodes survive the flattening onto
-        # automation.actions, and the published executor
-        # (CRMAutomationService._execute_action) has no case for the rest —
-        # a condition/wait/agent/branch node would be dropped and the
-        # automation would run every action unconditionally, with no error
-        # anywhere. Reject at authoring time instead of failing silently in
-        # production. Restoring these means Epic 4 (logic & timing), not a
-        # change here.
+        # The release contract is explicit: only these node types have a
+        # published executor. Unknown structural nodes must still fail before
+        # save rather than disappear from the graph.
         for node in nodes:
             if node["type"] not in _EXECUTABLE_NODE_TYPES:
                 errors.append(
@@ -656,14 +740,78 @@ class WorkflowService:
 
         # Validate node configurations
         for node in nodes:
-            node_errors = self._validate_node(node)
-            errors.extend(node_errors)
+            errors.extend(self._validate_node(node))
+            warnings.extend(_literal_secret_warnings(node))
 
         return WorkflowValidationResult(
             is_valid=len(errors) == 0,
             errors=errors,
             warnings=warnings,
         )
+
+    async def validate_workflow_for_workspace(
+        self, nodes: list[dict], edges: list[dict], workspace_id: str
+    ) -> WorkflowValidationResult:
+        """Full validation: the static rules plus the checks that need the database.
+
+        Save, publish and the explicit validate endpoint must all apply the same
+        rules. Each of them re-running validate_workflow and then remembering to
+        append the agent checks — and to recompute is_valid afterwards — is one
+        forgotten line away from a publish path that skips them, so the two
+        halves are joined here instead of at each call site.
+        """
+        validation = self.validate_workflow(nodes, edges)
+        validation.errors.extend(
+            await self.validate_agent_references(nodes, workspace_id)
+        )
+        validation.is_valid = len(validation.errors) == 0
+        return validation
+
+    async def validate_agent_references(
+        self, nodes: list[dict], workspace_id: str
+    ) -> list[WorkflowValidationError]:
+        """Reject missing, cross-workspace, or inactive agents before save/publish."""
+        from aexy.models.agent import CRMAgent
+
+        errors: list[WorkflowValidationError] = []
+        agent_nodes = [node for node in nodes if node.get("type") == "agent"]
+        agent_ids = {
+            str(node.get("data", {}).get("agent_id"))
+            for node in agent_nodes
+            if node.get("data", {}).get("agent_id")
+        }
+        if not agent_ids:
+            return errors
+
+        result = await self.db.execute(
+            select(CRMAgent).where(
+                CRMAgent.id.in_(agent_ids),
+                CRMAgent.workspace_id == workspace_id,
+            )
+        )
+        agents = {str(agent.id): agent for agent in result.scalars().all()}
+        for node in agent_nodes:
+            agent_id = str(node.get("data", {}).get("agent_id") or "")
+            if not agent_id:
+                continue
+            agent = agents.get(agent_id)
+            if not agent:
+                errors.append(
+                    WorkflowValidationError(
+                        node_id=node["id"],
+                        error_type="missing_agent",
+                        message="The selected AI agent no longer exists in this workspace",
+                    )
+                )
+            elif not agent.is_active:
+                errors.append(
+                    WorkflowValidationError(
+                        node_id=node["id"],
+                        error_type="inactive_agent",
+                        message=f"AI agent '{agent.name}' is inactive",
+                    )
+                )
+        return errors
 
     def _validate_node(self, node: dict) -> list[WorkflowValidationError]:
         """Validate a single node's configuration."""
@@ -680,6 +828,17 @@ class WorkflowService:
                         message="Trigger node must specify a trigger type",
                     )
                 )
+            elif data.get("trigger_type") not in get_trigger_ids("crm"):
+                errors.append(
+                    WorkflowValidationError(
+                        node_id=node["id"],
+                        error_type="unknown_trigger_type",
+                        message=(
+                            f"Trigger '{data.get('trigger_type')}' is unavailable; "
+                            "choose one from the server registry"
+                        ),
+                    )
+                )
 
         elif node_type == "action":
             if not data.get("action_type"):
@@ -691,6 +850,17 @@ class WorkflowService:
                     )
                 )
             action_type = data.get("action_type")
+            if action_type and action_type not in get_action_ids("crm"):
+                errors.append(
+                    WorkflowValidationError(
+                        node_id=node["id"],
+                        error_type="unknown_action_type",
+                        message=(
+                            f"Action '{action_type}' is unavailable; choose one "
+                            "from the server registry"
+                        ),
+                    )
+                )
             if action_type == "send_email":
                 if not data.get("email_template_id") and not data.get("email_body"):
                     errors.append(
@@ -740,6 +910,37 @@ class WorkflowService:
                             message=f"'{value}' is not a valid email address",
                         )
                     )
+            if action_type == "send_sms" and not data.get("message_template"):
+                errors.append(
+                    WorkflowValidationError(
+                        node_id=node["id"],
+                        error_type="missing_sms_message",
+                        message="SMS action requires a message",
+                    )
+                )
+            if action_type == "send_sms" and data.get("phone_number"):
+                phone_number = str(data["phone_number"]).strip()
+                if not re.fullmatch(r"\+[1-9]\d{7,14}", phone_number):
+                    errors.append(
+                        WorkflowValidationError(
+                            node_id=node["id"],
+                            error_type="invalid_sms_recipient",
+                            message="SMS recipient must use E.164 format",
+                        )
+                    )
+            if action_type == "webhook_call":
+                try:
+                    timeout = float(data.get("timeout_seconds", 30))
+                except (TypeError, ValueError):
+                    timeout = 0
+                if timeout < 1 or timeout > 60:
+                    errors.append(
+                        WorkflowValidationError(
+                            node_id=node["id"],
+                            error_type="invalid_webhook_timeout",
+                            message="Webhook timeout must be between 1 and 60 seconds",
+                        )
+                    )
 
         elif node_type == "condition":
             conditions = data.get("conditions")
@@ -774,7 +975,7 @@ class WorkflowService:
             wait_type = data.get("wait_type", "duration")
             if wait_type == "duration":
                 duration = data.get("duration_value")
-                if not duration:
+                if duration is None or duration == "":
                     errors.append(
                         WorkflowValidationError(
                             node_id=node["id"],
@@ -791,16 +992,95 @@ class WorkflowService:
                             message=f"Wait duration '{duration}' must be a number",
                         )
                     )
-
-        elif node_type == "agent":
-            if not data.get("agent_type") and not data.get("agent_id"):
+            elif wait_type in {"datetime", "date", "until_date"}:
+                if not (data.get("wait_until") or data.get("until_date")):
+                    errors.append(
+                        WorkflowValidationError(
+                            node_id=node["id"],
+                            error_type="missing_wait_until",
+                            message="Wait-until-date requires a date and time",
+                        )
+                    )
+            else:
                 errors.append(
                     WorkflowValidationError(
                         node_id=node["id"],
-                        error_type="missing_agent_type",
-                        message="Agent node must specify an agent type or ID",
+                        error_type="unknown_wait_type",
+                        message=(
+                            f"Wait type '{wait_type}' is unavailable; event waits "
+                            "remain hidden until their signal path is proven"
+                        ),
                     )
                 )
+
+        elif node_type == "agent":
+            if not data.get("agent_id"):
+                errors.append(
+                    WorkflowValidationError(
+                        node_id=node["id"],
+                        error_type="missing_agent_id",
+                        message="AI Agent node must select an existing agent",
+                    )
+                )
+
+        elif node_type == "branch":
+            branches = data.get("branches") or []
+            if len(branches) < 2:
+                errors.append(
+                    WorkflowValidationError(
+                        node_id=node["id"],
+                        error_type="missing_branch_paths",
+                        message="Branch node requires at least one rule and an Else path",
+                    )
+                )
+            else:
+                else_indexes = [
+                    index
+                    for index, branch in enumerate(branches)
+                    if branch.get("is_else")
+                    or str(branch.get("label", "")).strip().lower() == "else"
+                ]
+                if not else_indexes:
+                    errors.append(
+                        WorkflowValidationError(
+                            node_id=node["id"],
+                            error_type="missing_else_path",
+                            message="Branch node requires an Else path",
+                        )
+                    )
+                elif else_indexes[-1] != len(branches) - 1:
+                    errors.append(
+                        WorkflowValidationError(
+                            node_id=node["id"],
+                            error_type="invalid_else_position",
+                            message="Else must be the final branch",
+                        )
+                    )
+                for index, branch in enumerate(branches):
+                    if index in else_indexes:
+                        continue
+                    conditions = (
+                        branch.get("conditions")
+                        or branch.get("rules")
+                        or (
+                            [branch.get("condition")]
+                            if isinstance(branch.get("condition"), dict)
+                            else []
+                        )
+                    )
+                    if not conditions and not (
+                        branch.get("field") and branch.get("operator")
+                    ):
+                        errors.append(
+                            WorkflowValidationError(
+                                node_id=node["id"],
+                                error_type="missing_branch_rule",
+                                message=(
+                                    f"Branch path {index + 1} requires a field "
+                                    "and operator"
+                                ),
+                            )
+                        )
 
         # US-6.4: {{variable}} references must be well-formed and resolvable.
         errors.extend(self._validate_variable_references(node))
@@ -811,7 +1091,18 @@ class WorkflowService:
         """Flag malformed braces and unknown namespaces in any string config value."""
         errors = []
         node_id = node["id"]
-        for value in (node.get("data") or {}).values():
+
+        def strings(value: Any):
+            if isinstance(value, str):
+                yield value
+            elif isinstance(value, dict):
+                for nested in value.values():
+                    yield from strings(nested)
+            elif isinstance(value, (list, tuple)):
+                for nested in value:
+                    yield from strings(nested)
+
+        for value in strings(node.get("data") or {}):
             if not isinstance(value, str) or ("{{" not in value and "}}" not in value):
                 continue
             if value.count("{{") != value.count("}}"):
@@ -1275,7 +1566,7 @@ class WorkflowExecutor:
     async def _execute_agent(
         self, data: dict, context: WorkflowExecutionContext
     ) -> NodeExecutionResult:
-        """Execute an AI agent node."""
+        """Execute an AI agent node through the existing agent service."""
         if context.is_dry_run:
             return NodeExecutionResult(
                 node_id="",
@@ -1287,26 +1578,10 @@ class WorkflowExecutor:
                 },
             )
 
-        agent_type = data.get("agent_type")
-        agent_id = data.get("agent_id")
-        input_mapping = data.get("input_mapping", {})
+        from aexy.services.workflow_actions import WorkflowActionHandler
 
-        # Build input context for agent
-        agent_input = {}
-        for agent_key, context_path in input_mapping.items():
-            agent_input[agent_key] = self._get_field_value(context_path, context)
-
-        # This would invoke the LangGraph agent
-        # For now, return placeholder
-        return NodeExecutionResult(
-            node_id="",
-            status="success",
-            output={
-                "agent_type": agent_type,
-                "agent_id": agent_id,
-                "input": agent_input,
-                "message": "Agent execution scheduled",
-            },
+        return await WorkflowActionHandler(self.db).execute_action(
+            "run_agent", data, context
         )
 
     async def _execute_branch(

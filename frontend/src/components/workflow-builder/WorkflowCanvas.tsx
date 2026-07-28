@@ -565,8 +565,19 @@ function WorkflowCanvasInner({
         }),
         ...(type === "condition" && { conditions: [], conjunction: "and" }),
         ...(type === "wait" && { wait_type: subtype || "duration", duration_value: 1, duration_unit: "days" }),
-        ...(type === "agent" && { agent_type: subtype || "sales_outreach" }),
-        ...(type === "branch" && { branches: [{ id: "branch-1", label: "Branch 1" }, { id: "branch-2", label: "Branch 2" }] }),
+        ...(type === "agent" && { agent_type: "existing" }),
+        ...(type === "branch" && {
+          branches: [
+            {
+              id: "branch-1",
+              label: "Path 1",
+              field: "",
+              operator: "equals",
+              value: "",
+            },
+            { id: "else", label: "Else", is_else: true },
+          ],
+        }),
         ...(type === "join" && { join_type: subtype || "all", incoming_branches: 2 }),
       },
     };
@@ -1037,6 +1048,17 @@ function WorkflowCanvasInner({
           onUpdate={(data) => updateNodeData(selectedNode.id, data)}
           onDelete={() => deleteNode(selectedNode.id)}
           onClose={() => setSelectedNode(null)}
+          // The same handler the toolbar and the keyboard shortcut use, so a
+          // save started from the node panel is the identical request and
+          // cannot drift from the rest of the builder. It covers a brand-new
+          // automation too: the parent's save creates it before writing the
+          // graph, which is why the panel needs no id of its own.
+          onSave={handleSave}
+          isSaving={isSaving}
+          hasChanges={hasChanges}
+          // Same source as the red state on the canvas node, so the panel and
+          // the node can never disagree about whether this step is valid.
+          nodeErrors={getNodeErrors(selectedNode.id)}
         />
       )}
 

@@ -3,14 +3,22 @@
 import asyncio
 import html
 import httpx
+import ipaddress
 import logging
 import re
+import socket
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import select, func, and_
 from sqlalchemy.exc import IntegrityError
+
+from aexy.core.config import get_settings
+from aexy.services.automation_counters import (
+    load_run_for_update,
+    record_run_outcome,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -116,8 +124,127 @@ def trigger_matches(
     return True
 
 
+# =============================================================================
+# WEBHOOK TARGET SAFETY
+# =============================================================================
+#
+# A webhook step's URL comes from whoever built the automation, and the request
+# leaves from inside our network with headers they also chose. Unrestricted,
+# that is a request-forgery primitive pointed at everything the backend can
+# reach but the author cannot: the cloud metadata endpoint (169.254.169.254),
+# Redis, Temporal, the database's admin surface, other tenants' internal APIs.
+# Validating the scheme is not enough — the host has to resolve somewhere
+# public.
+
+
+def _address_is_internal(ip: "ipaddress._BaseAddress") -> bool:
+    """Whether an address belongs to the network rather than the internet."""
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped:
+        # ::ffff:127.0.0.1 is loopback wearing a v6 hat.
+        ip = ip.ipv4_mapped
+    return (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_reserved
+        or ip.is_multicast
+        or ip.is_unspecified
+    )
+
+
+async def resolve_public_webhook_host(host: str, port: int) -> str | None:
+    """Reason the host may not be called, or None when it is allowed.
+
+    Resolution is part of the check on purpose: an attacker does not need a
+    literal 169.254.169.254 when any domain they control can be pointed at it.
+
+    This closes the reachable-by-name hole, not TOCTOU. The name is resolved
+    here and again by the HTTP client, so a record that changes in between can
+    still land somewhere internal. Pinning the checked address into the
+    connection is the complete fix and wants a custom transport; deployments
+    that need that guarantee should also keep the worker off the internal
+    network.
+    """
+    if get_settings().allow_private_webhook_targets:
+        return None
+
+    try:
+        literal = ipaddress.ip_address(host.strip("[]"))
+    except ValueError:
+        literal = None
+    if literal is not None:
+        return (
+            "Webhook URL points at an internal address"
+            if _address_is_internal(literal)
+            else None
+        )
+
+    try:
+        infos = await asyncio.get_running_loop().getaddrinfo(
+            host, port, type=socket.SOCK_STREAM
+        )
+    except OSError:
+        return f"Webhook host '{host}' could not be resolved"
+
+    addresses = {info[4][0] for info in infos}
+    if not addresses:
+        return f"Webhook host '{host}' could not be resolved"
+
+    # Every answer has to be public. One internal record among several is
+    # enough for the client to pick it.
+    for address in addresses:
+        try:
+            if _address_is_internal(ipaddress.ip_address(address)):
+                return f"Webhook host '{host}' resolves to an internal address"
+        except ValueError:
+            return f"Webhook host '{host}' resolved to an unusable address"
+    return None
+
+
 class CRMAutomationService:
     """Service for CRM automation CRUD and execution."""
+
+    # Action types the inline executor has a case for. Anything outside this
+    # set reaches _execute_action's catch-all and is reported unsupported.
+    INLINE_ACTION_TYPES: frozenset[str] = frozenset(
+        {
+            "update_record",
+            "create_record",
+            "delete_record",
+            "assign_owner",
+            "link_records",
+            "add_to_list",
+            "remove_from_list",
+            "enroll_in_sequence",
+            "remove_from_sequence",
+            "webhook_call",
+            "create_task",
+            "send_sms",
+            "send_slack",
+            "send_email",
+            "notify_user",
+            "notify_team",
+            "run_agent",
+            "pause_monitor",
+            "resume_monitor",
+            "create_incident",
+            "resolve_incident",
+            "update_task",
+            "assign_task",
+            "move_task",
+            "create_subtask",
+            "update_ticket",
+            "assign_ticket",
+            "escalate",
+            "change_priority",
+            "update_candidate",
+            "move_stage",
+            "schedule_interview",
+            "confirm_booking",
+            "cancel_booking",
+            "reschedule_booking",
+        }
+    )
 
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -300,6 +427,44 @@ class CRMAutomationService:
 
         return runs
 
+    async def _claim_monthly_run_slot(self, automation: CRMAutomation) -> None:
+        """Take one run against the monthly allowance, or refuse.
+
+        Check-then-increment cannot enforce a limit. The check used to sit here
+        and the increment at the end of the run, with the whole execution in
+        between, so at 99 of 100 any number of concurrent triggers all read 99,
+        all passed, and all ran — the configured cap was advisory at best.
+
+        One conditional UPDATE decides it instead: the row is only bumped while
+        it is still under the limit, and whoever loses sees rowcount 0. The same
+        statement carries total_runs and last_run_at, so a run counts once, at
+        the moment it is admitted, rather than being incremented again later
+        from whichever of several processes happens to finish it.
+        """
+        from sqlalchemy import update as sqlalchemy_update
+
+        conditions = [CRMAutomation.id == automation.id]
+        if automation.run_limit_per_month:
+            conditions.append(
+                CRMAutomation.runs_this_month < CRMAutomation.run_limit_per_month
+            )
+
+        claimed = await self.db.execute(
+            sqlalchemy_update(CRMAutomation)
+            .where(*conditions)
+            .values(
+                runs_this_month=CRMAutomation.runs_this_month + 1,
+                total_runs=CRMAutomation.total_runs + 1,
+                last_run_at=datetime.now(timezone.utc),
+            )
+        )
+        if claimed.rowcount == 0:
+            raise ValueError("Automation run limit exceeded for this month")
+
+        # The in-memory row is now behind the database. Refresh so callers that
+        # read these counters afterwards do not write a stale value back.
+        await self.db.refresh(automation)
+
     async def trigger_automation(
         self,
         automation_id: str,
@@ -314,10 +479,7 @@ class CRMAutomationService:
         if not automation.is_active:
             raise ValueError("Automation is not active")
 
-        # Check run limit
-        if automation.run_limit_per_month:
-            if automation.runs_this_month >= automation.run_limit_per_month:
-                raise ValueError("Automation run limit exceeded for this month")
+        await self._claim_monthly_run_slot(automation)
 
         # Create run record
         # Only set record_id for CRM module (has foreign key constraint to crm_records)
@@ -355,8 +517,10 @@ class CRMAutomationService:
 
         return run
 
-    # Node types the inline executor can't run; these need the durable workflow.
-    _DURABLE_NODE_TYPES = {"wait"}
+    # Structural nodes need the persisted graph and durable workflow. Keeping
+    # condition/branch/agent on the inline flattened action list would drop the
+    # node and run later actions unconditionally.
+    _DURABLE_NODE_TYPES = {"wait", "condition", "branch", "agent"}
 
     async def _dispatch_durably_if_needed(
         self, automation: CRMAutomation, run: CRMAutomationRun, record_id: str | None
@@ -382,7 +546,12 @@ class CRMAutomationService:
         if record_id:
             rec = await CRMRecordService(self.db).get_record(record_id)
             if rec:
-                record_data = {"id": rec.id, **(rec.values or {})}
+                record_data = {
+                    "id": rec.id,
+                    "object_id": rec.object_id,
+                    "owner_id": rec.owner_id,
+                    "values": rec.values or {},
+                }
 
         run.status = "running"
         run.started_at = datetime.now(timezone.utc)
@@ -391,7 +560,7 @@ class CRMAutomationService:
             {
                 "type": "handoff",
                 "status": "dispatched",
-                "detail": "Running durably (contains a wait); "
+                "detail": "Running the persisted workflow graph durably; "
                 "outcome recorded on completion.",
                 "executed_at": datetime.now(timezone.utc).isoformat(),
             },
@@ -425,7 +594,14 @@ class CRMAutomationService:
                 record_data=record_data,
                 nodes=workflow_def.nodes or [],
                 edges=workflow_def.edges or [],
+                execution_order=(
+                    workflow_def.execution_order
+                    or WorkflowService(self.db).topological_sort(
+                        workflow_def.nodes or [], workflow_def.edges or []
+                    )
+                ),
                 crm_run_id=str(run.id),
+                error_handling=automation.error_handling or "stop",
             ),
             id=f"crm-live-{run.id}",
             task_queue=TaskQueue.WORKFLOWS,
@@ -522,11 +698,11 @@ class CRMAutomationService:
                     run.steps_executed = [*(run.steps_executed or []), step_result]
                     continue
 
-                # stop / continue / retry: retry re-attempts a failed step once
-                # before applying stop-or-continue. continue records the failure
-                # and moves on; stop aborts the run.
-                max_attempts = 2 if automation.error_handling == "retry" else 1
+                # Retry is bounded and re-enters only this failed action. Steps
+                # that already succeeded are never replayed.
+                max_attempts = 3 if automation.error_handling == "retry" else 1
                 attempt = 0
+                attempt_history: list[dict[str, Any]] = []
                 while attempt < max_attempts:
                     attempt += 1
                     try:
@@ -545,6 +721,9 @@ class CRMAutomationService:
                         if result.get("error"):
                             raise ValueError(str(result["error"]))
 
+                        attempt_history.append(
+                            {"attempt": attempt, "status": "success"}
+                        )
                         step_result["status"] = "queued" if result.get("queued") else "success"
                         step_result["result"] = result
                         # Surface the target at the top level of the step. Reading a
@@ -557,6 +736,13 @@ class CRMAutomationService:
                             step_result["retried"] = True
                         break
                     except Exception as e:
+                        attempt_history.append(
+                            {
+                                "attempt": attempt,
+                                "status": "failed",
+                                "error": str(e),
+                            }
+                        )
                         step_result["status"] = "failed"
                         step_result["error"] = str(e)
                         step_result["attempts"] = attempt
@@ -567,6 +753,8 @@ class CRMAutomationService:
                             raise
                         # continue (and exhausted retry): keep going
 
+                step_result["attempt_history"] = attempt_history
+                step_result["attempts"] = attempt
                 run.steps_executed = [*(run.steps_executed or []), step_result]
 
             # Sending an email is asynchronous. A queued email is not yet a
@@ -596,14 +784,14 @@ class CRMAutomationService:
                         failed_steps[0].get("error") or "A step failed"
                     )
 
-            automation.total_runs += 1
-            automation.runs_this_month += 1
-            automation.last_run_at = datetime.now(timezone.utc)
+            # total_runs / runs_this_month / last_run_at were already taken by
+            # _claim_monthly_run_slot when this run was admitted. Only the
+            # outcome is still unknown at that point, and a queued email means
+            # it is unknown here too — the email activity records it later.
             if not has_queued_email:
-                if failed_steps:
-                    automation.failed_runs += 1
-                else:
-                    automation.successful_runs += 1
+                await record_run_outcome(
+                    self.db, automation.id, succeeded=not failed_steps
+                )
 
         except Exception as e:
             run.status = "failed"
@@ -613,10 +801,7 @@ class CRMAutomationService:
                 (run.completed_at - run.started_at).total_seconds() * 1000
             )
 
-            automation.total_runs += 1
-            automation.failed_runs += 1
-            automation.runs_this_month += 1
-            automation.last_run_at = datetime.now(timezone.utc)
+            await record_run_outcome(self.db, automation.id, succeeded=False)
 
             # Notify creator of automation failure
             if automation.created_by_id:
@@ -735,9 +920,22 @@ class CRMAutomationService:
         elif action_type == "remove_from_sequence":
             return await self._action_remove_from_sequence(config, record, workspace_id)
         elif action_type == "webhook_call":
-            return await self._action_webhook_call(config, record, trigger_data)
+            return await self._action_webhook_call(
+                config, record, trigger_data, run_id, action_index
+            )
         elif action_type == "create_task":
-            return await self._action_create_task(config, record, workspace_id, trigger_data)
+            return await self._action_create_task(
+                config,
+                record,
+                workspace_id,
+                trigger_data,
+                run_id,
+                action_index,
+            )
+        elif action_type == "send_sms":
+            return await self._action_send_sms(
+                config, record, workspace_id, trigger_data, run_id, action_index
+            )
         elif action_type == "send_slack":
             return await self._action_send_slack(config, record, workspace_id, trigger_data)
         elif action_type == "send_email":
@@ -1255,6 +1453,8 @@ class CRMAutomationService:
         config: dict,
         record: CRMRecord | None,
         trigger_data: dict | None = None,
+        run_id: str | None = None,
+        action_index: int | None = None,
     ) -> dict:
         """Make a webhook HTTP call.
 
@@ -1263,28 +1463,78 @@ class CRMAutomationService:
         configured in the builder actually fires on a published run.
         """
         url = config.get("webhook_url") or config.get("url")
-        method = config.get("http_method") or config.get("method") or "POST"
+        method = str(
+            config.get("http_method") or config.get("method") or "POST"
+        ).upper()
         headers = config.get("headers") or {}
 
         if not url:
             return {"error": "No URL specified"}
+        from urllib.parse import urlparse
+        import json as _json
+
+        parsed_url = urlparse(str(url))
+        if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
+            return {"error": "Webhook URL must use HTTP or HTTPS"}
+        if method not in {"GET", "POST", "PUT", "PATCH", "DELETE"}:
+            return {"error": f"Unsupported webhook method: {method}"}
+        try:
+            unreachable = await resolve_public_webhook_host(
+                parsed_url.hostname or "",
+                parsed_url.port or (443 if parsed_url.scheme == "https" else 80),
+            )
+        except Exception:
+            # The guard failing open would be worse than the step failing.
+            logger.exception("Webhook target check failed for %s", url)
+            return {"error": "Webhook target could not be verified"}
+        if unreachable:
+            return {"error": unreachable}
+        try:
+            timeout_seconds = float(config.get("timeout_seconds", 30))
+        except (TypeError, ValueError):
+            return {"error": "Webhook timeout must be a number"}
+        if timeout_seconds < 1 or timeout_seconds > 60:
+            return {"error": "Webhook timeout must be between 1 and 60 seconds"}
+        if isinstance(headers, str):
+            try:
+                headers = _json.loads(headers or "{}")
+            except _json.JSONDecodeError as error:
+                return {"error": f"Webhook headers are invalid JSON: {error.msg}"}
+        if not isinstance(headers, dict):
+            return {"error": "Webhook headers must be a JSON object"}
+        try:
+            rendered_headers = {
+                str(key): self._replace_placeholders(
+                    str(value), record, trigger_data
+                )
+                for key, value in headers.items()
+            }
+        except ValueError as error:
+            return {"error": str(error)}
+        if run_id is not None and action_index is not None:
+            rendered_headers.setdefault(
+                "Idempotency-Key", f"aexy-{run_id}-{action_index}"
+            )
 
         body_template = config.get("body_template")
         if isinstance(body_template, str) and body_template.strip():
+            # Render once. Rendering again inside the fallback would re-raise a
+            # missing-variable error from the handler that was meant to catch
+            # it, turning a body that is merely not-JSON into a hard failure.
+            if record is not None or trigger_data:
+                try:
+                    rendered_body = self._replace_placeholders(
+                        body_template, record, trigger_data
+                    )
+                except ValueError as error:
+                    return {"error": str(error)}
+            else:
+                rendered_body = body_template
             try:
-                import json as _json
-
-                payload = _json.loads(
-                    self._replace_placeholders(body_template, record, trigger_data)
-                    if record is not None or trigger_data
-                    else body_template
-                )
-            except Exception:
-                payload = {
-                    "body": self._replace_placeholders(body_template, record, trigger_data)
-                    if record is not None or trigger_data
-                    else body_template
-                }
+                payload = _json.loads(rendered_body)
+            except _json.JSONDecodeError:
+                # Not JSON: send it as a body field rather than refusing.
+                payload = {"body": rendered_body}
         else:
             payload = {
                 "event": "automation.triggered",
@@ -1295,19 +1545,41 @@ class CRMAutomationService:
             }
 
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=timeout_seconds) as client:
                 response = await client.request(
                     method=method,
                     url=url,
-                    headers=headers,
+                    headers=rendered_headers,
                     json=payload,
                 )
-                return {
+                result = {
                     "status_code": response.status_code,
                     "success": response.is_success,
+                    "method": method,
+                    "url": str(url),
+                    "response": response.text[:1000],
                 }
-        except Exception as e:
-            return {"error": str(e)}
+                if not response.is_success:
+                    result["error"] = (
+                        f"Webhook returned HTTP {response.status_code}"
+                    )
+                return result
+        except httpx.TimeoutException:
+            return {
+                "error": (
+                    f"Webhook timed out after {timeout_seconds:g} seconds"
+                )
+            }
+        except httpx.RequestError as error:
+            return {
+                "error": f"Webhook request failed: {type(error).__name__}"
+            }
+        except Exception:
+            return {
+                "error": (
+                    "Webhook request failed before a response was received"
+                )
+            }
 
     async def _action_create_task(
         self,
@@ -1315,6 +1587,12 @@ class CRMAutomationService:
         record: CRMRecord | None,
         workspace_id: str,
         trigger_data: dict | None = None,
+        # Together these form the retry-stable identity a repeated attempt
+        # dedups on. The inline executor passes (run id, action index); the
+        # durable one passes (execution id, node id). Either pair is stable
+        # across a retry of the same step, which is all the dedup needs.
+        run_id: str | None = None,
+        action_index: int | str | None = None,
     ) -> dict:
         """Create a sprint task.
 
@@ -1404,6 +1682,33 @@ class CRMAutomationService:
 
         logger.info(f"[CREATE_TASK] Creating task: title='{title}', project_id={project_id}, team_id={team_id}, sprint_id={sprint_id}, workspace_id={workspace_id}")
 
+        source_id = (
+            f"{run_id}:{action_index}"
+            if run_id is not None and action_index is not None
+            else str(uuid4())
+        )
+        if run_id is not None and action_index is not None:
+            existing = (
+                await self.db.execute(
+                    select(SprintTask).where(
+                        SprintTask.workspace_id == workspace_id,
+                        SprintTask.source_type == "automation",
+                        SprintTask.source_id == source_id,
+                    )
+                )
+            ).scalar_one_or_none()
+            if existing:
+                return {
+                    "success": True,
+                    "task_id": existing.id,
+                    "title": existing.title,
+                    # Both flags on both paths: a caller should be able to tell
+                    # "made one" from "found the one a previous attempt made"
+                    # without knowing which executor it went through.
+                    "created": False,
+                    "deduplicated": True,
+                }
+
         try:
             # Create the task
             task = SprintTask(
@@ -1412,7 +1717,10 @@ class CRMAutomationService:
                 team_id=team_id,  # From project lookup, or None for workspace-level tasks
                 sprint_id=sprint_id,  # Can be None for backlog tasks
                 source_type="automation",
-                source_id=str(uuid4()),  # Unique ID for this automated task
+                source_id=source_id,
+                source_url=(
+                    f"/crm/automations/runs/{run_id}" if run_id else None
+                ),
                 title=title,
                 description=description,
                 priority=priority,
@@ -1436,10 +1744,107 @@ class CRMAutomationService:
                 "team_id": team_id,
                 "project_id": project_id,
                 "sprint_id": sprint_id,
+                "created": True,
+                "deduplicated": False,
             }
         except Exception as e:
             logger.error(f"[CREATE_TASK] Failed to create task: {e}", exc_info=True)
             return {"error": str(e)}
+
+    async def _action_send_sms(
+        self,
+        config: dict,
+        record: CRMRecord | None,
+        workspace_id: str,
+        trigger_data: dict | None = None,
+        run_id: str | None = None,
+        action_index: int | str | None = None,
+    ) -> dict:
+        """Send one SMS and return only an observed provider handoff result."""
+        recipient_type = str(config.get("recipient_type") or "field")
+        phone_to = config.get("phone_number")
+        if recipient_type == "field" or not phone_to:
+            phone_field = str(config.get("phone_field") or "phone")
+            phone_to = record.values.get(phone_field) if record else None
+        if not phone_to:
+            return {"error": "No phone number for SMS"}
+        phone_to = str(phone_to).strip()
+        if not re.fullmatch(r"\+[1-9]\d{7,14}", phone_to):
+            return {
+                "error": (
+                    "SMS recipient must be an E.164 number such as +14155552671"
+                )
+            }
+        message_template = str(config.get("message_template") or "")
+        if not message_template.strip():
+            return {"error": "SMS message cannot be empty"}
+        message = self._replace_placeholders(
+            message_template, record, trigger_data
+        )
+
+        from aexy.services.automation_delivery import (
+            claim_delivery,
+            delivery_key,
+            mark_delivered,
+            mark_refused,
+        )
+        from aexy.services.twilio_service import TwilioService
+
+        # Claim before dialling the provider. Without this, a Twilio acceptance
+        # followed by a failed local write meant the retry sent the customer a
+        # second text — and Twilio has no idempotency key to lean on.
+        claim = None
+        if run_id is not None and action_index is not None:
+            claim = await claim_delivery(
+                self.db,
+                channel="sms",
+                key=delivery_key("sms", run_id, str(action_index), phone_to),
+                recipient=phone_to,
+            )
+            if claim.decision == "already_sent":
+                return {
+                    "to": phone_to,
+                    "provider_message_id": claim.provider_message_id,
+                    "accepted": True,
+                    "deduplicated": True,
+                }
+            if claim.decision == "uncertain":
+                # It may already have arrived. Sending again risks a duplicate;
+                # only the provider's own log can say which happened.
+                return {
+                    "error": (
+                        "A previous attempt reached the SMS provider and did "
+                        "not finish recording. Not re-sending — check the "
+                        "provider log before retrying."
+                    ),
+                    "to": phone_to,
+                    "needs_review": True,
+                }
+
+        result = await TwilioService(self.db).send_sms(
+            to=phone_to,
+            body=message,
+            record_id=record.id if record else None,
+            workspace_id=workspace_id,
+        )
+        if result.get("error"):
+            # A refusal means nothing was delivered, so the attempt is released
+            # for a later retry rather than left looking uncertain.
+            if claim:
+                await mark_refused(self.db, claim.attempt_id, str(result["error"]))
+            return {
+                "error": f"SMS provider refused the message: {result['error']}",
+                "to": phone_to,
+                "provider_status": result.get("status"),
+            }
+        if claim:
+            await mark_delivered(self.db, claim.attempt_id, result.get("sid"))
+        return {
+            "to": phone_to,
+            "provider_message_id": result.get("sid"),
+            "provider_status": result.get("status"),
+            "accepted": True,
+        }
 
     async def _action_send_slack(
         self,
@@ -1983,6 +2388,12 @@ class CRMAutomationService:
                 + index
             )
 
+        # Every channel that was asked for and did not deliver, so "both" can
+        # report a half-failure. Slack is synchronous and reports its real
+        # outcome; email reports "queued" and is reconciled later by the send
+        # activity, so a queued email is not a failure here.
+        failures: list[str] = []
+
         for recipient_index, recipient_email in enumerate(recipient_emails):
             # Send Slack notification
             if channel in ("slack", "both"):
@@ -1994,6 +2405,11 @@ class CRMAutomationService:
                 )
                 if slack_result.get("success"):
                     results["channels_notified"].append("slack")
+                else:
+                    failures.append(
+                        f"Slack to {recipient_email}: "
+                        f"{slack_result.get('error') or 'not delivered'}"
+                    )
                 results["slack"] = slack_result
 
             # Send email notification
@@ -2014,6 +2430,11 @@ class CRMAutomationService:
                 )
                 if email_result.get("success"):
                     results["channels_notified"].append("email")
+                else:
+                    failures.append(
+                        f"Email to {recipient_email}: "
+                        f"{email_result.get('error') or 'not delivered'}"
+                    )
                 results["email"] = email_result
 
         results["recipients_notified"] = len(recipient_emails)
@@ -2021,7 +2442,15 @@ class CRMAutomationService:
         # A delivery failure is nested under results["slack"]/["email"], but the
         # executor only fails a step on a top-level "error". Surface it, or a
         # notification that delivered nothing is recorded as a success.
-        if not results["channels_notified"]:
+        #
+        # Any requested channel failing counts, not just all of them. On
+        # "both", a Slack failure alongside a queued email used to leave
+        # channels_notified non-empty and the step green, so the half that
+        # never arrived was invisible in run history.
+        if failures:
+            results["failures"] = failures
+            results["error"] = "; ".join(failures)
+        elif not results["channels_notified"]:
             results["error"] = "No notification could be delivered"
         if results.get("email", {}).get("queued"):
             # Queued, not success - for every recipient count. Reporting a
@@ -2054,7 +2483,7 @@ class CRMAutomationService:
         if not automation_run_id or not siblings:
             return
 
-        run = await self.db.get(CRMAutomationRun, automation_run_id)
+        run = await load_run_for_update(self.db, automation_run_id)
         if not run:
             return
 
@@ -2182,7 +2611,9 @@ class CRMAutomationService:
             else:
                 return match.group(0)
 
-            return "" if value is None else render(value)
+            if value is None:
+                raise ValueError(f"Dynamic value '{{{{{path}}}}}' is missing")
+            return render(value)
 
         message = re.sub(
             r"\{\{([^{}]+)\}\}",
@@ -2974,6 +3405,25 @@ class CRMAutomationService:
                 wait_for_completion=wait_for_completion,
                 timeout_seconds=timeout_seconds,
             )
+            # When the step waited for the agent, the agent's verdict is the
+            # step's verdict. Reporting success on a failed or timed-out agent
+            # made the run history claim work happened that did not, and any
+            # later step reading the agent's output got nothing. Not waiting is
+            # still a success: the step's job was only to start the agent.
+            #
+            # The error key is what the executor's gate reads, so a bare
+            # "success": False would be invisible to it.
+            if wait_for_completion and execution.status != "completed":
+                return {
+                    "success": False,
+                    "execution_id": str(execution.id),
+                    "agent_id": agent_id,
+                    "status": execution.status,
+                    "error": (
+                        execution.error_message
+                        or f"Agent execution {execution.status}"
+                    ),
+                }
             return {
                 "success": True,
                 "execution_id": str(execution.id),

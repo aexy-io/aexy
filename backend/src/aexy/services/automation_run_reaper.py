@@ -148,9 +148,10 @@ async def reap_stalled_runs(db, limit: int = 100) -> dict:
             for step in steps
         ]
 
-        automation = await db.get(CRMAutomation, run.automation_id)
-        if automation:
-            automation.failed_runs = (automation.failed_runs or 0) + 1
+        if await db.get(CRMAutomation, run.automation_id):
+            from aexy.services.automation_counters import record_run_outcome
+
+            await record_run_outcome(db, run.automation_id, succeeded=False)
 
         await db.commit()
         reaped += 1

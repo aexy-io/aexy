@@ -195,6 +195,7 @@ ACTION_REGISTRY: dict[str, list[dict[str, str]]] = {
         {"id": "notify_team", "description": "Send an in-app notification to a team"},
         {"id": "wait", "description": "Wait for a specified duration before continuing"},
         {"id": "condition", "description": "Evaluate a condition to branch the workflow"},
+        {"id": "branch", "description": "Route the workflow through the first matching path"},
     ],
     "crm": [
         {"id": "create_record", "description": "Create a new CRM record"},
@@ -292,59 +293,48 @@ ACTION_REGISTRY: dict[str, list[dict[str, str]]] = {
 
 ENABLED_MODULES: tuple[str, ...] = ("crm",)
 
-HIDDEN_TRIGGERS: frozenset[str] = frozenset({
+UNAVAILABLE_TRIGGER_REASONS: dict[str, str] = {
     # schedule.daily/weekly, date.approaching/passed un-hidden 2026-07-23:
     # the hourly dispatch_crm_schedules runner now fires them.
     # webhook.received: no inbound endpoint dispatches it yet.
-    "webhook.received",
+    "webhook.received": "No inbound endpoint dispatches this trigger.",
     # email.replied: no reply-detection source event exists yet (deferred).
-    "email.replied",
+    "email.replied": "No inbound reply-detection event source exists.",
     # status.changed retired for CRM 2026-07-23: a record's status IS its
     # pipeline stage, already covered by stage.changed; other categorical
     # fields are covered by field.changed. No distinct CRM use case.
-    "status.changed",
+    "status.changed": "CRM status changes are represented by stage.changed.",
     # list_entry.added un-hidden 2026-07-20; list_entry.removed, form.submitted,
     # email.opened, email.clicked un-hidden 2026-07-23 now that CRMEventService
     # emits CRM-scoped events for each (routed through process_trigger, which
     # ignores the module column).
-})
+}
 
-HIDDEN_ACTIONS: frozenset[str] = frozenset({
-    "api_request",        # no handler (only webhook_call is wired)
-    "enrich_record",      # no handler
-    "classify_record",    # no handler
-    "generate_summary",   # no handler
-    # Trim 2026-07-19: no case in the published executor, so these fall to
-    # its catch-all and are recorded as SUCCESS while doing nothing.
-    "send_sms",
-    # Un-hidden 2026-07-24: the 2026-07-19 "falls to the catch-all" claim no
-    # longer holds — process_trigger's dispatch table has real cases for both
-    # (_action_delete_record archives behind a confirm flag, _action_link_records
-    # rejects self/cross-workspace links and dedupes repeats).
-    # Hidden 2026-07-19: the config panel writes webhook_url / http_method /
-    # body_template, but _action_webhook_call reads url / method and sends a
-    # fixed payload, so a builder-configured webhook finds no URL, never
-    # fires, and is recorded as a successful step. The dry-run engine
-    # (workflow_actions._webhook_call) reads the panel's keys correctly, so
-    # Test passes while the published run silently does nothing. Un-hide by
-    # aligning the executor with the panel — the working version already
-    # exists in the dry-run path.
-    "webhook_call",
-    # Same catch-all problem. These two also arrive as ordinary steps rather
-    # than standalone blocks, so the unsupported-node-type rule in
-    # workflow_service does not catch them — hiding them here is the only
-    # thing that keeps them out. Restoring them is Epic 4 (logic & timing).
-    "wait",
-    "condition",
-    # Withheld by product decision: offer these only once the step can point
-    # at something real.
-    "add_to_list",
-    "remove_from_list",
-    # Handler exists, but the config panel has no agent picker, so there is
-    # no way to choose an agent — the step could only ever fail for want of
-    # one. Restore alongside an agent selector.
-    "run_agent",
-})
+UNAVAILABLE_ACTION_REASONS: dict[str, str] = {
+    "api_request": "No published executor is connected.",
+    "enrich_record": "No published executor is connected.",
+    "classify_record": "No published executor is connected.",
+    "generate_summary": "No published executor is connected.",
+    "add_to_list": "List actions remain outside the approved release scope.",
+    "remove_from_list": "List actions remain outside the approved release scope.",
+}
+
+# Compatibility names for older imports. An entry is available precisely when
+# it is absent from these sets; every unavailable entry carries an internal
+# reason above, so hiding a capability is an explicit product/runtime decision.
+HIDDEN_TRIGGERS: frozenset[str] = frozenset(UNAVAILABLE_TRIGGER_REASONS)
+HIDDEN_ACTIONS: frozenset[str] = frozenset(UNAVAILABLE_ACTION_REASONS)
+
+# Structural palette capabilities share the registry transport with actions,
+# but the frontend creates their real canvas node type instead of an action
+# node. This keeps the server as the sole visibility source without duplicating
+# a second frontend-only list.
+STRUCTURAL_CAPABILITIES: dict[str, str] = {
+    "condition": "condition",
+    "wait": "wait",
+    "run_agent": "agent",
+    "branch": "branch",
+}
 
 # Actions that are only offered when the workspace has the integration they
 # depend on. Unlike HIDDEN_ACTIONS this cannot be decided from the registry

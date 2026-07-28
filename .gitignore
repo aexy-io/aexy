@@ -56,9 +56,25 @@ audit-in-app-docs.md
 # macOS app bundle (built artifact)
 aexy-mac/Aexy.app
 
-# Local per-run comparison exports; not release material.
+# =============================================================================
+# Local working files. Not part of the product and not release material.
+# =============================================================================
+
+# Per-run exports and comparison spreadsheets
 *_round1.csv
 *_update.csv
+# Office lock files left behind next to an open spreadsheet
+~$*
+
+# Screen recordings
+*.mov
 
 # Verification captures belong on the pull request, not in git history.
 verification-screenshots/
+
+# Environment backups (also guarded in backend/.gitignore)
+.env.bak*
+
+# Note: personal scratch files (session notes, editor vaults, one-off
+# spreadsheets) belong in .git/info/exclude or a global gitignore — this file
+# is shared, and one contributor's working habits should not be in it.

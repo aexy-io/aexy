@@ -8,8 +8,10 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from temporalio import activity
+from temporalio.exceptions import ApplicationError
 
 from aexy.core.database import async_session_maker
+from aexy.temporal.activities.workflow_actions import current_attempt
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +81,7 @@ class ExecuteAgentInput:
     user_id: str | None = None
     triggered_by: str = "automation"
     trigger_id: str | None = None
+    retry_failures: bool = False
 
 
 @dataclass
@@ -331,10 +334,23 @@ async def execute_agent(input: ExecuteAgentInput) -> dict[str, Any]:
             triggered_by=input.triggered_by, trigger_id=input.trigger_id,
         )
         await db.commit()
-        return {
+        result = {
             "execution_id": str(execution.id), "status": execution.status,
             "output": execution.output_result, "error": execution.error_message,
+            "duration_ms": execution.duration_ms,
+            "input_summary": {
+                "keys": sorted((input.context or {}).keys()),
+                "record_id": input.record_id,
+            },
+            "attempt": current_attempt(),
         }
+        if execution.status != "completed":
+            raise ApplicationError(
+                execution.error_message or f"Agent execution {execution.status}",
+                type="AgentExecutionFailed",
+                non_retryable=not input.retry_failures,
+            )
+        return result
 
 
 @activity.defn

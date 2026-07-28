@@ -2,11 +2,12 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Node } from "@xyflow/react";
-import { X, Trash2, ChevronDown, Plus, Database, Copy, Check, ExternalLink, Code } from "lucide-react";
+import { X, Trash2, ChevronDown, Plus, Database, Copy, Check, ExternalLink, Code, Save, Loader2 } from "lucide-react";
 import { FieldPicker, InlineFieldPicker } from "./FieldPicker";
 import { api, CRMAttribute, CRMObject } from "@/lib/api";
 import { HelpTooltip } from "@/components/ui/tooltip";
 import { FieldEditor } from "@/components/fields/FieldRenderer";
+import { useAgents } from "@/hooks/useAgents";
 
 // Trigger ids saved by older builds used underscores where the registry uses dots.
 const TRIGGER_ID_ALIASES: Record<string, string> = {
@@ -69,6 +70,23 @@ interface NodeConfigPanelProps {
   onUpdate: (data: Record<string, unknown>) => void;
   onDelete: () => void;
   onClose: () => void;
+  /**
+   * The canvas's own save. Deliberately the same handler the toolbar and the
+   * keyboard shortcut call, so a node-level save is not a second code path
+   * with its own idea of what "saved" means. Optional so the panel still
+   * renders for any caller that does not offer saving.
+   */
+  onSave?: () => void | Promise<void>;
+  /** True while that save is in flight. */
+  isSaving?: boolean;
+  /** True while the canvas holds edits that have not reached the server. */
+  hasChanges?: boolean;
+  /**
+   * Blocking validation messages for this node — the same ones that colour it
+   * red on the canvas. Saving is disabled while any are present, because the
+   * save endpoint validates too and would reject the write anyway.
+   */
+  nodeErrors?: { field?: string; message: string }[];
 }
 
 // Trigger descriptions for the config panel
@@ -243,8 +261,13 @@ export function NodeConfigPanel({
   onUpdate,
   onDelete,
   onClose,
+  onSave,
+  isSaving = false,
+  hasChanges = false,
+  nodeErrors = [],
 }: NodeConfigPanelProps) {
   const [label, setLabel] = useState((node.data.label as string) || "");
+  const [justSaved, setJustSaved] = useState(false);
   const emailBodyRef = useRef<HTMLTextAreaElement>(null);
   const messageTemplateRef = useRef<HTMLTextAreaElement>(null);
   const webhookBodyRef = useRef<HTMLTextAreaElement>(null);
@@ -253,6 +276,20 @@ export function NodeConfigPanel({
   useEffect(() => {
     setLabel((node.data.label as string) || "");
   }, [node.id, node.data.label]);
+
+  // Confirm a save only once the canvas says the edits actually reached the
+  // server. The canvas clears its pending-changes flag on success and leaves
+  // it set on failure, so watching that flag - rather than the click - keeps
+  // the panel from reporting "Saved" after a save that did not happen.
+  const wasSaving = useRef(isSaving);
+  useEffect(() => {
+    const finished = wasSaving.current && !isSaving;
+    wasSaving.current = isSaving;
+    if (!finished || hasChanges) return;
+    setJustSaved(true);
+    const timer = setTimeout(() => setJustSaved(false), 2500);
+    return () => clearTimeout(timer);
+  }, [isSaving, hasChanges]);
 
   // Webhook trigger state
   const [webhookUrl, setWebhookUrl] = useState<string | null>(null);
@@ -292,6 +329,10 @@ export function NodeConfigPanel({
 
   const triggerType = node.data.trigger_type as string;
   const actionType = node.data.action_type as string;
+  const { agents, isLoading: agentsLoading } = useAgents(workspaceId, {
+    isActive: true,
+    includeSystem: true,
+  });
 
   // Fetch projects when action is create_task
   useEffect(() => {
@@ -1140,26 +1181,68 @@ export function NodeConfigPanel({
         )}
 
         {actionType === "send_sms" && (
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-sm text-muted-foreground">Message</label>
-              <InlineFieldPicker
-                workspaceId={workspaceId}
-                automationId={automationId}
-                objectId={triggerObjectId}
-                nodeId={node.id}
-                onInsert={(value) => insertAtCursor(messageTemplateRef, value, "message_template")}
+          <>
+            <div>
+              <label className="block text-sm text-muted-foreground mb-1">
+                Recipient source
+              </label>
+              <select
+                value={(node.data.recipient_type as string) || "field"}
+                onChange={(e) => onUpdate({ recipient_type: e.target.value })}
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
+              >
+                <option value="field">Record phone field</option>
+                <option value="literal">Specific E.164 number</option>
+              </select>
+            </div>
+            {(node.data.recipient_type as string) === "literal" ? (
+              <div>
+                <label className="block text-sm text-muted-foreground mb-1">
+                  Phone number
+                </label>
+                <input
+                  type="tel"
+                  value={(node.data.phone_number as string) || ""}
+                  onChange={(e) => onUpdate({ phone_number: e.target.value })}
+                  placeholder="+14155552671"
+                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
+                />
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm text-muted-foreground mb-1">
+                  Phone field slug
+                </label>
+                <input
+                  type="text"
+                  value={(node.data.phone_field as string) || "phone"}
+                  onChange={(e) => onUpdate({ phone_field: e.target.value })}
+                  placeholder="phone"
+                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
+                />
+              </div>
+            )}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-sm text-muted-foreground">Message</label>
+                <InlineFieldPicker
+                  workspaceId={workspaceId}
+                  automationId={automationId}
+                  objectId={triggerObjectId}
+                  nodeId={node.id}
+                  onInsert={(value) => insertAtCursor(messageTemplateRef, value, "message_template")}
+                />
+              </div>
+              <textarea
+                ref={messageTemplateRef}
+                value={(node.data.message_template as string) || ""}
+                onChange={(e) => onUpdate({ message_template: e.target.value })}
+                placeholder="Message... Click 'Insert field' to add variables"
+                rows={3}
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
             </div>
-            <textarea
-              ref={messageTemplateRef}
-              value={(node.data.message_template as string) || ""}
-              onChange={(e) => onUpdate({ message_template: e.target.value })}
-              placeholder="Message... Click 'Insert field' to add variables"
-              rows={3}
-              className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
-            />
-          </div>
+          </>
         )}
 
         {actionType === "send_slack" && (
@@ -1279,6 +1362,42 @@ export function NodeConfigPanel({
             )}
 
             {/* Message */}
+            <div>
+              <label className="block text-sm text-muted-foreground mb-1">
+                Headers (JSON)
+              </label>
+              <textarea
+                value={
+                  typeof node.data.headers === "string"
+                    ? node.data.headers
+                    : JSON.stringify(node.data.headers || {}, null, 2)
+                }
+                onChange={(e) => onUpdate({ headers: e.target.value })}
+                placeholder='{"Authorization": "Bearer {{trigger.token}}"}'
+                rows={3}
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm font-mono"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-muted-foreground mb-1">
+                Timeout (seconds)
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="60"
+                value={(node.data.timeout_seconds as number) || 30}
+                onChange={(e) =>
+                  onUpdate({
+                    timeout_seconds: Math.max(
+                      1,
+                      Math.min(60, Number(e.target.value) || 30)
+                    ),
+                  })
+                }
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
+              />
+            </div>
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-sm text-muted-foreground">Message</label>
@@ -2376,9 +2495,8 @@ export function NodeConfigPanel({
             onChange={(e) => onUpdate({ wait_type: e.target.value })}
             className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
           >
-            {/* Only Duration is wired end-to-end for live triggers. Until-Date
-                and Until-Event are hidden until they execute durably too. */}
             <option value="duration">Duration</option>
+            <option value="datetime">Wait Until Date</option>
           </select>
         </div>
 
@@ -2416,7 +2534,12 @@ export function NodeConfigPanel({
             <input
               type="datetime-local"
               value={(node.data.wait_until as string) || ""}
-              onChange={(e) => onUpdate({ wait_until: e.target.value })}
+              onChange={(e) =>
+                onUpdate({
+                  wait_until: e.target.value,
+                  timezone_offset_minutes: new Date().getTimezoneOffset(),
+                })
+              }
               className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
             />
           </div>
@@ -2562,23 +2685,33 @@ export function NodeConfigPanel({
   };
 
   const renderAgentConfig = () => {
-    const agentType = (node.data.agent_type as string) || "custom";
+    const agentType: string = "existing";
 
     return (
       <div className="space-y-4">
         <div>
-          <label className="block text-sm text-muted-foreground mb-1">Agent Type</label>
+          <label className="block text-sm text-muted-foreground mb-1">Existing Agent</label>
           <select
-            value={agentType}
-            onChange={(e) => onUpdate({ agent_type: e.target.value })}
+            value={(node.data.agent_id as string) || ""}
+            onChange={(e) =>
+              onUpdate({ agent_type: "existing", agent_id: e.target.value })
+            }
             className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
           >
-            <option value="sales_outreach">Sales Outreach</option>
-            <option value="lead_scoring">Lead Scoring</option>
-            <option value="email_drafter">Email Drafter</option>
-            <option value="data_enrichment">Data Enrichment</option>
-            <option value="custom">Custom Agent</option>
+            <option value="">
+              {agentsLoading ? "Loading agents..." : "Select an active agent..."}
+            </option>
+            {agents.map((agent) => (
+              <option key={agent.id} value={agent.id}>
+                {agent.name}{agent.is_system ? " (System)" : ""}
+              </option>
+            ))}
           </select>
+          {!agentsLoading && agents.length === 0 && (
+            <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+              Create and activate an agent before publishing this workflow.
+            </p>
+          )}
         </div>
 
         {/* Sales Outreach Configuration */}
@@ -2957,36 +3090,90 @@ export function NodeConfigPanel({
           </>
         )}
 
-        {/* Common Settings */}
         <div className="border-t border-border pt-4">
-          <label className="block text-sm text-muted-foreground mb-2">Output Settings</label>
-          <div>
-            <label className="block text-sm text-muted-foreground mb-1">Save Output To</label>
-            <FieldPicker
-              workspaceId={workspaceId}
-              automationId={automationId}
-              objectId={triggerObjectId}
-              nodeId={node.id}
-              value={(node.data.output_field as string) || ""}
-              onChange={(value) => {
-                const match = value.match(/\{\{(.+?)\}\}/);
-                onUpdate({ output_field: match ? match[1] : value });
-              }}
-              placeholder="Select field to store agent output..."
-              allowCustom={true}
+          <label className="block text-sm text-muted-foreground mb-2">
+            Execution settings
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-sm text-muted-foreground mb-1">
+                Input name
+              </label>
+              <input
+                type="text"
+                value={(node.data.input_name as string) || ""}
+                onChange={(e) => {
+                  const inputName = e.target.value;
+                  const inputPath = (node.data.input_path as string) || "";
+                  onUpdate({
+                    input_name: inputName,
+                    input_mapping:
+                      inputName && inputPath
+                        ? { [inputName]: inputPath }
+                        : {},
+                  });
+                }}
+                placeholder="contact_email"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-muted-foreground mb-1">
+                Context path
+              </label>
+              <input
+                type="text"
+                value={(node.data.input_path as string) || ""}
+                onChange={(e) => {
+                  const inputPath = e.target.value;
+                  const inputName = (node.data.input_name as string) || "";
+                  onUpdate({
+                    input_path: inputPath,
+                    input_mapping:
+                      inputName && inputPath
+                        ? { [inputName]: inputPath }
+                        : {},
+                  });
+                }}
+                placeholder="record.values.email"
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
+              />
+            </div>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            The complete CRM record and trigger are always included; this mapping adds one named input.
+          </p>
+          <div className="mt-3">
+            <label className="block text-sm text-muted-foreground mb-1">
+              Output variable
+            </label>
+            <input
+              type="text"
+              value={(node.data.output_variable as string) || ""}
+              onChange={(e) => onUpdate({ output_variable: e.target.value })}
+              placeholder="agent_result"
+              className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
             />
           </div>
-          <div className="flex items-center gap-2 mt-3">
-            <input
-              type="checkbox"
-              id="add-agent-note"
-              checked={(node.data.add_execution_note as boolean) ?? true}
-              onChange={(e) => onUpdate({ add_execution_note: e.target.checked })}
-              className="rounded bg-accent border-border"
-            />
-            <label htmlFor="add-agent-note" className="text-sm text-foreground">
-              Add note with agent execution details
+          <div className="mt-3">
+            <label className="block text-sm text-muted-foreground mb-1">
+              Timeout (seconds)
             </label>
+            <input
+              type="number"
+              min="1"
+              max="600"
+              value={(node.data.timeout_seconds as number) || 300}
+              onChange={(e) =>
+                onUpdate({
+                  timeout_seconds: Math.max(
+                    1,
+                    Math.min(600, Number(e.target.value) || 300)
+                  ),
+                })
+              }
+              className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
+            />
           </div>
         </div>
 
@@ -3007,6 +3194,11 @@ export function NodeConfigPanel({
           )}
           {agentType === "custom" && (
             <p>Executes a custom agent you&apos;ve configured with specific goals, tools, and behaviors.</p>
+          )}
+          {agentType === "existing" && (
+            <p>
+              Runs the selected active agent with the CRM record, trigger data, and prior workflow outputs, then records its observed result.
+            </p>
           )}
         </div>
       </div>
@@ -3097,26 +3289,46 @@ export function NodeConfigPanel({
   };
 
   const renderBranchConfig = () => {
-    const branches = (node.data.branches as Array<{ id: string; label: string }>) || [
-      { id: "branch-a", label: "Path A" },
-      { id: "branch-b", label: "Path B" },
+    type BranchConfig = {
+      id: string;
+      label: string;
+      field?: string;
+      operator?: string;
+      value?: string;
+      is_else?: boolean;
+    };
+    const branches = (node.data.branches as BranchConfig[]) || [
+      { id: "branch-a", label: "Path A", field: "", operator: "equals", value: "" },
+      { id: "else", label: "Else", is_else: true },
     ];
 
-    const updateBranch = (index: number, label: string) => {
+    const updateBranch = (index: number, patch: Partial<BranchConfig>) => {
       const newBranches = [...branches];
-      newBranches[index] = { ...newBranches[index], label };
+      newBranches[index] = { ...newBranches[index], ...patch };
       onUpdate({ branches: newBranches });
     };
 
     const addBranch = () => {
       const newId = `branch-${Date.now()}`;
+      const elseBranch = branches.find((branch) => branch.is_else);
+      const ruleBranches = branches.filter((branch) => !branch.is_else);
       onUpdate({
-        branches: [...branches, { id: newId, label: `Path ${branches.length + 1}` }],
+        branches: [
+          ...ruleBranches,
+          {
+            id: newId,
+            label: `Path ${ruleBranches.length + 1}`,
+            field: "",
+            operator: "equals",
+            value: "",
+          },
+          elseBranch || { id: "else", label: "Else", is_else: true },
+        ],
       });
     };
 
     const removeBranch = (index: number) => {
-      if (branches.length <= 2) return;
+      if (branches[index].is_else || branches.length <= 2) return;
       onUpdate({
         branches: branches.filter((_, i) => i !== index),
       });
@@ -3126,23 +3338,55 @@ export function NodeConfigPanel({
       <div className="space-y-4">
         <label className="block text-sm text-muted-foreground">Branches</label>
         {branches.map((branch, index) => (
-          <div key={branch.id} className="flex gap-2">
-            <input
-              type="text"
-              value={branch.label}
-              onChange={(e) => updateBranch(index, e.target.value)}
-              placeholder={`Path ${index + 1}`}
-              className="flex-1 bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
-            />
-            {branches.length > 2 && (
-              <button
-                onClick={() => removeBranch(index)}
-                aria-label={`Remove branch ${index + 1}`}
-                title="Remove branch"
-                className="p-2 text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
-              >
-                <X className="h-4 w-4" aria-hidden />
-              </button>
+          <div key={branch.id} className="space-y-2 rounded-lg border border-border p-3">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={branch.label}
+                disabled={branch.is_else}
+                onChange={(e) => updateBranch(index, { label: e.target.value })}
+                placeholder={`Path ${index + 1}`}
+                className="flex-1 bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm disabled:opacity-70"
+              />
+              {!branch.is_else && branches.length > 2 && (
+                <button
+                  onClick={() => removeBranch(index)}
+                  aria-label={`Remove branch ${index + 1}`}
+                  title="Remove branch"
+                  className="p-2 text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
+                >
+                  <X className="h-4 w-4" aria-hidden />
+                </button>
+              )}
+            </div>
+            {!branch.is_else && (
+              <div className="grid grid-cols-3 gap-2">
+                <input
+                  type="text"
+                  value={branch.field || ""}
+                  onChange={(e) => updateBranch(index, { field: e.target.value })}
+                  placeholder="record.values.status"
+                  className="bg-accent border border-border rounded-lg px-2 py-2 text-foreground text-xs"
+                />
+                <select
+                  value={branch.operator || "equals"}
+                  onChange={(e) => updateBranch(index, { operator: e.target.value })}
+                  className="bg-accent border border-border rounded-lg px-2 py-2 text-foreground text-xs"
+                >
+                  {conditionOperators.map((operator) => (
+                    <option key={operator.value} value={operator.value}>
+                      {operator.label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  value={branch.value || ""}
+                  onChange={(e) => updateBranch(index, { value: e.target.value })}
+                  placeholder="Expected value"
+                  className="bg-accent border border-border rounded-lg px-2 py-2 text-foreground text-xs"
+                />
+              </div>
             )}
           </div>
         ))}
@@ -3262,6 +3506,76 @@ export function NodeConfigPanel({
                 </p>
               </>
             )}
+          </div>
+        )}
+
+        {/* Save sits above the destructive action. It greys out while this
+            node carries a blocking error - the same condition that colours the
+            node red on the canvas and that stops Publish - because the save
+            endpoint validates too and would reject the write. */}
+        {onSave && (
+          <div className="pt-4 border-t border-border">
+            {nodeErrors.length > 0 && (
+              <div className="mb-3 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2">
+                <p className="text-xs font-medium text-red-400">
+                  Finish this step before saving
+                </p>
+                <ul className="mt-1 space-y-0.5">
+                  {nodeErrors.map((e, i) => (
+                    <li key={i} className="text-xs text-red-400">
+                      • {e.message}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <button
+              onClick={() => onSave()}
+              disabled={isSaving || !hasChanges || nodeErrors.length > 0}
+              aria-label="Save automation"
+              title={
+                nodeErrors.length > 0
+                  ? "This step is missing required fields"
+                  : undefined
+              }
+              className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                isSaving || !hasChanges || nodeErrors.length > 0
+                  ? "bg-accent text-muted-foreground cursor-not-allowed opacity-60"
+                  : "bg-primary text-primary-foreground hover:opacity-90"
+              }`}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Saving…
+                </>
+              ) : nodeErrors.length > 0 || hasChanges ? (
+                <>
+                  <Save className="h-4 w-4" />
+                  Save changes
+                </>
+              ) : (
+                <>
+                  <Check className="h-4 w-4" />
+                  Saved
+                </>
+              )}
+            </button>
+            <p
+              role="status"
+              aria-live="polite"
+              className="mt-2 text-xs text-center min-h-4 text-muted-foreground"
+            >
+              {isSaving
+                ? "Saving this automation…"
+                : nodeErrors.length > 0
+                  ? "Saving is unavailable until the fields above are filled in."
+                  : hasChanges
+                    ? "This node has unsaved changes."
+                    : justSaved
+                      ? "Saved. Your changes will survive a refresh."
+                      : "All changes saved."}
+            </p>
           </div>
         )}
 

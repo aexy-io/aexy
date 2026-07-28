@@ -373,6 +373,12 @@ class Settings(BaseSettings):
     # Extra origins (comma-separated, e.g. "https://aexy.io,https://app.aexy.io")
     # allowed as post-OAuth redirect targets beyond frontend_url + loopback.
     oauth_extra_redirect_hosts: str = ""
+    # Automation webhook steps take a URL from any workspace user, so by default
+    # they may not reach loopback, private, link-local or otherwise internal
+    # addresses — that is the cloud metadata endpoint and every unauthenticated
+    # service on the network. A self-hosted deployment whose automations are
+    # meant to call internal systems can turn the guard off deliberately.
+    allow_private_webhook_targets: bool = False
     backend_url: str = "http://localhost:8000"
     mailagent_url: str = "http://localhost:8001"
     # HMAC shared secret between backend and mailagent. Backend signs every
