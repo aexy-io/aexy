@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 
 /**
  * Header CTA for the public community pages. Those pages are server/ISR
@@ -12,10 +13,11 @@ import { useEffect, useState } from "react";
  * (→ /dashboard) instead of being told to sign in when they already are.
  */
 export function CommunityAuthButton({
-  signedOutLabel = "Sign in",
+  signedOutVariant = "signIn",
 }: {
-  signedOutLabel?: string;
+  signedOutVariant?: "signIn" | "signInToJoin";
 }) {
+  const t = useTranslations("community");
   const [signedIn, setSignedIn] = useState(false);
   const [next, setNext] = useState("/");
 
@@ -31,7 +33,7 @@ export function CommunityAuthButton({
   if (signedIn) {
     return (
       <Link href="/dashboard" className={className}>
-        Open app
+        {t("auth.openApp")}
       </Link>
     );
   }
@@ -41,7 +43,7 @@ export function CommunityAuthButton({
       href={`/login?next=${encodeURIComponent(next)}`}
       className={className}
     >
-      {signedOutLabel}
+      {t(`auth.${signedOutVariant}`)}
     </Link>
   );
 }

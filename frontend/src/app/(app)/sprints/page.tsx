@@ -400,7 +400,11 @@ function SprintsPageContent() {
   // project-less form (they only know the task id), so resolve which project
   // the task belongs to and forward to that project's board, where the
   // `?task=` param opens the task detail.
-  const taskIdParam = searchParams.get("task");
+  //
+  // On the Tasks tab we stay put: `WorkspaceTasksTab` owns `?task=` there and
+  // opens the same detail modal in place, so redirecting would throw away the
+  // filtered view the user is looking at.
+  const taskIdParam = activeTab === "tasks" ? null : searchParams.get("task");
   const {
     data: resolvedTeamId,
     isLoading: resolvingTask,
@@ -436,6 +440,9 @@ function SprintsPageContent() {
 
   const setActiveTab = (tab: string) => {
     const params = new URLSearchParams(searchParams.toString());
+    // Drop any open task detail — carrying `?task=` off the Tasks tab would
+    // re-arm the board redirect above on whatever tab the user just picked.
+    params.delete("task");
     if (tab === "sprints") {
       params.delete("tab");
     } else {
