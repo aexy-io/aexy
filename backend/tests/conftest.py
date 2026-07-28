@@ -2,12 +2,14 @@
 
 import asyncio
 import os
+import uuid
 from collections.abc import AsyncGenerator, Generator
 from typing import Any
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text as sa_text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool, StaticPool
 
@@ -543,3 +545,67 @@ def sample_slack_command() -> dict[str, Any]:
         "response_url": "https://hooks.slack.com/commands/xxx",
         "trigger_id": "123456.789",
     }
+
+
+# =============================================================================
+# CRM automation helpers
+# =============================================================================
+
+
+async def seed_workspace(db: AsyncSession) -> str:
+    """Insert a real workspace (and its owner) and return the workspace id.
+
+    `crm_automations.workspace_id` is a genuine foreign key. SQLite leaves
+    foreign keys unenforced by default, so a fabricated uuid passes on the
+    default test DB and only fails when the same suite is pointed at Postgres
+    — which is where these tables actually live. Tests that need an automation
+    should build it on top of this rather than inventing an id.
+
+    Raw INSERTs on purpose: the point is a valid FK target, not the whole
+    workspace object graph, and the ORM models pull in far more than that.
+    """
+    workspace_id = str(uuid.uuid4())
+    owner_id = str(uuid.uuid4())
+    await db.execute(
+        sa_text(
+            "INSERT INTO developers (id, repos_synced_count, llm_requests_today, "
+            "llm_tokens_used_this_month, llm_input_tokens_this_month, "
+            "llm_output_tokens_this_month, llm_overage_cost_cents, "
+            "has_completed_onboarding) "
+            "VALUES (:i, 0, 0, 0, 0, 0, 0, false)"
+        ),
+        {"i": owner_id},
+    )
+    await db.execute(
+        sa_text(
+            "INSERT INTO workspaces (id, name, slug, type, owner_id, settings, "
+            "is_active) VALUES (:i, 'test', :s, 'team', :o, '{}', true)"
+        ),
+        {"i": workspace_id, "s": f"ws-{workspace_id[:8]}", "o": owner_id},
+    )
+    await db.flush()
+    return workspace_id
+
+
+async def seed_crm_object(db: AsyncSession, workspace_id: str, name: str = "Object") -> str:
+    """Insert a CRM object in `workspace_id` and return its id.
+
+    `crm_automations.object_id` is a foreign key too, so an automation bound to
+    a made-up object id only inserts on SQLite.
+
+    Built through the ORM rather than raw SQL: CRMObject carries a dozen
+    non-null columns with Python-side defaults, and spelling them out by hand
+    means the helper breaks every time one is added or renamed.
+    """
+    from aexy.models.crm import CRMObject
+
+    crm_object = CRMObject(
+        id=str(uuid.uuid4()),
+        workspace_id=workspace_id,
+        name=name,
+        plural_name=f"{name}s",
+        slug=f"{name.lower()}-{uuid.uuid4().hex[:8]}",
+    )
+    db.add(crm_object)
+    await db.flush()
+    return crm_object.id
