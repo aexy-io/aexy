@@ -43,6 +43,12 @@ test.describe.configure({ timeout: 180_000 });
 /** Canvas categories that are structural rather than plain actions. */
 const STRUCTURAL_CATEGORIES = ["condition", "wait", "agent", "branch", "join"];
 
+/**
+ * Node types no executor runs, in either release. `join` is skipped outright
+ * by the engine, so publishing one produces a graph that quietly ignores it.
+ */
+const UNRUNNABLE_NODE_TYPES = ["join"];
+
 /** Minimal node data that satisfies each structural type's own validation. */
 const STRUCTURAL_NODE_DATA: Record<string, Record<string, unknown>> = {
   condition: {
@@ -196,30 +202,32 @@ test.describe("AI / Automation publish routing (live)", () => {
     ).toEqual([]);
   });
 
-  test("a structural node the palette withholds is refused, not dropped", async ({
-    page,
+  test("a node type no executor can run is refused, not dropped", async ({
     request,
   }) => {
-    const offered = await offeredStructuralCategories(page);
-    const withheld = STRUCTURAL_CATEGORIES.filter((k) => !offered.includes(k));
-    test.skip(
-      withheld.length === 0,
-      "this build offers every structural node — nothing is withheld to refuse",
-    );
-
-    const id = await createAutomation(request, `e2e-routing-withheld-${Date.now()}`);
+    // Deliberately NOT "anything the palette withholds". Hidden and
+    // unpublishable are different things: `wait` is withheld from the palette
+    // in the foundation release yet still routes to the durable engine, so a
+    // canvas saved before it was hidden must keep publishing. The invariant
+    // that matters is publishable ⇒ runnable, and the only types with no
+    // executor on either side are listed here.
+    //
+    // The full both-constants version of this check is the unit test
+    // test_every_publishable_node_type_has_somewhere_to_run; from the browser
+    // only _EXECUTABLE_NODE_TYPES is observable.
+    const id = await createAutomation(request, `e2e-routing-unrunnable-${Date.now()}`);
     created.push(id);
 
-    for (const kind of withheld) {
+    for (const kind of UNRUNNABLE_NODE_TYPES) {
       const body = await validateWithStructuralNode(request, id, kind);
       const unsupported = body.errors.filter(
         (e) => e.error_type === "unsupported_node_type",
       );
       expect(
         unsupported.map((e) => e.node_id),
-        `"${kind}" is withheld from the palette, so publish must refuse it. ` +
-          `Accepting it means flattening drops the node and the automation ` +
-          `runs every action unconditionally with nothing reported.`,
+        `nothing executes "${kind}", so publish must refuse it. Accepting it ` +
+          `means flattening drops the node and the automation runs every ` +
+          `action unconditionally with nothing reported.`,
       ).toContain(`${kind}-1`);
     }
   });
@@ -257,12 +265,41 @@ test.describe("AI / Automation publish routing (live)", () => {
     const offered = await offeredStructuralCategories(page);
     test.skip(offered.length === 0, "no structural nodes offered");
 
+    const panel = page.getByTestId("node-config-panel");
+
     for (const kind of offered) {
-      await page.getByTestId(`palette-category-${kind}`).click();
+      const category = page.getByTestId(`palette-category-${kind}`);
+
+      // Two palette shapes. A category with subtypes (wait, agent) carries
+      // aria-expanded and only expands on click; one without (condition,
+      // branch) adds its node directly. Clicking blindly gets a node for the
+      // second kind and an open drawer for the first.
+      if ((await category.getAttribute("aria-expanded")) === null) {
+        await category.click();
+      } else {
+        await category.click();
+        await page
+          .locator(`[data-testid^="palette-subtype-${kind}-"]`)
+          .first()
+          .click();
+      }
+
       await expect(
         canvasNodes(page, kind).first(),
-        `palette offers "${kind}" but clicking it added no node`,
+        `palette offers "${kind}" but adding one produced no node`,
       ).toBeVisible({ timeout: 10_000 });
+
+      // Adding a node selects it, which opens the config panel — and the
+      // panel's backdrop is `fixed inset-0 z-40`, so it swallows clicks on
+      // the palette underneath. Close it before reaching for the next
+      // category, the same way a user has to.
+      if (await panel.isVisible({ timeout: 1_000 }).catch(() => false)) {
+        await panel
+          .getByRole("button", { name: /close/i })
+          .first()
+          .click();
+        await expect(panel).toBeHidden({ timeout: 5_000 });
+      }
     }
   });
 });

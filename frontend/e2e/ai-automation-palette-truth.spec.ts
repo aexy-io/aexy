@@ -43,12 +43,26 @@ const STRUCTURAL_ACTION_TO_CATEGORY: Record<string, string> = {
   branch: "branch",
 };
 
+/**
+ * Actions the registry serves module-wide but the palette only offers once
+ * the workspace has connected the integration behind them. Mirrors
+ * INTEGRATION_GATED_ACTIONS in schemas/automation.py. They are legitimately
+ * absent on a workspace without that integration, so they cannot be required
+ * — but they are still registry members, so they stay allowed.
+ */
+const INTEGRATION_GATED_ACTIONS = ["send_slack"];
+
 const REGISTRY_ACTIONS = actionsForModule("crm").map((a) => a.id);
 const REGISTRY_TRIGGERS = triggersForModule("crm").map((t) => t.id);
 
-/** Action rows the palette should list, minus anything shown as a category. */
+/**
+ * Action rows the palette must list: registry members, minus the ones shown
+ * as their own category, minus the ones gated on a workspace integration.
+ */
 const EXPECTED_ACTION_SUBTYPES = REGISTRY_ACTIONS.filter(
-  (id) => !(id in STRUCTURAL_ACTION_TO_CATEGORY),
+  (id) =>
+    !(id in STRUCTURAL_ACTION_TO_CATEGORY) &&
+    !INTEGRATION_GATED_ACTIONS.includes(id),
 );
 
 /** Categories the palette should show for structural registry entries. */
@@ -96,6 +110,34 @@ test("the automation registry fixture is not empty", () => {
 });
 
 test.describe("AI / Automation palette honesty (live)", () => {
+  test.beforeAll(async ({ browser }) => {
+    // describe-level `timeout` applies to tests, not hooks — a hook keeps the
+    // 30s default, which is less than the compile this hook exists to absorb.
+    test.setTimeout(240_000);
+    // Warm the route in a real page. Next's dev server compiles
+    // /automations/new on first visit, and that alone can outlast
+    // openCanvas's 30s networkidle budget — the first test in the file would
+    // then fail on compile time and say nothing about the palette.
+    //
+    // A plain fetch is not enough: it returns once the HTML is served, while
+    // the client chunks the canvas needs are still being built. Loading it in
+    // a browser is what actually pays that cost up front.
+    const ready = await backendOnlyReady();
+    if (!ready.ok) return;
+    const page = await browser.newPage();
+    try {
+      await page.goto("/automations/new?blank=1&module=crm", {
+        waitUntil: "domcontentloaded",
+        timeout: 180_000,
+      });
+      await page.locator(".react-flow").first().waitFor({ timeout: 60_000 });
+    } catch {
+      // Warming is best-effort; the tests below report the real problem.
+    } finally {
+      await page.close();
+    }
+  });
+
   test.beforeEach(async ({ page }) => {
     const ready = await backendOnlyReady();
     test.skip(!ready.ok, ready.reason);
