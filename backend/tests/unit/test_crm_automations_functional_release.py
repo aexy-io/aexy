@@ -190,8 +190,10 @@ def test_missing_dynamic_value_fails_instead_of_becoming_empty():
 
 
 @pytest.mark.asyncio
-async def test_sms_resolves_record_field_and_reports_provider_acceptance():
-    handler = WorkflowActionHandler(MagicMock())
+async def test_sms_resolves_record_field_and_reports_provider_acceptance(db_session):
+    # A real session: the SMS path now claims an idempotency row before it
+    # dials the provider, so a duplicate cannot follow a lost local write.
+    handler = WorkflowActionHandler(db_session)
     provider = AsyncMock(
         return_value={"sid": "SM123", "status": "queued", "to": "+14155552671"}
     )
@@ -217,8 +219,8 @@ async def test_sms_resolves_record_field_and_reports_provider_acceptance():
 
 
 @pytest.mark.asyncio
-async def test_sms_refusal_is_a_failed_step():
-    handler = WorkflowActionHandler(MagicMock())
+async def test_sms_refusal_is_a_failed_step(db_session):
+    handler = WorkflowActionHandler(db_session)
     provider = AsyncMock(
         return_value={"error": "recipient blocked", "status": "failed"}
     )

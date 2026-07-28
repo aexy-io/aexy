@@ -1960,3 +1960,46 @@ class CRMStageHistory(Base):
         Index("idx_crm_stage_history_record", "record_id", "entered_at"),
         Index("idx_crm_stage_history_ws_pipeline", "workspace_id", "pipeline_id", "entered_at"),
     )
+
+
+class CRMAutomationDeliveryAttempt(Base):
+    """One attempt to hand a message to an external provider.
+
+    Email is protected by the outbox and the step claim. SMS was not: the
+    handler called the provider and returned "accepted", so a failure in the
+    local write that followed meant the retry sent a second message. Twilio has
+    no idempotency key of its own, so the guard lives here.
+
+    `idempotency_key` is unique, and the claim is an INSERT — two callers racing
+    on the same (run, step, recipient) cannot both win. A row left on "sending"
+    is an *uncertain* send and must never be retried automatically; the provider
+    may already have delivered it.
+    """
+
+    __tablename__ = "crm_automation_delivery_attempts"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    # The partial index for unresolved rows lives in the SQL migration; the ORM
+    # cannot express it.
+    idempotency_key: Mapped[str] = mapped_column(
+        String(500), nullable=False, unique=True
+    )
+    channel: Mapped[str] = mapped_column(String(20), nullable=False)
+    recipient: Mapped[str] = mapped_column(String(320), nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="sending"
+    )
+    provider_message_id: Mapped[str | None] = mapped_column(
+        String(120), nullable=True
+    )
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )

@@ -934,7 +934,7 @@ class CRMAutomationService:
             )
         elif action_type == "send_sms":
             return await self._action_send_sms(
-                config, record, workspace_id, trigger_data
+                config, record, workspace_id, trigger_data, run_id, action_index
             )
         elif action_type == "send_slack":
             return await self._action_send_slack(config, record, workspace_id, trigger_data)
@@ -1757,6 +1757,8 @@ class CRMAutomationService:
         record: CRMRecord | None,
         workspace_id: str,
         trigger_data: dict | None = None,
+        run_id: str | None = None,
+        action_index: int | str | None = None,
     ) -> dict:
         """Send one SMS and return only an observed provider handoff result."""
         recipient_type = str(config.get("recipient_type") or "field")
@@ -1780,7 +1782,44 @@ class CRMAutomationService:
             message_template, record, trigger_data
         )
 
+        from aexy.services.automation_delivery import (
+            claim_delivery,
+            delivery_key,
+            mark_delivered,
+            mark_refused,
+        )
         from aexy.services.twilio_service import TwilioService
+
+        # Claim before dialling the provider. Without this, a Twilio acceptance
+        # followed by a failed local write meant the retry sent the customer a
+        # second text — and Twilio has no idempotency key to lean on.
+        claim = None
+        if run_id is not None and action_index is not None:
+            claim = await claim_delivery(
+                self.db,
+                channel="sms",
+                key=delivery_key("sms", run_id, str(action_index), phone_to),
+                recipient=phone_to,
+            )
+            if claim.decision == "already_sent":
+                return {
+                    "to": phone_to,
+                    "provider_message_id": claim.provider_message_id,
+                    "accepted": True,
+                    "deduplicated": True,
+                }
+            if claim.decision == "uncertain":
+                # It may already have arrived. Sending again risks a duplicate;
+                # only the provider's own log can say which happened.
+                return {
+                    "error": (
+                        "A previous attempt reached the SMS provider and did "
+                        "not finish recording. Not re-sending — check the "
+                        "provider log before retrying."
+                    ),
+                    "to": phone_to,
+                    "needs_review": True,
+                }
 
         result = await TwilioService(self.db).send_sms(
             to=phone_to,
@@ -1789,11 +1828,17 @@ class CRMAutomationService:
             workspace_id=workspace_id,
         )
         if result.get("error"):
+            # A refusal means nothing was delivered, so the attempt is released
+            # for a later retry rather than left looking uncertain.
+            if claim:
+                await mark_refused(self.db, claim.attempt_id, str(result["error"]))
             return {
                 "error": f"SMS provider refused the message: {result['error']}",
                 "to": phone_to,
                 "provider_status": result.get("status"),
             }
+        if claim:
+            await mark_delivered(self.db, claim.attempt_id, result.get("sid"))
         return {
             "to": phone_to,
             "provider_message_id": result.get("sid"),

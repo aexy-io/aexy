@@ -135,6 +135,35 @@ class WorkflowActionHandler:
 
         return await handler(data, context)
 
+    def _child_workflow_id(
+        self, context: WorkflowExecutionContext, kind: str
+    ) -> str | None:
+        """A stable Temporal id for child work this node hands off.
+
+        `dispatch` invents a random workflow id when none is given, so a node
+        that reaches the provider and then fails — or whose activity is simply
+        retried after an infrastructure blip — enqueues a *second* independent
+        child. The customer gets two emails, two Slack messages, two campaign
+        sends, and nothing links the duplicates back together.
+
+        (execution, node) is the identity that survives a retry of the same
+        step: the execution id is unique per run and the node id unique within
+        it, so a genuine second run of the same automation gets a different key
+        while a retry of the same step gets the same one. Paired with
+        `reject_duplicate_id`, a handoff that landed and lost its response is
+        refused rather than repeated.
+
+        Returns None on the inline and manual paths, which have no execution to
+        key off — those are not retried by Temporal, so there is nothing to
+        deduplicate.
+        """
+        execution_id = str(context.trigger_data.get("execution_id") or "")
+        node_id = str(context.trigger_data.get("node_id") or "")
+        if not execution_id or not node_id:
+            return None
+        return f"{kind}-{execution_id}-{node_id}"
+
+
     async def _update_record(
         self, data: dict, context: WorkflowExecutionContext
     ) -> NodeExecutionResult:
@@ -312,6 +341,8 @@ class WorkflowActionHandler:
                 record_id=context.record_id,
             ),
             task_queue=TaskQueue.EMAIL,
+            workflow_id=self._child_workflow_id(context, "automation-email"),
+            reject_duplicate_id=True,
         )
 
         return NodeExecutionResult(
@@ -397,6 +428,8 @@ class WorkflowActionHandler:
                 record_id=context.record_id,
             ),
             task_queue=TaskQueue.EMAIL,
+            workflow_id=self._child_workflow_id(context, "automation-tracked-email"),
+            reject_duplicate_id=True,
         )
 
         return NodeExecutionResult(
@@ -482,6 +515,8 @@ class WorkflowActionHandler:
                     recipient_id=recipient.id,
                 ),
                 task_queue=TaskQueue.EMAIL,
+                workflow_id=self._child_workflow_id(context, "automation-campaign"),
+                reject_duplicate_id=True,
             )
 
             return NodeExecutionResult(
@@ -534,6 +569,8 @@ class WorkflowActionHandler:
                     record_id=context.record_id,
                 ),
                 task_queue=TaskQueue.EMAIL,
+                workflow_id=self._child_workflow_id(context, "automation-campaign-2"),
+                reject_duplicate_id=True,
             )
 
             return NodeExecutionResult(
@@ -742,6 +779,8 @@ class WorkflowActionHandler:
                 record_id=context.record_id,
             ),
             task_queue=TaskQueue.INTEGRATIONS,
+            workflow_id=self._child_workflow_id(context, "automation-slack"),
+            reject_duplicate_id=True,
         )
 
         return NodeExecutionResult(
@@ -780,7 +819,49 @@ class WorkflowActionHandler:
             )
         message = self._render_template(str(message), context)
 
+        from aexy.services.automation_delivery import (
+            claim_delivery,
+            delivery_key,
+            mark_delivered,
+            mark_refused,
+        )
         from aexy.services.twilio_service import TwilioService
+
+        # Same claim the inline path takes. This handler runs inside a Temporal
+        # activity that retries, so without it a provider acceptance followed
+        # by any later failure sends the customer a second text.
+        execution_id = str(context.trigger_data.get("execution_id") or "")
+        node_id = str(context.trigger_data.get("node_id") or "")
+        claim = None
+        if execution_id and node_id:
+            claim = await claim_delivery(
+                self.db,
+                channel="sms",
+                key=delivery_key("sms", execution_id, node_id, phone_to),
+                recipient=phone_to,
+            )
+            if claim.decision == "already_sent":
+                return NodeExecutionResult(
+                    node_id="",
+                    status="success",
+                    output={
+                        "to": phone_to,
+                        "provider_message_id": claim.provider_message_id,
+                        "accepted": True,
+                        "deduplicated": True,
+                    },
+                )
+            if claim.decision == "uncertain":
+                return NodeExecutionResult(
+                    node_id="",
+                    status="failed",
+                    error=(
+                        "A previous attempt reached the SMS provider and did "
+                        "not finish recording. Not re-sending — check the "
+                        "provider log before retrying."
+                    ),
+                    output={"to": phone_to, "needs_review": True},
+                )
 
         result = await TwilioService(self.db).send_sms(
             to=phone_to,
@@ -789,12 +870,17 @@ class WorkflowActionHandler:
             workspace_id=context.workspace_id,
         )
         if result.get("error"):
+            # Refused outright: nothing was delivered, so release the claim.
+            if claim:
+                await mark_refused(self.db, claim.attempt_id, str(result["error"]))
             return NodeExecutionResult(
                 node_id="",
                 status="failed",
                 error=f"SMS provider refused the message: {result['error']}",
                 output={"to": phone_to, "provider_status": result.get("status")},
             )
+        if claim:
+            await mark_delivered(self.db, claim.attempt_id, result.get("sid"))
 
         return NodeExecutionResult(
             node_id="",
@@ -2147,6 +2233,8 @@ class WorkflowActionHandler:
                         record_id=context.record_id,
                     ),
                     task_queue=TaskQueue.EMAIL,
+                    workflow_id=self._child_workflow_id(context, "automation-rejection"),
+                    reject_duplicate_id=True,
                 )
 
             return NodeExecutionResult(
@@ -2641,6 +2729,8 @@ class WorkflowActionHandler:
                 record_id=context.record_id,
             ),
             task_queue=TaskQueue.EMAIL,
+            workflow_id=self._child_workflow_id(context, "automation-response"),
+            reject_duplicate_id=True,
         )
 
         return NodeExecutionResult(
