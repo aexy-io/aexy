@@ -24,9 +24,10 @@ import sqlalchemy
 from aexy.models.crm import (
     CRMAutomation,
     CRMAutomationEmailOutbox,
-    CRMAutomationRun,
 )
 from aexy.services.crm_automation_service import CRMAutomationService
+
+from tests.conftest import seed_workspace
 
 pytestmark = pytest.mark.asyncio
 
@@ -34,7 +35,7 @@ pytestmark = pytest.mark.asyncio
 async def _make_automation(db_session, actions, error_handling=None):
     automation = CRMAutomation(
         id=str(uuid4()),
-        workspace_id=str(uuid4()),
+        workspace_id=await seed_workspace(db_session),
         name="Email Automation",
         module="crm",
         object_id=None,

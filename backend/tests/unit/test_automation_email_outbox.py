@@ -19,6 +19,8 @@ from aexy.models.crm import (
 )
 from aexy.services import automation_email_outbox as outbox_service
 
+from tests.conftest import seed_workspace
+
 pytestmark = pytest.mark.asyncio
 
 
@@ -44,11 +46,17 @@ def drain(db_session, monkeypatch):
 async def _seed(db_session, *, status="pending", attempts=0, claimed_at=None,
                 created_at=None):
     automation = CRMAutomation(
-        id=str(uuid4()), workspace_id=str(uuid4()), name="A", module="crm",
+        id=str(uuid4()), workspace_id=await seed_workspace(db_session), name="A",
+        module="crm",
         object_id=None, trigger_type="record.created", trigger_config={},
         actions=[], is_active=True,
     )
     db_session.add(automation)
+    # Flush between each: the ids are pre-assigned in Python, so SQLAlchemy has
+    # no relationship to infer an insert order from, and on Postgres the child
+    # can reach the database before its parent. SQLite lets that pass only
+    # because it leaves foreign keys unenforced.
+    await db_session.flush()
     run = CRMAutomationRun(
         id=str(uuid4()), automation_id=automation.id, module="crm",
         trigger_data={}, status="queued",
@@ -56,6 +64,7 @@ async def _seed(db_session, *, status="pending", attempts=0, claimed_at=None,
         started_at=datetime.now(timezone.utc),
     )
     db_session.add(run)
+    await db_session.flush()
     row = CRMAutomationEmailOutbox(
         id=str(uuid4()), automation_run_id=run.id, step_order=0,
         payload={"workspace_id": automation.workspace_id, "to_email": "a@b.com",
