@@ -4,7 +4,7 @@ import httpx
 import json
 import logging
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 from urllib.parse import urlparse
@@ -810,161 +810,46 @@ class WorkflowActionHandler:
     async def _create_task(
         self, data: dict, context: WorkflowExecutionContext
     ) -> NodeExecutionResult:
-        """Create a sprint task."""
-        from aexy.models.sprint import SprintTask
-        from aexy.models.project import ProjectTeam
+        """Create a sprint task via the shared handler.
 
-        title = data.get("task_title") or data.get("title", "New Task")
-        description = data.get("task_description") or data.get("description", "")
-        title = self._render_template(title, context)
-        description = self._render_template(description, context)
+        Delegates like every other action here. It used to carry its own copy
+        of the assignee lookup, due-offset parsing and retry dedup, and the two
+        had already drifted: on a bad due value the inline path silently
+        created a task with no date while this one failed the step. Same
+        config, different outcome depending only on whether the canvas held a
+        wait node.
+        """
+        from aexy.services.crm_automation_service import CRMAutomationService
 
-        priority = data.get("task_priority") or data.get("priority", "medium")
-        assignee_id = data.get("assignee_id")
-        project_id = data.get("project_id")
-        sprint_id = data.get("sprint_id")
-        labels = data.get("labels", [])
+        record = None
+        if context.record_id:
+            record = (
+                await self.db.execute(
+                    select(CRMRecord).where(CRMRecord.id == context.record_id)
+                )
+            ).scalar_one_or_none()
 
-        workspace_id = context.workspace_id or context.trigger_data.get("workspace_id")
-        if not workspace_id:
+        if not context.workspace_id:
             return NodeExecutionResult(
                 node_id="", status="failed", error="No workspace_id in context",
             )
 
-        if not assignee_id and data.get("assignee_email"):
-            from aexy.models.developer import Developer
-            from aexy.models.workspace import WorkspaceMember
-            from sqlalchemy import func
-
-            assignee_email = str(data["assignee_email"]).strip()
-            assignee_id = (
-                await self.db.execute(
-                    select(Developer.id)
-                    .join(
-                        WorkspaceMember,
-                        WorkspaceMember.developer_id == Developer.id,
-                    )
-                    .where(
-                        WorkspaceMember.workspace_id == workspace_id,
-                        WorkspaceMember.status == "active",
-                        func.lower(Developer.email) == assignee_email.lower(),
-                    )
-                )
-            ).scalar_one_or_none()
-            if not assignee_id:
-                return NodeExecutionResult(
-                    node_id="",
-                    status="failed",
-                    error=(
-                        f"'{assignee_email}' is not an active member of this workspace"
-                    ),
-                )
-
-        due_date = None
-        if data.get("due_in_value") is not None:
-            try:
-                due_amount = int(data["due_in_value"])
-            except (TypeError, ValueError):
-                return NodeExecutionResult(
-                    node_id="", status="failed", error="Task due amount must be a number"
-                )
-            units = {
-                "minutes": 1,
-                "hours": 60,
-                "days": 1440,
-                "weeks": 10080,
-            }
-            unit = str(data.get("due_in_unit") or "days").lower()
-            if due_amount < 0 or unit not in units:
-                return NodeExecutionResult(
-                    node_id="", status="failed", error="Task due setting is invalid"
-                )
-            due_date = datetime.now(timezone.utc) + timedelta(
-                minutes=due_amount * units[unit]
-            )
-
-        execution_id = str(context.trigger_data.get("execution_id") or "")
-        node_id = str(context.trigger_data.get("node_id") or "")
-        source_id = (
-            f"{execution_id}:{node_id}" if execution_id and node_id else str(uuid4())
+        # The dedup identity for a durable run is (execution, node) — the
+        # inline path uses (run, action index). Both are stable across a retry
+        # of the same step, which is all the dedup needs.
+        outcome = await CRMAutomationService(self.db)._action_create_task(
+            data,
+            record,
+            context.workspace_id,
+            context.trigger_data,
+            str(context.trigger_data.get("execution_id") or "") or None,
+            str(context.trigger_data.get("node_id") or "") or None,
         )
-        if execution_id and node_id:
-            existing = (
-                await self.db.execute(
-                    select(SprintTask).where(
-                        SprintTask.workspace_id == workspace_id,
-                        SprintTask.source_type == "automation",
-                        SprintTask.source_id == source_id,
-                    )
-                )
-            ).scalar_one_or_none()
-            if existing:
-                return NodeExecutionResult(
-                    node_id="",
-                    status="success",
-                    output={
-                        "task_id": existing.id,
-                        "title": existing.title,
-                        "created": False,
-                        "deduplicated": True,
-                    },
-                )
-
-        # Look up team from project
-        team_id = None
-        if project_id:
-            try:
-                result = await self.db.execute(
-                    select(ProjectTeam).where(ProjectTeam.project_id == project_id).limit(1)
-                )
-                project_team = result.scalar_one_or_none()
-                if project_team:
-                    team_id = project_team.team_id
-            except Exception as e:
-                logger.error(f"[CREATE_TASK] Failed to look up team for project: {e}")
-
-        try:
-            task = SprintTask(
-                id=str(uuid4()),
-                workspace_id=workspace_id,
-                team_id=team_id,
-                sprint_id=sprint_id,
-                source_type="automation",
-                source_id=source_id,
-                source_url=(
-                    f"/crm/automations/runs/{execution_id}"
-                    if execution_id
-                    else None
-                ),
-                title=title,
-                description=description,
-                priority=priority,
-                assignee_id=assignee_id,
-                labels=labels if isinstance(labels, list) else [],
-                status="todo",
-                end_date=due_date,
-            )
-            self.db.add(task)
-            await self.db.flush()
-
-            logger.info(f"[CREATE_TASK] Task created: id={task.id}, title='{task.title}'")
-
+        if outcome.get("error"):
             return NodeExecutionResult(
-                node_id="",
-                status="success",
-                output={
-                    "task_id": task.id,
-                    "title": task.title,
-                    "project_id": project_id,
-                    "team_id": team_id,
-                    "created": True,
-                },
+                node_id="", status="failed", error=str(outcome["error"])
             )
-        except Exception as e:
-            logger.error(f"[CREATE_TASK] Failed: {e}", exc_info=True)
-            return NodeExecutionResult(
-                node_id="", status="failed", error=f"Failed to create task: {str(e)}",
-            )
+        return NodeExecutionResult(node_id="", status="success", output=outcome)
 
     async def _add_to_list(
         self, data: dict, context: WorkflowExecutionContext

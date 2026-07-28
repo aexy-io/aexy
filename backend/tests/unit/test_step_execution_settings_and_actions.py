@@ -92,6 +92,7 @@ async def test_run_cap_blocks_when_exceeded(db_session):
 async def test_error_handling_stop_halts_after_failed_step():
     service = CRMAutomationService(MagicMock())
     service.db.flush = AsyncMock()
+    service.db.execute = AsyncMock()
     auto = SimpleNamespace(
         id="a1",
         workspace_id="ws",
@@ -135,6 +136,7 @@ async def test_error_handling_stop_halts_after_failed_step():
 async def test_error_handling_continue_runs_remaining_steps():
     service = CRMAutomationService(MagicMock())
     service.db.flush = AsyncMock()
+    service.db.execute = AsyncMock()
     auto = SimpleNamespace(
         id="a1",
         workspace_id="ws",
@@ -180,6 +182,7 @@ async def test_error_handling_continue_runs_remaining_steps():
 async def test_error_handling_retry_retries_once_then_succeeds():
     service = CRMAutomationService(MagicMock())
     service.db.flush = AsyncMock()
+    service.db.execute = AsyncMock()
     auto = SimpleNamespace(
         id="a1",
         workspace_id="ws",

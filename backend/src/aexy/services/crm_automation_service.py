@@ -15,6 +15,10 @@ from sqlalchemy import select, func, and_
 from sqlalchemy.exc import IntegrityError
 
 from aexy.core.config import get_settings
+from aexy.services.automation_counters import (
+    load_run_for_update,
+    record_run_outcome,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -423,6 +427,44 @@ class CRMAutomationService:
 
         return runs
 
+    async def _claim_monthly_run_slot(self, automation: CRMAutomation) -> None:
+        """Take one run against the monthly allowance, or refuse.
+
+        Check-then-increment cannot enforce a limit. The check used to sit here
+        and the increment at the end of the run, with the whole execution in
+        between, so at 99 of 100 any number of concurrent triggers all read 99,
+        all passed, and all ran — the configured cap was advisory at best.
+
+        One conditional UPDATE decides it instead: the row is only bumped while
+        it is still under the limit, and whoever loses sees rowcount 0. The same
+        statement carries total_runs and last_run_at, so a run counts once, at
+        the moment it is admitted, rather than being incremented again later
+        from whichever of several processes happens to finish it.
+        """
+        from sqlalchemy import update as sqlalchemy_update
+
+        conditions = [CRMAutomation.id == automation.id]
+        if automation.run_limit_per_month:
+            conditions.append(
+                CRMAutomation.runs_this_month < CRMAutomation.run_limit_per_month
+            )
+
+        claimed = await self.db.execute(
+            sqlalchemy_update(CRMAutomation)
+            .where(*conditions)
+            .values(
+                runs_this_month=CRMAutomation.runs_this_month + 1,
+                total_runs=CRMAutomation.total_runs + 1,
+                last_run_at=datetime.now(timezone.utc),
+            )
+        )
+        if claimed.rowcount == 0:
+            raise ValueError("Automation run limit exceeded for this month")
+
+        # The in-memory row is now behind the database. Refresh so callers that
+        # read these counters afterwards do not write a stale value back.
+        await self.db.refresh(automation)
+
     async def trigger_automation(
         self,
         automation_id: str,
@@ -437,10 +479,7 @@ class CRMAutomationService:
         if not automation.is_active:
             raise ValueError("Automation is not active")
 
-        # Check run limit
-        if automation.run_limit_per_month:
-            if automation.runs_this_month >= automation.run_limit_per_month:
-                raise ValueError("Automation run limit exceeded for this month")
+        await self._claim_monthly_run_slot(automation)
 
         # Create run record
         # Only set record_id for CRM module (has foreign key constraint to crm_records)
@@ -745,14 +784,14 @@ class CRMAutomationService:
                         failed_steps[0].get("error") or "A step failed"
                     )
 
-            automation.total_runs += 1
-            automation.runs_this_month += 1
-            automation.last_run_at = datetime.now(timezone.utc)
+            # total_runs / runs_this_month / last_run_at were already taken by
+            # _claim_monthly_run_slot when this run was admitted. Only the
+            # outcome is still unknown at that point, and a queued email means
+            # it is unknown here too — the email activity records it later.
             if not has_queued_email:
-                if failed_steps:
-                    automation.failed_runs += 1
-                else:
-                    automation.successful_runs += 1
+                await record_run_outcome(
+                    self.db, automation.id, succeeded=not failed_steps
+                )
 
         except Exception as e:
             run.status = "failed"
@@ -762,10 +801,7 @@ class CRMAutomationService:
                 (run.completed_at - run.started_at).total_seconds() * 1000
             )
 
-            automation.total_runs += 1
-            automation.failed_runs += 1
-            automation.runs_this_month += 1
-            automation.last_run_at = datetime.now(timezone.utc)
+            await record_run_outcome(self.db, automation.id, succeeded=False)
 
             # Notify creator of automation failure
             if automation.created_by_id:
@@ -1551,8 +1587,12 @@ class CRMAutomationService:
         record: CRMRecord | None,
         workspace_id: str,
         trigger_data: dict | None = None,
+        # Together these form the retry-stable identity a repeated attempt
+        # dedups on. The inline executor passes (run id, action index); the
+        # durable one passes (execution id, node id). Either pair is stable
+        # across a retry of the same step, which is all the dedup needs.
         run_id: str | None = None,
-        action_index: int | None = None,
+        action_index: int | str | None = None,
     ) -> dict:
         """Create a sprint task.
 
@@ -1662,6 +1702,10 @@ class CRMAutomationService:
                     "success": True,
                     "task_id": existing.id,
                     "title": existing.title,
+                    # Both flags on both paths: a caller should be able to tell
+                    # "made one" from "found the one a previous attempt made"
+                    # without knowing which executor it went through.
+                    "created": False,
                     "deduplicated": True,
                 }
 
@@ -1700,6 +1744,8 @@ class CRMAutomationService:
                 "team_id": team_id,
                 "project_id": project_id,
                 "sprint_id": sprint_id,
+                "created": True,
+                "deduplicated": False,
             }
         except Exception as e:
             logger.error(f"[CREATE_TASK] Failed to create task: {e}", exc_info=True)
@@ -2297,6 +2343,12 @@ class CRMAutomationService:
                 + index
             )
 
+        # Every channel that was asked for and did not deliver, so "both" can
+        # report a half-failure. Slack is synchronous and reports its real
+        # outcome; email reports "queued" and is reconciled later by the send
+        # activity, so a queued email is not a failure here.
+        failures: list[str] = []
+
         for recipient_index, recipient_email in enumerate(recipient_emails):
             # Send Slack notification
             if channel in ("slack", "both"):
@@ -2308,6 +2360,11 @@ class CRMAutomationService:
                 )
                 if slack_result.get("success"):
                     results["channels_notified"].append("slack")
+                else:
+                    failures.append(
+                        f"Slack to {recipient_email}: "
+                        f"{slack_result.get('error') or 'not delivered'}"
+                    )
                 results["slack"] = slack_result
 
             # Send email notification
@@ -2328,6 +2385,11 @@ class CRMAutomationService:
                 )
                 if email_result.get("success"):
                     results["channels_notified"].append("email")
+                else:
+                    failures.append(
+                        f"Email to {recipient_email}: "
+                        f"{email_result.get('error') or 'not delivered'}"
+                    )
                 results["email"] = email_result
 
         results["recipients_notified"] = len(recipient_emails)
@@ -2335,7 +2397,15 @@ class CRMAutomationService:
         # A delivery failure is nested under results["slack"]/["email"], but the
         # executor only fails a step on a top-level "error". Surface it, or a
         # notification that delivered nothing is recorded as a success.
-        if not results["channels_notified"]:
+        #
+        # Any requested channel failing counts, not just all of them. On
+        # "both", a Slack failure alongside a queued email used to leave
+        # channels_notified non-empty and the step green, so the half that
+        # never arrived was invisible in run history.
+        if failures:
+            results["failures"] = failures
+            results["error"] = "; ".join(failures)
+        elif not results["channels_notified"]:
             results["error"] = "No notification could be delivered"
         if results.get("email", {}).get("queued"):
             # Queued, not success - for every recipient count. Reporting a
@@ -2368,7 +2438,7 @@ class CRMAutomationService:
         if not automation_run_id or not siblings:
             return
 
-        run = await self.db.get(CRMAutomationRun, automation_run_id)
+        run = await load_run_for_update(self.db, automation_run_id)
         if not run:
             return
 

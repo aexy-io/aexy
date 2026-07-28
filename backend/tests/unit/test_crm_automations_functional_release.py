@@ -529,6 +529,7 @@ async def test_a_handler_verdict_is_only_replayed_when_retries_were_asked_for(
 async def test_inline_retry_exhaustion_records_every_attempt_and_fails_run():
     service = CRMAutomationService(MagicMock())
     service.db.flush = AsyncMock()
+    service.db.execute = AsyncMock()
     automation, run = _inline_run_fixture(
         [{"type": "webhook_call", "config": {"webhook_url": "https://example.com"}}]
     )
@@ -553,6 +554,7 @@ async def test_inline_retry_exhaustion_records_every_attempt_and_fails_run():
 async def test_retry_does_not_repeat_an_earlier_successful_side_effect():
     service = CRMAutomationService(MagicMock())
     service.db.flush = AsyncMock()
+    service.db.execute = AsyncMock()
     automation, run = _inline_run_fixture(
         [
             {"type": "send_sms", "config": {"message_template": "first"}},

@@ -56,6 +56,23 @@ class CRMWorkflowResult:
     error_node_id: str | None = None
 
 
+# Temporal replays a running workflow's history against whatever code the
+# worker now has. A wait node can sleep for days, so a deploy lands mid-flight
+# routinely — and any change to the sequence of commands (activities, timers)
+# makes the replay disagree with the recorded history, which wedges the
+# execution rather than failing it.
+#
+# `workflow.patched` is how that is made safe: a history with no marker at this
+# point replays the pre-change branch, while a new execution records the marker
+# and takes the new one. Only command-affecting changes need a gate — building
+# a dict differently is invisible to replay; scheduling an activity or a timer
+# that the old code did not is not.
+#
+# Retire a gate with `workflow.deprecate_patch` only once no execution old
+# enough to need it can still be running.
+_DURABLE_EXECUTION_PATCH = "crm-durable-execution-2026-07"
+
+
 @workflow.defn
 class CRMAutomationWorkflow:
     """Temporal workflow replacing the custom SyncWorkflowExecutor state machine."""
@@ -194,7 +211,9 @@ class CRMAutomationWorkflow:
                                 error=f"Timeout waiting for event: {event_type}",
                                 error_node_id=node_id,
                             )
-                    elif wait_type in {"datetime", "date", "until_date"}:
+                    elif wait_type in {"datetime", "date", "until_date"} and (
+                        workflow.patched(_DURABLE_EXECUTION_PATCH)
+                    ):
                         raw_wait_until = data.get("wait_until") or data.get("until_date")
                         if not raw_wait_until:
                             raise ValueError("Wait-until-date requires a date and time")
@@ -291,7 +310,9 @@ class CRMAutomationWorkflow:
                 logger.error(f"Workflow node {node_id} failed: {detail}")
                 results.append({"node_id": node_id, "status": "failed", "error": detail})
                 context["executed_nodes"].append(node_id)
-                if input.error_handling == "continue":
+                if input.error_handling == "continue" and workflow.patched(
+                    _DURABLE_EXECUTION_PATCH
+                ):
                     continue
                 await self._close_crm_run(input, "failed", detail, results)
                 return CRMWorkflowResult(
@@ -371,21 +392,35 @@ class CRMAutomationWorkflow:
         only the handoff entry, so a durable run can say it finished but not
         what it actually did.
         """
-        if not input.crm_run_id and not input.execution_id:
+        # Closing the builder's WorkflowExecution is new, and it schedules an
+        # activity where the pre-change code returned having scheduled nothing.
+        # An execution recorded before the marker must keep doing nothing here,
+        # or its replay grows a command its history does not have.
+        closes_builder_execution = bool(
+            input.execution_id
+        ) and workflow.patched(_DURABLE_EXECUTION_PATCH)
+
+        if not input.crm_run_id and not closes_builder_execution:
             return
+
+        payload: dict[str, Any] = {
+            "run_id": input.crm_run_id,
+            "status": status,
+            "error": error,
+            "steps": steps or [],
+        }
+        # The extra key travels only on the new path, so a replayed activity
+        # input matches the one its history recorded.
+        if closes_builder_execution:
+            # The builder's Run button creates a WorkflowExecution and no
+            # CRMAutomationRun. Without this it was never closed, so every live
+            # run started from the builder read "pending" for good, success and
+            # failure alike.
+            payload["execution_id"] = input.execution_id
+
         await workflow.execute_activity(
             "mark_crm_automation_run",
-            {
-                "run_id": input.crm_run_id,
-                # The builder's Run button creates a WorkflowExecution and no
-                # CRMAutomationRun. Without this it was never closed, so every
-                # live run started from the builder read "pending" for good,
-                # success and failure alike.
-                "execution_id": input.execution_id,
-                "status": status,
-                "error": error,
-                "steps": steps or [],
-            },
+            payload,
             start_to_close_timeout=timedelta(minutes=1),
             retry_policy=STANDARD_RETRY,
         )

@@ -207,7 +207,9 @@ async def _fail_run(db, run_id: str, step_order: int, error: str) -> None:
     """
     from aexy.models.crm import CRMAutomation, CRMAutomationRun
 
-    run = await db.get(CRMAutomationRun, run_id)
+    from aexy.services.automation_counters import load_run_for_update
+
+    run = await load_run_for_update(db, run_id)
     if not run:
         return
 
@@ -253,6 +255,7 @@ async def _fail_run(db, run_id: str, step_order: int, error: str) -> None:
             (run.completed_at - run.started_at).total_seconds() * 1000
         )
 
-    automation = await db.get(CRMAutomation, run.automation_id)
-    if automation:
-        automation.failed_runs += 1
+    if await db.get(CRMAutomation, run.automation_id):
+        from aexy.services.automation_counters import record_run_outcome
+
+        await record_run_outcome(db, run.automation_id, succeeded=False)

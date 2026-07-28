@@ -14,6 +14,54 @@ from aexy.temporal.activities.email import (
 )
 
 
+class _Scalar:
+    """Minimal stand-in for a SQLAlchemy Result."""
+
+    def __init__(self, value):
+        self._value = value
+
+    def scalar_one_or_none(self):
+        return self._value
+
+
+def _fake_execute(stmt, run, automation):
+    """Serve the two statements the code under test issues against a session.
+
+    The run row is now loaded with SELECT ... FOR UPDATE so the four writers
+    that rewrite its step-log JSON queue instead of overwriting each other, and
+    the tallies are atomic UPDATEs for the same reason. Both reach the session
+    as statements rather than attribute access, so a fake that ignores them
+    would make these tests pass while doing nothing.
+    """
+    if stmt.__visit_name__ == "select":
+        return _Scalar(run)
+    _apply_counter_update(stmt, automation)
+    return _Scalar(None)
+
+
+def _apply_counter_update(stmt, automation) -> None:
+    """Apply an atomic counter UPDATE to a stand-in automation object.
+
+    The tallies moved from `automation.failed_runs += 1` to a SQL UPDATE so
+    concurrent writers in different processes stop losing each other's
+    increments. These tests still assert on a plain object, so the fake
+    session has to interpret the statement rather than ignore it — otherwise
+    they would pass while counting nothing.
+    """
+    if automation is None:
+        return
+    for column, expression in (getattr(stmt, "_values", None) or {}).items():
+        name = getattr(column, "name", None) or getattr(column, "key", None)
+        if name not in {"successful_runs", "failed_runs"}:
+            continue
+        delta = getattr(getattr(expression, "right", None), "value", 1) or 1
+        operator = getattr(getattr(expression, "operator", None), "__name__", "")
+        if "sub" in operator:
+            delta = -delta
+        current = getattr(automation, name, 0) or 0
+        setattr(automation, name, max(0, current + delta))
+
+
 class _FakeDatabase:
     def __init__(self, run, automation):
         self.run = run
@@ -30,6 +78,9 @@ class _FakeDatabase:
     def add(self, item):
         self.added.append(item)
 
+    async def execute(self, stmt):
+        return _fake_execute(stmt, self.run, self.automation)
+
 
 class _ActivityDatabase:
     def __init__(self, run=None, automation=None):
@@ -37,6 +88,9 @@ class _ActivityDatabase:
         self.automation = automation
         self.commit = AsyncMock()
         self.rollback = AsyncMock()
+
+    async def execute(self, stmt):
+        return _fake_execute(stmt, self.run, self.automation)
 
     async def get(self, _model, item_id):
         if self.run is not None and item_id == self.run.id:

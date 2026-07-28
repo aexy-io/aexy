@@ -184,3 +184,52 @@ async def test_a_body_template_is_rendered_once():
 
     assert result["success"] is True
     assert renders.count("plain text {{record.values.name}}") == 1
+
+
+def test_a_literal_credential_in_a_webhook_header_is_flagged():
+    """Header templates are stored verbatim and any member can read them back.
+
+    A `{{trigger.*}}` reference resolves at run time and leaves nothing at
+    rest; a pasted token sits in the workflow definition in plain text.
+    """
+    from aexy.services.workflow_service import WorkflowService
+
+    service = WorkflowService(db=None)
+    nodes = [
+        {"id": "trigger", "type": "trigger",
+         "data": {"trigger_type": "record.created"}},
+        {"id": "wh", "type": "action", "data": {
+            "action_type": "webhook_call",
+            "webhook_url": "https://hooks.example.com/x",
+            "headers": '{"Authorization": "Bearer sk-live-abc123"}',
+        }},
+    ]
+
+    result = service.validate_workflow(nodes, [{"source": "trigger", "target": "wh"}])
+    flagged = [w for w in result.warnings if w.error_type == "literal_secret_in_header"]
+
+    assert len(flagged) == 1
+    assert "Authorization" in flagged[0].message
+    # A warning, not an error: there is no secret store to point at yet, so
+    # blocking the save would just stop a legitimate step.
+    assert flagged[0].severity == "warning"
+    assert result.is_valid is True
+
+
+def test_a_referenced_credential_is_not_flagged():
+    from aexy.services.workflow_service import WorkflowService
+
+    service = WorkflowService(db=None)
+    nodes = [
+        {"id": "trigger", "type": "trigger",
+         "data": {"trigger_type": "record.created"}},
+        {"id": "wh", "type": "action", "data": {
+            "action_type": "webhook_call",
+            "webhook_url": "https://hooks.example.com/x",
+            "headers": '{"Authorization": "Bearer {{trigger.token}}"}',
+        }},
+    ]
+
+    result = service.validate_workflow(nodes, [{"source": "trigger", "target": "wh"}])
+
+    assert [w for w in result.warnings if w.error_type == "literal_secret_in_header"] == []

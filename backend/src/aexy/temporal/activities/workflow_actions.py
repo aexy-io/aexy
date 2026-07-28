@@ -45,6 +45,20 @@ class MarkAutomationRunInput:
     steps: list[dict[str, Any]] = field(default_factory=list)
 
 
+def current_attempt() -> int:
+    """This activity's attempt number, or 1 when called outside Temporal.
+
+    `activity.info()` raises RuntimeError off the activity thread, so reading
+    it unguarded makes the surrounding function impossible to call directly
+    from a unit test. The attempt is only ever reported, never branched on, so
+    a stand-in value costs nothing.
+    """
+    try:
+        return activity.info().attempt
+    except RuntimeError:
+        return 1
+
+
 def _as_run_steps(node_results: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Translate workflow node results into run step-log entries.
 
@@ -285,7 +299,7 @@ async def execute_workflow_action(input: ExecuteWorkflowActionInput) -> dict[str
         )
 
     payload = result.model_dump(mode="json")
-    payload["attempt"] = activity.info().attempt
+    payload["attempt"] = current_attempt()
     return payload
 
 

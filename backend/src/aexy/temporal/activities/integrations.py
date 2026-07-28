@@ -11,6 +11,7 @@ from temporalio import activity
 from temporalio.exceptions import ApplicationError
 
 from aexy.core.database import async_session_maker
+from aexy.temporal.activities.workflow_actions import current_attempt
 
 logger = logging.getLogger(__name__)
 
@@ -341,7 +342,7 @@ async def execute_agent(input: ExecuteAgentInput) -> dict[str, Any]:
                 "keys": sorted((input.context or {}).keys()),
                 "record_id": input.record_id,
             },
-            "attempt": activity.info().attempt,
+            "attempt": current_attempt(),
         }
         if execution.status != "completed":
             raise ApplicationError(

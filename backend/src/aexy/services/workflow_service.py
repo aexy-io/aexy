@@ -1,5 +1,6 @@
 """Workflow service for visual automation builder."""
 
+import json
 import re
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -115,6 +116,59 @@ def _is_valid_email(addr: str) -> bool:
         return True
     except EmailNotValidError:
         return False
+
+
+# Header names whose value is a credential rather than metadata.
+_SECRET_HEADER_NAMES = ("authorization", "x-api-key", "api-key", "x-auth-token")
+
+
+def _literal_secret_warnings(node: dict) -> list[WorkflowValidationError]:
+    """Warn when a webhook header carries a literal credential.
+
+    Header templates are stored verbatim in the workflow definition, and any
+    workspace member who can open the builder can read them back. A
+    `{{trigger.token}}` reference resolves at run time and leaves nothing at
+    rest; a pasted token sits in the graph in plain text for everyone.
+
+    A warning, not an error: there is no secret store to point at yet, so
+    refusing the save would simply block a legitimate step. Once one exists
+    this should become an error.
+    """
+    data = node.get("data") or {}
+    if data.get("action_type") != "webhook_call":
+        return []
+
+    headers = data.get("headers")
+    if isinstance(headers, str):
+        try:
+            headers = json.loads(headers or "{}")
+        except json.JSONDecodeError:
+            return []
+    if not isinstance(headers, dict):
+        return []
+
+    flagged = [
+        name
+        for name, value in headers.items()
+        if str(name).lower() in _SECRET_HEADER_NAMES
+        and isinstance(value, str)
+        and value.strip()
+        and "{{" not in value
+    ]
+    if not flagged:
+        return []
+    return [
+        WorkflowValidationError(
+            node_id=node.get("id", ""),
+            error_type="literal_secret_in_header",
+            message=(
+                f"{', '.join(flagged)} contains a literal value. It is stored "
+                "in the automation and readable by anyone who can open this "
+                "builder — use a {{trigger.*}} reference instead."
+            ),
+            severity="warning",
+        )
+    ]
 
 
 def validate_action_configs(actions: list[dict], module: str = "crm") -> list[str]:
@@ -686,8 +740,8 @@ class WorkflowService:
 
         # Validate node configurations
         for node in nodes:
-            node_errors = self._validate_node(node)
-            errors.extend(node_errors)
+            errors.extend(self._validate_node(node))
+            warnings.extend(_literal_secret_warnings(node))
 
         return WorkflowValidationResult(
             is_valid=len(errors) == 0,

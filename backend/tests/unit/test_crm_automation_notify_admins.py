@@ -169,7 +169,11 @@ async def test_undelivered_notification_reports_a_top_level_error():
     )
 
     assert result["success"] is False
-    assert result["error"] == "No notification could be delivered"
+    # The message names the channel and the recipient. On "both" a half
+    # failure has to be distinguishable from a total one, so a generic
+    # sentence is not enough.
+    assert "Email to" in result["error"]
+    assert "No recipient email address specified" in result["error"]
 
 
 @pytest.mark.asyncio
@@ -187,7 +191,7 @@ async def test_undelivered_slack_notification_reports_a_top_level_error():
     )
 
     assert result["success"] is False
-    assert result["error"] == "No notification could be delivered"
+    assert "Slack to" in result["error"]
 
 
 @pytest.mark.asyncio
@@ -210,3 +214,37 @@ async def test_queued_email_is_not_treated_as_a_failure():
     assert result["success"] is True
     assert result["queued"] is True
     assert "error" not in result
+
+
+@pytest.mark.asyncio
+async def test_a_half_delivered_both_channel_notification_is_not_a_success():
+    """Slack failing while email queues used to read as a clean success.
+
+    `channels_notified` was non-empty, so no top-level error was set and the
+    executor recorded the step green — the half that never arrived left no
+    trace in run history.
+    """
+    service = CRMAutomationService(db=None)
+    service._action_send_slack = AsyncMock(
+        return_value={"success": False, "error": "channel_not_found"}
+    )
+    service._action_send_email = AsyncMock(
+        return_value={"success": True, "queued": True, "to": "a@example.com"}
+    )
+
+    result = await service._action_notify_user(
+        {
+            "notify_type": "email",
+            "notify_email": "a@example.com",
+            "channel": "both",
+        },
+        None,
+        "ws-1",
+        None,
+    )
+
+    assert "error" in result, "a failed channel must reach the executor's gate"
+    assert "channel_not_found" in result["error"]
+    assert result["failures"] == [
+        "Slack to a@example.com: channel_not_found"
+    ]
