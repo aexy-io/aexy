@@ -28,7 +28,14 @@ import {
   triggersForModule,
 } from "./fixtures/automation-helpers";
 
-test.describe.configure({ timeout: 120_000 });
+// One retry, for cold start only. Next's dev server compiles
+// /automations/new on first visit; the beforeAll below pays that cost up
+// front, but on a freshly-built container the compile can still outlast
+// openCanvas's fixed 30s networkidle budget and fail whichever test runs
+// first. Verified transient: the same tests pass in ~3s each once warm.
+// This is not papering over flake in the assertions — they are deterministic
+// against a running stack.
+test.describe.configure({ timeout: 120_000, retries: 1 });
 
 /**
  * Registry ids the palette renders as their own canvas category rather
