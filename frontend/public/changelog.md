@@ -5,6 +5,172 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-07-29
+
+### CRM automations: visual builder wired to a durable execution engine
+
+Both halves of the release — the authoring foundation (#214, which merged
+without a version of its own) and the durable execution layer (#215). Minor
+rather than patch: a large feature, and it carries one behaviour change that
+affects automations already running (see Upgrade notes).
+
+**Authoring and triggers.** The canvas persists nodes, edges and per-node
+configuration, and the palette is driven by the backend capability registry, so
+an unfinished step is hidden rather than offered. Invalid configuration blocks
+save and publish with per-node reasons. Record created/updated/deleted,
+field-changed, list membership, form submission and tracked email open/click
+all start matching automations.
+
+**Durable execution.** A canvas containing timing, logic or AI steps runs on
+Temporal instead of the inline executor: conditions route, waits survive a
+worker restart, branches record the rule they matched, and agent output flows
+into later steps through workflow variables. Action-only canvases keep the
+inline path.
+
+**Delivery honesty.** Automation email is recorded in an outbox inside the same
+transaction as the run, so a send can no longer be handed to a worker that
+cannot yet see the run. Steps report queued, sent, failed or needs-review
+rather than an optimistic success, and a run abandoned without an outcome is
+closed by a reaper instead of sitting on "running" for good.
+
+### Fixed
+
+- **A published condition or branch could be silently dropped.** Publish
+  accepted structural nodes while only `wait` was routed durably, and
+  flattening keeps only action nodes — so "if deal value > 50k, notify the VP"
+  published cleanly and then notified the VP on every deal, every step green.
+- **Record values reached email bodies unescaped**, so markup in a field such
+  as a company name was delivered live to the recipient.
+- **Open and click tracking fired on every hit** of an unauthenticated,
+  replayable URL, each starting another automation run. First one only.
+- **Webhook steps could reach inside the network** — cloud metadata, Redis,
+  Temporal, internal APIs. The target must now resolve to a public address,
+  enforced in both executors. `ALLOW_PRIVATE_WEBHOOK_TARGETS` re-enables
+  internal targets for self-hosted deployments.
+- **The monthly run cap enforced nothing**: checked at the start of a run and
+  incremented at the end, so concurrent triggers all passed at the limit.
+- **Success and failure tallies lost increments** when written concurrently by
+  the executor, the email activity, the outbox and the reaper.
+- **Concurrent writers overwrote each other's step log**, so a delivered email
+  could quietly lose its "sent".
+- **A deploy could wedge an in-flight wait.** Command-affecting changes sit
+  behind a Temporal patch gate, so an execution started earlier replays its
+  original path.
+- **Retried steps could duplicate work** — SMS could send twice, and a retried
+  node could enqueue a second independent email, Slack message or campaign.
+- **A half-delivered notification read as success**: on "both", Slack failing
+  while email queued left the step green.
+- **Numeric conditions treated an empty field as zero**, so `amount < 100`
+  matched every record with no amount.
+- **Runs started from the builder's Run button stayed "pending" forever**,
+  success and failure alike, with no per-step detail.
+
+### Upgrade notes
+
+- `migrate_automation_email_outbox.sql` and
+  `migrate_automation_delivery_attempts.sql` are picked up automatically.
+  Apply `normalize_crm_automation_trigger_types.sql` explicitly after reviewing
+  its preview.
+- Restart the backend and the Temporal worker together, and make sure the
+  worker consumes both the workflow and integration queues.
+- **Behaviour change:** an unresolved `{{...}}` reference now fails its step
+  instead of rendering empty. Deliberate — a blank recipient or body is worse
+  than a visible failure — but it affects automations referencing an optional
+  field that happens to be unset. Audit live automations before deploying.
+- Rollback is unsafe for automations containing condition, branch, wait or
+  agent nodes: the older executor flattens those away.
+
+### Known limitations
+
+- An SMS attempt that reaches the provider and never finishes recording is
+  reported as needing review rather than retried automatically. Only the
+  provider's log can say whether it was delivered.
+- Parallel branch paths are not implemented; a branch selects one path.
+- Enrich, classify and summarise actions have no executor and stay hidden.
+
+## [0.8.59] - 2026-07-28
+
+### Fix: opening a task from All Tasks stranded you on a project board
+
+Clicking any task on `/sprints?tab=tasks` navigated to that task's project
+board (`/sprints/{projectId}/board?task={taskId}`) and opened the detail modal
+there. Closing it left you on a board you never asked for — the only way back
+to All Tasks was the browser button, and every filter, search term and view
+you'd set up on the tab was gone. The tab was doing this to avoid duplicating
+the board's task detail modal.
+
+- **`EditTaskModal` is now a shared component** at
+  `components/sprints/EditTaskModal.tsx`, extracted verbatim out of
+  `sprints/[projectId]/board/page.tsx` (~1.3k lines) along with its
+  `AssignmentHistoryPanel` helper. It was already route-agnostic — every
+  scoped call derives its ids from `task.sprint_id` / `task.team_id` — so no
+  behavior changed on the board. The `STATUS_CONFIG` / `PRIORITY_CONFIG` /
+  `SPRINT_STATUS_COLORS` maps both files need moved to
+  `components/sprints/taskFieldConfig.ts`.
+- **The Tasks tab opens that same modal in place.** The selected id lives in
+  `?task={id}` (via `replace`, not `push`, so closing doesn't need two Backs),
+  so refresh and link-share reopen the same task over the same filtered view.
+  Lookup prefers the already-loaded workspace list and falls back to an
+  archive-inclusive fetch, so a deep link opens even when the task is archived
+  or sits past the 1000-row cap. The sprint picker is scoped to the task's own
+  project — the workspace list spans all of them.
+- **`useWorkspaceTasks` gained `updateTask` / `archiveTask`**, routed to the
+  sprint or project API the way `useProjectBoard` does but taking the owning
+  project id per call, since this tab spans projects. Also exposes `epics` for
+  the modal.
+- **`/sprints?task={id}` still redirects to the board** for activity-feed and
+  chat deep links, but skips that redirect on the Tasks tab, which now owns the
+  param. Switching tabs drops `task` so it can't re-arm the redirect elsewhere.
+- Two fixes fell out of the reuse: the tab's `n` / `/` hotkeys are now disabled
+  while the detail modal is up (the shortcut hook only ignores keystrokes from
+  inputs, not a focused `<select>`), and the modal's attachment add/delete
+  invalidate through `invalidateTaskCaches` so the workspace list refreshes
+  too, not just the sprint/project ones.
+
+## [0.8.58] - 2026-07-18
+
+### Feature: Community page becomes a logged-in member hub
+
+Extends the public `/community/{slug}` forum so that, once you sign in, it stops
+being a read-only crawlable page and becomes a hub: members see their internal
+(non web-public) threads inline, can start new threads without leaving the page,
+and non-members get a CTA to spin up their own community. The public shell stays
+anonymously ISR-cached — all member content hydrates client-side from a new
+authenticated endpoint, so nothing private ever touches the shared cache.
+
+**Authenticated member context.** New `GET /public/community/{slug}/me` resolves
+the caller's workspace membership and returns the internal channels/topics they
+may access, their role, and what they may do (`can_create_thread`,
+`can_post_public`). Access mirrors in-app chat exactly — never the public
+predicates: DMs and archived channels are excluded, web-public channels are
+omitted (they're already in the public view), a `private` channel needs
+membership, a `private` topic needs channel membership, and a `restricted` topic
+needs an access grant. Non-members get an `is_member:false` payload with no
+`workspace_id` and no channels (a 200, not a 403), so the client can offer the
+"start your own community" CTA without leaking anything. A web-public topic
+nested in an otherwise-internal channel is kept but flagged `is_web_public` so
+the UI can badge it. Backed by a dedicated `CommunityMemberService`, kept
+separate from the deliberately-anonymous `PublicCommunityService`.
+
+**Inline member layer (frontend).** A client island (`CommunityMemberPanel`)
+reads the token from `localStorage`, calls `/me`, and renders one of: the
+signed-out / non-member "start your own community" CTA (→ Settings → Community),
+or — for members — an **Internal threads** section listing their accessible
+channels/topics with unread badges and "Public" flags, deep-linking each topic
+into the full in-app chat (`/chat/{channelSlug}/{topicId}`).
+
+**New-thread composer.** Members start a thread in an existing channel or a
+brand-new one via a dialog that reuses the existing chat create endpoints;
+workspace admins get a "Post publicly on the web" toggle that publishes the new
+topic (`web_public`) in one step. Publishing stays server-side admin-gated — the
+toggle is only a convenience, the API returns 403 for non-admins.
+
+**Public page polish.** A sticky header with the community logo/monogram + name,
+a stats line, a dedicated "Channels" section, richer channel cards (icon tile,
+last-activity date, pluralised topic/message counts), and a proper empty state.
+All strings are internationalised (new `community` i18n namespace, en + hi); the
+previously-hardcoded header/footer/auth strings now go through next-intl too.
+
 ## [0.8.57] - 2026-07-16
 
 ### Feature: Public community forum (opt-in, SEO-friendly, Slack/Discord-style)
