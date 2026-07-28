@@ -97,7 +97,7 @@ _EMAIL_LITERAL_FIELDS = ("to", "email_to", "email", "notify_email")
 _EXECUTABLE_NODE_TYPES = ("trigger", "action", "wait", "condition", "branch", "agent")
 
 # Namespaces a {{variable}} reference may resolve against at execution time.
-_VARIABLE_NAMESPACES = {"record", "trigger", "variables"}
+_VARIABLE_NAMESPACES = {"record", "trigger", "variables", "secrets"}
 
 # Condition operators that require a numeric comparison value.
 _NUMERIC_OPERATORS = {"gt", "gte", "lt", "lte"}
@@ -122,17 +122,17 @@ def _is_valid_email(addr: str) -> bool:
 _SECRET_HEADER_NAMES = ("authorization", "x-api-key", "api-key", "x-auth-token")
 
 
-def _literal_secret_warnings(node: dict) -> list[WorkflowValidationError]:
-    """Warn when a webhook header carries a literal credential.
+def _literal_secret_errors(node: dict) -> list[WorkflowValidationError]:
+    """Refuse a webhook header that carries a literal credential.
 
-    Header templates are stored verbatim in the workflow definition, and any
-    workspace member who can open the builder can read them back. A
-    `{{trigger.token}}` reference resolves at run time and leaves nothing at
-    rest; a pasted token sits in the graph in plain text for everyone.
+    Header templates are stored verbatim in the workflow definition and reading
+    a workflow only needs `member`, so a pasted token is visible to everyone in
+    the workspace.
 
-    A warning, not an error: there is no secret store to point at yet, so
-    refusing the save would simply block a legitimate step. Once one exists
-    this should become an error.
+    This was a warning while there was nowhere else to put the value — blocking
+    the save would have stopped a legitimate step with no alternative to offer.
+    Workspace secrets are that alternative, so it is now an error: reference
+    `{{secrets.NAME}}` and the graph holds only the reference.
     """
     data = node.get("data") or {}
     if data.get("action_type") != "webhook_call":
@@ -162,11 +162,11 @@ def _literal_secret_warnings(node: dict) -> list[WorkflowValidationError]:
             node_id=node.get("id", ""),
             error_type="literal_secret_in_header",
             message=(
-                f"{', '.join(flagged)} contains a literal value. It is stored "
-                "in the automation and readable by anyone who can open this "
-                "builder — use a {{trigger.*}} reference instead."
+                f"{', '.join(flagged)} contains a literal value, which is "
+                "stored in the automation and readable by anyone who can open "
+                "this builder. Store it as a workspace secret and reference it "
+                "as {{secrets.NAME}}."
             ),
-            severity="warning",
         )
     ]
 
@@ -741,7 +741,7 @@ class WorkflowService:
         # Validate node configurations
         for node in nodes:
             errors.extend(self._validate_node(node))
-            warnings.extend(_literal_secret_warnings(node))
+            errors.extend(_literal_secret_errors(node))
 
         return WorkflowValidationResult(
             is_valid=len(errors) == 0,

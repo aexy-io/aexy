@@ -921,7 +921,7 @@ class CRMAutomationService:
             return await self._action_remove_from_sequence(config, record, workspace_id)
         elif action_type == "webhook_call":
             return await self._action_webhook_call(
-                config, record, trigger_data, run_id, action_index
+                config, record, trigger_data, run_id, action_index, workspace_id
             )
         elif action_type == "create_task":
             return await self._action_create_task(
@@ -1455,6 +1455,9 @@ class CRMAutomationService:
         trigger_data: dict | None = None,
         run_id: str | None = None,
         action_index: int | None = None,
+        # Needed to resolve {{secrets.*}} in headers, which are scoped to a
+        # workspace so one tenant cannot reference another's credential.
+        workspace_id: str | None = None,
     ) -> dict:
         """Make a webhook HTTP call.
 
@@ -1509,6 +1512,26 @@ class CRMAutomationService:
                 )
                 for key, value in headers.items()
             }
+            # Secrets resolve last and only into headers. Confining them here
+            # is deliberate: a credential interpolated into a body, a subject
+            # or a Slack message would end up in run history, in the provider's
+            # logs, or in someone's inbox. A header is the one place a
+            # credential legitimately belongs, and headers are already kept out
+            # of the stored result.
+            from aexy.services.workspace_secret_service import (
+                UnknownSecretError,
+                WorkspaceSecretService,
+            )
+
+            if workspace_id:
+                secrets = WorkspaceSecretService(self.db)
+                try:
+                    rendered_headers = {
+                        key: await secrets.resolve_references(workspace_id, value)
+                        for key, value in rendered_headers.items()
+                    }
+                except UnknownSecretError as error:
+                    return {"error": str(error)}
         except ValueError as error:
             return {"error": str(error)}
         if run_id is not None and action_index is not None:

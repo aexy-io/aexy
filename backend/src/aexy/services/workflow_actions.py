@@ -1267,6 +1267,29 @@ class WorkflowActionHandler:
                 str(key): self._render_template(str(value), context)
                 for key, value in headers.items()
             }
+            # Secrets resolve last and only into headers. Confining them here
+            # is deliberate: a credential interpolated into a body, a subject
+            # or a Slack message would end up in run history, in the provider's
+            # logs, or in someone's inbox. A header is the one place a
+            # credential legitimately belongs, and headers are already kept out
+            # of the stored result.
+            from aexy.services.workspace_secret_service import (
+                UnknownSecretError,
+                WorkspaceSecretService,
+            )
+
+            secrets = WorkspaceSecretService(self.db)
+            try:
+                rendered_headers = {
+                    key: await secrets.resolve_references(
+                        context.workspace_id, value
+                    )
+                    for key, value in rendered_headers.items()
+                }
+            except UnknownSecretError as error:
+                return NodeExecutionResult(
+                    node_id="", status="failed", error=str(error)
+                )
         except ValueError as error:
             return NodeExecutionResult(node_id="", status="failed", error=str(error))
         execution_id = context.trigger_data.get("execution_id")

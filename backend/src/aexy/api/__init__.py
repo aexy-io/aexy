@@ -104,6 +104,7 @@ from aexy.api.crm_pipelines import router as crm_pipelines_router
 # Platform-wide Automations
 from aexy.api.automations import router as automations_router
 # Visual Workflow Builder
+from aexy.api.workspace_secrets import router as workspace_secrets_router
 from aexy.api.workflows import router as workflows_router
 from aexy.api.workflows import workflows_router as workflows_list_router
 from aexy.api.workflows import templates_router as workflow_templates_router
@@ -307,6 +308,7 @@ api_router.include_router(crm_pipelines_router, tags=["crm-pipelines"], dependen
 # Platform-wide Automations
 api_router.include_router(automations_router, tags=["automations"], dependencies=[Depends(require_app_access("automations"))])
 # Visual Workflow Builder
+api_router.include_router(workspace_secrets_router)
 api_router.include_router(workflows_router, tags=["workflows"])
 api_router.include_router(workflows_list_router, tags=["workflows"])
 api_router.include_router(workflow_templates_router, tags=["workflow-templates"])

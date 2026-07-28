@@ -40,6 +40,7 @@ from aexy.models.repository import (
     WorkspaceRepository,
     TeamRepository,
 )
+from aexy.models.workspace_secret import WorkspaceSecret
 from aexy.models.workspace import (
     Workspace,
     WorkspaceMember,
@@ -610,6 +611,7 @@ __all__ = [
     "DeveloperOrganization",
     # Workspace
     "Workspace",
+    "WorkspaceSecret",
     "WorkspaceMember",
     "WorkspaceSubscription",
     "WorkspacePlanOverride",
