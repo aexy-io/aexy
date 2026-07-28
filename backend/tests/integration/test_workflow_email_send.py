@@ -107,6 +107,27 @@ async def test_send_registers_recipient_as_subscriber(db_session, ws):
     assert sub.preference_token  # needed to build a one-click unsubscribe URL
 
 
+@pytest.mark.asyncio
+async def test_repeat_send_reuses_the_existing_subscriber(db_session, ws):
+    sent_log = SimpleNamespace(status="sent", ses_message_id="m", error_message=None)
+    with patch(
+        "aexy.services.email_service.email_service.send_templated_email",
+        new_callable=AsyncMock, return_value=sent_log,
+    ):
+        await _send(db_session, ws.id, "repeat@example.com")
+        await _send(db_session, ws.id, "repeat@example.com")
+
+    subscribers = (await db_session.execute(
+        select(EmailSubscriber).where(
+            EmailSubscriber.workspace_id == ws.id,
+            EmailSubscriber.email_hash == hashlib.sha256(
+                "repeat@example.com".encode()
+            ).hexdigest(),
+        )
+    )).scalars().all()
+    assert len(subscribers) == 1
+
+
 def test_build_unsubscribe_url_contains_token():
     svc = EmailCampaignService(db=None)
     url = svc._build_unsubscribe_url(SimpleNamespace(preference_token="tok123"))

@@ -797,6 +797,7 @@ class CRMListEntry(Base):
 
     # Relationships
     list: Mapped["CRMList"] = relationship("CRMList", back_populates="entries")
+    record: Mapped["CRMRecord"] = relationship("CRMRecord")
 
     __table_args__ = (
         UniqueConstraint("list_id", "record_id", name="uq_crm_list_entry"),
@@ -1088,6 +1089,61 @@ class CRMAutomationRun(Base):
 
     # Relationships
     automation: Mapped["CRMAutomation"] = relationship("CRMAutomation", back_populates="runs")
+
+
+class CRMAutomationEmailOutbox(Base):
+    """Emails an automation intends to send, written with the run itself.
+
+    Starting the send workflow inline meant handing work to the background
+    worker before the run it refers to was committed - the worker would find
+    nothing and give up, stranding the run on "queued". Recording the intent in
+    the same transaction as the run removes the ordering problem entirely: the
+    row cannot exist unless the run does, and nothing needs committing early.
+    """
+
+    __tablename__ = "crm_automation_email_outbox"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    # Indexes for this table live in the SQL migration (including a partial
+    # index the ORM cannot express), so they are not declared here.
+    automation_run_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("crm_automation_runs.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    step_order: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # The full SendWorkflowEmailInput payload, so draining needs no lookups.
+    payload: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+
+    # pending -> dispatching -> dispatched | failed. "dispatching" is the claim
+    # that stops the immediate attempt and the sweep both sending the same one.
+    status: Mapped[str] = mapped_column(
+        String(20),
+        default="pending",
+        nullable=False,
+    )
+    attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    # When the row was last claimed. Stale-claim recovery keys off this, not
+    # created_at, or a long-pending row looks stale the instant it is claimed
+    # and can be handed over twice.
+    claimed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    dispatched_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
 
 # =============================================================================

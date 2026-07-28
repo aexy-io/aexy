@@ -30,7 +30,55 @@ from aexy.schemas.automation import (
     get_action_ids,
     get_all_trigger_ids,
     get_all_action_ids,
+    INTEGRATION_GATED_ACTIONS,
 )
+
+
+# =============================================================================
+# INTEGRATION-GATED ACTIONS
+# =============================================================================
+
+async def _workspace_has_integration(
+    db: AsyncSession, workspace_id: str, integration: str
+) -> bool:
+    """Whether a workspace has connected the integration an action needs."""
+    if integration == "slack":
+        from aexy.services.slack_helpers import get_slack_integration_for_workspace
+
+        return await get_slack_integration_for_workspace(db, workspace_id) is not None
+    # Unknown gate: fail closed rather than offering a step that may not work.
+    return False
+
+
+async def filter_actions_by_integrations(
+    db: AsyncSession, workspace_id: str, actions: list[dict[str, str]]
+) -> list[dict[str, str]]:
+    """Drop actions whose backing integration this workspace hasn't connected.
+
+    Offering Send Slack to a workspace with no Slack connection produces a
+    step that can only fail at run time, so it is withheld until the
+    integration exists. Gates are resolved once per integration, not once
+    per action.
+    """
+    needed = {
+        INTEGRATION_GATED_ACTIONS[action["id"]]
+        for action in actions
+        if action["id"] in INTEGRATION_GATED_ACTIONS
+    }
+    if not needed:
+        return actions
+
+    connected = {
+        integration
+        for integration in needed
+        if await _workspace_has_integration(db, workspace_id, integration)
+    }
+    return [
+        action
+        for action in actions
+        if INTEGRATION_GATED_ACTIONS.get(action["id"], "") in connected
+        or action["id"] not in INTEGRATION_GATED_ACTIONS
+    ]
 
 
 # =============================================================================
@@ -129,9 +177,11 @@ class AutomationService:
         """Create a new automation with module context."""
         # Validate trigger type for module
         valid_triggers = get_trigger_ids(module)
-        if valid_triggers and trigger_type not in valid_triggers:
-            # Allow any trigger for now, just log warning
-            pass
+        if trigger_type not in valid_triggers:
+            raise ValueError(
+                f"Unsupported trigger '{trigger_type}' for module '{module}'. "
+                "Choose a trigger from the automation registry."
+            )
 
         # Create automation using base service
         automation = CRMAutomation(

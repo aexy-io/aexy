@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -42,7 +43,7 @@ export function useAgentConversations(
       });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to delete conversation");
+      toast.error(getApiErrorMessage(error, "Failed to delete conversation"));
     },
   });
 
@@ -88,7 +89,7 @@ export function useAgentConversation(
       });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update conversation");
+      toast.error(getApiErrorMessage(error, "Failed to update conversation"));
     },
   });
 
@@ -119,7 +120,7 @@ export function useCreateConversation(
       });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to create conversation");
+      toast.error(getApiErrorMessage(error, "Failed to create conversation"));
     },
   });
 
@@ -151,7 +152,7 @@ export function useSendMessage(
       });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to send message");
+      toast.error(getApiErrorMessage(error, "Failed to send message"));
     },
   });
 

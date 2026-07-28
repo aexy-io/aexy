@@ -73,6 +73,12 @@ async def create_automation(
     conditions = [c.model_dump() for c in data.conditions] if data.conditions else None
     actions = [a.model_dump() for a in data.actions]
 
+    from aexy.services.workflow_service import validate_action_configs
+
+    action_errors = validate_action_configs(actions)
+    if action_errors:
+        raise HTTPException(status_code=400, detail="; ".join(action_errors))
+
     automation = await service.create_automation(
         workspace_id=workspace_id,
         name=data.name,
@@ -82,6 +88,9 @@ async def create_automation(
         trigger_config=data.trigger_config,
         conditions=conditions,
         actions=actions,
+        error_handling=data.error_handling,
+        run_limit_per_month=data.run_limit_per_month,
+        is_active=data.is_active if data.is_active is not None else True,
         created_by_id=current_user.id,
     )
     return automation
@@ -145,9 +154,22 @@ async def update_automation(
         raise HTTPException(status_code=404, detail="Automation not found")
 
     # model_dump() recursively converts nested Pydantic models to dicts
+    payload = data.model_dump(exclude_unset=True)
+    if "actions" in payload and payload["actions"] is not None:
+        from aexy.services.workflow_service import validate_action_configs
+
+        actions = payload["actions"]
+        # nested models already dumped
+        if actions and hasattr(actions[0], "model_dump"):
+            actions = [a.model_dump() for a in actions]
+            payload["actions"] = actions
+        action_errors = validate_action_configs(actions)
+        if action_errors:
+            raise HTTPException(status_code=400, detail="; ".join(action_errors))
+
     automation = await service.update_automation(
         automation_id=automation_id,
-        **data.model_dump(exclude_unset=True),
+        **payload,
     )
     return automation
 
@@ -206,14 +228,22 @@ async def trigger_automation_manually(
     if not automation or automation.workspace_id != workspace_id:
         raise HTTPException(status_code=404, detail="Automation not found")
 
-    # Run in background
+    # Run in background on its own session: the request's session is torn down
+    # before background tasks run, so borrowing it leaves this work uncommitted.
     async def run_automation():
-        async_service = CRMAutomationService(db)
-        await async_service.trigger_automation(
-            automation_id=automation_id,
-            record_id=record_id,
-            trigger_data={"manual_trigger": True, "triggered_by": current_user.id},
-        )
+        from aexy.core.database import get_async_session
+        from aexy.services.automation_email_outbox import drain_outbox
+
+        async with get_async_session() as task_db:
+            run = await CRMAutomationService(task_db).trigger_automation(
+                automation_id=automation_id,
+                record_id=record_id,
+                trigger_data={"manual_trigger": True, "triggered_by": current_user.id},
+            )
+        # Committed by the context manager above; hand this run's queued
+        # email over. Scoped to the run: one admin pressing a button must not
+        # pick up every other workspace's pending work.
+        await drain_outbox(run_id=str(run.id))
 
     background_tasks.add_task(run_automation)
 
@@ -418,9 +448,9 @@ async def create_sequence_step(
         sequence_id=sequence_id,
         step_type=data.step_type,
         config=data.config,
-        delay_days=data.delay_days,
-        delay_hours=data.delay_hours,
-        order=data.order,
+        delay_value=data.delay_value,
+        delay_unit=data.delay_unit,
+        position=data.position,
     )
     return step
 

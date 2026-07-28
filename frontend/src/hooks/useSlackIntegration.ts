@@ -45,8 +45,6 @@ export function useSlackIntegration(organizationId: string | undefined) {
     integrationId: integration?.id,
 
     // Actions
-    getInstallUrl: (installerId: string) =>
-      organizationId ? slackApi.getInstallUrl(organizationId, installerId) : null,
     disconnect: disconnectMutation.mutateAsync,
     update: updateMutation.mutateAsync,
     isDisconnecting: disconnectMutation.isPending,

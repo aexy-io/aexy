@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { getApiErrorMessage } from "@/lib/utils";
+import { useEffect, useState, useRef } from "react";
 import {
   Save,
   Play,
@@ -24,6 +25,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { crmApi, type CRMRecord } from "@/lib/api";
 
 /** Each row in the validation popover. Toolbar doesn't need the full
  *  ValidationError shape — just enough to render and to wire a
@@ -37,6 +40,7 @@ export interface ToolbarValidationItem {
 }
 
 interface WorkflowToolbarProps {
+  workspaceId: string;
   hasChanges: boolean;
   isSaving: boolean;
   isPublished: boolean;
@@ -65,6 +69,7 @@ interface WorkflowToolbarProps {
 }
 
 export function WorkflowToolbar({
+  workspaceId,
   hasChanges,
   isSaving,
   isPublished,
@@ -99,15 +104,52 @@ export function WorkflowToolbar({
   const testInProgress = isTestRunning || isTesting;
   const [showTestModal, setShowTestModal] = useState(false);
   const [testRecordId, setTestRecordId] = useState("");
+  const [testRecords, setTestRecords] = useState<CRMRecord[]>([]);
+  const [isLoadingTestRecords, setIsLoadingTestRecords] = useState(false);
+
+  useEffect(() => {
+    if (!showTestModal || testRecords.length > 0) return;
+
+    let cancelled = false;
+    const loadPeople = async () => {
+      setIsLoadingTestRecords(true);
+      try {
+        const objects = await crmApi.objects.list(workspaceId);
+        const people = objects.find((object) => object.object_type === "person");
+        if (!people) return;
+        const response = await crmApi.records.list(workspaceId, people.id, { limit: 50 });
+        if (!cancelled) setTestRecords(response.records);
+      } catch {
+        // The manual record-ID field remains available if records cannot load.
+      } finally {
+        if (!cancelled) setIsLoadingTestRecords(false);
+      }
+    };
+
+    void loadPeople();
+    return () => {
+      cancelled = true;
+    };
+  }, [showTestModal, testRecords.length, workspaceId]);
 
   const handlePublish = async () => {
     setIsPublishing(true);
     try {
       if (isPublished) {
         await onUnpublish();
+        toast.success("Automation unpublished", {
+          description: "It will no longer run when a CRM record is created.",
+        });
       } else {
         await onPublish();
+        toast.success("Automation published", {
+          description: "The automation is now published. To test a recipient taken from a record, enter the ID of a real CRM record with an email address.",
+        });
       }
+    } catch (error) {
+      toast.error(isPublished ? "Couldn't unpublish the automation" : "Couldn't publish the automation", {
+        description: getApiErrorMessage(error, "Please try again."),
+      });
     } finally {
       setIsPublishing(false);
     }
@@ -146,7 +188,7 @@ export function WorkflowToolbar({
       await onImport(data);
       setShowImportModal(false);
     } catch (err) {
-      setImportError(err instanceof Error ? err.message : "Failed to import workflow");
+      setImportError(getApiErrorMessage(err, "Failed to import workflow"));
     } finally {
       setIsImporting(false);
       // Reset file input
@@ -212,16 +254,22 @@ export function WorkflowToolbar({
         {/* Publish/Unpublish button */}
         <button
           onClick={handlePublish}
-          disabled={isPublishing || hasChanges}
+          disabled={isPublishing || (!isPublished && (hasChanges || validationErrors > 0))}
           className={`
             flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
             ${isPublished
               ? "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
               : "bg-green-500/20 text-green-400 hover:bg-green-500/30"
             }
-            ${hasChanges ? "opacity-50 cursor-not-allowed" : ""}
+            ${!isPublished && (hasChanges || validationErrors > 0) ? "opacity-50 cursor-not-allowed" : ""}
           `}
-          title={hasChanges ? "Save changes before publishing" : ""}
+          title={
+            !isPublished && hasChanges
+              ? "Save changes before publishing"
+              : !isPublished && validationErrors > 0
+                ? "Fix validation errors before publishing"
+                : ""
+          }
         >
           {isPublishing ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -454,27 +502,35 @@ export function WorkflowToolbar({
                 htmlFor="test-record-id"
                 className="block text-sm text-muted-foreground mb-1"
               >
-                Record ID (optional)
+                Person to test with
               </label>
-              <div className="flex gap-2">
+              {testRecords.length > 0 ? (
+                <select
+                  id="test-record-id"
+                  value={testRecordId}
+                  onChange={(e) => setTestRecordId(e.target.value)}
+                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                >
+                  <option value="">Choose a person</option>
+                  {testRecords.map((record) => (
+                    <option key={record.id} value={record.id}>
+                      {record.display_name || "Unnamed person"}{record.values.email ? ` — ${String(record.values.email)}` : ""}
+                    </option>
+                  ))}
+                </select>
+              ) : (
                 <input
                   id="test-record-id"
                   type="text"
                   value={testRecordId}
                   onChange={(e) => setTestRecordId(e.target.value)}
-                  placeholder="Enter a record ID to test with..."
-                  className="flex-1 bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  placeholder={isLoadingTestRecords ? "Loading people..." : "Paste a record ID to test with..."}
+                  disabled={isLoadingTestRecords}
+                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-60"
                 />
-                <button
-                  type="button"
-                  onClick={() => setTestRecordId(crypto.randomUUID())}
-                  className="px-3 py-2 bg-accent border border-border rounded-lg text-foreground text-sm hover:bg-muted transition-colors whitespace-nowrap"
-                >
-                  Generate
-                </button>
-              </div>
+              )}
               <p className="text-xs text-muted-foreground mt-1">
-                Leave empty for a dry run, or generate a mock ID for testing
+                Choose the person the workflow should use. A sequence needs a real person with an email address.
               </p>
             </div>
 

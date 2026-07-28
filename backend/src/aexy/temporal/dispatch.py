@@ -20,7 +20,7 @@ from uuid import uuid4
 
 from temporalio import workflow
 from temporalio.client import Client
-from temporalio.common import RetryPolicy
+from temporalio.common import RetryPolicy, WorkflowIDReusePolicy
 
 from aexy.temporal.client import get_temporal_client
 from aexy.temporal.task_queues import TaskQueue
@@ -120,6 +120,7 @@ ACTIVITY_CONFIG: dict[str, dict[str, Any]] = {
     "process_agent_chat_mention": {"retry": LLM_RETRY, "timeout": timedelta(minutes=10)},
     "process_chat_all_mention": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)},
     "execute_workflow_action": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)},
+    "mark_crm_automation_run": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=1)},
 
     # Reminders (on-demand)
     "process_auto_assignment": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)},
@@ -225,11 +226,16 @@ async def dispatch(
     input: Any,
     task_queue: str = TaskQueue.OPERATIONS,
     workflow_id: str | None = None,
+    reject_duplicate_id: bool = False,
 ) -> str:
     """Start a single-activity workflow (fire-and-forget replacement for .delay()).
 
     Args:
         activity_name: Name of the activity function to execute.
+        reject_duplicate_id: Refuse the start if this workflow id has run
+            before, rather than the default of allowing a fresh run once the
+            previous one closed. Only meaningful with an explicit workflow_id,
+            where the id identifies a unit of work that must happen once.
         input: Dataclass input for the activity.
         task_queue: Task queue to use.
         workflow_id: Optional workflow ID for idempotency.
@@ -255,6 +261,11 @@ async def dispatch(
         ),
         id=wf_id,
         task_queue=task_queue,
+        **(
+            {"id_reuse_policy": WorkflowIDReusePolicy.REJECT_DUPLICATE}
+            if reject_duplicate_id
+            else {}
+        ),
     )
     logger.debug(f"Dispatched {activity_name} as workflow {wf_id}")
     return handle.id

@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -247,7 +248,7 @@ function FieldModal({ field, onClose, onSave, isSaving }: FieldModalProps) {
       });
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save field");
+      setError(getApiErrorMessage(err, "Failed to save field"));
     }
   };
 
@@ -532,7 +533,7 @@ export default function TaskConfigPage() {
       setDeletingStatus(null);
     } catch (error) {
       console.error("Failed to delete status:", error);
-      const message = error instanceof Error ? error.message : "Failed to delete status";
+      const message = getApiErrorMessage(error, "Failed to delete status");
       toast.error(message);
     }
   };

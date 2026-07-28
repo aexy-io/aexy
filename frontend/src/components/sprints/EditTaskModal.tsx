@@ -1,5 +1,7 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
+
 /**
  * Task detail / edit modal — the Trello-like task view.
  *
@@ -532,7 +534,7 @@ export function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, s
       clearCache();
       onClose();
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to update task";
+      const errorMessage = getApiErrorMessage(err, "Failed to update task");
       setError(errorMessage);
     }
   };

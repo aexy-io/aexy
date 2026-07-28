@@ -67,7 +67,7 @@ const validateActionNode = (node: Node): ValidationError[] => {
 
   // Email actions
   if (data.action_type === "send_email") {
-    if (!data.to && !data.email_template_id) {
+    if (!data.to && !data.email_field) {
       errors.push({
         nodeId: node.id,
         field: "to",
@@ -83,11 +83,40 @@ const validateActionNode = (node: Node): ValidationError[] => {
         severity: "error",
       });
     }
+    if (!data.email_body && !data.email_template_id) {
+      errors.push({
+        nodeId: node.id,
+        field: "email_body",
+        message: "Email body or template is required",
+        severity: "error",
+      });
+    }
+  }
+
+  if (data.action_type === "notify_user" && (data.notify_type || "email") === "email" && !data.notify_email) {
+    errors.push({
+      nodeId: node.id,
+      field: "notify_email",
+      message: "Email address is required",
+      severity: "error",
+    });
   }
 
   // Slack actions
   if (data.action_type === "send_slack") {
-    if (!data.channel && !data.channel_id) {
+    // The target requirement follows the chosen mode. Demanding a channel in
+    // DM mode made direct messages impossible to publish, since that mode
+    // never collects one.
+    if (data.slack_target_type === "dm") {
+      if (!data.user_email && !data.user_email_field) {
+        errors.push({
+          nodeId: node.id,
+          field: "user_email_field",
+          message: "Slack recipient is required",
+          severity: "error",
+        });
+      }
+    } else if (!data.channel && !data.channel_id) {
       errors.push({
         nodeId: node.id,
         field: "channel",
@@ -132,6 +161,29 @@ const validateActionNode = (node: Node): ValidationError[] => {
         nodeId: node.id,
         field: "webhook_url",
         message: "Webhook URL is required",
+        severity: "error",
+      });
+    }
+  }
+
+  // Link records actions — the required input follows the chosen mode, like
+  // Slack's channel/DM split above. An unset mode means field mode (the
+  // panel's and executor's shared default).
+  if (data.action_type === "link_records") {
+    if ((data.link_type || "field") === "field") {
+      if (!data.link_field) {
+        errors.push({
+          nodeId: node.id,
+          field: "link_field",
+          message: "Field containing the record to link is required",
+          severity: "error",
+        });
+      }
+    } else if (!data.link_record_id) {
+      errors.push({
+        nodeId: node.id,
+        field: "link_record_id",
+        message: "Target record is required",
         severity: "error",
       });
     }
@@ -324,6 +376,12 @@ const validateNode = (node: Node): ValidationError[] => {
   }
 };
 
+// Node types allowed in a published automation. trigger/action run inline;
+// wait runs on the durable engine (a wait-containing canvas is routed there).
+// condition/agent/branch/join are still rejected — nothing executes them.
+// Mirrors _EXECUTABLE_NODE_TYPES in backend workflow_service.py.
+const EXECUTABLE_NODE_TYPES = new Set(["trigger", "action", "wait"]);
+
 const validateWorkflowStructure = (nodes: Node[], edges: Edge[]): ValidationError[] => {
   const errors: ValidationError[] = [];
 
@@ -336,6 +394,22 @@ const validateWorkflowStructure = (nodes: Node[], edges: Edge[]): ValidationErro
       severity: "error",
     });
   }
+
+  // Only trigger + action nodes survive the flattening onto the automation's
+  // executable action list, and the published executor has no case for the
+  // rest — a condition/wait/agent/branch node is dropped on publish and the
+  // automation then runs every action unconditionally, with nothing reported.
+  // Flag it here so Publish disables and the toolbar lists the offending block
+  // (mirrors _EXECUTABLE_NODE_TYPES in backend workflow_service.py).
+  nodes.forEach((node) => {
+    if (node.type && !EXECUTABLE_NODE_TYPES.has(node.type)) {
+      errors.push({
+        nodeId: node.id,
+        message: `${node.type} steps can't run in a published automation yet — remove it to publish`,
+        severity: "error",
+      });
+    }
+  });
 
   // Check for disconnected nodes (except triggers which are entry points)
   const connectedNodes = new Set<string>();

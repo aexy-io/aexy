@@ -1,0 +1,159 @@
+"""Backstop that stops automation runs from sitting un-decided forever.
+
+Every normal path writes a run's outcome itself: the inline executor decides at
+the end of ``_execute_automation``, the outbox fails a run whose email gave up,
+and the email activity closes a run once its last send reports back. This exists
+for when none of those ever happen — the process was killed mid-run, or a
+handover was lost — because a run with no outcome is indistinguishable to an
+admin from a run that is still working, and it never resolves on its own.
+
+Deliberately conservative: it only touches runs that nothing else can still be
+working on, so it can never overwrite a real outcome that is merely late.
+"""
+
+import logging
+from datetime import datetime, timedelta, timezone
+
+from sqlalchemy import select, update
+
+from aexy.models.crm import (
+    CRMAutomation,
+    CRMAutomationEmailOutbox,
+    CRMAutomationRun,
+)
+
+logger = logging.getLogger(__name__)
+
+# Long enough that nothing legitimate is still in flight: the outbox gives up
+# after MAX_ATTEMPTS at a 60s sweep, and Temporal's own activity retries sit
+# well inside this.
+STALLED_AFTER = timedelta(minutes=15)
+
+_NON_TERMINAL = ("pending", "running", "queued")
+
+
+async def _durable_workflow_still_running(run_id: str) -> bool:
+    """Whether the Temporal workflow for this run is still going.
+
+    Errs on the side of "yes" for an *unclear* answer: if Temporal cannot be
+    reached, the run is left alone, because reaping a run whose workflow is
+    merely unreachable would report a failure for work that is still happening.
+
+    NOT_FOUND is not unclear, though, and must not be treated as one. The
+    handoff starts the workflow before the request commits, so a request that
+    then rolled back — or a start that never landed — leaves a run row carrying
+    a "handoff" step with no workflow behind it. Answering "still running" to
+    that leaves the run non-terminal forever, which is the exact stuck state
+    this reaper exists to clear.
+    """
+    from temporalio.service import RPCError, RPCStatusCode
+
+    try:
+        from temporalio.client import WorkflowExecutionStatus
+
+        from aexy.temporal.client import get_temporal_client
+
+        client = await get_temporal_client()
+        # Set by _dispatch_durably_if_needed when it hands the run over.
+        described = await client.get_workflow_handle(f"crm-live-{run_id}").describe()
+    except RPCError as error:
+        if error.status == RPCStatusCode.NOT_FOUND:
+            logger.warning(
+                "Run %s was handed off but Temporal has no such workflow; "
+                "deciding it here",
+                run_id,
+            )
+            return False
+        logger.warning(
+            "Could not determine workflow state for run %s; leaving it alone", run_id
+        )
+        return True
+    except Exception:
+        logger.warning(
+            "Could not determine workflow state for run %s; leaving it alone", run_id
+        )
+        return True
+
+    return described.status in (None, WorkflowExecutionStatus.RUNNING)
+
+
+async def reap_stalled_runs(db, limit: int = 100) -> dict:
+    """Write a failure onto runs that were abandoned without an outcome."""
+    cutoff = datetime.now(timezone.utc) - STALLED_AFTER
+
+    rows = (
+        await db.execute(
+            select(CRMAutomationRun)
+            .where(
+                CRMAutomationRun.status.in_(_NON_TERMINAL),
+                CRMAutomationRun.created_at < cutoff,
+            )
+            .limit(limit)
+        )
+    ).scalars().all()
+
+    reaped = 0
+    for run in rows:
+        steps = list(run.steps_executed or [])
+
+        # A run handed to the durable workflow is legitimately long-lived: a
+        # wait node can sleep for days. Age says nothing about it, so ask
+        # Temporal whether its workflow is still going. Only a workflow that is
+        # definitively gone leaves the run to be decided here.
+        if any(step.get("type") == "handoff" for step in steps):
+            if await _durable_workflow_still_running(run.id):
+                continue
+
+        # An email still pending or mid-handover will decide this run itself.
+        still_working = (
+            await db.execute(
+                select(CRMAutomationEmailOutbox.id).where(
+                    CRMAutomationEmailOutbox.automation_run_id == run.id,
+                    CRMAutomationEmailOutbox.status.in_(["pending", "dispatching"]),
+                )
+            )
+        ).first()
+        if still_working:
+            continue
+
+        # Claim it, so two sweeps overlapping cannot both count this failure.
+        claimed = await db.execute(
+            update(CRMAutomationRun)
+            .where(
+                CRMAutomationRun.id == run.id,
+                CRMAutomationRun.status.in_(_NON_TERMINAL),
+            )
+            .values(status="failed")
+        )
+        if claimed.rowcount == 0:
+            continue
+
+        reason = (
+            "No outcome was ever recorded for this run; it was abandoned "
+            "before finishing."
+        )
+        run.status = "failed"
+        run.error_message = reason
+        run.completed_at = datetime.now(timezone.utc)
+        if run.started_at:
+            run.duration_ms = int(
+                (run.completed_at - run.started_at).total_seconds() * 1000
+            )
+        # Say so per step too, or the run reads failed with a step list still
+        # claiming its send is on the way.
+        run.steps_executed = [
+            {**step, "status": "failed", "error": reason}
+            if step.get("status") in {"queued", "sending", "pending"}
+            else step
+            for step in steps
+        ]
+
+        automation = await db.get(CRMAutomation, run.automation_id)
+        if automation:
+            automation.failed_runs = (automation.failed_runs or 0) + 1
+
+        await db.commit()
+        reaped += 1
+        logger.warning("Reaped stalled automation run %s", run.id)
+
+    return {"reaped": reaped}

@@ -9,20 +9,24 @@ every record-triggered automation built in that UI silently never fired.
 """
 
 from uuid import uuid4
+from unittest.mock import AsyncMock
 
 import pytest
 
-from aexy.models.crm import CRMAutomation
+from aexy.models.crm import CRMAutomation, CRMAutomationRun
 from aexy.services.crm_automation_service import CRMAutomationService
+
+from tests.conftest import seed_crm_object, seed_workspace
 
 pytestmark = pytest.mark.asyncio
 
 
 async def _make_automation(db_session, *, object_id, trigger_type="record.created",
-                           trigger_config=None, is_active=True, actions=None):
+                           trigger_config=None, is_active=True, actions=None,
+                           workspace_id=None):
     automation = CRMAutomation(
         id=str(uuid4()),
-        workspace_id=str(uuid4()),
+        workspace_id=workspace_id or await seed_workspace(db_session),
         name="New Automation",
         module="crm",
         object_id=object_id,
@@ -54,10 +58,39 @@ async def test_null_object_automation_fires_on_record_created(db_session):
     assert runs[0].status == "completed"
 
 
+async def test_queued_email_step_survives_commit_and_reload(db_session):
+    """A queued email result must persist for the worker to finish the run."""
+    automation = await _make_automation(
+        db_session,
+        object_id=None,
+        actions=[{"type": "send_email", "config": {}}],
+    )
+    service = CRMAutomationService(db_session)
+    service._execute_action = AsyncMock(return_value={"queued": True})
+
+    run = await service.trigger_automation(automation.id)
+    await db_session.commit()
+    run_id = run.id
+    db_session.expire_all()
+
+    persisted = await db_session.get(CRMAutomationRun, run_id)
+    assert persisted.status == "queued"
+    assert len(persisted.steps_executed) == 1
+    assert persisted.steps_executed[0]["type"] == "send_email"
+    assert persisted.steps_executed[0]["order"] == 0
+    assert persisted.steps_executed[0]["status"] == "queued"
+    assert persisted.steps_executed[0]["result"] == {"queued": True}
+
+
 async def test_object_bound_automation_matches_only_its_object(db_session):
-    obj_a = str(uuid4())
-    obj_b = str(uuid4())
-    automation = await _make_automation(db_session, object_id=obj_a)
+    # Real rows: object_id is a foreign key, so made-up ids only insert on
+    # SQLite, where foreign keys go unenforced.
+    workspace_id = await seed_workspace(db_session)
+    obj_a = await seed_crm_object(db_session, workspace_id, "Alpha")
+    obj_b = await seed_crm_object(db_session, workspace_id, "Beta")
+    automation = await _make_automation(
+        db_session, object_id=obj_a, workspace_id=workspace_id
+    )
     service = CRMAutomationService(db_session)
 
     matched = await service.process_trigger(

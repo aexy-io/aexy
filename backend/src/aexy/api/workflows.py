@@ -23,6 +23,7 @@ from aexy.services.workflow_service import WorkflowService, WorkflowExecutor
 from aexy.services.workspace_service import WorkspaceService
 from aexy.services.crm_automation_service import CRMAutomationService
 from aexy.services.activity_logger import log_activity
+from aexy.schemas.automation import get_trigger_ids
 from aexy.schemas.workflow import (
     WorkflowDefinitionCreate,
     WorkflowDefinitionUpdate,
@@ -76,6 +77,79 @@ async def check_automation_exists(
         )
 
 
+def sync_workflow_to_automation(
+    automation, nodes: list[dict], edges: list[dict], service: WorkflowService
+) -> None:
+    """Flatten a canvas graph onto an automation's executable trigger + actions.
+
+    Execution order follows the EDGES, not the order nodes happen to sit in the
+    array. Before this, `for node in nodes` meant a published automation ran its
+    steps in the order they were dropped onto the canvas — rewiring a flow
+    changed the picture and nothing else.
+
+    Only `action` nodes survive the flattening: the published executor
+    (`CRMAutomationService._execute_action`) has no case for condition/wait/
+    agent/branch, so they cannot run. `validate_workflow` now rejects those
+    before this is reached, so the drop here is a backstop, not the enforcement.
+    """
+    order = service.topological_sort(nodes, edges)
+    position = {node_id: i for i, node_id in enumerate(order)}
+    # Nodes missing from the sort (e.g. caught in a cycle) go last rather than
+    # silently vanishing.
+    ordered = sorted(nodes, key=lambda n: position.get(n.get("id"), len(order)))
+
+    trigger_type = None
+    trigger_config = {}
+    for node in ordered:
+        if node.get("type") == "trigger":
+            node_data = node.get("data", {})
+            trigger_type = node_data.get("trigger_type")
+            trigger_config = {
+                k: v for k, v in node_data.items()
+                if k not in ("label", "trigger_type")
+            }
+            break
+
+    actions = []
+    for node in ordered:
+        if node.get("type") == "action":
+            node_data = node.get("data", {})
+            action_type = node_data.get("action_type")
+            if action_type:
+                actions.append({
+                    "type": action_type,
+                    "config": {
+                        k: v for k, v in node_data.items()
+                        if k not in ("label", "action_type")
+                    },
+                })
+
+    if trigger_type:
+        # Same registry gate as the create endpoint: an unknown value written
+        # here is stored fine but poisons every later fetch/list of the
+        # workspace's automations (the response contract rejects it), so the
+        # canvas-save path must refuse it up front too.
+        valid_triggers = get_trigger_ids(automation.module or "crm")
+        if trigger_type not in valid_triggers:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"Unsupported trigger '{trigger_type}' for module "
+                    f"'{automation.module or 'crm'}'. Choose a trigger from the automation registry."
+                ),
+            )
+        automation.trigger_type = trigger_type
+    automation.trigger_config = trigger_config
+    automation.actions = actions
+
+    # The object chosen on the trigger node must reach the automation row, not
+    # just its config: the date runner skips automations with no object, and the
+    # builder's field picker resolves its schema from this column.
+    chosen_object_id = trigger_config.get("object_id")
+    if chosen_object_id:
+        automation.object_id = chosen_object_id
+
+
 # =============================================================================
 # WORKFLOW DEFINITION ROUTES
 # =============================================================================
@@ -120,8 +194,8 @@ async def update_workflow(
     service = WorkflowService(db)
 
     # Pre-process data to avoid accessing Pydantic models after potential rollback
-    nodes_data = [n.model_dump() for n in data.nodes] if data.nodes else None
-    edges_data = [e.model_dump(by_alias=True) for e in data.edges] if data.edges else None
+    nodes_data = [n.model_dump() for n in data.nodes] if data.nodes is not None else None
+    edges_data = [e.model_dump(by_alias=True) for e in data.edges] if data.edges is not None else None
     viewport_data = data.viewport.model_dump() if data.viewport else None
 
     # Validate if nodes and edges are provided
@@ -191,41 +265,9 @@ async def update_workflow(
     automation_service = CRMAutomationService(db)
     automation = await automation_service.get_automation(automation_id)
     if automation and workflow.nodes:
-        # Extract trigger type and config from trigger node
-        trigger_type = None
-        trigger_config = {}
-        for node in workflow.nodes:
-            if node.get("type") == "trigger":
-                node_data = node.get("data", {})
-                trigger_type = node_data.get("trigger_type")
-                trigger_config = {
-                    k: v for k, v in node_data.items()
-                    if k not in ("label", "trigger_type")
-                }
-                break
-
-        # Convert action nodes to automation actions format
-        actions = []
-        for node in workflow.nodes:
-            if node.get("type") == "action":
-                node_data = node.get("data", {})
-                action_type = node_data.get("action_type")
-                if action_type:
-                    # Extract config (all fields except label and action_type)
-                    config = {
-                        k: v for k, v in node_data.items()
-                        if k not in ("label", "action_type")
-                    }
-                    actions.append({
-                        "type": action_type,
-                        "config": config,
-                    })
-
-        # Update automation with synced trigger_type, trigger_config, and actions
-        if trigger_type:
-            automation.trigger_type = trigger_type
-        automation.trigger_config = trigger_config
-        automation.actions = actions
+        sync_workflow_to_automation(
+            automation, workflow.nodes, workflow.edges or [], service
+        )
         await db.flush()
 
     return workflow
@@ -284,37 +326,9 @@ async def publish_workflow(
     automation_service = CRMAutomationService(db)
     automation = await automation_service.get_automation(automation_id)
     if automation:
-        # Extract trigger config from trigger node
-        trigger_config = {}
-        for node in workflow.nodes:
-            if node.get("type") == "trigger":
-                node_data = node.get("data", {})
-                trigger_config = {
-                    k: v for k, v in node_data.items()
-                    if k not in ("label", "trigger_type")
-                }
-                break
-
-        # Convert action nodes to automation actions format
-        actions = []
-        for node in workflow.nodes:
-            if node.get("type") == "action":
-                node_data = node.get("data", {})
-                action_type = node_data.get("action_type")
-                if action_type:
-                    # Extract config (all fields except label and action_type)
-                    config = {
-                        k: v for k, v in node_data.items()
-                        if k not in ("label", "action_type")
-                    }
-                    actions.append({
-                        "type": action_type,
-                        "config": config,
-                    })
-
-        # Update automation with synced actions and trigger_config
-        automation.trigger_config = trigger_config
-        automation.actions = actions
+        sync_workflow_to_automation(
+            automation, workflow.nodes, workflow.edges or [], service
+        )
         await db.flush()
 
     workflow = await service.publish_workflow(workflow.id)
@@ -461,6 +475,7 @@ async def execute_workflow(
             record_data=record_data,
             trigger_data=trigger_data,
             variables=data.variables,
+            is_dry_run=True,
         )
 
         executor = WorkflowExecutor(db)

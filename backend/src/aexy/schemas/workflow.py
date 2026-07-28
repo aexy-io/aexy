@@ -22,7 +22,8 @@ TriggerSubtype = Literal[
 ActionSubtype = Literal[
     "update_record", "create_record", "delete_record", "send_email",
     "send_slack", "send_sms", "create_task", "add_to_list", "remove_from_list",
-    "enroll_sequence", "unenroll_sequence", "webhook_call", "assign_owner"
+    "enroll_sequence", "unenroll_sequence", "enroll_in_sequence", "remove_from_sequence",
+    "webhook_call", "assign_owner", "link_records"
 ]
 
 WaitSubtype = Literal["duration", "datetime", "event"]
@@ -240,6 +241,7 @@ class WorkflowExecutionContext(BaseModel):
     record_data: dict[str, Any] = Field(default_factory=dict)
     trigger_data: dict[str, Any] = Field(default_factory=dict)
     variables: dict[str, Any] = Field(default_factory=dict)
+    is_dry_run: bool = False
     # Execution state
     executed_nodes: list[str] = Field(default_factory=list)
     current_node_id: str | None = None

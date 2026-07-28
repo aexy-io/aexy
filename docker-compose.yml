@@ -30,6 +30,13 @@ services:
       timeout: 5s
       retries: 5
 
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: aexy-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
   rustfs:
     image: rustfs/rustfs:latest
     container_name: aexy-rustfs
@@ -122,6 +129,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: aexy-temporal-worker
+    env_file:
+      - ./backend/.env
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/aexy
       - REDIS_URL=redis://redis:6379/0

@@ -237,6 +237,108 @@ class CRMEventService:
             },
         )
 
+    async def emit_list_entry_added(
+        self,
+        workspace_id: str,
+        object_id: str,
+        record_id: str,
+        list_id: str,
+        list_name: str,
+        added_by_id: str | None = None,
+    ):
+        """Emit event when a record is added to a membership list."""
+        from aexy.services.crm_automation_service import (
+            CRMAutomationService,
+            CRMWebhookService,
+        )
+
+        trigger_data = {
+            "trigger_type": CRMAutomationTriggerType.LIST_ENTRY_ADDED.value,
+            "workspace_id": workspace_id,
+            "object_id": object_id,
+            "record_id": record_id,
+            "list_id": list_id,
+            "list_name": list_name,
+            "added_by_id": added_by_id,
+        }
+
+        # Trigger matching automations
+        automation_service = CRMAutomationService(self.db)
+        await automation_service.process_trigger(
+            workspace_id=workspace_id,
+            object_id=object_id,
+            trigger_type=CRMAutomationTriggerType.LIST_ENTRY_ADDED.value,
+            record_id=record_id,
+            trigger_data=trigger_data,
+        )
+
+        # Deliver webhooks
+        webhook_service = CRMWebhookService(self.db)
+        await webhook_service.emit_event(
+            workspace_id=workspace_id,
+            event="list_entry.added",
+            object_id=object_id,
+            payload={
+                "event": "list_entry.added",
+                "object_id": object_id,
+                "record_id": record_id,
+                "list_id": list_id,
+                "list_name": list_name,
+                "added_by": added_by_id,
+            },
+        )
+
+    async def emit_list_entry_removed(
+        self,
+        workspace_id: str,
+        object_id: str,
+        record_id: str,
+        list_id: str,
+        list_name: str,
+        removed_by_id: str | None = None,
+    ):
+        """Emit event when a record is removed from a membership list."""
+        from aexy.services.crm_automation_service import (
+            CRMAutomationService,
+            CRMWebhookService,
+        )
+
+        trigger_data = {
+            "trigger_type": CRMAutomationTriggerType.LIST_ENTRY_REMOVED.value,
+            "workspace_id": workspace_id,
+            "object_id": object_id,
+            "record_id": record_id,
+            "list_id": list_id,
+            "list_name": list_name,
+            "removed_by_id": removed_by_id,
+        }
+
+        # Trigger matching automations
+        automation_service = CRMAutomationService(self.db)
+        await automation_service.process_trigger(
+            workspace_id=workspace_id,
+            object_id=object_id,
+            trigger_type=CRMAutomationTriggerType.LIST_ENTRY_REMOVED.value,
+            record_id=record_id,
+            trigger_data=trigger_data,
+        )
+
+        # Deliver webhooks
+        webhook_service = CRMWebhookService(self.db)
+        await webhook_service.emit_event(
+            workspace_id=workspace_id,
+            event="list_entry.removed",
+            object_id=object_id,
+            payload={
+                "event": "list_entry.removed",
+                "object_id": object_id,
+                "record_id": record_id,
+                "list_id": list_id,
+                "list_name": list_name,
+                "removed_by": removed_by_id,
+            },
+        )
+
     async def emit_note_added(
         self,
         workspace_id: str,
@@ -390,5 +492,153 @@ class CRMEventService:
                 "subject": subject,
                 "from_email": from_email,
                 "replied_at": replied_at,
+            },
+        )
+
+    async def emit_form_submitted(
+        self,
+        workspace_id: str,
+        object_id: str,
+        record_id: str,
+        form_id: str,
+        form_name: str,
+        submission_id: str,
+        data: dict[str, Any] | None = None,
+    ):
+        """Emit a CRM-scoped event when a linked form submission creates/updates a record.
+
+        Routed only when the form maps to a CRM object/record (auto-create on), so a
+        CRM automation listening for ``form.submitted`` can match by object + record.
+        """
+        from aexy.services.crm_automation_service import (
+            CRMAutomationService,
+            CRMWebhookService,
+        )
+
+        trigger_data = {
+            "trigger_type": CRMAutomationTriggerType.FORM_SUBMITTED.value,
+            "workspace_id": workspace_id,
+            "object_id": object_id,
+            "record_id": record_id,
+            "form_id": form_id,
+            "form_name": form_name,
+            "submission_id": submission_id,
+            "data": data or {},
+        }
+
+        automation_service = CRMAutomationService(self.db)
+        await automation_service.process_trigger(
+            workspace_id=workspace_id,
+            object_id=object_id,
+            trigger_type=CRMAutomationTriggerType.FORM_SUBMITTED.value,
+            record_id=record_id,
+            trigger_data=trigger_data,
+        )
+
+        webhook_service = CRMWebhookService(self.db)
+        await webhook_service.emit_event(
+            workspace_id=workspace_id,
+            event="form.submitted",
+            object_id=object_id,
+            payload={
+                "event": "form.submitted",
+                "object_id": object_id,
+                "record_id": record_id,
+                "form_id": form_id,
+                "form_name": form_name,
+                "submission_id": submission_id,
+            },
+        )
+
+    async def emit_email_opened(
+        self,
+        workspace_id: str,
+        object_id: str,
+        record_id: str,
+        campaign_id: str | None = None,
+        pixel_id: str | None = None,
+    ):
+        """Emit a CRM-scoped event when a tracked email tied to a CRM record is opened."""
+        from aexy.services.crm_automation_service import (
+            CRMAutomationService,
+            CRMWebhookService,
+        )
+
+        trigger_data = {
+            "trigger_type": CRMAutomationTriggerType.EMAIL_OPENED.value,
+            "workspace_id": workspace_id,
+            "object_id": object_id,
+            "record_id": record_id,
+            "campaign_id": campaign_id,
+            "pixel_id": pixel_id,
+        }
+
+        automation_service = CRMAutomationService(self.db)
+        await automation_service.process_trigger(
+            workspace_id=workspace_id,
+            object_id=object_id,
+            trigger_type=CRMAutomationTriggerType.EMAIL_OPENED.value,
+            record_id=record_id,
+            trigger_data=trigger_data,
+        )
+
+        webhook_service = CRMWebhookService(self.db)
+        await webhook_service.emit_event(
+            workspace_id=workspace_id,
+            event="email.opened",
+            object_id=object_id,
+            payload={
+                "event": "email.opened",
+                "object_id": object_id,
+                "record_id": record_id,
+                "campaign_id": campaign_id,
+            },
+        )
+
+    async def emit_email_clicked(
+        self,
+        workspace_id: str,
+        object_id: str,
+        record_id: str,
+        url: str | None = None,
+        campaign_id: str | None = None,
+        link_id: str | None = None,
+    ):
+        """Emit a CRM-scoped event when a link in a tracked email is clicked."""
+        from aexy.services.crm_automation_service import (
+            CRMAutomationService,
+            CRMWebhookService,
+        )
+
+        trigger_data = {
+            "trigger_type": CRMAutomationTriggerType.EMAIL_CLICKED.value,
+            "workspace_id": workspace_id,
+            "object_id": object_id,
+            "record_id": record_id,
+            "url": url,
+            "campaign_id": campaign_id,
+            "link_id": link_id,
+        }
+
+        automation_service = CRMAutomationService(self.db)
+        await automation_service.process_trigger(
+            workspace_id=workspace_id,
+            object_id=object_id,
+            trigger_type=CRMAutomationTriggerType.EMAIL_CLICKED.value,
+            record_id=record_id,
+            trigger_data=trigger_data,
+        )
+
+        webhook_service = CRMWebhookService(self.db)
+        await webhook_service.emit_event(
+            workspace_id=workspace_id,
+            event="email.clicked",
+            object_id=object_id,
+            payload={
+                "event": "email.clicked",
+                "object_id": object_id,
+                "record_id": record_id,
+                "url": url,
+                "campaign_id": campaign_id,
             },
         )

@@ -371,6 +371,25 @@ class WorkspaceService:
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
+    async def get_workspace_admins(
+        self,
+        workspace_id: str,
+        exclude_developer_id: str | None = None,
+    ) -> list[WorkspaceMember]:
+        """Active owners + admins of a workspace, deduped by developer.
+
+        `exclude_developer_id` drops one person from the result — used when
+        notifying admins *about an action* so whoever performed it isn't told
+        about their own change.
+        """
+        members: dict[str, WorkspaceMember] = {}
+        for role in ("owner", "admin"):
+            for member in await self.get_members_by_role(workspace_id, role):
+                if exclude_developer_id and str(member.developer_id) == str(exclude_developer_id):
+                    continue
+                members[str(member.developer_id)] = member
+        return list(members.values())
+
     async def get_member_count(self, workspace_id: str) -> int:
         """Get count of active members."""
         stmt = (

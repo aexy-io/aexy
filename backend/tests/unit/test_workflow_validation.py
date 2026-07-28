@@ -81,6 +81,18 @@ def test_required_fields_add_to_list_missing_list(svc):
     assert "missing_list" in err_types(r)
 
 
+def test_notify_user_requires_a_specific_email(svc):
+    node = _action("a1", "notify_user", notify_type="email")
+    r = svc.validate_workflow(*_wf(node))
+    assert "missing_notification_recipient" in err_types(r)
+
+
+def test_notify_user_accepts_a_specific_email(svc):
+    node = _action("a1", "notify_user", notify_type="email", notify_email="user@example.com")
+    r = svc.validate_workflow(*_wf(node))
+    assert r.is_valid, err_types(r)
+
+
 # ---------------------------------------------------------------------------
 # 1.2 Email literal format validation (US-6.2)
 # ---------------------------------------------------------------------------
@@ -96,6 +108,12 @@ def test_email_literal_valid_format(svc):
     node = _action("a1", "send_email", email_body="hi", to="user@example.com")
     r = svc.validate_workflow(*_wf(node))
     assert r.is_valid, err_types(r)
+
+
+def test_notification_email_literal_invalid_format(svc):
+    node = _action("a1", "notify_user", notify_type="email", notify_email="not-an-email")
+    r = svc.validate_workflow(*_wf(node))
+    assert "invalid_email" in err_types(r)
 
 
 def test_email_literal_variable_is_not_format_checked(svc):

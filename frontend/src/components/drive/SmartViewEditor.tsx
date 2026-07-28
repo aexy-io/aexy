@@ -9,7 +9,7 @@ import {
   type SmartViewFilter,
   type DriveFileKind,
 } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { cn, getApiErrorMessage } from "@/lib/utils";
 import {
   useCreateSmartView,
   useDeleteSmartView,
@@ -67,7 +67,7 @@ export function SmartViewEditor({ workspaceId, view, onClose }: Props) {
       }
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("errorSaveFailed"));
+      setError(getApiErrorMessage(e, t("errorSaveFailed")));
     }
   };
 

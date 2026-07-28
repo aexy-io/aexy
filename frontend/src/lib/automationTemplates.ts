@@ -334,19 +334,35 @@ export const AUTOMATION_TEMPLATES: Record<string, AutomationTemplate> = {
     description:
       "Notify the sales team when a deal moves to a new pipeline stage.",
     module: "crm",
-    triggerType: "deal.stage_changed",
-    triggerLabel: "Deal Stage Changed",
+    // Must match the id the backend registry/emitter uses ("stage.changed").
+    // "deal.stage_changed" is emitted by nothing, so the automation never fired.
+    triggerType: "stage.changed",
+    triggerLabel: "Stage Changed",
     actions: [
       {
-        type: "send_notification",
-        label: "Notify Sales Team",
-        config: { channel: "slack" },
+        type: "notify_user",
+        label: "Notify Workspace Admins",
+        config: {
+          channel: "email",
+          notify_type: "workspace_admin",
+          notify_title: "Deal stage changed",
+          notify_message:
+            "{{record.values.name}} moved to stage {{trigger.new_stage}}.",
+        },
       },
     ],
   },
 };
 
 export const TEMPLATE_LIST = Object.values(AUTOMATION_TEMPLATES);
+
+// The CRM automation builder only offers templates backed by the CRM
+// execution registry. Keep the broader catalog for existing references, but
+// do not offer unfinished module templates as new starting points.
+export const CRM_AUTOMATION_MODULES: AutomationModule[] = ["crm"];
+export const CRM_TEMPLATE_LIST = TEMPLATE_LIST.filter(
+  (template) => template.module === "crm",
+);
 
 // ---------------------------------------------------------------------------
 // React Flow scaffolding helpers

@@ -13,7 +13,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from aexy.core.database import get_db
 from aexy.api.developers import get_current_developer
 from aexy.models.developer import Developer
-from aexy.services.automation_service import AutomationService
+from aexy.services.automation_service import (
+    AutomationService,
+    filter_actions_by_integrations,
+)
 from aexy.services.workflow_generator import generate_workflow_from_prompt
 from aexy.services.workspace_service import WorkspaceService
 from aexy.schemas.automation import (
@@ -102,12 +105,17 @@ async def get_module_actions(
     db: AsyncSession = Depends(get_db),
     current_user: Developer = Depends(get_current_developer),
 ):
-    """Get available actions for a specific module."""
+    """Get available actions for a specific module.
+
+    Integration-backed actions are dropped when the workspace has not
+    connected the integration they need, so the palette never offers a step
+    that could only fail.
+    """
     await check_workspace_permission(db, workspace_id, current_user.id, "member")
-    return ModuleActionsResponse(
-        module=module,
-        actions=get_actions_for_module(module),
+    actions = await filter_actions_by_integrations(
+        db, workspace_id, get_actions_for_module(module)
     )
+    return ModuleActionsResponse(module=module, actions=actions)
 
 
 # =============================================================================
@@ -140,22 +148,31 @@ async def create_automation(
     conditions = [c.model_dump() for c in data.conditions] if data.conditions else None
     actions = [a.model_dump() for a in data.actions]
 
-    automation = await service.create_automation(
-        workspace_id=workspace_id,
-        name=data.name,
-        description=data.description,
-        module=data.module,
-        module_config=data.module_config,
-        object_id=data.object_id,
-        trigger_type=data.trigger_type,
-        trigger_config=data.trigger_config,
-        conditions=conditions,
-        actions=actions,
-        error_handling=data.error_handling,
-        run_limit_per_month=data.run_limit_per_month,
-        is_active=data.is_active,
-        created_by_id=current_user.id,
-    )
+    from aexy.services.workflow_service import validate_action_configs
+
+    action_errors = validate_action_configs(actions)
+    if action_errors:
+        raise HTTPException(status_code=400, detail="; ".join(action_errors))
+
+    try:
+        automation = await service.create_automation(
+            workspace_id=workspace_id,
+            name=data.name,
+            description=data.description,
+            module=data.module,
+            module_config=data.module_config,
+            object_id=data.object_id,
+            trigger_type=data.trigger_type,
+            trigger_config=data.trigger_config,
+            conditions=conditions,
+            actions=actions,
+            error_handling=data.error_handling,
+            run_limit_per_month=data.run_limit_per_month,
+            is_active=data.is_active,
+            created_by_id=current_user.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     return automation
 
 
@@ -286,18 +303,26 @@ async def trigger_automation_manually(
     if not automation or automation.workspace_id != workspace_id:
         raise HTTPException(status_code=404, detail="Automation not found")
 
-    # Run in background
+    # Run in background on its own session: the request's session is torn down
+    # before background tasks run, so borrowing it leaves this work uncommitted.
     async def run_automation():
-        async_service = AutomationService(db)
-        await async_service.trigger_automation(
-            automation_id=automation_id,
-            record_id=record_id,
-            trigger_data={
-                "manual_trigger": True,
-                "triggered_by": current_user.id,
-                "module": automation.module,
-            },
-        )
+        from aexy.core.database import get_async_session
+        from aexy.services.automation_email_outbox import drain_outbox
+
+        async with get_async_session() as task_db:
+            run = await AutomationService(task_db).trigger_automation(
+                automation_id=automation_id,
+                record_id=record_id,
+                trigger_data={
+                    "manual_trigger": True,
+                    "triggered_by": current_user.id,
+                    "module": automation.module,
+                },
+            )
+        # Committed by the context manager above; hand this run's queued
+        # email over. Scoped to the run: one admin pressing a button must not
+        # pick up every other workspace's pending work.
+        await drain_outbox(run_id=str(run.id))
 
     background_tasks.add_task(run_automation)
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -98,7 +99,7 @@ export function useAddEmailAlias() {
     },
     onError: (error) => {
       const message =
-        error instanceof Error ? error.message : "Failed to add alias";
+        getApiErrorMessage(error, "Failed to add alias");
       toast.error(message);
     },
   });
@@ -116,7 +117,7 @@ export function useRemoveEmailAlias() {
     },
     onError: (error) => {
       toast.error(
-        error instanceof Error ? error.message : "Failed to remove alias",
+        getApiErrorMessage(error, "Failed to remove alias"),
       );
     },
   });
@@ -147,7 +148,7 @@ export function useMergeGhost(workspaceId: string | null) {
     },
     onError: (error) => {
       toast.error(
-        error instanceof Error ? error.message : "Failed to merge ghost",
+        getApiErrorMessage(error, "Failed to merge ghost"),
       );
     },
   });

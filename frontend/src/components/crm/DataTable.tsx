@@ -362,6 +362,7 @@ export function DataTable({
                             attribute={attr}
                             access="edit"
                             onSave={async (val) => onCellSave(record.id, attr.slug, val)}
+                            workspaceId={record.workspace_id}
                           />
                         ) : (
                           <FieldRenderer value={record.values[attr.slug]} attribute={attr} surface="table_cell" displayConfig={getColumnDisplayConfig(attr.slug)} />

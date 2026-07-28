@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useState, useCallback } from "react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useQuestionnaires, useQuestionnaire } from "@/hooks/useQuestionnaires";
@@ -84,7 +85,7 @@ export default function ImportQuestionnairePage() {
         setImportResult(result);
         setStep("preview");
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Upload failed";
+        const message = getApiErrorMessage(err, "Upload failed");
         setUploadError(message);
       }
     },

@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import {
   useMutation,
   useQuery,
@@ -173,7 +174,7 @@ export function useDriveUpload(
           qc.invalidateQueries({ queryKey: KEY_USAGE(workspaceId) });
         })
         .catch((err: unknown) => {
-          const message = err instanceof Error ? err.message : "Upload failed";
+          const message = getApiErrorMessage(err, "Upload failed");
           updateItem(next.id, { status: "failed", error: message });
         })
         .finally(() => {

@@ -226,6 +226,25 @@ class FormSubmissionHandler:
             },
         )
 
+        # Bridge to CRM automations: when the form maps to a CRM record, also emit a
+        # CRM-scoped form.submitted so CRM automations (module="crm") can match it.
+        # The forms dispatch above is module="forms" and can never reach them.
+        if submission.crm_record_id and form.crm_object_id:
+            try:
+                from aexy.services.crm_events import CRMEventService
+
+                await CRMEventService(self.db).emit_form_submitted(
+                    workspace_id=form.workspace_id,
+                    object_id=form.crm_object_id,
+                    record_id=submission.crm_record_id,
+                    form_id=form.id,
+                    form_name=form.name,
+                    submission_id=submission.id,
+                    data=submission.data,
+                )
+            except Exception:
+                pass
+
         return submission
 
     async def _validate_submission(

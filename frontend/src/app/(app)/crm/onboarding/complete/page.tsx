@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -136,7 +137,7 @@ export default function OnboardingComplete() {
         }
       } catch (err) {
         console.error("Failed to setup CRM:", err);
-        setError(err instanceof Error ? err.message : "Failed to setup CRM");
+        setError(getApiErrorMessage(err, "Failed to setup CRM"));
         setStatus("error");
       }
     };

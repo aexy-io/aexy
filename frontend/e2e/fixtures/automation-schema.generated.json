@@ -33,16 +33,36 @@
         "description": "When a record is removed from a list"
       },
       {
-        "id": "status.changed",
-        "description": "When a record status changes"
-      },
-      {
         "id": "stage.changed",
         "description": "When a record moves to a different pipeline stage"
       },
       {
+        "id": "schedule.daily",
+        "description": "When the daily schedule fires"
+      },
+      {
+        "id": "schedule.weekly",
+        "description": "When the weekly schedule fires"
+      },
+      {
+        "id": "date.approaching",
+        "description": "When a date field is approaching its target"
+      },
+      {
+        "id": "date.passed",
+        "description": "When a date field has passed its target"
+      },
+      {
         "id": "form.submitted",
         "description": "When a linked form submission is received"
+      },
+      {
+        "id": "email.opened",
+        "description": "When a tracked email is opened by a contact"
+      },
+      {
+        "id": "email.clicked",
+        "description": "When a link in a tracked email is clicked"
       }
     ]
   },
@@ -57,18 +77,6 @@
         "description": "Send a Slack message to a channel or user"
       },
       {
-        "id": "send_sms",
-        "description": "Send an SMS text message"
-      },
-      {
-        "id": "webhook_call",
-        "description": "Call an external webhook URL"
-      },
-      {
-        "id": "run_agent",
-        "description": "Run an AI agent with the trigger context"
-      },
-      {
         "id": "create_task",
         "description": "Create a follow-up task"
       },
@@ -79,14 +87,6 @@
       {
         "id": "notify_team",
         "description": "Send an in-app notification to a team"
-      },
-      {
-        "id": "wait",
-        "description": "Wait for a specified duration before continuing"
-      },
-      {
-        "id": "condition",
-        "description": "Evaluate a condition to branch the workflow"
       }
     ],
     "crm": [
@@ -107,12 +107,8 @@
         "description": "Link two CRM records together"
       },
       {
-        "id": "add_to_list",
-        "description": "Add a record to a CRM list"
-      },
-      {
-        "id": "remove_from_list",
-        "description": "Remove a record from a CRM list"
+        "id": "assign_owner",
+        "description": "Assign a CRM record to a workspace member"
       },
       {
         "id": "enroll_in_sequence",

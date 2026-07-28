@@ -4,7 +4,6 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
   Plus,
-  Filter,
   ChevronLeft,
   Trash2,
   Building2,
@@ -12,16 +11,18 @@ import {
   DollarSign,
   LayoutGrid,
   Target,
-  Settings,
+  LayoutList,
 } from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAuth } from "@/hooks/useAuth";
-import { useCRMObjects, useCRMRecords } from "@/hooks/useCRM";
+import { useCRMObjects, useCRMRecords, useCRMLists, useCRMListEntries } from "@/hooks/useCRM";
 import { useSavedViews } from "@/hooks/useTables";
-import { CRMObject, CRMRecord, CRMAttribute, CRMObjectType, TableSavedView, ColumnDisplayConfig } from "@/lib/api";
+import { CRMObject, CRMRecord, CRMAttribute, CRMObjectType, TableSavedView, ColumnDisplayConfig, CRMList } from "@/lib/api";
 import { ViewSwitcher, ViewMode } from "@/components/crm/ViewSwitcher";
 import { SavedViewSwitcher } from "@/components/crm/SavedViewSwitcher";
+import { MembershipListPicker, AddToListModal } from "@/components/crm/MembershipListPicker";
+import { TableFilterPanel, FilterRule, matchesFilters } from "@/components/tables/TableFilterPanel";
 import { DataTable } from "@/components/crm/DataTable";
 import { KanbanBoard } from "@/components/crm/KanbanBoard";
 import { PipelineBoard } from "@/components/crm/PipelineBoard";
@@ -47,6 +48,7 @@ function CreateRecordModal({
   isCreating,
   object,
   defaultValues,
+  workspaceId,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -54,8 +56,10 @@ function CreateRecordModal({
   isCreating: boolean;
   object: CRMObject;
   defaultValues?: Record<string, unknown>;
+  workspaceId?: string | null;
 }) {
   const [values, setValues] = useState<Record<string, unknown>>(defaultValues || {});
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (defaultValues) {
@@ -67,7 +71,15 @@ function CreateRecordModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onCreate(values);
+    setError(null);
+    try {
+      await onCreate(values);
+    } catch (err: any) {
+      // Stay open so the typed values survive — a duplicate on a unique field
+      // (409) is fixable right here.
+      setError(err?.response?.data?.detail || "Failed to create record");
+      return;
+    }
     setValues({});
     onClose();
   };
@@ -92,9 +104,15 @@ function CreateRecordModal({
                 required={attr.is_required}
                 placeholder={attr.description || `Enter ${attr.name.toLowerCase()}`}
                 className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
+                workspaceId={workspaceId}
               />
             </div>
           ))}
+          {error && (
+            <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
+              {error}
+            </p>
+          )}
           <div className="flex gap-3 pt-4">
             <button
               type="button"
@@ -126,7 +144,7 @@ export default function RecordsPage() {
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || null;
 
-  const { objects } = useCRMObjects(workspaceId);
+  const { objects, isLoading: isLoadingObjects } = useCRMObjects(workspaceId);
   const currentObject = objects.find((obj) => obj.slug === objectSlug);
 
   // Saved views
@@ -140,6 +158,22 @@ export default function RecordsPage() {
   } = useSavedViews(workspaceId, currentObject?.id || null);
   const [activeViewId, setActiveViewId] = useState<string | null>(null);
 
+  // Membership lists (static named sets of records)
+  const {
+    lists: membershipLists,
+    createList,
+    addToList,
+    isCreating: isCreatingList,
+    isAddingToList,
+  } = useCRMLists(workspaceId, currentObject?.id || undefined);
+  const [activeListId, setActiveListId] = useState<string | null>(null);
+  const [showAddToListModal, setShowAddToListModal] = useState(false);
+  const { entries: listEntries, isLoading: isLoadingListEntries } = useCRMListEntries(
+    workspaceId,
+    activeListId,
+    { limit: 500 }
+  );
+
   // View state
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     // Default to board view for deals
@@ -147,6 +181,7 @@ export default function RecordsPage() {
     return "table";
   });
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterRules, setFilterRules] = useState<FilterRule[]>([]);
   const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createDefaultValues, setCreateDefaultValues] = useState<Record<string, unknown>>({});
@@ -214,6 +249,21 @@ export default function RecordsPage() {
     if (activeViewId === viewId) setActiveViewId(null);
   }, [deleteView, activeViewId]);
 
+  // Filters run in the database over the whole object, not over the loaded page,
+  // so a match on record 120 of 139 is still found and `total` counts every match.
+  // is_true/is_false are UI-only shorthands the API expresses as equals.
+  const serverFilters = useMemo(
+    () =>
+      filterRules
+        .filter((rule) => rule.field && rule.operator)
+        .map((rule) => {
+          if (rule.operator === "is_true") return { attribute: rule.field, operator: "equals", value: "true" };
+          if (rule.operator === "is_false") return { attribute: rule.field, operator: "equals", value: "false" };
+          return { attribute: rule.field, operator: rule.operator, value: rule.value };
+        }),
+    [filterRules]
+  );
+
   const {
     records,
     total,
@@ -226,19 +276,79 @@ export default function RecordsPage() {
     isDeleting,
   } = useCRMRecords(workspaceId, currentObject?.id || null, {
     sorts: sortConfig ? [{ attribute: sortConfig.attribute, direction: sortConfig.direction }] : undefined,
+    filters: serverFilters.length > 0 ? serverFilters : undefined,
+    limit: 200,
   });
 
-  // Filter records by search
+  // Filter by membership list, then by attribute filters, then by search.
+  // When a list is active, the rows come from the list's own entries (the
+  // true membership) rather than the object's paginated record page, since a
+  // list's members are not guaranteed to fall within that page.
   const filteredRecords = useMemo(() => {
-    if (!searchQuery) return records;
+    let rows: CRMRecord[];
+    if (activeListId) {
+      rows = listEntries
+        .map((entry) => entry.record)
+        .filter((record): record is CRMRecord => !!record);
+    } else {
+      rows = records;
+    }
+    // Attribute filters are applied by the server for the object's own records, so
+    // only re-apply them here for list membership, whose rows come from the list
+    // entries rather than the filtered record query.
+    if (activeListId && filterRules.length > 0) {
+      rows = rows.filter((record) => matchesFilters(record, filterRules, currentObject?.attributes || []));
+    }
+    if (!searchQuery) return rows;
     const query = searchQuery.toLowerCase();
-    return records.filter((record) => {
+    return rows.filter((record) => {
       if (record.display_name?.toLowerCase().includes(query)) return true;
       return Object.values(record.values).some((val) =>
         String(val).toLowerCase().includes(query)
       );
     });
-  }, [records, searchQuery]);
+  }, [records, searchQuery, activeListId, listEntries, filterRules, currentObject?.attributes]);
+
+  const handleSelectMembershipList = useCallback((list: CRMList | null) => {
+    setActiveListId(list?.id ?? null);
+    setSelectedRecords([]);
+  }, []);
+
+  const handleCreateMembershipList = useCallback(
+    async (name: string) => {
+      if (!currentObject?.id) return;
+      const list = await createList({ object_id: currentObject.id, name });
+      if (selectedRecords.length > 0) {
+        await addToList({ listId: list.id, recordIds: selectedRecords });
+        setSelectedRecords([]);
+      }
+      setActiveListId(list.id);
+    },
+    [addToList, createList, currentObject?.id, selectedRecords]
+  );
+
+  const handleAddSelectedToList = useCallback(
+    async (listId: string) => {
+      if (selectedRecords.length === 0) return;
+      await addToList({ listId, recordIds: selectedRecords });
+      setShowAddToListModal(false);
+      setSelectedRecords([]);
+      setActiveListId(listId);
+    },
+    [addToList, selectedRecords]
+  );
+
+  const handleCreateListAndAdd = useCallback(
+    async (name: string) => {
+      if (!currentObject?.id || selectedRecords.length === 0) return;
+      const list = await createList({ object_id: currentObject.id, name });
+      await addToList({ listId: list.id, recordIds: selectedRecords });
+      setShowAddToListModal(false);
+      setSelectedRecords([]);
+      setActiveListId(list.id);
+    },
+    [addToList, createList, currentObject?.id, selectedRecords]
+  );
 
   // Check if object has status attribute (for board view)
   const hasStatusAttribute = useMemo(() => {
@@ -321,7 +431,7 @@ export default function RecordsPage() {
     }
   };
 
-  if (!currentObject && !isLoading) {
+  if (!currentObject && !isLoadingObjects) {
     return (
       <div className="min-h-screen bg-background">
 <div className="p-8">
@@ -363,10 +473,29 @@ export default function RecordsPage() {
               {icon && <div className="text-purple-400">{icon}</div>}
               <div>
                 <h1 className="text-2xl font-bold text-foreground">{currentObject?.plural_name || "Records"}</h1>
-                <p className="text-sm text-muted-foreground">{total} records</p>
+                <p className="text-sm text-muted-foreground">
+                  {activeListId
+                    ? `${filteredRecords.length} on list · ${total} total`
+                    : serverFilters.length > 0
+                      ? `${total} matching · showing ${filteredRecords.length}`
+                      : records.length < total
+                        ? `${total} records · showing ${filteredRecords.length}`
+                        : `${total} records`}
+                </p>
               </div>
             </div>
             <div className="flex-1" />
+
+            {/* Membership lists */}
+            {currentObject && (
+              <MembershipListPicker
+                lists={membershipLists}
+                activeListId={activeListId}
+                onSelectList={handleSelectMembershipList}
+                onCreateList={handleCreateMembershipList}
+                isCreating={isCreatingList}
+              />
+            )}
 
             {/* Saved Views */}
             {currentObject && (
@@ -414,10 +543,11 @@ export default function RecordsPage() {
               placeholder={`Search ${currentObject?.plural_name?.toLowerCase() || "records"}...`}
               wrapperClassName="flex-1"
             />
-            <button className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-accent border border-border text-foreground rounded-lg transition-colors">
-              <Filter className="h-4 w-4" />
-              Filter
-            </button>
+            <TableFilterPanel
+              attributes={currentObject?.attributes || []}
+              filters={filterRules}
+              onChange={setFilterRules}
+            />
 
             {/* Column visibility (table view only) */}
             {viewMode === "table" && currentObject?.attributes && (
@@ -431,14 +561,24 @@ export default function RecordsPage() {
             )}
 
             {selectedRecords.length > 0 && (
-              <button
-                onClick={handleBulkDelete}
-                disabled={isDeleting}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-600/30 text-red-400 rounded-lg transition-colors"
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete ({selectedRecords.length})
-              </button>
+              <>
+                <button
+                  onClick={() => setShowAddToListModal(true)}
+                  disabled={isAddingToList}
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-600/30 text-indigo-300 rounded-lg transition-colors"
+                >
+                  <LayoutList className="h-4 w-4" />
+                  Add to list ({selectedRecords.length})
+                </button>
+                <button
+                  onClick={handleBulkDelete}
+                  disabled={isDeleting}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-600/30 text-red-400 rounded-lg transition-colors"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete ({selectedRecords.length})
+                </button>
+              </>
             )}
           </div>
 
@@ -447,8 +587,14 @@ export default function RecordsPage() {
             <DataTable
               records={filteredRecords}
               attributes={currentObject?.attributes || []}
-              isLoading={isLoading}
-              emptyMessage={searchQuery ? "No records match your search" : `No ${currentObject?.plural_name?.toLowerCase() || "records"} yet`}
+              isLoading={isLoading || (!!activeListId && isLoadingListEntries)}
+              emptyMessage={
+                activeListId
+                  ? "No records on this list yet. Select records and use Add to list."
+                  : searchQuery
+                    ? "No records match your search"
+                    : `No ${currentObject?.plural_name?.toLowerCase() || "records"} yet`
+              }
               visibleColumns={visibleColumns}
               onVisibleColumnsChange={setVisibleColumns}
               columnOrder={columnOrder}
@@ -490,6 +636,16 @@ export default function RecordsPage() {
             )
           )}
 
+          <AddToListModal
+            isOpen={showAddToListModal}
+            onClose={() => setShowAddToListModal(false)}
+            lists={membershipLists}
+            selectedCount={selectedRecords.length}
+            onAdd={handleAddSelectedToList}
+            onCreateAndAdd={handleCreateListAndAdd}
+            isSubmitting={isAddingToList || isCreatingList}
+          />
+
           {currentObject && (
             <CreateRecordModal
               isOpen={showCreateModal}
@@ -499,6 +655,7 @@ export default function RecordsPage() {
               }}
               onCreate={handleCreate}
               isCreating={isCreating}
+              workspaceId={workspaceId}
               object={currentObject}
               defaultValues={createDefaultValues}
             />

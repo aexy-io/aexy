@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { getApiErrorMessage } from "@/lib/utils";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -11,14 +12,14 @@ import { Node, Edge } from "@xyflow/react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { api, AutomationModule, GeneratedWorkflow } from "@/lib/api";
 import {
-  AUTOMATION_TEMPLATES,
   AutomationTemplate,
+  CRM_TEMPLATE_LIST,
   defaultTriggerTypes,
   getDefaultEdges,
   getDefaultNodes,
-  moduleLabels,
 } from "@/lib/automationTemplates";
 import { TemplateGallery } from "@/components/automations/TemplateGallery";
+import { SaveStateBadge, type SaveState } from "@/components/automations/SaveStateBadge";
 
 // WorkflowCanvas drags in @xyflow/react + 7 node components (~150 KB). It
 // only matters when the user actually opens the canvas — both the
@@ -45,10 +46,13 @@ export default function NewAutomationPage() {
   const { currentWorkspace } = useWorkspace();
 
   // Get module and template from URL query params.
-  const moduleParam = searchParams.get("module") as AutomationModule | null;
+  const requestedModule = searchParams.get("module") as AutomationModule | null;
+  const moduleParam = requestedModule === "crm" ? requestedModule : null;
   const templateParam = searchParams.get("template");
   const startBlank = searchParams.get("blank") === "1";
-  const template = templateParam ? AUTOMATION_TEMPLATES[templateParam] : null;
+  const template = templateParam
+    ? CRM_TEMPLATE_LIST.find((item) => item.id === templateParam) ?? null
+    : null;
 
   // UX-DEF-004: LLM-generated workflow lives in component state (not
   // URL, since the payload can be large). When the gallery's generate
@@ -69,9 +73,25 @@ export default function NewAutomationPage() {
   );
   const [name, setName] = useState(template?.name || "New Automation");
   const [description, setDescription] = useState(template?.description || "");
+  // Picking a template swaps the gallery for the canvas via router.replace,
+  // which does NOT remount this page — so the useState initialisers above
+  // already ran with template === null. Without this, every template-created
+  // automation saves as "New Automation" and is impossible to tell apart in
+  // the list. Keyed on template id so it only fires on an actual change.
+  const templateId = template?.id;
+  useEffect(() => {
+    if (!templateId) return;
+    const picked = CRM_TEMPLATE_LIST.find((item) => item.id === templateId);
+    if (!picked) return;
+    setName(picked.name);
+    setDescription(picked.description || "");
+    setModule(picked.module);
+  }, [templateId]);
   const [isCreating, setIsCreating] = useState(false);
   const [automationId, setAutomationId] = useState<string | null>(null);
+  const [isPublished, setIsPublished] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
   // Synchronous mirror of `automationId` so handlers that fire
   // RIGHT AFTER an auto-create (e.g. canvas's handleTest → onSave
   // → onTest) can read the freshly minted id without waiting for
@@ -106,8 +126,7 @@ export default function NewAutomationPage() {
     // Generated workflows always start as drafts in the user's
     // chosen module (or "crm" by default). The user can rename +
     // tweak before save, same as templates.
-    const generatedModule = (workflow._meta?.module as AutomationModule) || moduleParam || "crm";
-    setModule(generatedModule);
+    setModule("crm");
     setName("Generated Automation");
     setDescription("");
     setGeneratedWorkflow(workflow);
@@ -135,7 +154,7 @@ export default function NewAutomationPage() {
       updateAutomationId(response.data.id);
       return response.data.id;
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to create automation";
+      const errorMessage = getApiErrorMessage(err, "Failed to create automation");
       setError(errorMessage);
       return null;
     } finally {
@@ -156,10 +175,11 @@ export default function NewAutomationPage() {
       // Create automation if not exists
       if (!currentAutomationId) {
         currentAutomationId = await handleCreateAutomation();
-        if (!currentAutomationId) return;
+        if (!currentAutomationId) throw new Error("Failed to create automation");
       }
 
       // Update workflow (workflow endpoints are under /crm/automations)
+      setSaveState("saving");
       try {
         await api.put(
           `/workspaces/${workspaceId}/crm/automations/${currentAutomationId}/workflow`,
@@ -177,37 +197,52 @@ export default function NewAutomationPage() {
             trigger_type: triggerType,
           }
         );
+        setError(null);
+        setSaveState("saved");
+        setTimeout(() => setSaveState("idle"), 1500);
       } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : "Failed to save workflow";
+        const errorMessage = getApiErrorMessage(err, "Failed to save workflow");
         setError(errorMessage);
+        setSaveState("error");
+        throw err;
       }
     },
     [workspaceId, automationId, handleCreateAutomation]
   );
 
   const handlePublish = useCallback(async () => {
-    if (!workspaceId || !automationId) return;
+    if (!workspaceId || !automationId) {
+      throw new Error("Save the automation before publishing");
+    }
 
     try {
-      await api.post(
+      const response = await api.post(
         `/workspaces/${workspaceId}/crm/automations/${automationId}/workflow/publish`
       );
+      setIsPublished(response.data?.is_published === true);
+      setError(null);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to publish workflow";
+      const errorMessage = getApiErrorMessage(err, "Failed to publish workflow");
       setError(errorMessage);
+      throw new Error(errorMessage);
     }
   }, [workspaceId, automationId]);
 
   const handleUnpublish = useCallback(async () => {
-    if (!workspaceId || !automationId) return;
+    if (!workspaceId || !automationId) {
+      throw new Error("Save the automation before unpublishing");
+    }
 
     try {
-      await api.post(
+      const response = await api.post(
         `/workspaces/${workspaceId}/crm/automations/${automationId}/workflow/unpublish`
       );
+      setIsPublished(response.data?.is_published === true);
+      setError(null);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to unpublish workflow";
+      const errorMessage = getApiErrorMessage(err, "Failed to unpublish workflow");
       setError(errorMessage);
+      throw new Error(errorMessage);
     }
   }, [workspaceId, automationId]);
 
@@ -229,10 +264,12 @@ export default function NewAutomationPage() {
             ...(recordId?.trim() ? { record_id: recordId.trim() } : {}),
           }
         );
+        setError(null);
         return response.data;
       } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : "Failed to test workflow";
+        const errorMessage = getApiErrorMessage(err, "Failed to test workflow");
         setError(errorMessage);
+        throw err;
       }
     },
     [workspaceId, automationId]
@@ -316,17 +353,10 @@ export default function NewAutomationPage() {
                   className="text-lg font-semibold text-foreground bg-transparent border-none focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded px-2 py-1 -ml-2"
                   placeholder={t("builder.namePlaceholder")}
                 />
-                <select
-                  value={module}
-                  onChange={(e) => setModule(e.target.value as AutomationModule)}
-                  className="text-sm bg-accent border border-border rounded-lg px-3 py-1 text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                >
-                  {Object.entries(moduleLabels).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
+                <span className="text-sm bg-accent border border-border rounded-lg px-3 py-1 text-foreground">
+                  CRM
+                </span>
+                <SaveStateBadge state={saveState} />
               </div>
               <input
                 type="text"
@@ -391,6 +421,7 @@ export default function NewAutomationPage() {
                 ? (generatedWorkflow.edges as unknown as Edge[])
                 : getDefaultEdges(template)
             }
+            isPublished={isPublished}
             onSave={handleSave}
             onPublish={handlePublish}
             onUnpublish={handleUnpublish}

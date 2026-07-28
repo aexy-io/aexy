@@ -1,5 +1,6 @@
 """Database configuration and session management."""
 
+import logging
 import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager, contextmanager
@@ -12,6 +13,8 @@ from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from aexy.core.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 # SQLite dialect shims so test suites that hit `sqlite+aiosqlite:///:memory:`
@@ -111,11 +114,48 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         try:
             yield session
             await session.commit()
+            # An automation queued an email in the transaction that just
+            # committed. Hand it over now so delivery stays near-instant; the
+            # scheduled sweep is the backstop if this never runs.
+            run_ids = session.info.pop("automation_outbox_pending", None)
+            if run_ids:
+                _drain_automation_outbox_soon(run_ids)
         except Exception:
             await session.rollback()
             raise
         finally:
             await session.close()
+
+
+def _drain_automation_outbox_soon(run_ids: set) -> None:
+    """Fire-and-forget drain. Never lets a drain failure affect the response."""
+    import asyncio
+
+    async def _drain_each():
+        # Imported inside the guarded block: an import failure here must not
+        # turn an already-committed request into an error response.
+        from aexy.services.automation_email_outbox import drain_outbox
+
+        for run_id in run_ids:
+            await drain_outbox(run_id=run_id)
+
+    try:
+        if len(_background_drains) >= _MAX_BACKGROUND_DRAINS:
+            # Under a spike, let the sweep pick these up rather than opening an
+            # unbounded number of database sessions.
+            logger.warning("Outbox drains saturated; leaving these to the sweep")
+            return
+        task = asyncio.create_task(_drain_each())
+        # Without a reference the task can be garbage collected mid-flight.
+        _background_drains.add(task)
+        task.add_done_callback(_background_drains.discard)
+    except RuntimeError:
+        # No running loop (sync context); the sweep will pick it up.
+        logger.debug("No event loop for outbox drain; leaving it to the sweep")
+
+
+_background_drains: set = set()
+_MAX_BACKGROUND_DRAINS = 50
 
 
 @asynccontextmanager

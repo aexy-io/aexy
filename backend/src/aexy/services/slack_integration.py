@@ -103,6 +103,8 @@ class SlackIntegrationService:
 
         if integration:
             # Update existing integration
+            integration.organization_id = organization_id
+            integration.workspace_id = organization_id
             integration.bot_token = data["access_token"]
             integration.bot_user_id = data.get("bot_user_id")
             integration.scope = data.get("scope")
@@ -112,6 +114,7 @@ class SlackIntegrationService:
             # Create new integration
             integration = SlackIntegration(
                 organization_id=organization_id,
+                workspace_id=organization_id,
                 team_id=data["team"]["id"],
                 team_name=data["team"]["name"],
                 bot_token=data["access_token"],

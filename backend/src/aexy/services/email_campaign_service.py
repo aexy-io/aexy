@@ -11,6 +11,7 @@ from uuid import uuid4
 
 from email_validator import EmailNotValidError, validate_email
 from sqlalchemy import select, func, delete
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.models.email_marketing import (
@@ -720,19 +721,36 @@ class EmailCampaignService:
                 )
             )
         ).scalar_one_or_none()
-        if not subscriber:
-            subscriber = EmailSubscriber(
-                id=str(uuid4()),
-                workspace_id=workspace_id,
-                record_id=record_id,
-                email=email,
-                email_hash=email_hash,
-                status=SubscriberStatus.ACTIVE.value,
-                preference_token=uuid4().hex,
-            )
-            self.db.add(subscriber)
-            await self.db.flush()
-        return subscriber
+        if subscriber:
+            return subscriber
+
+        try:
+            async with self.db.begin_nested():
+                subscriber = EmailSubscriber(
+                    id=str(uuid4()),
+                    workspace_id=workspace_id,
+                    record_id=record_id,
+                    email=email,
+                    email_hash=email_hash,
+                    status=SubscriberStatus.ACTIVE.value,
+                    preference_token=uuid4().hex,
+                )
+                self.db.add(subscriber)
+                await self.db.flush()
+                return subscriber
+        except IntegrityError:
+            # Another send created the subscriber between our lookup and insert.
+            subscriber = (
+                await self.db.execute(
+                    select(EmailSubscriber).where(
+                        EmailSubscriber.workspace_id == workspace_id,
+                        EmailSubscriber.email_hash == email_hash,
+                    )
+                )
+            ).scalar_one_or_none()
+            if subscriber:
+                return subscriber
+            raise
 
     async def _suppression_reason(self, workspace_id: str, email: str) -> str | None:
         """Return the suppression reason for an email in a workspace, or None.

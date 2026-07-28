@@ -2,13 +2,15 @@
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from aexy.api import api_router
 from aexy.core.config import get_settings
 from aexy.core.database import engine, Base
 from aexy.middleware import CommunityIsolationMiddleware, UsageTrackingMiddleware
+from aexy.services.data_table_service import DuplicateValueError
 
 settings = get_settings()
 
@@ -112,6 +114,18 @@ def create_app() -> FastAPI:
         secret_key=settings.secret_key,
         algorithm=settings.algorithm,
     )
+
+    # A unique-attribute violation is a conflict, not a bad request.
+    @app.exception_handler(DuplicateValueError)
+    async def _duplicate_value_handler(request: Request, exc: DuplicateValueError):
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content={
+                "detail": str(exc),
+                "field": exc.field,
+                "existing_record_id": exc.existing_record_id,
+            },
+        )
 
     # Include API routes
     app.include_router(api_router, prefix=settings.api_v1_prefix)

@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
@@ -150,7 +151,7 @@ export function AddWorkspaceTaskModal({
       });
       onClose();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Could not create task.";
+      const msg = getApiErrorMessage(err, "Could not create task.");
       setError(msg);
     }
   };

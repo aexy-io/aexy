@@ -10,7 +10,6 @@ import {
   Play,
   ChevronRight,
   RefreshCw,
-  Loader2,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { EXECUTION_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
@@ -22,57 +21,42 @@ import {
 } from "@/components/ui/sheet";
 
 interface ExecutionStep {
-  id: string;
-  node_id: string;
-  node_type: string;
-  node_label: string | null;
+  type: string;
+  order: number;
   status: string;
-  input_data: Record<string, unknown> | null;
-  output_data: Record<string, unknown> | null;
-  condition_result: boolean | null;
-  selected_branch: string | null;
+  result?: Record<string, unknown>;
   error: string | null;
-  duration_ms: number | null;
   executed_at: string;
 }
 
 interface Execution {
   id: string;
-  workflow_id: string;
   automation_id: string;
   record_id: string | null;
+  trigger_data: Record<string, unknown>;
   status: string;
   started_at: string | null;
   completed_at: string | null;
-  error: string | null;
-  is_dry_run: boolean;
+  error_message: string | null;
+  duration_ms: number | null;
   created_at: string;
+  steps_executed: ExecutionStep[];
 }
 
-interface ExecutionDetail extends Execution {
-  current_node_id: string | null;
-  next_node_id: string | null;
-  context: Record<string, unknown>;
-  trigger_data: Record<string, unknown>;
-  resume_at: string | null;
-  wait_event_type: string | null;
-  paused_at: string | null;
-  error_node_id: string | null;
-  steps: ExecutionStep[];
-}
+type ExecutionDetail = Execution;
 
 interface ExecutionHistoryProps {
   workspaceId: string;
   automationId: string;
   isOpen: boolean;
   onClose: () => void;
-  onSelectExecution?: (execution: ExecutionDetail) => void;
 }
 
 const statusIcons: Record<string, typeof CheckCircle> = {
   completed: CheckCircle,
   failed: XCircle,
   running: Play,
+  queued: Clock,
   paused: Pause,
   pending: Clock,
   cancelled: AlertCircle,
@@ -83,8 +67,15 @@ const stepStatusConfig: Record<string, { color: string; bg: string }> = {
   failed: { color: "text-red-600 dark:text-red-400", bg: "bg-red-500" },
   running: { color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500" },
   waiting: { color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500" },
+  queued: { color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500" },
+  sent: { color: "text-green-600 dark:text-green-400", bg: "bg-green-500" },
   skipped: { color: "text-muted-foreground", bg: "bg-muted" },
   pending: { color: "text-muted-foreground", bg: "bg-muted" },
+};
+
+const automationRunStatusColors = {
+  ...EXECUTION_STATUS_COLORS,
+  queued: { bg: "bg-blue-500/20", text: "text-blue-400", dot: "bg-blue-500" },
 };
 
 export function ExecutionHistory({
@@ -92,7 +83,6 @@ export function ExecutionHistory({
   automationId,
   isOpen,
   onClose,
-  onSelectExecution,
 }: ExecutionHistoryProps) {
   const [executions, setExecutions] = useState<Execution[]>([]);
   const [selectedExecution, setSelectedExecution] = useState<ExecutionDetail | null>(null);
@@ -108,11 +98,11 @@ export function ExecutionHistory({
 
     try {
       const response = await api.get(
-        `/workspaces/${workspaceId}/crm/automations/${automationId}/workflow/executions`
+        `/workspaces/${workspaceId}/crm/automations/${automationId}/runs`
       );
       setExecutions(response.data);
     } catch (err) {
-      setError("Failed to load executions");
+      setError("Failed to load CRM automation history");
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -127,36 +117,16 @@ export function ExecutionHistory({
 
       try {
         const response = await api.get(
-          `/workspaces/${workspaceId}/crm/automations/${automationId}/workflow/executions/${executionId}`
+          `/workspaces/${workspaceId}/crm/automation-runs/${executionId}`
         );
         setSelectedExecution(response.data);
-        onSelectExecution?.(response.data);
       } catch (err) {
         console.error("Failed to load execution detail:", err);
       } finally {
         setIsLoadingDetail(false);
       }
     },
-    [workspaceId, automationId, onSelectExecution]
-  );
-
-  const cancelExecution = useCallback(
-    async (executionId: string) => {
-      if (!workspaceId || !automationId) return;
-
-      try {
-        await api.post(
-          `/workspaces/${workspaceId}/crm/automations/${automationId}/workflow/executions/${executionId}/cancel`
-        );
-        loadExecutions();
-        if (selectedExecution?.id === executionId) {
-          loadExecutionDetail(executionId);
-        }
-      } catch (err) {
-        console.error("Failed to cancel execution:", err);
-      }
-    },
-    [workspaceId, automationId, loadExecutions, loadExecutionDetail, selectedExecution]
+    [workspaceId, automationId]
   );
 
   useEffect(() => {
@@ -171,17 +141,11 @@ export function ExecutionHistory({
     return date.toLocaleDateString() + " " + date.toLocaleTimeString();
   };
 
-  const formatDuration = (ms: number) => {
-    if (ms < 1000) return `${ms}ms`;
-    if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-    return `${(ms / 60000).toFixed(1)}m`;
-  };
-
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <SheetContent side="right" className="p-0 flex flex-col">
         <SheetHeader className="flex-row items-center justify-between px-4 py-3 space-y-0">
-          <SheetTitle>Execution History</SheetTitle>
+          <SheetTitle>CRM Automation History</SheetTitle>
           <button
             onClick={loadExecutions}
             aria-label="Refresh execution history"
@@ -222,28 +186,18 @@ export function ExecutionHistory({
             ) : (
               <div className="px-4 py-2">
                 {/* Execution Status Header */}
-                <div className={`rounded-lg p-3 mb-4 ${getStatusColor(EXECUTION_STATUS_COLORS, selectedExecution.status).bg}`}>
+                <div className={`rounded-lg p-3 mb-4 ${getStatusColor(automationRunStatusColors, selectedExecution.status).bg}`}>
                   <div className="flex items-center gap-2">
                     {(() => {
                       const Icon = statusIcons[selectedExecution.status] || Clock;
-                      return <Icon className={`h-5 w-5 ${getStatusColor(EXECUTION_STATUS_COLORS, selectedExecution.status).text}`} />;
+                      return <Icon className={`h-5 w-5 ${getStatusColor(automationRunStatusColors, selectedExecution.status).text}`} />;
                     })()}
-                    <span className={`font-medium capitalize ${getStatusColor(EXECUTION_STATUS_COLORS, selectedExecution.status).text}`}>
+                    <span className={`font-medium capitalize ${getStatusColor(automationRunStatusColors, selectedExecution.status).text}`}>
                       {selectedExecution.status}
                     </span>
-                    {selectedExecution.is_dry_run && (
-                      <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded">
-                        Test Run
-                      </span>
-                    )}
                   </div>
-                  {selectedExecution.error && (
-                    <p className="text-sm text-red-400 mt-2">{selectedExecution.error}</p>
-                  )}
-                  {selectedExecution.resume_at && (
-                    <p className="text-sm text-amber-400 mt-2">
-                      Resumes at: {formatDate(selectedExecution.resume_at)}
-                    </p>
+                  {selectedExecution.error_message && (
+                    <p className="text-sm text-red-400 mt-2">{selectedExecution.error_message}</p>
                   )}
                 </div>
 
@@ -257,25 +211,15 @@ export function ExecutionHistory({
                   )}
                 </div>
 
-                {/* Cancel button for running/paused */}
-                {["running", "paused", "pending"].includes(selectedExecution.status) && (
-                  <button
-                    onClick={() => cancelExecution(selectedExecution.id)}
-                    className="w-full mb-4 px-3 py-2 bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400 hover:bg-red-500/20 rounded-lg text-sm font-medium transition-colors"
-                  >
-                    Cancel Execution
-                  </button>
-                )}
-
                 {/* Steps */}
                 <div className="mb-4">
                   <h3 className="text-sm font-medium text-foreground mb-2">
-                    Steps ({selectedExecution.steps.length})
+                    Steps ({selectedExecution.steps_executed.length})
                   </h3>
                   <div className="space-y-2">
-                    {selectedExecution.steps.map((step, index) => (
+                    {selectedExecution.steps_executed.map((step) => (
                       <div
-                        key={step.id}
+                        key={`${step.order}-${step.type}`}
                         className="bg-accent/50 rounded-lg p-3"
                       >
                         <div className="flex items-center justify-between mb-1">
@@ -284,7 +228,7 @@ export function ExecutionHistory({
                               className={`w-2 h-2 rounded-full ${stepStatusConfig[step.status]?.bg || "bg-muted"}`}
                             />
                             <span className="text-sm font-medium text-foreground">
-                              {step.node_label || step.node_type}
+                              {step.type.replaceAll("_", " ")}
                             </span>
                           </div>
                           <span className={`text-xs ${stepStatusConfig[step.status]?.color || "text-muted-foreground"}`}>
@@ -292,39 +236,24 @@ export function ExecutionHistory({
                           </span>
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {step.node_type}
-                          {step.duration_ms != null && (
-                            <span className="ml-2">{formatDuration(step.duration_ms)}</span>
-                          )}
+                          {step.executed_at && formatDate(step.executed_at)}
                         </div>
-                        {step.condition_result !== null && (
-                          <div className="text-xs mt-1">
-                            <span className={step.condition_result ? "text-green-400" : "text-amber-400"}>
-                              Condition: {step.condition_result ? "true" : "false"}
-                            </span>
-                          </div>
-                        )}
-                        {step.selected_branch && (
-                          <div className="text-xs text-purple-400 mt-1">
-                            Branch: {step.selected_branch}
-                          </div>
-                        )}
                         {step.error && (
                           <div className="text-xs text-red-400 mt-1">{step.error}</div>
                         )}
-                        {step.output_data && Object.keys(step.output_data).length > 0 && (
+                        {step.result && Object.keys(step.result).length > 0 && (
                           <details className="mt-2">
                             <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
-                              View output
+                              View result
                             </summary>
                             <pre className="text-xs text-muted-foreground mt-1 overflow-x-auto bg-muted rounded p-2">
-                              {JSON.stringify(step.output_data, null, 2)}
+                              {JSON.stringify(step.result, null, 2)}
                             </pre>
                           </details>
                         )}
                       </div>
                     ))}
-                    {selectedExecution.steps.length === 0 && (
+                    {selectedExecution.steps_executed.length === 0 && (
                       <div className="text-sm text-muted-foreground text-center py-4">
                         No steps executed yet
                       </div>
@@ -354,13 +283,13 @@ export function ExecutionHistory({
               <div className="text-center py-8 text-red-400">{error}</div>
             ) : executions.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                No executions yet
+                No CRM automation runs yet
               </div>
             ) : (
               <div className="divide-y divide-border">
                 {executions.map((execution) => {
                   const Icon = statusIcons[execution.status] || Clock;
-                  const execColor = getStatusColor(EXECUTION_STATUS_COLORS, execution.status);
+                  const execColor = getStatusColor(automationRunStatusColors, execution.status);
 
                   return (
                     <button
@@ -374,20 +303,15 @@ export function ExecutionHistory({
                           <span className={`text-sm font-medium capitalize ${execColor.text}`}>
                             {execution.status}
                           </span>
-                          {execution.is_dry_run && (
-                            <span className="text-xs bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">
-                              Test
-                            </span>
-                          )}
                         </div>
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {formatDate(execution.created_at)}
                       </div>
-                      {execution.error && (
+                      {execution.error_message && (
                         <div className="text-xs text-red-400 mt-1 truncate">
-                          {execution.error}
+                          {execution.error_message}
                         </div>
                       )}
                     </button>

@@ -30,6 +30,7 @@ import {
   useSequenceMutations,
 } from "@/hooks/useGTM";
 import { gtmApi, SequenceStep, OutreachEnrollment } from "@/lib/api";
+import { toast } from "sonner";
 
 const CHANNEL_CONFIG = {
   email: { icon: Mail, label: "Email", color: "text-blue-400 bg-blue-500/20 border-blue-500/30" },
@@ -155,24 +156,55 @@ function StepCard({
                     className="w-full bg-muted/50 border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
                   />
                 </div>
+                <div className="flex-1">
+                  <label className="block text-[10px] text-muted-foreground uppercase mb-1">
+                    Minutes
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={59}
+                    value={step.delay_minutes || 0}
+                    onChange={(e) =>
+                      onUpdate({ delay_minutes: parseInt(e.target.value) || 0 })
+                    }
+                    className="w-full bg-muted/50 border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+                  />
+                </div>
               </div>
             </div>
 
             {/* Config fields based on channel */}
             {step.channel === "email" && (
-              <div>
-                <label className="block text-[10px] text-muted-foreground uppercase mb-1">
-                  Subject
-                </label>
-                <input
-                  type="text"
-                  value={(step.config?.subject as string) || ""}
-                  onChange={(e) =>
-                    onUpdate({ config: { ...step.config, subject: e.target.value } })
-                  }
-                  placeholder="Email subject line..."
-                  className="w-full bg-muted/50 border border-border rounded-lg px-2 py-1.5 text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
-                />
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-[10px] text-muted-foreground uppercase mb-1">
+                    Subject
+                  </label>
+                  <input
+                    type="text"
+                    value={(step.config?.subject as string) || ""}
+                    onChange={(e) =>
+                      onUpdate({ config: { ...step.config, subject: e.target.value } })
+                    }
+                    placeholder="Email subject line..."
+                    className="w-full bg-muted/50 border border-border rounded-lg px-2 py-1.5 text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-muted-foreground uppercase mb-1">
+                    Email message
+                  </label>
+                  <textarea
+                    value={(step.config?.html_body as string) || ""}
+                    onChange={(e) =>
+                      onUpdate({ config: { ...step.config, html_body: e.target.value } })
+                    }
+                    placeholder="Write the email message..."
+                    rows={3}
+                    className="w-full bg-muted/50 border border-border rounded-lg px-2 py-1.5 text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-indigo-500/50 resize-y"
+                  />
+                </div>
               </div>
             )}
             {(step.channel === "linkedin" || step.channel === "sms") &&
@@ -192,6 +224,36 @@ function StepCard({
                   />
                 </div>
               )}
+            {step.channel === "linkedin" && (
+              <div>
+                <label className="block text-[10px] text-muted-foreground uppercase mb-1">
+                  LinkedIn profile field
+                </label>
+                <input
+                  type="text"
+                  value={(step.config?.profile_url_field as string) || "linkedin"}
+                  onChange={(e) =>
+                    onUpdate({ config: { ...step.config, profile_url_field: e.target.value } })
+                  }
+                  placeholder="linkedin"
+                  className="w-full bg-muted/50 border border-border rounded-lg px-2 py-1.5 text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+                />
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  Each person needs their LinkedIn profile link in this CRM field.
+                </p>
+                <label className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={step.config?.find_profile_from_email !== false}
+                    onChange={(e) => onUpdate({
+                      config: { ...step.config, find_profile_from_email: e.target.checked },
+                    })}
+                    className="rounded border-border"
+                  />
+                  Find the profile from their email when this field is empty
+                </label>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -214,6 +276,8 @@ export default function SequenceDetailPage() {
 
   const [steps, setSteps] = useState<SequenceStep[]>([]);
   const [stepsInitialized, setStepsInitialized] = useState(false);
+  const [sendingStartHour, setSendingStartHour] = useState(9);
+  const [sendingEndHour, setSendingEndHour] = useState(17);
   const [saving, setSaving] = useState(false);
   const [showEnrollModal, setShowEnrollModal] = useState(false);
   const [enrollEmail, setEnrollEmail] = useState("");
@@ -225,6 +289,8 @@ export default function SequenceDetailPage() {
   useEffect(() => {
     if (sequence && !stepsInitialized) {
       setSteps(sequence.steps as SequenceStep[]);
+      setSendingStartHour(Number(sequence.settings?.send_window_start_hour ?? 9));
+      setSendingEndHour(Number(sequence.settings?.send_window_end_hour ?? 17));
       setStepsInitialized(true);
     }
   }, [sequence, stepsInitialized]);
@@ -237,6 +303,7 @@ export default function SequenceDetailPage() {
       action: actions[0]?.value || channel,
       delay_days: steps.length === 0 ? 0 : 1,
       delay_hours: 0,
+      delay_minutes: 0,
       config: {},
       conditions: {},
     };
@@ -253,11 +320,38 @@ export default function SequenceDetailPage() {
 
   const saveSteps = async () => {
     if (!workspaceId || !sequenceId) return;
+    const incompleteEmail = steps.find(
+      (step) => step.channel === "email" && step.action === "send_email" &&
+        (!String(step.config?.subject || "").trim() || !String(step.config?.html_body || "").trim()),
+    );
+    if (incompleteEmail) {
+      toast.error(`Email step ${incompleteEmail.step_index + 1} needs both a subject and message`);
+      return;
+    }
+    if (sendingStartHour < 0 || sendingStartHour > 23 || sendingEndHour < 1 || sendingEndHour > 24) {
+      toast.error("Sending hours must be between 0 and 24");
+      return;
+    }
     setSaving(true);
     try {
       const channels = [...new Set(steps.map((s) => s.channel))];
-      await gtmApi.sequences.update(workspaceId, sequenceId, { steps, channels });
-      refetch();
+      await gtmApi.sequences.update(workspaceId, sequenceId, {
+        steps,
+        channels,
+        settings: {
+          ...(sequence?.settings || {}),
+          send_window_start_hour: sendingStartHour,
+          send_window_end_hour: sendingEndHour,
+        },
+      });
+      await refetch();
+      toast.success(
+        sequence?.status === "active"
+          ? "Sequence steps saved for future enrollments"
+          : "Sequence steps saved",
+      );
+    } catch {
+      toast.error("Could not save sequence steps");
     } finally {
       setSaving(false);
     }
@@ -384,6 +478,27 @@ export default function SequenceDetailPage() {
       {/* Tab Content */}
       {activeTab === "steps" && (
         <div className="space-y-4">
+          {sequence.status === "active" && (
+            <p className="text-sm text-amber-500">
+              Changes apply to people enrolled after you save. People already enrolled keep their current plan.
+            </p>
+          )}
+          <div className="bg-muted/50 border border-border rounded-xl p-4">
+            <p className="text-sm font-medium text-foreground">Sending hours</p>
+            <p className="text-xs text-muted-foreground mt-1">Emails wait until this time window opens. Use 0 to 24 to allow an immediate test.</p>
+            <div className="mt-3 grid grid-cols-2 gap-3 max-w-md">
+              <label className="text-xs text-muted-foreground">Start hour (0–23)
+                <select value={sendingStartHour} onChange={(event) => setSendingStartHour(Number(event.target.value))} className="mt-1 w-full bg-background border border-border rounded-lg px-2 py-1.5 text-sm text-foreground">
+                  {Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{hour}</option>)}
+                </select>
+              </label>
+              <label className="text-xs text-muted-foreground">End hour (1–24)
+                <select value={sendingEndHour} onChange={(event) => setSendingEndHour(Number(event.target.value))} className="mt-1 w-full bg-background border border-border rounded-lg px-2 py-1.5 text-sm text-foreground">
+                  {Array.from({ length: 24 }, (_, index) => index + 1).map((hour) => <option key={hour} value={hour}>{hour}</option>)}
+                </select>
+              </label>
+            </div>
+          </div>
           {/* Step list */}
           <div className="space-y-3">
             {steps.map((step, i) => (

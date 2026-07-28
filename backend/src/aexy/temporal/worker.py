@@ -91,6 +91,7 @@ def get_all_activities() -> list:
         aggregate_workspace_stats,
         check_due_onboarding_steps,
         check_scheduled_campaigns,
+        drain_automation_email_outbox,
         cleanup_old_analytics,
         complete_onboarding_step,
         process_onboarding_step,
@@ -209,9 +210,13 @@ def get_all_activities() -> list:
         check_expiring_certifications,
         check_overdue_assignments,
     )
+    from aexy.temporal.activities.crm_automation_schedule import (
+        dispatch_crm_schedules,
+    )
     from aexy.temporal.activities.workflow_actions import (
         cleanup_old_executions,
         execute_workflow_action,
+        mark_crm_automation_run,
     )
     from aexy.temporal.activities.platform import handle_new_signup
     from aexy.temporal.activities.tracker_enrich import enrich_attribute_tracker_events
@@ -305,6 +310,7 @@ def get_all_activities() -> list:
         send_campaign_email,
         update_campaign_stats,
         check_scheduled_campaigns,
+        drain_automation_email_outbox,
         aggregate_daily_analytics,
         send_workflow_email,
         aggregate_workspace_stats,
@@ -391,6 +397,7 @@ def get_all_activities() -> list:
         # Workflow Actions
         execute_workflow_action,
         cleanup_old_executions,
+        mark_crm_automation_run,
         # Insights
         auto_generate_snapshots,
         # GTM
@@ -450,6 +457,8 @@ def get_all_activities() -> list:
         check_expiring_certifications,
         check_expired_certifications,
         check_bulk_compliance_rates,
+        # CRM schedule/date triggers
+        dispatch_crm_schedules,
         # Platform
         handle_new_signup,
         # Aexy Tracker

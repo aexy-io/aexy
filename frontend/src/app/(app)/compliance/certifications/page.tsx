@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { redirect } from "next/navigation";
@@ -65,7 +66,7 @@ function CreateCertificationModal({
       onCreated();
       onClose();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to create certification");
+      setError(getApiErrorMessage(err, "Failed to create certification"));
     } finally {
       setSubmitting(false);
     }
@@ -259,7 +260,7 @@ function AddDeveloperCertModal({
       onAdded();
       onClose();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to add certification");
+      setError(getApiErrorMessage(err, "Failed to add certification"));
     } finally {
       setSubmitting(false);
     }

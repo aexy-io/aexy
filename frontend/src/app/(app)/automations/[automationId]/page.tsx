@@ -1,11 +1,13 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useState, useCallback, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Check, Loader2, AlertCircle } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { SaveStateBadge, type SaveState } from "@/components/automations/SaveStateBadge";
 import { Node, Edge } from "@xyflow/react";
 
 import { useWorkspace } from "@/hooks/useWorkspace";
@@ -57,9 +59,54 @@ interface Automation {
   description: string | null;
   module: AutomationModule;
   is_active: boolean;
+  trigger_type?: string;
+  trigger_config?: Record<string, unknown>;
+  actions?: Array<{ type: string; config?: Record<string, unknown> }>;
 }
 
-type SaveState = "idle" | "saving" | "saved" | "error";
+/** "record.created" / "send_email" → "Record Created" / "Send Email" — the
+ * node components render data.label as the node's title. */
+function humanizeStepType(stepType: string | undefined): string {
+  return (stepType || "")
+    .split(/[._]/)
+    .filter(Boolean)
+    .map((word) => word[0].toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+/** Older automations predate the visual workflow record.  Reconstruct a
+ * readable graph from their persisted execution contract instead of showing a
+ * misleading blank canvas. */
+export function deriveWorkflowGraph(automation: Automation): { nodes: Node[]; edges: Edge[] } {
+  const trigger: Node = {
+    id: "derived-trigger",
+    type: "trigger",
+    position: { x: 80, y: 120 },
+    data: {
+      label: humanizeStepType(automation.trigger_type),
+      trigger_type: automation.trigger_type,
+      ...(automation.trigger_config || {}),
+    },
+  };
+  const nodes = [trigger, ...(automation.actions || []).map((action, index): Node => ({
+    id: `derived-action-${index}`,
+    type: "action",
+    position: { x: 360 + index * 280, y: 120 },
+    data: {
+      label: humanizeStepType(action.type),
+      action_type: action.type,
+      ...(action.config || {}),
+    },
+  }))];
+  // Chain trigger → action1 → action2 …, matching the sequential order the
+  // published executor runs the stored actions list in.
+  const edges: Edge[] = nodes.slice(1).map((node, index) => ({
+    id: `derived-edge-${index}`,
+    source: index === 0 ? "derived-trigger" : `derived-action-${index - 1}`,
+    target: node.id,
+  }));
+  return { nodes, edges };
+}
 
 export default function EditAutomationPage() {
   const t = useTranslations("automations");
@@ -107,7 +154,7 @@ export default function EditAutomationPage() {
           setWorkflow(null);
         }
       } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : "Failed to load automation";
+        const errorMessage = getApiErrorMessage(err, "Failed to load automation");
         setError(errorMessage);
       } finally {
         setIsLoading(false);
@@ -151,6 +198,7 @@ export default function EditAutomationPage() {
     async (nodes: Node[], edges: Edge[], viewport: { x: number; y: number; zoom: number }) => {
       if (!workspaceId || !automationId) return;
 
+      setSaveState("saving");
       try {
         const response = await api.put(
           `/workspaces/${workspaceId}/crm/automations/${automationId}/workflow`,
@@ -161,9 +209,14 @@ export default function EditAutomationPage() {
           }
         );
         setWorkflow(response.data);
+        setError(null);
+        setSaveState("saved");
+        setTimeout(() => setSaveState("idle"), 1500);
       } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : "Failed to save workflow";
+        const errorMessage = getApiErrorMessage(err, "Failed to save workflow");
         setError(errorMessage);
+        setSaveState("error");
+        throw err;
       }
     },
     [workspaceId, automationId]
@@ -177,9 +230,11 @@ export default function EditAutomationPage() {
         `/workspaces/${workspaceId}/crm/automations/${automationId}/workflow/publish`
       );
       setWorkflow(response.data);
+      setError(null);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to publish workflow";
+      const errorMessage = getApiErrorMessage(err, "Failed to publish workflow");
       setError(errorMessage);
+      throw new Error(errorMessage);
     }
   }, [workspaceId, automationId]);
 
@@ -191,9 +246,11 @@ export default function EditAutomationPage() {
         `/workspaces/${workspaceId}/crm/automations/${automationId}/workflow/unpublish`
       );
       setWorkflow(response.data);
+      setError(null);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to unpublish workflow";
+      const errorMessage = getApiErrorMessage(err, "Failed to unpublish workflow");
       setError(errorMessage);
+      throw new Error(errorMessage);
     }
   }, [workspaceId, automationId]);
 
@@ -210,10 +267,12 @@ export default function EditAutomationPage() {
             ...(recordId?.trim() ? { record_id: recordId.trim() } : {}),
           }
         );
+        setError(null);
         return response.data;
       } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : "Failed to test workflow";
+        const errorMessage = getApiErrorMessage(err, "Failed to test workflow");
         setError(errorMessage);
+        throw err;
       }
     },
     [workspaceId, automationId]
@@ -305,39 +364,10 @@ export default function EditAutomationPage() {
                     {moduleLabels[automation.module] || automation.module}
                   </span>
                 )}
-                {/* Live save state — visible feedback for the 1s-debounced
-                    PATCH so users aren't left guessing whether their edit
-                    landed. */}
-                {saveState !== "idle" && (
-                  <span
-                    className="flex items-center gap-1.5 text-xs"
-                    role="status"
-                    aria-live="polite"
-                  >
-                    {saveState === "saving" && (
-                      <>
-                        <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                        <span className="text-muted-foreground">{t("save.saving")}</span>
-                      </>
-                    )}
-                    {saveState === "saved" && (
-                      <>
-                        <Check className="h-3 w-3 text-emerald-500" />
-                        <span className="text-emerald-600 dark:text-emerald-400">
-                          {t("save.saved")}
-                        </span>
-                      </>
-                    )}
-                    {saveState === "error" && (
-                      <>
-                        <AlertCircle className="h-3 w-3 text-red-500" />
-                        <span className="text-red-600 dark:text-red-400">
-                          {t("save.error")}
-                        </span>
-                      </>
-                    )}
-                  </span>
-                )}
+                {/* Live save state — visible feedback for both the
+                    1s-debounced name/description PATCH and canvas saves, so
+                    users aren't left guessing whether their edit landed. */}
+                <SaveStateBadge state={saveState} />
               </div>
               <input
                 type="text"
@@ -366,8 +396,8 @@ export default function EditAutomationPage() {
             automationId={automationId}
             workspaceId={workspaceId}
             module={automation?.module || "crm"}
-            initialNodes={workflow?.nodes || []}
-            initialEdges={workflow?.edges || []}
+            initialNodes={workflow?.nodes?.length ? workflow.nodes : automation ? deriveWorkflowGraph(automation).nodes : []}
+            initialEdges={workflow?.nodes?.length ? (workflow.edges || []) : automation ? deriveWorkflowGraph(automation).edges : []}
             initialViewport={workflow?.viewport || { x: 0, y: 0, zoom: 1 }}
             isPublished={workflow?.is_published || false}
             onSave={handleSave}

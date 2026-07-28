@@ -6,6 +6,57 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/**
+ * Return the useful message from FastAPI validation responses instead of the
+ * generic Axios status message. Automation validation uses both a plain
+ * string and an object with a message plus per-field errors.
+ */
+export function getApiErrorMessage(error: unknown, fallback: string): string {
+  const detail = (
+    error as {
+      response?: {
+        data?: {
+          detail?: unknown;
+        };
+      };
+    }
+  )?.response?.data?.detail;
+
+  if (typeof detail === "string" && detail.trim()) {
+    return detail;
+  }
+
+  if (detail && typeof detail === "object") {
+    const firstError = (detail as { errors?: unknown }).errors;
+    if (Array.isArray(firstError)) {
+      const firstMessage = firstError[0]?.message;
+      if (typeof firstMessage === "string" && firstMessage.trim()) {
+        return firstMessage;
+      }
+    }
+
+    const message = (detail as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) {
+      return message;
+    }
+  }
+
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
+/**
+ * Turns known automation test failures into the next useful action.
+ * The backend intentionally returns a short reason; the builder adds
+ * the context a person needs to correct the test input.
+ */
+export function getTestFailureMessage(message?: string): string | undefined {
+  if (message === "No recipient email address") {
+    return "The automation is saved. This test needs a real CRM record with an email address, because the recipient is taken from that record. Enter its Record ID and run the test again.";
+  }
+
+  return message;
+}
+
 export function formatRelativeTime(dateString: string): string {
   const date = new Date(dateString);
   const now = new Date();

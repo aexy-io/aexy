@@ -556,7 +556,13 @@ function WorkflowCanvasInner({
       data: {
         label: getNodeLabel(type, subtype),
         ...(type === "trigger" && { trigger_type: subtype || "record.created" }),
-        ...(type === "action" && { action_type: subtype || "update_record" }),
+        ...(type === "action" && {
+          action_type: subtype || "update_record",
+          ...(subtype === "notify_user" && {
+            notify_type: "email",
+            channel: "email",
+          }),
+        }),
         ...(type === "condition" && { conditions: [], conjunction: "and" }),
         ...(type === "wait" && { wait_type: subtype || "duration", duration_value: 1, duration_unit: "days" }),
         ...(type === "agent" && { agent_type: subtype || "sales_outreach" }),
@@ -611,6 +617,10 @@ function WorkflowCanvasInner({
           // Ignore version fetch errors
         }
       }
+    } catch (error) {
+      // The page already shows the specific save error. Catch it here so a
+      // rejected click handler does not create a development-overlay error.
+      console.error("Workflow save failed:", error);
     } finally {
       setIsSaving(false);
     }
@@ -975,6 +985,7 @@ function WorkflowCanvasInner({
                   padding: 0.4,
                 });
               }}
+              workspaceId={workspaceId}
               onSave={handleSave}
               onPublish={onPublish}
               onUnpublish={onUnpublish}
@@ -1016,6 +1027,12 @@ function WorkflowCanvasInner({
           node={selectedNode}
           workspaceId={workspaceId}
           automationId={automationId}
+          triggerObjectId={
+            // A blank canvas carries a starter trigger node with no object;
+            // prefer whichever trigger actually has one chosen.
+            (nodes.find((n) => n.type === "trigger" && n.data?.object_id)?.data
+              ?.object_id as string) || undefined
+          }
           module={module}
           onUpdate={(data) => updateNodeData(selectedNode.id, data)}
           onDelete={() => deleteNode(selectedNode.id)}
@@ -1031,11 +1048,6 @@ function WorkflowCanvasInner({
         onClose={() => {
           setShowExecutionHistory(false);
           setHighlightedNodeIds(new Set());
-        }}
-        onSelectExecution={(execution) => {
-          // Highlight nodes that were executed
-          const executedNodeIds = new Set(execution.steps.map((s) => s.node_id));
-          setHighlightedNodeIds(executedNodeIds);
         }}
       />
 

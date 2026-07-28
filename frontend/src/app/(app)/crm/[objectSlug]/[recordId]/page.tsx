@@ -10,6 +10,8 @@ import {
   useCRMRecords,
   useCRMNotes,
   useCRMActivities,
+  useCRMLists,
+  useCRMRecordLists,
 } from "@/hooks/useCRM";
 import { RecordHeader } from "@/components/crm/RecordHeader";
 import { RecordHighlights } from "@/components/crm/RecordHighlights";
@@ -63,6 +65,20 @@ export default function RecordDetailPage() {
   } = useCRMNotes(workspaceId, recordId);
 
   const { activities, isLoading: isLoadingActivities } = useCRMActivities(
+    workspaceId,
+    recordId
+  );
+
+  const {
+    lists: availableLists,
+    createList,
+    addToList,
+    removeFromList,
+    isCreating: isCreatingList,
+    isAddingToList,
+    isRemovingFromList,
+  } = useCRMLists(workspaceId, currentObject?.id || undefined);
+  const { data: recordLists = [], isFetching: isLoadingRecordLists } = useCRMRecordLists(
     workspaceId,
     recordId
   );
@@ -292,6 +308,24 @@ export default function RecordDetailPage() {
           notes={notes}
           onTogglePin={handleTogglePin}
           onDeleteNote={handleDeleteNote}
+          lists={recordLists.map((l) => ({ id: l.id, name: l.name, color: l.color || undefined }))}
+          availableLists={availableLists.map((l) => ({
+            id: l.id,
+            name: l.name,
+            color: l.color || undefined,
+          }))}
+          isUpdatingLists={isCreatingList || isAddingToList || isRemovingFromList || isLoadingRecordLists}
+          onAddToList={async (listId) => {
+            await addToList({ listId, recordIds: [recordId] });
+          }}
+          onRemoveFromList={async (listId) => {
+            await removeFromList({ listId, recordId });
+          }}
+          onCreateList={async (name) => {
+            if (!currentObject?.id) return;
+            const list = await createList({ object_id: currentObject.id, name });
+            await addToList({ listId: list.id, recordIds: [recordId] });
+          }}
         />
       </div>
 

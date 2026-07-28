@@ -40,7 +40,7 @@ export function GettingStartedChecklist({ onDismiss }: GettingStartedChecklistPr
       label: "Create your first company",
       description: "Add a company to track",
       icon: Building2,
-      href: "/crm/companies",
+      href: "/crm/company",
       completed: false,
     },
     {
@@ -48,7 +48,7 @@ export function GettingStartedChecklist({ onDismiss }: GettingStartedChecklistPr
       label: "Add a contact",
       description: "Create a person record",
       icon: Users,
-      href: "/crm/people",
+      href: "/crm/person",
       completed: false,
     },
     {

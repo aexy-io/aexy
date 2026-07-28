@@ -28,6 +28,11 @@ from aexy.schemas.workflow import WorkflowExecutionContext, NodeExecutionResult
 class WorkflowActionHandler:
     """Handles execution of workflow action nodes."""
 
+    # Actions that inspect context.is_dry_run themselves and can produce a
+    # useful preview without touching anything outside the database session.
+    # Everything absent from this set is treated as unsafe during a test.
+    DRY_RUN_AWARE_ACTIONS: frozenset[str] = frozenset({"enroll_in_sequence"})
+
     def __init__(self, db: AsyncSession):
         self.db = db
 
@@ -47,6 +52,8 @@ class WorkflowActionHandler:
             "remove_from_list": self._remove_from_list,
             "enroll_sequence": self._enroll_sequence,
             "unenroll_sequence": self._unenroll_sequence,
+            "enroll_in_sequence": self._enroll_in_outreach_sequence,
+            "remove_from_sequence": self._remove_from_outreach_sequence,
             "assign_owner": self._assign_owner,
             # Communication actions
             "send_email": self._send_email,
@@ -108,6 +115,29 @@ class WorkflowActionHandler:
                 node_id="",
                 status="failed",
                 error=f"Unknown action type: {action_type}",
+            )
+
+        # A test run must not reach the outside world. The guard lives here,
+        # at the single dispatch point, rather than in each handler: an action
+        # added later is then safe by default instead of quietly sending,
+        # charging or deleting the first time somebody presses Test.
+        # Reported as "skipped", never "success", so a test can never be read
+        # as evidence that the step actually worked.
+        if context.is_dry_run and action_type not in self.DRY_RUN_AWARE_ACTIONS:
+            # Wait and AI-agent steps must never look like a green success on
+            # Test — they are not simulated.
+            if action_type in {"wait", "run_agent"}:
+                message = "skipped — not simulated"
+            else:
+                message = f"Test run: '{action_type}' was not performed."
+            return NodeExecutionResult(
+                node_id="",
+                status="skipped",
+                output={
+                    "dry_run": True,
+                    "action_type": action_type,
+                    "message": message,
+                },
             )
 
         return await handler(data, context)
@@ -1007,6 +1037,112 @@ class WorkflowActionHandler:
             node_id="",
             status="success",
             output={"sequence_id": sequence_id, "unenrolled": enrollment is not None},
+        )
+
+    async def _enroll_in_outreach_sequence(
+        self, data: dict, context: WorkflowExecutionContext
+    ) -> NodeExecutionResult:
+        """Enroll the triggering CRM record in a GTM outreach sequence."""
+        config = data.get("config") or {}
+        sequence_id = data.get("sequence_id") or config.get("sequence_id")
+        if not sequence_id or not context.record_id:
+            return NodeExecutionResult(
+                node_id="", status="failed", error="Missing sequence ID or record ID",
+            )
+
+        record = (await self.db.execute(
+            select(CRMRecord).where(
+                CRMRecord.id == context.record_id,
+                CRMRecord.workspace_id == context.workspace_id,
+            )
+        )).scalar_one_or_none()
+        email_field = data.get("email_field") or config.get("email_field", "email")
+        email = (record.values or {}).get(email_field) if record else None
+        if not email:
+            return NodeExecutionResult(
+                node_id="", status="failed", error=f"No recipient email found in {email_field}",
+            )
+
+        from aexy.services.outreach_sequence_service import OutreachSequenceService
+
+        if context.is_dry_run:
+            sequence = await OutreachSequenceService(self.db).get_sequence(
+                context.workspace_id, sequence_id,
+            )
+            if not sequence:
+                return NodeExecutionResult(
+                    node_id="", status="failed", error="Selected sequence no longer exists",
+                )
+            if sequence.status != "active":
+                return NodeExecutionResult(
+                    node_id="", status="failed", error="Selected sequence is not active",
+                )
+            return NodeExecutionResult(
+                node_id="", status="success",
+                output={"sequence_id": sequence_id, "would_enroll": True},
+            )
+
+        try:
+            enrollment = await OutreachSequenceService(self.db).enroll_contact(
+                workspace_id=context.workspace_id,
+                sequence_id=sequence_id,
+                record_id=context.record_id,
+                email=str(email),
+                contact_name=record.display_name,
+            )
+        except ValueError as error:
+            if "already enrolled" in str(error).lower():
+                return NodeExecutionResult(
+                    node_id="", status="success",
+                    output={"sequence_id": sequence_id, "already_enrolled": True},
+                )
+            return NodeExecutionResult(node_id="", status="failed", error=str(error))
+
+        return NodeExecutionResult(
+            node_id="", status="success",
+            output={"sequence_id": sequence_id, "enrollment_id": enrollment.id},
+        )
+
+    async def _remove_from_outreach_sequence(
+        self, data: dict, context: WorkflowExecutionContext
+    ) -> NodeExecutionResult:
+        """Remove the triggering record from one active GTM outreach sequence."""
+        config = data.get("config") or {}
+        sequence_id = data.get("sequence_id") or config.get("sequence_id")
+        if not sequence_id or not context.record_id:
+            return NodeExecutionResult(
+                node_id="", status="failed", error="Missing sequence ID or record ID",
+            )
+
+        from aexy.models.gtm_outreach import EnrollmentStatus, OutreachEnrollment
+        from aexy.services.outreach_sequence_service import OutreachSequenceService
+
+        enrollment = (await self.db.execute(
+            select(OutreachEnrollment).where(
+                OutreachEnrollment.workspace_id == context.workspace_id,
+                OutreachEnrollment.sequence_id == sequence_id,
+                OutreachEnrollment.record_id == context.record_id,
+                OutreachEnrollment.status.in_([
+                    EnrollmentStatus.ACTIVE.value, EnrollmentStatus.PAUSED.value,
+                ]),
+            ).limit(1)
+        )).scalar_one_or_none()
+        if not enrollment:
+            return NodeExecutionResult(
+                node_id="", status="success",
+                output={"sequence_id": sequence_id, "unenrolled": False},
+            )
+
+        removed = await OutreachSequenceService(self.db).unenroll_contact(
+            context.workspace_id, enrollment.id, exit_reason="automation",
+        )
+        if not removed:
+            return NodeExecutionResult(
+                node_id="", status="failed", error="Active sequence enrollment was not found",
+            )
+        return NodeExecutionResult(
+            node_id="", status="success",
+            output={"sequence_id": sequence_id, "unenrolled": True},
         )
 
     async def _webhook_call(
@@ -2193,6 +2329,8 @@ class WorkflowActionHandler:
             # Get record owner
             if context.record_data:
                 user_id = user_id or context.record_data.get("owner_id") or context.record_data.get("assigned_to")
+        elif notify_type == "workspace_admin":
+            return await self._notify_workspace_admins(data, context)
 
         # Resolve template variables in user_email
         if user_email:
@@ -2251,6 +2389,63 @@ class WorkflowActionHandler:
             )
         except Exception as e:
             return NodeExecutionResult(node_id="", status="failed", error=str(e))
+
+    async def _notify_workspace_admins(
+        self, data: dict, context: WorkflowExecutionContext
+    ) -> NodeExecutionResult:
+        """Notify every owner/admin of the workspace, minus whoever triggered it."""
+        from aexy.services.workspace_service import WorkspaceService
+
+        if not context.workspace_id:
+            return NodeExecutionResult(
+                node_id="", status="failed", error="No workspace in context",
+            )
+
+        actor_id = context.trigger_data.get("changed_by_id")
+        members = await WorkspaceService(self.db).get_workspace_admins(
+            context.workspace_id, exclude_developer_id=actor_id
+        )
+        recipients = [m.developer for m in members if m.developer]
+        if not recipients:
+            return NodeExecutionResult(
+                node_id="", status="failed",
+                error="No workspace owners or admins to notify",
+            )
+
+        message = self._render_template(
+            data.get("message", data.get("message_template", data.get("notify_message", ""))),
+            context,
+        )
+        title = self._render_template(
+            data.get("email_subject", data.get("notify_title", "Notification")), context
+        )
+        channel = data.get("channel", "slack")
+
+        channels_notified = []
+        for developer in recipients:
+            if channel in ("slack", "both"):
+                slack_result = await self._send_slack(
+                    {"user_email": developer.email, "message_template": message}, context
+                )
+                if slack_result.status == "success":
+                    channels_notified.append("slack")
+            if channel in ("email", "both"):
+                email_result = await self._send_email(
+                    {"to": developer.email, "email_subject": title, "email_body": message},
+                    context,
+                )
+                if email_result.status == "success":
+                    channels_notified.append("email")
+
+        return NodeExecutionResult(
+            node_id="",
+            status="success" if channels_notified else "failed",
+            output={
+                "recipients_notified": len(recipients),
+                "channels_notified": channels_notified,
+            },
+            error=None if channels_notified else "No notification could be delivered",
+        )
 
     async def _notify_team(
         self, data: dict, context: WorkflowExecutionContext

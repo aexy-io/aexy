@@ -10,6 +10,7 @@ import {
   Plus,
   Settings,
   Zap,
+  Repeat,
   ChevronRight,
   LayoutGrid,
   Target,
@@ -520,6 +521,13 @@ export default function CRMPage() {
                 >
                   <Zap className="h-4 w-4" />
                   Automations
+                </button>
+                <button
+                  onClick={() => router.push("/crm/sequences")}
+                  className="flex items-center gap-2 px-3 py-2 bg-muted hover:bg-accent border border-border text-foreground rounded-lg transition-colors text-sm"
+                >
+                  <Repeat className="h-4 w-4" />
+                  Sequences
                 </button>
                 <button
                   onClick={() => router.push("/crm/settings")}

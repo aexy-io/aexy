@@ -1,5 +1,6 @@
 "use client";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -69,7 +70,7 @@ export function useJiraIntegration(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["jiraIntegration", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to connect Jira integration");
+      toast.error(getApiErrorMessage(error, "Failed to connect Jira integration"));
     },
   });
 
@@ -83,7 +84,7 @@ export function useJiraIntegration(workspaceId: string | null) {
       toast.success("Jira connection test successful");
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Jira connection test failed");
+      toast.error(getApiErrorMessage(error, "Jira connection test failed"));
     },
   });
 
@@ -100,7 +101,7 @@ export function useJiraIntegration(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["jiraIntegration", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update Jira integration");
+      toast.error(getApiErrorMessage(error, "Failed to update Jira integration"));
     },
   });
 
@@ -111,7 +112,7 @@ export function useJiraIntegration(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["jiraIntegration", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to disconnect Jira integration");
+      toast.error(getApiErrorMessage(error, "Failed to disconnect Jira integration"));
     },
   });
 
@@ -121,7 +122,7 @@ export function useJiraIntegration(workspaceId: string | null) {
       reportSyncResult(result, "Jira");
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to start Jira sync");
+      toast.error(getApiErrorMessage(error, "Failed to start Jira sync"));
     },
   });
 
@@ -230,7 +231,7 @@ export function useLinearIntegration(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["linearIntegration", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to connect Linear integration");
+      toast.error(getApiErrorMessage(error, "Failed to connect Linear integration"));
     },
   });
 
@@ -241,7 +242,7 @@ export function useLinearIntegration(workspaceId: string | null) {
       toast.success("Linear connection test successful");
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Linear connection test failed");
+      toast.error(getApiErrorMessage(error, "Linear connection test failed"));
     },
   });
 
@@ -257,7 +258,7 @@ export function useLinearIntegration(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["linearIntegration", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update Linear integration");
+      toast.error(getApiErrorMessage(error, "Failed to update Linear integration"));
     },
   });
 
@@ -268,7 +269,7 @@ export function useLinearIntegration(workspaceId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["linearIntegration", workspaceId] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to disconnect Linear integration");
+      toast.error(getApiErrorMessage(error, "Failed to disconnect Linear integration"));
     },
   });
 
@@ -278,7 +279,7 @@ export function useLinearIntegration(workspaceId: string | null) {
       reportSyncResult(result, "Linear");
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to start Linear sync");
+      toast.error(getApiErrorMessage(error, "Failed to start Linear sync"));
     },
   });
 

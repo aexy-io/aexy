@@ -10,6 +10,7 @@ interface InlineCellProps {
   access?: "hidden" | "readonly" | "edit";
   onSave: (value: unknown) => Promise<void>;
   isCompact?: boolean;
+  workspaceId?: string | null;
 }
 
 export function InlineCell({
@@ -18,6 +19,7 @@ export function InlineCell({
   access = "edit",
   onSave,
   isCompact = true,
+  workspaceId,
 }: InlineCellProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value);
@@ -119,6 +121,7 @@ export function InlineCell({
         onChange={setEditValue}
         autoFocus
         className="w-full px-2 py-1 bg-accent border border-purple-500 rounded text-foreground text-sm focus:outline-none"
+        workspaceId={workspaceId}
       />
       {isSaving && (
         <span className="ml-1 text-xs text-muted-foreground animate-pulse">...</span>

@@ -12,6 +12,7 @@ import {
   AlertCircle,
   SkipForward,
 } from "lucide-react";
+import { getTestFailureMessage } from "@/lib/utils";
 import { api } from "@/lib/api";
 import {
   Sheet,
@@ -134,6 +135,9 @@ export function TestResultsPanel({
   };
 
   const statusCounts = getStatusCounts();
+  const failureMessage = getTestFailureMessage(testResult?.error || testResult?.node_results.find(
+    (result) => result.status === "failed" && result.error
+  )?.error);
 
   const statusLabel = isRunning
     ? "Running..."
@@ -199,11 +203,11 @@ export function TestResultsPanel({
             </div>
           </div>
 
-          {testResult.error && (
+          {failureMessage && (
             <div className="mt-3 p-2 bg-red-500/10 border border-red-500/30 rounded-lg">
               <div className="flex items-start gap-2">
                 <AlertCircle className="h-4 w-4 text-red-400 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-red-300">{testResult.error}</p>
+                <p className="text-sm text-red-300">{failureMessage}</p>
               </div>
             </div>
           )}
