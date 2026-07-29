@@ -11027,6 +11027,9 @@ export const automationsApi = {
       name: string;
       description: string;
       module_config: Record<string, unknown>;
+      // Checked against the module's trigger registry; an unsupported one is
+      // a 422 rather than being quietly discarded, as it used to be.
+      trigger_type: string;
       trigger_config: Record<string, unknown>;
       conditions: Record<string, unknown>[];
       actions: { type: string; config: Record<string, unknown> }[];

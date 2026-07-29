@@ -5,6 +5,7 @@ import { useEffect, useState, useRef } from "react";
 import {
   Save,
   Play,
+  PlayCircle,
   Pause,
   Maximize,
   LayoutGrid,
@@ -57,6 +58,9 @@ interface WorkflowToolbarProps {
   onPublish: () => Promise<void>;
   onUnpublish: () => Promise<void>;
   onTest: (recordId?: string) => Promise<void>;
+  /** Run the automation for real against one record. Optional: where it is
+   *  not wired the button is simply absent, rather than present and inert. */
+  onRun?: (recordId: string) => Promise<void>;
   onFitView: () => void;
   /** Optional. When wired, renders an Auto-layout button between
    *  Fit-view and History. */
@@ -83,6 +87,7 @@ export function WorkflowToolbar({
   onPublish,
   onUnpublish,
   onTest,
+  onRun,
   onFitView,
   onAutoLayout,
   onHistoryOpen,
@@ -102,13 +107,17 @@ export function WorkflowToolbar({
 
   // Use external test running state if provided
   const testInProgress = isTestRunning || isTesting;
+  const [showRunModal, setShowRunModal] = useState(false);
+  const [runRecordId, setRunRecordId] = useState("");
+  const [isRunning, setIsRunning] = useState(false);
+  const [runError, setRunError] = useState<string | null>(null);
   const [showTestModal, setShowTestModal] = useState(false);
   const [testRecordId, setTestRecordId] = useState("");
   const [testRecords, setTestRecords] = useState<CRMRecord[]>([]);
   const [isLoadingTestRecords, setIsLoadingTestRecords] = useState(false);
 
   useEffect(() => {
-    if (!showTestModal || testRecords.length > 0) return;
+    if ((!showTestModal && !showRunModal) || testRecords.length > 0) return;
 
     let cancelled = false;
     const loadPeople = async () => {
@@ -130,7 +139,7 @@ export function WorkflowToolbar({
     return () => {
       cancelled = true;
     };
-  }, [showTestModal, testRecords.length, workspaceId]);
+  }, [showTestModal, showRunModal, testRecords.length, workspaceId]);
 
   const handlePublish = async () => {
     setIsPublishing(true);
@@ -152,6 +161,24 @@ export function WorkflowToolbar({
       });
     } finally {
       setIsPublishing(false);
+    }
+  };
+
+  const handleRun = async () => {
+    if (!onRun || !runRecordId) return;
+    setIsRunning(true);
+    setRunError(null);
+    try {
+      await onRun(runRecordId);
+      setShowRunModal(false);
+      setRunRecordId("");
+    } catch (error) {
+      // The pre-flight refuses a paused automation, an exhausted allowance or
+      // a record of the wrong type. Those reasons belong in front of the
+      // person who pressed the button, not in a console.
+      setRunError(getApiErrorMessage(error, "Could not start the automation"));
+    } finally {
+      setIsRunning(false);
     }
   };
 
@@ -238,6 +265,24 @@ export function WorkflowToolbar({
           )}
           Test
         </button>
+
+        {/* Run button — only when wired, and only once published: running an
+            unpublished draft would execute whatever actions were last saved. */}
+        {onRun && isPublished && (
+          <button
+            onClick={() => setShowRunModal(true)}
+            disabled={isRunning}
+            title="Run this automation now for one record"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-accent text-foreground hover:bg-muted transition-colors"
+          >
+            {isRunning ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <PlayCircle className="h-4 w-4" />
+            )}
+            Run now
+          </button>
+        )}
 
         {/* Test Results button */}
         {onTestResultsOpen && (
@@ -483,6 +528,94 @@ export function WorkflowToolbar({
           </span>
         </div>
       </div>
+
+      {/* Run modal. Test is a dry run; this one really sends, so the wording
+          and the colour have to make that unmistakable rather than leaving the
+          two buttons looking interchangeable. */}
+      <Dialog
+        open={showRunModal}
+        onOpenChange={isRunning ? undefined : (open) => !open && setShowRunModal(false)}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Run this automation now</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-amber-500 dark:text-amber-400 mt-0.5 shrink-0" />
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  This performs every step for real — emails are sent, webhooks
+                  are called, records are changed. Use <strong>Test</strong> for
+                  a dry run.
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="run-record-id"
+                className="block text-sm text-muted-foreground mb-1"
+              >
+                Record to run against
+              </label>
+              {testRecords.length > 0 ? (
+                <select
+                  id="run-record-id"
+                  value={runRecordId}
+                  onChange={(e) => setRunRecordId(e.target.value)}
+                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                >
+                  <option value="">Choose a record</option>
+                  {testRecords.map((record) => (
+                    <option key={record.id} value={record.id}>
+                      {record.display_name || "Unnamed"}
+                      {record.values.email ? ` — ${String(record.values.email)}` : ""}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  id="run-record-id"
+                  type="text"
+                  value={runRecordId}
+                  onChange={(e) => setRunRecordId(e.target.value)}
+                  placeholder={isLoadingTestRecords ? "Loading records..." : "Paste a record ID..."}
+                  disabled={isLoadingTestRecords}
+                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-60"
+                />
+              )}
+            </div>
+
+            {runError && (
+              <p role="alert" className="text-xs text-red-600 dark:text-red-400">
+                {runError}
+              </p>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowRunModal(false)}
+                disabled={isRunning}
+                className="px-3 py-1.5 rounded-lg text-sm bg-accent text-foreground hover:bg-muted transition-colors disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRun}
+                // A record is required: every CRM action reads from one, and
+                // the backend refuses without it anyway.
+                disabled={isRunning || !runRecordId}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-amber-600 text-white hover:bg-amber-700 transition-colors disabled:opacity-60"
+              >
+                {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlayCircle className="h-4 w-4" />}
+                Run for real
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Test Modal — Radix Dialog gives us focus trap, Esc-to-close,
           scroll lock, and proper aria-modal that the prior raw portal

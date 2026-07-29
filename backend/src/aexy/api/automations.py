@@ -5,6 +5,7 @@ that support all Aexy modules (CRM, Tickets, Hiring, Email Marketing, etc.).
 """
 
 import logging
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
 from pydantic import BaseModel, Field
@@ -16,6 +17,8 @@ from aexy.api.developers import get_current_developer
 from aexy.models.developer import Developer
 from aexy.services.automation_service import (
     AutomationService,
+    InvalidAutomationObject,
+    check_automation_object,
     filter_actions_by_integrations,
 )
 from aexy.services.workflow_generator import generate_workflow_from_prompt
@@ -157,6 +160,11 @@ async def create_automation(
         raise HTTPException(status_code=400, detail="; ".join(action_errors))
 
     try:
+        await check_automation_object(db, workspace_id, data.object_id)
+    except InvalidAutomationObject as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    try:
         automation = await service.create_automation(
             workspace_id=workspace_id,
             name=data.name,
@@ -241,7 +249,9 @@ async def update_automation(
         raise HTTPException(status_code=404, detail="Automation not found")
 
     payload = data.model_dump(exclude_unset=True)
-    target_module = payload.get("module") or automation.module or "crm"
+    # `module` is not updatable — see AutomationUpdate — so the automation's
+    # own module is the only one in play.
+    target_module = automation.module or "crm"
 
     # Only gate a trigger the caller is actually setting. Validating the stored
     # value on every update would strand any automation whose trigger has since
@@ -257,18 +267,6 @@ async def update_automation(
                 detail=(
                     f"Unsupported trigger '{target_trigger}' for module "
                     f"'{target_module}'. Choose a trigger from the automation registry."
-                ),
-            )
-    elif payload.get("module") is not None:
-        # Moving an automation to another module has to carry a trigger that
-        # module actually offers, so this one does need re-checking.
-        if automation.trigger_type not in get_trigger_ids(target_module):
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=(
-                    f"Trigger '{automation.trigger_type}' is not available in "
-                    f"module '{target_module}'. Set a trigger from that module's "
-                    "registry in the same request."
                 ),
             )
     if "actions" in payload and payload["actions"] is not None:
@@ -371,6 +369,16 @@ async def trigger_automation_manually(
 
     if record_id:
         from aexy.models.crm import CRMRecord
+
+        # Bad shape rather than missing: comparing a non-uuid against a uuid
+        # column fails in the driver, which surfaces as a 500 for what is
+        # plainly a bad request.
+        try:
+            UUID(record_id)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400, detail=f"'{record_id}' is not a valid record id."
+            ) from exc
 
         record = (
             await db.execute(

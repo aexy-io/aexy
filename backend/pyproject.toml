@@ -11,7 +11,11 @@ requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.109.0",
     "uvicorn[standard]>=0.27.0",
-    "sqlalchemy>=2.0.0",
+    # [asyncio] pulls greenlet, which every async session needs. It was
+    # reaching the Docker image transitively, so production worked by accident
+    # while a clean `uv sync --extra dev` produced an environment where every
+    # async test errored with "the greenlet library is required".
+    "sqlalchemy[asyncio]>=2.0.0",
     "asyncpg>=0.29.0",
     "psycopg2-binary>=2.9.0",
     "alembic>=1.13.0",
