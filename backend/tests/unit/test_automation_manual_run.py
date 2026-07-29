@@ -21,6 +21,10 @@ pytestmark = pytest.mark.asyncio
 
 WORKSPACE = "ws-1"
 
+# A real uuid, because the endpoint now checks the shape before querying: a
+# non-uuid used to reach the driver and come back as a 500.
+RECORD_ID = str(uuid4())
+
 
 def _automation(**overrides):
     base = dict(
@@ -59,9 +63,9 @@ async def _call(automation, *, record_id=None, record=None):
 
 async def test_a_valid_run_reports_started_not_succeeded():
     """The work happens after the response; only run history knows the outcome."""
-    record = SimpleNamespace(id="rec-1", object_id=None)
+    record = SimpleNamespace(id=RECORD_ID, object_id=None)
 
-    result = await _call(_automation(), record_id="rec-1", record=record)
+    result = await _call(_automation(), record_id=RECORD_ID, record=record)
 
     assert result["started"] is True
     assert "started" in result["message"].lower()
@@ -70,7 +74,7 @@ async def test_a_valid_run_reports_started_not_succeeded():
 
 async def test_a_paused_automation_is_refused():
     with pytest.raises(HTTPException) as caught:
-        await _call(_automation(is_active=False), record_id="rec-1")
+        await _call(_automation(is_active=False), record_id=RECORD_ID)
 
     assert caught.value.status_code == 409
     assert "paused" in caught.value.detail.lower()
@@ -80,7 +84,7 @@ async def test_an_exhausted_monthly_allowance_is_refused():
     with pytest.raises(HTTPException) as caught:
         await _call(
             _automation(run_limit_per_month=100, runs_this_month=100),
-            record_id="rec-1",
+            record_id=RECORD_ID,
         )
 
     assert caught.value.status_code == 409
@@ -97,12 +101,12 @@ async def test_a_record_from_another_workspace_is_refused():
 
 async def test_a_record_of_the_wrong_type_is_refused():
     """Otherwise every action runs against fields the record does not have."""
-    record = SimpleNamespace(id="rec-1", object_id="object-companies")
+    record = SimpleNamespace(id=RECORD_ID, object_id="object-companies")
 
     with pytest.raises(HTTPException) as caught:
         await _call(
             _automation(object_id="object-people"),
-            record_id="rec-1",
+            record_id=RECORD_ID,
             record=record,
         )
 
@@ -124,3 +128,12 @@ async def test_a_non_crm_automation_may_run_without_a_record():
     result = await _call(_automation(module="uptime"), record_id=None)
 
     assert result["started"] is True
+
+
+async def test_a_malformed_record_id_is_a_bad_request_not_a_server_error():
+    """Comparing a non-uuid against a uuid column fails inside the driver."""
+    with pytest.raises(HTTPException) as caught:
+        await _call(_automation(), record_id="not-a-uuid")
+
+    assert caught.value.status_code == 400
+    assert "valid record id" in caught.value.detail.lower()

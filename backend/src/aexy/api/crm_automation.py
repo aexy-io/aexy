@@ -6,6 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from aexy.core.database import get_db
 from aexy.api.developers import get_current_developer
 from aexy.models.developer import Developer
+from aexy.services.automation_service import (
+    InvalidAutomationObject,
+    check_automation_object,
+)
 from aexy.services.crm_automation_service import (
     CRMAutomationService,
     CRMSequenceService,
@@ -78,6 +82,11 @@ async def create_automation(
     action_errors = validate_action_configs(actions)
     if action_errors:
         raise HTTPException(status_code=400, detail="; ".join(action_errors))
+
+    try:
+        await check_automation_object(db, workspace_id, data.object_id)
+    except InvalidAutomationObject as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     automation = await service.create_automation(
         workspace_id=workspace_id,

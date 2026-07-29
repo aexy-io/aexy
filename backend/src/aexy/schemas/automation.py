@@ -432,10 +432,32 @@ class AutomationCreate(BaseModel):
 
 
 class AutomationUpdate(BaseModel):
-    """Schema for updating an automation (platform-wide)."""
+    """Schema for updating an automation (platform-wide).
+
+    `extra="forbid"` deliberately. Pydantic drops undeclared fields by default,
+    so every field missing from this list was accepted with a 200 and thrown
+    away. That is worse than a refusal, because the caller cannot tell: a PATCH
+    carrying `runs_this_month` looked like it reset the counter and did not,
+    and the builder's "keep trigger_type in step with the trigger node" PATCH
+    had never once taken effect — `trigger_type` was not declared here, so the
+    automation kept whatever trigger it was created with while the canvas
+    showed a different one.
+
+    Counters (`runs_this_month`, `total_runs`, `successful_runs`,
+    `failed_runs`, `last_run_at`) are owned by the execution engine and are not
+    settable over the API at all — they are what the monthly limit is enforced
+    against. `module` and `object_id` are also refused: changing either
+    reinterprets the automation's stored actions against a different registry
+    or a different record type, which is a rebuild rather than an edit.
+    """
+    model_config = ConfigDict(extra="forbid")
+
     name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = None
     module_config: dict | None = None
+    # The builder PATCHes this whenever the trigger node changes. Checked
+    # against the module's registry by the endpoint before it is applied.
+    trigger_type: str | None = None
     trigger_config: dict | None = None
     conditions: list[AutomationCondition] | None = None
     actions: list[AutomationAction] | None = None

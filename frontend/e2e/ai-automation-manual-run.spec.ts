@@ -133,11 +133,13 @@ test.describe("AI / Automation manual run (live)", () => {
   });
 
   test("an exhausted monthly allowance is refused", async ({ request }) => {
-    // Spend the allowance by actually running, not by writing runs_this_month:
-    // the PATCH endpoint accepts that field and silently ignores it, so the
-    // first version of this test set a limit that was never reached and then
-    // asserted the wrong refusal. It passed for the wrong reason until the
-    // status code disagreed.
+    // Spend the allowance by actually running. The first version of this test
+    // set runs_this_month over PATCH, which the endpoint accepted and dropped
+    // on the floor — so the limit was never reached and the test asserted a
+    // refusal that could not happen. It passed for the wrong reason until the
+    // status code disagreed. PATCH now refuses that field outright
+    // (ai-automation-api-contract.spec.ts), but spending it for real is what
+    // this test should have done in the first place.
     const found = await anyRecord(request);
     test.skip(!found, "no CRM record in this workspace to test against");
 
@@ -171,8 +173,10 @@ test.describe("AI / Automation manual run (live)", () => {
     test.skip(!found, "no CRM record in this workspace to test against");
 
     // A second *real* object to bind the automation to. A made-up object id
-    // cannot be used: object_id is a foreign key, so creating the automation
-    // fails with a 500 before the test reaches the case it is about.
+    // cannot be used: object_id is a foreign key, and create now refuses one
+    // that is not in this workspace — so the automation would never exist and
+    // the test would never reach the case it is about. (It used to 500 there
+    // instead, which is the defect ai-automation-api-contract.spec.ts covers.)
     const otherObject = await request.post(
       `${API_BASE}/workspaces/${WS()}/crm/objects`,
       {
