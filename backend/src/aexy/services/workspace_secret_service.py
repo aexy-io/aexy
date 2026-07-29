@@ -172,11 +172,30 @@ class WorkspaceSecretService:
         return rendered, {v for v in found.values() if v}
 
 
-def redact_secrets(text: str, values: set[str]) -> str:
-    """Blank out resolved secret values before anything is stored or logged."""
-    if not text or not values:
-        return text
-    for value in values:
-        if value:
-            text = text.replace(value, "[redacted secret]")
-    return text
+def redact_secrets(
+    text: str, values: set[str], limit: int | None = None
+) -> str:
+    """Blank out resolved secret values before anything is stored or logged.
+
+    Pass `limit` rather than slicing the text yourself. Truncating first can
+    cut a credential in half, and the surviving prefix no longer matches
+    anything `replace` is looking for — so the caller ends up storing the
+    front of a token believing it had been scrubbed. Doing both here means
+    neither call site can get the order wrong.
+
+    Only as much text as a straddling secret could reach is scanned, so a
+    large response body costs no more than it has to.
+    """
+    real = [value for value in values if value]
+    if not text or not real:
+        return text[:limit] if limit is not None else text
+
+    if limit is not None:
+        # Any occurrence overlapping `limit` starts before it, so it cannot
+        # extend past limit + the longest value.
+        text = text[: limit + max(len(value) for value in real)]
+
+    for value in real:
+        text = text.replace(value, "[redacted secret]")
+
+    return text[:limit] if limit is not None else text

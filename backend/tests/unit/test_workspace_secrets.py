@@ -196,6 +196,63 @@ async def test_the_webhook_step_sends_the_resolved_credential(db_session):
     assert "sk-live-abc123" not in str(result)
 
 
+def test_a_credential_straddling_the_truncation_point_is_still_redacted():
+    """The scrub used to run on already-truncated text.
+
+    `redact_secrets(response.text[:1000], values)` cut the body first, so a
+    credential spanning the cut was sliced in half and the surviving prefix
+    matched nothing `replace` was looking for — the caller stored the front of
+    a token believing it had been scrubbed. Up to len(secret)-1 characters
+    could survive.
+    """
+    from aexy.services.workspace_secret_service import redact_secrets
+
+    secret = "sk-live-0123456789abcdef"
+    body = "x" * 990 + secret + "y" * 500
+
+    scrubbed = redact_secrets(body, {secret}, limit=1000)
+
+    assert len(scrubbed) == 1000
+    assert secret not in scrubbed
+    # No prefix of the credential survives either — the point of the fix.
+    for length in range(4, len(secret)):
+        assert secret[:length] not in scrubbed, (
+            f"{length} characters of the credential survived truncation"
+        )
+
+
+def test_every_position_across_the_boundary_is_covered():
+    """Walk the credential across the cut rather than trusting one offset."""
+    from aexy.services.workspace_secret_service import redact_secrets
+
+    secret = "sk-live-abcdef"
+    for start in range(990, 1010):
+        body = "x" * start + secret + "y" * 100
+        scrubbed = redact_secrets(body, {secret}, limit=1000)
+        assert secret[:4] not in scrubbed, f"leaked with the secret at {start}"
+
+
+def test_the_limit_is_honoured_whichever_way_the_work_is_ordered():
+    """Redaction happens first, but the caller still gets `limit` characters."""
+    from aexy.services.workspace_secret_service import redact_secrets
+
+    assert len(redact_secrets("y" * 5000, {"nope"}, limit=1000)) == 1000
+    # Nothing to redact: the limit still applies.
+    assert len(redact_secrets("y" * 5000, set(), limit=1000)) == 1000
+    # No limit: unchanged behaviour for any caller that does not pass one.
+    assert len(redact_secrets("y" * 5000, {"nope"})) == 5000
+
+
+def test_redaction_handles_the_empty_and_absent_cases():
+    from aexy.services.workspace_secret_service import redact_secrets
+
+    assert redact_secrets("", {"x"}, limit=10) == ""
+    assert redact_secrets("hello", set(), limit=10) == "hello"
+    # A value that is empty must not be treated as a match — `replace("")`
+    # would splice the marker between every character.
+    assert redact_secrets("hello", {""}, limit=10) == "hello"
+
+
 def test_inert_slack_config_is_dropped_on_the_way_into_storage():
     """The send_slack panel collected headers and a timeout that no executor
     read. The headers field accepted an Authorization value, stored it in the

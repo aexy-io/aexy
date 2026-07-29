@@ -1429,8 +1429,10 @@ class WorkflowActionHandler:
                     "status_code": response.status_code,
                     # Scrubbed: a receiver that echoes the request back would
                     # otherwise put the credential straight into run history.
+                    # The truncation is the helper's job — slicing first would
+                    # cut a straddling credential in half and leave the prefix.
                     "response": redact_secrets(
-                        response.text[:1000], secret_values
+                        response.text, secret_values, limit=1000
                     ),
                     "method": method,
                     "url": url,
