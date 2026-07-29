@@ -5,9 +5,11 @@ that support all Aexy modules (CRM, Tickets, Hiring, Email Marketing, etc.).
 """
 
 import logging
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.core.database import get_db
@@ -15,6 +17,8 @@ from aexy.api.developers import get_current_developer
 from aexy.models.developer import Developer
 from aexy.services.automation_service import (
     AutomationService,
+    InvalidAutomationObject,
+    check_automation_object,
     filter_actions_by_integrations,
 )
 from aexy.services.workflow_generator import generate_workflow_from_prompt
@@ -156,6 +160,11 @@ async def create_automation(
         raise HTTPException(status_code=400, detail="; ".join(action_errors))
 
     try:
+        await check_automation_object(db, workspace_id, data.object_id)
+    except InvalidAutomationObject as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    try:
         automation = await service.create_automation(
             workspace_id=workspace_id,
             name=data.name,
@@ -240,7 +249,9 @@ async def update_automation(
         raise HTTPException(status_code=404, detail="Automation not found")
 
     payload = data.model_dump(exclude_unset=True)
-    target_module = payload.get("module") or automation.module or "crm"
+    # `module` is not updatable — see AutomationUpdate — so the automation's
+    # own module is the only one in play.
+    target_module = automation.module or "crm"
 
     # Only gate a trigger the caller is actually setting. Validating the stored
     # value on every update would strand any automation whose trigger has since
@@ -256,18 +267,6 @@ async def update_automation(
                 detail=(
                     f"Unsupported trigger '{target_trigger}' for module "
                     f"'{target_module}'. Choose a trigger from the automation registry."
-                ),
-            )
-    elif payload.get("module") is not None:
-        # Moving an automation to another module has to carry a trigger that
-        # module actually offers, so this one does need re-checking.
-        if automation.trigger_type not in get_trigger_ids(target_module):
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=(
-                    f"Trigger '{automation.trigger_type}' is not available in "
-                    f"module '{target_module}'. Set a trigger from that module's "
-                    "registry in the same request."
                 ),
             )
     if "actions" in payload and payload["actions"] is not None:
@@ -346,6 +345,70 @@ async def trigger_automation_manually(
     if not automation or automation.workspace_id != workspace_id:
         raise HTTPException(status_code=404, detail="Automation not found")
 
+    # Check what can be checked before answering. Execution runs in a
+    # background task whose exceptions go nowhere, so without this the caller
+    # is told "triggered" whether or not anything can possibly happen — an
+    # inactive automation, an exhausted monthly allowance and a record from
+    # another workspace all look identical to success.
+    if not automation.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This automation is paused. Activate it before running it.",
+        )
+    if (
+        automation.run_limit_per_month
+        and (automation.runs_this_month or 0) >= automation.run_limit_per_month
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "This automation has used its monthly run limit "
+                f"({automation.run_limit_per_month})."
+            ),
+        )
+
+    if record_id:
+        from aexy.models.crm import CRMRecord
+
+        # Bad shape rather than missing: comparing a non-uuid against a uuid
+        # column fails in the driver, which surfaces as a 500 for what is
+        # plainly a bad request.
+        try:
+            UUID(record_id)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400, detail=f"'{record_id}' is not a valid record id."
+            ) from exc
+
+        record = (
+            await db.execute(
+                select(CRMRecord).where(
+                    CRMRecord.id == record_id,
+                    CRMRecord.workspace_id == workspace_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if not record:
+            raise HTTPException(
+                status_code=404,
+                detail="Record not found in this workspace",
+            )
+        # A record of the wrong type would run every action against fields it
+        # does not have, which reads as a mysterious run of failures rather
+        # than a mistake at the point it was made.
+        if automation.object_id and record.object_id != automation.object_id:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "That record is not the type this automation runs on."
+                ),
+            )
+    elif (automation.module or "crm") == "crm":
+        raise HTTPException(
+            status_code=400,
+            detail="A CRM automation needs a record to run against.",
+        )
+
     # Run in background on its own session: the request's session is torn down
     # before background tasks run, so borrowing it leaves this work uncommitted.
     async def run_automation():
@@ -369,8 +432,11 @@ async def trigger_automation_manually(
 
     background_tasks.add_task(run_automation)
 
+    # "started", not "succeeded" — the work happens after this response, and
+    # its outcome only exists in run history.
     return {
-        "message": "Automation triggered",
+        "message": "Automation started. Its outcome will appear in run history.",
+        "started": True,
         "automation_id": automation_id,
         "record_id": record_id,
         "module": automation.module,

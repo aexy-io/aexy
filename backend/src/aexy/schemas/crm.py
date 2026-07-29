@@ -597,9 +597,17 @@ class CRMAutomationCreate(BaseModel):
 
 
 class CRMAutomationUpdate(BaseModel):
-    """Schema for updating an automation."""
+    """Schema for updating an automation.
+
+    See `AutomationUpdate` — the CRM-scoped route had the same hole. The API
+    client here has always declared it sends `trigger_type`, and the schema has
+    always discarded it.
+    """
+    model_config = ConfigDict(extra="forbid")
+
     name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = None
+    trigger_type: CRMAutomationTriggerType | None = None
     trigger_config: dict | None = None
     conditions: list[AutomationCondition] | None = None
     actions: list[AutomationAction] | None = None

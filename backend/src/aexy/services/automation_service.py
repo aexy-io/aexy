@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,6 +18,7 @@ from sqlalchemy.orm import selectinload
 from aexy.models.crm import (
     CRMAutomation,
     CRMAutomationRun,
+    CRMObject,
 )
 from aexy.services.crm_automation_service import CRMAutomationService
 from aexy.schemas.automation import (
@@ -32,6 +33,62 @@ from aexy.schemas.automation import (
     get_all_action_ids,
     INTEGRATION_GATED_ACTIONS,
 )
+
+
+# =============================================================================
+# TARGET OBJECT
+# =============================================================================
+
+class InvalidAutomationObject(ValueError):
+    """The automation's target object is not one this workspace can use."""
+
+
+async def check_automation_object(
+    db: AsyncSession, workspace_id: str, object_id: str | None
+) -> None:
+    """Refuse a target object the workspace cannot bind an automation to.
+
+    `crm_automations.object_id` is a plain foreign key to `crm_objects` with no
+    workspace in it, and nothing checked it before the insert. Two consequences,
+    only one of them cosmetic:
+
+    - An id that does not exist reached the database and came back as an
+      integrity error, which the API surfaced as a 500. The caller made an
+      ordinary mistake and was told the server broke.
+    - An id belonging to *another* workspace satisfied the constraint and was
+      accepted, binding an automation to an object its own workspace cannot
+      see. That one is a boundary, not a status code.
+
+    Non-CRM modules describe this field as "module-specific entity ID", but the
+    foreign key has only ever permitted a CRM object, so this checks what the
+    database actually enforces.
+    """
+    if object_id is None:
+        return
+
+    # A malformed id would otherwise fail when asyncpg tried to bind it to a
+    # uuid column — a 500 for the same reason, one layer down.
+    try:
+        UUID(str(object_id))
+    except (ValueError, AttributeError, TypeError) as exc:
+        raise InvalidAutomationObject(
+            f"'{object_id}' is not a valid object id."
+        ) from exc
+
+    exists = (
+        await db.execute(
+            select(CRMObject.id).where(
+                CRMObject.id == object_id,
+                CRMObject.workspace_id == workspace_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if not exists:
+        raise InvalidAutomationObject(
+            f"No object '{object_id}' in this workspace. "
+            "Pick a target object from this workspace, or leave it unset for "
+            "an automation that is not tied to one."
+        )
 
 
 # =============================================================================

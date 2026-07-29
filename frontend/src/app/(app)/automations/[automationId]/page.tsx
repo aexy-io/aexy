@@ -278,6 +278,21 @@ export default function EditAutomationPage() {
     [workspaceId, automationId]
   );
 
+  const handleRun = useCallback(
+    async (recordId: string) => {
+      if (!workspaceId || !automationId) return;
+      // Errors are surfaced by the toolbar next to the button that caused
+      // them; rethrow so it can, and keep the page-level banner clear.
+      await api.post(
+        `/workspaces/${workspaceId}/automations/${automationId}/trigger`,
+        null,
+        { params: { record_id: recordId } },
+      );
+      setError(null);
+    },
+    [workspaceId, automationId],
+  );
+
   const handleBack = () => {
     const moduleFilter = automation?.module;
     const backUrl = moduleFilter ? `/automations?module=${moduleFilter}` : "/automations";
@@ -404,6 +419,7 @@ export default function EditAutomationPage() {
             onPublish={handlePublish}
             onUnpublish={handleUnpublish}
             onTest={handleTest}
+            onRun={handleRun}
           />
         </div>
       </div>
