@@ -8,6 +8,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.core.database import get_db
@@ -346,6 +347,60 @@ async def trigger_automation_manually(
     if not automation or automation.workspace_id != workspace_id:
         raise HTTPException(status_code=404, detail="Automation not found")
 
+    # Check what can be checked before answering. Execution runs in a
+    # background task whose exceptions go nowhere, so without this the caller
+    # is told "triggered" whether or not anything can possibly happen — an
+    # inactive automation, an exhausted monthly allowance and a record from
+    # another workspace all look identical to success.
+    if not automation.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This automation is paused. Activate it before running it.",
+        )
+    if (
+        automation.run_limit_per_month
+        and (automation.runs_this_month or 0) >= automation.run_limit_per_month
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "This automation has used its monthly run limit "
+                f"({automation.run_limit_per_month})."
+            ),
+        )
+
+    if record_id:
+        from aexy.models.crm import CRMRecord
+
+        record = (
+            await db.execute(
+                select(CRMRecord).where(
+                    CRMRecord.id == record_id,
+                    CRMRecord.workspace_id == workspace_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if not record:
+            raise HTTPException(
+                status_code=404,
+                detail="Record not found in this workspace",
+            )
+        # A record of the wrong type would run every action against fields it
+        # does not have, which reads as a mysterious run of failures rather
+        # than a mistake at the point it was made.
+        if automation.object_id and record.object_id != automation.object_id:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "That record is not the type this automation runs on."
+                ),
+            )
+    elif (automation.module or "crm") == "crm":
+        raise HTTPException(
+            status_code=400,
+            detail="A CRM automation needs a record to run against.",
+        )
+
     # Run in background on its own session: the request's session is torn down
     # before background tasks run, so borrowing it leaves this work uncommitted.
     async def run_automation():
@@ -369,8 +424,11 @@ async def trigger_automation_manually(
 
     background_tasks.add_task(run_automation)
 
+    # "started", not "succeeded" — the work happens after this response, and
+    # its outcome only exists in run history.
     return {
-        "message": "Automation triggered",
+        "message": "Automation started. Its outcome will appear in run history.",
+        "started": True,
         "automation_id": automation_id,
         "record_id": record_id,
         "module": automation.module,
