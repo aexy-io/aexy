@@ -1398,43 +1398,16 @@ export function NodeConfigPanel({
               </>
             )}
 
-            {/* Message */}
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1">
-                Headers (JSON)
-              </label>
-              <textarea
-                value={
-                  typeof node.data.headers === "string"
-                    ? node.data.headers
-                    : JSON.stringify(node.data.headers || {}, null, 2)
-                }
-                onChange={(e) => onUpdate({ headers: e.target.value })}
-                placeholder='{"Authorization": "Bearer {{trigger.token}}"}'
-                rows={3}
-                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm font-mono"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1">
-                Timeout (seconds)
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="60"
-                value={(node.data.timeout_seconds as number) || 30}
-                onChange={(e) =>
-                  onUpdate({
-                    timeout_seconds: Math.max(
-                      1,
-                      Math.min(60, Number(e.target.value) || 30)
-                    ),
-                  })
-                }
-                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
-              />
-            </div>
+            {/*
+              A "Headers (JSON)" field and a "Timeout (seconds)" field used to
+              sit here, copy-pasted from webhook_call — the stray "Message"
+              comment above them belonged to the field below. Neither slack
+              executor reads either key, so both were inert, and the headers
+              one invited a credential into the workflow definition, where any
+              member can read it, to no purpose whatsoever. A Slack message
+              goes out over the workspace's Slack integration; there is no HTTP
+              request here for a header to attach to.
+            */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-sm text-muted-foreground">Message</label>

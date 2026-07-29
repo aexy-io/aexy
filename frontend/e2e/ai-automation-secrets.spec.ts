@@ -288,6 +288,64 @@ test.describe("AI / Automation workspace secrets (live)", () => {
     expect(body.is_valid).toBe(false);
   });
 
+  test("a credential in the dead send_slack headers field is not stored", async ({
+    request,
+  }) => {
+    // The Slack step carried a "Headers (JSON)" field copy-pasted from
+    // webhook_call. No slack executor read it, so a pasted Authorization value
+    // sat in the workflow definition — readable by any member — achieving
+    // nothing. The field is gone; saving must not carry one forward either.
+    const id = await createAutomation(request);
+
+    const saved = await request.put(
+      `${API_BASE}/workspaces/${REAL_BACKEND_WORKSPACE_ID}` +
+        `/crm/automations/${id}/workflow`,
+      {
+        headers: authHeaders(),
+        data: {
+          nodes: [
+            {
+              id: "trigger-1",
+              type: "trigger",
+              position: { x: 80, y: 80 },
+              data: { label: "Record Created", trigger_type: "record.created" },
+            },
+            {
+              id: "slack-1",
+              type: "action",
+              position: { x: 400, y: 80 },
+              data: {
+                label: "Send Slack",
+                action_type: "send_slack",
+                channel: "C123",
+                message_template: "hello",
+                headers: '{"Authorization": "Bearer sk-live-slack-leak"}',
+                timeout_seconds: 30,
+              },
+            },
+          ],
+          edges: [{ id: "e1", source: "trigger-1", target: "slack-1" }],
+        },
+      },
+    );
+    expect(saved.ok(), `workflow save returned ${saved.status()}`).toBeTruthy();
+
+    const stored = await request.get(
+      `${API_BASE}/workspaces/${REAL_BACKEND_WORKSPACE_ID}` +
+        `/crm/automations/${id}/workflow`,
+      { headers: authHeaders() },
+    );
+    const body = await stored.text();
+
+    expect(body, "the credential was stored in the graph").not.toContain(
+      "sk-live-slack-leak",
+    );
+    // And the real Slack config survived — this strips the inert keys, not
+    // the step.
+    expect(body).toContain("C123");
+    expect(body).toContain("hello");
+  });
+
   test("api_request is offered by the palette now that it runs", async ({
     request,
   }) => {

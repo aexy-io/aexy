@@ -129,6 +129,47 @@ _HTTP_ACTION_TYPES = ("webhook_call", "api_request")
 _SECRET_AUTH_FIELDS = ("bearer_token", "api_key")
 
 
+# Config the send_slack panel used to collect and no executor ever read. The
+# fields were copy-pasted from webhook_call; a Slack message goes out over the
+# workspace's Slack integration, so there is no HTTP request for a header or a
+# timeout to apply to.
+_INERT_SLACK_KEYS = ("headers", "timeout_seconds")
+
+
+def strip_inert_slack_config(nodes: list[dict] | None) -> list[dict] | None:
+    """Drop send_slack config that nothing reads, on the way into storage.
+
+    `headers` is the one that matters: it accepted an `Authorization` value,
+    stored it verbatim in the workflow definition where any member can read it,
+    and then did nothing with it. Removing the field stops new ones arriving;
+    this stops a saved graph carrying one forward, and the accompanying
+    migration clears what is already stored.
+
+    Deliberately narrow. This is not a general "drop unknown keys" pass —
+    unrecognised config is usually a version skew rather than a mistake, and
+    silently discarding it would lose real settings.
+    """
+    if not nodes:
+        return nodes
+
+    cleaned: list[dict] = []
+    for node in nodes:
+        data = node.get("data") if isinstance(node, dict) else None
+        if (
+            isinstance(data, dict)
+            and data.get("action_type") == "send_slack"
+            and any(key in data for key in _INERT_SLACK_KEYS)
+        ):
+            node = {
+                **node,
+                "data": {
+                    k: v for k, v in data.items() if k not in _INERT_SLACK_KEYS
+                },
+            }
+        cleaned.append(node)
+    return cleaned
+
+
 def _literal_secret_errors(node: dict) -> list[WorkflowValidationError]:
     """Refuse an HTTP step that carries a literal credential.
 
@@ -304,6 +345,7 @@ class WorkflowService:
         viewport: dict | None = None,
     ) -> WorkflowDefinition:
         """Create a workflow definition for an automation."""
+        nodes = strip_inert_slack_config(nodes)
         workflow = WorkflowDefinition(
             id=str(uuid4()),
             automation_id=automation_id,
@@ -346,6 +388,10 @@ class WorkflowService:
         workflow = await self.get_workflow(workflow_id)
         if not workflow:
             return None
+
+        # Before the change comparison, so a save that only drops inert Slack
+        # config is not recorded as an edit the author did not make.
+        nodes = strip_inert_slack_config(nodes)
 
         # Create version snapshot before updating (if there are changes)
         has_changes = (

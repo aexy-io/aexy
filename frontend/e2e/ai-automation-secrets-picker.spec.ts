@@ -303,6 +303,80 @@ test.describe("AI / Secret picker in the builder (live)", () => {
     ).toHaveCount(0);
   });
 
+  test("the Slack step no longer offers headers or a timeout", async ({
+    page,
+    request,
+  }) => {
+    // Both were copy-pasted from webhook_call and read by neither slack
+    // executor. The headers one invited a credential into the graph for no
+    // purpose; the timeout promised behaviour that never happened.
+    const created = await request.post(
+      `${API_BASE}/workspaces/${REAL_BACKEND_WORKSPACE_ID}/automations`,
+      {
+        headers: authHeaders(),
+        data: {
+          name: `e2e-slack-fields-${Date.now()}`,
+          module: "crm",
+          trigger_type: "record.created",
+          trigger_config: {},
+          actions: [],
+        },
+      },
+    );
+    automationId = (await created.json()).id as string;
+
+    await request.put(
+      `${API_BASE}/workspaces/${REAL_BACKEND_WORKSPACE_ID}` +
+        `/crm/automations/${automationId}/workflow`,
+      {
+        headers: authHeaders(),
+        data: {
+          nodes: [
+            {
+              id: "trigger-1",
+              type: "trigger",
+              position: { x: 80, y: 80 },
+              data: { label: "Record Created", trigger_type: "record.created" },
+            },
+            {
+              id: "action-1",
+              type: "action",
+              position: { x: 400, y: 80 },
+              data: {
+                label: "Send Slack",
+                action_type: "send_slack",
+                channel: "C123",
+              },
+            },
+          ],
+          edges: [{ id: "e1", source: "trigger-1", target: "action-1" }],
+        },
+      },
+    );
+
+    await page.goto(`/automations/${automationId}`, {
+      waitUntil: "networkidle",
+      timeout: 60_000,
+    });
+    await expect(page.locator(".react-flow").first()).toBeVisible({
+      timeout: 30_000,
+    });
+    await page.locator('.react-flow__node[data-id="action-1"]').click();
+    const panel = page.getByTestId("node-config-panel");
+    await expect(panel).toBeVisible({ timeout: 15_000 });
+
+    // The panel is the right one — the Slack target field is there. Scoped to
+    // a <label>: getByText(/Channel/i) also matches the hidden <option> inside
+    // the closed target-type select, so it passed while resolving to
+    // something invisible.
+    await expect(
+      panel.locator("label").filter({ hasText: /^Channel$/ }).first(),
+    ).toBeVisible();
+
+    await expect(panel.getByText("Headers (JSON)")).toHaveCount(0);
+    await expect(panel.getByText(/Timeout \(seconds\)/i)).toHaveCount(0);
+  });
+
   test("the picker offers a way to add one when none exist", async ({
     page,
     request,

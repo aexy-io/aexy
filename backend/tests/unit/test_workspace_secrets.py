@@ -196,6 +196,99 @@ async def test_the_webhook_step_sends_the_resolved_credential(db_session):
     assert "sk-live-abc123" not in str(result)
 
 
+def test_inert_slack_config_is_dropped_on_the_way_into_storage():
+    """The send_slack panel collected headers and a timeout that no executor
+    read. The headers field accepted an Authorization value, stored it in the
+    workflow definition where any member can read it, and did nothing."""
+    from aexy.services.workflow_service import strip_inert_slack_config
+
+    cleaned = strip_inert_slack_config(
+        [
+            {
+                "id": "slack-1",
+                "type": "action",
+                "data": {
+                    "action_type": "send_slack",
+                    "channel": "C123",
+                    "message_template": "hi",
+                    "headers": '{"Authorization": "Bearer sk-live-abc"}',
+                    "timeout_seconds": 30,
+                },
+            }
+        ]
+    )
+
+    data = cleaned[0]["data"]
+    assert "headers" not in data
+    assert "timeout_seconds" not in data
+    assert "sk-live-abc" not in str(cleaned), "the credential survived the strip"
+    # The real config is untouched.
+    assert data["channel"] == "C123"
+    assert data["message_template"] == "hi"
+
+
+def test_the_strip_leaves_webhook_headers_alone():
+    """webhook_call reads them — dropping those would break the feature this
+    whole change exists to support."""
+    from aexy.services.workflow_service import strip_inert_slack_config
+
+    nodes = [
+        {
+            "id": "wh-1",
+            "type": "action",
+            "data": {
+                "action_type": "webhook_call",
+                "webhook_url": "https://hooks.example.com/x",
+                "headers": '{"Authorization": "Bearer {{secrets.X}}"}',
+                "timeout_seconds": 10,
+            },
+        },
+        {
+            "id": "req-1",
+            "type": "action",
+            "data": {
+                "action_type": "api_request",
+                "api_url": "https://api.example.com/x",
+                "headers": '{"X-Key": "{{secrets.Y}}"}',
+            },
+        },
+    ]
+
+    assert strip_inert_slack_config(nodes) == nodes
+
+
+def test_the_strip_does_not_disturb_a_graph_with_nothing_to_remove():
+    """Rewriting an untouched graph would show up as an edit nobody made."""
+    from aexy.services.workflow_service import strip_inert_slack_config
+
+    nodes = [
+        {"id": "t", "type": "trigger", "data": {"trigger_type": "record.created"}},
+        {
+            "id": "slack-1",
+            "type": "action",
+            "data": {"action_type": "send_slack", "channel": "C123"},
+        },
+    ]
+
+    assert strip_inert_slack_config(nodes) == nodes
+    assert strip_inert_slack_config([]) == []
+    assert strip_inert_slack_config(None) is None
+
+
+def test_the_strip_survives_nodes_that_are_not_shaped_as_expected():
+    """Canvas JSON comes from the client, so a malformed node must not take
+    down the save path."""
+    from aexy.services.workflow_service import strip_inert_slack_config
+
+    nodes = [
+        {"id": "no-data"},
+        {"id": "data-not-a-dict", "data": "nope"},
+        {"id": "no-action-type", "data": {}},
+    ]
+
+    assert strip_inert_slack_config(nodes) == nodes
+
+
 async def test_the_durable_path_resolves_a_secret_in_a_header(db_session):
     """The same guarantee as the inline path, on the executor that actually
     runs published workflows.
