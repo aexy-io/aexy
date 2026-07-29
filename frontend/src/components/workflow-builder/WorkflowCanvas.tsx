@@ -76,6 +76,8 @@ export interface WorkflowCanvasProps {
   onPublish: () => Promise<void>;
   onUnpublish: () => Promise<void>;
   onTest: (recordId?: string) => Promise<TestExecution | void>;
+  /** Run for real against one record. Forwarded straight to the toolbar. */
+  onRun?: (recordId: string) => Promise<void>;
 }
 
 const nodeTypes = {
@@ -118,6 +120,7 @@ function WorkflowCanvasInner({
   onPublish,
   onUnpublish,
   onTest,
+  onRun,
 }: WorkflowCanvasProps) {
   const [nodes, setNodes] = useState<Node[]>(initialNodes);
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
@@ -1001,6 +1004,7 @@ function WorkflowCanvasInner({
               onPublish={onPublish}
               onUnpublish={onUnpublish}
               onTest={handleTest}
+              onRun={onRun}
               onFitView={() => fitView()}
               onAutoLayout={onAutoLayout}
               // UX-DEF-001 (partial): right-drawer cohesion. Toolbar
