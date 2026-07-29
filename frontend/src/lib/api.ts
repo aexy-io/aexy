@@ -11101,6 +11101,46 @@ export const automationsApi = {
 };
 
 // =============================================================================
+// Workspace Secrets API (credentials for workflow steps)
+// =============================================================================
+
+/**
+ * Everything about a secret except the one thing that matters.
+ *
+ * There is no `value` here and there is no endpoint that returns one — not to
+ * a member, not to an admin, not to whoever created it. Rotation is an
+ * overwrite: POST the same name with a new value.
+ */
+export interface WorkspaceSecretSummary {
+  name: string;
+  description: string | null;
+  last_used_at: string | null;
+  created_at: string;
+}
+
+export const workspaceSecretsApi = {
+  list: async (workspaceId: string): Promise<WorkspaceSecretSummary[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/secrets`);
+    return response.data;
+  },
+
+  /** Create, or replace the value of one that exists. */
+  upsert: async (
+    workspaceId: string,
+    data: { name: string; value: string; description?: string },
+  ): Promise<WorkspaceSecretSummary> => {
+    const response = await api.post(`/workspaces/${workspaceId}/secrets`, data);
+    return response.data;
+  },
+
+  remove: async (workspaceId: string, name: string): Promise<void> => {
+    await api.delete(
+      `/workspaces/${workspaceId}/secrets/${encodeURIComponent(name)}`,
+    );
+  },
+};
+
+// =============================================================================
 // Google Integration API (Gmail & Calendar sync for CRM)
 // =============================================================================
 

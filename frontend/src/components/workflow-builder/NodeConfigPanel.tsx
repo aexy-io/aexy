@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { Node } from "@xyflow/react";
 import { X, Trash2, ChevronDown, Plus, Database, Copy, Check, ExternalLink, Code, Save, Loader2 } from "lucide-react";
 import { FieldPicker, InlineFieldPicker } from "./FieldPicker";
+import { SecretPicker } from "./SecretPicker";
 import { api, CRMAttribute, CRMObject } from "@/lib/api";
 import { HelpTooltip } from "@/components/ui/tooltip";
 import { FieldEditor } from "@/components/fields/FieldRenderer";
@@ -271,6 +272,7 @@ export function NodeConfigPanel({
   const emailBodyRef = useRef<HTMLTextAreaElement>(null);
   const messageTemplateRef = useRef<HTMLTextAreaElement>(null);
   const webhookBodyRef = useRef<HTMLTextAreaElement>(null);
+  const headersRef = useRef<HTMLTextAreaElement>(null);
 
   // Sync label state when node changes (e.g., selecting a different trigger)
   useEffect(() => {
@@ -710,6 +712,41 @@ export function NodeConfigPanel({
       const currentValue = (node.data[fieldName] as string) || "";
       onUpdate({ [fieldName]: currentValue + value });
     }
+  };
+
+  /**
+   * Headers are stored as either a JSON string or an already-parsed object,
+   * depending on where the node came from. Everything below works on the
+   * string form.
+   */
+  const headersText =
+    typeof node.data.headers === "string"
+      ? node.data.headers
+      : JSON.stringify(node.data.headers || {}, null, 2);
+
+  /**
+   * Same idea as insertAtCursor, but that one reads node.data[fieldName] raw
+   * — which for headers can be an object, and concatenating onto one gives
+   * "[object Object]". This normalises first.
+   */
+  const insertIntoHeaders = (
+    ref: React.RefObject<HTMLTextAreaElement | null>,
+    value: string
+  ) => {
+    const textarea = ref.current;
+    if (!textarea) {
+      onUpdate({ headers: headersText + value });
+      return;
+    }
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    onUpdate({
+      headers: headersText.slice(0, start) + value + headersText.slice(end),
+    });
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + value.length, start + value.length);
+    }, 0);
   };
 
   const handleLabelChange = (newLabel: string) => {
@@ -1466,6 +1503,41 @@ export function NodeConfigPanel({
                 rows={3}
                 className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm font-mono"
               />
+            </div>
+            {/*
+              Headers had no field here at all, which is odd given the step
+              reads them: they could only arrive through the API or a
+              generated workflow. So the one place a credential most wanted
+              pasting was also the one place the builder never showed — and
+              validation now refuses a pasted credential, which would have
+              been a refusal with nowhere to go.
+            */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-sm text-muted-foreground">
+                  Headers (JSON)
+                </label>
+                <SecretPicker
+                  workspaceId={workspaceId}
+                  onInsert={(reference) =>
+                    insertIntoHeaders(headersRef, reference)
+                  }
+                />
+              </div>
+              <textarea
+                ref={headersRef}
+                value={headersText}
+                onChange={(e) => onUpdate({ headers: e.target.value })}
+                placeholder='{"Authorization": "Bearer {{secrets.NAME}}"}'
+                rows={3}
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm font-mono"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Reference a stored credential as{" "}
+                <code className="font-mono">{"{{secrets.NAME}}"}</code>. Pasting
+                the credential itself is refused — a header template is part of
+                the workflow, and any member can read a workflow.
+              </p>
             </div>
           </>
         )}

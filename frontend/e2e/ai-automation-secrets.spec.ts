@@ -293,6 +293,16 @@ test.describe("AI / Automation workspace secrets (live)", () => {
       await new Promise((r) => setTimeout(r, 1_000));
     }
 
+    // Distinguish "the step ran and did not fail" from "nothing ran at all".
+    // Without the temporal worker up, the execution sits in pending forever
+    // and the assertion below reports a missing status, which reads like the
+    // secret check is broken rather than like the stack is incomplete.
+    expect(
+      detail.status,
+      "the execution never reached a terminal status — is the temporal " +
+        "worker running? (docker compose up -d temporal-worker)",
+    ).not.toMatch(/^(pending|running)$/);
+
     const step = (detail.steps ?? []).find((s) => s.node_id === "action-1");
     expect(step?.status, "a missing secret must fail the step").toBe("failed");
     expect(step?.error ?? "").toMatch(/secret/i);
