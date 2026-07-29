@@ -27,10 +27,17 @@ HIDDEN_CRM_TRIGGERS = [
     # path ever calls. Both were on display in the builder until now.
     "status.changed", "email.replied",
 ]
-ORPHAN_ACTIONS = ["api_request", "enrich_record", "classify_record", "generate_summary"]
+ORPHAN_ACTIONS = ["enrich_record", "classify_record", "generate_summary"]
 RELEASE_ACTIONS = [
     "send_sms",
     "webhook_call",
+    # Moved out of ORPHAN_ACTIONS 2026-07-29. It was an orphan in the literal
+    # sense — the config panel wrote api_url/api_method/api_body and the
+    # handler read webhook_url/http_method/body_template, so nothing it was
+    # configured with ever reached the executor, and the auth fields were read
+    # by nothing at all. Both executors now read those keys and apply the auth
+    # config, so it has the matching published handler this list is about.
+    "api_request",
     "run_agent",
     "wait",
     "condition",
@@ -140,5 +147,12 @@ def test_crm_actions_are_exactly_the_agreed_set():
         # Functional-release capabilities routed through inline or durable
         # execution depending on their canvas node type.
         "send_sms", "webhook_call", "run_agent",
+        # Un-hidden 2026-07-29. It was withheld for having no connected
+        # executor, which was true: the config panel wrote api_url/api_method/
+        # api_body while the handler read webhook_url/http_method/
+        # body_template, so the step failed on "No webhook URL specified"
+        # however it was configured, and its auth fields were read by nothing
+        # at all. Both executors now read those keys and apply the auth config.
+        "api_request",
         "wait", "condition", "branch",
     }

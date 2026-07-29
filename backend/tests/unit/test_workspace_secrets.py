@@ -196,6 +196,433 @@ async def test_the_webhook_step_sends_the_resolved_credential(db_session):
     assert "sk-live-abc123" not in str(result)
 
 
+async def test_the_durable_path_resolves_a_secret_in_a_header(db_session):
+    """The same guarantee as the inline path, on the executor that actually
+    runs published workflows.
+
+    This was broken and untested. Header templates are rendered before secrets
+    are resolved, and the renderer raises on any `{{...}}` it cannot resolve —
+    `secrets` is not one of its namespaces, so every `{{secrets.NAME}}` header
+    failed its step with "Dynamic value is missing" and the reference never
+    reached the resolver. The existing tests all exercised the inline CRM
+    service, and the one durable test asserted a *failure*, which this bug
+    produced for the wrong reason.
+    """
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, patch
+
+    from aexy.schemas.workflow import WorkflowExecutionContext
+    from aexy.services.workflow_actions import WorkflowActionHandler
+
+    service, ws = await _service(db_session)
+    await service.upsert(ws, "STRIPE", "sk-live-abc123")
+
+    captured: dict = {}
+
+    class FakeClient:
+        def __init__(self, timeout=None):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_a):
+            return None
+
+        async def request(self, **kwargs):
+            captured.update(kwargs)
+            return SimpleNamespace(status_code=200, is_success=True, text="ok")
+
+    with patch(
+        "aexy.services.crm_automation_service.resolve_public_webhook_host",
+        AsyncMock(return_value=None),
+    ), patch("httpx.AsyncClient", FakeClient):
+        result = await WorkflowActionHandler(db_session)._webhook_call(
+            {
+                "webhook_url": "https://hooks.example.com/x",
+                "headers": '{"Authorization": "Bearer {{secrets.STRIPE}}"}',
+            },
+            WorkflowExecutionContext(workspace_id=ws),
+        )
+
+    assert result.status == "success", result.error
+    assert captured["headers"]["Authorization"] == "Bearer sk-live-abc123"
+
+
+async def test_a_record_reference_beside_a_secret_still_renders(db_session):
+    """Passing `secrets.*` through the renderer must not disable the rest of
+    it — a header can legitimately carry both."""
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, patch
+
+    from aexy.schemas.workflow import WorkflowExecutionContext
+    from aexy.services.workflow_actions import WorkflowActionHandler
+
+    service, ws = await _service(db_session)
+    await service.upsert(ws, "TOKEN", "abc")
+
+    captured: dict = {}
+
+    class FakeClient:
+        def __init__(self, timeout=None):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_a):
+            return None
+
+        async def request(self, **kwargs):
+            captured.update(kwargs)
+            return SimpleNamespace(status_code=200, is_success=True, text="ok")
+
+    with patch(
+        "aexy.services.crm_automation_service.resolve_public_webhook_host",
+        AsyncMock(return_value=None),
+    ), patch("httpx.AsyncClient", FakeClient):
+        result = await WorkflowActionHandler(db_session)._webhook_call(
+            {
+                "webhook_url": "https://hooks.example.com/x",
+                "headers": (
+                    '{"Authorization": "Bearer {{secrets.TOKEN}}",'
+                    ' "X-Record": "{{record.id}}"}'
+                ),
+            },
+            WorkflowExecutionContext(
+                workspace_id=ws, record_id="rec-9", record_data={"id": "rec-9"}
+            ),
+        )
+
+    assert result.status == "success", result.error
+    assert captured["headers"]["Authorization"] == "Bearer abc"
+    assert captured["headers"]["X-Record"] == "rec-9"
+
+
+async def test_a_missing_record_reference_still_fails_the_step(db_session):
+    """The pass-through is for `secrets.*` only. A typo'd record path must
+    still be caught rather than sent as literal `{{record.nope}}`."""
+    from unittest.mock import AsyncMock, patch
+
+    from aexy.schemas.workflow import WorkflowExecutionContext
+    from aexy.services.workflow_actions import WorkflowActionHandler
+
+    _service_obj, ws = await _service(db_session)
+
+    with patch(
+        "aexy.services.crm_automation_service.resolve_public_webhook_host",
+        AsyncMock(return_value=None),
+    ):
+        result = await WorkflowActionHandler(db_session)._webhook_call(
+            {
+                "webhook_url": "https://hooks.example.com/x",
+                "headers": '{"X-Thing": "{{record.nope}}"}',
+            },
+            WorkflowExecutionContext(workspace_id=ws),
+        )
+
+    assert result.status == "failed"
+    assert "missing" in (result.error or "")
+
+
+async def test_the_api_request_auth_fields_were_read_by_nothing(db_session):
+    """The regression these tests exist for.
+
+    The builder collects `auth_type` with a bearer token or an API key. No
+    executor read those fields: the credential sat in the workflow definition,
+    where any member can read it, and the request went out unauthenticated. So
+    the step both leaked the token and did not use it.
+    """
+    from aexy.services.workflow_actions import _resolve_auth_header
+
+    service, ws = await _service(db_session)
+    await service.upsert(ws, "STRIPE", "sk-live-abc123")
+
+    header, used = await _resolve_auth_header(
+        {"auth_type": "bearer", "bearer_token": "{{secrets.STRIPE}}"},
+        service,
+        ws,
+    )
+
+    assert header == ("Authorization", "Bearer sk-live-abc123")
+    assert used == {"sk-live-abc123"}
+
+
+async def test_an_api_key_goes_into_the_header_it_names(db_session):
+    from aexy.services.workflow_actions import _resolve_auth_header
+
+    service, ws = await _service(db_session)
+    await service.upsert(ws, "KEY", "k-123")
+
+    header, _ = await _resolve_auth_header(
+        {
+            "auth_type": "api_key",
+            "api_key_header": "X-Acme-Key",
+            "api_key": "{{secrets.KEY}}",
+        },
+        service,
+        ws,
+    )
+
+    assert header == ("X-Acme-Key", "k-123")
+
+
+async def test_bearer_is_not_doubled_when_the_author_types_it(db_session):
+    """`Bearer {{secrets.X}}` is the natural thing to write having just seen
+    the header form, and prefixing it again would send `Bearer Bearer`."""
+    from aexy.services.workflow_actions import _resolve_auth_header
+
+    service, ws = await _service(db_session)
+    await service.upsert(ws, "TOKEN", "abc")
+
+    header, _ = await _resolve_auth_header(
+        {"auth_type": "bearer", "bearer_token": "Bearer {{secrets.TOKEN}}"},
+        service,
+        ws,
+    )
+
+    assert header == ("Authorization", "Bearer abc")
+
+
+async def test_a_literal_credential_is_refused_at_run_time_too(db_session):
+    """Validation blocks this on save, but saved workflows predate that.
+
+    Sending it anyway would keep a readable credential in the graph working,
+    which is the arrangement being retired.
+    """
+    from aexy.services.workflow_actions import _resolve_auth_header
+
+    service, ws = await _service(db_session)
+
+    with pytest.raises(ValueError, match="literal credential"):
+        await _resolve_auth_header(
+            {"auth_type": "bearer", "bearer_token": "sk-live-pasted"},
+            service,
+            ws,
+        )
+
+
+async def test_no_auth_configured_adds_no_header(db_session):
+    from aexy.services.workflow_actions import _resolve_auth_header
+
+    service, ws = await _service(db_session)
+
+    for config in ({}, {"auth_type": "none"}, {"auth_type": ""}):
+        header, used = await _resolve_auth_header(config, service, ws)
+        assert header is None
+        assert used == set()
+
+
+async def test_auth_set_but_empty_is_refused_rather_than_sent_bare(db_session):
+    from aexy.services.workflow_actions import _resolve_auth_header
+
+    service, ws = await _service(db_session)
+
+    with pytest.raises(ValueError, match="is empty"):
+        await _resolve_auth_header(
+            {"auth_type": "api_key", "api_key": "   "}, service, ws
+        )
+
+
+async def test_an_api_request_step_authenticates_and_keeps_it_out_of_history(
+    db_session,
+):
+    """The whole path: builder keys, auth applied, echoed response scrubbed.
+
+    Uses the panel's own key names — `api_url`, `api_method`, `api_body` —
+    because the executor read `webhook_url` / `http_method` / `body_template`
+    and nothing else, so every api_request step built in the builder failed on
+    "No webhook URL specified" whatever it was configured with.
+    """
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, patch
+
+    from aexy.schemas.workflow import WorkflowExecutionContext
+    from aexy.services.workflow_actions import WorkflowActionHandler
+
+    service, ws = await _service(db_session)
+    await service.upsert(ws, "ACME", "k-super-secret")
+
+    class EchoingClient:
+        """Replays the request headers, the way httpbin does."""
+
+        def __init__(self, timeout=None):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_a):
+            return None
+
+        async def request(self, **kwargs):
+            captured.update(kwargs)
+            return SimpleNamespace(
+                status_code=200,
+                is_success=True,
+                text='{"headers": %r}' % (kwargs["headers"],),
+            )
+
+    captured: dict = {}
+    handler = WorkflowActionHandler(db_session)
+
+    with patch(
+        "aexy.services.crm_automation_service.resolve_public_webhook_host",
+        AsyncMock(return_value=None),
+    ), patch("httpx.AsyncClient", EchoingClient):
+        result = await handler._webhook_call(
+            {
+                "api_url": "https://api.example.com/charge",
+                "api_method": "POST",
+                "api_body": "{}",
+                "auth_type": "api_key",
+                "api_key_header": "X-Acme-Key",
+                "api_key": "{{secrets.ACME}}",
+            },
+            WorkflowExecutionContext(workspace_id=ws),
+        )
+
+    assert result.status == "success", result.error
+    # The request carried the credential…
+    assert captured["headers"]["X-Acme-Key"] == "k-super-secret"
+    # …and the recorded response did not.
+    assert "k-super-secret" not in str(result.output)
+    assert "[redacted secret]" in result.output["response"]
+
+
+async def test_an_explicit_header_wins_over_the_auth_field(db_session):
+    """The more specific instruction. Silently overwriting a header the author
+    wrote by hand would be the surprising choice."""
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, patch
+
+    from aexy.schemas.workflow import WorkflowExecutionContext
+    from aexy.services.workflow_actions import WorkflowActionHandler
+
+    service, ws = await _service(db_session)
+    await service.upsert(ws, "FROM_FIELD", "from-the-auth-field")
+    await service.upsert(ws, "FROM_HEADER", "from-the-header")
+
+    captured: dict = {}
+
+    class FakeClient:
+        def __init__(self, timeout=None):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_a):
+            return None
+
+        async def request(self, **kwargs):
+            captured.update(kwargs)
+            return SimpleNamespace(status_code=200, is_success=True, text="ok")
+
+    with patch(
+        "aexy.services.crm_automation_service.resolve_public_webhook_host",
+        AsyncMock(return_value=None),
+    ), patch("httpx.AsyncClient", FakeClient):
+        result = await WorkflowActionHandler(db_session)._webhook_call(
+            {
+                "api_url": "https://api.example.com/x",
+                "headers": '{"Authorization": "Bearer {{secrets.FROM_HEADER}}"}',
+                "auth_type": "bearer",
+                "bearer_token": "{{secrets.FROM_FIELD}}",
+            },
+            WorkflowExecutionContext(workspace_id=ws),
+        )
+
+    assert result.status == "success", result.error
+    assert captured["headers"]["Authorization"] == "Bearer from-the-header"
+
+
+def test_a_literal_in_the_auth_field_blocks_the_save():
+    from aexy.services.workflow_service import WorkflowService
+
+    nodes = [
+        {"id": "t", "type": "trigger", "data": {"trigger_type": "record.created"}},
+        {"id": "req", "type": "action", "data": {
+            "action_type": "api_request",
+            "api_url": "https://api.example.com/x",
+            "auth_type": "bearer",
+            "bearer_token": "sk-live-pasted",
+        }},
+    ]
+
+    result = WorkflowService(db=None).validate_workflow(
+        nodes, [{"source": "t", "target": "req"}]
+    )
+
+    flagged = [e for e in result.errors if e.error_type == "literal_secret_in_auth"]
+    assert len(flagged) == 1
+    assert "{{secrets.NAME}}" in flagged[0].message
+    assert result.is_valid is False
+
+
+def test_a_reference_in_the_auth_field_validates():
+    from aexy.services.workflow_service import WorkflowService
+
+    nodes = [
+        {"id": "t", "type": "trigger", "data": {"trigger_type": "record.created"}},
+        {"id": "req", "type": "action", "data": {
+            "action_type": "api_request",
+            "api_url": "https://api.example.com/x",
+            "auth_type": "api_key",
+            "api_key": "{{secrets.ACME}}",
+        }},
+    ]
+
+    result = WorkflowService(db=None).validate_workflow(
+        nodes, [{"source": "t", "target": "req"}]
+    )
+
+    assert [e.error_type for e in result.errors] == []
+    assert result.is_valid is True
+
+
+def test_a_token_left_behind_by_switching_to_no_auth_is_not_flagged():
+    """It is inert — nothing reads it — so blocking the save would be noise
+    the author cannot act on without knowing to clear a hidden field."""
+    from aexy.services.workflow_service import WorkflowService
+
+    nodes = [
+        {"id": "t", "type": "trigger", "data": {"trigger_type": "record.created"}},
+        {"id": "req", "type": "action", "data": {
+            "action_type": "api_request",
+            "api_url": "https://api.example.com/x",
+            "auth_type": "none",
+            "bearer_token": "sk-live-stale",
+        }},
+    ]
+
+    result = WorkflowService(db=None).validate_workflow(
+        nodes, [{"source": "t", "target": "req"}]
+    )
+
+    assert [e.error_type for e in result.errors] == []
+
+
+def test_api_request_headers_are_checked_like_webhook_headers():
+    """Same executor, same exposure — the check only covered webhook_call."""
+    from aexy.services.workflow_service import WorkflowService
+
+    nodes = [
+        {"id": "t", "type": "trigger", "data": {"trigger_type": "record.created"}},
+        {"id": "req", "type": "action", "data": {
+            "action_type": "api_request",
+            "api_url": "https://api.example.com/x",
+            "headers": '{"Authorization": "Bearer sk-live-abc"}',
+        }},
+    ]
+
+    result = WorkflowService(db=None).validate_workflow(
+        nodes, [{"source": "t", "target": "req"}]
+    )
+
+    assert [e.error_type for e in result.errors] == ["literal_secret_in_header"]
+
+
 async def test_an_echoing_receiver_cannot_put_the_secret_in_run_history(db_session):
     """The webhook step records the response body, and receivers echo requests.
 

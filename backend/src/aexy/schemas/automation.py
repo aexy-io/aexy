@@ -311,7 +311,14 @@ UNAVAILABLE_TRIGGER_REASONS: dict[str, str] = {
 }
 
 UNAVAILABLE_ACTION_REASONS: dict[str, str] = {
-    "api_request": "No published executor is connected.",
+    # api_request un-hidden 2026-07-29. It was withheld because no executor
+    # was connected, which was accurate: the panel wrote api_url/api_method/
+    # api_body and the handler read webhook_url/http_method/body_template, so
+    # the step failed on "No webhook URL specified" whatever you configured,
+    # and its auth fields were read by nothing at all. Both executors now read
+    # those keys and apply the auth config, so the reason no longer holds. It
+    # shares _webhook_call with webhook_call, and so the same SSRF guard,
+    # idempotency key and response scrubbing.
     "enrich_record": "No published executor is connected.",
     "classify_record": "No published executor is connected.",
     "generate_summary": "No published executor is connected.",

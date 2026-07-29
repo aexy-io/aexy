@@ -121,11 +121,18 @@ def _is_valid_email(addr: str) -> bool:
 # Header names whose value is a credential rather than metadata.
 _SECRET_HEADER_NAMES = ("authorization", "x-api-key", "api-key", "x-auth-token")
 
+# Both dispatch to the same executor, so both carry headers and auth config.
+_HTTP_ACTION_TYPES = ("webhook_call", "api_request")
+
+# Config fields that hold a credential outright — no guessing from the name
+# needed, the field *is* the token.
+_SECRET_AUTH_FIELDS = ("bearer_token", "api_key")
+
 
 def _literal_secret_errors(node: dict) -> list[WorkflowValidationError]:
-    """Refuse a webhook header that carries a literal credential.
+    """Refuse an HTTP step that carries a literal credential.
 
-    Header templates are stored verbatim in the workflow definition and reading
+    The whole config is stored verbatim in the workflow definition and reading
     a workflow only needs `member`, so a pasted token is visible to everyone in
     the workspace.
 
@@ -133,42 +140,67 @@ def _literal_secret_errors(node: dict) -> list[WorkflowValidationError]:
     the save would have stopped a legitimate step with no alternative to offer.
     Workspace secrets are that alternative, so it is now an error: reference
     `{{secrets.NAME}}` and the graph holds only the reference.
+
+    Two places a credential lands: a header whose name implies one, and the
+    `api_request` auth fields, which are credentials by definition.
     """
     data = node.get("data") or {}
-    if data.get("action_type") != "webhook_call":
+    if data.get("action_type") not in _HTTP_ACTION_TYPES:
         return []
+
+    errors: list[WorkflowValidationError] = []
 
     headers = data.get("headers")
     if isinstance(headers, str):
         try:
             headers = json.loads(headers or "{}")
         except json.JSONDecodeError:
-            return []
-    if not isinstance(headers, dict):
-        return []
+            headers = None
+    if isinstance(headers, dict):
+        flagged = [
+            name
+            for name, value in headers.items()
+            if str(name).lower() in _SECRET_HEADER_NAMES
+            and isinstance(value, str)
+            and value.strip()
+            and "{{" not in value
+        ]
+        if flagged:
+            errors.append(
+                WorkflowValidationError(
+                    node_id=node.get("id", ""),
+                    error_type="literal_secret_in_header",
+                    message=(
+                        f"{', '.join(flagged)} contains a literal value, which "
+                        "is stored in the automation and readable by anyone who "
+                        "can open this builder. Store it as a workspace secret "
+                        "and reference it as {{secrets.NAME}}."
+                    ),
+                )
+            )
 
-    flagged = [
-        name
-        for name, value in headers.items()
-        if str(name).lower() in _SECRET_HEADER_NAMES
-        and isinstance(value, str)
-        and value.strip()
-        and "{{" not in value
-    ]
-    if not flagged:
-        return []
-    return [
-        WorkflowValidationError(
-            node_id=node.get("id", ""),
-            error_type="literal_secret_in_header",
-            message=(
-                f"{', '.join(flagged)} contains a literal value, which is "
-                "stored in the automation and readable by anyone who can open "
-                "this builder. Store it as a workspace secret and reference it "
-                "as {{secrets.NAME}}."
-            ),
-        )
-    ]
+    # The auth fields are only consulted when the step is set to use them, so
+    # a stale token left behind by switching to "No authentication" is not
+    # worth blocking a save over — it is inert.
+    auth_type = str(data.get("auth_type") or "none").strip().lower()
+    active_field = {"bearer": "bearer_token", "api_key": "api_key"}.get(auth_type)
+    if active_field and active_field in _SECRET_AUTH_FIELDS:
+        value = data.get(active_field)
+        if isinstance(value, str) and value.strip() and "{{" not in value:
+            errors.append(
+                WorkflowValidationError(
+                    node_id=node.get("id", ""),
+                    error_type="literal_secret_in_auth",
+                    message=(
+                        f"{active_field} contains a literal credential, which "
+                        "is stored in the automation and readable by anyone who "
+                        "can open this builder. Store it as a workspace secret "
+                        "and reference it as {{secrets.NAME}}."
+                    ),
+                )
+            )
+
+    return errors
 
 
 def validate_action_configs(actions: list[dict], module: str = "crm") -> list[str]:

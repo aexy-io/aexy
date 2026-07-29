@@ -27,6 +27,62 @@ from aexy.models.workflow import WorkflowExecution
 from aexy.schemas.workflow import WorkflowExecutionContext, NodeExecutionResult
 
 
+async def _resolve_auth_header(
+    data: dict, secrets: Any, workspace_id: str
+) -> tuple[tuple[str, str] | None, set[str]]:
+    """Turn the `api_request` auth config into a header, or refuse it.
+
+    The builder collects `auth_type` with a bearer token or an API key. Nothing
+    in the backend ever read those fields: the credential was stored in the
+    workflow definition — where any member can read it — and the request went
+    out with no authentication at all. So the step was both leaking the token
+    and not using it.
+
+    Only a `{{secrets.NAME}}` reference is accepted. A literal is refused
+    rather than sent, for the same reason it is refused in a header: sending it
+    would keep a readable credential in the graph working, which is exactly the
+    arrangement being retired. Validation blocks this on save, but saved
+    workflows predate that, so the executor has to refuse it too.
+
+    Returns the header to add (or None) and the secret values substituted, so
+    the caller can scrub them from anything it records.
+    """
+    auth_type = str(data.get("auth_type") or "none").strip().lower()
+    if auth_type in {"", "none"}:
+        return None, set()
+
+    if auth_type == "bearer":
+        field, header_name = "bearer_token", "Authorization"
+    elif auth_type == "api_key":
+        field = "api_key"
+        header_name = str(data.get("api_key_header") or "X-API-Key").strip()
+        if not header_name:
+            header_name = "X-API-Key"
+    else:
+        raise ValueError(f"Unsupported authentication type: {auth_type}")
+
+    raw = str(data.get(field) or "").strip()
+    if not raw:
+        raise ValueError(
+            f"Authentication is set to '{auth_type}' but {field} is empty."
+        )
+    if "{{" not in raw:
+        raise ValueError(
+            f"{field} holds a literal credential. Store it as a workspace "
+            "secret and reference it as {{secrets.NAME}} — a value pasted here "
+            "is saved in the automation and readable by anyone who can open it."
+        )
+
+    rendered, used = await secrets.resolve_and_collect(workspace_id, raw)
+    if auth_type == "bearer":
+        # "Bearer {{secrets.TOKEN}}" is the natural thing to type, having just
+        # seen the header form. Prefixing that again would send "Bearer Bearer".
+        value = rendered if raw.lower().startswith("bearer ") else f"Bearer {rendered}"
+    else:
+        value = rendered
+    return (header_name, value), used
+
+
 class WorkflowActionHandler:
     """Handles execution of workflow action nodes."""
 
@@ -1203,11 +1259,25 @@ class WorkflowActionHandler:
     async def _webhook_call(
         self, data: dict, context: WorkflowExecutionContext
     ) -> NodeExecutionResult:
-        """Make an HTTP webhook call."""
-        url = str(data.get("webhook_url") or data.get("url") or "").strip()
-        method = data.get("http_method", "POST").upper()
+        """Make an HTTP webhook call.
+
+        Serves both `webhook_call` and `api_request`, which the config panel
+        writes under different keys — `api_url` / `api_method` / `api_body`
+        against this reader's `webhook_url` / `http_method` / `body_template`.
+        None of the api_request keys were read, so every api_request step built
+        in the builder failed on "No webhook URL specified" regardless of what
+        was configured.
+        """
+        url = str(
+            data.get("webhook_url") or data.get("url") or data.get("api_url") or ""
+        ).strip()
+        method = str(
+            data.get("http_method") or data.get("api_method") or "POST"
+        ).upper()
         headers = data.get("headers", {})
-        body_template = data.get("body_template", "{}")
+        body_template = (
+            data.get("body_template") or data.get("api_body") or "{}"
+        )
         try:
             timeout_seconds = float(data.get("timeout_seconds", 30))
         except (TypeError, ValueError):
@@ -1294,6 +1364,30 @@ class WorkflowActionHandler:
                 return NodeExecutionResult(
                     node_id="", status="failed", error=str(error)
                 )
+
+            # The api_request auth fields. These were collected by the builder
+            # and read by nothing: the credential sat in the workflow
+            # definition — visible to any member — while the request went out
+            # unauthenticated. Applying them here is the other half of the fix;
+            # storing them as a reference is the first half.
+            try:
+                auth_header, auth_used = await _resolve_auth_header(
+                    data, secrets, context.workspace_id
+                )
+            except UnknownSecretError as error:
+                return NodeExecutionResult(
+                    node_id="", status="failed", error=str(error)
+                )
+            except ValueError as error:
+                return NodeExecutionResult(
+                    node_id="", status="failed", error=str(error)
+                )
+            if auth_header:
+                name, value = auth_header
+                # An explicit header wins: it is the more specific instruction,
+                # and silently overwriting it would be the surprising choice.
+                rendered_headers.setdefault(name, value)
+                secret_values |= auth_used
         except ValueError as error:
             return NodeExecutionResult(node_id="", status="failed", error=str(error))
         execution_id = context.trigger_data.get("execution_id")
@@ -2800,6 +2894,13 @@ class WorkflowActionHandler:
 
         def replace_var(match: re.Match) -> str:
             path = match.group(1).strip()
+            # `secrets.*` is not a context namespace and is resolved later, by
+            # the one caller allowed to read a credential. Rendering runs first
+            # and raises on anything it cannot resolve, so without this every
+            # {{secrets.NAME}} header failed its step with "Dynamic value is
+            # missing" — the reference never reached the resolver at all.
+            if path.startswith("secrets."):
+                return match.group(0)
             value = self._get_context_value(path, context)
             if value is None:
                 raise ValueError(f"Dynamic value '{{{{{path}}}}}' is missing")

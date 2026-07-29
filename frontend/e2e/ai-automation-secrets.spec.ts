@@ -240,6 +240,75 @@ test.describe("AI / Automation workspace secrets (live)", () => {
     expect(body.is_valid).toBe(true);
   });
 
+  test("a literal credential in the api_request auth field is refused", async ({
+    request,
+  }) => {
+    // Same exposure as a pasted header, on a field that *is* a credential by
+    // definition — no guessing from the header name needed.
+    const id = await createAutomation(request);
+
+    const resp = await request.post(
+      `${API_BASE}/workspaces/${REAL_BACKEND_WORKSPACE_ID}` +
+        `/crm/automations/${id}/workflow/validate`,
+      {
+        headers: authHeaders(),
+        data: {
+          nodes: [
+            {
+              id: "trigger-1",
+              type: "trigger",
+              position: { x: 80, y: 80 },
+              data: { label: "Record Created", trigger_type: "record.created" },
+            },
+            {
+              id: "action-1",
+              type: "action",
+              position: { x: 400, y: 80 },
+              data: {
+                label: "Call API",
+                action_type: "api_request",
+                api_url: "https://api.example.com/x",
+                api_method: "POST",
+                auth_type: "bearer",
+                bearer_token: "sk-live-pasted",
+              },
+            },
+          ],
+          edges: [{ id: "e1", source: "trigger-1", target: "action-1" }],
+        },
+      },
+    );
+    expect(resp.ok()).toBeTruthy();
+    const body = await resp.json();
+
+    const flagged = body.errors.filter(
+      (e: { error_type: string }) => e.error_type === "literal_secret_in_auth",
+    );
+    expect(flagged.length, "a pasted credential must block the save").toBe(1);
+    expect(body.is_valid).toBe(false);
+  });
+
+  test("api_request is offered by the palette now that it runs", async ({
+    request,
+  }) => {
+    // It was withheld with "No published executor is connected", which was
+    // accurate: the panel wrote api_url/api_method/api_body and the handler
+    // read webhook_url/http_method/body_template, so the step could not run
+    // whatever you configured. Fixing that is what makes the auth fields
+    // reachable at all.
+    const resp = await request.get(
+      `${API_BASE}/workspaces/${REAL_BACKEND_WORKSPACE_ID}` +
+        `/automations/registry/modules/crm/actions`,
+      { headers: authHeaders() },
+    );
+    expect(resp.ok()).toBeTruthy();
+
+    const ids = (await resp.json()).actions.map(
+      (a: { id: string }) => a.id,
+    );
+    expect(ids).toContain("api_request");
+  });
+
   test("a step referencing a secret that does not exist fails, not sends", async ({
     request,
   }) => {

@@ -1522,6 +1522,7 @@ export function NodeConfigPanel({
                   onInsert={(reference) =>
                     insertIntoHeaders(headersRef, reference)
                   }
+                  testId="secret-picker-headers"
                 />
               </div>
               <textarea
@@ -2316,19 +2317,37 @@ export function NodeConfigPanel({
                 <option value="none">None</option>
                 <option value="bearer">Bearer Token</option>
                 <option value="api_key">API Key</option>
-                <option value="basic">Basic Auth</option>
+                {/*
+                  "Basic Auth" was offered with no username or password field
+                  behind it, so choosing it could only produce a step that
+                  fails. Dropped rather than half-built.
+                */}
               </select>
             </div>
             {(node.data.auth_type as string) === "bearer" && (
               <div>
-                <label className="block text-sm text-muted-foreground mb-1">Bearer Token</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-sm text-muted-foreground">
+                    Bearer Token
+                  </label>
+                  <SecretPicker
+                    workspaceId={workspaceId}
+                    onInsert={(reference) => onUpdate({ bearer_token: reference })}
+                    testId="secret-picker-auth"
+                  />
+                </div>
                 <input
-                  type="password"
+                  type="text"
                   value={(node.data.bearer_token as string) || ""}
                   onChange={(e) => onUpdate({ bearer_token: e.target.value })}
-                  placeholder="Enter token"
-                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
+                  placeholder="{{secrets.NAME}}"
+                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm font-mono"
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  A reference, not the token. A value pasted here is saved in
+                  the automation and readable by anyone who can open it, so the
+                  step refuses to send one.
+                </p>
               </div>
             )}
             {(node.data.auth_type as string) === "api_key" && (
@@ -2344,14 +2363,26 @@ export function NodeConfigPanel({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-muted-foreground mb-1">API Key</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-sm text-muted-foreground">
+                      API Key
+                    </label>
+                    <SecretPicker
+                      workspaceId={workspaceId}
+                      onInsert={(reference) => onUpdate({ api_key: reference })}
+                      testId="secret-picker-auth"
+                    />
+                  </div>
                   <input
-                    type="password"
+                    type="text"
                     value={(node.data.api_key as string) || ""}
                     onChange={(e) => onUpdate({ api_key: e.target.value })}
-                    placeholder="Enter API key"
-                    className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
+                    placeholder="{{secrets.NAME}}"
+                    className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm font-mono"
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    A reference, not the key — same reason as above.
+                  </p>
                 </div>
               </>
             )}
@@ -2371,6 +2402,33 @@ export function NodeConfigPanel({
                 value={(node.data.api_body as string) || ""}
                 onChange={(e) => onUpdate({ api_body: e.target.value })}
                 placeholder='{"key": "{{record.field}}"}'
+                rows={3}
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm font-mono"
+              />
+            </div>
+            {/*
+              The executor has always read headers on this step; the panel
+              never offered them, so anything beyond the two auth shapes above
+              was unreachable from the builder.
+            */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-sm text-muted-foreground">
+                  Headers (JSON)
+                </label>
+                <SecretPicker
+                  workspaceId={workspaceId}
+                  onInsert={(reference) =>
+                    insertIntoHeaders(headersRef, reference)
+                  }
+                  testId="secret-picker-headers"
+                />
+              </div>
+              <textarea
+                ref={headersRef}
+                value={headersText}
+                onChange={(e) => onUpdate({ headers: e.target.value })}
+                placeholder='{"X-Request-Id": "{{record.id}}"}'
                 rows={3}
                 className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm font-mono"
               />

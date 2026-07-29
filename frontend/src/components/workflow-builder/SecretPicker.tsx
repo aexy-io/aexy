@@ -23,10 +23,14 @@ export function SecretPicker({
   workspaceId,
   onInsert,
   className = "",
+  // A panel can show more than one of these — api_request has both an auth
+  // field and headers — so each needs to be addressable on its own.
+  testId = "secret-picker",
 }: {
   workspaceId: string;
   onInsert: (reference: string) => void;
   className?: string;
+  testId?: string;
 }) {
   const [open, setOpen] = useState(false);
   // Listing needs admin. A member editing a workflow gets a 403 and simply
@@ -41,7 +45,7 @@ export function SecretPicker({
   };
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative ${className}`} data-testid={testId}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

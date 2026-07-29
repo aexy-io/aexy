@@ -218,6 +218,8 @@ class CRMAutomationService:
             "enroll_in_sequence",
             "remove_from_sequence",
             "webhook_call",
+            # Same handler as webhook_call — see _execute_action.
+            "api_request",
             "create_task",
             "send_sms",
             "send_slack",
@@ -919,7 +921,10 @@ class CRMAutomationService:
             return await self._action_enroll_in_sequence(config, record, workspace_id)
         elif action_type == "remove_from_sequence":
             return await self._action_remove_from_sequence(config, record, workspace_id)
-        elif action_type == "webhook_call":
+        elif action_type in ("webhook_call", "api_request"):
+            # Same handler: api_request is a webhook call with an auth config
+            # and different key names for the same three fields. Routing it
+            # elsewhere would mean two SSRF guards and two idempotency schemes.
             return await self._action_webhook_call(
                 config, record, trigger_data, run_id, action_index, workspace_id
             )
@@ -1463,11 +1468,16 @@ class CRMAutomationService:
 
         Reads both the panel keys (webhook_url / http_method / body_template)
         and the legacy executor keys (url / method / headers) so a step
-        configured in the builder actually fires on a published run.
+        configured in the builder actually fires on a published run — plus the
+        api_request panel's own names, which are a third spelling of the same
+        three fields.
         """
-        url = config.get("webhook_url") or config.get("url")
+        url = config.get("webhook_url") or config.get("url") or config.get("api_url")
         method = str(
-            config.get("http_method") or config.get("method") or "POST"
+            config.get("http_method")
+            or config.get("method")
+            or config.get("api_method")
+            or "POST"
         ).upper()
         headers = config.get("headers") or {}
 
@@ -1538,6 +1548,24 @@ class CRMAutomationService:
                     rendered_headers = resolved
                 except UnknownSecretError as error:
                     return {"error": str(error)}
+
+                # The auth config, if any. Only api_request offers it in the
+                # builder and api_request does not run on this path — but a
+                # webhook_call authored through the API can carry it, and the
+                # two executors diverging on whether a request is
+                # authenticated is not a difference anyone would predict.
+                from aexy.services.workflow_actions import _resolve_auth_header
+
+                try:
+                    auth_header, auth_used = await _resolve_auth_header(
+                        config, secrets, workspace_id
+                    )
+                except UnknownSecretError as error:
+                    return {"error": str(error)}
+                if auth_header:
+                    name, value = auth_header
+                    rendered_headers.setdefault(name, value)
+                    secret_values |= auth_used
         except ValueError as error:
             return {"error": str(error)}
         if run_id is not None and action_index is not None:
@@ -1545,7 +1573,7 @@ class CRMAutomationService:
                 "Idempotency-Key", f"aexy-{run_id}-{action_index}"
             )
 
-        body_template = config.get("body_template")
+        body_template = config.get("body_template") or config.get("api_body")
         if isinstance(body_template, str) and body_template.strip():
             # Render once. Rendering again inside the fallback would re-raise a
             # missing-variable error from the handler that was meant to catch

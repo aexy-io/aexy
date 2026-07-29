@@ -135,7 +135,10 @@ test.describe("AI / Secret picker in the builder (live)", () => {
     await expect(headers).toBeVisible();
 
     // Insert the reference.
-    await panel.getByRole("button", { name: /Insert secret/i }).click();
+    await panel
+      .getByTestId("secret-picker-headers")
+      .getByRole("button", { name: /Insert secret/i })
+      .click();
     await page.getByText(name, { exact: true }).click();
 
     await expect(headers).toHaveValue(new RegExp(`\\{\\{secrets\\.${name}\\}\\}`));
@@ -146,6 +149,158 @@ test.describe("AI / Secret picker in the builder (live)", () => {
       await page.content(),
       "the picker put a secret value in the page",
     ).not.toContain(SECRET_VALUE);
+  });
+
+  test("the api_request auth field takes a reference, not a token", async ({
+    page,
+    request,
+  }) => {
+    // These fields were the last place in the builder that asked for a raw
+    // credential — and nothing read them, so the token sat in the workflow
+    // definition while the request went out unauthenticated.
+    const name = `E2E_AUTH_${Date.now()}`;
+    secretNames.push(name);
+    await request.post(secretsUrl(), {
+      headers: authHeaders(),
+      data: { name, value: SECRET_VALUE },
+    });
+
+    const created = await request.post(
+      `${API_BASE}/workspaces/${REAL_BACKEND_WORKSPACE_ID}/automations`,
+      {
+        headers: authHeaders(),
+        data: {
+          name: `e2e-secret-auth-${Date.now()}`,
+          module: "crm",
+          trigger_type: "record.created",
+          trigger_config: {},
+          actions: [],
+        },
+      },
+    );
+    automationId = (await created.json()).id as string;
+
+    const saved = await request.put(
+      `${API_BASE}/workspaces/${REAL_BACKEND_WORKSPACE_ID}` +
+        `/crm/automations/${automationId}/workflow`,
+      {
+        headers: authHeaders(),
+        data: {
+          nodes: [
+            {
+              id: "trigger-1",
+              type: "trigger",
+              position: { x: 80, y: 80 },
+              data: { label: "Record Created", trigger_type: "record.created" },
+            },
+            {
+              id: "action-1",
+              type: "action",
+              position: { x: 400, y: 80 },
+              data: {
+                label: "Call API",
+                action_type: "api_request",
+                api_url: "https://api.example.com/x",
+                api_method: "POST",
+                auth_type: "bearer",
+              },
+            },
+          ],
+          edges: [{ id: "e1", source: "trigger-1", target: "action-1" }],
+        },
+      },
+    );
+    expect(saved.ok(), `workflow save returned ${saved.status()}`).toBeTruthy();
+
+    await page.goto(`/automations/${automationId}`, {
+      waitUntil: "networkidle",
+      timeout: 60_000,
+    });
+    await expect(page.locator(".react-flow").first()).toBeVisible({
+      timeout: 30_000,
+    });
+    await page.locator('.react-flow__node[data-id="action-1"]').click();
+    const panel = page.getByTestId("node-config-panel");
+    await expect(panel).toBeVisible({ timeout: 15_000 });
+
+    const token = panel.getByPlaceholder("{{secrets.NAME}}");
+    await expect(token).toBeVisible();
+
+    // Scope to the auth field's picker: this panel has two, the other being
+    // on headers. `.first()` would depend on render order.
+    await panel
+      .getByTestId("secret-picker-auth")
+      .getByRole("button", { name: /Insert secret/i })
+      .click();
+    await page.getByText(name, { exact: true }).click();
+
+    await expect(token).toHaveValue(`{{secrets.${name}}}`);
+    expect(
+      await page.content(),
+      "the picker put a secret value in the page",
+    ).not.toContain(SECRET_VALUE);
+  });
+
+  test("Basic Auth is not offered, having had no fields behind it", async ({
+    page,
+    request,
+  }) => {
+    // Choosing it could only produce a step that fails.
+    const created = await request.post(
+      `${API_BASE}/workspaces/${REAL_BACKEND_WORKSPACE_ID}/automations`,
+      {
+        headers: authHeaders(),
+        data: {
+          name: `e2e-secret-basic-${Date.now()}`,
+          module: "crm",
+          trigger_type: "record.created",
+          trigger_config: {},
+          actions: [],
+        },
+      },
+    );
+    automationId = (await created.json()).id as string;
+
+    await request.put(
+      `${API_BASE}/workspaces/${REAL_BACKEND_WORKSPACE_ID}` +
+        `/crm/automations/${automationId}/workflow`,
+      {
+        headers: authHeaders(),
+        data: {
+          nodes: [
+            {
+              id: "trigger-1",
+              type: "trigger",
+              position: { x: 80, y: 80 },
+              data: { label: "Record Created", trigger_type: "record.created" },
+            },
+            {
+              id: "action-1",
+              type: "action",
+              position: { x: 400, y: 80 },
+              data: {
+                label: "Call API",
+                action_type: "api_request",
+                api_url: "https://api.example.com/x",
+              },
+            },
+          ],
+          edges: [{ id: "e1", source: "trigger-1", target: "action-1" }],
+        },
+      },
+    );
+
+    await page.goto(`/automations/${automationId}`, {
+      waitUntil: "networkidle",
+      timeout: 60_000,
+    });
+    await page.locator('.react-flow__node[data-id="action-1"]').click();
+    const panel = page.getByTestId("node-config-panel");
+    await expect(panel).toBeVisible({ timeout: 15_000 });
+
+    await expect(
+      panel.getByRole("option", { name: /Basic Auth/i }),
+    ).toHaveCount(0);
   });
 
   test("the picker offers a way to add one when none exist", async ({
@@ -183,7 +338,10 @@ test.describe("AI / Secret picker in the builder (live)", () => {
     const panel = page.getByTestId("node-config-panel");
     await expect(panel).toBeVisible({ timeout: 15_000 });
 
-    await panel.getByRole("button", { name: /Insert secret/i }).click();
+    await panel
+      .getByTestId("secret-picker-headers")
+      .getByRole("button", { name: /Insert secret/i })
+      .click();
 
     await expect(
       page.getByRole("link", { name: /Add a secret/i }),
