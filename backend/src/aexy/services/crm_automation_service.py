@@ -218,6 +218,8 @@ class CRMAutomationService:
             "enroll_in_sequence",
             "remove_from_sequence",
             "webhook_call",
+            # Same handler as webhook_call — see _execute_action.
+            "api_request",
             "create_task",
             "send_sms",
             "send_slack",
@@ -919,9 +921,12 @@ class CRMAutomationService:
             return await self._action_enroll_in_sequence(config, record, workspace_id)
         elif action_type == "remove_from_sequence":
             return await self._action_remove_from_sequence(config, record, workspace_id)
-        elif action_type == "webhook_call":
+        elif action_type in ("webhook_call", "api_request"):
+            # Same handler: api_request is a webhook call with an auth config
+            # and different key names for the same three fields. Routing it
+            # elsewhere would mean two SSRF guards and two idempotency schemes.
             return await self._action_webhook_call(
-                config, record, trigger_data, run_id, action_index
+                config, record, trigger_data, run_id, action_index, workspace_id
             )
         elif action_type == "create_task":
             return await self._action_create_task(
@@ -1455,16 +1460,24 @@ class CRMAutomationService:
         trigger_data: dict | None = None,
         run_id: str | None = None,
         action_index: int | None = None,
+        # Needed to resolve {{secrets.*}} in headers, which are scoped to a
+        # workspace so one tenant cannot reference another's credential.
+        workspace_id: str | None = None,
     ) -> dict:
         """Make a webhook HTTP call.
 
         Reads both the panel keys (webhook_url / http_method / body_template)
         and the legacy executor keys (url / method / headers) so a step
-        configured in the builder actually fires on a published run.
+        configured in the builder actually fires on a published run — plus the
+        api_request panel's own names, which are a third spelling of the same
+        three fields.
         """
-        url = config.get("webhook_url") or config.get("url")
+        url = config.get("webhook_url") or config.get("url") or config.get("api_url")
         method = str(
-            config.get("http_method") or config.get("method") or "POST"
+            config.get("http_method")
+            or config.get("method")
+            or config.get("api_method")
+            or "POST"
         ).upper()
         headers = config.get("headers") or {}
 
@@ -1509,6 +1522,50 @@ class CRMAutomationService:
                 )
                 for key, value in headers.items()
             }
+            # Secrets resolve last and only into headers. Confining them here
+            # is deliberate: a credential interpolated into a body, a subject
+            # or a Slack message would end up in run history, in the provider's
+            # logs, or in someone's inbox. A header is the one place a
+            # credential legitimately belongs, and headers are already kept out
+            # of the stored result.
+            from aexy.services.workspace_secret_service import (
+                UnknownSecretError,
+                WorkspaceSecretService,
+                redact_secrets,
+            )
+
+            secret_values: set[str] = set()
+            if workspace_id:
+                secrets = WorkspaceSecretService(self.db)
+                try:
+                    resolved = {}
+                    for key, value in rendered_headers.items():
+                        rendered, used = await secrets.resolve_and_collect(
+                            workspace_id, value
+                        )
+                        resolved[key] = rendered
+                        secret_values |= used
+                    rendered_headers = resolved
+                except UnknownSecretError as error:
+                    return {"error": str(error)}
+
+                # The auth config, if any. Only api_request offers it in the
+                # builder and api_request does not run on this path — but a
+                # webhook_call authored through the API can carry it, and the
+                # two executors diverging on whether a request is
+                # authenticated is not a difference anyone would predict.
+                from aexy.services.workflow_actions import _resolve_auth_header
+
+                try:
+                    auth_header, auth_used = await _resolve_auth_header(
+                        config, secrets, workspace_id
+                    )
+                except UnknownSecretError as error:
+                    return {"error": str(error)}
+                if auth_header:
+                    name, value = auth_header
+                    rendered_headers.setdefault(name, value)
+                    secret_values |= auth_used
         except ValueError as error:
             return {"error": str(error)}
         if run_id is not None and action_index is not None:
@@ -1516,7 +1573,7 @@ class CRMAutomationService:
                 "Idempotency-Key", f"aexy-{run_id}-{action_index}"
             )
 
-        body_template = config.get("body_template")
+        body_template = config.get("body_template") or config.get("api_body")
         if isinstance(body_template, str) and body_template.strip():
             # Render once. Rendering again inside the fallback would re-raise a
             # missing-variable error from the handler that was meant to catch
@@ -1557,7 +1614,13 @@ class CRMAutomationService:
                     "success": response.is_success,
                     "method": method,
                     "url": str(url),
-                    "response": response.text[:1000],
+                    # Scrubbed: a receiver that echoes the request back would
+                    # otherwise put the credential straight into run history.
+                    # The truncation is the helper's job — slicing first would
+                    # cut a straddling credential in half and leave the prefix.
+                    "response": redact_secrets(
+                        response.text, secret_values, limit=1000
+                    ),
                 }
                 if not response.is_success:
                     result["error"] = (

@@ -106,6 +106,9 @@ def test_every_visible_registry_action_has_a_published_executor():
 
 
 def test_nested_dynamic_variable_namespaces_are_validated():
+    # `secrets` used to be the example of an unknown namespace here. It is a
+    # real one now (workspace secrets), so this needs a genuinely unknown one
+    # or it would assert the opposite of what it means to.
     service = WorkflowService(db=None)
     node = {
         "id": "webhook",
@@ -113,7 +116,7 @@ def test_nested_dynamic_variable_namespaces_are_validated():
         "data": {
             "action_type": "webhook_call",
             "webhook_url": "https://example.com",
-            "headers": {"Authorization": "Bearer {{secrets.token}}"},
+            "headers": {"Authorization": "Bearer {{vault.token}}"},
         },
     }
 

@@ -97,7 +97,7 @@ _EMAIL_LITERAL_FIELDS = ("to", "email_to", "email", "notify_email")
 _EXECUTABLE_NODE_TYPES = ("trigger", "action", "wait", "condition", "branch", "agent")
 
 # Namespaces a {{variable}} reference may resolve against at execution time.
-_VARIABLE_NAMESPACES = {"record", "trigger", "variables"}
+_VARIABLE_NAMESPACES = {"record", "trigger", "variables", "secrets"}
 
 # Condition operators that require a numeric comparison value.
 _NUMERIC_OPERATORS = {"gt", "gte", "lt", "lte"}
@@ -121,54 +121,127 @@ def _is_valid_email(addr: str) -> bool:
 # Header names whose value is a credential rather than metadata.
 _SECRET_HEADER_NAMES = ("authorization", "x-api-key", "api-key", "x-auth-token")
 
+# Both dispatch to the same executor, so both carry headers and auth config.
+_HTTP_ACTION_TYPES = ("webhook_call", "api_request")
 
-def _literal_secret_warnings(node: dict) -> list[WorkflowValidationError]:
-    """Warn when a webhook header carries a literal credential.
+# Config fields that hold a credential outright — no guessing from the name
+# needed, the field *is* the token.
+_SECRET_AUTH_FIELDS = ("bearer_token", "api_key")
 
-    Header templates are stored verbatim in the workflow definition, and any
-    workspace member who can open the builder can read them back. A
-    `{{trigger.token}}` reference resolves at run time and leaves nothing at
-    rest; a pasted token sits in the graph in plain text for everyone.
 
-    A warning, not an error: there is no secret store to point at yet, so
-    refusing the save would simply block a legitimate step. Once one exists
-    this should become an error.
+# Config the send_slack panel used to collect and no executor ever read. The
+# fields were copy-pasted from webhook_call; a Slack message goes out over the
+# workspace's Slack integration, so there is no HTTP request for a header or a
+# timeout to apply to.
+_INERT_SLACK_KEYS = ("headers", "timeout_seconds")
+
+
+def strip_inert_slack_config(nodes: list[dict] | None) -> list[dict] | None:
+    """Drop send_slack config that nothing reads, on the way into storage.
+
+    `headers` is the one that matters: it accepted an `Authorization` value,
+    stored it verbatim in the workflow definition where any member can read it,
+    and then did nothing with it. Removing the field stops new ones arriving;
+    this stops a saved graph carrying one forward, and the accompanying
+    migration clears what is already stored.
+
+    Deliberately narrow. This is not a general "drop unknown keys" pass —
+    unrecognised config is usually a version skew rather than a mistake, and
+    silently discarding it would lose real settings.
+    """
+    if not nodes:
+        return nodes
+
+    cleaned: list[dict] = []
+    for node in nodes:
+        data = node.get("data") if isinstance(node, dict) else None
+        if (
+            isinstance(data, dict)
+            and data.get("action_type") == "send_slack"
+            and any(key in data for key in _INERT_SLACK_KEYS)
+        ):
+            node = {
+                **node,
+                "data": {
+                    k: v for k, v in data.items() if k not in _INERT_SLACK_KEYS
+                },
+            }
+        cleaned.append(node)
+    return cleaned
+
+
+def _literal_secret_errors(node: dict) -> list[WorkflowValidationError]:
+    """Refuse an HTTP step that carries a literal credential.
+
+    The whole config is stored verbatim in the workflow definition and reading
+    a workflow only needs `member`, so a pasted token is visible to everyone in
+    the workspace.
+
+    This was a warning while there was nowhere else to put the value — blocking
+    the save would have stopped a legitimate step with no alternative to offer.
+    Workspace secrets are that alternative, so it is now an error: reference
+    `{{secrets.NAME}}` and the graph holds only the reference.
+
+    Two places a credential lands: a header whose name implies one, and the
+    `api_request` auth fields, which are credentials by definition.
     """
     data = node.get("data") or {}
-    if data.get("action_type") != "webhook_call":
+    if data.get("action_type") not in _HTTP_ACTION_TYPES:
         return []
+
+    errors: list[WorkflowValidationError] = []
 
     headers = data.get("headers")
     if isinstance(headers, str):
         try:
             headers = json.loads(headers or "{}")
         except json.JSONDecodeError:
-            return []
-    if not isinstance(headers, dict):
-        return []
+            headers = None
+    if isinstance(headers, dict):
+        flagged = [
+            name
+            for name, value in headers.items()
+            if str(name).lower() in _SECRET_HEADER_NAMES
+            and isinstance(value, str)
+            and value.strip()
+            and "{{" not in value
+        ]
+        if flagged:
+            errors.append(
+                WorkflowValidationError(
+                    node_id=node.get("id", ""),
+                    error_type="literal_secret_in_header",
+                    message=(
+                        f"{', '.join(flagged)} contains a literal value, which "
+                        "is stored in the automation and readable by anyone who "
+                        "can open this builder. Store it as a workspace secret "
+                        "and reference it as {{secrets.NAME}}."
+                    ),
+                )
+            )
 
-    flagged = [
-        name
-        for name, value in headers.items()
-        if str(name).lower() in _SECRET_HEADER_NAMES
-        and isinstance(value, str)
-        and value.strip()
-        and "{{" not in value
-    ]
-    if not flagged:
-        return []
-    return [
-        WorkflowValidationError(
-            node_id=node.get("id", ""),
-            error_type="literal_secret_in_header",
-            message=(
-                f"{', '.join(flagged)} contains a literal value. It is stored "
-                "in the automation and readable by anyone who can open this "
-                "builder — use a {{trigger.*}} reference instead."
-            ),
-            severity="warning",
-        )
-    ]
+    # The auth fields are only consulted when the step is set to use them, so
+    # a stale token left behind by switching to "No authentication" is not
+    # worth blocking a save over — it is inert.
+    auth_type = str(data.get("auth_type") or "none").strip().lower()
+    active_field = {"bearer": "bearer_token", "api_key": "api_key"}.get(auth_type)
+    if active_field and active_field in _SECRET_AUTH_FIELDS:
+        value = data.get(active_field)
+        if isinstance(value, str) and value.strip() and "{{" not in value:
+            errors.append(
+                WorkflowValidationError(
+                    node_id=node.get("id", ""),
+                    error_type="literal_secret_in_auth",
+                    message=(
+                        f"{active_field} contains a literal credential, which "
+                        "is stored in the automation and readable by anyone who "
+                        "can open this builder. Store it as a workspace secret "
+                        "and reference it as {{secrets.NAME}}."
+                    ),
+                )
+            )
+
+    return errors
 
 
 def validate_action_configs(actions: list[dict], module: str = "crm") -> list[str]:
@@ -272,6 +345,7 @@ class WorkflowService:
         viewport: dict | None = None,
     ) -> WorkflowDefinition:
         """Create a workflow definition for an automation."""
+        nodes = strip_inert_slack_config(nodes)
         workflow = WorkflowDefinition(
             id=str(uuid4()),
             automation_id=automation_id,
@@ -314,6 +388,10 @@ class WorkflowService:
         workflow = await self.get_workflow(workflow_id)
         if not workflow:
             return None
+
+        # Before the change comparison, so a save that only drops inert Slack
+        # config is not recorded as an edit the author did not make.
+        nodes = strip_inert_slack_config(nodes)
 
         # Create version snapshot before updating (if there are changes)
         has_changes = (
@@ -741,7 +819,7 @@ class WorkflowService:
         # Validate node configurations
         for node in nodes:
             errors.extend(self._validate_node(node))
-            warnings.extend(_literal_secret_warnings(node))
+            errors.extend(_literal_secret_errors(node))
 
         return WorkflowValidationResult(
             is_valid=len(errors) == 0,

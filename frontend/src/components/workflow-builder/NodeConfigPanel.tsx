@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { Node } from "@xyflow/react";
 import { X, Trash2, ChevronDown, Plus, Database, Copy, Check, ExternalLink, Code, Save, Loader2 } from "lucide-react";
 import { FieldPicker, InlineFieldPicker } from "./FieldPicker";
+import { SecretPicker } from "./SecretPicker";
 import { api, CRMAttribute, CRMObject } from "@/lib/api";
 import { HelpTooltip } from "@/components/ui/tooltip";
 import { FieldEditor } from "@/components/fields/FieldRenderer";
@@ -271,6 +272,7 @@ export function NodeConfigPanel({
   const emailBodyRef = useRef<HTMLTextAreaElement>(null);
   const messageTemplateRef = useRef<HTMLTextAreaElement>(null);
   const webhookBodyRef = useRef<HTMLTextAreaElement>(null);
+  const headersRef = useRef<HTMLTextAreaElement>(null);
 
   // Sync label state when node changes (e.g., selecting a different trigger)
   useEffect(() => {
@@ -710,6 +712,41 @@ export function NodeConfigPanel({
       const currentValue = (node.data[fieldName] as string) || "";
       onUpdate({ [fieldName]: currentValue + value });
     }
+  };
+
+  /**
+   * Headers are stored as either a JSON string or an already-parsed object,
+   * depending on where the node came from. Everything below works on the
+   * string form.
+   */
+  const headersText =
+    typeof node.data.headers === "string"
+      ? node.data.headers
+      : JSON.stringify(node.data.headers || {}, null, 2);
+
+  /**
+   * Same idea as insertAtCursor, but that one reads node.data[fieldName] raw
+   * — which for headers can be an object, and concatenating onto one gives
+   * "[object Object]". This normalises first.
+   */
+  const insertIntoHeaders = (
+    ref: React.RefObject<HTMLTextAreaElement | null>,
+    value: string
+  ) => {
+    const textarea = ref.current;
+    if (!textarea) {
+      onUpdate({ headers: headersText + value });
+      return;
+    }
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    onUpdate({
+      headers: headersText.slice(0, start) + value + headersText.slice(end),
+    });
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + value.length, start + value.length);
+    }, 0);
   };
 
   const handleLabelChange = (newLabel: string) => {
@@ -1361,43 +1398,16 @@ export function NodeConfigPanel({
               </>
             )}
 
-            {/* Message */}
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1">
-                Headers (JSON)
-              </label>
-              <textarea
-                value={
-                  typeof node.data.headers === "string"
-                    ? node.data.headers
-                    : JSON.stringify(node.data.headers || {}, null, 2)
-                }
-                onChange={(e) => onUpdate({ headers: e.target.value })}
-                placeholder='{"Authorization": "Bearer {{trigger.token}}"}'
-                rows={3}
-                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm font-mono"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1">
-                Timeout (seconds)
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="60"
-                value={(node.data.timeout_seconds as number) || 30}
-                onChange={(e) =>
-                  onUpdate({
-                    timeout_seconds: Math.max(
-                      1,
-                      Math.min(60, Number(e.target.value) || 30)
-                    ),
-                  })
-                }
-                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
-              />
-            </div>
+            {/*
+              A "Headers (JSON)" field and a "Timeout (seconds)" field used to
+              sit here, copy-pasted from webhook_call — the stray "Message"
+              comment above them belonged to the field below. Neither slack
+              executor reads either key, so both were inert, and the headers
+              one invited a credential into the workflow definition, where any
+              member can read it, to no purpose whatsoever. A Slack message
+              goes out over the workspace's Slack integration; there is no HTTP
+              request here for a header to attach to.
+            */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-sm text-muted-foreground">Message</label>
@@ -1466,6 +1476,42 @@ export function NodeConfigPanel({
                 rows={3}
                 className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm font-mono"
               />
+            </div>
+            {/*
+              Headers had no field here at all, which is odd given the step
+              reads them: they could only arrive through the API or a
+              generated workflow. So the one place a credential most wanted
+              pasting was also the one place the builder never showed — and
+              validation now refuses a pasted credential, which would have
+              been a refusal with nowhere to go.
+            */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-sm text-muted-foreground">
+                  Headers (JSON)
+                </label>
+                <SecretPicker
+                  workspaceId={workspaceId}
+                  onInsert={(reference) =>
+                    insertIntoHeaders(headersRef, reference)
+                  }
+                  testId="secret-picker-headers"
+                />
+              </div>
+              <textarea
+                ref={headersRef}
+                value={headersText}
+                onChange={(e) => onUpdate({ headers: e.target.value })}
+                placeholder='{"Authorization": "Bearer {{secrets.NAME}}"}'
+                rows={3}
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm font-mono"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Reference a stored credential as{" "}
+                <code className="font-mono">{"{{secrets.NAME}}"}</code>. Pasting
+                the credential itself is refused — a header template is part of
+                the workflow, and any member can read a workflow.
+              </p>
             </div>
           </>
         )}
@@ -2244,19 +2290,37 @@ export function NodeConfigPanel({
                 <option value="none">None</option>
                 <option value="bearer">Bearer Token</option>
                 <option value="api_key">API Key</option>
-                <option value="basic">Basic Auth</option>
+                {/*
+                  "Basic Auth" was offered with no username or password field
+                  behind it, so choosing it could only produce a step that
+                  fails. Dropped rather than half-built.
+                */}
               </select>
             </div>
             {(node.data.auth_type as string) === "bearer" && (
               <div>
-                <label className="block text-sm text-muted-foreground mb-1">Bearer Token</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-sm text-muted-foreground">
+                    Bearer Token
+                  </label>
+                  <SecretPicker
+                    workspaceId={workspaceId}
+                    onInsert={(reference) => onUpdate({ bearer_token: reference })}
+                    testId="secret-picker-auth"
+                  />
+                </div>
                 <input
-                  type="password"
+                  type="text"
                   value={(node.data.bearer_token as string) || ""}
                   onChange={(e) => onUpdate({ bearer_token: e.target.value })}
-                  placeholder="Enter token"
-                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
+                  placeholder="{{secrets.NAME}}"
+                  className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm font-mono"
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  A reference, not the token. A value pasted here is saved in
+                  the automation and readable by anyone who can open it, so the
+                  step refuses to send one.
+                </p>
               </div>
             )}
             {(node.data.auth_type as string) === "api_key" && (
@@ -2272,14 +2336,26 @@ export function NodeConfigPanel({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-muted-foreground mb-1">API Key</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-sm text-muted-foreground">
+                      API Key
+                    </label>
+                    <SecretPicker
+                      workspaceId={workspaceId}
+                      onInsert={(reference) => onUpdate({ api_key: reference })}
+                      testId="secret-picker-auth"
+                    />
+                  </div>
                   <input
-                    type="password"
+                    type="text"
                     value={(node.data.api_key as string) || ""}
                     onChange={(e) => onUpdate({ api_key: e.target.value })}
-                    placeholder="Enter API key"
-                    className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
+                    placeholder="{{secrets.NAME}}"
+                    className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm font-mono"
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    A reference, not the key — same reason as above.
+                  </p>
                 </div>
               </>
             )}
@@ -2299,6 +2375,33 @@ export function NodeConfigPanel({
                 value={(node.data.api_body as string) || ""}
                 onChange={(e) => onUpdate({ api_body: e.target.value })}
                 placeholder='{"key": "{{record.field}}"}'
+                rows={3}
+                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm font-mono"
+              />
+            </div>
+            {/*
+              The executor has always read headers on this step; the panel
+              never offered them, so anything beyond the two auth shapes above
+              was unreachable from the builder.
+            */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-sm text-muted-foreground">
+                  Headers (JSON)
+                </label>
+                <SecretPicker
+                  workspaceId={workspaceId}
+                  onInsert={(reference) =>
+                    insertIntoHeaders(headersRef, reference)
+                  }
+                  testId="secret-picker-headers"
+                />
+              </div>
+              <textarea
+                ref={headersRef}
+                value={headersText}
+                onChange={(e) => onUpdate({ headers: e.target.value })}
+                placeholder='{"X-Request-Id": "{{record.id}}"}'
                 rows={3}
                 className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm font-mono"
               />

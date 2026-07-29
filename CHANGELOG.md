@@ -5,6 +5,96 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-07-29
+
+### Workflow secrets, and the credential fields that were never safe
+
+A place to put a credential that is not the workflow definition. Minor rather
+than patch: a new stored resource with its own settings surface, a palette
+action that was never runnable becoming runnable, and several behaviour changes
+that affect automations already saved (see Upgrade notes).
+
+Also covers #218 and #219, which merged without versions of their own.
+
+**Workspace secrets.** Named values, Fernet-encrypted, referenced from a step
+as `{{secrets.NAME}}`. Managed under Settings → Security → Workflow Secrets.
+There is no endpoint that returns a value — not to a member, not to an admin,
+not to whoever saved it — so rotation is an overwrite and a lost credential is
+replaced rather than looked up. The builder inserts references from a picker on
+webhook headers and on the `api_request` auth fields.
+
+**Run an automation by hand** (#218). A published automation can be run for one
+chosen record from the builder. It refuses up front — paused, over the monthly
+allowance, record from another workspace, record of the wrong type — rather
+than reporting "triggered" for work that cannot happen. The response promises
+only that the run started; the outcome lands in run history.
+
+### Fixed
+
+- **A credential pasted into a webhook header was readable by the whole
+  workspace.** Header templates live in the workflow definition and reading a
+  workflow needs only `member`. Pasting one is now refused at save, with the
+  reference offered in its place.
+- **A resolved credential came back out through run history.** The webhook step
+  records the response body, and receivers commonly echo the request they were
+  sent, so the value returned by the far end landed in the run log. Resolved
+  values are scrubbed from the stored response.
+- **The scrub could still leak a prefix.** Truncation ran before redaction, so a
+  credential straddling the 1000-character cut was sliced in half and the
+  remaining prefix matched nothing. Ordering is now an invariant of the helper.
+- **`api_request` never worked and leaked its credential.** The config panel
+  wrote `api_url`/`api_method`/`api_body` while the executor read
+  `webhook_url`/`http_method`/`body_template`, so every step failed on "No
+  webhook URL specified"; meanwhile its Bearer Token and API Key fields were
+  read by nothing and sat in the workflow definition in plain text. Both
+  executors now read those keys and apply the auth config as a header, from a
+  secret reference only. The action leaves the hidden set.
+- **`send_slack` collected headers and a timeout that nothing read.** Both were
+  copy-pasted from `webhook_call`; the headers field invited a credential into
+  the graph to no purpose. Removed, stripped on save, and cleared from existing
+  definitions, versions and templates by migration.
+- **The durable executor could not resolve a secret in a header at all.**
+  Templates render before secrets resolve and the renderer rejects any
+  unresolvable `{{...}}`, so every `{{secrets.NAME}}` header failed with
+  "Dynamic value is missing".
+- **PATCH accepted fields it silently discarded** (#218). Undeclared fields were
+  dropped with a 200 — `runs_this_month` looked resettable and was not, and the
+  builder's trigger sync had never once taken effect, leaving the canvas and the
+  stored trigger free to disagree. Unknown fields are now refused.
+- **Creating an automation with a bad `object_id` returned 500** (#218), and one
+  belonging to another workspace was accepted outright — the foreign key has no
+  workspace in it. Both are refused with a 400.
+- **`greenlet` was never a declared dependency** (#219). It reached the Docker
+  image transitively, so production worked by accident while a clean checkout
+  could not run the async test suite. `uv.lock` had also drifted from
+  `pyproject.toml` for several releases.
+
+### Upgrade notes
+
+- `migrate_workspace_secrets.sql` and `migrate_strip_inert_slack_config.sql`
+  are picked up automatically. The second rewrites stored workflow JSON —
+  definitions, version history and templates — to drop the dead `send_slack`
+  keys. It only touches rows that carry them.
+- **Behaviour change:** a literal credential in a webhook header or in an
+  `api_request` auth field now blocks save, and fails the step at run time for
+  workflows saved before this release. Move those values into a workspace
+  secret before deploying — an `api_request` step with a pasted token was
+  sending unauthenticated requests regardless.
+- **Behaviour change:** a canvas save whose trigger node carries a trigger the
+  module does not offer now returns 422 instead of silently succeeding.
+- Secrets are encrypted with the same key as integration credentials. Losing
+  `SECRET_KEY` loses them, and there is no read path to export them first.
+
+### Known limitations
+
+- Redaction matches a credential verbatim, so a receiver echoing it
+  HTML-escaped or URL-encoded would not be caught.
+- Secret values have no minimum length; a very short one would over-redact the
+  recorded response.
+- Secrets resolve into headers and the `api_request` auth fields only — never
+  into a body, subject or message, where they would reach run history or an
+  inbox.
+
 ## [0.9.0] - 2026-07-29
 
 ### CRM automations: visual builder wired to a durable execution engine
