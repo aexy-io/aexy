@@ -1276,16 +1276,20 @@ class WorkflowActionHandler:
             from aexy.services.workspace_secret_service import (
                 UnknownSecretError,
                 WorkspaceSecretService,
+                redact_secrets,
             )
 
             secrets = WorkspaceSecretService(self.db)
+            secret_values: set[str] = set()
             try:
-                rendered_headers = {
-                    key: await secrets.resolve_references(
+                resolved = {}
+                for key, value in rendered_headers.items():
+                    rendered, used = await secrets.resolve_and_collect(
                         context.workspace_id, value
                     )
-                    for key, value in rendered_headers.items()
-                }
+                    resolved[key] = rendered
+                    secret_values |= used
+                rendered_headers = resolved
             except UnknownSecretError as error:
                 return NodeExecutionResult(
                     node_id="", status="failed", error=str(error)
@@ -1329,7 +1333,11 @@ class WorkflowActionHandler:
                 status="success" if response.is_success else "failed",
                 output={
                     "status_code": response.status_code,
-                    "response": response.text[:1000],  # Truncate response
+                    # Scrubbed: a receiver that echoes the request back would
+                    # otherwise put the credential straight into run history.
+                    "response": redact_secrets(
+                        response.text[:1000], secret_values
+                    ),
                     "method": method,
                     "url": url,
                 },

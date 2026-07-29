@@ -112,7 +112,20 @@ class WorkspaceSecretService:
         return True
 
     async def resolve_references(self, workspace_id: str, template: str) -> str:
+        rendered, _ = await self.resolve_and_collect(workspace_id, template)
+        return rendered
+
+    async def resolve_and_collect(
+        self, workspace_id: str, template: str
+    ) -> tuple[str, set[str]]:
         """Substitute every ``{{secrets.NAME}}`` in *template*.
+
+        Returns the rendered string *and the values it substituted in*, so the
+        caller can scrub them from anything it stores. That is not paranoia: a
+        webhook receiver commonly echoes the request back, and the webhook step
+        records the response body in run history — so a resolved credential
+        came straight back out through the run log. Found by pointing a live
+        step at a real echo server; a mocked response never shows it.
 
         Raises rather than leaving a reference unresolved: a half-substituted
         Authorization header would be sent to the provider as literal
@@ -121,7 +134,7 @@ class WorkspaceSecretService:
         """
         names = set(SECRET_REFERENCE_RE.findall(template or ""))
         if not names:
-            return template
+            return template, set()
 
         rows = list(
             (
@@ -155,4 +168,15 @@ class WorkspaceSecretService:
             .values(last_used_at=datetime.now(timezone.utc))
         )
 
-        return SECRET_REFERENCE_RE.sub(lambda m: found[m.group(1)], template)
+        rendered = SECRET_REFERENCE_RE.sub(lambda m: found[m.group(1)], template)
+        return rendered, {v for v in found.values() if v}
+
+
+def redact_secrets(text: str, values: set[str]) -> str:
+    """Blank out resolved secret values before anything is stored or logged."""
+    if not text or not values:
+        return text
+    for value in values:
+        if value:
+            text = text.replace(value, "[redacted secret]")
+    return text

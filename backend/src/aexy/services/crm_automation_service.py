@@ -1521,15 +1521,21 @@ class CRMAutomationService:
             from aexy.services.workspace_secret_service import (
                 UnknownSecretError,
                 WorkspaceSecretService,
+                redact_secrets,
             )
 
+            secret_values: set[str] = set()
             if workspace_id:
                 secrets = WorkspaceSecretService(self.db)
                 try:
-                    rendered_headers = {
-                        key: await secrets.resolve_references(workspace_id, value)
-                        for key, value in rendered_headers.items()
-                    }
+                    resolved = {}
+                    for key, value in rendered_headers.items():
+                        rendered, used = await secrets.resolve_and_collect(
+                            workspace_id, value
+                        )
+                        resolved[key] = rendered
+                        secret_values |= used
+                    rendered_headers = resolved
                 except UnknownSecretError as error:
                     return {"error": str(error)}
         except ValueError as error:
@@ -1580,7 +1586,9 @@ class CRMAutomationService:
                     "success": response.is_success,
                     "method": method,
                     "url": str(url),
-                    "response": response.text[:1000],
+                    # Scrubbed: a receiver that echoes the request back would
+                    # otherwise put the credential straight into run history.
+                    "response": redact_secrets(response.text[:1000], secret_values),
                 }
                 if not response.is_success:
                     result["error"] = (

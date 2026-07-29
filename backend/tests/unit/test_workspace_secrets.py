@@ -194,3 +194,57 @@ async def test_the_webhook_step_sends_the_resolved_credential(db_session):
     assert captured["headers"]["Authorization"] == "Bearer sk-live-abc123"
     # And the value must not come back in the step's recorded result.
     assert "sk-live-abc123" not in str(result)
+
+
+async def test_an_echoing_receiver_cannot_put_the_secret_in_run_history(db_session):
+    """The webhook step records the response body, and receivers echo requests.
+
+    Found live, not here: the first version of this file asserted the value was
+    absent from the result while mocking the response as "ok", so it passed
+    without exercising the path at all. Pointing a real step at an echo server
+    put the credential straight into run history.
+    """
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, patch
+
+    from aexy.services.crm_automation_service import CRMAutomationService
+
+    service, ws = await _service(db_session)
+    await service.upsert(ws, "STRIPE", "sk-live-abc123")
+
+    class EchoingClient:
+        """Behaves like httpbin /post: replays the request headers."""
+
+        def __init__(self, timeout=None):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_a):
+            return None
+
+        async def request(self, **kwargs):
+            return SimpleNamespace(
+                status_code=200,
+                is_success=True,
+                text='{"headers": %r}' % (kwargs["headers"],),
+            )
+
+    with patch(
+        "aexy.services.crm_automation_service.resolve_public_webhook_host",
+        AsyncMock(return_value=None),
+    ), patch("httpx.AsyncClient", EchoingClient):
+        result = await CRMAutomationService(db_session)._action_webhook_call(
+            {
+                "webhook_url": "https://hooks.example.com/x",
+                "headers": '{"Authorization": "Bearer {{secrets.STRIPE}}"}',
+            },
+            None,
+            None,
+            workspace_id=ws,
+        )
+
+    assert result["success"] is True
+    assert "sk-live-abc123" not in str(result), "the credential reached run history"
+    assert "[redacted secret]" in result["response"]
