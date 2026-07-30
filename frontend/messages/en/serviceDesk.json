@@ -1,0 +1,111 @@
+{
+  "serviceDesk": {
+    "title": "Service Desk",
+    "subtitle": "Email-intake ticketing with stakeholder turnaround tracking",
+    "tabs": {
+      "dashboard": "Dashboard",
+      "tickets": "Tickets",
+      "settings": "Master Data"
+    },
+    "stats": {
+      "totalOpen": "Open tickets",
+      "breaching": "Breaching (>2 days)",
+      "stakeholders": "Active stakeholders"
+    },
+    "dashboard": {
+      "matrixTitle": "Open tickets by stakeholder and age",
+      "stakeholder": "Pending With",
+      "col01": "0–1 day",
+      "col12": "1–2 days",
+      "colGt2": ">2 days",
+      "total": "Total",
+      "ticketsTitle": "Open tickets",
+      "empty": "No open tickets. New email requests will appear here automatically.",
+      "export": "Export CSV"
+    },
+    "table": {
+      "id": "Ticket",
+      "subject": "Subject",
+      "lob": "LOB",
+      "partner": "Partner",
+      "type": "Type",
+      "kam": "Assigned KAM",
+      "pendingWith": "Pending With",
+      "daysInStage": "Working days in stage",
+      "overallAge": "Overall age",
+      "status": "Status",
+      "triage": "Triage"
+    },
+    "detail": {
+      "back": "Back to dashboard",
+      "requester": "Requester",
+      "requestType": "Request type",
+      "lob": "LOB",
+      "partner": "Partner",
+      "assignedKam": "Assigned KAM",
+      "pendingWith": "Pending With",
+      "changeTo": "Move to",
+      "note": "Note (optional)",
+      "apply": "Apply",
+      "overallTat": "Overall TAT (elapsed)",
+      "currentStage": "Current stage (working days)",
+      "stakeholderTat": "Time per stakeholder",
+      "timeline": "Handoff timeline",
+      "days": "{days} days",
+      "open": "open",
+      "needsTriage": "Needs triage",
+      "convertToTask": "Convert to task",
+      "selectProject": "Select a project…",
+      "convert": "Convert",
+      "converting": "Converting…",
+      "linkedToTask": "Linked to a project task"
+    },
+    "ai": {
+      "title": "AI email categorisation",
+      "description": "Let AI read incoming emails and suggest the Request Type and LOB. When off, KAMs classify tickets manually.",
+      "enabled": "Enabled"
+    },
+    "manual": {
+      "logTicket": "Log ticket",
+      "title": "Log a ticket",
+      "subtitle": "For a request received by phone or WhatsApp",
+      "subject": "Subject",
+      "description": "Description",
+      "requesterName": "Requester name",
+      "requesterEmail": "Requester email",
+      "type": "Request type",
+      "lob": "LOB",
+      "partner": "Partner",
+      "none": "— None —",
+      "create": "Create ticket",
+      "creating": "Creating…"
+    },
+    "templates": {
+      "title": "Email templates",
+      "description": "Edit the copy for the automated emails. Use the placeholder tokens listed under each template.",
+      "subject": "Subject",
+      "body": "Body",
+      "variables": "Placeholders",
+      "save": "Save",
+      "saving": "Saving…",
+      "customised": "Customised"
+    },
+    "settings": {
+      "partners": "Partners",
+      "insurers": "Insurers",
+      "lobs": "Lines of Business",
+      "mailboxes": "Mailboxes",
+      "name": "Name",
+      "domains": "Domains (comma-separated)",
+      "assignedKam": "Assigned KAM (developer id)",
+      "address": "Address",
+      "channel": "Channel",
+      "add": "Add",
+      "delete": "Delete",
+      "empty": "Nothing here yet.",
+      "readOnly": "You have read-only access to Master Data. Ask a workspace admin or service desk manager to make changes.",
+      "domainsHint": "e.g. abcfinance.com, abc.co"
+    },
+    "noDepartment": "You're not in a department yet, so no tickets can be routed to you. Ask an admin to add you from Organization → Departments."
+  }
+}

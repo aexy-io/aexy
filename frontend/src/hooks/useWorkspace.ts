@@ -190,8 +190,15 @@ export function useWorkspaceMembers(
   });
 
   const inviteMutation = useMutation({
-    mutationFn: ({ email, role }: { email: string; role?: string }) =>
-      workspaceApi.inviteMember(workspaceId!, email, role),
+    mutationFn: ({
+      email,
+      role,
+      departmentId,
+    }: {
+      email: string;
+      role?: string;
+      departmentId?: string | null;
+    }) => workspaceApi.inviteMember(workspaceId!, email, role, departmentId),
     onSuccess: () => {
       toast.success("Member invited");
       queryClient.invalidateQueries({ queryKey: ["workspaceMembers", workspaceId] });

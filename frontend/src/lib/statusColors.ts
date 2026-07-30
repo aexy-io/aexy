@@ -258,3 +258,41 @@ export function normaliseStatusSlug(slug: string, known: string[]): string {
   if (known.length === 0 || known.includes(slug)) return slug;
   return STATUS_SLUG_ALIASES[slug]?.find((a) => known.includes(a)) ?? slug;
 }
+
+// ─── Service Desk ────────────────────────────────────────
+
+export const SERVICE_DESK_PENDING_WITH_COLORS: Record<string, StatusColor> = {
+  insurer: { bg: "bg-indigo-50 dark:bg-indigo-900/30", text: "text-indigo-600 dark:text-indigo-400", dot: "bg-indigo-500" },
+  partner: { bg: "bg-blue-50 dark:bg-blue-900/30", text: "text-blue-600 dark:text-blue-400", dot: "bg-blue-500" },
+  sales: { bg: "bg-cyan-50 dark:bg-cyan-900/30", text: "text-cyan-600 dark:text-cyan-400", dot: "bg-cyan-500" },
+  third_party: { bg: "bg-fuchsia-50 dark:bg-fuchsia-900/30", text: "text-fuchsia-600 dark:text-fuchsia-400", dot: "bg-fuchsia-500" },
+  finance: { bg: "bg-amber-50 dark:bg-amber-900/30", text: "text-amber-600 dark:text-amber-400", dot: "bg-amber-500" },
+  kam: { bg: "bg-purple-50 dark:bg-purple-900/30", text: "text-purple-600 dark:text-purple-400", dot: "bg-purple-500" },
+  marketing: { bg: "bg-pink-50 dark:bg-pink-900/30", text: "text-pink-600 dark:text-pink-400", dot: "bg-pink-500" },
+  closed: { bg: "bg-accent/50", text: "text-muted-foreground", dot: "bg-muted-foreground" },
+};
+
+// Traffic-light for TAT breach (BRD §8.1: > 2 days in a stage = red)
+export const SERVICE_DESK_BREACH_COLORS: Record<string, StatusColor> = {
+  green: { bg: "bg-green-50 dark:bg-green-900/30", text: "text-green-600 dark:text-green-400", dot: "bg-green-500" },
+  amber: { bg: "bg-amber-50 dark:bg-amber-900/30", text: "text-amber-600 dark:text-amber-400", dot: "bg-amber-500" },
+  red: { bg: "bg-red-50 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400", dot: "bg-red-500" },
+};
+
+export const SERVICE_DESK_REQUEST_TYPE_LABELS: Record<string, string> = {
+  query: "Query",
+  policy_issuance: "Policy Issuance",
+  claims: "Claims",
+  payout: "Payout",
+};
+
+export const SERVICE_DESK_PENDING_WITH_LABELS: Record<string, string> = {
+  insurer: "Insurer",
+  partner: "Partner",
+  sales: "Sales",
+  third_party: "Third Party",
+  finance: "Finance",
+  kam: "KAM",
+  marketing: "Marketing",
+  closed: "Closed",
+};

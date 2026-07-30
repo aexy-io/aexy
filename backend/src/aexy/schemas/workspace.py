@@ -65,6 +65,11 @@ class WorkspaceMemberInvite(BaseModel):
 
     email: str
     role: str = Field(default="member")  # "admin" | "member" | "viewer"
+    # Optional department placement, applied when the invite is accepted so the
+    # person doesn't start out in no department at all. Left unset, the invite
+    # behaves exactly as before — this is a convenience, not a requirement.
+    department_id: str | None = None
+    role_in_department: str | None = None  # "head" | "manager" | "member"
 
 
 class WorkspaceMemberAdd(BaseModel):

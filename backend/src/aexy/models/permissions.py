@@ -26,6 +26,8 @@ class PermissionCategory(str, Enum):
     COMPLIANCE = "compliance"
     TABLES = "tables"
     LEAVES = "leaves"
+    ORGANIZATION = "organization"
+    SERVICE_DESK = "service_desk"
 
 
 # Master permission catalog
@@ -120,6 +122,32 @@ PERMISSIONS: dict[str, dict] = {
         "category": PermissionCategory.TICKETS,
         "description": "Delete tickets",
         "default_for": ["admin"],
+    },
+    # Organization structure (departments / org chart)
+    "can_view_org": {
+        "category": PermissionCategory.ORGANIZATION,
+        "description": "View organization structure, departments, and org chart",
+        "default_for": ["admin", "manager", "developer", "hr", "support", "sales", "viewer"],
+    },
+    "can_manage_org": {
+        "category": PermissionCategory.ORGANIZATION,
+        "description": "Create/edit departments, membership, reporting lines, and headcount",
+        "default_for": ["admin", "manager", "hr"],
+    },
+    # Service Desk (Bimaplan email-intake ticketing)
+    "can_view_service_desk": {
+        "category": PermissionCategory.SERVICE_DESK,
+        "description": "View service desk tickets and dashboard",
+        # "developer" is here because the legacy workspace role "member" maps to
+        # that template, and a KAM is usually a plain member. Opening the module
+        # is not the same as seeing everything in it — row-level scoping still
+        # limits each caller to their own department's tickets.
+        "default_for": ["admin", "manager", "support", "sales", "developer"],
+    },
+    "can_manage_service_desk": {
+        "category": PermissionCategory.SERVICE_DESK,
+        "description": "Manage tickets, pending-with, and master data (partners/insurers/LOBs/mailboxes)",
+        "default_for": ["admin", "manager", "support"],
     },
     # CRM
     "can_view_crm": {

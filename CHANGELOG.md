@@ -5,6 +5,203 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2026-07-30
+
+### Feature: Bimaplan Service Desk — email-intake ticketing + Organization structure
+
+Three parts, released together: the two modules, the onboarding paths that
+turned out never to place anyone in a department, and the breach clock.
+
+Adds two new modules. **Organization** models the company itself — departments,
+reporting lines, headcount — and **Service Desk** is an email-first ticketing
+desk for Bimaplan's insurance operations: mail sent to a shared mailbox becomes
+a ticket, gets classified and auto-assigned to a KAM, and is tracked by *who
+currently owes an action* rather than by a status column.
+
+**Organization structure.** `departments` is a materialised-path tree
+(`path`/`depth`, so subtree reads are one `LIKE` query and reparenting rewrites
+descendants in a single statement), plus `department_members` with
+head/manager/member roles and per-person allocation, and `department_positions`
+for planned-vs-filled headcount. Two joins into existing tables: delivery teams
+roll up via `teams.department_id`, and people-level reporting lines live on
+`workspace_members.manager_id` — both nullable, so existing workspaces are
+unaffected. A `function_key` (`ops_kam`, `sales`, `finance`, `hr`, …) marks what
+a department *does*, which is what Service Desk routing keys off, so ops can
+rename "Operations" without breaking assignment. Frontend: departments manager,
+org chart, and a people directory. `migrate_org_structure.sql`.
+
+**Email → ticket.** Service Desk tickets are ordinary `Ticket` rows
+(`source='service_desk_*'`) with a 1:1 `service_desk_tickets` extension, so they
+inherit comments, attachments and audit trail — but they're filtered out of the
+generic tickets list and stats, which stay the general-purpose module. Intake
+accepts both inbound-parse webhooks and Gmail sync, resolves the sender to a
+partner (by email domain) or insurer, picks the request type (`query`,
+`policy_issuance`, `claims`, `payout`), assigns the partner's KAM (falling back
+to a random active member of the ops/KAM department), and sends an
+acknowledgement. Replies thread back onto the original ticket by subject token
+(`BSD-123`) and reopen it if it had been closed.
+
+**Pending-with ledger.** Instead of a status field, every hand-off appends to
+`ticket_pending_segments` — an append-only ledger of who held the ticket and for
+how long. The TAT/breach clock counts only time held by *Bimaplan* functions
+(`kam`, `sales`, `finance`, `marketing`), so a ticket parked with an insurer or
+partner doesn't accrue against us. Dashboard aggregates open volume, breaches
+and per-function load off the same ledger.
+
+**Master data, templates, digest.** Workspace-scoped partners (with KAM +
+domains), insurers, and lines of business drive classification and assignment;
+the three customer-facing emails (receipt, hand-off, closure) are editable
+templates with a live preview. A Temporal schedule (`service-desk-digest`,
+09:00/13:00/17:00 IST via new cron support in `schedules.py`) mails each KAM
+their open tickets. Any ticket can be converted into a sprint task, linked both
+ways.
+
+**Authorization.** `require_app_access` only checks the workspace-wide module
+toggle — and defaults to *enabled* — so it says nothing about who is asking. A
+new `require_workspace_member()` guard is mounted alongside it on both routers,
+where a future endpoint can't forget it; mutations additionally require
+`can_manage_service_desk` / `can_manage_org`, and every by-id ticket path (not
+just the list) applies the KAM row-scope clause, 404-ing rather than 403-ing so
+out-of-scope ids stay unenumerable. Cross-workspace ids passed as
+`partner_id`/`lob_id`/`project_id` are validated against the caller's workspace.
+Intake is idempotent per `Message-ID` (`service_desk_ingested_messages`, enforced
+by a unique constraint rather than a read-then-write check), subject threading is
+joined to `service_desk_tickets` so a `Re: BSD-7` can't attach an external
+sender's mail to an unrelated generic ticket #7, ticket-number collisions retry
+on a savepoint, and outbound mail is queued and flushed only after commit so a
+requester can't be acknowledged for a ticket that rolled back.
+
+**Read-only UI.** Both modules tell the client what the caller may do, so pages
+stop offering actions that would only 403: Service Desk returns `can_manage` on
+the settings payload the Master Data page already fetches, and Organization —
+which has no settings object — gets a small `GET /organization/my-permissions`,
+named after the existing `projects.py::get_my_permissions`. Non-managers see the
+data with an explanatory banner and no controls.
+
+Fully internationalised (new `serviceDesk` + `organization` namespaces, en + hi).
+Migrations: `migrate_org_structure.sql`, `migrate_service_desk.sql`,
+`migrate_service_desk_hardening.sql`.
+
+
+#### Fix: nobody was ever put in a department
+
+The Organization module shipped with departments, reporting lines and Service
+Desk routing that all key off department membership — and no path that ever
+creates it. Workspace creation seeds no departments, the invite carried only
+email and role, and `addMember`/`removeMember`/`addPosition`/`setManager` existed
+in the API and the hooks with **no caller anywhere in the UI**. The only way to
+place a person in a department was the seed script. So every new joiner landed
+unassigned: invisible in the directory (which iterates departments), permanently
+out of scope for Service Desk row filtering, and ineligible for KAM
+auto-assignment.
+
+**The seed produced unusable KAMs.** It created a `Developer` and a
+`DepartmentMember` but never a `WorkspaceMember`. Since auto-assignment requires
+an active workspace member and every Service Desk route sits behind
+`require_workspace_member`, seeded KAMs could not be assigned a ticket and could
+not open the workspace at all. Fixed, and re-seeding now reactivates a
+previously-removed KAM instead of silently skipping them.
+
+**Membership is confined to the workspace.** `add_member` accepted any
+`developer_id` on the platform and returned that person's name and email, so it
+doubled as a cross-workspace read of someone else's contact details;
+`set_manager` accepted a manager from another workspace (the column FKs to
+`developers.id`, not to `workspace_members`) and accepted reporting cycles — A→B
+plus B→A was fine, which would make anything walking the chain recurse until it
+ran out of stack. Both now require an active member of the same workspace, and
+cycles are refused by walking the proposed manager's chain.
+
+**Somewhere to actually do it.** A department roster dialog on
+Organization → Departments wires up the four orphaned mutations: add and remove
+people, change head/manager/member, and define positions (the department detail
+read now returns `positions`, which it previously accepted writes for and never
+returned). The person picker offers only people not already in the department and
+flags the ones in no department at all. Everything is gated on `can_manage_org`,
+so a read-only caller gets the roster without the controls.
+
+**Unassigned people are visible.** A new `GET /organization/people` walks from
+workspace membership rather than from departments — the only read that can show
+someone who belongs to nothing. The directory now renders an "Unassigned"
+group off it (and dropped its per-department N+1 reads), the
+workspace members settings page shows each person's departments or an
+"assign" link, and reporting lines are finally readable and editable there
+instead of `manager_id` being a write-only column.
+
+**Optional department on invite.** `workspace_pending_invites` gains nullable
+`department_id` and `role_in_department` (`migrate_org_onboarding.sql`), applied
+on accept as the person's primary department with `source="invite"`. It stays
+optional by design — an admin inviting someone in a hurry is never forced to
+settle the org structure first. A department that no longer exists cannot cost
+someone their invitation: the placement runs in a savepoint and only logs. A
+mistyped id is rejected at invite time rather than silently doing nothing days
+later. Pickers appear in the settings invite dialog and the onboarding wizard,
+and only when the workspace actually has departments to choose from.
+
+**`can_view_org` / `can_view_service_desk` are enforced.** Both were in the
+catalog and advertised by `app_definitions` from the start, but nothing checked
+them, so revoking someone's access to a module had no effect. A new
+`require_workspace_permission` guard is mounted on both routers. `developer` is
+added to `can_view_service_desk`'s defaults because the legacy workspace role
+`member` maps to that template and a KAM is usually a plain member — opening the
+module is not the same as seeing everything in it, and row-level scoping is
+unchanged. In practice the gate bites on per-member overrides and custom roles;
+every legacy role that clears the membership guard still has both permissions.
+
+**An empty ticket list says why.** `GET /service-desk/settings` now reports
+`scope` (`all` / `function` / `none`), so the tickets page can tell a quiet day
+apart from "you are in no department, so nothing can ever match you" — the state
+a new joiner is in, and previously indistinguishable from having no work.
+
+Also fixes a latent `TypeError` in invite acceptance: `expires_at` was compared
+directly against an aware `datetime`, which raises rather than returning False if
+a naive value ever reaches it.
+
+
+#### Change: the Service Desk breach clock counts working hours in IST
+
+The BRD's ">2 days in the same stage" was implemented as calendar days, so a
+ticket arriving Friday evening was already red by Monday morning — three days
+elapsed, not one of them a working hour. The clock now measures **2 business
+days of working time**: it accrues only inside the shift and stops overnight, at
+weekends, and on holidays.
+
+One "day" is one shift, not 24 hours, so `to_days` divides by the shift length
+and the 2-day target is 18 working hours on a 09:30–18:30 day. A ticket arriving
+17:30 on Friday has one hour of allowance left that day, reads 1.11 days at
+Monday's close, and does not breach until 17:30 on Tuesday — by which point four
+calendar days have passed.
+
+The shift defaults to **09:30–18:30 IST** and is overridable per workspace via
+`Workspace.settings["service_desk"]["working_hours"]`, so no migration is
+needed. A malformed setting falls back to the default rather than taking the
+dashboard down, and an inverted window can't divide by zero. Boundaries resolve
+in `Asia/Kolkata` — whether an instant falls inside Tuesday's shift depends on
+the timezone you ask in, and 13:00 UTC is exactly the 18:30 IST close. IST has
+no DST, so the boundaries are unambiguous.
+
+Holidays come from the Leave module's existing `holidays` table rather than a
+hardcoded calendar — its own docstring says it is for business-day calculations.
+Only mandatory, workspace-wide entries count: optional holidays are not days off
+for everyone, and an SLA that changes depending on which team you ask about is
+not an SLA.
+
+**Overall TAT deliberately stays wall-clock.** Stage and per-stakeholder figures
+answer "are we late?" and must not accrue over a weekend; overall answers "how
+long has the requester been waiting?", and they waited through the weekend. The
+two are now labelled distinctly in the UI ("Current stage (business days)" vs
+"Overall TAT (elapsed)").
+
+All of it lives in one new `services/service_desk_clock.py`. The threshold was
+previously written four times — as a bare `> 2` in the ticket service, again in
+the digest service, and a third time in the digest email copy — so it could
+drift silently. The segment ledger's `duration_seconds` is untouched: it remains
+the wall-clock audit record of each hand-off, and business time is recomputed
+from the segment boundaries rather than trusting that column.
+
+The existing red-breach test asserted on `now - 3 days`, which under a business
+clock passes on a Thursday and fails on a Monday. It now uses a 7-day window,
+which is exactly five business days whatever day the suite runs on.
+
 ## [0.10.2] - 2026-08-04
 
 ### Fix: uploaded files that were never uploaded, and uploaded files that could never be opened
@@ -130,6 +327,7 @@ also repairs two things the status column alone would have left broken:
 **And it can't hide a task again.** The board now renders an amber
 "unrecognised status" column for anything matching no column. A card in an ugly
 column is a nuisance; a card that vanishes costs someone their work.
+
 
 ## [0.10.0] - 2026-07-29
 
