@@ -220,6 +220,15 @@ class WorkspaceMember(Base):
     # Example: {"can_manage_crm": true, "can_view_billing": false}
     permission_overrides: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
+    # People-level reporting line (org chart). Points at the manager's
+    # developer id; nullable (top of the tree / unset). See models/organization.py.
+    manager_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     # Invitation state
     status: Mapped[str] = mapped_column(
         String(50), nullable=False, default="active"
@@ -412,6 +421,18 @@ class WorkspacePendingInvite(Base):
 
     # App permissions to apply when they join
     app_permissions: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+    # Optional department placement to apply when they join, so a new joiner
+    # doesn't land in no department at all (invisible in the directory, out of
+    # scope for Service Desk, ineligible for KAM auto-assignment). Nullable —
+    # naming a department at invite time is a convenience, never a requirement.
+    department_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("departments.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    role_in_department: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
     # Status
     status: Mapped[str] = mapped_column(

@@ -161,6 +161,7 @@ def get_all_activities() -> list:
         process_unprocessed_events,
     )
     from aexy.temporal.activities.insights import auto_generate_snapshots
+    from aexy.temporal.activities.service_desk import send_service_desk_digest
     from aexy.temporal.activities.sync import (
         check_repo_auto_sync,
         enqueue_active_pr_refresh,
@@ -465,6 +466,8 @@ def get_all_activities() -> list:
         enrich_attribute_tracker_events,
         generate_tracker_journal,
         detect_tracker_insights,
+        # Service Desk
+        send_service_desk_digest,
     ]
 
 

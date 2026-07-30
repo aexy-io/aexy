@@ -1,5 +1,6 @@
 """Workspace service for managing workspaces and members."""
 
+import logging
 import re
 from datetime import datetime, timezone
 from uuid import uuid4
@@ -14,6 +15,9 @@ from aexy.models.developer import Developer
 from aexy.models.repository import Organization, DeveloperOrganization
 from aexy.services.task_config_service import TaskConfigService
 from aexy.services.document_space_service import DocumentSpaceService
+
+
+logger = logging.getLogger(__name__)
 
 
 def generate_slug(name: str) -> str:
@@ -526,8 +530,14 @@ class WorkspaceService:
         invited_by_id: str | None = None,
         app_permissions: dict | None = None,
         expires_days: int = 7,
+        department_id: str | None = None,
+        role_in_department: str | None = None,
     ) -> WorkspacePendingInvite:
-        """Create a pending invite for a non-existing user."""
+        """Create a pending invite for a non-existing user.
+
+        ``department_id`` is optional; when set, accepting the invite also places
+        the person in that department (see ``accept_pending_invite``).
+        """
         from datetime import timedelta
 
         # Check if already invited
@@ -546,6 +556,8 @@ class WorkspaceService:
             token=token,
             invited_by_id=invited_by_id,
             app_permissions=app_permissions,
+            department_id=department_id,
+            role_in_department=role_in_department,
             status="pending",
             expires_at=expires_at,
         )
@@ -627,11 +639,18 @@ class WorkspaceService:
         if not invite:
             return None
 
-        # Check if invite has expired
-        if invite.expires_at and invite.expires_at < datetime.now(timezone.utc):
-            invite.status = "expired"
-            await self.db.flush()
-            return None
+        # Check if invite has expired. Postgres hands back an aware datetime for
+        # TIMESTAMPTZ, but not every backend does (SQLite drops the offset), and
+        # comparing naive to aware raises TypeError rather than returning False —
+        # which would turn a stray naive value into a failed accept.
+        if invite.expires_at is not None:
+            expires_at = invite.expires_at
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            if expires_at < datetime.now(timezone.utc):
+                invite.status = "expired"
+                await self.db.flush()
+                return None
 
         # Create member with the role and permissions from invite
         member = await self.add_member(
@@ -648,11 +667,61 @@ class WorkspaceService:
             await self.db.flush()
             await self.db.refresh(member)
 
+        if invite.department_id:
+            await self._place_in_department(invite, developer_id)
+
         # Mark invite as accepted
         invite.status = "accepted"
         await self.db.flush()
 
         return member
+
+    async def _place_in_department(
+        self, invite: WorkspacePendingInvite, developer_id: str
+    ) -> None:
+        """Apply the invite's optional department placement.
+
+        Best-effort on purpose: joining the workspace is the outcome that matters,
+        and the department may legitimately have been renamed, deleted, or moved
+        to another workspace in the days between invite and accept. A stale
+        placement must not cost someone their invitation, so this runs in a
+        savepoint and only logs on failure.
+        """
+        from aexy.models.organization import Department, DepartmentMember
+
+        try:
+            async with self.db.begin_nested():
+                dept = (
+                    await self.db.execute(
+                        select(Department).where(
+                            Department.id == invite.department_id,
+                            Department.workspace_id == invite.workspace_id,
+                        )
+                    )
+                ).scalar_one_or_none()
+                if dept is None:
+                    logger.warning(
+                        "Invite %s named department %s, which no longer exists in workspace %s",
+                        invite.id, invite.department_id, invite.workspace_id,
+                    )
+                    return
+                self.db.add(
+                    DepartmentMember(
+                        id=str(uuid4()),
+                        workspace_id=invite.workspace_id,
+                        department_id=dept.id,
+                        developer_id=developer_id,
+                        role_in_department=invite.role_in_department or "member",
+                        # First department someone lands in is their primary one.
+                        is_primary=True,
+                        source="invite",
+                    )
+                )
+        except Exception:  # noqa: BLE001 - never block the join
+            logger.exception(
+                "Could not place developer %s in department %s on invite accept",
+                developer_id, invite.department_id,
+            )
 
     async def revoke_pending_invite(self, workspace_id: str, invite_id: str) -> bool:
         """Revoke a pending invite."""

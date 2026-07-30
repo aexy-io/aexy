@@ -526,6 +526,26 @@ async def invite_member(
     workspace = await service.get_workspace(workspace_id)
     workspace_name = workspace.name if workspace else "the workspace"
 
+    # An optional department placement is validated now rather than on accept, so
+    # a mistyped id surfaces to the person making the invite instead of quietly
+    # doing nothing days later.
+    if data.department_id:
+        from aexy.models.organization import Department
+
+        dept = (
+            await db.execute(
+                select(Department).where(
+                    Department.id == data.department_id,
+                    Department.workspace_id == workspace_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if dept is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Department not found in this workspace",
+            )
+
     # Find developer by email
     developer = await dev_service.get_by_email(data.email)
 
@@ -552,6 +572,8 @@ async def invite_member(
                 email=data.email,
                 role=data.role,
                 invited_by_id=str(current_user.id),
+                department_id=data.department_id,
+                role_in_department=data.role_in_department,
             )
             await db.commit()
             await db.refresh(pending_invite)
@@ -624,6 +646,8 @@ The Aexy Team
                 email=data.email,
                 role=data.role,
                 invited_by_id=str(current_user.id),
+                department_id=data.department_id,
+                role_in_department=data.role_in_department,
             )
             await db.commit()
             await db.refresh(pending_invite)

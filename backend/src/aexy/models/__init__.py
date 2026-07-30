@@ -51,6 +51,28 @@ from aexy.models.team import (
     Team,
     TeamMember,
 )
+from aexy.models.organization import (
+    Department,
+    DepartmentMember,
+    DepartmentPosition,
+    DepartmentMemberRole,
+    PositionStatus,
+)
+from aexy.models.service_desk import (
+    ServiceDeskPartner,
+    ServiceDeskPartnerDomain,
+    ServiceDeskInsurer,
+    ServiceDeskInsurerDomain,
+    ServiceDeskLOB,
+    ServiceDeskMailbox,
+    ServiceDeskTicket,
+    ServiceDeskIngestedMessage,
+    TicketPendingSegment,
+    RequestType,
+    PendingWith,
+    TicketOrigin,
+    MailboxChannel,
+)
 from aexy.models.sprint import (
     Sprint,
     SprintTask,
@@ -618,6 +640,24 @@ __all__ = [
     # Team
     "Team",
     "TeamMember",
+    "Department",
+    "DepartmentMember",
+    "DepartmentPosition",
+    "DepartmentMemberRole",
+    "PositionStatus",
+    "ServiceDeskPartner",
+    "ServiceDeskPartnerDomain",
+    "ServiceDeskInsurer",
+    "ServiceDeskInsurerDomain",
+    "ServiceDeskLOB",
+    "ServiceDeskMailbox",
+    "ServiceDeskTicket",
+    "ServiceDeskIngestedMessage",
+    "TicketPendingSegment",
+    "RequestType",
+    "PendingWith",
+    "TicketOrigin",
+    "MailboxChannel",
     # Sprint
     "Sprint",
     "SprintTask",

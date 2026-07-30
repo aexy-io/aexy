@@ -6,6 +6,8 @@ from aexy.api.access_guard import (
     require_app_access,
     require_app_access_document_scoped,
     require_app_access_sprint_scoped,
+    require_workspace_member,
+    require_workspace_permission,
 )
 from aexy.api.admin import router as admin_router
 from aexy.api.platform_admin import router as platform_admin_router
@@ -25,6 +27,8 @@ from aexy.api.manager_learning import router as manager_learning_router
 from aexy.api.learning_analytics import router as learning_analytics_router
 from aexy.api.learning_integrations import router as learning_integrations_router
 from aexy.api.teams import router as teams_router
+from aexy.api.organization import router as organization_router
+from aexy.api.service_desk import router as service_desk_router
 from aexy.api.webhooks import router as webhooks_router
 # Phase 4: Advanced Analytics
 from aexy.api.analytics import router as analytics_router
@@ -203,6 +207,8 @@ api_router.include_router(auth_router, prefix="/auth", tags=["auth"])
 api_router.include_router(developers_router, prefix="/developers", tags=["developers"])
 api_router.include_router(webhooks_router, prefix="/webhooks", tags=["webhooks"])
 api_router.include_router(teams_router, prefix="/teams", tags=["teams"])
+api_router.include_router(organization_router, tags=["organization"], dependencies=[Depends(require_app_access("organization")), Depends(require_workspace_member()), Depends(require_workspace_permission("can_view_org"))])
+api_router.include_router(service_desk_router, tags=["service-desk"], dependencies=[Depends(require_app_access("service_desk")), Depends(require_workspace_member()), Depends(require_workspace_permission("can_view_service_desk"))])
 api_router.include_router(analysis_router, tags=["analysis"])
 api_router.include_router(code_insights_router, tags=["code-insights"])
 api_router.include_router(admin_router, tags=["admin"])

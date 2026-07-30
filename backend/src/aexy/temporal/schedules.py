@@ -610,6 +610,16 @@ SCHEDULES: list[dict] = [
         "interval": timedelta(hours=24),
         "queue": TaskQueue.OPERATIONS,
     },
+    # Bimaplan Service Desk — open-ticket digest, thrice daily at fixed IST times.
+    {
+        "id": "service-desk-digest",
+        "activity": "send_service_desk_digest",
+        "input_module": "aexy.temporal.activities.service_desk",
+        "input_class": "SendServiceDeskDigestInput",
+        "cron": ["0 9,13,17 * * *"],
+        "time_zone_name": "Asia/Kolkata",
+        "queue": TaskQueue.OPERATIONS,
+    },
 ]
 
 
@@ -661,9 +671,15 @@ async def register_schedules(client: Client) -> None:
                     task_queue=queue,
                 )
 
-            spec = ScheduleSpec(
-                intervals=[ScheduleIntervalSpec(every=schedule_def["interval"])],
-            )
+            if "cron" in schedule_def:
+                spec = ScheduleSpec(
+                    cron_expressions=schedule_def["cron"],
+                    time_zone_name=schedule_def.get("time_zone_name"),
+                )
+            else:
+                spec = ScheduleSpec(
+                    intervals=[ScheduleIntervalSpec(every=schedule_def["interval"])],
+                )
 
             # Create, or push the current spec onto an existing schedule.
             # Skipping on "already exists" meant a changed interval in code

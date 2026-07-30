@@ -2887,10 +2887,19 @@ export const workspaceApi = {
     return response.data;
   },
 
-  inviteMember: async (workspaceId: string, email: string, role = "member"): Promise<WorkspaceInviteResult> => {
+  /** `departmentId` is optional: when given, accepting the invite also places the
+   *  person in that department, so they don't start out unassigned (invisible in
+   *  the org directory and out of scope for Service Desk row filtering). */
+  inviteMember: async (
+    workspaceId: string,
+    email: string,
+    role = "member",
+    departmentId?: string | null,
+  ): Promise<WorkspaceInviteResult> => {
     const response = await api.post(`/workspaces/${workspaceId}/members/invite`, {
       email,
       role,
+      ...(departmentId ? { department_id: departmentId } : {}),
     });
     return response.data;
   },

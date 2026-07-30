@@ -77,6 +77,78 @@ def require_app_access(app_id: str):
     return _guard
 
 
+def require_workspace_member(min_role: str = "member"):
+    """Return a dependency that 403s unless the caller is an active member of
+    ``{workspace_id}`` with at least ``min_role``.
+
+    ``require_app_access`` deliberately checks only the workspace-wide module
+    toggle — it says nothing about *who* is asking, and defaults to enabled for
+    apps with no explicit setting. So a router guarded by app-access alone is
+    reachable by any authenticated developer for any workspace id. Mount this
+    alongside it to close that hole for whole routers at once:
+
+        api_router.include_router(
+            service_desk_router,
+            dependencies=[
+                Depends(require_app_access("service_desk")),
+                Depends(require_workspace_member()),
+            ],
+        )
+
+    Role-level gates for individual mutating endpoints still belong on the
+    endpoint (see ``PermissionService``); this is the baseline "are you even in
+    this workspace" check.
+    """
+    async def _guard(
+        workspace_id: str,
+        current_developer: Developer = Depends(get_current_developer),
+        db: AsyncSession = Depends(get_db),
+    ) -> None:
+        from aexy.services.workspace_service import WorkspaceService
+
+        if not await WorkspaceService(db).check_permission(
+            str(workspace_id), str(current_developer.id), min_role
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to access this workspace",
+            )
+
+    return _guard
+
+
+def require_workspace_permission(permission: str):
+    """Return a dependency that 403s unless the caller holds ``permission``
+    in ``{workspace_id}``.
+
+    For the *view* half of a module's permission pair. The catalog can declare
+    ``can_view_x`` and ``app_definitions`` can advertise it, but neither
+    enforces anything — the permission is real only when a route checks it.
+    Mount alongside ``require_workspace_member`` to gate a whole module::
+
+        dependencies=[..., Depends(require_workspace_permission("can_view_org"))]
+
+    Note this is coarser than row-level scoping: it decides whether the caller
+    may open the module at all, not which rows they see.
+    """
+    async def _guard(
+        workspace_id: str,
+        current_developer: Developer = Depends(get_current_developer),
+        db: AsyncSession = Depends(get_db),
+    ) -> None:
+        from aexy.services.permission_service import PermissionService
+
+        if not await PermissionService(db).check_permission(
+            str(workspace_id), str(current_developer.id), permission
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to access this module",
+            )
+
+    return _guard
+
+
 def require_app_access_sprint_scoped(app_id: str):
     """Like `require_app_access`, for routers whose paths carry `{sprint_id}`
     and/or `{team_id}` instead of `{workspace_id}` (sprint analytics, planning

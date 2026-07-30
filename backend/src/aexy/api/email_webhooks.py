@@ -810,9 +810,70 @@ def _parse_inbound_json(payload: dict) -> dict | None:
         return None
 
 
+async def _maybe_handle_service_desk(email_data: dict) -> bool:
+    """If the recipient is a registered service-desk mailbox, create a ticket.
+
+    Returns True when handled (so the caller skips the agent-inbox path).
+
+    Runs inside a fresh event loop (this is a sync background task calling
+    ``asyncio.run``), so it builds its own NullPool async engine rather than
+    reusing the process-cached engine, whose asyncpg connections are bound to
+    the main loop and cannot be shared across loops.
+    """
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+    from sqlalchemy.pool import NullPool
+
+    from aexy.core.config import get_settings
+    from aexy.schemas.service_desk import InboundEmail
+    from aexy.services.service_desk_intake_service import ServiceDeskIntakeService
+
+    to_email = (email_data.get("to") or "").strip().lower()
+    if not to_email:
+        return False
+
+    engine = create_async_engine(get_settings().database_url, poolclass=NullPool)
+    try:
+        maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        async with maker() as session:
+            mailbox = await ServiceDeskIntakeService.find_mailbox_by_address(session, to_email)
+            if mailbox is None:
+                return False
+            intake = ServiceDeskIntakeService(session)
+            await intake.ingest(
+                InboundEmail(
+                    to=to_email,
+                    from_email=email_data.get("from") or "",
+                    from_name=email_data.get("from_name"),
+                    subject=email_data.get("subject") or "",
+                    body_text=email_data.get("body") or "",
+                    body_html=email_data.get("body_html"),
+                    message_id=email_data.get("message_id"),
+                    thread_id=email_data.get("thread_id"),
+                    in_reply_to=email_data.get("in_reply_to_message_id"),
+                ),
+                mailbox,
+                source="service_desk_webhook",
+            )
+            await session.commit()
+            # Acknowledgement only after the ticket is durable.
+            await intake.flush_notifications()
+        return True
+    finally:
+        await engine.dispose()
+
+
 def process_inbound_email(email_data: dict):
     """Process inbound email in background - route to agent and queue for AI processing."""
     from aexy.services.agent_email_service import AgentEmailService
+
+    # Service Desk intake takes precedence for registered shared mailboxes.
+    try:
+        import asyncio
+
+        if asyncio.run(_maybe_handle_service_desk(email_data)):
+            return
+    except Exception as e:
+        logger.error(f"Service desk intake (webhook) failed: {e}")
 
     try:
         # Use sync session for background task to avoid event loop issues

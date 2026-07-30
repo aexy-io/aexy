@@ -1,0 +1,85 @@
+{
+  "organization": {
+    "title": "Organization",
+    "subtitle": "Departments, org chart, reporting lines, and headcount",
+    "tabs": {
+      "chart": "Org Chart",
+      "departments": "Departments",
+      "directory": "Directory"
+    },
+    "stats": {
+      "departments": "Departments",
+      "people": "People",
+      "plannedHeadcount": "Planned headcount",
+      "openSeats": "Open seats"
+    },
+    "chart": {
+      "title": "Org Chart",
+      "empty": "No departments yet. Create your first department to start building the org chart.",
+      "members": "{count, plural, one {# member} other {# members}}"
+    },
+    "departments": {
+      "title": "Departments",
+      "new": "New Department",
+      "name": "Name",
+      "function": "Function",
+      "parent": "Parent department",
+      "head": "Head",
+      "members": "Members",
+      "headcount": "Headcount",
+      "costCenter": "Cost center",
+      "location": "Location",
+      "timezone": "Timezone",
+      "noParent": "— None (top level) —",
+      "empty": "No departments yet.",
+      "create": "Create department",
+      "creating": "Creating…",
+      "deleteConfirm": "Delete this department? Its sub-departments will move up to its parent.",
+      "actual": "Actual",
+      "planned": "Planned"
+    },
+    "directory": {
+      "title": "Directory",
+      "empty": "No people assigned to departments yet.",
+      "person": "Person",
+      "department": "Department",
+      "role": "Role",
+      "primary": "Primary"
+    },
+    "readOnly": "You have read-only access to the organization structure. Ask a workspace admin or HR to make changes.",
+    "unassigned": "unassigned",
+    "unassignedTitle": "Unassigned",
+    "unassignedHint": "These people can't be routed service desk work and don't appear in any department above. Add them from Departments.",
+    "reportsTo": {
+      "label": "Reports to",
+      "none": "No manager",
+      "failed": "Could not update the reporting line"
+    },
+    "members": {
+      "title": "Members of {department}",
+      "manage": "Manage members",
+      "none": "Nobody is in this department yet.",
+      "add": "Add",
+      "choosePerson": "Choose a person…",
+      "everyoneAdded": "Everyone in the workspace is already in this department.",
+      "primary": "Primary",
+      "role": "Role",
+      "remove": "Remove from department",
+      "roles": {
+        "head": "Head",
+        "manager": "Manager",
+        "member": "Member"
+      }
+    },
+    "positions": {
+      "title": "Positions",
+      "none": "No positions defined.",
+      "add": "Add",
+      "placeholder": "e.g. Senior KAM",
+      "status": {
+        "open": "Open",
+        "filled": "Filled"
+      }
+    }
+  }
+}
