@@ -216,6 +216,56 @@ async def test_settings_reports_how_wide_the_callers_view_is(client, tenants):
 
 
 @pytest.mark.asyncio
+async def test_ops_can_change_the_working_hours_the_clock_runs_on(client, tenants):
+    """The breach clock's shift must be reachable from the API, not just the DB.
+
+    It was configurable in ``load_clock`` before it was settable anywhere, which
+    made "override it per workspace" true only for whoever could edit JSONB by
+    hand.
+    """
+    ws = tenants["ws_a"]
+    b = _sd(ws)
+    admin, plain = tenants["admin"], tenants["plain"]
+
+    # the defaults are reported, not blanks
+    before = (await client.get(f"{b}/settings", headers=admin)).json()
+    assert (before["working_hours_start"], before["working_hours_end"]) == ("09:30", "18:30")
+
+    r = await client.patch(f"{b}/settings", headers=admin, json={
+        "working_hours_start": "10:00", "working_hours_end": "19:00",
+    })
+    assert r.status_code == 200, r.text
+    assert (r.json()["working_hours_start"], r.json()["working_hours_end"]) == ("10:00", "19:00")
+    after = (await client.get(f"{b}/settings", headers=admin)).json()
+    assert (after["working_hours_start"], after["working_hours_end"]) == ("10:00", "19:00")
+
+    # patch semantics: touching the AI toggle must not wipe the hours
+    assert (await client.patch(f"{b}/settings", headers=admin,
+                               json={"ai_classification_enabled": True})).status_code == 200
+    kept = (await client.get(f"{b}/settings", headers=admin)).json()
+    assert (kept["working_hours_start"], kept["working_hours_end"]) == ("10:00", "19:00")
+    assert kept["ai_classification_enabled"] is True
+
+    # an inverted window is refused, both as a pair and one field at a time
+    assert (await client.patch(f"{b}/settings", headers=admin, json={
+        "working_hours_start": "19:00", "working_hours_end": "09:00",
+    })).status_code == 422
+    assert (await client.patch(f"{b}/settings", headers=admin,
+                               json={"working_hours_start": "20:00"})).status_code == 400
+    assert (await client.patch(f"{b}/settings", headers=admin,
+                               json={"working_hours_end": "25:99"})).status_code == 422
+
+    # ...and the refusals changed nothing
+    unchanged = (await client.get(f"{b}/settings", headers=admin)).json()
+    assert (unchanged["working_hours_start"], unchanged["working_hours_end"]) == ("10:00", "19:00")
+
+    # a plain member cannot move the SLA clock
+    assert (await client.patch(f"{b}/settings", headers=plain, json={
+        "working_hours_start": "00:00", "working_hours_end": "23:59",
+    })).status_code == 403
+
+
+@pytest.mark.asyncio
 async def test_row_scope_applies_to_by_id_paths_not_just_the_list(client, tenants, seeded_ticket):
     """A sales-scoped member sees only sales tickets — including by id."""
     ws = tenants["ws_a"]

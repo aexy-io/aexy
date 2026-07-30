@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -100,6 +100,84 @@ function Row({
   );
 }
 
+/**
+ * The shift the breach clock runs on. Editing it re-scores every open ticket's
+ * stage age, so it saves explicitly rather than on each keystroke.
+ */
+function WorkingHoursEditor({
+  start,
+  end,
+  canManage,
+  saving,
+  onSave,
+}: {
+  start: string;
+  end: string;
+  canManage: boolean;
+  saving: boolean;
+  onSave: (start: string, end: string) => void;
+}) {
+  const t = useTranslations("serviceDesk");
+  const [from, setFrom] = useState(start);
+  const [to, setTo] = useState(end);
+
+  // Re-sync when the fetched values arrive or change under us.
+  useEffect(() => {
+    setFrom(start);
+    setTo(end);
+  }, [start, end]);
+
+  const dirty = from !== start || to !== end;
+  // The API rejects an inverted window; say so before the round trip.
+  const invalid = to <= from;
+
+  return (
+    <div className="flex flex-wrap items-end gap-3">
+      <div>
+        <label className="mb-1 block text-xs text-muted-foreground">{t("workingHours.from")}</label>
+        <Input
+          type="time"
+          value={from}
+          disabled={!canManage}
+          onChange={(e) => setFrom(e.target.value)}
+          className="w-32"
+        />
+      </div>
+      <div>
+        <label className="mb-1 block text-xs text-muted-foreground">{t("workingHours.to")}</label>
+        <Input
+          type="time"
+          value={to}
+          disabled={!canManage}
+          onChange={(e) => setTo(e.target.value)}
+          className="w-32"
+        />
+      </div>
+      <span className="pb-2 text-xs text-muted-foreground">
+        {invalid ? t("workingHours.invalid") : t("workingHours.summary", { hours: hoursBetween(from, to) })}
+      </span>
+      {canManage && (
+        <Button
+          size="sm"
+          className="mb-0.5"
+          disabled={!dirty || invalid || saving}
+          onClick={() => onSave(from, to)}
+        >
+          {saving ? t("workingHours.saving") : t("workingHours.save")}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/** Shift length in hours, to one decimal — what one "day" of the target means. */
+function hoursBetween(from: string, to: string): string {
+  const [fh, fm] = from.split(":").map(Number);
+  const [th, tm] = to.split(":").map(Number);
+  const mins = th * 60 + tm - (fh * 60 + fm);
+  return (Math.max(mins, 0) / 60).toFixed(1);
+}
+
 export default function ServiceDeskSettingsPage() {
   const t = useTranslations("serviceDesk");
   const partners = usePartners();
@@ -148,12 +226,30 @@ export default function ServiceDeskSettingsPage() {
             role="switch"
             aria-checked={!!settings.data?.ai_classification_enabled}
             disabled={!canManage || m.updateSettings.isPending || settings.isLoading}
-            onClick={() => m.updateSettings.mutate(!settings.data?.ai_classification_enabled)}
+            onClick={() =>
+              m.updateSettings.mutate({
+                ai_classification_enabled: !settings.data?.ai_classification_enabled,
+              })
+            }
             className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${settings.data?.ai_classification_enabled ? "bg-primary" : "bg-muted-foreground/30"}`}
           >
             <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${settings.data?.ai_classification_enabled ? "translate-x-5" : "translate-x-0.5"}`} />
           </button>
         </div>
+      </Section>
+
+      {/* Working hours — the shift the breach clock runs on */}
+      <Section title={t("workingHours.title")}>
+        <p className="max-w-2xl text-sm text-muted-foreground">{t("workingHours.description")}</p>
+        <WorkingHoursEditor
+          start={settings.data?.working_hours_start ?? "09:30"}
+          end={settings.data?.working_hours_end ?? "18:30"}
+          canManage={canManage}
+          saving={m.updateSettings.isPending}
+          onSave={(start, end) =>
+            m.updateSettings.mutate({ working_hours_start: start, working_hours_end: end })
+          }
+        />
       </Section>
 
       {/* Email templates (editable copy) */}

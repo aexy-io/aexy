@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 RequestType = Literal["query", "policy_issuance", "claims", "payout"]
@@ -278,10 +278,36 @@ class ServiceDeskSettings(BaseModel):
     # "nobody has placed you in a department yet". Defaults to "all" so a
     # response from an older server can never raise a false alarm.
     scope: Literal["all", "function", "none"] = "all"
+    # The working window the breach clock runs on, IST, as "HH:MM". Returned so
+    # the Master Data page can show and edit it — the clock reads the same values
+    # (services/service_desk_clock.py::load_clock).
+    working_hours_start: str = "09:30"
+    working_hours_end: str = "18:30"
+
+
+_HHMM = r"^([01]\d|2[0-3]):[0-5]\d$"
 
 
 class ServiceDeskSettingsUpdate(BaseModel):
-    ai_classification_enabled: bool
+    """Both fields optional so the page can PATCH either one on its own."""
+
+    ai_classification_enabled: bool | None = None
+    working_hours_start: str | None = Field(None, pattern=_HHMM)
+    working_hours_end: str | None = Field(None, pattern=_HHMM)
+
+    @model_validator(mode="after")
+    def _window_must_be_forward(self):
+        """Reject an inverted window at the door.
+
+        ``Clock`` falls back to a 9h day if it ever meets one, but that guard is
+        for data written before this validation existed — it should not double as
+        permission to save nonsense, which would silently change what every
+        breach figure means.
+        """
+        if self.working_hours_start and self.working_hours_end:
+            if self.working_hours_end <= self.working_hours_start:  # "HH:MM" sorts correctly
+                raise ValueError("working_hours_end must be later than working_hours_start")
+        return self
 
 
 class ServiceDeskTemplate(BaseModel):

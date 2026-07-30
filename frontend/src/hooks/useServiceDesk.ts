@@ -13,6 +13,7 @@ import {
   RequestType,
   ServiceDeskDashboard,
   ServiceDeskSettings,
+  ServiceDeskSettingsPatch,
   ServiceDeskTemplate,
   ServiceDeskTicket,
   ServiceDeskTicketDetail,
@@ -135,7 +136,7 @@ export function useServiceDeskMutations() {
       onSuccess: (_r, v) => invalidateTickets(v.id),
     }),
     updateSettings: useMutation({
-      mutationFn: (enabled: boolean) => serviceDeskApi.updateSettings(ws!, enabled),
+      mutationFn: (patch: ServiceDeskSettingsPatch) => serviceDeskApi.updateSettings(ws!, patch),
       onSuccess: () => {
         if (ws) qc.invalidateQueries({ queryKey: keys.settings(ws) });
       },

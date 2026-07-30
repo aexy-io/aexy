@@ -136,6 +136,17 @@ export interface ServiceDeskSettings {
    *  department, so no ticket can ever match — an empty list is a
    *  misconfiguration, not a quiet day. */
   scope: "all" | "function" | "none";
+  /** The shift the breach clock runs on, IST, as "HH:MM". Always populated —
+   *  the API reports the defaults when nothing has been set. */
+  working_hours_start: string;
+  working_hours_end: string;
+}
+
+/** Only the fields being changed; the API leaves the rest alone. */
+export interface ServiceDeskSettingsPatch {
+  ai_classification_enabled?: boolean;
+  working_hours_start?: string;
+  working_hours_end?: string;
 }
 
 export interface ServiceDeskTemplate {
@@ -152,8 +163,9 @@ const base = (ws: string) => `/workspaces/${ws}/service-desk`;
 export const serviceDeskApi = {
   getSettings: async (ws: string): Promise<ServiceDeskSettings> =>
     (await api.get(`${base(ws)}/settings`)).data,
-  updateSettings: async (ws: string, ai_classification_enabled: boolean): Promise<ServiceDeskSettings> =>
-    (await api.patch(`${base(ws)}/settings`, { ai_classification_enabled })).data,
+  /** Partial patch — send only the fields being changed. */
+  updateSettings: async (ws: string, patch: ServiceDeskSettingsPatch): Promise<ServiceDeskSettings> =>
+    (await api.patch(`${base(ws)}/settings`, patch)).data,
   listTemplates: async (ws: string): Promise<ServiceDeskTemplate[]> =>
     (await api.get(`${base(ws)}/templates`)).data,
   updateTemplate: async (ws: string, key: string, subject: string, body: string): Promise<ServiceDeskTemplate> =>

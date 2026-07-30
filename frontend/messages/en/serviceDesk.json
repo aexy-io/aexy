@@ -106,6 +106,16 @@
       "readOnly": "You have read-only access to Master Data. Ask a workspace admin or service desk manager to make changes.",
       "domainsHint": "e.g. abcfinance.com, abc.co"
     },
-    "noDepartment": "You're not in a department yet, so no tickets can be routed to you. Ask an admin to add you from Organization → Departments."
+    "noDepartment": "You're not in a department yet, so no tickets can be routed to you. Ask an admin to add you from Organization → Departments.",
+    "workingHours": {
+      "title": "Working hours",
+      "description": "The breach clock only runs during these hours, IST. It stops overnight, at weekends, and on company holidays — so \"2 business days\" means two of these shifts, not 48 hours. Holidays come from the Leave module.",
+      "from": "Shift starts",
+      "to": "Shift ends",
+      "summary": "Shift is {hours}h, so the 2-day target is twice that.",
+      "invalid": "The end must be later than the start",
+      "save": "Save hours",
+      "saving": "Saving…"
+    }
   }
 }
