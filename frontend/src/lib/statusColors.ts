@@ -39,6 +39,9 @@ export const TASK_STATUS_COLORS: Record<string, StatusColor> = {
   todo: { bg: "bg-blue-50 dark:bg-blue-900/30", text: "text-blue-600 dark:text-blue-400", dot: "bg-blue-500" },
   in_progress: { bg: "bg-yellow-50 dark:bg-yellow-900/30", text: "text-yellow-600 dark:text-yellow-400", dot: "bg-yellow-500" },
   review: { bg: "bg-purple-50 dark:bg-purple-900/30", text: "text-purple-600 dark:text-purple-400", dot: "bg-purple-500" },
+  // Seeded status slug is `in_review`; `review` above is the legacy spelling.
+  // Both map to the same tokens so a board built from either renders correctly.
+  in_review: { bg: "bg-purple-50 dark:bg-purple-900/30", text: "text-purple-600 dark:text-purple-400", dot: "bg-purple-500" },
   done: { bg: "bg-green-50 dark:bg-green-900/30", text: "text-green-600 dark:text-green-400", dot: "bg-green-500" },
 };
 
@@ -232,4 +235,26 @@ export function getStatusColor(
 ): StatusColor {
   if (!key) return DEFAULT_STATUS_COLOR;
   return colors[key] ?? DEFAULT_STATUS_COLOR;
+}
+/**
+ * Interchangeable spellings of the same status.
+ *
+ * The seeded status row for the review state is `in_review`, while the legacy
+ * `SprintTask.status` values and older UI maps say `review`. A board built from
+ * one spelling must still show a task stored under the other — otherwise the
+ * card lands in a bucket no column reads and vanishes.
+ */
+export const STATUS_SLUG_ALIASES: Record<string, string[]> = {
+  review: ["in_review"],
+  in_review: ["review"],
+};
+
+/**
+ * Map a stored status slug onto the one this board actually has a column for.
+ * Falls through unchanged when there is no better match, so unknown statuses
+ * stay visible (see `unmappedStatuses`) rather than being silently dropped.
+ */
+export function normaliseStatusSlug(slug: string, known: string[]): string {
+  if (known.length === 0 || known.includes(slug)) return slug;
+  return STATUS_SLUG_ALIASES[slug]?.find((a) => known.includes(a)) ?? slug;
 }

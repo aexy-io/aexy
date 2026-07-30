@@ -17,7 +17,10 @@ export const STATUS_CONFIG: Record<TaskStatus, { label: string; color: string; b
   backlog: { label: "Backlog", color: TASK_STATUS_COLORS_BASE.backlog.text, bgColor: TASK_STATUS_COLORS_BASE.backlog.bg },
   todo: { label: "To Do", color: TASK_STATUS_COLORS_BASE.todo.text, bgColor: TASK_STATUS_COLORS_BASE.todo.bg },
   in_progress: { label: "In Progress", color: TASK_STATUS_COLORS_BASE.in_progress.text, bgColor: TASK_STATUS_COLORS_BASE.in_progress.bg },
-  review: { label: "Review", color: TASK_STATUS_COLORS_BASE.review.text, bgColor: TASK_STATUS_COLORS_BASE.review.bg },
+  // Key is the *seeded* slug (`in_review`), not the legacy `review`: every
+  // status picker writes these keys, and the board buckets tasks by the slug it
+  // was given. Writing `review` put cards in a bucket no column reads.
+  in_review: { label: "In Review", color: TASK_STATUS_COLORS_BASE.in_review.text, bgColor: TASK_STATUS_COLORS_BASE.in_review.bg },
   done: { label: "Done", color: TASK_STATUS_COLORS_BASE.done.text, bgColor: TASK_STATUS_COLORS_BASE.done.bg },
 };
 

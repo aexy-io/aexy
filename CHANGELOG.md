@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.1] - 2026-07-30
+
+### Fix: tasks moved to In Review disappeared from the board
+
+Reported by the tech team using the feature. A task set to review didn't land in
+the wrong column — it left the board entirely.
+
+Two spellings of the same status exist. The seeded status row is `in_review`
+(`task_config_service.DEFAULT_STATUSES`), but the shared UI `STATUS_CONFIG` map
+— which every status picker writes from — said `review`, as do the keyboard
+shortcut and several hardcoded lists. The kanban builds its columns from the
+seeded slugs and buckets tasks by `sprint_tasks.status`, so a task stored as
+`review` went into a bucket no column reads and was never rendered.
+
+That also explains why it looked erratic: **dragging** a card onto the In Review
+column always worked, because the drag handler uses the project's real slugs.
+Only the status dropdown, the edit modal, and the `4` shortcut broke it.
+
+**Canonicalised on write.** `SprintTaskService.canonical_status_slug` resolves
+whichever spelling a caller sends to the one that task's own board has a column
+for, and all three write paths use it. So it no longer matters which spelling
+arrives — an older client, the Slack integration, or a UI path nobody has found
+all store something renderable. A workspace whose status set genuinely uses
+`review` keeps it; the alias resolves toward the board, not toward one spelling.
+
+**Existing rows rescued.** `migrate_task_status_review_slug.sql` moves stranded
+tasks, per workspace so a set that legitimately uses `review` is untouched. It
+also repairs two things the status column alone would have left broken:
+
+* **Both sides of each history transition.** Rewriting only the destination left
+  a later row reading `review → done` right after an earlier one reading
+  `todo → in_review` — a timeline that jumps through a status which no longer
+  exists.
+* **WIP limits.** They live in `sprints.settings->'wip_limits'` keyed by status
+  slug and are read back by slug, so a limit set on `review` silently stopped
+  applying once the column became `in_review`. No error — the cap just never
+  fired again.
+
+**And it can't hide a task again.** The board now renders an amber
+"unrecognised status" column for anything matching no column. A card in an ugly
+column is a nuisance; a card that vanishes costs someone their work.
+
 ## [0.10.0] - 2026-07-29
 
 ### Workflow secrets, and the credential fields that were never safe
