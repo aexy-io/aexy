@@ -74,8 +74,14 @@ async def get_settings(workspace_id: str, db: AsyncSession = Depends(get_db), cu
 
 
 @router.patch("/settings", response_model=ServiceDeskSettings)
-async def update_settings(workspace_id: str, data: ServiceDeskSettingsUpdate, db: AsyncSession = Depends(get_db), _: Developer = Depends(require_manage)):
-    return await ServiceDeskService(db).update_settings(workspace_id, data.ai_classification_enabled)
+async def update_settings(workspace_id: str, data: ServiceDeskSettingsUpdate, db: AsyncSession = Depends(get_db), current: Developer = Depends(require_manage)):
+    return await ServiceDeskService(db).update_settings(
+        workspace_id,
+        ai_classification_enabled=data.ai_classification_enabled,
+        working_hours_start=data.working_hours_start,
+        working_hours_end=data.working_hours_end,
+        developer_id=str(current.id),
+    )
 
 
 @router.get("/templates", response_model=list[ServiceDeskTemplate])

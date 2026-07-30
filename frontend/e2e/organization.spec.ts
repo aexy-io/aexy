@@ -123,7 +123,7 @@ test.describe("Organization UI", () => {
   test("departments page is editable with can_manage_org", async ({ page }) => {
     await setup(page, true);
     await page.goto("/organization/departments");
-    await expect(page.getByRole("heading", { name: "Departments" })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("heading", { name: "Departments", level: 1 })).toBeVisible({ timeout: 15000 });
 
     // Data renders
     await expect(page.getByText("Operations")).toBeVisible();
@@ -139,7 +139,7 @@ test.describe("Organization UI", () => {
   test("departments page is read-only without can_manage_org", async ({ page }) => {
     await setup(page, false);
     await page.goto("/organization/departments");
-    await expect(page.getByRole("heading", { name: "Departments" })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("heading", { name: "Departments", level: 1 })).toBeVisible({ timeout: 15000 });
 
     // Data is still visible ...
     await expect(page.getByText("Operations")).toBeVisible();
@@ -153,7 +153,7 @@ test.describe("Organization UI", () => {
   test("department roster can be opened and edited", async ({ page }) => {
     await setup(page, true);
     await page.goto("/organization/departments");
-    await expect(page.getByRole("heading", { name: "Departments" })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("heading", { name: "Departments", level: 1 })).toBeVisible({ timeout: 15000 });
 
     // The member count is the way in to the roster.
     await page.getByLabel("Manage members").first().click();
@@ -175,7 +175,7 @@ test.describe("Organization UI", () => {
   test("department roster is read-only without can_manage_org", async ({ page }) => {
     await setup(page, false);
     await page.goto("/organization/departments");
-    await expect(page.getByRole("heading", { name: "Departments" })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("heading", { name: "Departments", level: 1 })).toBeVisible({ timeout: 15000 });
 
     await page.getByLabel("Manage members").first().click();
     await expect(page.getByRole("dialog")).toBeVisible();
@@ -190,7 +190,7 @@ test.describe("Organization UI", () => {
   test("directory surfaces people who are in no department", async ({ page }) => {
     await setup(page, true);
     await page.goto("/organization/directory");
-    await expect(page.getByRole("heading", { name: "Directory" })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("heading", { name: "Directory", level: 1 })).toBeVisible({ timeout: 15000 });
 
     // Placed people appear under their department. Scoped to the row, since the
     // name also appears as an <option> in every manager picker.
@@ -209,7 +209,7 @@ test.describe("Organization UI", () => {
   test("directory shows reporting lines as text for a read-only caller", async ({ page }) => {
     await setup(page, false);
     await page.goto("/organization/directory");
-    await expect(page.getByRole("heading", { name: "Directory" })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("heading", { name: "Directory", level: 1 })).toBeVisible({ timeout: 15000 });
 
     // The manager's name is rendered, but not as an editable control.
     await expect(page.getByText("Neha Placed").first()).toBeVisible();

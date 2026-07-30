@@ -91,7 +91,7 @@ async function setup(page: Page) {
     if (url.includes("/service-desk/dashboard")) return json(mockDashboard);
     if (url.includes("/service-desk/tickets")) return json(mockDashboard.tickets);
     if (url.includes("/service-desk/settings"))
-      return json({ ai_classification_enabled: false, can_manage: true, scope: "all" });
+      return json({ ai_classification_enabled: false, can_manage: true, scope: "all", working_hours_start: "09:30", working_hours_end: "18:30" });
     if (url.includes("/service-desk/partners")) return json(mockPartners);
     if (url.includes("/service-desk/templates")) return json(mockTemplates);
     if (url.match(/\/service-desk\/(insurers|lobs|mailboxes)/)) return json([]);
@@ -167,6 +167,57 @@ test.describe("Service Desk UI", () => {
     await expect(page.getByText(/read-only access/i)).toHaveCount(0);
   });
 
+  test("ops can edit the working hours the breach clock runs on", async ({ page }) => {
+    await setup(page);
+    let patched: Record<string, unknown> | null = null;
+    await page.route(`${API_BASE}/workspaces/ws-1/service-desk/settings`, async (route) => {
+      if (route.request().method() === "PATCH") {
+        patched = route.request().postDataJSON();
+        return route.fulfill({
+          status: 200, contentType: "application/json",
+          body: JSON.stringify({
+            ai_classification_enabled: false, can_manage: true, scope: "all",
+            working_hours_start: "10:00", working_hours_end: "19:00",
+          }),
+        });
+      }
+      return route.fulfill({
+        status: 200, contentType: "application/json",
+        body: JSON.stringify({
+          ai_classification_enabled: false, can_manage: true, scope: "all",
+          working_hours_start: "09:30", working_hours_end: "18:30",
+        }),
+      });
+    });
+
+    await page.goto("/service-desk/settings");
+    await expect(page.getByRole("heading", { name: "Working hours" })).toBeVisible({ timeout: 15000 });
+
+    const from = page.locator('input[type="time"]').first();
+    const to = page.locator('input[type="time"]').nth(1);
+    await expect(from).toHaveValue("09:30");
+    await expect(to).toHaveValue("18:30");
+    // The shift length is spelled out, so "2 days" is not ambiguous.
+    await expect(page.getByText(/Shift is 9\.0h/)).toBeVisible();
+
+    // Nothing to save until something changes.
+    await expect(page.getByRole("button", { name: "Save hours" })).toBeDisabled();
+
+    // An inverted window is refused client-side, before any request.
+    await from.fill("20:00");
+    await expect(page.getByText(/end must be later than the start/i)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Save hours" })).toBeDisabled();
+
+    // A valid change saves, and sends only the two fields it changed.
+    await from.fill("10:00");
+    await to.fill("19:00");
+    await page.getByRole("button", { name: "Save hours" }).click();
+    await expect.poll(() => patched).toEqual({
+      working_hours_start: "10:00",
+      working_hours_end: "19:00",
+    });
+  });
+
   test("master data is read-only without can_manage_service_desk", async ({ page }) => {
     await setup(page);
     // Same page, but the API reports the caller cannot manage the service desk.
@@ -174,7 +225,7 @@ test.describe("Service Desk UI", () => {
       route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ ai_classification_enabled: false, can_manage: false, scope: "function" }),
+        body: JSON.stringify({ ai_classification_enabled: false, can_manage: false, scope: "function", working_hours_start: "09:30", working_hours_end: "18:30" }),
       }),
     );
 
@@ -190,6 +241,9 @@ test.describe("Service Desk UI", () => {
     await expect(page.getByRole("button", { name: "Add" })).toHaveCount(0);
     await expect(page.getByLabel("delete")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Save" })).toHaveCount(0);
+    // The working hours are visible but not editable, and cannot be saved.
+    await expect(page.locator('input[type="time"]').first()).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Save hours" })).toHaveCount(0);
   });
 
   test("tickets page explains an empty list caused by no department", async ({ page }) => {
@@ -200,7 +254,7 @@ test.describe("Service Desk UI", () => {
       route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ ai_classification_enabled: false, can_manage: false, scope: "none" }),
+        body: JSON.stringify({ ai_classification_enabled: false, can_manage: false, scope: "none", working_hours_start: "09:30", working_hours_end: "18:30" }),
       }),
     );
     await page.route(`${API_BASE}/workspaces/ws-1/service-desk/tickets`, (route) =>

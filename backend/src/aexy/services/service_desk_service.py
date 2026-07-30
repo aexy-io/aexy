@@ -4,6 +4,7 @@ CRUD for partners/insurers/LOBs/mailboxes (the editable master data that drives
 intake auto-assignment) plus listing service-desk tickets and manual logging.
 """
 
+import logging
 from uuid import uuid4
 
 from fastapi import HTTPException, status
@@ -11,6 +12,7 @@ from sqlalchemy import delete, false, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.models.organization import Department, DepartmentMember
+from aexy.services.service_desk_clock import DEFAULT_WORK_END, DEFAULT_WORK_START
 from aexy.models.service_desk import (
     INTERNAL_PENDING_WITH,
     ServiceDeskInsurer,
@@ -39,6 +41,9 @@ from aexy.schemas.service_desk import (
     PartnerUpdate,
     ServiceDeskTicketResponse,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 async def _caller_functions(db: AsyncSession, workspace_id: str, developer_id: str) -> set[str]:
@@ -362,26 +367,72 @@ class ServiceDeskService:
                 workspace_id, developer_id, "can_manage_service_desk"
             )
             scope = await describe_scope(self.db, workspace_id, developer_id)
+        hours = sd.get("working_hours") or {}
         return {
             "ai_classification_enabled": bool(sd.get("ai_classification_enabled", False)),
             "can_manage": bool(can_manage),
             "scope": scope,
+            # Report the values actually in force, defaults included, so the page
+            # never shows a blank field for a clock that is definitely running.
+            "working_hours_start": hours.get("start") or DEFAULT_WORK_START.strftime("%H:%M"),
+            "working_hours_end": hours.get("end") or DEFAULT_WORK_END.strftime("%H:%M"),
         }
 
-    async def update_settings(self, workspace_id: str, ai_classification_enabled: bool) -> dict:
+    async def update_settings(
+        self,
+        workspace_id: str,
+        ai_classification_enabled: bool | None = None,
+        working_hours_start: str | None = None,
+        working_hours_end: str | None = None,
+        developer_id: str | None = None,
+    ) -> dict:
+        """Patch semantics: only the fields supplied are touched.
+
+        The working window feeds the breach clock, so changing it re-scores every
+        open ticket's stage age — hence the audit log line.
+        """
         ws = await self.db.get(Workspace, workspace_id)
         if ws is None:
             raise HTTPException(status_code=404, detail="Workspace not found")
         settings = dict(ws.settings or {})
         sd = dict(settings.get("service_desk") or {})
-        sd["ai_classification_enabled"] = bool(ai_classification_enabled)
+
+        if ai_classification_enabled is not None:
+            sd["ai_classification_enabled"] = bool(ai_classification_enabled)
+
+        if working_hours_start or working_hours_end:
+            hours = dict(sd.get("working_hours") or {})
+            before = (
+                hours.get("start") or DEFAULT_WORK_START.strftime("%H:%M"),
+                hours.get("end") or DEFAULT_WORK_END.strftime("%H:%M"),
+            )
+            if working_hours_start:
+                hours["start"] = working_hours_start
+            if working_hours_end:
+                hours["end"] = working_hours_end
+            # One field at a time must still leave a forward window; the schema
+            # can only check a pair sent together.
+            if hours["end"] <= hours["start"]:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Working hours end must be later than the start",
+                )
+            sd["working_hours"] = hours
+            logger.info(
+                "Service desk working hours for workspace %s changed from %s-%s to %s-%s by %s",
+                workspace_id, before[0], before[1], hours["start"], hours["end"],
+                developer_id or "unknown",
+            )
+
         settings["service_desk"] = sd
         ws.settings = settings  # reassign so SQLAlchemy tracks the JSONB change
         await self.db.flush()
-        # Only a manager reaches this endpoint, so can_manage is true by construction.
         # Only a manager reaches this endpoint, so both capabilities are true by
         # construction — a manager's scope is always "all".
-        return {"ai_classification_enabled": bool(ai_classification_enabled), "can_manage": True, "scope": "all"}
+        return await self.get_settings(workspace_id, developer_id) | {
+            "can_manage": True,
+            "scope": "all",
+        }
 
     # ----------------------------------------------------------- tickets
 

@@ -171,10 +171,16 @@ and the 2-day target is 18 working hours on a 09:30–18:30 day. A ticket arrivi
 Monday's close, and does not breach until 17:30 on Tuesday — by which point four
 calendar days have passed.
 
-The shift defaults to **09:30–18:30 IST** and is overridable per workspace via
-`Workspace.settings["service_desk"]["working_hours"]`, so no migration is
-needed. A malformed setting falls back to the default rather than taking the
-dashboard down, and an inverted window can't divide by zero. Boundaries resolve
+The shift defaults to **09:30–18:30 IST** and Ops can change it themselves from
+the Master Data page — `PATCH /service-desk/settings` now takes
+`working_hours_start`/`working_hours_end` (gated on `can_manage_service_desk`)
+and persists to `Workspace.settings["service_desk"]["working_hours"]`, so no
+migration is needed. The patch is partial, so flipping the AI toggle can't wipe
+the hours. An inverted or malformed window is refused at the API rather than
+saved, and the change is logged with the actor, because moving the window
+re-scores every open ticket's stage age. `Clock` still falls back to a 9h day if
+it meets bad data, but that guard is for rows written before the validation
+existed — not a licence to save nonsense. Boundaries resolve
 in `Asia/Kolkata` — whether an instant falls inside Tuesday's shift depends on
 the timezone you ask in, and 13:00 UTC is exactly the 18:30 IST close. IST has
 no DST, so the boundaries are unambiguous.
