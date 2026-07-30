@@ -3,6 +3,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useState, useMemo, useCallback } from "react";
+import { normaliseStatusSlug } from "@/lib/statusColors";
+import { useTaskStatuses } from "@/hooks/useTaskConfig";
 import {
   sprintApi,
   projectTasksApi,
@@ -35,6 +37,12 @@ export function useProjectBoard(
   projectId: string | null
 ) {
   const queryClient = useQueryClient();
+  // The board's columns come from these, so grouping must agree with them.
+  const { statuses: projectStatuses } = useTaskStatuses(workspaceId, projectId);
+  const projectStatusSlugs = useMemo(
+    () => (projectStatuses ?? []).map((st: { slug: string }) => st.slug),
+    [projectStatuses],
+  );
   const [viewMode, setViewMode] = useState<BoardViewMode>("status");
   const [filters, setFilters] = useState<BoardFilters>({
     assignees: [],
@@ -411,14 +419,25 @@ export function useProjectBoard(
   // Group tasks by status slug. Key is `task.status` so custom project
   // statuses (e.g. "design_review") are bucketed alongside the canonical
   // five. Consumers iterate the dynamic key set rather than a fixed Literal.
+  //
+  // A task whose stored status matches no column used to be dropped from the
+  // board silently — that is how tasks moved to review went missing. The board
+  // now renders leftovers in a visible column, so a status mismatch is an
+  // eyesore rather than data loss. `unmappedStatuses` is what to show it for.
   const tasksByStatus = useMemo(() => {
     const grouped: Record<string, TaskWithSprint[]> = {};
     filteredTasks.forEach((task) => {
-      const key = task.status as string;
+      const key = normaliseStatusSlug(task.status as string, projectStatusSlugs);
       (grouped[key] ??= []).push(task);
     });
     return grouped;
-  }, [filteredTasks]);
+  }, [filteredTasks, projectStatusSlugs]);
+
+  const unmappedStatuses = useMemo(() => {
+    if (projectStatusSlugs.length === 0) return [];
+    const known = new Set(projectStatusSlugs);
+    return Object.keys(tasksByStatus).filter((s) => !known.has(s));
+  }, [tasksByStatus, projectStatusSlugs]);
 
   // Get unique values for filter options
   const filterOptions = useMemo(() => {
@@ -489,6 +508,7 @@ export function useProjectBoard(
     filteredTasks,
     tasksBySprint,
     tasksByStatus,
+    unmappedStatuses,
     filterOptions,
 
     // Loading states

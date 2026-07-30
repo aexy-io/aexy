@@ -1006,6 +1006,7 @@ export default function ProjectBoardPage({
     filteredTasks,
     tasksBySprint,
     tasksByStatus,
+    unmappedStatuses,
     filterOptions,
     isLoading,
     viewMode,
@@ -1402,7 +1403,7 @@ export default function ProjectBoardPage({
           "1": "backlog",
           "2": "todo",
           "3": "in_progress",
-          "4": "review",
+          "4": "in_review",
           "5": "done",
         };
         const newStatus = statusMap[e.key];
@@ -1496,7 +1497,7 @@ export default function ProjectBoardPage({
       const statusKeys: string[] =
         projectStatuses.length > 0
           ? projectStatuses.map((s) => s.slug)
-          : ["backlog", "todo", "in_progress", "review", "done"];
+          : ["backlog", "todo", "in_progress", "in_review", "done"];
 
       // First check if dropped directly on a status column
       let targetStatus: TaskStatus | undefined = statusKeys.find((s) => dropTargetId === s) as
@@ -2272,7 +2273,19 @@ export default function ProjectBoardPage({
                       color: STATUS_CONFIG[status].color,
                       bgColor: STATUS_CONFIG[status].bgColor,
                     }))
-                ).map((col) => (
+                )
+                  .concat(
+                    // Anything whose status matches no column above. Without
+                    // this the card is simply not rendered anywhere — which is
+                    // how tasks moved to review went missing.
+                    unmappedStatuses.map((slug) => ({
+                      id: slug,
+                      title: `${slug} (unrecognised status)`,
+                      color: "text-amber-500",
+                      bgColor: "bg-amber-500/5 border border-amber-500/40",
+                    })),
+                  )
+                  .map((col) => (
                   <KanbanColumn
                     key={col.id}
                     id={col.id}

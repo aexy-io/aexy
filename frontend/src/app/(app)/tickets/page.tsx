@@ -279,7 +279,7 @@ export default function TicketsPage() {
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-foreground">
-                      {myTasks.filter(t => t.status === "review").length}
+                      {myTasks.filter(t => t.status === "in_review" || t.status === "review").length}
                     </p>
                     <p className="text-sm text-muted-foreground">In Review</p>
                   </div>

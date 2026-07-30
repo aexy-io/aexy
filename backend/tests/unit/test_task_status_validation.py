@@ -150,3 +150,71 @@ async def test_update_task_rejects_other_project_scoped_slug(
     with pytest.raises(TaskValidationError) as exc:
         await service.update_task_status(task_id=task_a.id, new_status="on_hold")
     assert exc.value.code == "unknown_status"
+
+
+@pytest.mark.asyncio
+async def test_review_is_stored_as_the_slug_the_board_renders(
+    db_session: AsyncSession,
+) -> None:
+    """A task set to review must not vanish from the kanban.
+
+    The seeded status row is ``in_review`` but the shared UI status map, the
+    keyboard shortcut and several hardcoded lists say ``review``. The board
+    builds columns from the seeded slugs and buckets tasks by ``task.status``,
+    so storing ``review`` put the card in a bucket no column reads — it
+    disappeared from the board rather than landing in the wrong column.
+    Reported by the tech team using the feature.
+    """
+    ws = await _make_workspace(db_session, "ws-status-review")
+    project = await _make_project(db_session, ws, "p-status-review")
+    config = TaskConfigService(db_session)
+    await config.seed_default_statuses(ws.id)
+    await db_session.commit()
+
+    seeded = {s.slug for s in await config.get_statuses_for_project(ws.id, project.id)}
+    assert "in_review" in seeded and "review" not in seeded, (
+        "fixture assumption: the seed uses in_review"
+    )
+
+    service = SprintTaskService(db_session)
+
+    # The legacy spelling every status picker sends...
+    task = await _make_task(db_session, ws, project.id)
+    updated = await service.update_task(task_id=task.id, status="review")
+    assert updated is not None
+    assert updated.status == "in_review", "stored slug must be one the board has a column for"
+
+    # ...and the same via the dedicated status endpoint's service method.
+    other = await _make_task(db_session, ws, project.id)
+    moved = await service.update_task_status(other.id, "review")
+    assert moved is not None and moved.status == "in_review"
+
+    # The seeded spelling is of course left alone.
+    third = await _make_task(db_session, ws, project.id)
+    direct = await service.update_task_status(third.id, "in_review")
+    assert direct is not None and direct.status == "in_review"
+
+
+@pytest.mark.asyncio
+async def test_canonicalising_does_not_invent_a_status(db_session: AsyncSession) -> None:
+    """A workspace whose set really uses ``review`` keeps it.
+
+    The alias is bidirectional, so this pins that it resolves to whatever the
+    board actually has rather than always preferring one spelling.
+    """
+    ws = await _make_workspace(db_session, "ws-status-legacy")
+    project = await _make_project(db_session, ws, "p-status-legacy")
+    config = TaskConfigService(db_session)
+    created = await config.create_status(
+        workspace_id=ws.id,
+        name="Review",  # slug is derived from the name
+        category="in_review",
+        project_id=project.id,
+    )
+    await db_session.commit()
+    assert created.slug == "review", "fixture assumption: this workspace uses the legacy spelling"
+
+    task = await _make_task(db_session, ws, project.id)
+    service = SprintTaskService(db_session)
+    updated = await service.update_task(task_id=task.id, status="review")
+    assert updated is not None and updated.status == "review"

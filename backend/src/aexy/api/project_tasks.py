@@ -517,14 +517,16 @@ async def update_task_status(
 
     task_service = SprintTaskService(db)
     try:
-        await task_service.validate_status_slug(task, data.status)
+        # Canonicalise, don't just validate: the board buckets by task.status, so
+        # storing a spelling it has no column for hides the task entirely.
+        new_status = await task_service.canonical_status_slug(task, data.status)
     except TaskValidationError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.code)
 
     old_status = task.status
-    task.status = data.status
+    task.status = new_status
 
-    if old_status != data.status:
+    if old_status != new_status:
         # Per-task History row so the modal shows status changes alongside
         # other field-change events.
         await task_service.log_activity(
@@ -533,12 +535,12 @@ async def update_task_status(
             actor_id=str(current_user.id),
             field_name="status",
             old_value=old_status,
-            new_value=data.status,
+            new_value=new_status,
         )
 
-    if task.workspace_id and old_status != data.status:
+    if task.workspace_id and old_status != new_status:
         act_type = "status_changed"
-        if data.status == "done":
+        if new_status == "done":
             act_type = "resolved"
         await log_activity(
             db,
@@ -548,7 +550,7 @@ async def update_task_status(
             activity_type=act_type,
             actor_id=str(current_user.id),
             title=f"Task '{task.title}' status changed",
-            changes={"status": {"old": old_status, "new": data.status}},
+            changes={"status": {"old": old_status, "new": new_status}},
         )
 
     await db.commit()

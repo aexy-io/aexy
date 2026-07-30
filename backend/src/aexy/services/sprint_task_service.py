@@ -1,5 +1,6 @@
 """Sprint task service for managing tasks within sprints."""
 
+import logging
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -20,6 +21,19 @@ from aexy.services.notification_service import (
     _get_text_snippet,
 )
 from aexy.services.github_task_sync_service import GitHubTaskSyncService
+
+
+logger = logging.getLogger(__name__)
+
+# Interchangeable spellings of the same status. The seeded status row for the
+# review state is ``in_review``, but the legacy ``SprintTask.status`` values and
+# the shared UI status map say ``review``. Whichever a caller sends, we store the
+# one the task's own board actually has a column for — see
+# ``canonical_status_slug``.
+_STATUS_ALIASES: dict[str, tuple[str, ...]] = {
+    "review": ("in_review",),
+    "in_review": ("review",),
+}
 
 
 class TaskValidationError(Exception):
@@ -453,7 +467,9 @@ class SprintTaskService:
             _record("priority_changed", "priority", task.priority, priority)
             task.priority = priority
         if status is not None:
-            await self.validate_status_slug(task, status)
+            # Store the spelling this task's board renders, so the card can't
+            # end up in a bucket no column reads.
+            status = await self.canonical_status_slug(task, status)
             old_status = task.status
             _record("status_changed", "status", old_status, status)
             task.status = status
@@ -1290,6 +1306,56 @@ class SprintTaskService:
         if (await self.db.execute(stmt)).first() is None:
             raise TaskValidationError("unknown_status")
 
+    async def _slugs_in_scope(self, task: SprintTask) -> set[str]:
+        """Active status slugs valid for this task: project rows + workspace defaults."""
+        if not task.workspace_id:
+            return set()
+        scope = (
+            or_(
+                WorkspaceTaskStatus.project_id.is_(None),
+                WorkspaceTaskStatus.project_id == task.team_id,
+            )
+            if task.team_id
+            else WorkspaceTaskStatus.project_id.is_(None)
+        )
+        rows = (
+            await self.db.execute(
+                select(WorkspaceTaskStatus.slug)
+                .where(WorkspaceTaskStatus.workspace_id == task.workspace_id)
+                .where(WorkspaceTaskStatus.is_active.is_(True))
+                .where(scope)
+            )
+        ).scalars().all()
+        return set(rows)
+
+    async def canonical_status_slug(self, task: SprintTask, slug: str) -> str:
+        """Validate a status slug and return the spelling this task's board uses.
+
+        Two spellings of the review state exist in the codebase: the seeded
+        status row is ``in_review`` (``task_config_service.DEFAULT_STATUSES``)
+        while the legacy ``SprintTask.status`` values, the shared UI
+        ``STATUS_CONFIG`` map and several hardcoded lists say ``review``. The
+        kanban builds its columns from the seeded slugs and buckets tasks by
+        ``task.status``, so storing the spelling the board doesn't have made the
+        task vanish from every column rather than land in the wrong one.
+
+        Canonicalising on write means it no longer matters which spelling a
+        caller sends — a UI path we haven't found, an older client, or the Slack
+        integration all end up stored as whatever this board actually renders.
+        """
+        await self.validate_status_slug(task, slug)
+        in_scope = await self._slugs_in_scope(task)
+        if slug in in_scope or not in_scope:
+            return slug
+        for alias in _STATUS_ALIASES.get(slug, ()):
+            if alias in in_scope:
+                logger.info(
+                    "Task %s: status %r stored as %r, the slug this board renders",
+                    task.id, slug, alias,
+                )
+                return alias
+        return slug
+
     # Status management
     async def update_task_status(
         self,
@@ -1311,7 +1377,7 @@ class SprintTaskService:
         if not task:
             return None
 
-        await self.validate_status_slug(task, new_status)
+        new_status = await self.canonical_status_slug(task, new_status)
         old_status = task.status
         task.status = new_status
 
