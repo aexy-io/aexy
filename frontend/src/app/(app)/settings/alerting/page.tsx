@@ -183,6 +183,21 @@ function SetupGuide() {
               <code>medium</code>). <code>rows</code> becomes the ticket&apos;s log context and
               is scanned for <code>trace_id=…</code> to build trace links. Send a paired alert
               with <code>&quot;status&quot;:&quot;resolved&quot;</code> on recovery to auto-resolve.
+              <span className="text-foreground">Attach the destination to every alert.</span>{" "}
+              OpenObserve routes <em>per alert</em>, not globally — a destination that
+              isn&apos;t selected on an alert receives nothing. For each alert you want
+              here, open <span className="text-foreground">Alerts → Alerts → (edit)</span>{" "}
+              and add this destination to the alert&apos;s{" "}
+              <span className="text-foreground">Destinations</span> list (it can coexist
+              with Slack and others). Newly created alerts need this step too.
+            </li>
+            <li>
+              Point the alert&apos;s <span className="text-foreground">Template</span> at a JSON
+              body with <code>service</code>, <code>severity</code>{" "}
+              (<code>critical|high|medium|low</code>), <code>environment</code>,{" "}
+              <code>alert_url</code>, and <code>rows</code> (the matched log lines →
+              ticket log context + trace links). Send <code>&quot;status&quot;:&quot;resolved&quot;</code>{" "}
+              on recovery to auto-resolve.
             </li>
             <li>
               Use <span className="text-foreground">Send test</span> on the integration
