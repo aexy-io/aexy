@@ -2189,6 +2189,7 @@ class SprintTaskService:
         file_size: int | None = None,
         content_type: str | None = None,
         uploaded_by_id: str | None = None,
+        storage_key: str | None = None,
     ) -> TaskAttachment:
         """Persist a file attachment row for a task and write a History entry."""
         attachment = TaskAttachment(
@@ -2196,6 +2197,7 @@ class SprintTaskService:
             task_id=task_id,
             file_name=file_name,
             file_url=file_url,
+            storage_key=storage_key,
             file_size=file_size,
             content_type=content_type,
             uploaded_by_id=uploaded_by_id,

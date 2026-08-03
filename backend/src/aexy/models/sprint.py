@@ -988,7 +988,14 @@ class TaskAttachment(Base):
         index=True,
     )
     file_name: Mapped[str] = mapped_column(String(500), nullable=False)
+    # Canonical unsigned object location. Kept for bookkeeping and as the
+    # fallback source of `storage_key` on legacy rows — never serve it directly,
+    # objects are private. Responses presign from `storage_key` instead.
     file_url: Mapped[str] = mapped_column(String(2000), nullable=False)
+    # Storage key, authoritative for reads. Nullable: rows predating this column
+    # carry it only inside `file_url` (backfilled by
+    # migrate_storage_keys_backfill.sql).
+    storage_key: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     file_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
     content_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
     uploaded_by_id: Mapped[str | None] = mapped_column(

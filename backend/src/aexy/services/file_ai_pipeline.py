@@ -208,16 +208,23 @@ _ALLOWED_FETCH_HOST_SUFFIXES: tuple[str, ...] = (
 
 
 def _allowed_fetch_hosts() -> set[str]:
-    """Hosts always allowed (verbatim). Includes the configured S3 endpoint
+    """Hosts always allowed (verbatim). Includes both configured S3 endpoints
     so RustFS in dev (`http://rustfs:9000`) and any S3-compatible prod
     endpoint pass without manually maintaining a list.
+
+    The *public* endpoint matters as much as the internal one: resolvers hand
+    the pipeline presigned URLs built from `s3_public_endpoint_url` (private
+    objects have no fetchable unsigned URL), and on a deployment whose public
+    host isn't covered by the suffix list those fetches would be rejected here
+    rather than by storage.
     """
     from aexy.core.config import get_settings
 
     hosts = {"aexy-rustfs"}
     settings = get_settings()
-    endpoint = (settings.s3_endpoint_url or "").strip()
-    if endpoint:
+    for endpoint in (settings.s3_endpoint_url, settings.s3_public_endpoint_url):
+        if not (endpoint or "").strip():
+            continue
         h = (urlparse(endpoint).hostname or "").lower()
         if h:
             hosts.add(h)

@@ -61,6 +61,7 @@ class TicketService:
         source_ip: str | None = None,
         user_agent: str | None = None,
         referrer_url: str | None = None,
+        attachments: list[dict] | None = None,
     ) -> Ticket:
         """Create a ticket from a public form submission.
 
@@ -71,6 +72,9 @@ class TicketService:
             source_ip: Request IP address.
             user_agent: Request user agent.
             referrer_url: Request referrer.
+            attachments: Files already streamed to storage by the public upload
+                endpoint. Set on the ticket directly — re-uploading them here
+                would duplicate the stored objects.
 
         Returns:
             Created Ticket.
@@ -93,6 +97,7 @@ class TicketService:
             email_verified=False,
             verification_token=verification_token,
             field_values=submission.field_values,
+            attachments=attachments or [],
             status=TicketStatus.NEW.value,
             source_ip=source_ip,
             user_agent=user_agent,

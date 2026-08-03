@@ -21,7 +21,7 @@ from aexy.models.sprint import SprintTask
 from aexy.schemas.sprint import TaskAttachmentListResponse, TaskAttachmentResponse
 from aexy.services.sprint_task_service import SprintTaskService
 from aexy.services.storage_quota_service import StorageQuotaService
-from aexy.services.storage_service import get_storage_service
+from aexy.services.storage_service import get_storage_service, presign_stored_object
 
 logger = logging.getLogger(__name__)
 
@@ -30,10 +30,22 @@ ATTACHMENTS_PREFIX = "task-attachments"
 SAFE_FILENAME_RE = re.compile(r"[^A-Za-z0-9._-]+")
 
 
+def attachment_storage_key(attachment) -> str | None:
+    """Storage key for an attachment, recovering it from the URL on legacy rows."""
+    if attachment.storage_key:
+        return attachment.storage_key
+    return get_storage_service().key_from_url(attachment.file_url or "")
+
+
 def attachment_to_response(
     attachment, ai_row: object | None = None
 ) -> TaskAttachmentResponse:
-    """Single attachment row → response, with optional AI metadata."""
+    """Single attachment row → response, with optional AI metadata.
+
+    `file_url` is presigned per response rather than served from the column:
+    attachments are private objects, so the stored canonical URL is not
+    fetchable, and a signed URL can't be persisted because it expires.
+    """
     from aexy.models.file_metadata import SOURCE_TASK_ATTACHMENT
     from aexy.schemas.file_metadata import metadata_to_ai_response
 
@@ -41,7 +53,10 @@ def attachment_to_response(
         id=str(attachment.id),
         task_id=str(attachment.task_id),
         file_name=attachment.file_name,
-        file_url=attachment.file_url,
+        file_url=(
+            presign_stored_object(attachment.storage_key, attachment.file_url)
+            or attachment.file_url
+        ),
         file_size=attachment.file_size,
         content_type=attachment.content_type,
         uploaded_by_id=str(attachment.uploaded_by_id) if attachment.uploaded_by_id else None,
@@ -136,6 +151,7 @@ async def upload_attachments_for_task(
             task_id=str(task.id),
             file_name=original_name,
             file_url=storage.get_object_url(key),
+            storage_key=key,
             file_size=len(body),
             content_type=content_type,
             uploaded_by_id=str(current_user.id),
@@ -201,7 +217,7 @@ async def delete_attachment_for_task(
 
     storage = get_storage_service()
     if storage.is_configured():
-        key = storage.key_from_url(attachment.file_url)
+        key = attachment_storage_key(attachment)
         if key:
             await storage.delete_object(key)
         else:

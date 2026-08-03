@@ -434,7 +434,13 @@ class StorageService:
         }
 
     def get_object_url(self, key: str) -> str:
-        """Get a URL for an uploaded object."""
+        """Canonical, unsigned location of an object.
+
+        Not fetchable by a browser: objects are written without a public-read
+        ACL, so an unsigned URL gets a 403/404 from the storage backend. Use it
+        for bookkeeping (and as the input to ``key_from_url``); use
+        ``presign_stored_object`` for anything handed to a client.
+        """
         public_endpoint = settings.s3_public_endpoint_url or settings.s3_endpoint_url
         if public_endpoint:
             return f"{public_endpoint.rstrip('/')}/{self.bucket}/{key}"
@@ -475,3 +481,34 @@ def get_storage_service() -> StorageService:
     if _storage_service is None:
         _storage_service = StorageService()
     return _storage_service
+
+
+# How long a client-facing object URL stays valid. Long enough to open a large
+# attachment or scrub a video, short enough that a leaked URL expires.
+PRESIGNED_URL_TTL = 3600
+
+
+def presign_stored_object(
+    storage_key: str | None,
+    fallback_url: str | None = None,
+    expires_in: int = PRESIGNED_URL_TTL,
+) -> str | None:
+    """Resolve a stored object into a URL a browser can actually fetch.
+
+    Uploads are private (no public-read ACL), so a persisted
+    ``get_object_url`` value is a dead link — it must be presigned at read time,
+    which is also why these URLs are generated per-response and never stored.
+
+    ``fallback_url`` covers rows written before ``storage_key`` existed: the key
+    is recovered from the saved URL. It is also returned as-is when storage is
+    unconfigured (dev/test), so response shapes stay stable.
+    """
+    storage = get_storage_service()
+    if not storage.is_configured():
+        return fallback_url
+
+    key = storage_key or storage.key_from_url(fallback_url or "")
+    if not key:
+        return fallback_url
+
+    return storage.generate_presigned_get_url(key, expires_in=expires_in) or fallback_url

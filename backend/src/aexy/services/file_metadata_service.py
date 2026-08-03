@@ -29,6 +29,7 @@ from aexy.models.file_metadata import (
     SOURCE_TASK_ATTACHMENT,
     FileMetadata,
 )
+from aexy.services.storage_service import presign_stored_object
 
 logger = logging.getLogger(__name__)
 
@@ -175,8 +176,10 @@ async def _resolve_drive_file(db: AsyncSession, source_id: str) -> ResolvedFile:
     if row is None:
         raise ValueError(f"DriveFile {source_id} not found")
     return ResolvedFile(
-        file_url=row.file_url,
-        file_key=None,
+        # Presigned, not the stored canonical URL — the Docs file viewer renders
+        # this straight into <img>/<video>, and the object is private.
+        file_url=presign_stored_object(row.storage_key, row.file_url),
+        file_key=row.storage_key,
         file_name=row.file_name,
         file_size_bytes=int(row.file_size_bytes or 0),
         content_type=row.content_type,
@@ -206,8 +209,10 @@ async def _resolve_task_attachment(db: AsyncSession, source_id: str) -> Resolved
         )
 
     return ResolvedFile(
-        file_url=row.file_url,
-        file_key=None,
+        # Presigned, not the stored canonical URL — the Docs file viewer renders
+        # this straight into <img>/<video>, and the object is private.
+        file_url=presign_stored_object(row.storage_key, row.file_url),
+        file_key=row.storage_key,
         file_name=row.file_name,
         file_size_bytes=int(row.file_size or 0),
         content_type=row.content_type,

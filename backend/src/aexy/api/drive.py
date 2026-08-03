@@ -46,7 +46,7 @@ from aexy.schemas.drive import (
 )
 from aexy.services.drive_service import DriveService
 from aexy.services.storage_quota_service import StorageQuotaService
-from aexy.services.storage_service import get_storage_service
+from aexy.services.storage_service import get_storage_service, presign_stored_object
 from aexy.services.workspace_service import WorkspaceService
 from aexy.temporal.activities.file_metadata import (
     ExtractFileMetadataInput,
@@ -92,7 +92,10 @@ def _file_to_response(row: Any) -> DriveFileResponse:
         parent_id=str(row.parent_id) if row.parent_id else None,
         space_id=str(row.space_id) if row.space_id else None,
         file_name=row.file_name,
-        file_url=row.file_url,
+        # Presigned per response: the Drive UI opens this URL and the file
+        # viewer renders it into <img>/<video>, and uploads are private, so the
+        # stored canonical URL is not fetchable. Folders have neither.
+        file_url=presign_stored_object(row.storage_key, row.file_url),
         file_size_bytes=int(row.file_size_bytes or 0),
         content_type=row.content_type,
         kind=row.kind,
@@ -279,6 +282,7 @@ async def upload_files(
             workspace_id=workspace_id,
             file_name=original_name,
             file_url=storage.get_object_url(key),
+            storage_key=key,
             file_size_bytes=len(body),
             content_type=content_type,
             uploaded_by_id=str(current_user.id),

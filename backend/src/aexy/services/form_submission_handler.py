@@ -47,6 +47,7 @@ class FormSubmissionHandler:
         ip_address: str | None = None,
         user_agent: str | None = None,
         referrer_url: str | None = None,
+        attachments: list[dict] | None = None,
     ) -> FormSubmission:
         """
         Process a form submission and route to all configured destinations.
@@ -57,6 +58,8 @@ class FormSubmissionHandler:
             ip_address: IP address of the submitter.
             user_agent: User agent string.
             referrer_url: Referring URL.
+            attachments: Files already streamed to storage by the public upload
+                endpoint, recorded as-is (no re-upload).
 
         Returns:
             FormSubmission with links to all created resources.
@@ -70,6 +73,7 @@ class FormSubmissionHandler:
             form_id=form.id,
             workspace_id=form.workspace_id,
             data=validated_data,
+            attachments=attachments or [],
             email=submission_data.email,
             name=submission_data.name,
             ip_address=ip_address,
@@ -347,6 +351,9 @@ class FormSubmissionHandler:
             submitter_name=submission.name,
             email_verified=submission.is_verified,
             field_values=submission.data,
+            # Carry the submission's uploads onto the ticket so agents see the
+            # attachments on the record they actually work from.
+            attachments=list(submission.attachments or []),
             status=TicketStatus.NEW.value,
             priority=priority,
             severity=severity,

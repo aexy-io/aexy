@@ -120,6 +120,7 @@ class DriveService:
         uploaded_by_id: str,
         parent_id: str | None = None,
         space_id: str | None = None,
+        storage_key: str | None = None,
     ) -> DriveFile:
         kind = detect_kind(file_name, content_type)
         row = DriveFile(
@@ -129,6 +130,7 @@ class DriveService:
             space_id=space_id,
             file_name=file_name,
             file_url=file_url,
+            storage_key=storage_key,
             file_size_bytes=file_size_bytes,
             content_type=content_type,
             kind=kind,

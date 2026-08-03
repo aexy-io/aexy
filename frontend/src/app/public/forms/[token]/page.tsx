@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams } from "next/navigation";
 import {
   Send,
@@ -9,6 +9,8 @@ import {
   AlertCircle,
   Mail,
   User,
+  Paperclip,
+  X,
 } from "lucide-react";
 import { publicFormsApi, TicketFormField } from "@/lib/api";
 import { VALIDATION_PRESETS, ValidationType } from "@/lib/formsApi";
@@ -33,13 +35,147 @@ interface PublicForm {
   fields: TicketFormField[];
 }
 
-function FieldRenderer({
+/** Pull FastAPI's `detail` off an axios error, if there is one. */
+function apiErrorDetail(err: unknown): string | null {
+  const detail = (err as { response?: { data?: { detail?: unknown } } })?.response?.data
+    ?.detail;
+  return typeof detail === "string" ? detail : null;
+}
+
+/** Mirror of the backend's `allowed_file_types` matching, for a fast local reject. */
+function matchesAllowedTypes(file: File, allowed: string[]): boolean {
+  const ctype = (file.type || "").split(";")[0].trim().toLowerCase();
+  const ext = file.name.includes(".")
+    ? file.name.split(".").pop()!.toLowerCase()
+    : "";
+  return allowed.some((entry) => {
+    const rule = String(entry).trim().toLowerCase().replace(/^\./, "");
+    if (!rule) return false;
+    if (rule.includes("/")) {
+      if (rule.endsWith("/*")) return !!ctype && ctype.startsWith(rule.slice(0, -1));
+      return !!ctype && ctype === rule;
+    }
+    return !!ext && ext === rule;
+  });
+}
+
+/**
+ * File field for a public form.
+ *
+ * Uploads as soon as a file is picked and holds the signed reference returned by
+ * `POST /public/forms/{token}/uploads` as the field's value — the JSON submit
+ * payload can't carry bytes, so a `File` object here would silently never reach
+ * the server.
+ */
+function FileFieldInput({
   field,
+  token,
   value,
   onChange,
   error,
 }: {
   field: TicketFormField;
+  token: string;
+  value: unknown;
+  onChange: (value: unknown) => void;
+  error?: string;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [filename, setFilename] = useState<string | null>(null);
+
+  const rules = field.validation_rules || {};
+  const maxSizeMb = rules.max_file_size_mb;
+  const allowedTypes = rules.allowed_file_types || [];
+  const hasUpload = !!value && !!filename;
+
+  const reset = () => {
+    onChange("");
+    setFilename(null);
+    if (inputRef.current) inputRef.current.value = "";
+  };
+
+  const handleFile = async (file: File) => {
+    setUploadError(null);
+
+    if (maxSizeMb && file.size > maxSizeMb * 1024 * 1024) {
+      setUploadError(`File must be smaller than ${maxSizeMb} MB`);
+      reset();
+      return;
+    }
+    if (allowedTypes.length > 0 && !matchesAllowedTypes(file, allowedTypes)) {
+      setUploadError(`Allowed file types: ${allowedTypes.join(", ")}`);
+      reset();
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      const result = await publicFormsApi.uploadFile(token, field.field_key, file);
+      onChange(result.ref);
+      setFilename(result.filename);
+    } catch (err) {
+      setUploadError(apiErrorDetail(err) || "Upload failed. Please try again.");
+      reset();
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const message = uploadError || error;
+  const borderClass = message ? "border-red-500" : "border-gray-200";
+
+  return (
+    <div>
+      <div className={`bg-white border rounded-lg ${borderClass}`}>
+        {hasUpload ? (
+          <div className="flex items-center gap-3 p-4">
+            <Paperclip className="h-4 w-4 text-purple-600 flex-shrink-0" />
+            <span className="text-sm text-gray-700 truncate flex-1">{filename}</span>
+            <button
+              type="button"
+              onClick={reset}
+              className="text-gray-400 hover:text-red-500 transition"
+              aria-label="Remove file"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <input
+            ref={inputRef}
+            type="file"
+            accept={allowedTypes.length > 0 ? allowedTypes.join(",") : undefined}
+            disabled={isUploading}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFile(file);
+            }}
+            className="w-full p-4 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-purple-100 file:text-purple-700 hover:file:bg-purple-200 file:cursor-pointer disabled:opacity-60"
+          />
+        )}
+      </div>
+      {isUploading && (
+        <p className="text-gray-500 text-sm mt-1 flex items-center gap-2">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          Uploading…
+        </p>
+      )}
+      {uploadError && <p className="text-red-500 text-sm mt-1">{uploadError}</p>}
+    </div>
+  );
+}
+
+function FieldRenderer({
+  field,
+  token,
+  value,
+  onChange,
+  error,
+}: {
+  field: TicketFormField;
+  token: string;
   value: unknown;
   onChange: (value: unknown) => void;
   error?: string;
@@ -208,18 +344,13 @@ function FieldRenderer({
 
     case "file":
       return (
-        <div className={`${baseInputClass} ${errorClass} p-0`}>
-          <input
-            type="file"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                onChange(file.name);
-              }
-            }}
-            className="w-full p-4 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-purple-100 file:text-purple-700 hover:file:bg-purple-200 file:cursor-pointer"
-          />
-        </div>
+        <FileFieldInput
+          field={field}
+          token={token}
+          value={value}
+          onChange={onChange}
+          error={error}
+        />
       );
 
     default:
@@ -322,6 +453,11 @@ export default function PublicFormPage() {
           return;
         }
       }
+
+      // A file field's value is an opaque upload reference, not user text, so
+      // the text validators below would measure the wrong thing. Its own rules
+      // (size, MIME type) are enforced at upload time on both ends.
+      if ((field.field_type as string) === "file") return;
 
       // Skip further validation if value is empty and not required
       if (!strValue && !field.is_required) return;
@@ -428,7 +564,9 @@ export default function PublicFormPage() {
         window.location.href = result.redirect_url;
       }
     } catch (err) {
-      setError("Failed to submit form. Please try again.");
+      // Surface the backend's reason (missing field, rejected value) instead of
+      // a generic message the submitter can't act on.
+      setError(apiErrorDetail(err) || "Failed to submit form. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -792,6 +930,7 @@ export default function PublicFormPage() {
                 </label>
                 <FieldRenderer
                   field={field}
+                  token={token}
                   value={formData.field_values[field.field_key]}
                   onChange={(value) => handleFieldChange(field.field_key, value)}
                   error={fieldErrors[field.field_key]}
