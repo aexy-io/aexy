@@ -176,9 +176,13 @@ services:
       - S3_SECRET_ACCESS_KEY=${RUSTFS_ROOT_PASSWORD}
       - S3_BUCKET_NAME=${S3_BUCKET_NAME:-aexy-storage}
       - S3_REGION=${S3_REGION:-us-east-1}
-      # Public URL the browser uses to fetch uploaded files; nginx proxies
-      # /storage/ to rustfs:9000. Set this to your public origin.
-      - S3_PUBLIC_ENDPOINT_URL=${S3_PUBLIC_ENDPOINT_URL:-https://server.aexy.io/storage}
+      # Public origin the browser uses to fetch uploaded files. Must be a BARE
+      # origin with no path suffix: uploads are private, so client-facing URLs
+      # are presigned, and SigV4 covers the URI path — the edge has to serve
+      # /${S3_BUCKET_NAME}/<key> verbatim (see the matching location block in
+      # nginx/nginx.conf). A "/storage" suffix here signs a path the origin
+      # never sees and every URL fails with SignatureDoesNotMatch.
+      - S3_PUBLIC_ENDPOINT_URL=${S3_PUBLIC_ENDPOINT_URL:-https://server.aexy.io}
 
       - STRIPE_PRO_PRODUCT_ID=${STRIPE_PRO_PRODUCT_ID}
       - STRIPE_PRO_MONTHLY_PRICE_ID=${STRIPE_PRO_MONTHLY_PRICE_ID}
@@ -285,7 +289,8 @@ services:
       - S3_SECRET_ACCESS_KEY=${RUSTFS_ROOT_PASSWORD}
       - S3_BUCKET_NAME=${S3_BUCKET_NAME:-aexy-storage}
       - S3_REGION=${S3_REGION:-us-east-1}
-      - S3_PUBLIC_ENDPOINT_URL=${S3_PUBLIC_ENDPOINT_URL:-https://server.aexy.io/storage}
+      # Bare origin, no path suffix — see the note on the backend service above.
+      - S3_PUBLIC_ENDPOINT_URL=${S3_PUBLIC_ENDPOINT_URL:-https://server.aexy.io}
     depends_on:
       postgres:
         condition: service_healthy

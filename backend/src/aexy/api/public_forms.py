@@ -9,9 +9,22 @@ falls back to the Forms module. Without the fallback, any Forms-module form
 returns 404 even when it is active/public.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+import logging
+
+import redis.asyncio as redis
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    UploadFile,
+    status,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from aexy.core.config import settings
 from aexy.core.database import get_db
 from aexy.schemas.ticketing import (
     PublicFormResponse,
@@ -29,12 +42,97 @@ from aexy.services.ticket_form_service import TicketFormService
 from aexy.services.ticket_service import TicketService
 from aexy.services.forms_service import FormsService
 from aexy.services.form_submission_handler import FormSubmissionHandler
+from aexy.services.public_form_upload_service import (
+    PublicUploadError,
+    extract_attachments,
+    stage_upload,
+)
 
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/public/forms",
     tags=["Public Forms"],
 )
+
+# Anonymous uploads are capped per IP so a public form can't be used as free
+# object storage. Deliberately generous — a legitimate submitter attaching a few
+# screenshots, plus retries, stays well under it.
+UPLOAD_RATE_LIMIT = 30
+UPLOAD_RATE_WINDOW = 600  # seconds
+
+_UPLOAD_ERROR_STATUS = {
+    "too_large": status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+    "unsupported_type": status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+    "storage_unconfigured": status.HTTP_502_BAD_GATEWAY,
+    "upload_failed": status.HTTP_502_BAD_GATEWAY,
+}
+
+_redis_client = None
+
+
+def _get_redis():
+    """Lazily build the async Redis client used for the upload rate limit."""
+    global _redis_client
+    if _redis_client is None:
+        _redis_client = redis.from_url(
+            settings.redis_url or "redis://localhost:6379/0",
+            decode_responses=True,
+        )
+    return _redis_client
+
+
+async def _enforce_upload_rate_limit(request: Request) -> None:
+    """Best-effort per-IP cap on anonymous uploads.
+
+    Fails open when Redis is unreachable — a cache outage must not take public
+    forms down, and the per-file size/type rules still bound the damage.
+    """
+    ip = request.client.host if request.client else None
+    if not ip:
+        return
+    try:
+        client = _get_redis()
+        key = f"public_form_uploads:{ip}"
+        count = await client.incr(key)
+        if count == 1:
+            await client.expire(key, UPLOAD_RATE_WINDOW)
+    except Exception as exc:  # noqa: BLE001 - fail open, see docstring
+        logger.warning("Public form upload rate limit unavailable: %s", exc)
+        return
+    if count > UPLOAD_RATE_LIMIT:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many uploads from this address. Please try again later.",
+        )
+
+
+async def resolve_public_form(db: AsyncSession, public_token: str):
+    """Resolve a public token against ticket-forms, then the Forms module.
+
+    Returns ``("ticket", form)`` / ``("forms", form)``, or None when neither
+    module has an active form for the token.
+    """
+    ticket_form = await TicketFormService(db).get_form_by_token(public_token)
+    if ticket_form:
+        return "ticket", ticket_form
+
+    forms_form = await FormsService(db).get_form_by_public_token(public_token)
+    if forms_form:
+        return "forms", forms_form
+
+    return None
+
+
+def _upload_size(upload: UploadFile) -> int:
+    """Size of an upload, measured from the spooled file when not reported."""
+    if upload.size is not None:
+        return upload.size
+    upload.file.seek(0, 2)
+    size = upload.file.tell()
+    upload.file.seek(0)
+    return size
 
 
 def form_to_public_response(form) -> PublicFormResponse:
@@ -146,6 +244,78 @@ async def get_public_form(
     )
 
 
+@router.post("/{public_token}/uploads", status_code=status.HTTP_201_CREATED)
+async def upload_public_form_file(
+    public_token: str,
+    request: Request,
+    field_key: str = Form(...),
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Stage a file for a public form's ``file`` field, ahead of submission.
+
+    The submit endpoint takes JSON, so file bytes can't ride along with it. The
+    form page uploads here as soon as a file is picked and puts the returned
+    signed ``ref`` into ``field_values[field_key]``; submit then verifies the
+    signature and records the object as an attachment.
+
+    Unauthenticated by design — the form page is public — and bounded by a
+    per-IP rate limit plus the field's own size and MIME rules.
+    """
+    resolved = await resolve_public_form(db, public_token)
+    if resolved is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Form not found or inactive",
+        )
+    _, form = resolved
+
+    field = next(
+        (
+            f
+            for f in form.fields
+            if f.field_key == field_key
+            and f.is_visible
+            and str(f.field_type) == "file"
+        ),
+        None,
+    )
+    if field is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"'{field_key}' is not a file field on this form",
+        )
+
+    await _enforce_upload_rate_limit(request)
+
+    try:
+        staged = stage_upload(
+            form_id=str(form.id),
+            field_key=field_key,
+            filename=file.filename or "attachment",
+            content_type=file.content_type,
+            fileobj=file.file,
+            size=_upload_size(file),
+            validation_rules=field.validation_rules,
+        )
+    except PublicUploadError as exc:
+        raise HTTPException(
+            status_code=_UPLOAD_ERROR_STATUS.get(
+                exc.code, status.HTTP_400_BAD_REQUEST
+            ),
+            detail=exc.message,
+        )
+
+    # The storage key stays server-side; the signed ref is the only handle the
+    # browser gets.
+    return {
+        "ref": staged["ref"],
+        "filename": staged["filename"],
+        "size": staged["size"],
+        "type": staged["type"],
+    }
+
+
 @router.post("/{public_token}/submit", response_model=None)
 async def submit_ticket(
     public_token: str,
@@ -181,6 +351,14 @@ async def submit_ticket(
                 detail="Email is required for this form",
             )
 
+        # File fields carry signed refs from /uploads; turn them back into
+        # attachment rows and leave plain filenames in the submitted data.
+        forms_values, forms_attachments = extract_attachments(
+            form_id=str(forms_form.id),
+            fields=forms_form.fields,
+            field_values=submission.field_values,
+        )
+
         handler = FormSubmissionHandler(db)
         try:
             forms_submission = await handler.process_submission(
@@ -188,11 +366,12 @@ async def submit_ticket(
                 submission_data=FormsPublicSubmission(
                     email=submission.submitter_email,
                     name=submission.submitter_name,
-                    data=submission.field_values,
+                    data=forms_values,
                 ),
                 ip_address=request.client.host if request.client else None,
                 user_agent=request.headers.get("user-agent"),
                 referrer_url=request.headers.get("referer"),
+                attachments=forms_attachments,
             )
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -226,6 +405,15 @@ async def submit_ticket(
                 detail=f"Field '{field.name}' is required",
             )
 
+    # File fields carry signed refs from /uploads; turn them back into
+    # attachment rows and leave plain filenames in the stored field values.
+    field_values, attachments = extract_attachments(
+        form_id=str(form.id),
+        fields=form.fields,
+        field_values=submission.field_values,
+    )
+    submission = submission.model_copy(update={"field_values": field_values})
+
     # Get request metadata
     source_ip = request.client.host if request.client else None
     user_agent = request.headers.get("user-agent")
@@ -239,6 +427,7 @@ async def submit_ticket(
         source_ip=source_ip,
         user_agent=user_agent,
         referrer_url=referrer_url,
+        attachments=attachments,
     )
 
     # Increment submission count

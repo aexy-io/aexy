@@ -5,6 +5,90 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.2] - 2026-08-04
+
+### Fix: uploaded files that were never uploaded, and uploaded files that could never be opened
+
+Reported as "file upload on the public form is not working". It wasn't, but
+chasing it turned up a second, wider failure with the same shape: files that
+uploaded perfectly and then could not be fetched by anyone.
+
+**The form never sent the file.** The `file` field's handler called
+`onChange(file.name)` — it put the *filename* into the submission and threw the
+`File` away. The submit payload is JSON, so bytes could never have ridden along
+with it, and no upload endpoint existed to send them to. A submitter picked a
+file, saw its name appear, submitted, and got a ticket whose attachment field
+was a string. The field's own rules (`max_file_size_mb`, `allowed_file_types`)
+were never enforced either, because there was nothing to enforce them against.
+
+There is now `POST /public/forms/{token}/uploads`. The page uploads as soon as a
+file is picked and submits a reference to the stored object. The reference is
+**HMAC-signed**: attachments on a form-created ticket are readable through that
+ticket's public share link, so accepting a caller-supplied storage key would
+have let anyone attach — and then read — any object in the bucket. Unsigned,
+tampered, or cross-form references are dropped rather than trusted. Being an
+unauthenticated endpoint it is also bounded by a per-IP rate limit, the field's
+size and MIME rules, and a per-field count cap.
+
+**Task attachments uploaded fine and then 404'd.** These were never broken at
+the upload step — the bytes are in storage. What was stored alongside them was a
+dead link. `get_object_url()` composes `{S3_PUBLIC_ENDPOINT_URL}/{bucket}/{key}`
+and that value went into `task_attachments.file_url`, but nothing serves the
+configured public path in production — the request reaches the API, which
+correctly 404s a route it has never had. Objects are also written with no
+public-read ACL, so an unsigned URL is refused (`403 AccessDenied`) even where
+the proxy does exist. Two independent reasons the link could not work, which is
+why it looked like an upload bug: the failure only ever showed up at read time.
+
+Client-facing URLs are now **presigned per response** and never persisted — a
+signed URL expires, so storing one only moves the problem. Rows carry
+`storage_key`, and the ticket module's existing approach (store the private key,
+never a public URL) is now what every one of these surfaces does.
+
+**Audited the rest.** Ticket attachments and compliance documents were already
+correct. Chat presigns. Two more had the same defect and are fixed here:
+
+* **Drive** persisted the same dead URL, and the Drive UI opens `file_url`
+  directly while the Docs viewer renders it into `<img>`/`<video>`.
+* **Assessment proctoring recordings** *did* presign, but recovered the key by
+  splitting the URL on `.r2.cloudflarestorage.com/` — an R2-only form. On the
+  path-style URLs this deployment actually writes that yields no key, silently,
+  inside a `try/except`. Recordings never played back and nothing logged why.
+  Key recovery now handles both addressing styles.
+
+That last pattern also explains a quieter casualty: the AI metadata pipeline
+prefers `file_url` over `file_key`, so it had been fetching these dead URLs too.
+Summaries and tags for drive files and task attachments were failing for the
+same reason the previews were.
+
+**Existing rows repaired.** `migrate_storage_keys_backfill.sql` recovers
+`storage_key` for every task attachment and drive file from the URL already
+stored. Nothing was lost — upload success was always checked — so recovering the
+key is enough to make old attachments load again. The derivation keys off the
+object prefix rather than the bucket name, so it holds across deployments with
+different `S3_BUCKET_NAME` values, and it skips rows whose URLs don't match
+rather than writing a wrong key; those still resolve through the read-time
+fallback.
+
+#### Upgrade notes
+
+**The object storage route must pass the path through unmodified.** SigV4 signs
+the URI path along with the `Host` header, so the previous
+`rewrite ^/storage/(.*)$ /$1` silently invalidates every presigned URL
+(`SignatureDoesNotMatch`). `nginx/nginx.conf` now serves storage from a
+bucket-rooted location with no rewrite:
+
+```
+location /aexy-storage/ {   # must equal S3_BUCKET_NAME
+    proxy_pass http://rustfs;
+}
+```
+
+paired with a **bare** origin — `S3_PUBLIC_ENDPOINT_URL=https://server.aexy.io`,
+no `/storage` suffix (the prod default is updated). This needs no new DNS record.
+Deployments whose edge is not this nginx must apply the equivalent rule there;
+until they do, attachment URLs will fail at the edge rather than at storage.
+
 ## [0.10.1] - 2026-07-30
 
 ### Fix: tasks moved to In Review disappeared from the board

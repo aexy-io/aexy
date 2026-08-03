@@ -1550,26 +1550,36 @@ async def get_candidate_details(
         r2_service = get_r2_upload_service()
 
         if r2_service.is_configured():
-            # Extract R2 key from the stored URL and generate presigned URL
-            if attempt.webcam_recording_url:
-                # URL format: https://{bucket}.{account_id}.r2.cloudflarestorage.com/{key}
-                # Extract the key (everything after the domain)
+            # Recordings are private, so the stored URL is never playable — it
+            # has to be presigned here. Derive the key with `key_from_url`, which
+            # understands both the R2 virtual-hosted form
+            # (https://{bucket}.{account}.r2.cloudflarestorage.com/{key}) and the
+            # path-style form this deployment actually writes
+            # (https://{host}/{bucket}/{key}). Hardcoding the R2 split silently
+            # yielded no key on path-style URLs, so recordings never played back.
+            async def _playback_url(stored_url: str | None, label: str) -> str | None:
+                if not stored_url:
+                    return None
                 try:
-                    url_parts = attempt.webcam_recording_url.split(".r2.cloudflarestorage.com/")
-                    if len(url_parts) == 2:
-                        key = url_parts[1]
-                        webcam_url = await r2_service.generate_presigned_download_url(key, expires_in=3600)
-                except Exception as e:
-                    logger.warning(f"Failed to generate presigned URL for webcam recording: {e}")
+                    key = r2_service.key_from_url(stored_url)
+                    if not key:
+                        logger.warning(
+                            "Could not derive a storage key from %s recording URL %s",
+                            label,
+                            stored_url,
+                        )
+                        return None
+                    return await r2_service.generate_presigned_download_url(
+                        key, expires_in=3600
+                    )
+                except Exception as e:  # noqa: BLE001 - playback is best-effort
+                    logger.warning(
+                        f"Failed to generate presigned URL for {label} recording: {e}"
+                    )
+                    return None
 
-            if attempt.screen_recording_url:
-                try:
-                    url_parts = attempt.screen_recording_url.split(".r2.cloudflarestorage.com/")
-                    if len(url_parts) == 2:
-                        key = url_parts[1]
-                        screen_url = await r2_service.generate_presigned_download_url(key, expires_in=3600)
-                except Exception as e:
-                    logger.warning(f"Failed to generate presigned URL for screen recording: {e}")
+            webcam_url = await _playback_url(attempt.webcam_recording_url, "webcam")
+            screen_url = await _playback_url(attempt.screen_recording_url, "screen")
 
         proctoring_details = {
             "trust_score": event_breakdown.get("trust_score", 100),

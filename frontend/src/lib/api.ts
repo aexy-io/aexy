@@ -8656,6 +8656,27 @@ export const publicFormsApi = {
     return response.data;
   },
 
+  // Upload one file for a form's `file` field, before the form is submitted.
+  // The submit payload is JSON, so bytes can't ride along with it: put the
+  // returned signed `ref` into field_values[fieldKey] and submit calls the
+  // object an attachment. The ref is the only handle the browser gets — the
+  // storage key stays server-side.
+  uploadFile: async (
+    publicToken: string,
+    fieldKey: string,
+    file: File
+  ): Promise<{ ref: string; filename: string; size: number; type: string }> => {
+    const form = new FormData();
+    form.append("field_key", fieldKey);
+    form.append("file", file);
+    const response = await api.post(
+      `/public/forms/${publicToken}/uploads`,
+      form,
+      { headers: { "Content-Type": "multipart/form-data" } }
+    );
+    return response.data;
+  },
+
   // Verify email
   verifyEmail: async (
     publicToken: string,

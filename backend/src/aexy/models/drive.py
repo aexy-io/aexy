@@ -70,7 +70,13 @@ class DriveFile(Base):
     )
 
     file_name: Mapped[str] = mapped_column(String(500), nullable=False)
+    # Canonical unsigned object location — NULL for folders. Never serve it
+    # directly: uploads are private, so responses presign from `storage_key`.
     file_url: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    # Storage key, authoritative for reads. NULL for folders, and for rows
+    # written before this column existed (backfilled by
+    # migrate_storage_keys_backfill.sql).
+    storage_key: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     file_size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     content_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
     kind: Mapped[str] = mapped_column(String(20), nullable=False, default=KIND_FILE)
