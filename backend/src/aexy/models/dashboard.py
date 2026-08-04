@@ -102,6 +102,16 @@ class DashboardPreferences(Base):
         server_default=text("'[]'"),
     )
 
+    # Which sidebar view this person has *chosen*. Deliberately separate from
+    # preset_type: that is the dashboard widget preset, and using it as the
+    # sidebar filter meant everyone's navigation defaulted to "developer"
+    # regardless of what they were hired to do. NULL means "derive it from my
+    # department", which is the default for everyone who never picks.
+    sidebar_persona: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+    )
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

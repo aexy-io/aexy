@@ -18,6 +18,7 @@ import { motion } from "framer-motion";
 import { useOnboarding } from "../OnboardingContext";
 import { workspaceApi } from "@/lib/api";
 import { useDepartments } from "@/hooks/useOrganization";
+import { useAccessPreview } from "@/hooks/useAccessPreview";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface InviteEntry {
@@ -37,11 +38,20 @@ export default function InviteTeam() {
   const [isSending, setIsSending] = useState(false);
   const [sentCount, setSentCount] = useState(0);
   const [failedEmails, setFailedEmails] = useState<string[]>([]);
-  // One department for the whole batch. A workspace created moments ago has no
-  // departments at all, so this renders only for a workspace that already has
-  // structure — otherwise it would be a control with nothing to choose.
+  // One department for the whole batch. Onboarding seeds departments from the
+  // use-case step, so by the time anyone reaches this screen there is normally
+  // something to choose — and choosing it is what decides whether these people
+  // land in the product with CRM or with a developer's sidebar.
   const [departmentId, setDepartmentId] = useState("");
   const { data: departments } = useDepartments();
+
+  const workspaceId = data.workspace.id || null;
+  const { appNames, baseline, baselineDetail, isLoading: previewLoading } =
+    useAccessPreview(workspaceId, {
+      departmentIds: departmentId ? [departmentId] : [],
+      role: "member",
+      enabled: invites.length > 0,
+    });
 
   useEffect(() => {
     setCurrentStep(6);
@@ -307,12 +317,13 @@ export default function InviteTeam() {
             </div>
           )}
 
-          {/* Optional department for the batch — only when the workspace already
-              has departments to choose from. */}
+          {/* Department for the batch, and what it means. This is the control
+              that decides what these people see — so it shows the consequence
+              rather than leaving it to be discovered after they sign in. */}
           {invites.length > 0 && departments && departments.length > 0 && (
             <div className="bg-muted/20 border border-border/30 rounded-xl p-4 mb-8">
               <label className="block text-sm text-muted-foreground mb-2">
-                Add everyone to a department <span className="text-xs">(optional)</span>
+                Add everyone to a department
               </label>
               <select
                 value={departmentId}
@@ -323,9 +334,35 @@ export default function InviteTeam() {
                 {departments.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.name}
+                    {d.has_access_profile ? "" : " (no access profile yet)"}
                   </option>
                 ))}
               </select>
+
+              <div className="mt-3 text-sm">
+                {previewLoading ? (
+                  <p className="text-muted-foreground/70">Working out what they&apos;ll see…</p>
+                ) : appNames.length > 0 ? (
+                  <>
+                    <p className="text-muted-foreground">
+                      They&apos;ll start with{" "}
+                      <span className="text-foreground">{appNames.join(", ")}</span>.
+                    </p>
+                    {baseline === "role_fallback" && (
+                      <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                        {departmentId
+                          ? "That department has no access profile yet, so this comes from the default member role. Give it a profile in Settings → Access to decide deliberately."
+                          : "Without a department this comes from the default member role, which suits engineers. Pick a department to give them the right apps."}
+                      </p>
+                    )}
+                    {baseline === "department" && baselineDetail && (
+                      <p className="mt-1 text-xs text-muted-foreground/70">
+                        From the {baselineDetail} access profile.
+                      </p>
+                    )}
+                  </>
+                ) : null}
+              </div>
             </div>
           )}
 

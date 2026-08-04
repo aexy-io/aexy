@@ -26,8 +26,29 @@ export interface Department {
   timezone: string | null;
   is_active: boolean;
   member_count: number;
+  /** Which system bundle the access profile came from — a label, not a join. */
+  access_profile_slug: string | null;
+  /**
+   * Whether this department carries an access profile at all. False means its
+   * members' access is still being decided by their legacy workspace role,
+   * which is the thing an admin needs to notice.
+   */
+  has_access_profile: boolean;
+  /** Default sidebar view for people whose primary department this is. */
+  default_persona: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/** What people in a department can see. */
+export interface DepartmentAccessProfile {
+  department_id: string;
+  department_name: string;
+  access_profile_slug: string | null;
+  app_config: Record<string, { enabled: boolean; modules?: Record<string, boolean> }>;
+  default_persona: string | null;
+  enabled_app_ids: string[];
+  member_count: number;
 }
 
 export interface DepartmentMemberSummary {
@@ -139,6 +160,45 @@ export const organizationApi = {
   listDepartments: async (workspaceId: string): Promise<Department[]> => {
     const res = await api.get(`${base(workspaceId)}/departments`);
     return res.data as Department[];
+  },
+
+  /** Every department's access profile — including the ones with none. */
+  listAccessProfiles: async (workspaceId: string): Promise<DepartmentAccessProfile[]> => {
+    const res = await api.get(`${base(workspaceId)}/access-profiles`);
+    return res.data as DepartmentAccessProfile[];
+  },
+
+  getAccessProfile: async (
+    workspaceId: string,
+    departmentId: string,
+  ): Promise<DepartmentAccessProfile> => {
+    const res = await api.get(
+      `${base(workspaceId)}/departments/${departmentId}/access-profile`,
+    );
+    return res.data as DepartmentAccessProfile;
+  },
+
+  /**
+   * Assign, edit or clear a department's access profile.
+   *
+   * `profile_slug: null` with no `app_config` clears it, which puts the
+   * department's members back on their role bundle and switches API enforcement
+   * for them back off.
+   */
+  setAccessProfile: async (
+    workspaceId: string,
+    departmentId: string,
+    data: {
+      profile_slug?: string | null;
+      app_config?: Record<string, { enabled: boolean; modules?: Record<string, boolean> }> | null;
+      default_persona?: string | null;
+    },
+  ): Promise<DepartmentAccessProfile> => {
+    const res = await api.put(
+      `${base(workspaceId)}/departments/${departmentId}/access-profile`,
+      data,
+    );
+    return res.data as DepartmentAccessProfile;
   },
 
   getOrgChart: async (workspaceId: string): Promise<DepartmentNode[]> => {

@@ -30,7 +30,7 @@ import {
   AppCategory,
   AppAccessConfig,
 } from "@/config/appDefinitions";
-import { MemberEffectiveAccess, AppAccessTemplate } from "@/lib/api";
+import { MemberEffectiveAccess } from "@/lib/api";
 
 interface MemberAppAccessModalProps {
   open: boolean;
@@ -94,7 +94,7 @@ export function MemberAppAccessModal({
     getMemberAccess,
     updateMemberAccess,
     applyTemplateToMember,
-    resetMemberToDefaults,
+    resetMemberToInherited,
     isUpdating,
     isApplyingTemplate,
     isResetting,
@@ -188,7 +188,7 @@ export function MemberAppAccessModal({
 
   const handleReset = useCallback(async () => {
     try {
-      await resetMemberToDefaults(developerId);
+      await resetMemberToInherited(developerId);
       // Reload access
       const access = await getMemberAccess(developerId);
       setEffectiveAccess(access);
@@ -202,12 +202,12 @@ export function MemberAppAccessModal({
       setAccessConfig(config);
       setSelectedTemplateId(null);
       setHasChanges(false);
-      toast.success("Access reset to defaults");
+      toast.success("Overrides cleared — inheriting again");
     } catch (error) {
       console.error("Failed to reset:", error);
       toast.error("Failed to reset access");
     }
-  }, [resetMemberToDefaults, developerId, getMemberAccess]);
+  }, [resetMemberToInherited, developerId, getMemberAccess]);
 
   const handleSave = useCallback(async () => {
     try {
@@ -243,7 +243,8 @@ export function MemberAppAccessModal({
             Edit App Access{developerName ? ` - ${developerName}` : ""}
           </DialogTitle>
           <DialogDescription>
-            Configure which apps and modules this member can access.
+            Only your changes are stored: anything you leave as-is keeps following
+            this person&apos;s department profile.
           </DialogDescription>
         </DialogHeader>
 
@@ -280,16 +281,54 @@ export function MemberAppAccessModal({
                   size="sm"
                   onClick={handleReset}
                   disabled={isSaving}
+                  title="Drop every override so this person inherits from their department again"
                 >
                   <RefreshCw className="h-4 w-4 mr-2" />
-                  Reset to Defaults
+                  Reset to inherited
                 </Button>
               </div>
 
-              {effectiveAccess?.has_custom_overrides && (
-                <div className="flex items-center gap-2 mt-2 text-sm text-amber-600">
-                  <AlertCircle className="h-4 w-4" />
-                  Custom overrides applied
+              {/* What this person inherits, and from where. Saving stores only the
+                  differences against this baseline, so an admin needs to know what
+                  the baseline is before they start ticking boxes. */}
+              {effectiveAccess && (
+                <div className="mt-2 space-y-1 text-sm">
+                  {effectiveAccess.baseline === "department" ? (
+                    <p className="text-muted-foreground">
+                      Inherits from{" "}
+                      <span className="text-foreground">
+                        {effectiveAccess.departments
+                          .filter((d) => d.has_profile)
+                          .map((d) => d.name)
+                          .join(", ") || "their departments"}
+                      </span>
+                      . Anything you leave alone keeps following it.
+                    </p>
+                  ) : effectiveAccess.baseline === "member_template" ? (
+                    <p className="text-muted-foreground">
+                      Pinned to the{" "}
+                      <span className="text-foreground">
+                        {effectiveAccess.applied_template_name || "selected"}
+                      </span>{" "}
+                      profile, which replaces their department&apos;s.
+                    </p>
+                  ) : (
+                    <p className="flex items-start gap-2 text-amber-600 dark:text-amber-400">
+                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                      <span>
+                        No department profile applies, so this falls back to their
+                        workspace role. Give their department a profile in the
+                        Departments tab to decide it deliberately.
+                      </span>
+                    </p>
+                  )}
+
+                  {effectiveAccess.has_custom_overrides && (
+                    <p className="flex items-center gap-2 text-muted-foreground">
+                      <AlertCircle className="h-4 w-4" />
+                      Has overrides of their own on top.
+                    </p>
+                  )}
                 </div>
               )}
             </div>

@@ -434,6 +434,25 @@ class WorkspacePendingInvite(Base):
     )
     role_in_department: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
+    # Optional *team* placement, which is a different question from the
+    # department above and has different consequences. A department decides what
+    # someone can see; a team decides who chases them: standup prompts, blocker
+    # escalation, compliance reminders, review digests, sprint boards and leave
+    # approvals all resolve through team membership. A joiner placed in a
+    # department but no team lands with the right navigation and is then silently
+    # left out of all of that — nothing errors, they simply never get asked for a
+    # standup and their blockers have no lead to escalate to.
+    #
+    # Nullable, like the department: naming a team at invite time is a
+    # convenience, not a requirement.
+    team_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("teams.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    role_in_team: Mapped[str | None] = mapped_column(String(32), nullable=True)
+
     # Status
     status: Mapped[str] = mapped_column(
         String(50), nullable=False, default="pending"

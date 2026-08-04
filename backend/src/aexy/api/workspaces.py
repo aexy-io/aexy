@@ -23,6 +23,9 @@ from aexy.schemas.workspace import (
     WorkspacePendingInviteResponse,
     WorkspaceInviteResult,
     WorkspaceAppSettingsUpdate,
+    OnboardingUseCasesApply,
+    OnboardingUseCasesResult,
+    OnboardingSeededDepartment,
     WorkspaceBillingStatus,
     GitHubOrgLink,
     InviteInfoResponse,
@@ -586,6 +589,49 @@ async def invite_member(
                 detail="Department not found in this workspace",
             )
 
+    # Same for the optional team, validated up front so a mistyped or
+    # since-deleted team surfaces to the sender rather than silently doing nothing
+    # on accept days later.
+    if data.team_id:
+        from aexy.models.team import Team
+
+        team = (
+            await db.execute(
+                select(Team).where(
+                    Team.id == data.team_id,
+                    Team.workspace_id == workspace_id,
+                    Team.is_active == True,  # noqa: E712
+                )
+            )
+        ).scalar_one_or_none()
+        if team is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Team not found in this workspace",
+            )
+
+    # An access template pinned to this individual, validated here for the same
+    # reason as the department: a bad id should fail in front of the person
+    # choosing it. Stored as the member's baseline on accept.
+    invite_app_permissions: dict | None = None
+    if data.access_template_id:
+        from aexy.services.app_access_service import (
+            AppAccessService,
+            member_access_pinned_to_template,
+        )
+
+        template = await AppAccessService(db).get_template(data.access_template_id)
+        if template is None or (
+            template.workspace_id and str(template.workspace_id) != str(workspace_id)
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Access profile not found in this workspace",
+            )
+        invite_app_permissions = member_access_pinned_to_template(
+            str(template.id), actor_id=str(current_user.id)
+        )
+
     # Find developer by email
     developer = await dev_service.get_by_email(data.email)
 
@@ -612,8 +658,11 @@ async def invite_member(
                 email=data.email,
                 role=data.role,
                 invited_by_id=str(current_user.id),
+                app_permissions=invite_app_permissions,
                 department_id=data.department_id,
                 role_in_department=data.role_in_department,
+                team_id=data.team_id,
+                role_in_team=data.role_in_team,
             )
             await db.commit()
             await db.refresh(pending_invite)
@@ -686,8 +735,11 @@ The Aexy Team
                 email=data.email,
                 role=data.role,
                 invited_by_id=str(current_user.id),
+                app_permissions=invite_app_permissions,
                 department_id=data.department_id,
                 role_in_department=data.role_in_department,
+                team_id=data.team_id,
+                role_in_team=data.role_in_team,
             )
             await db.commit()
             await db.refresh(pending_invite)
@@ -1429,6 +1481,72 @@ async def update_workspace_app_settings(
 
     await db.commit()
     return workspace.settings.get("app_settings", {})
+
+
+@router.post(
+    "/{workspace_id}/onboarding/use-cases",
+    response_model=OnboardingUseCasesResult,
+)
+async def apply_onboarding_use_cases(
+    workspace_id: str,
+    data: OnboardingUseCasesApply,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Turn onboarding's use-case picks into workspace configuration.
+
+    Switches off the apps nobody asked for, and seeds a department per use case
+    carrying the access profile and sidebar view its people should have.
+
+    This replaces the previous behaviour, where the picks were written to the
+    founder's own member row and nowhere else — so the workspace itself never
+    learned what it was for, and everyone invited later fell back to their legacy
+    role's bundle regardless of the job they were hired to do.
+
+    Owner-only, matching the app-settings endpoint it wraps, and idempotent so a
+    re-run of onboarding is safe.
+    """
+    from aexy.services.onboarding_use_cases import (
+        workspace_app_settings_for_use_cases,
+    )
+    from aexy.services.organization_service import OrganizationService
+
+    service = WorkspaceService(db)
+
+    if not await service.is_owner(workspace_id, str(current_user.id)):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the workspace owner can apply onboarding choices",
+        )
+
+    app_settings = workspace_app_settings_for_use_cases(data.use_cases)
+    workspace = await service.update_workspace_app_settings(workspace_id, app_settings)
+    if not workspace:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Workspace not found",
+        )
+
+    departments = await OrganizationService(db).seed_departments_for_use_cases(
+        workspace_id, data.use_cases
+    )
+
+    await db.commit()
+
+    return OnboardingUseCasesResult(
+        enabled_app_ids=sorted(k for k, v in app_settings.items() if v),
+        disabled_app_ids=sorted(k for k, v in app_settings.items() if not v),
+        departments=[
+            OnboardingSeededDepartment(
+                id=d.id,
+                name=d.name,
+                function_key=d.function_key,
+                access_profile_slug=d.access_profile_slug,
+                default_persona=d.default_persona,
+            )
+            for d in departments
+        ],
+    )
 
 
 @router.patch("/{workspace_id}/members/{developer_id}/apps", response_model=WorkspaceMemberResponse)

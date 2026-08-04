@@ -52,6 +52,48 @@ class DepartmentReparent(BaseModel):
     parent_id: str | None = None
 
 
+class DepartmentAccessProfileUpdate(BaseModel):
+    """Set (or clear) what people in this department can see.
+
+    Either name a system bundle via ``profile_slug`` and let the server expand
+    it, or pass an explicit ``app_config``. Passing both uses ``app_config`` and
+    keeps the slug as a label, which is how "Business, tweaked" is expressed.
+
+    Clearing it — ``profile_slug: null`` with no ``app_config`` — puts the
+    department's members back on their role bundle, and switches API enforcement
+    for them back off. That is deliberate: a department nobody has configured
+    should not be silently enforcing a default.
+    """
+
+    profile_slug: str | None = Field(
+        None,
+        max_length=100,
+        description="System bundle to seed from: engineering | people | business | full_access",
+    )
+    app_config: dict | None = Field(
+        None,
+        description="Explicit profile: {app_id: {enabled: bool, modules: {module_id: bool}}}",
+    )
+    default_persona: str | None = Field(
+        None,
+        max_length=32,
+        description="Default sidebar view for people whose primary department this is",
+    )
+
+
+class DepartmentAccessProfileResponse(BaseModel):
+    """A department's access profile, and how many people it decides for."""
+
+    department_id: str
+    department_name: str
+    access_profile_slug: str | None = None
+    app_config: dict = Field(default_factory=dict)
+    default_persona: str | None = None
+    # Apps the profile grants, for a one-line summary in the UI.
+    enabled_app_ids: list[str] = Field(default_factory=list)
+    member_count: int = 0
+
+
 class MemberSummary(BaseModel):
     """A person on a department, flattened for display."""
     model_config = ConfigDict(from_attributes=True)
@@ -95,6 +137,12 @@ class DepartmentResponse(BaseModel):
     timezone: str | None = None
     is_active: bool = True
     member_count: int = 0
+    # Access profile. `access_profile_slug` is the label ("business"); the full
+    # app_config is only returned by the access-profile endpoints, since the
+    # department list is rendered in places that have no use for it.
+    access_profile_slug: str | None = None
+    has_access_profile: bool = False
+    default_persona: str | None = None
     created_at: datetime
     updated_at: datetime
 

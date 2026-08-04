@@ -54,10 +54,11 @@ async def ensure_app_enabled(
 ) -> None:
     """Raise 403 when `app_id` is disabled workspace-wide.
 
-    Enforces the workspace-level module toggle only (not per-role/per-member
-    access) — that matches the reported bug ("disabling a module for the
-    workspace doesn't block access") and avoids over-restricting users whose
-    role bundle happens not to enable an app.
+    The workspace-level module toggle only — it says nothing about *who* is
+    asking, so it is the right check where there is no authenticated caller to
+    ask about (the websocket-scoped guards below) and the wrong one everywhere
+    else. Pair it with ``ensure_member_app_access``, which
+    ``require_app_access`` does for you.
     """
     _validate_app_id(app_id)
     if not await AppAccessService(db).check_workspace_app_enabled(
@@ -69,8 +70,45 @@ async def ensure_app_enabled(
         )
 
 
+async def ensure_member_app_access(
+    db: AsyncSession, workspace_id: str, developer_id: str, app_id: str
+) -> None:
+    """Raise 403 when this member may not reach `app_id`.
+
+    Per-member access used to be enforced nowhere: the sidebar hid an app the
+    person's profile didn't grant, and the API answered for it anyway. So access
+    control was a navigation filter, and anyone who kept a URL, used the API
+    directly, or followed a link from a colleague walked straight in.
+
+    Reads ``can_access`` rather than ``enabled``, so admins and owners keep reach
+    over everything the workspace has enabled even when their own profile keeps
+    it out of their sidebar — they have to be able to administer it.
+
+    Resolution is served from a short-lived cache; see AppAccessService.
+    """
+    _validate_app_id(app_id)
+    if not await AppAccessService(db).check_app_access(
+        str(workspace_id), str(developer_id), app_id
+    ):
+        # Distinct from the workspace-disabled message on purpose: one means
+        # "nobody here uses this", the other "ask an admin for it", and there is
+        # a request flow behind the second.
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                f"You do not have access to the {app_id} module. "
+                "Request access from a workspace admin."
+            ),
+        )
+
+
 def require_app_access(app_id: str):
-    """Return a dependency that 403s when `app_id` is disabled for the workspace.
+    """Return a dependency that 403s unless the caller may reach `app_id`.
+
+    Checks both layers, in the order that produces the more useful error:
+
+    1. the workspace-wide module toggle — "this workspace does not use CRM";
+    2. the caller's own effective access — "you do not have CRM".
 
     Requires the caller to be authenticated (via get_current_developer) and
     `{workspace_id}` in the route path, e.g.:
@@ -87,6 +125,9 @@ def require_app_access(app_id: str):
         db: AsyncSession = Depends(get_db),
     ) -> None:
         await ensure_app_enabled(db, workspace_id, app_id)
+        await ensure_member_app_access(
+            db, workspace_id, str(current_developer.id), app_id
+        )
 
     return _guard
 
@@ -95,11 +136,11 @@ def require_workspace_member(min_role: str = "member"):
     """Return a dependency that 403s unless the caller is an active member of
     ``{workspace_id}`` with at least ``min_role``.
 
-    ``require_app_access`` deliberately checks only the workspace-wide module
-    toggle — it says nothing about *who* is asking, and defaults to enabled for
-    apps with no explicit setting. So a router guarded by app-access alone is
-    reachable by any authenticated developer for any workspace id. Mount this
-    alongside it to close that hole for whole routers at once:
+    ``require_app_access`` now also checks the caller's own access, and a
+    non-member resolves to no access at all — but it still says nothing about
+    *role*, and an app with no explicit workspace setting defaults to enabled.
+    Mount this alongside it when a router needs a role floor, or wants the
+    clearer "not in this workspace" error rather than "no access to this module":
 
         api_router.include_router(
             service_desk_router,
@@ -222,6 +263,11 @@ def require_app_access_sprint_scoped(app_id: str):
     dependency would reject every browser websocket even when the app is
     enabled. Endpoint-level auth still applies. Unknown/missing ids are left
     for the endpoint to 404.
+
+    Because there is no authenticated caller here, this checks the workspace
+    toggle only — it cannot ask "may *this person* reach it". Per-member
+    enforcement for these routes belongs at the endpoint, after the websocket
+    has authenticated.
     """
     _validate_app_id(app_id)
 
@@ -251,7 +297,8 @@ def require_app_access_document_scoped(app_id: str):
     """Like `require_app_access`, for routers whose paths carry `{document_id}`
     (collaboration): resolves the document's workspace server-side.
 
-    Auth-free for the same websocket reason as the sprint-scoped variant.
+    Auth-free for the same websocket reason as the sprint-scoped variant, and
+    workspace-toggle-only for the same consequence.
     """
     _validate_app_id(app_id)
 

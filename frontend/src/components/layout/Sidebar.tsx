@@ -27,21 +27,22 @@ import {
     Clock,
     Send,
 } from "lucide-react";
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { Button } from "../ui/button";
 import { useNotionDocs } from "@/hooks/useNotionDocs";
 import { useDocumentSpaces } from "@/hooks/useDocumentSpaces";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useSidebarLayout } from "@/hooks/useSidebarLayout";
+import { useSidebarStore } from "@/stores/sidebarStore";
 import { useAppAccess } from "@/hooks/useAppAccess";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
-import { useSidebarPersona } from "@/hooks/useSidebarPersona";
+import { useSidebarPersona, MAX_FAVORITES } from "@/hooks/useSidebarPersona";
 import { LocaleSelector } from "@/components/LocaleSelector";
 import { SidebarItemConfig, SidebarSectionConfig, SidebarLayoutConfig } from "@/config/sidebarLayouts";
 import { appAccessApi } from "@/lib/api";
 import { useAccessRequests } from "@/hooks/useAccessRequests";
-import { getAppIdFromPath, APP_CATALOG, CATEGORY_LABELS, PERSONA_LABELS, AppCategory, AppDefinition } from "@/config/appDefinitions";
+import { getAppIdFromPath, getModuleIdFromPath, APP_CATALOG, CATEGORY_LABELS, PERSONA_LABELS, AppCategory, AppDefinition } from "@/config/appDefinitions";
 import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 
 interface SidebarProps {
@@ -97,6 +98,10 @@ interface DiscoverItem {
     availableInPersonas?: string[];
 }
 
+/** Placeholder row widths for the loading skeleton — varied so it reads as
+ *  navigation rather than as a progress bar. */
+const SKELETON_ROWS = ["60%", "45%", "70%", "40%", "55%", "65%", "38%", "50%"];
+
 /** Check if personas array matches the given persona */
 function matchesPersona(personas: string[] | undefined, currentPersona: string): boolean {
     if (!personas || personas.length === 0) return true;
@@ -123,7 +128,10 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
     const documentId = params?.documentId as string | undefined;
     const isDocsPage = pathname.startsWith("/docs");
 
-    const [isCollapsed, setIsCollapsed] = useState(false);
+    // Collapsed is persisted (see sidebarStore); hidden is not, because it is set
+    // automatically on docs and editor pages.
+    const isCollapsed = useSidebarStore(state => state.isCollapsed);
+    const toggleCollapsed = useSidebarStore(state => state.toggleCollapsed);
     const [isHidden, setIsHidden] = useState(false);
     const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({
         "/docs": false,
@@ -135,7 +143,16 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
     const { layoutConfig } = useSidebarLayout();
 
     // Persona filtering and favorites
-    const { persona, filterByPersona, favoriteItems, pinnedItems, togglePin, dismissRecent } = useSidebarPersona();
+    const {
+        persona,
+        isPersonaDerived,
+        isLoading: personaLoading,
+        filterByPersona,
+        favoriteItems,
+        pinnedItems,
+        togglePin,
+        dismissRecent,
+    } = useSidebarPersona();
 
     // Apply persona filter to layout
     const personaConfig = useMemo(
@@ -171,38 +188,81 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
     // App access control
     const { user: developer } = useAuth();
     const developerId = developer?.id || null;
-    const { hasAppAccess, isLoading: accessLoading, isAdmin, effectiveAccess, refetch: refetchAccess } = useAppAccess(workspaceId, developerId);
+    const {
+        hasAppAccess,
+        hasModuleAccess,
+        error: accessError,
+        isAdmin,
+        effectiveAccess,
+        refetch: refetchAccess,
+    } = useAppAccess(workspaceId, developerId);
 
     // Notifications for sidebar badge
     const { unreadCount } = useNotifications(developerId);
+
+    /** There is no access answer to be had: no workspace or developer to resolve
+     *  against (a fresh signup mid-onboarding), or the request failed. Filtering
+     *  by "no access" here would empty the sidebar over a question we never got
+     *  to ask, so nothing is filtered in this state. */
+    const accessUnavailable = !workspaceId || !developerId || !!accessError;
+
+    /** Navigation can't be drawn until we know what this person may see and which
+     *  view they are in.
+     *
+     *  Keyed on the *absence of data* rather than on `isLoading`, because a query
+     *  that hasn't started yet reports `isLoading: false` — so waiting on the flag
+     *  alone would render a fully filtered (i.e. empty) sidebar in the gap between
+     *  mount and the workspace arriving, replacing the old paint-then-vanish
+     *  flicker with a paint-nothing-then-appear one. */
+    const navIsResolving =
+        !accessUnavailable && (!effectiveAccess || personaLoading);
 
     // Access requests for non-admin discover section
     const { getRequestForApp, createRequest, isCreatingRequest } = useAccessRequests(workspaceId);
     const [requestingAppId, setRequestingAppId] = useState<string | null>(null);
 
-    // Filter a sidebar item based on app access
+    /** Whether an item belongs in this person's navigation.
+     *
+     *  Checks module access as well as app access. Only app access was checked
+     *  before, so every module toggle in the access templates, the bundles and
+     *  the member editor was decorative: turn CRM's Inbox off and the Inbox link
+     *  stayed in the sidebar and opened perfectly well. */
     const canAccessItem = (item: SidebarItemConfig): boolean => {
-        // If access data is still loading, show all items
-        if (accessLoading) return true;
-
-        // Check if the route maps to an app that requires access
+        if (accessUnavailable) return true; // nothing to filter by — see above
         const appId = getAppIdFromPath(item.href);
         if (!appId) return true; // Routes not in app catalog are accessible
+        if (!hasAppAccess(appId)) return false;
 
-        return hasAppAccess(appId);
+        const moduleId = getModuleIdFromPath(item.href);
+        if (!moduleId) return true;
+        return hasModuleAccess(appId, moduleId);
     };
 
-    // Filter sidebar items recursively
+    /** Filter items recursively, dropping parents left with nothing under them.
+     *
+     *  A parent whose children have all been filtered out used to stay: it kept
+     *  its own link and simply lost its expander, so "Uptime" remained in the
+     *  sidebar as a dead heading for someone with access to none of its pages. */
     const filterItems = (items: SidebarItemConfig[]): SidebarItemConfig[] => {
-        return items
-            .filter(item => canAccessItem(item))
-            .map(item => ({
-                ...item,
-                items: item.items ? filterItems(item.items) : undefined,
-            }));
+        const result: SidebarItemConfig[] = [];
+        for (const item of items) {
+            if (!canAccessItem(item)) continue;
+            if (!item.items?.length) {
+                result.push(item);
+                continue;
+            }
+            const children = filterItems(item.items);
+            // A parent that had children and now has none is only worth keeping
+            // if its own route is somewhere distinct to go.
+            if (children.length === 0 && item.items.some(sub => sub.href === item.href)) {
+                continue;
+            }
+            result.push({ ...item, items: children.length ? children : undefined });
+        }
+        return result;
     };
 
-    const toggleSidebar = () => setIsCollapsed(!isCollapsed);
+    const toggleSidebar = () => toggleCollapsed();
     const toggleHidden = () => setIsHidden(!isHidden);
 
     const toggleExpand = (key: string, e: React.MouseEvent) => {
@@ -446,7 +506,7 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
     // Collect discover items: both app-access-gated and persona-hidden items
     // Uses FULL layout (not persona-filtered) to surface everything not in main nav
     const discoverItems = useMemo((): DiscoverItem[] => {
-        if (accessLoading) return [];
+        if (navIsResolving || accessUnavailable) return [];
 
         const seen = new Set<string>();
         const items: DiscoverItem[] = [];
@@ -475,21 +535,40 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
         }
 
         return items;
-    }, [accessLoading, layoutConfig, persona, hasAppAccess]);
+    }, [navIsResolving, accessUnavailable, layoutConfig, persona, hasAppAccess]);
 
-    // Group discover items by category for rendering
-    const groupedDiscover = useMemo(() => {
+    /** Split by *reason*, then group by category within each.
+     *
+     *  These used to share one list and one count, which made the number
+     *  meaningless: "Discover more (18)" mixed apps you must ask an admin for
+     *  with pages that are one click away in another view. They are different
+     *  problems with different resolutions, so they are now different sections. */
+    const groupByCategory = useCallback((items: DiscoverItem[]) => {
         const groups = new Map<AppCategory | "other", DiscoverItem[]>();
-        for (const di of discoverItems) {
+        for (const di of items) {
             const existing = groups.get(di.category) || [];
             existing.push(di);
             groups.set(di.category, existing);
         }
         return groups;
-    }, [discoverItems]);
+    }, []);
 
-    const isDiscoverExpanded = expandedItems["__discover"];
-    const hasNoAccessItems = discoverItems.some(d => d.reason === "no_access");
+    const noAccessItems = useMemo(
+        () => discoverItems.filter(d => d.reason === "no_access"),
+        [discoverItems]
+    );
+    const personaHiddenItems = useMemo(
+        () => discoverItems.filter(d => d.reason === "persona_hidden"),
+        [discoverItems]
+    );
+    const groupedNoAccess = useMemo(
+        () => groupByCategory(noAccessItems),
+        [groupByCategory, noAccessItems]
+    );
+    const groupedPersonaHidden = useMemo(
+        () => groupByCategory(personaHiddenItems),
+        [groupByCategory, personaHiddenItems]
+    );
 
     // Admin quick-enable: toggle an app on for the current user
     const handleToggleApp = async (appId: string) => {
@@ -519,8 +598,11 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
     const isFavoritesExpanded = expandedItems["__favorites"];
     const renderFavoritesSection = () => {
         if (isCollapsed) return null;
-        // Only show items that exist in the persona-filtered layout, capped at 5
-        const visibleFavorites = favoriteItems.filter(({ path }) => itemLookup.has(path)).slice(0, 5);
+        // Cap applied after persona filtering, so a filtered-out item doesn't
+        // silently consume one of the slots.
+        const visibleFavorites = favoriteItems
+            .filter(({ path }) => itemLookup.has(path))
+            .slice(0, MAX_FAVORITES);
         if (visibleFavorites.length === 0) return null;
 
         return (
@@ -648,27 +730,40 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
     // Render categorized "Discover more" section with persona-hidden + no-access items
     const categoryOrder: (AppCategory | "other")[] = ["engineering", "people", "business", "productivity", "other"];
 
-    const renderDiscoverSection = () => {
-        if (discoverItems.length === 0 || isCollapsed) return null;
+    /** One collapsible group of discover items.
+     *
+     *  `key` distinguishes the two sections so each remembers its own expanded
+     *  state, and `icon`/`title` name the actual problem: something you can ask
+     *  for, versus something that is simply in another view. */
+    const renderDiscoverGroup = (
+        key: string,
+        title: string,
+        Icon: typeof Compass,
+        items: DiscoverItem[],
+        grouped: Map<AppCategory | "other", DiscoverItem[]>,
+        showSettingsLink: boolean,
+    ) => {
+        if (items.length === 0 || isCollapsed) return null;
+        const isExpanded = expandedItems[key];
 
         return (
             <div className="mb-2 mt-1 border-t border-border/50 pt-2">
                 <button
-                    onClick={(e) => toggleExpand("__discover", e)}
+                    onClick={(e) => toggleExpand(key, e)}
                     className="w-full flex items-center gap-x-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground/70 hover:text-muted-foreground hover:bg-accent/50 transition-all"
                 >
-                    <Compass className="h-4 w-4 shrink-0" />
-                    <span className="flex-1 text-left truncate">Discover more</span>
-                    <span className="text-[10px] bg-accent/80 px-1.5 py-0.5 rounded-full">{discoverItems.length}</span>
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="flex-1 text-left truncate">{title}</span>
+                    <span className="text-[10px] bg-accent/80 px-1.5 py-0.5 rounded-full">{items.length}</span>
                     <motion.div
-                        animate={{ rotate: isDiscoverExpanded ? 90 : 0 }}
+                        animate={{ rotate: isExpanded ? 90 : 0 }}
                         transition={{ duration: 0.2 }}
                     >
                         <ChevronRight className="h-3 w-3" />
                     </motion.div>
                 </button>
                 <AnimatePresence>
-                    {isDiscoverExpanded && (
+                    {isExpanded && (
                         <motion.div
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: "auto", opacity: 1 }}
@@ -678,7 +773,7 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
                         >
                             <div className="ml-4 mt-1 border-l border-border/30 pl-2 space-y-3">
                                 {categoryOrder.map(cat => {
-                                    const items = groupedDiscover.get(cat);
+                                    const items = grouped.get(cat);
                                     if (!items || items.length === 0) return null;
 
                                     return (
@@ -779,12 +874,12 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
                                 })}
 
                                 {/* Settings link for no_access items (admin only) */}
-                                {hasNoAccessItems && isAdmin && (
+                                {showSettingsLink && isAdmin && (
                                     <Link
                                         href="/settings/access"
                                         className="flex items-center gap-x-2 rounded-md px-2 py-1.5 text-xs text-primary/70 hover:text-primary transition-all font-medium"
                                     >
-                                        Enable in Settings →
+                                        Manage access in Settings →
                                     </Link>
                                 )}
                             </div>
@@ -794,6 +889,27 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
             </div>
         );
     };
+
+    const renderDiscoverSection = () => (
+        <>
+            {renderDiscoverGroup(
+                "__discover_no_access",
+                "Available to request",
+                Lock,
+                noAccessItems,
+                groupedNoAccess,
+                true,
+            )}
+            {renderDiscoverGroup(
+                "__discover_persona",
+                `Hidden in ${PERSONA_LABELS[persona] || persona} view`,
+                Compass,
+                personaHiddenItems,
+                groupedPersonaHidden,
+                false,
+            )}
+        </>
+    );
 
     // Calculate the sidebar width based on state
     const sidebarWidth = isHidden ? 0 : isCollapsed ? 64 : 256;
@@ -877,14 +993,41 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
 
                     <div className="flex-1 overflow-y-auto py-4">
                         <nav className="px-2">
-                            {/* Favorites section - pinned + frequently used */}
-                            {renderFavoritesSection()}
+                            {navIsResolving ? (
+                                /* A skeleton, not an optimistic guess. Access used
+                                   to default to "everything" while it loaded, so
+                                   the full navigation painted and then items
+                                   disappeared one group at a time as the real
+                                   answer arrived — which is what made the sidebar
+                                   feel unreliable. */
+                                <div className="space-y-2" aria-busy="true" aria-label="Loading navigation">
+                                    {SKELETON_ROWS.map((width, index) => (
+                                        <div
+                                            key={index}
+                                            className="flex items-center gap-x-3 px-3 py-2"
+                                        >
+                                            <div className="h-4 w-4 shrink-0 rounded bg-muted animate-pulse" />
+                                            {!isCollapsed && (
+                                                <div
+                                                    className="h-3 rounded bg-muted animate-pulse"
+                                                    style={{ width }}
+                                                />
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Favorites section - pinned + frequently used */}
+                                    {renderFavoritesSection()}
 
-                            {/* Render sections based on persona-filtered layout config */}
-                            {personaConfig.sections.map(section => renderSection(section))}
+                                    {/* Render sections based on persona-filtered layout config */}
+                                    {personaConfig.sections.map(section => renderSection(section))}
 
-                            {/* Discover more tools - shows filtered-out modules */}
-                            {renderDiscoverSection()}
+                                    {/* Discover more tools - shows filtered-out modules */}
+                                    {renderDiscoverSection()}
+                                </>
+                            )}
                         </nav>
                     </div>
 
@@ -897,7 +1040,24 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
                                 <div className="flex-1 overflow-hidden">
                                     <p className="truncate text-sm font-medium">{user?.name || "User"}</p>
                                     <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
-                                    <p className="text-xs text-muted-foreground capitalize">{persona} view</p>
+                                    {/* Link, not a label: the view now comes from
+                                        somewhere (a department, or your own
+                                        choice), so it needs to be findable and
+                                        changeable rather than just asserted. */}
+                                    <Link
+                                        href="/settings/appearance"
+                                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                        title={
+                                            isPersonaDerived
+                                                ? "This view comes from your department. Click to choose your own."
+                                                : "Click to change your sidebar view"
+                                        }
+                                    >
+                                        {PERSONA_LABELS[persona] || persona} view
+                                        {isPersonaDerived && (
+                                            <span className="text-muted-foreground/60"> · from department</span>
+                                        )}
+                                    </Link>
                                 </div>
                             )}
                             <Link

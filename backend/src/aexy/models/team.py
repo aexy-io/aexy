@@ -1,6 +1,14 @@
-"""Team and team membership models."""
+"""Team and team membership models.
+
+A *team* is a delivery unit — who gets asked for a standup, who a blocker
+escalates to, whose sprint board a task lands on, who approves a leave request.
+It is deliberately not a *department* (``models/organization.py``), which is org
+structure and decides what a person can see. One person is on many teams and in
+one primary department, and access resolution reads only the latter.
+"""
 
 from datetime import datetime
+from enum import Enum
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -13,6 +21,33 @@ from aexy.core.database import Base
 if TYPE_CHECKING:
     from aexy.models.developer import Developer
     from aexy.models.workspace import Workspace
+
+
+class TeamMemberRole(str, Enum):
+    """A person's role within a team.
+
+    Declared here because the vocabulary was previously only a trailing comment
+    reading ``"lead" | "member"``, which three separate places then disagreed
+    with: ``project_service`` wrote ``"admin"``, ``tracking_tasks`` escalated to
+    ``lead``/``manager``/``admin``, and the Teams settings page had labels for
+    only two of them — so a project creator rendered as the raw i18n key
+    ``settingsTeams.roles.admin``.
+
+    ``LEAD`` is the one with teeth: ``review_service`` and
+    ``leave_request_service`` both look for exactly ``role == "lead"`` when they
+    need someone accountable, so a senior person recorded under any other value
+    is invisible to both.
+    """
+
+    LEAD = "lead"
+    MANAGER = "manager"
+    MEMBER = "member"
+
+
+#: Roles that may be *written*. Reads must stay tolerant of anything already in
+#: the column — "admin" rows exist in databases created before this was pinned
+#: down, and `tracking_tasks` still honours them for escalation.
+TEAM_MEMBER_ROLES: frozenset[str] = frozenset(role.value for role in TeamMemberRole)
 
 
 class Team(Base):
@@ -114,10 +149,11 @@ class TeamMember(Base):
         index=True,
     )
 
-    # Role within team
+    # Role within team. See TEAM_MEMBER_ROLES for the vocabulary and why it is
+    # declared in one place rather than in a comment per file.
     role: Mapped[str] = mapped_column(
-        String(50), nullable=False, default="member"
-    )  # "lead" | "member"
+        String(50), nullable=False, default=TeamMemberRole.MEMBER.value
+    )
 
     # Source of membership
     source: Mapped[str] = mapped_column(
