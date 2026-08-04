@@ -10,7 +10,12 @@ import { HelpTooltip } from "@/components/ui/tooltip";
 // — a divergence here surfaces as a runtime crash inside
 // LLMConfigDisplay because `PROVIDERS[provider]` is undefined when
 // the FE doesn't recognize a value the BE accepted.
-type LLMProvider =
+// Exported so callers hold the same union instead of re-declaring their own.
+// Two of them had gone stale at four providers while this list grew to six, so
+// handing the selector's value back to their own setState did not typecheck —
+// and a user picking DeepSeek or LM Studio was writing a value the caller's
+// state did not admit.
+export type LLMProvider =
   | "claude"
   | "gemini"
   | "ollama"

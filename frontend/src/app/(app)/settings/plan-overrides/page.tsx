@@ -14,7 +14,7 @@ import {
   Percent,
   Save,
 } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, type EffectivePlan } from "@/lib/api";
 import { useTranslations } from "next-intl";
 import {
   SettingsPage,
@@ -41,6 +41,9 @@ interface PlanOverride {
 }
 
 // API helpers
+// What the override form holds: a field value, or null to clear the override.
+type PlanOverrideDraft = Record<string, string | number | null>;
+
 const adminApi = {
   listOverrides: async (): Promise<PlanOverride[]> => {
     const response = await api.get("/platform-admin/plan-overrides");
@@ -54,7 +57,7 @@ const adminApi = {
   },
   createOrUpdateOverride: async (
     workspaceId: string,
-    data: Record<string, any>
+    data: PlanOverrideDraft
   ): Promise<PlanOverride> => {
     const response = await api.post(
       `/platform-admin/workspaces/${workspaceId}/plan-override`,
@@ -67,7 +70,7 @@ const adminApi = {
       `/platform-admin/workspaces/${workspaceId}/plan-override`
     );
   },
-  getEffectivePlan: async (workspaceId: string): Promise<any> => {
+  getEffectivePlan: async (workspaceId: string): Promise<EffectivePlan> => {
     const response = await api.get(
       `/platform-admin/workspaces/${workspaceId}/effective-plan`
     );
@@ -80,7 +83,7 @@ export default function PlanOverridesPage() {
   const queryClient = useQueryClient();
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("");
   const [editingOverride, setEditingOverride] =
-    useState<Record<string, any> | null>(null);
+    useState<PlanOverrideDraft | null>(null);
   const [previewWorkspaceId, setPreviewWorkspaceId] = useState<string | null>(
     null
   );
@@ -107,7 +110,7 @@ export default function PlanOverridesPage() {
       data,
     }: {
       workspaceId: string;
-      data: Record<string, any>;
+      data: PlanOverrideDraft;
     }) => adminApi.createOrUpdateOverride(workspaceId, data),
     onSuccess: () => {
       toast.success("Plan override saved");
@@ -138,7 +141,7 @@ export default function PlanOverridesPage() {
   const handleSave = () => {
     if (!selectedWorkspaceId || !editingOverride) return;
     // Filter out null/empty values
-    const cleaned: Record<string, any> = {};
+    const cleaned: PlanOverrideDraft = {};
     for (const [key, value] of Object.entries(editingOverride)) {
       if (value !== null && value !== "" && value !== undefined) {
         cleaned[key] = value;

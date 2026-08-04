@@ -11,7 +11,10 @@ interface SpaceFolderWithDataProps {
   defaultExpanded?: boolean;
   onToggleFavorite: (documentId: string) => void;
   onDelete: (documentId: string) => void;
-  onDuplicate: (documentId: string) => void;
+  // Optional: NotionSidebar deliberately passes no duplicate handler until
+  // duplication is implemented, and DocumentItem hides the Duplicate row when
+  // it is absent. Requiring it here made that decision a type error.
+  onDuplicate?: (documentId: string) => void;
   onAddDocument: (spaceId: string, parentId?: string) => void;
   onManageSpace?: (spaceId: string) => void;
 }

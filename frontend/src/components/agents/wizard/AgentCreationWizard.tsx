@@ -1,5 +1,7 @@
 "use client";
 
+import type { LLMProvider } from "@/components/agents/shared";
+
 import { getApiErrorMessage } from "@/lib/utils";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -35,7 +37,7 @@ interface WizardDraft {
   name: string;
   description: string;
   mentionHandle: string;
-  llmProvider: "claude" | "gemini" | "ollama" | "openrouter";
+  llmProvider: LLMProvider;
   llmModel: string;
   temperature: number;
   maxTokens: number;
@@ -94,7 +96,9 @@ export function AgentCreationWizard({
   // UX-EDT-024: pull server-side defaults instead of hardcoding
   // gemini-2.0-flash. The hook keeps a hardcoded fallback so the
   // first paint isn't blank if the call is in flight.
-  const { defaults } = useAgentDefaults(workspaceId);
+  // Called for its cache-warming side effect: the step components read the same
+  // hook, so the request is already in flight by the time they mount.
+  useAgentDefaults(workspaceId);
   // UX-DEF-003: server-side wizard draft for cross-device resume.
   // Layered on top of the localStorage path — localStorage covers
   // same-browser Cmd+R; this covers picking the wizard back up on
@@ -117,7 +121,7 @@ export function AgentCreationWizard({
   const [name, setName] = useState(draft?.name ?? "");
   const [description, setDescription] = useState(draft?.description ?? "");
   const [mentionHandle, setMentionHandle] = useState(draft?.mentionHandle ?? "");
-  const [llmProvider, setLlmProvider] = useState<"claude" | "gemini" | "ollama" | "openrouter">(
+  const [llmProvider, setLlmProvider] = useState<LLMProvider>(
     draft?.llmProvider ?? "gemini",
   );
   const [llmModel, setLlmModel] = useState(draft?.llmModel ?? "gemini-2.0-flash");
@@ -213,6 +217,7 @@ export function AgentCreationWizard({
     // path — the server call layers cross-device on top.
     // `snapshot` is already a plain object — pass it through.
     serverDraftHook.save(snapshot as unknown as Record<string, unknown>);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     workspaceId,
     currentStep,
@@ -238,10 +243,8 @@ export function AgentCreationWizard({
     emailDomain,
     autoReplyEnabled,
     emailSignature,
-    // serverDraftHook is intentionally NOT a dep — the hook's
-    // `save` reference is stable, and adding it would trigger this
-    // effect on every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // serverDraftHook is intentionally NOT a dep — the hook's `save` reference
+    // is stable, and adding it would trigger this effect on every render.
   ]);
 
   // When agent type is selected, initialize with defaults

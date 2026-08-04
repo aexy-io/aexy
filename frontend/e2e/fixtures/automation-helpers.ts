@@ -98,10 +98,14 @@ export function actionsForModule(module: string): AutomationSchemaEntry[] {
 
 /**
  * Navigate directly to a blank canvas filtered by module. We bypass
- * the TemplateGallery's "Start Blank" button because that handler
- * drops the `module` query param when the URL is rewritten (stale
- * closure over `moduleParam`), and tests would silently end up on a
- * CRM palette regardless of what module was requested.
+ * the TemplateGallery's "Start Blank" button to keep the entry point
+ * deterministic — one navigation, no gallery render in between.
+ *
+ * It used to be a correctness workaround too: the page coerced
+ * `?module=` to CRM for anything that wasn't CRM, so going through the
+ * gallery dropped the requested module and left tests on a CRM palette.
+ * The page honours every enabled module now, so either route works and
+ * this one is simply the shorter one.
  *
  * `?blank=1` is the same flag handleStartBlank sets, so the page
  * skips the gallery and mounts the canvas immediately.
@@ -114,10 +118,7 @@ export async function openCanvas(
   const moduleName = opts.module ?? "crm";
 
   // `?blank=1` is the same flag handleStartBlank sets — bypasses the
-  // TemplateGallery and lets the canvas mount directly. We don't
-  // route through the gallery's button because its onClick handler
-  // captures a stale `moduleParam` and drops the module from the
-  // URL when it rewrites — palette would silently fall back to CRM.
+  // TemplateGallery and lets the canvas mount directly.
   const url = `/automations/new?blank=1&module=${encodeURIComponent(moduleName)}`;
   await page.goto(url, { waitUntil: "networkidle", timeout: 30_000 });
 

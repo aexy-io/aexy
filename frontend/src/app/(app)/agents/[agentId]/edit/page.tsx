@@ -35,6 +35,7 @@ import {
   AgentTypeBadge,
   ToolSelector,
   LLMProviderSelector,
+  type LLMProvider,
   ConfidenceSlider,
   WorkingHoursConfigPanel,
   PromptEditor,
@@ -58,6 +59,10 @@ const TABS: Tab[] = [
   { id: "escalation", label: "Escalation", icon: Bell },
   { id: "email", label: "Email", icon: Mail },
 ];
+
+// Module scope: a regex literal rebuilt each render is a new value every time,
+// which is why the memo below was asked to depend on it.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function EditAgentPage() {
   const params = useParams();
@@ -90,7 +95,7 @@ export default function EditAgentPage() {
   const [description, setDescription] = useState("");
   const [mentionHandle, setMentionHandle] = useState("");
   const [agentType, setAgentType] = useState<AgentType>("custom");
-  const [llmProvider, setLlmProvider] = useState<"claude" | "gemini" | "ollama" | "openrouter">("gemini");
+  const [llmProvider, setLlmProvider] = useState<LLMProvider>("gemini");
   const [llmModel, setLlmModel] = useState("gemini-2.0-flash");
   const [temperature, setTemperature] = useState(0.7);
   const [maxTokens, setMaxTokens] = useState(2000);
@@ -276,7 +281,6 @@ export default function EditAgentPage() {
   // straight to the server. Real-time validation surfaces problems
   // inline + on the tab (red dot) so users don't get bounced by a
   // server error after a long save.
-  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const errorsByTab = useMemo<Record<TabId, string[]>>(() => {
     const errors: Record<TabId, string[]> = {
       general: [],

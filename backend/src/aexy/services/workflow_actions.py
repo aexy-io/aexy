@@ -25,6 +25,19 @@ from aexy.models.crm import (
 )
 from aexy.models.workflow import WorkflowExecution
 from aexy.schemas.workflow import WorkflowExecutionContext, NodeExecutionResult
+from aexy.services.automation_module_actions import (
+    MODULE_ACTION_ADAPTERS,
+    run_module_action,
+)
+
+
+def _split_addresses(value: Any) -> list[str]:
+    """Accept a list, or a newline/comma separated string of addresses."""
+    if not value:
+        return []
+    if isinstance(value, (list, tuple, set)):
+        return [str(v).strip() for v in value if str(v).strip()]
+    return [part.strip() for part in re.split(r"[\n,;]+", str(value)) if part.strip()]
 
 
 async def _resolve_auth_header(
@@ -114,17 +127,17 @@ class WorkflowActionHandler:
         "add_comment": "_add_comment",
         "update_ticket": "_update_ticket",
         "assign_ticket": "_assign_ticket",
-        "add_response": "_add_response",
         "escalate": "_escalate",
+        # add_response / add_tag / remove_tag / add_note / create_offer are not
+        # listed: they resolve through automation_module_actions instead, which
+        # both executors share. The handlers here called a TicketService.add_reply
+        # that does not exist, and wrote ticket.tags — a column tickets do not
+        # have, so SQLAlchemy took the assignment and persisted nothing.
         "change_priority": "_change_priority",
-        "add_tag": "_add_tag",
-        "remove_tag": "_remove_tag",
         "update_candidate": "_update_candidate",
         "move_stage": "_move_stage",
         "schedule_interview": "_schedule_interview",
         "send_rejection": "_send_rejection",
-        "create_offer": "_create_offer",
-        "add_note": "_add_note",
         "assign_recruiter": "_assign_recruiter",
         "pause_monitor": "_pause_monitor",
         "resume_monitor": "_resume_monitor",
@@ -158,13 +171,14 @@ class WorkflowActionHandler:
     ) -> NodeExecutionResult:
         """Execute an action based on type."""
         handler_name = self.ACTION_HANDLER_METHODS.get(action_type)
-        if not handler_name:
+        shared_action = handler_name is None and action_type in MODULE_ACTION_ADAPTERS
+        if not handler_name and not shared_action:
             return NodeExecutionResult(
                 node_id="",
                 status="failed",
                 error=f"Unknown action type: {action_type}",
             )
-        handler = getattr(self, handler_name)
+        handler = getattr(self, handler_name) if handler_name else None
 
         # A test run must not reach the outside world. The guard lives here,
         # at the single dispatch point, rather than in each handler: an action
@@ -188,6 +202,29 @@ class WorkflowActionHandler:
                     "message": message,
                 },
             )
+
+        if shared_action:
+            # Module actions live in automation_module_actions so this path and
+            # the inline path run identical logic; only rendering and result
+            # wrapping differ.
+            result = await run_module_action(
+                action_type,
+                self.db,
+                config=data,
+                workspace_id=context.workspace_id,
+                trigger_data=context.trigger_data,
+                render=lambda value: self._render_template(value, context),
+            )
+            if result is None:  # pragma: no cover — guarded by shared_action
+                return NodeExecutionResult(
+                    node_id="", status="failed",
+                    error=f"Unknown action type: {action_type}",
+                )
+            if "error" in result:
+                return NodeExecutionResult(
+                    node_id="", status="failed", error=str(result["error"])
+                )
+            return NodeExecutionResult(node_id="", status="success", output=result)
 
         return await handler(data, context)
 
@@ -2036,35 +2073,6 @@ class WorkflowActionHandler:
         except Exception as e:
             return NodeExecutionResult(node_id="", status="failed", error=str(e))
 
-    async def _add_response(
-        self, data: dict, context: WorkflowExecutionContext
-    ) -> NodeExecutionResult:
-        """Add a response/reply to a ticket."""
-        from aexy.services.ticket_service import TicketService
-
-        ticket_id = data.get("ticket_id") or context.trigger_data.get("ticket_id")
-        message = data.get("message", data.get("response", ""))
-
-        if not ticket_id:
-            return NodeExecutionResult(node_id="", status="failed", error="No ticket_id specified")
-        if not message:
-            return NodeExecutionResult(node_id="", status="failed", error="No message specified")
-
-        message = self._render_template(message, context)
-
-        try:
-            ticket_service = TicketService(self.db)
-            reply = await ticket_service.add_reply(
-                ticket_id=ticket_id,
-                content=message,
-                is_internal=data.get("is_internal", False),
-            )
-            return NodeExecutionResult(
-                node_id="", status="success",
-                output={"ticket_id": ticket_id, "reply_id": reply.id if reply else None, "response_added": True},
-            )
-        except Exception as e:
-            return NodeExecutionResult(node_id="", status="failed", error=str(e))
 
     async def _escalate(
         self, data: dict, context: WorkflowExecutionContext
@@ -2125,71 +2133,7 @@ class WorkflowActionHandler:
         except Exception as e:
             return NodeExecutionResult(node_id="", status="failed", error=str(e))
 
-    async def _add_tag(
-        self, data: dict, context: WorkflowExecutionContext
-    ) -> NodeExecutionResult:
-        """Add a tag to a ticket."""
-        from aexy.services.ticket_service import TicketService
 
-        ticket_id = data.get("ticket_id") or context.trigger_data.get("ticket_id")
-        tag = data.get("tag", data.get("tag_name", ""))
-
-        if not ticket_id:
-            return NodeExecutionResult(node_id="", status="failed", error="No ticket_id specified")
-        if not tag:
-            return NodeExecutionResult(node_id="", status="failed", error="No tag specified")
-
-        try:
-            ticket_service = TicketService(self.db)
-            ticket = await ticket_service.get_ticket(ticket_id)
-            if not ticket:
-                return NodeExecutionResult(node_id="", status="failed", error=f"Ticket {ticket_id} not found")
-
-            tags = list(ticket.tags) if ticket.tags else []
-            if tag not in tags:
-                tags.append(tag)
-                ticket.tags = tags
-                await self.db.flush()
-
-            return NodeExecutionResult(
-                node_id="", status="success",
-                output={"ticket_id": ticket_id, "tag": tag, "tags": tags},
-            )
-        except Exception as e:
-            return NodeExecutionResult(node_id="", status="failed", error=str(e))
-
-    async def _remove_tag(
-        self, data: dict, context: WorkflowExecutionContext
-    ) -> NodeExecutionResult:
-        """Remove a tag from a ticket."""
-        from aexy.services.ticket_service import TicketService
-
-        ticket_id = data.get("ticket_id") or context.trigger_data.get("ticket_id")
-        tag = data.get("tag", data.get("tag_name", ""))
-
-        if not ticket_id:
-            return NodeExecutionResult(node_id="", status="failed", error="No ticket_id specified")
-        if not tag:
-            return NodeExecutionResult(node_id="", status="failed", error="No tag specified")
-
-        try:
-            ticket_service = TicketService(self.db)
-            ticket = await ticket_service.get_ticket(ticket_id)
-            if not ticket:
-                return NodeExecutionResult(node_id="", status="failed", error=f"Ticket {ticket_id} not found")
-
-            tags = list(ticket.tags) if ticket.tags else []
-            if tag in tags:
-                tags.remove(tag)
-                ticket.tags = tags
-                await self.db.flush()
-
-            return NodeExecutionResult(
-                node_id="", status="success",
-                output={"ticket_id": ticket_id, "tag_removed": tag, "tags": tags},
-            )
-        except Exception as e:
-            return NodeExecutionResult(node_id="", status="failed", error=str(e))
 
     # =========================================================================
     # HIRING MODULE ACTIONS
@@ -2371,80 +2315,7 @@ class WorkflowActionHandler:
         except Exception as e:
             return NodeExecutionResult(node_id="", status="failed", error=str(e))
 
-    async def _create_offer(
-        self, data: dict, context: WorkflowExecutionContext
-    ) -> NodeExecutionResult:
-        """Create an offer for a candidate."""
-        from aexy.models.assessment import Candidate
 
-        candidate_id = data.get("candidate_id") or context.trigger_data.get("candidate_id")
-        if not candidate_id:
-            return NodeExecutionResult(node_id="", status="failed", error="No candidate_id specified")
-
-        try:
-            stmt = select(Candidate).where(Candidate.id == candidate_id)
-            result = await self.db.execute(stmt)
-            candidate = result.scalar_one_or_none()
-            if not candidate:
-                return NodeExecutionResult(node_id="", status="failed", error=f"Candidate {candidate_id} not found")
-
-            custom_fields = dict(candidate.custom_fields) if candidate.custom_fields else {}
-            custom_fields["hiring_status"] = "offer"
-            custom_fields["offer_details"] = {
-                "position": data.get("position", ""),
-                "salary": data.get("salary", ""),
-                "start_date": data.get("start_date", ""),
-                "notes": data.get("notes", ""),
-                "created_at": datetime.now(timezone.utc).isoformat(),
-            }
-            candidate.custom_fields = custom_fields
-            await self.db.flush()
-
-            return NodeExecutionResult(
-                node_id="", status="success",
-                output={"candidate_id": candidate.id, "offer_created": True},
-            )
-        except Exception as e:
-            return NodeExecutionResult(node_id="", status="failed", error=str(e))
-
-    async def _add_note(
-        self, data: dict, context: WorkflowExecutionContext
-    ) -> NodeExecutionResult:
-        """Add a note to a candidate."""
-        from aexy.models.assessment import Candidate
-
-        candidate_id = data.get("candidate_id") or context.trigger_data.get("candidate_id")
-        note_text = data.get("note", data.get("message", ""))
-
-        if not candidate_id:
-            return NodeExecutionResult(node_id="", status="failed", error="No candidate_id specified")
-        if not note_text:
-            return NodeExecutionResult(node_id="", status="failed", error="No note text specified")
-
-        note_text = self._render_template(note_text, context)
-
-        try:
-            stmt = select(Candidate).where(Candidate.id == candidate_id)
-            result = await self.db.execute(stmt)
-            candidate = result.scalar_one_or_none()
-            if not candidate:
-                return NodeExecutionResult(node_id="", status="failed", error=f"Candidate {candidate_id} not found")
-
-            custom_fields = dict(candidate.custom_fields) if candidate.custom_fields else {}
-            existing_notes = custom_fields.get("notes", "")
-            if existing_notes:
-                custom_fields["notes"] = f"{existing_notes}\n\n---\n{note_text}"
-            else:
-                custom_fields["notes"] = note_text
-            candidate.custom_fields = custom_fields
-            await self.db.flush()
-
-            return NodeExecutionResult(
-                node_id="", status="success",
-                output={"candidate_id": candidate.id, "note_added": True},
-            )
-        except Exception as e:
-            return NodeExecutionResult(node_id="", status="failed", error=str(e))
 
     async def _assign_recruiter(
         self, data: dict, context: WorkflowExecutionContext
@@ -2775,15 +2646,62 @@ class WorkflowActionHandler:
     ) -> NodeExecutionResult:
         """Send notification to an entire team.
 
-        Handles frontend field names (notify_channel, team_notify_message,
-        team_notify_title, slack_channel_id) and maps them to internal fields.
+        Reads the config panel's own key names. `team_channel_id` is the only
+        channel field the panel writes, and it was not among the ones read here
+        — so every notify_team step built in the canvas failed with "No team_id
+        or channel_id specified" no matter what channel was typed into it. The
+        title it writes (`team_notify_title`) was named in this docstring but
+        never read either, so it was dropped from the delivered message.
         """
         from aexy.models.team import Team
 
         team_id = data.get("team_id")
-        channel_id = data.get("channel_id") or data.get("slack_channel_id")
+        channel_id = (
+            data.get("channel_id")
+            or data.get("slack_channel_id")
+            or data.get("team_channel_id")
+        )
         message = data.get("message", data.get("message_template", data.get("team_notify_message", "")))
         message = self._render_template(message, context)
+
+        title = self._render_template(str(data.get("team_notify_title") or ""), context)
+        if title:
+            message = f"*{title}*\n{message}" if message else f"*{title}*"
+
+        # Email Group is one of the three channels the panel offers; it used to
+        # fall through to Slack (or to "no channel available"), so picking it
+        # changed nothing about where the message went.
+        if str(data.get("notify_channel") or "slack").lower() == "email":
+            recipients = _split_addresses(data.get("team_emails"))
+            if not recipients:
+                return NodeExecutionResult(
+                    node_id="", status="failed",
+                    error="No email addresses specified for the team notification",
+                )
+            delivered: list[str] = []
+            errors: list[str] = []
+            for address in recipients:
+                result = await self._send_email(
+                    {
+                        "to": address,
+                        "email_subject": title or "Team notification",
+                        "email_body": message,
+                    },
+                    context,
+                )
+                if result.status == "success":
+                    delivered.append(address)
+                elif result.error:
+                    errors.append(f"{address}: {result.error}")
+            if not delivered:
+                return NodeExecutionResult(
+                    node_id="", status="failed",
+                    error="; ".join(errors) or "No notification could be delivered",
+                )
+            return NodeExecutionResult(
+                node_id="", status="success",
+                output={"channel": "email", "delivered_to": delivered, "errors": errors},
+            )
 
         if not team_id and not channel_id:
             return NodeExecutionResult(
@@ -2865,10 +2783,30 @@ class WorkflowActionHandler:
             output={"to": email_to, "subject": subject, "queued": True},
         )
 
+    @staticmethod
+    def _system_value(name: str) -> Any:
+        """Resolve a `system.*` variable.
+
+        The field picker has always offered these; nothing implemented them, so
+        `{{system.now}}` fell through to the record_data branch below, resolved
+        to None, and failed the step with "Dynamic value is missing". Kept in
+        step with CRMAutomationService._system_value so a template means the
+        same thing on the inline path.
+        """
+        now = datetime.now(timezone.utc)
+        if name == "now":
+            return now.isoformat()
+        if name == "today":
+            return now.date().isoformat()
+        return None
+
     def _get_context_value(self, path: str, context: WorkflowExecutionContext) -> Any:
         """Get a value from context using dot notation."""
         parts = path.split(".")
         current = None
+
+        if parts[0] == "system" and len(parts) == 2:
+            return self._system_value(parts[1])
 
         if parts[0] == "record":
             current = context.record_data

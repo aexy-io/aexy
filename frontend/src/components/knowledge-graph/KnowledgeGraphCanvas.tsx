@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   ReactFlow,
   Background,
@@ -17,6 +17,7 @@ import "@xyflow/react/dist/style.css";
 import { DocumentNode } from "./nodes/DocumentNode";
 import { EntityNode } from "./nodes/EntityNode";
 import { RelationshipEdge } from "./edges/RelationshipEdge";
+import { useThemeStore } from "@/stores/themeStore";
 
 export interface GraphNode {
   id: string;
@@ -58,6 +59,15 @@ const edgeTypes = {
   relationship: RelationshipEdge,
 };
 
+/** Stable 0..1 value from a string, so layout jitter is deterministic per node. */
+function hashToUnit(value: string): number {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash * 31 + value.charCodeAt(i)) | 0;
+  }
+  return (Math.abs(hash) % 1000) / 1000;
+}
+
 // Entity type colors
 const ENTITY_TYPE_COLORS: Record<string, string> = {
   person: "#f472b6", // pink
@@ -79,7 +89,8 @@ function KnowledgeGraphCanvasInner({
   temporal,
 }: KnowledgeGraphCanvasProps) {
   const { fitView } = useReactFlow();
-  const [layoutComplete, setLayoutComplete] = useState(false);
+  const lastFittedCount = useRef<number | null>(null);
+  const resolvedTheme = useThemeStore((state) => state.resolvedTheme);
 
   // Convert graph data to React Flow nodes
   const nodes: Node[] = useMemo(() => {
@@ -92,9 +103,13 @@ function KnowledgeGraphCanvasInner({
       const isDocument = gNode.node_type === "document";
       const activityScore = temporal?.activity_scores?.[gNode.id] || 0;
 
-      // Calculate position using circular layout with some randomness
+      // Circular layout, jittered so same-radius nodes don't overlap. The
+      // jitter is derived from the node id rather than Math.random(): a random
+      // value in render is impure (the lint rule's complaint) and, more to the
+      // point, it gave every node a new position on each recompute, so the
+      // graph visibly reshuffled whenever the temporal filter changed.
       const angle = angleStep * index;
-      const jitter = Math.random() * 50 - 25;
+      const jitter = (hashToUnit(gNode.id) * 50) - 25;
       const x = Math.cos(angle) * (radius + jitter) + 500;
       const y = Math.sin(angle) * (radius + jitter) + 400;
 
@@ -128,21 +143,18 @@ function KnowledgeGraphCanvasInner({
     }));
   }, [graphEdges]);
 
-  // Fit view when nodes change
+  // Fit the view once per change in node count. This used to be a boolean state
+  // plus a second effect that reset it, which meant calling setState during an
+  // effect on every graph change — cascading renders for something the render
+  // output never depends on. A ref holds the same fact without re-rendering.
   useEffect(() => {
-    if (nodes.length > 0 && !layoutComplete) {
-      const timer = setTimeout(() => {
-        fitView({ padding: 0.2 });
-        setLayoutComplete(true);
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [nodes, fitView, layoutComplete]);
-
-  // Reset layout complete when nodes change significantly
-  useEffect(() => {
-    setLayoutComplete(false);
-  }, [graphNodes.length]);
+    if (nodes.length === 0 || lastFittedCount.current === graphNodes.length) return;
+    const timer = setTimeout(() => {
+      fitView({ padding: 0.2 });
+      lastFittedCount.current = graphNodes.length;
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [nodes, graphNodes.length, fitView]);
 
   const handleNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
@@ -165,12 +177,16 @@ function KnowledgeGraphCanvasInner({
       onPaneClick={handlePaneClick}
       connectionMode={ConnectionMode.Loose}
       fitView
+      // React Flow's own dark token set, instead of overriding its light one
+      // button-by-button. Without it the controls keep light defaults (#fefefe
+      // buttons, icons inheriting near-white text) and vanish in dark mode.
+      colorMode={resolvedTheme}
       className="bg-background"
       minZoom={0.1}
       maxZoom={2}
     >
       <Background color="#334155" gap={20} />
-      <Controls className="bg-muted border-border [&>button]:bg-muted [&>button]:border-border [&>button]:text-foreground [&>button:hover]:bg-accent" />
+      <Controls className="bg-muted border-border" />
       <MiniMap
         nodeColor={(node) => {
           const color = ENTITY_TYPE_COLORS[node.data?.nodeType as string];

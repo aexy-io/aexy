@@ -10,6 +10,7 @@ import { ChevronLeft, Loader2, Sparkles } from "lucide-react";
 import { Node, Edge } from "@xyflow/react";
 
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { useAutomationModuleRegistry } from "@/hooks/useAutomations";
 import { api, AutomationModule, GeneratedWorkflow } from "@/lib/api";
 import {
   AutomationTemplate,
@@ -17,6 +18,7 @@ import {
   defaultTriggerTypes,
   getDefaultEdges,
   getDefaultNodes,
+  moduleLabels,
 } from "@/lib/automationTemplates";
 import { TemplateGallery } from "@/components/automations/TemplateGallery";
 import { SaveStateBadge, type SaveState } from "@/components/automations/SaveStateBadge";
@@ -45,9 +47,14 @@ export default function NewAutomationPage() {
   const searchParams = useSearchParams();
   const { currentWorkspace } = useWorkspace();
 
-  // Get module and template from URL query params.
+  // Get module and template from URL query params. Any module the server
+  // enables is honoured — the picker below is driven by the same list, so
+  // arriving from a filtered list (/automations?module=tickets) starts the
+  // builder in that module instead of silently reverting to CRM. An unknown
+  // id falls back to CRM via the registry check further down.
   const requestedModule = searchParams.get("module") as AutomationModule | null;
-  const moduleParam = requestedModule === "crm" ? requestedModule : null;
+  const moduleParam =
+    requestedModule && requestedModule in moduleLabels ? requestedModule : null;
   const templateParam = searchParams.get("template");
   const startBlank = searchParams.get("blank") === "1";
   const template = templateParam
@@ -124,15 +131,29 @@ export default function NewAutomationPage() {
 
   const handleUseGenerated = (workflow: GeneratedWorkflow) => {
     // Generated workflows always start as drafts in the user's
-    // chosen module (or "crm" by default). The user can rename +
+    // chosen module (or "crm" by default) — which `module` already holds, so
+    // it is left alone rather than forced back to CRM. The user can rename +
     // tweak before save, same as templates.
-    setModule("crm");
     setName("Generated Automation");
     setDescription("");
     setGeneratedWorkflow(workflow);
   };
 
   const workspaceId = currentWorkspace?.id;
+
+  // The offerable module list is server-owned (ENABLED_MODULES): a module is
+  // only listed while its trigger/action registry is non-empty, so the picker
+  // cannot drop the builder into a module with a blank palette.
+  const { modules: enabledModules } = useAutomationModuleRegistry(workspaceId ?? null);
+
+  // Correct an out-of-scope ?module= once the registry lands, but only while
+  // the automation is still a draft: the module is immutable server-side after
+  // creation (AutomationUpdate refuses it), so switching afterwards would put
+  // the header out of step with the stored row.
+  useEffect(() => {
+    if (!enabledModules.length || automationId) return;
+    if (!enabledModules.includes(module)) setModule(enabledModules[0]);
+  }, [enabledModules, module, automationId]);
 
   const handleCreateAutomation = useCallback(async () => {
     if (!workspaceId || isCreating) return null;
@@ -160,7 +181,7 @@ export default function NewAutomationPage() {
     } finally {
       setIsCreating(false);
     }
-  }, [workspaceId, name, description, module, isCreating]);
+  }, [workspaceId, name, description, module, isCreating, updateAutomationId]);
 
   const handleSave = useCallback(
     async (nodes: Node[], edges: Edge[], viewport: { x: number; y: number; zoom: number }) => {
@@ -353,9 +374,31 @@ export default function NewAutomationPage() {
                   className="text-lg font-semibold text-foreground bg-transparent border-none focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded px-2 py-1 -ml-2"
                   placeholder={t("builder.namePlaceholder")}
                 />
-                <span className="text-sm bg-accent border border-border rounded-lg px-3 py-1 text-foreground">
-                  CRM
-                </span>
+                {/* Module picker. Editable only while this is still a draft:
+                    once the row exists the module is fixed server-side, so it
+                    renders as a plain badge rather than a control that would
+                    take a click and do nothing. */}
+                {automationId ? (
+                  <span
+                    className="text-sm text-muted-foreground bg-accent px-2 py-0.5 rounded"
+                    title={t("builder.moduleLocked")}
+                  >
+                    {moduleLabels[module]}
+                  </span>
+                ) : (
+                  <select
+                    aria-label={t("builder.moduleLabel")}
+                    value={module}
+                    onChange={(e) => setModule(e.target.value as AutomationModule)}
+                    className="text-sm bg-accent border border-border rounded-lg px-3 py-1 text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  >
+                    {(enabledModules.length ? enabledModules : [module]).map((m) => (
+                      <option key={m} value={m}>
+                        {moduleLabels[m] || m}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <SaveStateBadge state={saveState} />
               </div>
               <input

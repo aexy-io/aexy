@@ -82,6 +82,8 @@
     "builder": {
       "namePlaceholder": "इस automation का नाम दें",
       "descriptionPlaceholder": "विवरण जोड़ें...",
+      "moduleLabel": "मॉड्यूल",
+      "moduleLocked": "Automation बनने के बाद module बदला नहीं जा सकता",
       "addTriggerHint": "शुरू करने के लिए एक trigger चुनें",
       "addActionHint": "trigger के बगल में एक action जोड़ें",
       "testRun": "टेस्ट रन",

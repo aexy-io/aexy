@@ -237,24 +237,130 @@ class CRMObjectService:
         await self.db.flush()
         return True
 
-    async def seed_standard_objects(self, workspace_id: str) -> list[CRMObject]:
-        """Seed standard CRM objects for a workspace."""
-        objects = []
+    async def _get_or_create_standard_object(
+        self,
+        workspace_id: str,
+        *,
+        name: str,
+        plural_name: str,
+        object_type: str,
+        icon: str,
+        color: str,
+    ) -> tuple[CRMObject, bool]:
+        """Return the workspace's object of this type, creating it if absent.
 
-        # Companies
-        company = await self.create_object(
+        Returns `(object, created)` so callers can skip seeding attributes
+        for an object that was already there.
+        """
+        existing = (
+            await self.db.execute(
+                select(CRMObject)
+                .where(
+                    CRMObject.workspace_id == workspace_id,
+                    CRMObject.object_type == object_type,
+                )
+                .order_by(CRMObject.created_at)
+            )
+        ).scalars().first()
+        if existing:
+            return existing, False
+
+        obj = await self.create_object(
             workspace_id=workspace_id,
+            name=name,
+            plural_name=plural_name,
+            object_type=object_type,
+            icon=icon,
+            color=color,
+            settings={"enableActivities": True, "enableNotes": True},
+        )
+        return obj, True
+
+    async def seed_standard_objects(self, workspace_id: str) -> list[CRMObject]:
+        """Seed standard CRM objects (Company, Person, Deal, Lead) for a workspace.
+
+        Idempotent: objects are upserted by `object_type`, so a second call
+        never produces a duplicate set. Attributes and default pipelines are
+        only created for the objects this call actually created.
+        """
+        attr_service = CRMAttributeService(self.db)
+
+        company, company_created = await self._get_or_create_standard_object(
+            workspace_id,
             name="Company",
             plural_name="Companies",
             object_type=CRMObjectType.COMPANY.value,
             icon="building-2",
             color="#3B82F6",
-            settings={"enableActivities": True, "enableNotes": True},
         )
-        objects.append(company)
+        if company_created:
+            await self._seed_company_attributes(attr_service, company)
 
-        # Create company attributes
-        attr_service = CRMAttributeService(self.db)
+        person, person_created = await self._get_or_create_standard_object(
+            workspace_id,
+            name="Person",
+            plural_name="People",
+            object_type=CRMObjectType.PERSON.value,
+            icon="user",
+            color="#10B981",
+        )
+        if person_created:
+            await self._seed_person_attributes(attr_service, person, company)
+
+        deal, deal_created = await self._get_or_create_standard_object(
+            workspace_id,
+            name="Deal",
+            plural_name="Deals",
+            object_type=CRMObjectType.DEAL.value,
+            icon="handshake",
+            color="#F59E0B",
+        )
+        deal_stage_attr = None
+        if deal_created:
+            deal_stage_attr = await self._seed_deal_attributes(
+                attr_service, deal, company, person
+            )
+
+        lead, lead_created = await self._get_or_create_standard_object(
+            workspace_id,
+            name="Lead",
+            plural_name="Leads",
+            object_type=CRMObjectType.LEAD.value,
+            icon="target",
+            color="#EC4899",
+        )
+        lead_status_attr = None
+        if lead_created:
+            lead_status_attr = await self._seed_lead_attributes(
+                attr_service, lead, company, person, deal
+            )
+
+        # Create first-class default pipelines bridged to the seeded STATUS
+        # attributes (lazy import avoids a circular dependency).
+        from aexy.services.crm_pipeline_service import PipelineService
+        pipeline_service = PipelineService(self.db)
+        if deal_stage_attr is not None:
+            await pipeline_service.create_pipeline(
+                workspace_id=workspace_id,
+                object_id=deal.id,
+                name="Sales Pipeline",
+                adopt_attribute_id=deal_stage_attr.id,
+                is_default=True,
+            )
+        if lead_status_attr is not None:
+            await pipeline_service.create_pipeline(
+                workspace_id=workspace_id,
+                object_id=lead.id,
+                name="Lead Pipeline",
+                adopt_attribute_id=lead_status_attr.id,
+                is_default=True,
+            )
+
+        return [company, person, deal, lead]
+
+    async def _seed_company_attributes(
+        self, attr_service: "CRMAttributeService", company: CRMObject
+    ) -> None:
         await attr_service.create_attribute(
             object_id=company.id,
             name="Name",
@@ -300,18 +406,12 @@ class CRMObjectService:
             attribute_type=CRMAttributeType.TEXTAREA.value,
         )
 
-        # People
-        person = await self.create_object(
-            workspace_id=workspace_id,
-            name="Person",
-            plural_name="People",
-            object_type=CRMObjectType.PERSON.value,
-            icon="user",
-            color="#10B981",
-            settings={"enableActivities": True, "enableNotes": True},
-        )
-        objects.append(person)
-
+    async def _seed_person_attributes(
+        self,
+        attr_service: "CRMAttributeService",
+        person: CRMObject,
+        company: CRMObject,
+    ) -> None:
         await attr_service.create_attribute(
             object_id=person.id,
             name="First Name",
@@ -346,18 +446,14 @@ class CRMObjectService:
             config={"targetObjectId": company.id, "allowMultiple": False},
         )
 
-        # Deals
-        deal = await self.create_object(
-            workspace_id=workspace_id,
-            name="Deal",
-            plural_name="Deals",
-            object_type=CRMObjectType.DEAL.value,
-            icon="handshake",
-            color="#F59E0B",
-            settings={"enableActivities": True, "enableNotes": True},
-        )
-        objects.append(deal)
-
+    async def _seed_deal_attributes(
+        self,
+        attr_service: "CRMAttributeService",
+        deal: CRMObject,
+        company: CRMObject,
+        person: CRMObject,
+    ) -> CRMAttribute:
+        """Seed Deal attributes; returns the Stage attribute for pipeline bridging."""
         await attr_service.create_attribute(
             object_id=deal.id,
             name="Name",
@@ -429,18 +525,17 @@ class CRMObjectService:
             ]},
         )
 
-        # Leads
-        lead = await self.create_object(
-            workspace_id=workspace_id,
-            name="Lead",
-            plural_name="Leads",
-            object_type=CRMObjectType.LEAD.value,
-            icon="target",
-            color="#EC4899",
-            settings={"enableActivities": True, "enableNotes": True},
-        )
-        objects.append(lead)
+        return deal_stage_attr
 
+    async def _seed_lead_attributes(
+        self,
+        attr_service: "CRMAttributeService",
+        lead: CRMObject,
+        company: CRMObject,
+        person: CRMObject,
+        deal: CRMObject,
+    ) -> CRMAttribute:
+        """Seed Lead attributes; returns the Lead Status attribute for pipeline bridging."""
         await attr_service.create_attribute(
             object_id=lead.id,
             name="Name",
@@ -520,26 +615,7 @@ class CRMObjectService:
             attribute_type=CRMAttributeType.TIMESTAMP.value,
         )
 
-        # Create first-class default pipelines bridged to the seeded STATUS
-        # attributes (lazy import avoids a circular dependency).
-        from aexy.services.crm_pipeline_service import PipelineService
-        pipeline_service = PipelineService(self.db)
-        await pipeline_service.create_pipeline(
-            workspace_id=workspace_id,
-            object_id=deal.id,
-            name="Sales Pipeline",
-            adopt_attribute_id=deal_stage_attr.id,
-            is_default=True,
-        )
-        await pipeline_service.create_pipeline(
-            workspace_id=workspace_id,
-            object_id=lead.id,
-            name="Lead Pipeline",
-            adopt_attribute_id=lead_status_attr.id,
-            is_default=True,
-        )
-
-        return objects
+        return lead_status_attr
 
 
 class CRMAttributeService:

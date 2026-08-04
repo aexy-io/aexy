@@ -21,7 +21,6 @@ import {
   ShieldCheck,
   Ticket,
   Users,
-  Zap,
   type LucideIcon,
 } from "lucide-react";
 import { Node, Edge } from "@xyflow/react";
@@ -154,16 +153,23 @@ export const AUTOMATION_TEMPLATES: Record<string, AutomationTemplate> = {
     module: "tracking",
     triggerType: "standup.missed",
     triggerLabel: "Standup Missed",
+    // Action types are registry ids, not descriptions: `send_notification` was
+    // not one, so this template produced a workflow that failed validation on
+    // save ("action is unavailable; choose a capability from the server
+    // registry"). notify_user is the registry's in-app notification.
     actions: [
       {
         type: "create_task",
         label: "Create Follow-up Task",
-        config: { title: "Missed standup follow-up", priority: "medium" },
+        config: { task_title: "Missed standup follow-up", priority: "medium" },
       },
       {
-        type: "send_notification",
+        type: "notify_user",
         label: "Send Reminder",
-        config: { channel: "slack" },
+        config: {
+          notify_message:
+            "You missed standup on {{trigger.date}} — please post an update.",
+        },
       },
     ],
   },
@@ -173,18 +179,25 @@ export const AUTOMATION_TEMPLATES: Record<string, AutomationTemplate> = {
     description:
       "Escalate blockers that remain unresolved for more than 2 days to the engineering manager.",
     module: "tracking",
-    triggerType: "blocker.unresolved",
-    triggerLabel: "Blocker Unresolved",
+    // blocker.stale is the trigger the tracking runner actually dispatches for
+    // a blocker left unresolved past its threshold; blocker.unresolved was
+    // never emitted by anything.
+    triggerType: "blocker.stale",
+    triggerLabel: "Blocker Stale",
     actions: [
       {
-        type: "send_notification",
-        label: "Notify Manager",
-        config: { channel: "slack", recipient: "manager" },
+        type: "escalate_blocker",
+        label: "Escalate Blocker",
+        config: {},
       },
       {
-        type: "update_priority",
-        label: "Increase Priority",
-        config: { priority: "high" },
+        type: "notify_team",
+        label: "Notify Team",
+        config: {
+          team_notify_title: "Blocker escalated",
+          team_notify_message:
+            "{{trigger.description}} has been blocked for {{trigger.days_stale}} days.",
+        },
       },
     ],
   },
@@ -194,13 +207,20 @@ export const AUTOMATION_TEMPLATES: Record<string, AutomationTemplate> = {
     description:
       "Notify when sprint burndown deviates more than 20% from the ideal trajectory.",
     module: "sprints",
-    triggerType: "sprint.velocity_deviation",
-    triggerLabel: "Velocity Deviation",
+    // The burndown snapshot runner dispatches sprint.burndown_off_track and
+    // carries the deviation on the payload; sprint.velocity_deviation was not a
+    // trigger anything emitted.
+    triggerType: "sprint.burndown_off_track",
+    triggerLabel: "Burndown Off Track",
     actions: [
       {
-        type: "send_notification",
+        type: "notify_team",
         label: "Alert Team",
-        config: { channel: "slack", threshold: 20 },
+        config: {
+          team_notify_title: "Sprint burndown off track",
+          team_notify_message:
+            "{{trigger.sprint_name}} is {{trigger.deviation_pct}}% off the ideal burndown.",
+        },
       },
     ],
   },
@@ -296,18 +316,20 @@ export const AUTOMATION_TEMPLATES: Record<string, AutomationTemplate> = {
     description:
       "Alert team members 7 days before compliance deadlines and escalate overdue items.",
     module: "compliance",
-    triggerType: "compliance.deadline_approaching",
-    triggerLabel: "Deadline Approaching",
+    // assignment.approaching_due is what compliance_service dispatches, and it
+    // already carries days_until_due; compliance.deadline_approaching was not a
+    // trigger anything emitted, and send_notification was not an action id — so
+    // this template could not be saved, let alone run.
+    triggerType: "assignment.approaching_due",
+    triggerLabel: "Assignment Due Soon",
     actions: [
       {
-        type: "send_notification",
-        label: "7-Day Warning",
-        config: { days_before: 7 },
-      },
-      {
-        type: "send_notification",
-        label: "Escalate Overdue",
-        config: { on_overdue: true },
+        type: "notify_user",
+        label: "Warn the assignee",
+        config: {
+          notify_message:
+            "Your training is due in {{trigger.days_until_due}} days ({{trigger.due_date}}).",
+        },
       },
     ],
   },
@@ -319,12 +341,19 @@ export const AUTOMATION_TEMPLATES: Record<string, AutomationTemplate> = {
     module: "tickets",
     triggerType: "ticket.created",
     triggerLabel: "Ticket Created",
+    // run_agent is the registry's AI capability; `ai_classify` was not an
+    // action id, and assign_ticket reads assignee_id/team_id rather than a
+    // "based_on" hint, so the routing step had nothing to act on.
     actions: [
-      { type: "ai_classify", label: "AI Classification", config: { model: "auto" } },
       {
-        type: "assign_ticket",
-        label: "Route to Team",
-        config: { based_on: "classification" },
+        type: "run_agent",
+        label: "Classify with an agent",
+        config: { output_variable: "triage" },
+      },
+      {
+        type: "add_tag",
+        label: "Tag with the classification",
+        config: { tag: "{{variables.triage}}" },
       },
     ],
   },
@@ -356,13 +385,17 @@ export const AUTOMATION_TEMPLATES: Record<string, AutomationTemplate> = {
 
 export const TEMPLATE_LIST = Object.values(AUTOMATION_TEMPLATES);
 
-// The CRM automation builder only offers templates backed by the CRM
-// execution registry. Keep the broader catalog for existing references, but
-// do not offer unfinished module templates as new starting points.
-export const CRM_AUTOMATION_MODULES: AutomationModule[] = ["crm"];
-export const CRM_TEMPLATE_LIST = TEMPLATE_LIST.filter(
-  (template) => template.module === "crm",
-);
+// Templates the builder may offer. Every entry's trigger and action ids are
+// registry ids now — the non-CRM ones referenced triggers nothing emitted
+// (blocker.unresolved, sprint.velocity_deviation,
+// compliance.deadline_approaching) and actions that were not action types
+// (send_notification, update_priority, ai_classify), so picking one produced a
+// workflow that failed validation on save. That is why the list was pinned to
+// CRM; it no longer needs to be.
+//
+// The names are kept for the existing imports.
+export const CRM_AUTOMATION_MODULES: AutomationModule[] = ALL_MODULES;
+export const CRM_TEMPLATE_LIST = TEMPLATE_LIST;
 
 // ---------------------------------------------------------------------------
 // React Flow scaffolding helpers
