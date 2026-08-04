@@ -162,7 +162,9 @@ export default function TemplateDetailPage() {
           <div className="text-center">
             <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-foreground mb-2">Template Not Found</h2>
-            <p className="text-muted-foreground mb-4">The template you're looking for doesn't exist.</p>
+            <p className="text-muted-foreground mb-4">
+              The template you&apos;re looking for doesn&apos;t exist.
+            </p>
             <Link
               href="/email-marketing/templates"
               className="text-sky-400 hover:text-sky-300"

@@ -96,7 +96,7 @@ export function StatusModal({
               <label className="block text-sm text-muted-foreground mb-1">Category</label>
               {categories.length === 0 ? (
                 <div className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-                  No categories defined yet — they'll seed automatically when
+                  No categories defined yet — they&apos;ll seed automatically when
                   you save your first status.
                 </div>
               ) : (

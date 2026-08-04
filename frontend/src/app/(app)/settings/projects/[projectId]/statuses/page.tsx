@@ -280,7 +280,7 @@ export default function ProjectStatusesPage() {
             </div>
           ) : (
             <div className="bg-card rounded-xl p-8 text-center text-sm text-muted-foreground">
-              No categories yet — they'll seed automatically when you save your first status.
+              No categories yet — they&apos;ll seed automatically when you save your first status.
             </div>
           )}
         </div>
@@ -320,7 +320,7 @@ export default function ProjectStatusesPage() {
               <p className="mt-1 text-sm text-muted-foreground">
                 Customizing here forks the workspace statuses into a
                 project-scoped copy. Other projects keep using the workspace
-                defaults; future workspace edits won't reach this project.
+                defaults; future workspace edits won&apos;t reach this project.
               </p>
             </div>
             <button
@@ -390,7 +390,7 @@ export default function ProjectStatusesPage() {
             <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-medium text-foreground mb-2">No Statuses</h3>
             <p className="text-muted-foreground">
-              Add the project's first status to define its workflow.
+              Add the project&apos;s first status to define its workflow.
             </p>
           </div>
         )}

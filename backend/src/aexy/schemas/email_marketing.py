@@ -167,6 +167,15 @@ class EmailCampaignCreate(BaseModel):
     template_context: dict = Field(default_factory=dict)
     scheduled_at: datetime | None = None
     send_window: SendWindow | None = None
+    # Routing. `EmailCampaign` has carried these two columns and the send path has
+    # branched on them since the module shipped, but they were on no schema and no
+    # endpoint, so they were always NULL and both branches were dead code.
+    #
+    # A pool routes each recipient to the healthiest of several domains and takes
+    # the From address from the chosen domain's identity, so setting one overrides
+    # `from_email`. An identity pins a single address instead.
+    sending_pool_id: str | None = None
+    sending_identity_id: str | None = None
 
 
 class EmailCampaignUpdate(BaseModel):
@@ -182,6 +191,28 @@ class EmailCampaignUpdate(BaseModel):
     template_context: dict | None = None
     scheduled_at: datetime | None = None
     send_window: SendWindow | None = None
+    sending_pool_id: str | None = None
+    sending_identity_id: str | None = None
+
+
+class SenderStatus(BaseModel):
+    """Whether a campaign is actually able to send.
+
+    On the campaign payload so the wizard, the list and the detail page all read
+    one answer. They used to each derive it from the domain list, and the detail
+    page's copy tested domain statuses its own TypeScript union did not contain,
+    so a warming domain read as unable to send.
+    """
+
+    can_send: bool = False
+    # How the sender is chosen: `from_email` (the address on the campaign),
+    # `identity` (a pinned address) or `pool` (chosen per recipient from a pool).
+    # The client needs this to know whether the From field is even in play.
+    mode: str = "from_email"
+    domain: str | None = None
+    domain_id: str | None = None
+    domain_status: str | None = None
+    reason: str | None = None
 
 
 class EmailCampaignResponse(BaseModel):
@@ -218,6 +249,14 @@ class EmailCampaignResponse(BaseModel):
     created_by_id: str | None
     created_at: datetime
     updated_at: datetime
+    # Why the last start attempt was refused, if it was. A scheduled campaign that
+    # cannot start keeps this and stays scheduled.
+    last_error: str | None = None
+    sending_pool_id: str | None = None
+    sending_identity_id: str | None = None
+    # Resolved per request rather than stored: a domain verifying is what changes
+    # the answer, and that happens outside the campaign entirely.
+    sender: SenderStatus | None = None
 
 
 class EmailCampaignListResponse(BaseModel):
@@ -235,6 +274,10 @@ class EmailCampaignListResponse(BaseModel):
     open_count: int
     click_count: int
     created_at: datetime
+    # On the list too, not just the detail payload: a scheduled campaign that
+    # cannot send is exactly the row someone needs to spot without opening it.
+    # Cheap — it is a column, unlike `sender`, which costs a domain lookup.
+    last_error: str | None = None
 
 
 class CampaignScheduleRequest(BaseModel):

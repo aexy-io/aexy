@@ -375,7 +375,7 @@ function ExecutionDetail({ execution }: ExecutionDetailProps) {
                   )}
                 </div>
                 {step.thought && (
-                  <p className="text-muted-foreground italic mb-2">"{step.thought}"</p>
+                  <p className="text-muted-foreground italic mb-2">&quot;{step.thought}&quot;</p>
                 )}
                 {step.tool_output && (
                   <pre className="text-xs text-muted-foreground bg-muted rounded p-2 overflow-x-auto">
@@ -541,9 +541,9 @@ export default function AgentDetailPage() {
         title: "You don't have access to this agent",
         body: (
           <>
-            This agent belongs to a workspace you can't see. If you
+            This agent belongs to a workspace you can&apos;t see. If you
             switched workspaces in another tab, head back to the agents
-            list to find what you're working in now.
+            list to find what you&apos;re working in now.
           </>
         ),
       },

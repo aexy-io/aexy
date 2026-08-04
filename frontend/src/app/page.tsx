@@ -320,7 +320,7 @@ export default function Home() {
               CRM, engineering, and ops. One AI-native workspace.
             </h1>
             <p className="mt-7 max-w-2xl text-lg leading-8 text-white/62 sm:text-xl">
-              Your CRM can't see what engineering shipped. Your sprints can't see revenue. Aexy replaces the HubSpot + Jira + Notion sprawl with one open-source company OS where your team — and your AI agents — share the same context.
+              Your CRM can&apos;t see what engineering shipped. Your sprints can&apos;t see revenue. Aexy replaces the HubSpot + Jira + Notion sprawl with one open-source company OS where your team — and your AI agents — share the same context.
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <Link
@@ -368,7 +368,7 @@ export default function Home() {
               Pick your team. Start where it hurts most.
             </h2>
             <p className="mt-5 text-lg leading-8 text-white/56">
-              You don't adopt a company OS in one day. Start with the workflow your team is fighting today, then expand into the shared operating layer.
+              You don&apos;t adopt a company OS in one day. Start with the workflow your team is fighting today, then expand into the shared operating layer.
             </p>
           </div>
           <div className="mt-12 grid gap-4 md:grid-cols-3">

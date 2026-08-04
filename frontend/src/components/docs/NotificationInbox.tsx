@@ -114,7 +114,7 @@ export function NotificationInbox({
               <Bell className="h-12 w-12 text-muted-foreground mb-3" />
               <p className="text-muted-foreground text-sm">No notifications yet</p>
               <p className="text-muted-foreground text-xs mt-1">
-                You'll see updates about your documents here
+                You&apos;ll see updates about your documents here
               </p>
             </div>
           ) : (

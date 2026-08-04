@@ -194,8 +194,8 @@ function parseInlineFormatting(text: string): TipTapNode[] {
   // Handle links [text](url)
   const linkRegex = /\[(.+?)\]\((.+?)\)/g;
 
-  let remaining = text;
-  let lastIndex = 0;
+  const remaining = text;
+  const lastIndex = 0;
 
   // Simple implementation - just return as plain text for now
   // A full implementation would parse all formatting

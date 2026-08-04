@@ -5,6 +5,250 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.1] - 2026-08-04
+
+### Fixed: nine things a review of 0.14.0 turned up
+
+Reviewing the campaign work against its own claims found the places where three
+components still disagreed, or where a fix stopped one step short.
+
+**The wizard's send gate was workspace-wide; the backend's is campaign-specific.**
+"Send Now" appeared whenever *some* domain was verified, while `start_sending`
+requires *this campaign's* From address to resolve to one. With `acme.com` verified
+and a From of `hi@other.com` the wizard offered to send, the field below said it
+would save as a draft, and the detail page then refused — three answers to one
+question. The wizard now asks the same question the backend does, through a
+client-side twin of `email_matches_domain`, and the Review step says which domains
+would work rather than silently dropping the button.
+
+**"Send Now" had never sent.** It routed to the campaign with `?action=send`, and
+the detail page read no search params at all — so the wizard's final button
+created a draft and left the user to find Send themselves. It now fires the send
+on arrival, still through the same confirm: an irreversible action deserves the
+same prompt however you reach it.
+
+**A test send on a pooled campaign showed an address it would never use.** The
+endpoint resolved the domain through the pool but then sent from
+`campaign.from_email`, while a real pooled send takes the From address from the
+domain the router picked per recipient. Address resolution now lives in one place
+(`resolve_send_sender`) that both the real send and the test send call, and the
+response reports the address each test actually went out as. A test send that
+reassures you about the wrong address is worse than no test send.
+
+**Scheduling no longer refuses an unverified sender.** 0.14.0 gated it at schedule
+time *and* in the poller, which meant you couldn't schedule next week's newsletter
+while DNS propagated — even though the poller is built to hold exactly that
+campaign until the domain verifies. Scheduling now records what it is waiting for
+and leaves the gate to the poller, which is where it can actually be re-checked.
+
+**But the poller no longer waits forever.** A blocked campaign was retried on
+every poll indefinitely, with the reason living only in a worker's log. It is now
+held for three days — long enough for DNS and for a weekend — and then handed back
+as a draft with the reason on it, notifying the campaign's creator (new
+`campaign_send_blocked` notification, email on by default since the send time has
+already passed). `last_error` also rides the campaign *list*, so a blocked campaign
+is visible as a **Blocked** chip without opening it.
+
+**A campaign built from "Custom HTML Content" could never be sent** — found while
+verifying the above in the browser, and it is the same shape. The wizard's Content
+step offers custom HTML as an alternative to picking a template, but
+`start_sending` requires `campaign.template` and `process_campaign_sending` cancels
+a campaign whose template is missing. Confirmed against the running API:
+`POST /campaigns/{id}/send` returns 400 *"Campaign must have a template"*. The
+wizard's Send Now now requires a template as well as a sendable sender, and says
+which of the two is missing. HTML-only still saves as a draft. Note this is the
+gate reported honestly, not the underlying limitation removed: making the send path
+render `html_content` is a feature, not a fix.
+
+**Two defaults could claim to be the default pool.** `create_pool` cleared the
+previous holder; the `PATCH` added in 0.14.0 — the path the *Make default* button
+takes — did not.
+
+**`resolve_domain_for_email` fetched every domain in the workspace** and filtered
+in Python, once per recipient. The name match is now a SQL predicate, so a
+workspace with fifty domains stops shipping fifty rows per recipient; the Python
+rule still decides, so the two cannot drift apart.
+
+**A stalled backend could make the app unbuildable.** `community-api`'s server-side
+fetches had no deadline, and `community/[slug]/sitemap.xml` is prerendered — so a
+backend that accepted the connection and then hung took out the whole production
+build at Next's 60s per-route limit, which is exactly what happened here. Those
+fetches now time out at 10s and fall back to the empty result they already had a
+path for.
+
+### Fixed: the frontend had no working linter
+
+Next 16 removed `next lint` and ESLint 9 stopped reading `.eslintrc.*`, so
+`npm run lint` had been failing with *"Invalid project directory provided, no such
+directory: .../lint"* and a bare `eslint` had no config to load. A flat
+`eslint.config.mjs` restores it, and `npm run lint` now runs `eslint .`.
+
+It finds 244 errors and 1039 warnings across the existing codebase — mostly
+`react-hooks/*` rules from the plugin's v7 rewrite (86 `set-state-in-effect`) and
+79 unescaped apostrophes. None are new; nothing had been checking. Left as the
+shared config rates them rather than quietly downgraded, so the number is visible.
+
+### Changed
+
+- Next.js 16.2.3 → 16.3.0, `eslint-config-next` to match.
+- `connect-calendar` is back on the sales onboarding checklist — 0.14.0 dropped it
+  to make room for the sending-domain item, which nothing required.
+
+## [0.14.0] - 2026-08-04
+
+### Feature: sending pools have a UI
+
+The pool endpoints had no client code at all, so a pool could only be created with
+curl — which is why the routing they drive stayed broken without anyone noticing.
+
+A **Pools** tab on Settings → Email Infrastructure creates a pool, picks its
+strategy, and manages its member domains. Two details it gets right rather than
+showing everything unconditionally: a new pool starts with every verified domain
+already in it, because a pool with no members routes nothing; and the per-member
+knob shown follows the strategy — `weight` only means something under *Weighted*,
+`priority` only under *Failover*. Each strategy explains what it does, since
+"health_based" is not self-evident. Members show whether they can currently send
+and how much of today's limit they have used, so a pool that looks full but
+cannot route is visibly so.
+
+Two endpoints were missing and are added: `PATCH /pools/{id}` (used by the
+strategy dropdown and *Make default*) and `DELETE /pools/{id}`, which refuses
+while an unfinished campaign still routes through the pool and says how many —
+a campaign's `sending_pool_id` FKs only to `sending_pools.id`, so deleting the
+pool beneath it would leave it pointing at nothing and quietly fall back to the
+platform mailer. A sent campaign does not pin a pool forever; only unfinished
+sends do.
+
+The campaign wizard offers a pool when one exists, and says plainly that picking
+one means the From Email above will not be used — the pool takes the address from
+whichever domain it routes to.
+
+### Fix: sending-pool routing, which could never have run
+
+A sending pool spreads a campaign across several domains, picking the healthiest
+per recipient — which is how you keep one domain's reputation from sinking a whole
+send, and how transactional mail is kept off the marketing domain. It shipped with
+the multi-domain infrastructure and had never executed once.
+
+**Nothing could set a pool.** `EmailCampaign.sending_pool_id` and
+`sending_identity_id` existed as columns and the send path branched on both, but
+neither was on any schema or endpoint, so both were always NULL and both branches
+were dead. `RoutingConfigUpdate` — the schema written to set them — was referenced
+by nothing at all. They are now on campaign create/update and behind
+`PUT /campaigns/{id}/routing`, validated against the caller's workspace, because
+both columns FK to their own tables rather than to anything workspace-scoped.
+
+**And it would have crashed if it had run.** `route_email` was called with
+`pool_id`/`strategy` and no `workspace_id` (a `TypeError`), its `RoutingDecision`
+return was read as a dict, and `get_fallback_domain` was called with
+`exclude_domain_id` where it takes `exclude_domain_ids` — the same three mistakes
+in both call sites. `RoutingDecision.provider_id` was also non-optional while the
+column is nullable, so a pool member without its own provider raised a validation
+error instead of falling back to the workspace default.
+
+**Fallback escaped the pool.** `get_fallback_domain` selected from every active
+domain in the workspace, so a campaign whose pooled domain hit its daily limit
+would have sent from a domain the pool deliberately excluded — defeating the
+separation the pool was built for. It now takes `pool_id` and stays inside.
+
+**The From address follows the domain.** Pool routing picks the domain per
+recipient, so the decision's `from_email` (from that domain's identity) now wins
+over `campaign.from_email`. Sending as an address on one domain through another is
+precisely what the sender gate exists to prevent.
+
+**And the gate asks the right question per mode.** A pooled campaign's From is
+chosen from the pool, so validating `from_email` against a verified domain would
+refuse a perfectly sendable campaign. `sender_status` now reports its `mode`
+(`from_email` / `identity` / `pool`) and checks accordingly — for a pool, whether
+any member can send; the reason names the pool.
+
+**Creating a pool through the API had never returned successfully.**
+`POST /pools` committed the pool and then 500'd serializing the response, because
+`SendingPoolResponse.members` lazy-loaded on an async session
+(`MissingGreenlet`) — so the natural retry then failed on the unique name.
+`GET /pools/{id}` had always eager-loaded correctly; create had not.
+
+### Fix: campaigns sent from the platform's address, and scheduled ones sent to nobody
+
+The Email Marketing empty state promised a four-step setup starting with *"Configure
+a sending domain"* — and then offered one button, which skipped all four into the
+campaign wizard. Following the instructions was the slower path. Underneath, the
+domain it told you to configure was never read.
+
+**A campaign never used the workspace's own domain or provider.** The send path
+resolved a sending domain only through `campaign.sending_identity_id` or
+`sending_pool_id`, and neither field exists on any schema or is set by any
+endpoint — so both were always NULL, every campaign fell through to the
+platform-global mailer, and mail went out from the deployment's own address
+(`noreply@yourdomain.com` on an unconfigured install) rather than the From address
+the user chose. `ProviderService.get_default_provider` had never been called by
+anything. The path now resolves the domain from `from_email`, checks it with the
+existing `can_send`, and sends through that domain's provider or the workspace
+default. The platform mailer remains, but only for a workspace that has configured
+no provider at all — and a provider that *is* configured and fails now fails the
+recipient instead of quietly re-sending from the platform address.
+
+**The sender gate was workspace-wide, so it checked the wrong thing.** It asked
+"does this workspace have any verified domain?", which let a campaign send as
+`sender@somewhere-else.com` on the strength of an unrelated verified domain — and
+it was the only sender validation anywhere, since nothing compared `from_email` to
+a domain. It now resolves *this campaign's* `from_email`, using the same rule
+identity creation already used (extracted, so the two cannot disagree). Sending,
+scheduling and test-sending all refuse with the same message, which names the
+address and what to do about it.
+
+**A scheduled campaign reported success having delivered nothing.** The poller
+flipped a due campaign to `sending` and dispatched by hand rather than calling
+`start_sending`, so it skipped both the sender gate *and* `populate_recipients`.
+With no recipient rows the send activity found nothing pending and marked the
+campaign `sent`. It now goes through `start_sending`; a refusal leaves the campaign
+`scheduled` with the reason in a new `email_campaigns.last_error`, so it sends
+itself once the domain verifies instead of needing to be rescheduled by hand.
+
+**The test send proved nothing.** `POST /campaigns/{id}/test` bypassed every check
+and used the platform mailer, so a test could arrive from the deployment's address
+and appear to validate a sender that a real send would refuse. It now resolves the
+sender the same way and reports which path delivered it.
+
+**And the Send button on the campaign detail page was disabled forever.**
+`useSendingDomains` returns `{ domains }`, but the page destructured `{ data }`, so
+the value was always `undefined` — no number of verified domains could enable it.
+Its status list also tested `active` and `warming`, which the frontend
+`DomainStatus` union does not contain, leaving two of three arms dead. The campaign
+payload now carries the backend's own `sender` verdict, so there is nothing left to
+re-derive.
+
+**Setup comes first, and the steps know whether they are done.** A panel derived
+from live rows replaces the inert list: each step shows todo / pending / done —
+"added but not verified yet" is a state worth distinguishing — and links to where
+it is actually done. The primary action is *Set up a sending domain* until one
+exists, with drafting still available beside it, because DNS propagation can take a
+day. The wizard now warns on the Details and Review steps rather than after the
+record is written, validates the From address for real (the `type="email"` input is
+not inside a `<form>`, so the browser never checked it and `hello world` passed),
+and offers addresses on verified domains. `/email-marketing` and
+`/email-marketing/campaigns` show the same panel — they previously carried
+different copy for the same empty state.
+
+#### Upgrade notes
+
+```bash
+docker exec aexy-backend python scripts/run_migrations.py --file migrate_campaign_last_error.sql
+```
+
+### Feature: the org chart shows the member hierarchy
+
+It drew departments and nothing else, so a one-department workspace rendered as a
+single row reading "3 members" and the reporting lines on
+`workspace_members.manager_id` — which `set_manager` validates and rejects cycles
+for — were visible nowhere. `GET /organization/org-chart` now returns each
+department's members with their manager, and the chart nests people under whoever
+they report to. Three queries for the whole chart rather than one per department.
+
+Someone whose manager sits in a different department, or who has no manager set,
+appears at the department's top level: most workspaces start with no reporting
+lines, and a chart that only rendered nested people would show them nothing.
+
 ## [0.13.0] - 2026-08-04
 
 ### Feature: the Service Desk is industry-agnostic — vocabulary and taxonomy per workspace
@@ -58,6 +302,18 @@ and `get_dashboard` all seeded a default taxonomy when they found none, so merel
 opening the desk pre-empted the first-run picker and left an eleven-stakeholder
 mixture of two templates. Of the thirteen call sites, only ticket creation still
 seeds — inbound mail must never be dropped for want of configuration.
+
+**`migrate_service_desk.sql` creates the current shape.** It was still building
+the insurance-named tables for the agnostic migration to rename moments later in
+the same run, which was churn on a fresh install and a hard stop on a
+Docker-first one: `create_all` had already made `service_desk_tickets` with
+`account_id`, so `CREATE TABLE IF NOT EXISTS` no-oped and
+`CREATE INDEX … (partner_id)` failed with *column "partner_id" does not exist* —
+taking the whole run down with it, since the runner stops at the first failure.
+Corrected in place, which is safe because a changed checksum is a warning the
+runner will not act on without `--force`. Verified on all three shapes — nothing,
+`create_all`-built, and legacy-migrated — which now converge on identical
+columns, constraint names and foreign keys.
 
 #### Upgrade notes
 

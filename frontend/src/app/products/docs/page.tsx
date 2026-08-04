@@ -156,7 +156,10 @@ export default function DocsProductPage() {
                       <div className="h-4 bg-white/10 rounded w-5/6" />
                       <div className="h-4 bg-white/10 rounded w-4/6" />
                       <div className="h-20 bg-indigo-500/10 border border-indigo-500/20 rounded-lg mt-4 p-3">
-                        <span className="text-indigo-400 text-xs font-mono">// Code block preview</span>
+                        {/* Braced string, not bare JSX text: `//` at the start of
+                            children reads as a mistaken comment to both a linter
+                            and a human. It is deliberate mock-code copy here. */}
+                        <span className="text-indigo-400 text-xs font-mono">{"// Code block preview"}</span>
                       </div>
                       <div className="h-4 bg-white/10 rounded w-full mt-4" />
                       <div className="h-4 bg-white/10 rounded w-3/4" />

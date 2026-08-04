@@ -9,7 +9,7 @@ Aexy is an Engineering OS platform — a full-stack application with developer a
 ## Tech Stack
 
 - **Backend**: Python 3.13, FastAPI, SQLAlchemy 2.0 (async via asyncpg), Temporal
-- **Frontend**: Next.js 14 (App Router), React 18, TypeScript, TailwindCSS, Zustand, React Query
+- **Frontend**: Next.js 16 (App Router), React 19, TypeScript, TailwindCSS, Zustand, React Query
 - **Database**: PostgreSQL 18 (async via asyncpg, sync via psycopg2 for background tasks)
 - **Queue/Cache**: Redis 7, Temporal (workflow engine replacing Celery)
 - **LLM**: Claude (Anthropic), Gemini (Google), Ollama — abstracted behind `aexy.llm.gateway`
@@ -88,7 +88,7 @@ with an auth proxy).
 cd frontend && npm run dev        # Dev server on :3000
 cd frontend && npm run build      # Production build
 cd frontend && npm start          # Production server
-cd frontend && npm run lint       # ESLint
+cd frontend && npm run lint       # ESLint (flat config: eslint.config.mjs)
 cd frontend && npm run test       # Vitest unit tests
 cd frontend && npm run test:coverage  # Vitest with coverage
 cd frontend && npm run test:e2e   # Playwright E2E tests

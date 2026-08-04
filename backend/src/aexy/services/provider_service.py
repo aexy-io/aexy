@@ -1090,8 +1090,12 @@ class ProviderService:
         if provider.status != ProviderStatus.ACTIVE.value:
             return {"success": False, "error": f"Provider is {provider.status}"}
 
-        # Check daily limit
-        if provider.max_daily_sends and provider.current_daily_sends >= provider.max_daily_sends:
+        # Check daily limit. The field is `max_sends_per_day`; this read
+        # `provider.max_daily_sends`, which does not exist on the model, so the
+        # limit was never enforced on this path — an AttributeError was avoided
+        # only because SQLAlchemy models raise it lazily and `and` short-circuits
+        # on the first read.
+        if provider.max_sends_per_day and provider.current_daily_sends >= provider.max_sends_per_day:
             return {"success": False, "error": "Provider daily limit reached"}
 
         # Get client
@@ -1134,19 +1138,15 @@ class ProviderService:
             return {"success": False, "error": str(e)}
 
     def _get_client(self, provider: EmailProvider) -> EmailProviderClient | None:
-        """Get the appropriate client for a provider."""
-        provider_type = provider.provider_type
-        credentials = provider.credentials
+        """Get the appropriate client for a provider.
 
-        if provider_type == EmailProviderType.SES.value:
-            return SESClient(credentials)
-        elif provider_type == EmailProviderType.SENDGRID.value:
-            return SendGridClient(credentials)
-        elif provider_type == EmailProviderType.MAILGUN.value:
-            return MailgunClient(credentials)
-        elif provider_type == EmailProviderType.POSTMARK.value:
-            return PostmarkClient(credentials)
-        elif provider_type == EmailProviderType.SMTP.value:
-            return SMTPClient(credentials)
-        else:
+        Delegates to the module-level `get_provider_client` rather than repeating
+        the branch: this copy passed `provider.credentials` — the *encrypted* blob —
+        straight to the client, so every send on this path authenticated with
+        ciphertext. Only the legacy `processing/email_marketing_tasks.py` reaches
+        here; the Temporal path uses `send_via_provider`, which was always correct.
+        """
+        try:
+            return get_provider_client(provider)
+        except ValueError:
             return None

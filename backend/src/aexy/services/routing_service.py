@@ -5,7 +5,7 @@ import random
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
@@ -44,6 +44,7 @@ class RoutingService:
         identity_id: str | None = None,
         prefer_warming_complete: bool = True,
         min_health_score: int = 50,
+        strategy: str | None = None,
     ) -> RoutingDecision | None:
         """
         Determine the best domain/identity to send an email from.
@@ -74,14 +75,17 @@ class RoutingService:
                         fallback_domains=[],
                     )
 
-        # Get candidate domains
+        # Get candidate domains. `strategy` lets a caller override the pool's own
+        # choice — `RoutingConfigUpdate` offers a per-campaign `routing_strategy`,
+        # so a transactional campaign can insist on failover while the pool's
+        # default stays health-based.
         if pool_id:
             domains = await self._get_pool_domains(pool_id, workspace_id)
             pool = await self._get_pool(pool_id, workspace_id)
-            routing_strategy = pool.routing_strategy if pool else "health_based"
+            routing_strategy = strategy or (pool.routing_strategy if pool else "health_based")
         else:
             domains = await self._get_active_domains(workspace_id)
-            routing_strategy = "health_based"
+            routing_strategy = strategy or "health_based"
 
         if not domains:
             logger.warning(f"No active domains found for workspace {workspace_id}")
@@ -148,6 +152,7 @@ class RoutingService:
         exclude_domain_ids: list[str],
         recipient_email: str | None = None,
         min_health_score: int = 50,
+        pool_id: str | None = None,
     ) -> RoutingDecision | None:
         """
         Get a fallback domain when the primary domain is unavailable.
@@ -157,11 +162,19 @@ class RoutingService:
             exclude_domain_ids: Domain IDs to exclude (already tried)
             recipient_email: Optional recipient for ISP-aware selection
             min_health_score: Minimum health score requirement
+            pool_id: Confine the fallback to this pool's members
 
         Returns:
             RoutingDecision or None if no fallback available
         """
-        domains = await self._get_active_domains(workspace_id)
+        # A pool is a statement about which domains a campaign may send from, so a
+        # fallback that ignored it would send from a domain the user excluded —
+        # which for a pool built to separate transactional from marketing traffic
+        # is the whole thing it was built to prevent.
+        if pool_id:
+            domains = await self._get_pool_domains(pool_id, workspace_id)
+        else:
+            domains = await self._get_active_domains(workspace_id)
 
         # Filter out excluded domains
         available_domains = [
@@ -404,6 +417,18 @@ class RoutingService:
         )
         return list(result.scalars().all())
 
+    async def list_pool_domains(
+        self,
+        pool_id: str,
+        workspace_id: str,
+    ) -> list[SendingDomain]:
+        """Public alias: the domains a pool may send from, in priority order.
+
+        `CampaignService` needs this to answer "can this pooled campaign send?"
+        without reaching into a private method.
+        """
+        return await self._get_pool_domains(pool_id, workspace_id)
+
     async def _get_pool_domains(
         self,
         pool_id: str,
@@ -554,17 +579,7 @@ class RoutingService:
         )
 
         if is_default:
-            # Unset other defaults
-            result = await self.db.execute(
-                select(SendingPool).where(
-                    and_(
-                        SendingPool.workspace_id == workspace_id,
-                        SendingPool.is_default == True,
-                    )
-                )
-            )
-            for existing in result.scalars().all():
-                existing.is_default = False
+            await self._clear_default_pools(workspace_id)
 
         self.db.add(pool)
         await self.db.commit()
@@ -605,6 +620,85 @@ class RoutingService:
         await self.db.refresh(member)
 
         return member
+
+    async def _clear_default_pools(
+        self,
+        workspace_id: str,
+        except_pool_id: str | None = None,
+    ) -> None:
+        """Unset `is_default` on the workspace's other pools.
+
+        "Default" is singular, so whoever sets it has to clear the previous
+        holder. Shared by create and update because only create used to do it,
+        which let a PATCH — the path the UI's "Make default" button takes — leave
+        two pools both claiming to be the default.
+        """
+        conditions = [
+            SendingPool.workspace_id == workspace_id,
+            SendingPool.is_default == True,
+        ]
+        if except_pool_id:
+            conditions.append(SendingPool.id != except_pool_id)
+
+        result = await self.db.execute(select(SendingPool).where(and_(*conditions)))
+        for existing in result.scalars().all():
+            existing.is_default = False
+
+    async def update_pool(
+        self,
+        pool_id: str,
+        workspace_id: str,
+        **fields,
+    ) -> SendingPool | None:
+        """Update a pool's name, description, strategy or active/default flags."""
+        pool = await self._get_pool(pool_id, workspace_id)
+        if not pool:
+            return None
+
+        for key, value in fields.items():
+            if value is not None:
+                setattr(pool, key, value)
+
+        if fields.get("is_default"):
+            await self._clear_default_pools(workspace_id, except_pool_id=pool_id)
+
+        await self.db.commit()
+        await self.db.refresh(pool)
+        return pool
+
+    async def delete_pool(self, pool_id: str, workspace_id: str) -> bool:
+        """Delete a pool, refusing while a campaign still routes through it.
+
+        Members go with it (`cascade="all, delete-orphan"`), but a campaign's
+        `sending_pool_id` only FKs to `sending_pools.id`, so deleting a pool out
+        from under a campaign would leave it pointing at nothing and silently fall
+        back to the platform mailer at send time.
+        """
+        from aexy.models.email_marketing import CampaignStatus, EmailCampaign
+
+        pool = await self._get_pool(pool_id, workspace_id)
+        if not pool:
+            return False
+
+        in_use = (
+            await self.db.execute(
+                select(func.count(EmailCampaign.id)).where(
+                    EmailCampaign.sending_pool_id == pool_id,
+                    EmailCampaign.status.notin_(
+                        [CampaignStatus.SENT.value, CampaignStatus.CANCELLED.value]
+                    ),
+                )
+            )
+        ).scalar() or 0
+        if in_use:
+            raise ValueError(
+                f"{in_use} campaign(s) still send through '{pool.name}' — "
+                "point them elsewhere first"
+            )
+
+        await self.db.delete(pool)
+        await self.db.commit()
+        return True
 
     async def remove_domain_from_pool(
         self,

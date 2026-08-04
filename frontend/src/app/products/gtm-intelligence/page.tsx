@@ -116,7 +116,7 @@ export default function GTMIntelligenceProductPage() {
               <Bell className="h-10 w-10 text-amber-300" />
               <h2 className="mt-6 text-4xl font-semibold tracking-tight">More than visitor identification.</h2>
               <p className="mt-5 text-lg leading-8 text-white/58">
-                Aexy's GTM system includes the downstream actions that turn signals into revenue motion, not just a dashboard of anonymous traffic.
+                Aexy&apos;s GTM system includes the downstream actions that turn signals into revenue motion, not just a dashboard of anonymous traffic.
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">

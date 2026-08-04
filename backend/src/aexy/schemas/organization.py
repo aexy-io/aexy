@@ -64,6 +64,12 @@ class MemberSummary(BaseModel):
     role_in_department: DepartmentMemberRole = "member"
     is_primary: bool = False
     allocation_percent: int = 100
+    # Person-level reporting line, from `workspace_members.manager_id`. Carried
+    # here so the org chart can nest people under whoever they report to instead
+    # of listing a department as a flat count — the department tree answers "which
+    # unit", this answers "who reports to whom" inside it.
+    manager_id: str | None = None
+    manager_name: str | None = None
 
 
 class DepartmentResponse(BaseModel):
@@ -102,6 +108,12 @@ class DepartmentDetail(DepartmentResponse):
 class DepartmentNode(DepartmentResponse):
     """A node in the org-chart tree."""
     children: list["DepartmentNode"] = Field(default_factory=list)
+    # The people in this department, each carrying their manager, so the chart can
+    # draw the hierarchy rather than a member count. Previously the chart returned
+    # departments only: a one-department workspace rendered as a single row reading
+    # "3 members" and the reporting lines stored on `workspace_members.manager_id`
+    # were visible nowhere at all.
+    members: list[MemberSummary] = Field(default_factory=list)
 
 
 # Resolve the self-referential forward ref in DepartmentNode.children.

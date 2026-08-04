@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Mail,
@@ -41,7 +41,6 @@ import {
   useSendCampaign,
   useDuplicateCampaign,
   useDeleteCampaign,
-  useSendingDomains,
 } from "@/hooks/useEmailMarketing";
 import { CampaignRecipient } from "@/lib/api";
 import { CAMPAIGN_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
@@ -51,6 +50,7 @@ type TabType = "overview" | "recipients" | "analytics";
 export default function CampaignDetailPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const { currentWorkspace } = useWorkspace();
   const { user, logout } = useAuth();
   const campaignId = params.campaignId as string;
@@ -75,13 +75,18 @@ export default function CampaignDetailPage() {
   const duplicateCampaign = useDuplicateCampaign(workspaceId);
   const deleteCampaign = useDeleteCampaign(workspaceId);
 
-  // E2.6: mirror the backend send-gate — can't send until the workspace has a
-  // verified sending domain. The backend enforces this too (start_sending
-  // raises), this just disables the button and explains why.
-  const { data: sendingDomains } = useSendingDomains(workspaceId);
-  const hasVerifiedSender = (sendingDomains ?? []).some((d) =>
-    ["verified", "active", "warming"].includes(d.status),
-  );
+  // E2.6: mirror the backend send-gate. The campaign payload now carries the
+  // backend's own answer for *this* campaign's from_email, so there is nothing
+  // left to re-derive here.
+  //
+  // Two bugs this replaces. `useSendingDomains` returns `{ domains }`, not
+  // `{ data }`, so the destructure produced `undefined` and the Send button was
+  // permanently disabled however many domains you had verified. And the status
+  // list it tested included "active" and "warming", which the frontend
+  // `DomainStatus` union does not contain — two of the three arms were dead.
+  const hasVerifiedSender = campaign?.sender?.can_send ?? false;
+  const senderProblem = campaign?.sender?.reason ?? null;
+
 
   const getRecipientStatusColor = (status: string) => {
     switch (status) {
@@ -161,6 +166,28 @@ export default function CampaignDetailPage() {
     }
   };
 
+  // The wizard's "Send Now" lands here with `?action=send`. Nothing read it, so
+  // that button created a campaign and then sat on this page having done nothing —
+  // the user had to find Send themselves, which is the opposite of what the button
+  // says. Routed through `handleSend`, so the confirm stands: an irreversible
+  // action deserves the same prompt however you arrived at it.
+  const autoSendHandled = useRef(false);
+  useEffect(() => {
+    if (autoSendHandled.current) return;
+    if (searchParams.get("action") !== "send") return;
+    if (!campaign || !hasVerifiedSender) return;
+    // Only a draft. Arriving at an already-sending campaign with a stale link in
+    // the history must not fire anything.
+    if (campaign.status !== "draft") return;
+
+    autoSendHandled.current = true;
+    // Drop the parameter first, so declining the confirm — or a refusal from the
+    // backend — doesn't re-prompt on every refresh.
+    router.replace(`/email-marketing/campaigns/${campaignId}`);
+    void handleSend();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleSend is stable enough; the ref guards re-entry
+  }, [campaign, hasVerifiedSender, searchParams, router, campaignId]);
+
   const handlePause = async () => {
     await pauseCampaign.mutateAsync(campaignId);
     refetch();
@@ -221,7 +248,9 @@ export default function CampaignDetailPage() {
           <div className="text-center">
             <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-foreground mb-2">Campaign Not Found</h2>
-            <p className="text-muted-foreground mb-4">The campaign you're looking for doesn't exist.</p>
+            <p className="text-muted-foreground mb-4">
+              The campaign you&apos;re looking for doesn&apos;t exist.
+            </p>
             <Link
               href="/email-marketing/campaigns"
               className="text-sky-400 hover:text-sky-300"
@@ -274,11 +303,9 @@ export default function CampaignDetailPage() {
                   <button
                     onClick={handleSend}
                     disabled={sendCampaign.isPending || !hasVerifiedSender}
-                    title={
-                      hasVerifiedSender
-                        ? undefined
-                        : "Verify a sending domain before sending"
-                    }
+                    // The backend's own reason, naming this campaign's From
+                    // address, rather than a generic "verify a domain".
+                    title={senderProblem ?? undefined}
                     className="flex items-center gap-2 px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {sendCampaign.isPending ? (

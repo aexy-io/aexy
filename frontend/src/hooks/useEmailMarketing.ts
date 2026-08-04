@@ -17,6 +17,8 @@ import {
   EmailTemplateType,
   RecipientStatus,
   SendingDomain,
+  SendingPool,
+  SendingPoolSummary,
   EmailProvider,
   VisualBlock,
   SavedDesign,
@@ -723,5 +725,118 @@ export function useExportSubscribers(workspaceId: string | null) {
     onError: () => {
       toast.error("Failed to export subscribers");
     },
+  });
+}
+
+// ==================== Sending Pools ====================
+
+/**
+ * The API's own message, when it has one. These endpoints refuse with reasons
+ * worth reading — "3 campaign(s) still send through 'Marketing'" is actionable in
+ * a way that "Could not delete the pool" is not.
+ */
+function apiErrorMessage(err: unknown, fallback: string): string {
+  const detail = (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
+  return typeof detail === "string" ? detail : fallback;
+}
+
+/**
+ * A sending pool spreads a campaign across several domains, picking one per
+ * recipient by the pool's strategy — how you keep one domain's reputation from
+ * sinking a whole send, and how transactional mail stays off the marketing domain.
+ *
+ * The endpoints have existed since the multi-domain infrastructure landed and no
+ * client code had ever called them, so a pool could only be created with curl.
+ */
+export function useSendingPools(workspaceId: string | null) {
+  const queryClient = useQueryClient();
+  const key = ["sendingPools", workspaceId];
+
+  const { data: pools, isLoading, error, refetch } = useQuery<SendingPoolSummary[]>({
+    queryKey: key,
+    queryFn: () => emailInfrastructureApi.pools.list(workspaceId!),
+    enabled: !!workspaceId,
+  });
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: key });
+    // A pool change can change whether a campaign can send at all, and that
+    // verdict is resolved server-side onto the campaign payload.
+    queryClient.invalidateQueries({ queryKey: ["emailCampaigns", workspaceId] });
+  };
+
+  const createMutation = useMutation({
+    mutationFn: (data: Parameters<typeof emailInfrastructureApi.pools.create>[1]) =>
+      emailInfrastructureApi.pools.create(workspaceId!, data),
+    onSuccess: () => {
+      invalidate();
+      toast.success("Sending pool created");
+    },
+    onError: (e: unknown) => toast.error(apiErrorMessage(e, "Could not create the pool")),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({
+      poolId,
+      data,
+    }: {
+      poolId: string;
+      data: Parameters<typeof emailInfrastructureApi.pools.update>[2];
+    }) => emailInfrastructureApi.pools.update(workspaceId!, poolId, data),
+    onSuccess: invalidate,
+    onError: (e: unknown) => toast.error(apiErrorMessage(e, "Could not update the pool")),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (poolId: string) => emailInfrastructureApi.pools.delete(workspaceId!, poolId),
+    onSuccess: () => {
+      invalidate();
+      toast.success("Sending pool deleted");
+    },
+    // The backend refuses while a campaign still routes through the pool, and
+    // that reason is the useful thing to show.
+    onError: (e: unknown) => toast.error(apiErrorMessage(e, "Could not delete the pool")),
+  });
+
+  const addMemberMutation = useMutation({
+    mutationFn: ({
+      poolId,
+      data,
+    }: {
+      poolId: string;
+      data: { domain_id: string; weight?: number; priority?: number };
+    }) => emailInfrastructureApi.pools.addMember(workspaceId!, poolId, data),
+    onSuccess: invalidate,
+    onError: (e: unknown) => toast.error(apiErrorMessage(e, "Could not add the domain")),
+  });
+
+  const removeMemberMutation = useMutation({
+    mutationFn: ({ poolId, domainId }: { poolId: string; domainId: string }) =>
+      emailInfrastructureApi.pools.removeMember(workspaceId!, poolId, domainId),
+    onSuccess: invalidate,
+    onError: (e: unknown) => toast.error(apiErrorMessage(e, "Could not remove the domain")),
+  });
+
+  return {
+    pools: pools || [],
+    isLoading,
+    error,
+    refetch,
+    createPool: createMutation.mutateAsync,
+    updatePool: updateMutation.mutateAsync,
+    deletePool: deleteMutation.mutateAsync,
+    addMember: addMemberMutation.mutateAsync,
+    removeMember: removeMemberMutation.mutateAsync,
+    isCreating: createMutation.isPending,
+    isDeleting: deleteMutation.isPending,
+  };
+}
+
+/** One pool with its member rows — `GET /pools` returns only a count. */
+export function useSendingPool(workspaceId: string | null, poolId: string | null) {
+  return useQuery<SendingPool>({
+    queryKey: ["sendingPool", workspaceId, poolId],
+    queryFn: () => emailInfrastructureApi.pools.get(workspaceId!, poolId!),
+    enabled: !!workspaceId && !!poolId,
   });
 }

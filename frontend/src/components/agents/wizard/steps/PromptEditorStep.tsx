@@ -169,7 +169,7 @@ export function PromptEditorStep({
           Agent Prompts
         </h2>
         <p className="text-muted-foreground">
-          Configure the system prompt that defines your agent's personality and
+          Configure the system prompt that defines your agent&apos;s personality and
           behavior, plus any custom instructions.
         </p>
       </div>
@@ -239,7 +239,7 @@ export function PromptEditorStep({
         <p className="text-sm text-muted-foreground">
           <strong className="text-foreground">Tip:</strong> Use variables like{" "}
           <code className="text-purple-400">{"{{sender_name}}"}</code> in your
-          prompts. They'll be replaced with actual values when the agent runs.
+          prompts. They&apos;ll be replaced with actual values when the agent runs.
         </p>
       </div>
     </div>

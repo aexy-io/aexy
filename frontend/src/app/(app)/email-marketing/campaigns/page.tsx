@@ -17,6 +17,7 @@ import {
   Send,
   Loader2,
   AlertCircle,
+  AlertTriangle,
   Calendar,
   Copy,
   MoreHorizontal,
@@ -35,6 +36,7 @@ import {
 } from "@/hooks/useEmailMarketing";
 import { EmailCampaign } from "@/lib/api";
 import { EmptyState } from "@/components/EmptyState";
+import { EmailMarketingSetup } from "@/components/email-marketing/EmailMarketingSetup";
 import { SearchInput } from "@/components/ui/search-input";
 import { CAMPAIGN_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
@@ -82,6 +84,18 @@ function CampaignCard({
           </div>
         </Link>
         <div className="flex items-center gap-2">
+          {/* A scheduled campaign that can't send is exactly the row someone needs
+              to spot without opening it. The poller holds it and records why; until
+              this was here, the reason lived only on a worker's log. */}
+          {campaign.last_error && campaign.status !== "sent" && (
+            <span
+              className="flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs text-amber-500"
+              title={campaign.last_error}
+            >
+              <AlertTriangle className="h-3 w-3" aria-hidden />
+              Blocked
+            </span>
+          )}
           <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${statusColor.bg} ${statusColor.text}`}>
             {campaign.status}
           </span>
@@ -370,20 +384,10 @@ export default function CampaignsPage() {
                 compact
               />
             ) : (
-              <EmptyState
-                icon={Mail}
-                title="No campaigns yet"
-                description="Create your first email campaign to start engaging with your audience."
-                actions={[
-                  { label: "Create Campaign", href: "/email-marketing/campaigns/new" },
-                ]}
-                steps={[
-                  { label: "Configure a sending domain", description: "Verify your domain for email delivery" },
-                  { label: "Create an email template", description: "Design reusable email layouts" },
-                  { label: "Build your audience", description: "Import or grow your subscriber list" },
-                  { label: "Launch your first campaign", description: "Send or schedule your email" },
-                ]}
-              />
+              /* The four steps here used to be inert prose with no completion
+                 state, next to a button that skipped all of them. This panel
+                 derives each step from real rows and links to where it is done. */
+              <EmailMarketingSetup workspaceId={workspaceId} />
             )
           ) : (
             <div className="space-y-4">

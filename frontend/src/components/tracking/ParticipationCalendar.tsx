@@ -134,7 +134,7 @@ export function StandupStreak({
 
     // Calculate current streak
     let currentStreak = 0;
-    let checkDate = new Date(today);
+    const checkDate = new Date(today);
 
     // Check if today has a standup
     const todayStr = today.toISOString().split("T")[0];

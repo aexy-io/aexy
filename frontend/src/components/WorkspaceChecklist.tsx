@@ -25,6 +25,7 @@ import {
   Ticket,
   Building2,
   FileText,
+  Mail,
   Layers,
 } from "lucide-react";
 import type { PresetType } from "@/config/dashboardPresets";
@@ -162,6 +163,15 @@ const SHARED_ITEMS: Record<string, ChecklistItemDef> = {
     icon: Building2,
     href: "/settings/crm",
   },
+  "setup-sending-domain": {
+    id: "setup-sending-domain",
+    label: "Set up a sending domain",
+    // The first thing email marketing needs and the last thing anyone discovers:
+    // without a verified domain a campaign can be written but not sent.
+    description: "Verify the domain your campaigns send from",
+    icon: Mail,
+    href: "/settings/email-marketing",
+  },
   "setup-forms": {
     id: "setup-forms",
     label: "Set up forms",
@@ -216,6 +226,7 @@ const PRESET_CHECKLIST_ITEMS: Record<PresetType, ChecklistItemDef[]> = {
   ],
   sales: [
     SHARED_ITEMS["setup-crm"],
+    SHARED_ITEMS["setup-sending-domain"],
     SHARED_ITEMS["create-agent"],
     SHARED_ITEMS["setup-forms"],
     SHARED_ITEMS["add-integration"],

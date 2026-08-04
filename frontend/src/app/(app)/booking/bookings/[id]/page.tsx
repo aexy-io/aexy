@@ -176,7 +176,7 @@ export default function BookingDetailsPage() {
             Booking not found
           </h2>
           <p className="text-gray-500 dark:text-gray-400 mb-4">
-            The booking you're looking for doesn't exist or you don't have access to it.
+            The booking you&apos;re looking for doesn&apos;t exist or you don&apos;t have access to it.
           </p>
           <Link
             href="/booking"

@@ -17,6 +17,10 @@ const SERVER_API_BASE =
 // on-demand revalidateTag on new public messages.
 const REVALIDATE_SECONDS = 300;
 
+// Comfortably above a healthy response, well under Next's 60s per-route
+// prerender limit. See the deadline note in `getJson`.
+const FETCH_TIMEOUT_MS = 10_000;
+
 export interface DirectoryItem {
   community_slug: string;
   title: string | null;
@@ -101,6 +105,13 @@ async function getJson<T>(path: string): Promise<T | null> {
     const res = await fetch(`${SERVER_API_BASE}/public/community${path}`, {
       next: { revalidate: REVALIDATE_SECONDS },
       headers: { Accept: "application/json" },
+      // Bounded on purpose. Every caller here already treats a failure as "no
+      // data", but without a deadline a backend that accepts the connection and
+      // then stalls leaves this awaiting forever — which fails the *production
+      // build*, not just a page: `sitemap.xml/route` is prerendered, and Next
+      // aborts the whole export when a route exceeds 60s. An empty sitemap is a
+      // far better outcome than an unbuildable app.
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     if (!res.ok) return null;
     return (await res.json()) as T;

@@ -955,7 +955,7 @@ export function NodeConfigPanel({
               </select>
             </div>
             <p className="text-xs text-muted-foreground">
-              Leave either as "Any stage" to ignore that side of the move.
+              Leave either as &quot;Any stage&quot; to ignore that side of the move.
             </p>
           </div>
         )}
@@ -989,7 +989,7 @@ export function NodeConfigPanel({
                 className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Hour and minute, in your device's time ({deviceTimezone}).
+                Hour and minute, in your device&apos;s time ({deviceTimezone}).
               </p>
             </div>
           </div>

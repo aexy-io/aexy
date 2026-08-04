@@ -39,6 +39,9 @@ export interface DepartmentMemberSummary {
   role_in_department: DepartmentMemberRole;
   is_primary: boolean;
   allocation_percent: number;
+  /** From `workspace_members.manager_id` — who this person reports to. */
+  manager_id: string | null;
+  manager_name: string | null;
 }
 
 export interface DepartmentDetail extends Department {
@@ -48,6 +51,7 @@ export interface DepartmentDetail extends Department {
 
 export interface DepartmentNode extends Department {
   children: DepartmentNode[];
+  members: DepartmentMemberSummary[];
 }
 
 export interface DepartmentPosition {

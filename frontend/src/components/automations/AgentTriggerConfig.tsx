@@ -160,7 +160,7 @@ export function AgentTriggerConfig({
             <SheetTitle>Add agent trigger</SheetTitle>
             <SheetDescription>
               Pick which agent runs and where it fires in this
-              automation's lifecycle.
+              automation&apos;s lifecycle.
             </SheetDescription>
           </SheetHeader>
           <SheetBody className="p-4">

@@ -115,6 +115,10 @@ class NotificationEventType(str, Enum):
     # Campaigns
     CAMPAIGN_COMPLETED = "campaign_completed"
     CAMPAIGN_SCHEDULED = "campaign_scheduled"
+    # A scheduled campaign whose send time passed while it still could not send.
+    # Without this the poller's only record was a log line on a worker, and the
+    # campaign sat looking scheduled indefinitely.
+    CAMPAIGN_SEND_BLOCKED = "campaign_send_blocked"
 
     # Automations
     AUTOMATION_RUN_FAILED = "automation_run_failed"
@@ -476,6 +480,7 @@ NOTIFICATION_CATEGORIES: dict[str, list[str]] = {
     "campaigns": [
         NotificationEventType.CAMPAIGN_COMPLETED.value,
         NotificationEventType.CAMPAIGN_SCHEDULED.value,
+        NotificationEventType.CAMPAIGN_SEND_BLOCKED.value,
     ],
     "automations": [
         NotificationEventType.AUTOMATION_RUN_FAILED.value,
@@ -576,6 +581,9 @@ DEFAULT_NOTIFICATION_PREFERENCES = {
     # Campaigns
     NotificationEventType.CAMPAIGN_COMPLETED: {"in_app": True, "email": True, "slack": False, "web_push": False},
     NotificationEventType.CAMPAIGN_SCHEDULED: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    # Email on by default: the send time has already passed, so nobody is going to
+    # discover this by opening the app at the right moment.
+    NotificationEventType.CAMPAIGN_SEND_BLOCKED: {"in_app": True, "email": True, "slack": False, "web_push": False},
     # Automations
     NotificationEventType.AUTOMATION_RUN_FAILED: {"in_app": True, "email": True, "slack": False, "web_push": False},
     NotificationEventType.AUTOMATION_RUN_COMPLETED: {"in_app": True, "email": False, "slack": False, "web_push": False},

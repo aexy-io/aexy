@@ -118,7 +118,7 @@ export default function GoalDetailPage() {
         <div className="text-center">
           <Target className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-xl font-medium text-foreground mb-2">Goal not found</h2>
-          <p className="text-muted-foreground mb-6">The goal you're looking for doesn't exist or you don't have access.</p>
+          <p className="text-muted-foreground mb-6">The goal you&apos;re looking for doesn&apos;t exist or you don&apos;t have access.</p>
           <Link href="/reviews/goals" className="text-cyan-400 hover:text-cyan-300 transition">
             Back to Goals
           </Link>

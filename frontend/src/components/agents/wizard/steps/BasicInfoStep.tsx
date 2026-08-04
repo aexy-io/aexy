@@ -179,7 +179,7 @@ export function BasicInfoStep({
             className="w-full px-4 py-3 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 resize-none"
           />
           <p className="mt-1 text-sm text-muted-foreground">
-            Optional description to help you remember this agent's purpose
+            Optional description to help you remember this agent&apos;s purpose
           </p>
         </div>
 

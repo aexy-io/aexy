@@ -9,8 +9,11 @@ from aexy.api.developers import get_current_developer
 from aexy.models.developer import Developer
 from aexy.services.template_service import TemplateService
 from aexy.services.campaign_service import CampaignService
+from aexy.services.email_campaign_service import EmailCampaignService
+from aexy.services.provider_service import ProviderService
 from aexy.services.workspace_service import WorkspaceService
 from aexy.services.activity_logger import log_activity
+from aexy.schemas.email_infrastructure import RoutingConfigUpdate
 from aexy.schemas.email_marketing import (
     # Template schemas
     EmailTemplateCreate,
@@ -24,6 +27,7 @@ from aexy.schemas.email_marketing import (
     EmailCampaignUpdate,
     EmailCampaignResponse,
     EmailCampaignListResponse,
+    SenderStatus,
     CampaignScheduleRequest,
     CampaignTestRequest,
     # Recipient schemas
@@ -284,6 +288,25 @@ async def validate_template(
 # CAMPAIGN ROUTES
 # =============================================================================
 
+async def _with_sender(
+    service: CampaignService, workspace_id: str, campaign
+) -> EmailCampaignResponse:
+    """Serialize a campaign with its resolved sender state attached.
+
+    The client needs to know whether this campaign can actually send, and the only
+    honest answer involves the workspace's sending domains. Resolving it here —
+    once, on the responses that carry a single campaign — is why the wizard and the
+    detail page no longer have to reconstruct it from the domain list, which is how
+    they came to disagree with the backend in the first place.
+
+    Deliberately not on the list response: one domain lookup per row, to answer a
+    question the list does not ask.
+    """
+    payload = EmailCampaignResponse.model_validate(campaign)
+    payload.sender = SenderStatus(**await service.sender_status(campaign))
+    return payload
+
+
 @router.post("/campaigns", response_model=EmailCampaignResponse, status_code=status.HTTP_201_CREATED)
 async def create_campaign(
     workspace_id: str,
@@ -311,7 +334,7 @@ async def create_campaign(
         title=f"Created campaign '{data.name}'",
     )
 
-    return campaign
+    return await _with_sender(service, workspace_id, campaign)
 
 
 @router.get("/campaigns", response_model=list[EmailCampaignListResponse])
@@ -355,7 +378,43 @@ async def get_campaign(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Campaign not found",
         )
-    return campaign
+    return await _with_sender(service, workspace_id, campaign)
+
+
+@router.put("/campaigns/{campaign_id}/routing", response_model=EmailCampaignResponse)
+async def update_campaign_routing(
+    workspace_id: str,
+    campaign_id: str,
+    data: RoutingConfigUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: Developer = Depends(get_current_developer),
+):
+    """Choose how a campaign picks its sending domain.
+
+    `RoutingConfigUpdate` has existed since the multi-domain infrastructure landed
+    and was referenced by nothing, which is why `sending_pool_id` and
+    `sending_identity_id` were always NULL and the send path's two routing branches
+    were unreachable. This is the endpoint it was written for.
+
+    The strategy and thresholds go on `routing_config`, so a transactional campaign
+    can insist on a healthier domain than a newsletter; the pool's own
+    `routing_strategy` is the default when the campaign does not override it.
+    """
+    await check_workspace_permission(db, workspace_id, current_user.id, "member")
+
+    service = CampaignService(db)
+    try:
+        campaign = await service.update_routing(campaign_id, workspace_id, data)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    if not campaign:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Campaign not found",
+        )
+
+    return await _with_sender(service, workspace_id, campaign)
 
 
 @router.patch("/campaigns/{campaign_id}", response_model=EmailCampaignResponse)
@@ -394,7 +453,7 @@ async def update_campaign(
         title=f"Updated campaign '{campaign.name}'",
     )
 
-    return campaign
+    return await _with_sender(service, workspace_id, campaign)
 
 
 @router.delete("/campaigns/{campaign_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -456,7 +515,7 @@ async def duplicate_campaign(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Campaign not found",
         )
-    return campaign
+    return await _with_sender(service, workspace_id, campaign)
 
 
 @router.post("/campaigns/{campaign_id}/schedule", response_model=EmailCampaignResponse)
@@ -500,7 +559,7 @@ async def schedule_campaign(
         title=f"Scheduled campaign '{campaign.name}'",
     )
 
-    return campaign
+    return await _with_sender(service, workspace_id, campaign)
 
 
 @router.post("/campaigns/{campaign_id}/send", response_model=EmailCampaignResponse)
@@ -541,7 +600,7 @@ async def send_campaign(
         task_queue="email",
     )
 
-    return campaign
+    return await _with_sender(service, workspace_id, campaign)
 
 
 @router.post("/campaigns/{campaign_id}/pause", response_model=EmailCampaignResponse)
@@ -579,7 +638,7 @@ async def pause_campaign(
         title=f"Paused campaign '{campaign.name}'",
     )
 
-    return campaign
+    return await _with_sender(service, workspace_id, campaign)
 
 
 @router.post("/campaigns/{campaign_id}/resume", response_model=EmailCampaignResponse)
@@ -631,7 +690,7 @@ async def resume_campaign(
             task_queue="email",
         )
 
-    return campaign
+    return await _with_sender(service, workspace_id, campaign)
 
 
 @router.post("/campaigns/{campaign_id}/cancel", response_model=EmailCampaignResponse)
@@ -669,7 +728,7 @@ async def cancel_campaign(
         title=f"Cancelled campaign '{campaign.name}'",
     )
 
-    return campaign
+    return await _with_sender(service, workspace_id, campaign)
 
 
 @router.post("/campaigns/{campaign_id}/test")
@@ -699,6 +758,20 @@ async def send_test_email(
             detail="Campaign has no template",
         )
 
+    # A test send is how someone checks their own setup, so it has to go through
+    # the same sender resolution as a real send. It used to skip every check and
+    # hand straight to the platform mailer, which meant a test could arrive from
+    # the deployment's address and "prove" a sender that would be refused the
+    # moment the real campaign ran.
+    # Pool-routed campaigns resolve through the pool, so a test on one proves the
+    # pool has a usable member — which is the thing that would fail for real.
+    _, sender_problem = await campaign_service.resolve_campaign_sender(campaign)
+    if sender_problem:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=sender_problem,
+        )
+
     # Merge campaign context with test context
     context = {**campaign.template_context, **data.context}
 
@@ -707,23 +780,62 @@ async def send_test_email(
         campaign.template, context
     )
 
-    # Send test emails
-    from aexy.services.email_service import email_service
+    provider_service = ProviderService(db)
+    default_provider = await provider_service.get_default_provider(workspace_id)
+    default_provider_id = default_provider.id if default_provider else None
+
+    # Resolved per recipient through the same code the real send uses, because a
+    # pool picks its domain per recipient — and with it the From address. Reading
+    # `campaign.from_email` here instead, as this did, showed an address a pooled
+    # campaign would never send from.
+    email_campaign_service = EmailCampaignService(db)
 
     results = []
     for email in data.to_emails:
-        log = await email_service.send_templated_email(
-            db=db,
-            recipient_email=email,
-            subject=f"[TEST] {subject}",
-            body_text=text_body or "",
-            body_html=html_body,
-        )
-        results.append({
-            "email": email,
-            "status": log.status,
-            "error": log.error_message,
-        })
+        resolved = await email_campaign_service.resolve_send_sender(campaign, email)
+        provider_id = (
+            resolved.domain.provider_id if resolved.domain else None
+        ) or default_provider_id
+
+        if provider_id:
+            result = await provider_service.send_email(
+                provider_id=provider_id,
+                to_email=email,
+                from_email=resolved.from_email,
+                from_name=resolved.from_name,
+                subject=f"[TEST] {subject}",
+                html_body=html_body,
+                text_body=text_body or "",
+                reply_to=resolved.reply_to,
+            )
+            results.append({
+                "email": email,
+                "status": "sent" if result.get("success") else "failed",
+                "error": result.get("error"),
+                "via": "provider",
+                # Which address it actually went out as, since for a pooled
+                # campaign that is not the one on the campaign.
+                "from_email": resolved.from_email,
+            })
+        else:
+            # No provider configured: the platform mailer, same as a real send's
+            # last resort. Reported as such, because the recipient will see the
+            # deployment's address rather than `from_email`.
+            from aexy.services.email_service import email_service
+
+            log = await email_service.send_templated_email(
+                db=db,
+                recipient_email=email,
+                subject=f"[TEST] {subject}",
+                body_text=text_body or "",
+                body_html=html_body,
+            )
+            results.append({
+                "email": email,
+                "status": log.status,
+                "error": log.error_message,
+                "via": "platform",
+            })
 
     return {"results": results}
 

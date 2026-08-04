@@ -9,6 +9,7 @@ import {
   Mail,
   Loader2,
   AlertCircle,
+  AlertTriangle,
   Users,
   FileText,
   Send,
@@ -19,10 +20,25 @@ import {
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAuth } from "@/hooks/useAuth";
-import { useEmailTemplates, useEmailCampaigns, useSubscriptionCategories, useImportSubscribers } from "@/hooks/useEmailMarketing";
+import {
+  useEmailTemplates,
+  useEmailCampaigns,
+  useSendingPools,
+  useSubscriptionCategories,
+} from "@/hooks/useEmailMarketing";
+import { findSenderDomain, useEmailMarketingSetup } from "@/hooks/useEmailMarketingSetup";
+import { SenderNotReadyBanner } from "@/components/email-marketing/EmailMarketingSetup";
 import { EmailCampaignCreate, CampaignType, FilterCondition } from "@/lib/api";
 
 type Step = "details" | "content" | "audience" | "review";
+
+/**
+ * The From address has to be a real address, and it used to be checked only for
+ * being non-empty. The `type="email"` input is not inside a `<form>` and there is
+ * no `onSubmit`, so the browser's own constraint validation never runs — "hello
+ * world" passed Continue and became a campaign.
+ */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function NewCampaignPage() {
   const router = useRouter();
@@ -47,11 +63,40 @@ export default function NewCampaignPage() {
   const [audienceType, setAudienceType] = useState<"all" | "segment" | "list">("all");
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [emailListText, setEmailListText] = useState("");
+  const [sendingPoolId, setSendingPoolId] = useState("");
 
   const { templates, isLoading: templatesLoading } = useEmailTemplates(workspaceId);
   const { createCampaign } = useEmailCampaigns(workspaceId);
   const { categories, isLoading: categoriesLoading } = useSubscriptionCategories(workspaceId);
-  const importSubscribers = useImportSubscribers(workspaceId);
+  const setup = useEmailMarketingSetup(workspaceId);
+  const { pools } = useSendingPools(workspaceId);
+
+  // Addresses that can actually send: the backend resolves the campaign's
+  // from_email to one of these domains and refuses the send if it can't, so
+  // offering a free-text field was offering a way to fail later.
+  const senderDomains = setup.domain.sendable;
+
+  // Scoped to *this* campaign, not the workspace. `setup.isReadyToSend` only says
+  // some sendable domain exists, while `start_sending` requires this campaign's own
+  // from_email to resolve to one — so with acme.com verified and a From of
+  // hi@other.com the wizard used to offer Send Now, the field below said it would
+  // save as a draft, and the detail page then refused. Three components, two
+  // answers. A pool sidesteps the address entirely by choosing a domain per
+  // recipient; the backend re-checks that the pool has a usable member.
+  const selectedPool = pools.find((p) => p.id === sendingPoolId);
+  const senderCanSend = selectedPool
+    ? selectedPool.member_count > 0
+    : findSenderDomain(fromEmail, senderDomains) !== undefined;
+
+  // The other reason a send is refused, and the content step walks straight into
+  // it: it offers "Custom HTML Content" as an alternative to picking a template,
+  // but `start_sending` requires `campaign.template` and `process_campaign_sending`
+  // cancels a campaign whose template is missing — so an HTML-only campaign can be
+  // built and never sent. Confirmed against the API: POST /send returns
+  // 400 "Campaign must have a template". Offering Send Now for one would repeat
+  // exactly the walk-into-a-wall this gate exists to stop, so it is part of the
+  // same question. HTML-only still saves as a draft, which is what it is good for.
+  const canSend = senderCanSend && Boolean(templateId);
 
   // Parse email list from textarea
   const parsedEmails = useMemo(() => {
@@ -104,6 +149,7 @@ export default function NewCampaignPage() {
         scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
         audience_filters: audienceFilters,
         recipient_emails: recipientEmails,
+        sending_pool_id: sendingPoolId || undefined,
       };
 
       const campaign = await createCampaign(data);
@@ -123,7 +169,7 @@ export default function NewCampaignPage() {
   const canProceed = () => {
     switch (currentStep) {
       case "details":
-        return name && subject && fromName && fromEmail;
+        return Boolean(name && subject && fromName && EMAIL_RE.test(fromEmail.trim()));
       case "content":
         return templateId || htmlContent;
       case "audience":
@@ -232,6 +278,11 @@ export default function NewCampaignPage() {
               <div className="space-y-6">
                 <h2 className="text-lg font-medium text-foreground">Campaign Details</h2>
 
+                {/* Say up front what will happen. The prerequisite used to surface
+                    only after the campaign had been created, on the detail page,
+                    as a disabled button with no way to act on it. */}
+                <SenderNotReadyBanner workspaceId={workspaceId} />
+
                 <div>
                   <label className="block text-sm text-muted-foreground mb-2">Campaign Name *</label>
                   <input
@@ -282,11 +333,75 @@ export default function NewCampaignPage() {
                       type="email"
                       value={fromEmail}
                       onChange={(e) => setFromEmail(e.target.value)}
-                      placeholder="hello@example.com"
+                      placeholder={
+                        senderDomains.length > 0
+                          ? `hello@${senderDomains[0].domain}`
+                          : "hello@example.com"
+                      }
+                      list={senderDomains.length > 0 ? "sender-suggestions" : undefined}
                       className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-sky-500"
                     />
+                    {/* A datalist rather than a select: the local part is the
+                        user's to choose (hello@, support@, no-reply@), only the
+                        domain has to be one we can send from. */}
+                    {senderDomains.length > 0 && (
+                      <datalist id="sender-suggestions">
+                        {senderDomains.flatMap((d) =>
+                          ["hello", "no-reply", "support"].map((local) => (
+                            <option key={`${d.id}-${local}`} value={`${local}@${d.domain}`} />
+                          ))
+                        )}
+                      </datalist>
+                    )}
+                    {fromEmail.trim() !== "" && !EMAIL_RE.test(fromEmail.trim()) ? (
+                      <p className="mt-1.5 text-xs text-amber-400">
+                        That isn&apos;t a valid email address.
+                      </p>
+                    ) : /* Same rule `canSend` uses, so the warning and the button
+                           below cannot contradict each other. Suppressed when a pool
+                           is chosen, because then this address is not what sends. */
+                    senderDomains.length > 0 &&
+                      !selectedPool &&
+                      EMAIL_RE.test(fromEmail.trim()) &&
+                      !findSenderDomain(fromEmail, senderDomains) ? (
+                      <p className="mt-1.5 text-xs text-amber-400">
+                        Sending needs a verified domain:{" "}
+                        {senderDomains.map((d) => d.domain).join(", ")}. This will save as a draft.
+                      </p>
+                    ) : null}
                   </div>
                 </div>
+
+                {/* Only when there is something to choose. A pool routes each
+                    recipient to the healthiest of several domains and takes the
+                    From address from the one it picks, so it overrides the field
+                    above — which is why picking one says so rather than leaving
+                    two contradictory settings on screen. */}
+                {pools.length > 0 && (
+                  <div>
+                    <label className="block text-sm text-muted-foreground mb-2">
+                      Sending pool <span className="text-muted-foreground/60">(optional)</span>
+                    </label>
+                    <select
+                      value={sendingPoolId}
+                      onChange={(e) => setSendingPoolId(e.target.value)}
+                      className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    >
+                      <option value="">Send from the address above</option>
+                      {pools.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} · {p.member_count} domain{p.member_count === 1 ? "" : "s"}
+                        </option>
+                      ))}
+                    </select>
+                    {sendingPoolId && (
+                      <p className="mt-1.5 text-xs text-muted-foreground">
+                        The pool picks a domain per recipient and sends from that
+                        domain&apos;s address, so From Email above won&apos;t be used.
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm text-muted-foreground mb-2">Campaign Type</label>
@@ -528,6 +643,38 @@ export default function NewCampaignPage() {
               <div className="space-y-6">
                 <h2 className="text-lg font-medium text-foreground">Review Campaign</h2>
 
+                {/* Repeated here rather than assumed remembered from step 1: this
+                    is the screen where someone decides to press send. */}
+                <SenderNotReadyBanner workspaceId={workspaceId} />
+
+                {/* The workspace-level banner above covers "no verified domain at
+                    all". This covers the other two ways a send is refused — a
+                    verified domain that isn't this From address's, and an HTML-only
+                    campaign with no template. Without it the Send button simply
+                    wasn't there and nothing said why. */}
+                {!canSend && setup.isReadyToSend && (
+                  <div
+                    className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm"
+                    role="status"
+                  >
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" aria-hidden />
+                    <div>
+                      <p className="font-medium text-foreground">
+                        This will save as a draft
+                      </p>
+                      <p className="mt-0.5 text-muted-foreground">
+                        {!senderCanSend
+                          ? selectedPool
+                            ? `The pool "${selectedPool.name}" has no domains in it, so there is nothing to send through.`
+                            : `Nothing verified covers ${fromEmail || "that address"}. Sending works from ${senderDomains
+                                .map((d) => d.domain)
+                                .join(", ")}.`
+                          : "Sending needs a template — custom HTML can be saved and edited, but only a template can go out. Pick one on the Content step."}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-4">
                   <div className="p-4 bg-muted/50 rounded-lg">
                     <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Campaign Name</p>
@@ -616,7 +763,11 @@ export default function NewCampaignPage() {
                   <button
                     onClick={() => handleSubmit(false)}
                     disabled={isSubmitting}
-                    className="px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-accent transition disabled:opacity-50"
+                    className={
+                      canSend
+                        ? "px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-accent transition disabled:opacity-50"
+                        : "flex items-center gap-2 px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition disabled:opacity-50"
+                    }
                   >
                     {isSubmitting ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -624,20 +775,26 @@ export default function NewCampaignPage() {
                       "Save as Draft"
                     )}
                   </button>
-                  <button
-                    onClick={() => handleSubmit(true)}
-                    disabled={isSubmitting}
-                    className="flex items-center gap-2 px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition disabled:opacity-50"
-                  >
-                    {isSubmitting ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <>
-                        <Send className="h-4 w-4" />
-                        {scheduledAt ? "Schedule Campaign" : "Send Now"}
-                      </>
-                    )}
-                  </button>
+                  {/* Offered only when it can succeed. Previously this always
+                      showed, created the campaign, and dropped the user on a
+                      detail page whose Send button was disabled — the refusal
+                      arrived after the record existed, with nothing to click. */}
+                  {canSend && (
+                    <button
+                      onClick={() => handleSubmit(true)}
+                      disabled={isSubmitting}
+                      className="flex items-center gap-2 px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition disabled:opacity-50"
+                    >
+                      {isSubmitting ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Send className="h-4 w-4" />
+                          {scheduledAt ? "Schedule Campaign" : "Send Now"}
+                        </>
+                      )}
+                    </button>
+                  )}
                 </>
               ) : (
                 <button

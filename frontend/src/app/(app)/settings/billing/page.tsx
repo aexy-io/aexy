@@ -476,7 +476,7 @@ function BillingContent() {
                   <div>
                     <p className="text-foreground">Managed via Stripe</p>
                     <p className="text-muted-foreground text-sm">
-                      Click "Manage Billing" to update your payment method
+                      Click &quot;Manage Billing&quot; to update your payment method
                     </p>
                   </div>
                 </div>

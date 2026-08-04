@@ -32,7 +32,7 @@ export function LLMConfigStep({
           LLM Configuration
         </h2>
         <p className="text-muted-foreground">
-          Choose the language model that will power your agent's intelligence.
+          Choose the language model that will power your agent&apos;s intelligence.
         </p>
       </div>
 
@@ -119,7 +119,7 @@ export function LLMConfigStep({
           />
         </div>
         <p className="mt-2 text-sm text-muted-foreground">
-          Maximum number of tokens in the agent's response. ~750 words per 1K tokens.
+          Maximum number of tokens in the agent&apos;s response. ~750 words per 1K tokens.
         </p>
       </div>
     </div>

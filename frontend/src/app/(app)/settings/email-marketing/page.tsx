@@ -28,6 +28,7 @@ import {
   Mail,
   TestTube,
   Tags,
+  Layers,
   Edit3,
   Copy,
   Check,
@@ -38,9 +39,15 @@ import {
 import { useTranslations } from "next-intl";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAuth } from "@/hooks/useAuth";
-import { useSendingDomains, useEmailProviders, useSubscriptionCategories } from "@/hooks/useEmailMarketing";
+import {
+  useSendingDomains,
+  useEmailProviders,
+  useSendingPools,
+  useSubscriptionCategories,
+} from "@/hooks/useEmailMarketing";
 import { SendingDomain, EmailProvider, SubscriptionCategory, DNSRecord } from "@/lib/api";
 import { AppAccessGuard } from "@/components/guards/AppAccessGuard";
+import { SendingPoolsPanel } from "@/components/email-marketing/SendingPoolsPanel";
 import {
   SettingsEmptyState,
   SettingsPage,
@@ -48,7 +55,7 @@ import {
 } from "@/components/settings/SettingsPrimitives";
 import { cn } from "@/lib/utils";
 
-type TabType = "domains" | "providers" | "categories";
+type TabType = "domains" | "providers" | "pools" | "categories";
 
 /**
  * The error / spinner / empty triple each of the three tabs used to carry its own
@@ -691,6 +698,9 @@ function EmailSettingsContent() {
     deleteCategory,
   } = useSubscriptionCategories(workspaceId);
 
+  // Only for the tab's count badge; the panel owns its own data.
+  const { pools } = useSendingPools(workspaceId);
+
   const handleCreateDomain = async () => {
     if (!newDomain) return;
     try {
@@ -897,11 +907,19 @@ function EmailSettingsContent() {
       description: t("categories.description"),
       onClick: () => setShowAddCategory(true),
     },
+    // Pools own their own create form inline — the shape of a pool (name,
+    // strategy, members) is more than a header button can carry.
+    pools: {
+      label: null,
+      description: t("pools.description"),
+      onClick: () => {},
+    },
   }[activeTab];
 
   const tabs: { id: TabType; label: string; icon: React.ReactNode; count: number }[] = [
     { id: "domains", label: t("domains.tab"), icon: <Globe className="h-4 w-4" />, count: domains.length },
     { id: "providers", label: t("providers.tab"), icon: <Zap className="h-4 w-4" />, count: providers.length },
+    { id: "pools", label: t("pools.tab"), icon: <Layers className="h-4 w-4" />, count: pools.length },
     { id: "categories", label: t("categories.tab"), icon: <Tags className="h-4 w-4" />, count: categories.length },
   ];
 
@@ -912,13 +930,15 @@ function EmailSettingsContent() {
         description={tabAction.description}
         width="wide"
         actions={
-          <button
-            onClick={tabAction.onClick}
-            className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
-          >
-            <Plus className="h-4 w-4" aria-hidden />
-            {tabAction.label}
-          </button>
+          tabAction.label ? (
+            <button
+              onClick={tabAction.onClick}
+              className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+            >
+              <Plus className="h-4 w-4" aria-hidden />
+              {tabAction.label}
+            </button>
+          ) : undefined
         }
       >
           {/* Scrolls on narrow screens rather than widening the page. */}
@@ -1027,6 +1047,11 @@ function EmailSettingsContent() {
             </div>
           )}
 
+          {/* Pools Tab */}
+          {activeTab === "pools" && (
+            <SendingPoolsPanel workspaceId={workspaceId} domains={domains} />
+          )}
+
           {/* Categories Tab */}
           {activeTab === "categories" && (
             <div className="space-y-4">
@@ -1085,7 +1110,7 @@ function EmailSettingsContent() {
                 className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-sky-500"
               />
               <p className="text-xs text-muted-foreground mt-2">
-                You'll need to add DNS records to verify ownership
+                You&apos;ll need to add DNS records to verify ownership
               </p>
             </div>
             <div className="p-4 border-t border-border flex justify-end gap-2">

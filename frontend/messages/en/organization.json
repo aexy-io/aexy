@@ -16,7 +16,8 @@
     "chart": {
       "title": "Org Chart",
       "empty": "No departments yet. Create your first department to start building the org chart.",
-      "members": "{count, plural, one {# member} other {# members}}"
+      "members": "{count, plural, one {# member} other {# members}}",
+      "noMembers": "Nobody is in this department yet."
     },
     "departments": {
       "title": "Departments",
