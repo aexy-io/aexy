@@ -672,7 +672,7 @@ function TicketingTab({
                           }}
                           className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm"
                         >
-                          <option value="">Don't map</option>
+                          <option value="">Don&apos;t map</option>
                           {TICKET_FIELDS.map((ticketField) => (
                             <option key={ticketField.key} value={ticketField.key}>
                               {ticketField.name}
@@ -872,7 +872,7 @@ function CRMTab({
                           }}
                           className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm"
                         >
-                          <option value="">Don't map</option>
+                          <option value="">Don&apos;t map</option>
                           {attributes.map((attr) => (
                             <option key={attr.id} value={attr.slug}>
                               {attr.name} ({attr.attribute_type})
@@ -1081,7 +1081,7 @@ function DealsTab({
                           }}
                           className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm"
                         >
-                          <option value="">Don't map</option>
+                          <option value="">Don&apos;t map</option>
                           {DEAL_FIELDS.map((dealField) => (
                             <option key={dealField.key} value={dealField.key}>
                               {dealField.name}

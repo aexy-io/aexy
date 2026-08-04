@@ -57,7 +57,7 @@ export default function SmartViewPage() {
         </div>
       ) : (filesQ.data?.files.length ?? 0) === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No files match this smart view's filter.
+          No files match this smart view&apos;s filter.
         </p>
       ) : (
         <ul

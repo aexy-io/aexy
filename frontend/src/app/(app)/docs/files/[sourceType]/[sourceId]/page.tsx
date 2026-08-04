@@ -88,8 +88,8 @@ export default function UniversalFileDetailPage() {
               Preview is currently available for Drive files only.
             </p>
             <p>
-              Use the source's own download / view endpoint to access this
-              file's contents.
+              Use the source&apos;s own download / view endpoint to access this
+              file&apos;s contents.
             </p>
           </div>
         )}

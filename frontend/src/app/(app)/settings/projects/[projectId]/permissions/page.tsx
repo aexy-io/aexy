@@ -167,7 +167,7 @@ export default function ProjectPermissionsPage() {
           <FolderKanban className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-xl font-medium text-foreground mb-2">Project Not Found</h3>
           <p className="text-muted-foreground mb-6">
-            The project you're looking for doesn't exist.
+            The project you&apos;re looking for doesn&apos;t exist.
           </p>
           <Link
             href="/settings/projects"

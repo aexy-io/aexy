@@ -483,7 +483,7 @@ export default function EditAgentPage() {
                 )}
               />
               <p className="mt-1.5 text-xs text-muted-foreground">
-                Shown on the agent's profile, in @mentions, and as the
+                Shown on the agent&apos;s profile, in @mentions, and as the
                 From-name on outbound email.
               </p>
             </div>
@@ -499,7 +499,7 @@ export default function EditAgentPage() {
                 </span>
               </div>
               <p className="mt-1.5 text-xs text-muted-foreground">
-                The type seeds the agent's default tool set, prompt
+                The type seeds the agent&apos;s default tool set, prompt
                 template, and persona. To switch types, create a new
                 agent.
               </p>
@@ -554,7 +554,7 @@ export default function EditAgentPage() {
                 )}
               />
               <p className="mt-1.5 text-xs text-muted-foreground">
-                A one-liner shown to teammates browsing your workspace's
+                A one-liner shown to teammates browsing your workspace&apos;s
                 agents. Not seen by end users.
               </p>
             </div>
@@ -619,7 +619,7 @@ export default function EditAgentPage() {
                 className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
               />
               <p className="mt-1.5 text-xs text-muted-foreground">
-                Cap on the model's response length (1 token ≈ 4 characters
+                Cap on the model&apos;s response length (1 token ≈ 4 characters
                 of English). Cuts cost on chatty agents; risks truncating
                 long-form replies when set too low. 2000 is a safe
                 default for email + support agents.
@@ -735,7 +735,7 @@ export default function EditAgentPage() {
                   )}
                 />
                 <p className="mt-1.5 text-xs text-muted-foreground">
-                  Adds a delay before the agent replies so it doesn't
+                  Adds a delay before the agent replies so it doesn&apos;t
                   look robotic. 0 = reply instantly.
                 </p>
               </div>
@@ -761,11 +761,11 @@ export default function EditAgentPage() {
               </div>
             )}
             <p className="text-sm text-muted-foreground">
-              The system prompt anchors the agent's tone and behavior on
+              The system prompt anchors the agent&apos;s tone and behavior on
               every run. Custom instructions are layered on top for run-
-              specific guidance — use them for policy ("never quote a
-              price"), style ("be terse"), or escalation logic the
-              behavior thresholds can't express.
+              specific guidance — use them for policy (&quot;never quote a
+              price&quot;), style (&quot;be terse&quot;), or escalation logic the
+              behavior thresholds can&apos;t express.
             </p>
             <div>
               <PromptEditor
@@ -810,8 +810,8 @@ export default function EditAgentPage() {
             )}
             <p className="text-sm text-muted-foreground">
               The agent escalates when it falls below the approval
-              threshold on the Behavior tab, hits a manual "Escalate"
-              from the inbox, or encounters a tool failure it can't
+              threshold on the Behavior tab, hits a manual &quot;Escalate&quot;
+              from the inbox, or encounters a tool failure it can&apos;t
               recover from. The routes below are the destinations for
               those events — either is fine on its own, both is fine
               for higher-criticality agents.
@@ -1353,7 +1353,7 @@ export default function EditAgentPage() {
                       yet still require approval up to{" "}
                       {Math.round(requireApprovalBelow * 100)}%. Drafts in
                       that overlap will land in the inbox awaiting review
-                      instead of going out automatically. If that's
+                      instead of going out automatically. If that&apos;s
                       intentional, ignore — otherwise lower the approval
                       threshold to be at or below confidence.
                     </p>

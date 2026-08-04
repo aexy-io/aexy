@@ -33,18 +33,7 @@ export default function SprintCapacityPage() {
     enabled: !!currentWorkspaceId,
   });
 
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500" />
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    redirect("/");
-  }
-
+  // Guards moved below the hooks — see the note before the return.
   const confidenceColor = (c: number) =>
     c >= 0.7 ? "text-green-400" : c >= 0.4 ? "text-yellow-400" : "text-red-400";
 
@@ -129,6 +118,21 @@ export default function SprintCapacityPage() {
         : [],
     [capacity?.per_developer]
   );
+
+  // Below the hooks: guarding above the two `useMemo`s meant the loading render
+  // called two hooks fewer than the loaded one, so the render after `authLoading`
+  // flips false has a different hook count than the one before it.
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    redirect("/");
+  }
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">

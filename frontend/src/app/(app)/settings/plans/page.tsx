@@ -222,12 +222,16 @@ export default function PlansPage() {
     // Enterprise always goes to sales. While Stripe is disabled, all paid tiers do.
     const isPaid = plan.tier !== "free" && plan.billing_model !== "free";
     if (plan.tier === "enterprise" || (!STRIPE_ENABLED && isPaid)) {
-      window.location.href = buildSalesMailto({
-        planTier: plan.tier,
-        billingPeriod,
-        workspaceId: currentWorkspaceId,
-        intent: hasSubscription ? "upgrade" : "subscribe",
-      });
+      // `assign`, not `location.href =`: same navigation, but writing to a
+      // property of a global is a mutation the compiler lint objects to.
+      window.location.assign(
+        buildSalesMailto({
+          planTier: plan.tier,
+          billingPeriod,
+          workspaceId: currentWorkspaceId,
+          intent: hasSubscription ? "upgrade" : "subscribe",
+        })
+      );
       return;
     }
 
@@ -240,12 +244,14 @@ export default function PlansPage() {
 
     if (!STRIPE_ENABLED) {
       // Stripe disabled — fall back to sales mailto for any paid plan change.
-      window.location.href = buildSalesMailto({
-        planTier: selectedPlan.tier,
-        billingPeriod,
-        workspaceId: currentWorkspaceId,
-        intent: hasSubscription ? "upgrade" : "subscribe",
-      });
+      window.location.assign(
+        buildSalesMailto({
+          planTier: selectedPlan.tier,
+          billingPeriod,
+          workspaceId: currentWorkspaceId,
+          intent: hasSubscription ? "upgrade" : "subscribe",
+        })
+      );
       return;
     }
 
@@ -257,7 +263,7 @@ export default function PlansPage() {
         billingModel: selectedPlan.billing_model,
       });
       if (result.checkout_url) {
-        window.location.href = result.checkout_url;
+        window.location.assign(result.checkout_url);
       }
     } else {
       // Users with an existing subscription can change plans directly

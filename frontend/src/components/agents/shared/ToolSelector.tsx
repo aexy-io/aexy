@@ -104,7 +104,7 @@ export function ToolSelector({
         <div className="space-y-1">
           {filteredTools.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No tools found matching "{searchQuery}"
+              No tools found matching &quot;{searchQuery}&quot;
             </div>
           ) : (
             filteredTools.map((tool) => (

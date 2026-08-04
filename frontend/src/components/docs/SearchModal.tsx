@@ -148,7 +148,7 @@ export function SearchModal({ workspaceId, isOpen, onClose }: SearchModalProps) 
             ) : results.length === 0 && !isSearching ? (
               <div className="px-4 py-8 text-center">
                 <p className="text-muted-foreground text-sm">
-                  No documents found for "{query}"
+                  No documents found for &quot;{query}&quot;
                 </p>
               </div>
             ) : (

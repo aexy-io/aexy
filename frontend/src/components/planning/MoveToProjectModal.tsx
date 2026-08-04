@@ -300,7 +300,7 @@ export function MoveToProjectModal({
 
             {isBulk && (
               <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
-                Bulk moves use the "block" subtask rule. Move tasks with
+                Bulk moves use the &quot;block&quot; subtask rule. Move tasks with
                 subtasks individually if you need cascade or orphan handling.
               </p>
             )}

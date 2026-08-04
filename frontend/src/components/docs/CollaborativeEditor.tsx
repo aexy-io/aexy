@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useEditor, EditorContent, BubbleMenu } from "@tiptap/react";
 import { Spinner } from "@/components/ui/spinner";
 import StarterKit from "@tiptap/starter-kit";
@@ -129,13 +129,19 @@ export function CollaborativeEditor({
     setLocalTitle(title);
   }, [title]);
 
-  // Create debounced save function
-  const debouncedSave = useCallback(
-    debounce((data: { title?: string; content?: Record<string, unknown> }) => {
-      setIsSaving(true);
-      onSave(data);
-      setTimeout(() => setIsSaving(false), 500);
-    }, autoSaveDelay),
+  // Create debounced save function.
+  //
+  // `useMemo`, not `useCallback`: the argument is a *call* to `debounce`, so
+  // `useCallback(debounce(...), deps)` ran `debounce` on every render and threw the
+  // result away, keeping only the first. `useMemo` creates the debounced function
+  // when its deps change and not otherwise, which is what the deps list meant.
+  const debouncedSave = useMemo(
+    () =>
+      debounce((data: { title?: string; content?: Record<string, unknown> }) => {
+        setIsSaving(true);
+        onSave(data);
+        setTimeout(() => setIsSaving(false), 500);
+      }, autoSaveDelay),
     [onSave, autoSaveDelay]
   );
 

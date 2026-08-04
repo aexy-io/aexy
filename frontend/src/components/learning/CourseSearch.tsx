@@ -202,7 +202,7 @@ export function CourseSearch({
         ) : (
           <div className="text-center py-8 text-muted-foreground">
             <BookOpen className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
-            <p>No courses found for "{query}"</p>
+            <p>No courses found for &quot;{query}&quot;</p>
             <p className="text-sm">Try a different search term or provider</p>
           </div>
         )

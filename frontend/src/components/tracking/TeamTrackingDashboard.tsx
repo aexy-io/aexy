@@ -159,7 +159,7 @@ export function TeamTrackingDashboard({
         <div className="px-6 py-4 border-b border-border flex items-center justify-between">
           <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
             <Calendar className="h-5 w-5 text-blue-400" />
-            Today's Standups
+            Today&apos;s Standups
           </h3>
           <div className="text-sm text-muted-foreground">
             {membersWithStandups} of {totalMembers} submitted

@@ -89,7 +89,7 @@ export function BlockerReportForm({
         {/* Description */}
         <div>
           <label className="block text-sm font-medium text-foreground mb-2">
-            What's blocking you?
+            What&apos;s blocking you?
           </label>
           <textarea
             value={description}

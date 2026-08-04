@@ -358,7 +358,7 @@ export default function Step3ScheduleSettings({
               />
               <div>
                 <p className="text-sm font-medium text-foreground">Screen Recording</p>
-                <p className="text-xs text-muted-foreground">Record candidate's screen</p>
+                <p className="text-xs text-muted-foreground">Record candidate&apos;s screen</p>
               </div>
             </label>
             <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-accent">

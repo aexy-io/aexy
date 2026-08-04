@@ -1069,7 +1069,7 @@ export default function AssessmentTakePage() {
                     {(assessmentInfo?.fullscreen_required || assessmentInfo?.screen_recording_enabled) && (
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                         <p className="text-sm text-blue-800">
-                          Clicking "I Understand" will attempt to re-enable required settings (fullscreen, screen sharing).
+                          Clicking &quot;I Understand&quot; will attempt to re-enable required settings (fullscreen, screen sharing).
                         </p>
                       </div>
                     )}

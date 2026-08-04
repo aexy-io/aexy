@@ -118,7 +118,7 @@ export default function ReportEditorPage() {
         <Link href="/reports" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6">
           <ArrowLeft className="h-4 w-4" /> Back to Reports
         </Link>
-        <p className="text-muted-foreground">Report not found or you don't have access.</p>
+        <p className="text-muted-foreground">Report not found or you don&apos;t have access.</p>
       </div>
     );
   }

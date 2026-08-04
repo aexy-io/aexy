@@ -110,14 +110,15 @@ export async function openCanvas(
   page: Page,
   opts: { module?: string; waitForCanvasMs?: number } = {},
 ): Promise<void> {
-  const module = opts.module ?? "crm";
+  // Not named `module`: that shadows the CommonJS global.
+  const moduleName = opts.module ?? "crm";
 
   // `?blank=1` is the same flag handleStartBlank sets — bypasses the
   // TemplateGallery and lets the canvas mount directly. We don't
   // route through the gallery's button because its onClick handler
   // captures a stale `moduleParam` and drops the module from the
   // URL when it rewrites — palette would silently fall back to CRM.
-  const url = `/automations/new?blank=1&module=${encodeURIComponent(module)}`;
+  const url = `/automations/new?blank=1&module=${encodeURIComponent(moduleName)}`;
   await page.goto(url, { waitUntil: "networkidle", timeout: 30_000 });
 
   // Canvas mount signal — ReactFlow always renders `.react-flow` once

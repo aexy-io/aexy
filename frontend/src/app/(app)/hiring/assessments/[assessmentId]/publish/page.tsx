@@ -141,7 +141,7 @@ export default function AssessmentPublishSuccessPage() {
             <h3 className="font-semibold text-foreground">Assessment Link</h3>
           </div>
           <p className="text-sm text-muted-foreground mb-3">
-            Share this link with candidates who haven't received an invitation email:
+            Share this link with candidates who haven&apos;t received an invitation email:
           </p>
           <div className="flex items-center gap-2">
             <input

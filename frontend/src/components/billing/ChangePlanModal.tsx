@@ -105,7 +105,7 @@ export function ChangePlanModal({
               <div className="flex gap-3">
                 <AlertTriangle className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-amber-400 font-medium">You'll lose access to premium features</p>
+                  <p className="text-amber-400 font-medium">You&apos;ll lose access to premium features</p>
                   <p className="text-muted-foreground text-sm mt-1">
                     Your data will be preserved, but some features will be disabled until you upgrade again.
                   </p>

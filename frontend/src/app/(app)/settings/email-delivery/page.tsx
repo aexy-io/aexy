@@ -202,54 +202,9 @@ export default function EmailDeliverySettingsPage() {
   // Check workspace admin access
   const { isWorkspaceAdmin } = useIsWorkspaceAdmin(currentWorkspaceId);
 
-  // Loading state
-  if (subscriptionLoading) {
-    return (
-      <div className="space-y-6 animate-pulse">
-        <div>
-          <div className="h-6 w-36 bg-accent rounded mb-2" />
-          <div className="h-4 w-64 bg-accent rounded" />
-        </div>
-        <div className="bg-card rounded-xl border border-border p-5 space-y-4">
-          <div className="h-2 w-full bg-accent rounded-full" />
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-20 bg-accent rounded-lg" />
-            ))}
-          </div>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-16 bg-accent rounded-lg" />
-          ))}
-        </div>
-        <div className="bg-card rounded-xl border border-border">
-          <div className="px-5 py-4 border-b border-border">
-            <div className="h-5 w-24 bg-accent rounded" />
-          </div>
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="flex items-center gap-4 px-4 py-3 border-b border-border/50">
-              <div className="h-4 w-40 bg-accent rounded" />
-              <div className="h-4 w-48 bg-accent rounded" />
-              <div className="h-5 w-16 bg-accent rounded-full" />
-              <div className="h-3 w-20 bg-accent rounded ml-auto" />
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // Enterprise check - show upgrade prompt
-  if (!isEnterprise) {
-    return <EnterpriseUpgradePrompt />;
-  }
-
-  // Not a workspace admin. This page-level check is now belt-and-braces: the
-  // shell already gates the whole route on can_manage_integrations.
-  if (!isWorkspaceAdmin) {
-    return <SettingsAccessDenied detail={t("adminOnly")} />;
-  }
+  // The enterprise and admin guards used to sit here, above `useMemo`. Both are
+  // now below it: a subscription resolving, or admin status arriving, changed how
+  // many hooks this component called between two renders.
 
   const emailLogColumns = useMemo<DataTableColumn<WorkspaceEmailLog>[]>(
     () => [
@@ -304,6 +259,55 @@ export default function EmailDeliverySettingsPage() {
     refetchStats();
     refetchLogs();
   };
+
+  // Loading state
+  if (subscriptionLoading) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div>
+          <div className="h-6 w-36 bg-accent rounded mb-2" />
+          <div className="h-4 w-64 bg-accent rounded" />
+        </div>
+        <div className="bg-card rounded-xl border border-border p-5 space-y-4">
+          <div className="h-2 w-full bg-accent rounded-full" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-20 bg-accent rounded-lg" />
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-16 bg-accent rounded-lg" />
+          ))}
+        </div>
+        <div className="bg-card rounded-xl border border-border">
+          <div className="px-5 py-4 border-b border-border">
+            <div className="h-5 w-24 bg-accent rounded" />
+          </div>
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="flex items-center gap-4 px-4 py-3 border-b border-border/50">
+              <div className="h-4 w-40 bg-accent rounded" />
+              <div className="h-4 w-48 bg-accent rounded" />
+              <div className="h-5 w-16 bg-accent rounded-full" />
+              <div className="h-3 w-20 bg-accent rounded ml-auto" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Enterprise check — show upgrade prompt.
+  if (!isEnterprise) {
+    return <EnterpriseUpgradePrompt />;
+  }
+
+  // Not a workspace admin. This page-level check is now belt-and-braces: the
+  // shell already gates the whole route on can_manage_integrations.
+  if (!isWorkspaceAdmin) {
+    return <SettingsAccessDenied detail={t("adminOnly")} />;
+  }
 
   return (
     <SettingsPage

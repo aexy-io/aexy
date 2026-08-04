@@ -37,18 +37,7 @@ export default function RepositoriesPage() {
     { period_type: periodType }
   );
 
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500" />
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    redirect("/");
-  }
-
+  // Guards moved below the hooks — see the note before the return.
   const repos = repositoryInsights?.repositories || [];
 
   const columns = useMemo<DataTableColumn<RepositoryInsightsSummary>[]>(() => [
@@ -119,6 +108,21 @@ export default function RepositoriesPage() {
       cellClassName: "text-right",
     },
   ], []);
+
+  // Below the hooks: guarding above `useMemo` meant the loading render called one
+  // hook fewer than the loaded one, so the render after `authLoading` flips false
+  // has a different hook count than the one before it.
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    redirect("/");
+  }
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">

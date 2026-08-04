@@ -153,7 +153,7 @@ export default function ContentGapPage() {
                 <FileSearch className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
                 <p className="text-muted-foreground font-medium">No content gap analyses yet</p>
                 <p className="text-muted-foreground text-sm mt-1">
-                  Run an analysis to discover topics your competitors cover that you don't.
+                  Run an analysis to discover topics your competitors cover that you don&apos;t.
                 </p>
               </div>
             )}

@@ -449,9 +449,11 @@ export function getModuleForRoute(
   for (const app of Object.values(APP_CATALOG)) {
     if (pathname === app.baseRoute || pathname.startsWith(`${app.baseRoute}/`)) {
       const relativePath = pathname.replace(app.baseRoute, "");
-      for (const module of app.modules) {
-        if (relativePath === module.route || relativePath.startsWith(`${module.route}/`)) {
-          return { app, module };
+      // Not named `module`: that shadows the CommonJS global, which is what
+      // `no-assign-module-variable` guards against.
+      for (const mod of app.modules) {
+        if (relativePath === mod.route || relativePath.startsWith(`${mod.route}/`)) {
+          return { app, module: mod };
         }
       }
       // If no module matched but app matched, return app without module
