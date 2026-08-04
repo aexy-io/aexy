@@ -316,11 +316,16 @@ class OrganizationService:
             )
         ).scalars().all()
         counts = await self._member_counts(workspace_id)
+        members_by_dept = await self._members_by_department(workspace_id)
 
         nodes: dict[str, DepartmentNode] = {}
         for d in depts:
             base = self._to_response(d, counts.get(d.id, 0))
-            nodes[d.id] = DepartmentNode(**base.model_dump(), children=[])
+            nodes[d.id] = DepartmentNode(
+                **base.model_dump(),
+                children=[],
+                members=members_by_dept.get(d.id, []),
+            )
 
         roots: list[DepartmentNode] = []
         for d in depts:
@@ -333,30 +338,80 @@ class OrganizationService:
 
     # ---------------------------------------------------------------- members
 
-    async def _members_for(self, dept_id: str) -> list[MemberSummary]:
+    async def _reporting_lines(self, workspace_id: str) -> tuple[dict[str, str | None], dict[str, str]]:
+        """``(developer_id -> manager_id, developer_id -> display name)``.
+
+        `manager_id` lives on `workspace_members`, not on the department row, so
+        resolving a person's manager is a second lookup however you slice it. Doing
+        it once per chart keeps `_members_by_department` to three queries total.
+        """
+        rows = (
+            await self.db.execute(
+                select(WorkspaceMember, Developer)
+                .join(Developer, Developer.id == WorkspaceMember.developer_id)
+                .where(WorkspaceMember.workspace_id == workspace_id)
+            )
+        ).all()
+        managers = {wm.developer_id: wm.manager_id for wm, _ in rows}
+        names = {dev.id: (dev.name or dev.email or "") for _, dev in rows}
+        return managers, names
+
+    def _to_member_summary(
+        self,
+        m: DepartmentMember,
+        dev: Developer,
+        managers: dict[str, str | None],
+        names: dict[str, str],
+    ) -> MemberSummary:
+        manager_id = managers.get(dev.id)
+        return MemberSummary(
+            id=m.id,
+            developer_id=dev.id,
+            name=dev.name,
+            email=dev.email,
+            avatar_url=getattr(dev, "avatar_url", None),
+            role_in_department=m.role_in_department,
+            is_primary=m.is_primary,
+            allocation_percent=m.allocation_percent,
+            manager_id=manager_id,
+            manager_name=names.get(manager_id) if manager_id else None,
+        )
+
+    async def _members_by_department(self, workspace_id: str) -> dict[str, list[MemberSummary]]:
+        """Every department's members in one pass, for the org chart."""
         rows = (
             await self.db.execute(
                 select(DepartmentMember, Developer)
                 .join(Developer, Developer.id == DepartmentMember.developer_id)
+                .join(Department, Department.id == DepartmentMember.department_id)
+                .where(Department.workspace_id == workspace_id)
+                .order_by(DepartmentMember.role_in_department, Developer.name)
+            )
+        ).all()
+        managers, names = await self._reporting_lines(workspace_id)
+
+        out: dict[str, list[MemberSummary]] = {}
+        for m, dev in rows:
+            out.setdefault(m.department_id, []).append(
+                self._to_member_summary(m, dev, managers, names)
+            )
+        return out
+
+    async def _members_for(self, dept_id: str) -> list[MemberSummary]:
+        rows = (
+            await self.db.execute(
+                select(DepartmentMember, Developer, Department)
+                .join(Developer, Developer.id == DepartmentMember.developer_id)
+                .join(Department, Department.id == DepartmentMember.department_id)
                 .where(DepartmentMember.department_id == dept_id)
                 .order_by(DepartmentMember.role_in_department, Developer.name)
             )
         ).all()
-        out: list[MemberSummary] = []
-        for m, dev in rows:
-            out.append(
-                MemberSummary(
-                    id=m.id,
-                    developer_id=dev.id,
-                    name=dev.name,
-                    email=dev.email,
-                    avatar_url=getattr(dev, "avatar_url", None),
-                    role_in_department=m.role_in_department,
-                    is_primary=m.is_primary,
-                    allocation_percent=m.allocation_percent,
-                )
-            )
-        return out
+        if not rows:
+            return []
+
+        managers, names = await self._reporting_lines(rows[0][2].workspace_id)
+        return [self._to_member_summary(m, dev, managers, names) for m, dev, _ in rows]
 
     async def add_member(
         self, workspace_id: str, dept_id: str, data: MembershipCreate

@@ -16,7 +16,8 @@
     "chart": {
       "title": "ऑर्ग चार्ट",
       "empty": "अभी कोई विभाग नहीं है। ऑर्ग चार्ट बनाना शुरू करने के लिए अपना पहला विभाग बनाएं।",
-      "members": "{count, plural, one {# सदस्य} other {# सदस्य}}"
+      "members": "{count, plural, one {# सदस्य} other {# सदस्य}}",
+      "noMembers": "इस विभाग में अभी कोई नहीं है।"
     },
     "departments": {
       "title": "विभाग",
