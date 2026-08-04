@@ -206,17 +206,17 @@ class ServiceDeskDigestService:
                 # assigned-only digest a KAM gets, so the digest can't email
                 # around the row scope the API enforces.
                 full_view = await has_full_service_desk_view(
-                    self.db, workspace_id, ops_head_id
+                    self.db, workspace_id, desk_lead_id
                 )
                 if full_view:
                     digests.append(Digest(head.email, head.name or head.email, True, list(all_rows)))
-                elif ops_head_id not in kam_ids:
+                elif desk_lead_id not in owner_ids:
                     digests.append(
                         Digest(
                             head.email,
                             head.name or head.email,
                             False,
-                            [r for r in all_rows if r.assignee_id == ops_head_id],
+                            [r for r in all_rows if r.assignee_id == desk_lead_id],
                         )
                     )
 

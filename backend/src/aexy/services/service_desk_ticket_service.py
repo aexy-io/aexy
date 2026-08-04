@@ -66,6 +66,7 @@ def _split_done_indexes(field_values: dict, issue_count: int) -> list[int]:
 from aexy.services.service_desk_clock import load_clock  # noqa: E402
 from aexy.services.service_desk_config import (  # noqa: E402
     display_id as render_display_id,
+    ticket_number_in_subject,
     ticket_prefix,
     ticket_prefix_display,
 )
@@ -776,11 +777,10 @@ class ServiceDeskTicketService:
         person who opened it. Writing to an insurer starts its own conversation,
         so a partner's thread and an insurer's thread never merge into one in the
         watched mailbox, where a later reply-all would expose one to the other.
-        Its replies match back by the BSD number in the subject, which is the
+        Its replies match back by the ticket number in the subject, which is the
         matcher's second and deliberate path.
         """
         from aexy.models.service_desk import ServiceDeskMailbox
-        from aexy.services.service_desk_intake_service import _BSD_RE
         from aexy.services.service_desk_mailer import send_stakeholder_email
 
         sd = await self._sd(
@@ -823,8 +823,8 @@ class ServiceDeskTicketService:
         display_id = render_display_id(
             await ticket_prefix(self.db, workspace_id), ticket.ticket_number
         )
-        match = _BSD_RE.search(subject)
-        if match is None or int(match.group(1)) != ticket.ticket_number:
+        in_subject = await ticket_number_in_subject(self.db, workspace_id, subject)
+        if in_subject != ticket.ticket_number:
             subject = f"[{display_id}] {subject}"
 
         requester = (ticket.submitter_email or "").strip().lower()

@@ -32,6 +32,7 @@ from aexy.core.config import get_settings
 from aexy.models.developer import Developer
 from aexy.models.organization import Department, DepartmentMember
 from aexy.models.workspace import Workspace, WorkspaceMember
+from tests.conftest import seed_service_desk_taxonomy
 
 settings = get_settings()
 
@@ -88,6 +89,10 @@ async def desk(db_session: AsyncSession):
     ws = Workspace(id=str(uuid4()), name="Bimaplan", slug=f"bp-{uuid4().hex[:6]}", owner_id=head.id)
     db_session.add(ws)
     await db_session.flush()
+    # Stakeholders and request types are per-workspace rows rather than an enum,
+    # so a desk has to be set up before tickets can be filed. These tests assert
+    # on the legacy insurance slugs ("kam", "claims"), which is that template.
+    await seed_service_desk_taxonomy(db_session, ws.id)
 
     db_session.add_all(
         [
@@ -305,7 +310,7 @@ async def test_ops_lead_sees_everything_but_cannot_configure_the_desk(client, de
     assert reported.json()["can_manage"] is False
 
     forbidden = {
-        "create partner": await client.post(f"{b}/partners", headers=h, json={"name": "X", "domains": ["x.com"]}),
+        "create partner": await client.post(f"{b}/accounts", headers=h, json={"name": "X", "domains": ["x.com"]}),
         "create mailbox": await client.post(f"{b}/mailboxes", headers=h, json={"address": "x@bimaplan.co"}),
         "rewrite template": await client.patch(
             f"{b}/templates/receipt", headers=h, json={"subject": "x", "body": "y"}
@@ -351,7 +356,7 @@ async def test_ops_head_sees_everything_and_holds_configuration_authority(client
     assert (reported.json()["scope"], reported.json()["can_manage"]) == ("all", True)
 
     assert (
-        await client.post(f"{b}/partners", headers=h, json={"name": "ABC", "domains": ["abc.com"]})
+        await client.post(f"{b}/accounts", headers=h, json={"name": "ABC", "domains": ["abc.com"]})
     ).status_code == 201
     assert (
         await client.patch(f"{b}/settings", headers=h, json={"ai_classification_enabled": True})
@@ -484,14 +489,14 @@ async def test_split_family_reassignment_is_scoped_and_atomic(
             {
                 "summary": "Keep the claim on the primary",
                 "request_type": "claims",
-                "lob": None,
+                "product": None,
                 "confidence": 0.9,
                 "split_reason": None,
             },
             {
                 "summary": "Payout goes to its own ticket",
                 "request_type": "payout",
-                "lob": None,
+                "product": None,
                 "confidence": 0.9,
                 "split_reason": "Separate finance workflow",
             },

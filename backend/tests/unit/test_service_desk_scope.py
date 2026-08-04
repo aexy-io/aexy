@@ -23,6 +23,7 @@ from aexy.services.service_desk_service import (
     has_full_service_desk_view,
     resolve_scope_clause,
 )
+from tests.conftest import seed_service_desk_taxonomy
 
 
 async def _member(db, ws_id: str, label: str, *, permissions: list[str] | None = None) -> str:
@@ -87,6 +88,10 @@ async def desk(db_session):
     ws = Workspace(id=str(uuid4()), name="BP", slug=f"bp-{uuid4().hex[:6]}", owner_id=owner.id)
     db_session.add(ws)
     await db_session.flush()
+    # Stakeholders and request types are per-workspace rows now, not an enum, so
+    # a bare workspace has no taxonomy and the service layer refuses to file a
+    # ticket into one. Seeds the legacy insurance slugs these tests assert on.
+    await seed_service_desk_taxonomy(db_session, ws.id)
 
     form = TicketForm(
         id=str(uuid4()), workspace_id=ws.id, name="SD", slug=f"sd-{uuid4().hex[:6]}", created_by_id=owner.id
@@ -243,8 +248,8 @@ async def test_the_digest_does_not_mail_around_the_row_scope(db_session, desk):
     # KAM A heads the department but holds no full-view permission, so their
     # digest is still only their own tickets — and they get exactly one.
     assert len(by_email) == 2
-    assert by_email[head_dev.email].is_ops_head is False
-    assert {r.display_id for r in by_email[head_dev.email].rows} == {"BSD-1", "BSD-3"}
+    assert by_email[head_dev.email].is_desk_lead is False
+    assert {r.display_id for r in by_email[head_dev.email].rows} == {"SD-1", "SD-3"}
 
     # Grant full view and the same head now legitimately gets the whole desk.
     member = (
@@ -261,5 +266,5 @@ async def test_the_digest_does_not_mail_around_the_row_scope(db_session, desk):
     after = {
         d.recipient_email: d for d in await ServiceDeskDigestService(db_session).build_digests(desk["ws"])
     }
-    assert after[head_dev.email].is_ops_head is True
-    assert {r.display_id for r in after[head_dev.email].rows} == {"BSD-1", "BSD-2", "BSD-3"}
+    assert after[head_dev.email].is_desk_lead is True
+    assert {r.display_id for r in after[head_dev.email].rows} == {"SD-1", "SD-2", "SD-3"}

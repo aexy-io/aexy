@@ -205,6 +205,12 @@ async def _settings(db: AsyncSession, workspace_id: str) -> dict:
     return ((ws.settings or {}).get("service_desk") or {}) if ws else {}
 
 
+# The insurance template's frozen external slugs. Used only as a fallback when a
+# workspace has not stored its own terminology (applying an industry template does
+# not copy the nouns by default), so the label match below has nothing to compare.
+_LEGACY_EXTERNAL_SLUGS = {"account": "partner", "vendor": "insurer"}
+
+
 def external_slug_for(taxonomy: Taxonomy, term_key: str) -> str | None:
     """The external bucket that speaks for the ``account`` or ``vendor`` table.
 
@@ -215,13 +221,14 @@ def external_slug_for(taxonomy: Taxonomy, term_key: str) -> str | None:
     existing desks keep behaving identically. Returns None when a workspace has
     renamed one without the other, in which case callers must not guess.
     """
+    externals = {s.slug: s for s in taxonomy.stakeholders if s.semantics == SEMANTIC_EXTERNAL}
     want = (taxonomy.term(term_key) or "").strip().lower()
-    if not want:
-        return None
-    for s in taxonomy.stakeholders:
-        if s.semantics == SEMANTIC_EXTERNAL and (s.label or "").strip().lower() == want:
-            return s.slug
-    return None
+    if want:
+        for slug, s in externals.items():
+            if (s.label or "").strip().lower() == want:
+                return slug
+    legacy = _LEGACY_EXTERNAL_SLUGS.get(term_key)
+    return legacy if legacy in externals else None
 
 
 async def load_taxonomy(db: AsyncSession, workspace_id: str, *, seed: bool = True) -> Taxonomy:

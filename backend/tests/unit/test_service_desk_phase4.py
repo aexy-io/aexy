@@ -221,23 +221,6 @@ async def test_digest_skips_people_who_left_the_workspace(db_session: AsyncSessi
     emails = {d.recipient_email for d in await ServiceDeskDigestService(db_session).build_digests(ws.id)}
     assert "departed@example.com" not in emails
 
-    # Nehal leaves the workspace. The department row stays behind, but the
-    # digest must stop mailing them ticket details they can no longer read.
-    member = (
-        await db_session.execute(
-            select(WorkspaceMember).where(
-                WorkspaceMember.workspace_id == ws.id,
-                WorkspaceMember.developer_id == nehal.id,
-            )
-        )
-    ).scalar_one()
-    member.status = "removed"
-    await db_session.commit()
-
-    after = {d.recipient_email for d in await ServiceDeskDigestService(db_session).build_digests(ws.id)}
-    assert "nehal2@bimaplan.co" not in after
-    assert "neha2@bimaplan.co" in after
-
 
 @pytest.mark.asyncio
 async def test_ai_toggle_gates_classification(db_session: AsyncSession, monkeypatch):

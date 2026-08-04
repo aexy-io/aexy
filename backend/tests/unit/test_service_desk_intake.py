@@ -69,8 +69,10 @@ async def _workspace(db: AsyncSession, slug: str) -> Workspace:
     return ws
 
 
-async def _mailbox(db: AsyncSession, ws: Workspace) -> ServiceDeskMailbox:
-    mb = ServiceDeskMailbox(workspace_id=ws.id, address="operations@example.com", channel="webhook")
+async def _mailbox(
+    db: AsyncSession, ws: Workspace, address: str = "operations@example.com"
+) -> ServiceDeskMailbox:
+    mb = ServiceDeskMailbox(workspace_id=ws.id, address=address, channel="webhook")
     db.add(mb)
     await db.commit()
     await db.refresh(mb)
@@ -173,7 +175,10 @@ async def _ai_workspace(
             "auto_split_enabled": auto_split,
         }
     }
-    mb = await _mailbox(db, ws)
+    # The desk's own domain must differ from the partner's, or every message from
+    # the partner reads as internal mail and is flagged for triage before the
+    # classifier ever runs.
+    mb = await _mailbox(db, ws, address="operations@desk.example")
     partner = ServiceDeskAccount(workspace_id=ws.id, name="Known Partner")
     db.add(partner)
     await db.flush()
@@ -279,9 +284,9 @@ async def test_high_confidence_candidates_never_create_children_in_a0(
             return (
                 '{"issues":['
                 '{"summary":"Issue attached policies","request_type":"policy_issuance",'
-                '"lob":"GMC/GHI","confidence":0.94,"split_reason":"Policy workflow"},'
+                '"product":"GMC/GHI","confidence":0.94,"split_reason":"Policy workflow"},'
                 '{"summary":"Investigate claim C-9","request_type":"claims",'
-                '"lob":"Personal Accident","confidence":0.91,'
+                '"product":"Personal Accident","confidence":0.91,'
                 '"split_reason":"Claims workflow"}'
                 "]}",
             )
@@ -317,7 +322,7 @@ async def test_candidate_overflow_is_recorded_before_candidates_are_capped(
         {
             "summary": f"Independent request {index}",
             "request_type": "claims" if index % 2 else "query",
-            "lob": None,
+            "product": None,
             "confidence": 0.95,
             "split_reason": "Different requested outcome",
         }
@@ -435,14 +440,14 @@ def _two_issue_gateway(
         {
             "summary": "Issue the attached policies",
             "request_type": first_type,
-            "lob": "GMC/GHI",
+            "product": "GMC/GHI",
             "confidence": first_confidence,
             "split_reason": "Policy workflow",
         },
         {
             "summary": "Investigate claim C-9",
             "request_type": second_type,
-            "lob": "Personal Accident",
+            "product": "Personal Accident",
             "confidence": second_confidence,
             "split_reason": "Claims workflow",
         },
@@ -523,7 +528,7 @@ async def test_auto_split_enabled_creates_exactly_one_child_ticket(
     assert child.assignee_id == primary.assignee_id
     assert child.field_values["split_from_ticket_id"] == primary.id
     assert primary.field_values["split_children"] == [
-        {"ticket_id": child.id, "display_id": f"BSD-{child.ticket_number}"}
+        {"ticket_id": child.id, "display_id": f"SD-{child.ticket_number}"}
     ]
     # Only the primary carries the thread: a reply must not match two tickets.
     assert primary_sd.thread_ref == "T-split" and child_sd.thread_ref is None
@@ -547,7 +552,7 @@ async def test_auto_split_enabled_creates_exactly_one_child_ticket(
                     {
                         "summary": "Release the pending payout",
                         "request_type": "payout",
-                        "lob": None,
+                        "product": None,
                         "confidence": 0.93,
                         "split_reason": "Payout workflow",
                     }
@@ -640,8 +645,8 @@ async def test_one_acknowledgement_names_the_primary_and_every_child(
     queued = service._pending_notifications
 
     assert len(queued) == 1
-    assert queued[0]["vars"]["display_id"] == f"BSD-{primary.ticket_number}"
-    assert f"BSD-{child.ticket_number}" in queued[0]["vars"]["additional_tickets"]
+    assert queued[0]["vars"]["display_id"] == f"SD-{primary.ticket_number}"
+    assert f"SD-{child.ticket_number}" in queued[0]["vars"]["additional_tickets"]
 
 
 @pytest.mark.asyncio
@@ -703,7 +708,7 @@ async def test_automatic_response_is_never_split_or_classified(
         {"headers": {"X-Autoreply": "yes"}},
         {"headers": {"X-Autorespond": "replied"}},
         {"headers": {"Precedence": "bulk"}},
-        {"subject": "Out of Office: Re: BSD-1 policy query"},
+        {"subject": "Out of Office: Re: SD-1 policy query"},
         {"subject": "Automatic reply: your request"},
     ],
     ids=["auto-submitted", "x-autoreply", "x-autorespond", "precedence", "ooo-subject", "auto-reply-subject"],
@@ -778,7 +783,7 @@ async def test_our_own_outbound_mail_is_skipped_before_any_ticket_exists(
         _email(
             from_email="operations@bimaplan.co",
             message_id="a1-self-loop-1",
-            subject="BSD-1 Your request",
+            subject="SD-1 Your request",
             headers={sd_mod.OUTBOUND_MARKER_HEADER: "1"},
         ),
         mb,

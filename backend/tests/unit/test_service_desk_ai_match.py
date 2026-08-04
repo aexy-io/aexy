@@ -1,6 +1,6 @@
 """Reuniting a stray stakeholder email with its ticket, when AI is enabled.
 
-Deterministic matching (Gmail thread, then the BSD number in the subject) is the
+Deterministic matching (Gmail thread, then the ticket number in the subject) is the
 only path with AI off. With AI on, a stakeholder who starts a fresh thread and
 drops the ticket number can still be reunited — but only on a confident, single
 candidate from a sender already known to master data. Everything less certain
@@ -27,6 +27,7 @@ from aexy.models.ticketing import Ticket, TicketForm, TicketResponse
 from aexy.models.workspace import Workspace
 from aexy.schemas.service_desk import InboundEmail
 from aexy.services.service_desk_intake_service import ServiceDeskIntakeService
+from tests.conftest import seed_service_desk_taxonomy
 
 
 def _gateway(monkeypatch, payload: str, seen: list | None = None):
@@ -49,6 +50,9 @@ async def desk(db_session: AsyncSession):
     ws.settings = {"service_desk": {"ai_classification_enabled": True}}
     db_session.add(ws)
     await db_session.flush()
+    # Stakeholders and request types are per-workspace rows now, so the handback
+    # rule has nothing to resolve "insurer" against until the desk is set up.
+    await seed_service_desk_taxonomy(db_session, ws.id)
 
     mailbox = ServiceDeskMailbox(
         id=str(uuid4()), workspace_id=ws.id, address="ops@bimaplan.co", channel="webhook"
@@ -113,7 +117,7 @@ def _stray(**over) -> InboundEmail:
 
 @pytest.mark.asyncio
 async def test_a_confident_single_match_merges_and_says_why(db_session, desk, monkeypatch):
-    _gateway(monkeypatch, '{"ticket":"BSD-7","confidence":0.93,"reason":"Same claim C-9"}')
+    _gateway(monkeypatch, '{"ticket":"SD-7","confidence":0.93,"reason":"Same claim C-9"}')
 
     result = await ServiceDeskIntakeService(db_session).ingest(
         _stray(), desk["mailbox"], "service_desk_gmail"
@@ -139,7 +143,7 @@ async def test_a_confident_single_match_merges_and_says_why(db_session, desk, mo
 
 @pytest.mark.asyncio
 async def test_an_unsure_match_opens_a_ticket_and_asks_a_human(db_session, desk, monkeypatch):
-    _gateway(monkeypatch, '{"ticket":"BSD-7","confidence":0.55,"reason":"Wording is similar"}')
+    _gateway(monkeypatch, '{"ticket":"SD-7","confidence":0.55,"reason":"Wording is similar"}')
 
     result = await ServiceDeskIntakeService(db_session).ingest(
         _stray(), desk["mailbox"], "service_desk_gmail"
@@ -159,7 +163,7 @@ async def test_an_unsure_match_opens_a_ticket_and_asks_a_human(db_session, desk,
             select(TicketResponse).where(TicketResponse.ticket_id == result.id)
         )
     ).scalars().all()
-    hint = [n for n in notes if n.is_internal and "may belong to BSD-7" in n.content]
+    hint = [n for n in notes if n.is_internal and "may belong to SD-7" in n.content]
     assert len(hint) == 1, "the near miss must be recorded, not silently dropped"
     assert "A human should confirm" in hint[0].content
 
@@ -168,7 +172,7 @@ async def test_an_unsure_match_opens_a_ticket_and_asks_a_human(db_session, desk,
 async def test_an_unknown_sender_is_never_merged(db_session, desk, monkeypatch):
     """Master data membership is the gate; a stranger cannot reach a claim."""
     called: list = []
-    _gateway(monkeypatch, '{"ticket":"BSD-7","confidence":0.99,"reason":"x"}', seen=called)
+    _gateway(monkeypatch, '{"ticket":"SD-7","confidence":0.99,"reason":"x"}', seen=called)
 
     result = await ServiceDeskIntakeService(db_session).ingest(
         _stray(from_email="someone@nowhere.example"), desk["mailbox"], "service_desk_gmail"
@@ -184,7 +188,7 @@ async def test_an_unknown_sender_is_never_merged(db_session, desk, monkeypatch):
 @pytest.mark.asyncio
 async def test_a_ticket_the_model_invented_is_ignored(db_session, desk, monkeypatch):
     """Only a candidate we actually offered may be chosen."""
-    _gateway(monkeypatch, '{"ticket":"BSD-999","confidence":0.99,"reason":"made up"}')
+    _gateway(monkeypatch, '{"ticket":"SD-999","confidence":0.99,"reason":"made up"}')
 
     result = await ServiceDeskIntakeService(db_session).ingest(
         _stray(), desk["mailbox"], "service_desk_gmail"
@@ -231,7 +235,7 @@ async def test_an_insurer_match_never_sees_another_insurers_open_ticket(
     prompts: list[str] = []
     _gateway(
         monkeypatch,
-        '{"ticket":"BSD-8","confidence":0.99,"reason":"Looks similar"}',
+        '{"ticket":"SD-8","confidence":0.99,"reason":"Looks similar"}',
         seen=prompts,
     )
 
@@ -241,8 +245,8 @@ async def test_an_insurer_match_never_sees_another_insurers_open_ticket(
 
     assert result.id != other_ticket.id
     matcher_prompt = next(prompt for prompt in prompts if "Open tickets for this company" in prompt)
-    assert "BSD-7" in matcher_prompt
-    assert "BSD-8" not in matcher_prompt
+    assert "SD-7" in matcher_prompt
+    assert "SD-8" not in matcher_prompt
 
 
 @pytest.mark.asyncio
@@ -283,7 +287,7 @@ async def test_matcher_failure_marks_the_new_partner_ticket_for_human_review(
                 raise RuntimeError("matcher unavailable")
             return (
                 '{"issues":[{"summary":"Check status","request_type":"claims",'
-                '"lob":null,"confidence":0.99,"split_reason":null}]}',
+                '"product":null,"confidence":0.99,"split_reason":null}]}',
             )
 
     monkeypatch.setattr("aexy.llm.gateway.get_llm_gateway", lambda: Gateway())
@@ -314,7 +318,7 @@ async def test_the_deterministic_paths_still_win_before_any_model_runs(
     _gateway(monkeypatch, '{"ticket":null,"confidence":0,"reason":"x"}', seen=called)
 
     result = await ServiceDeskIntakeService(db_session).ingest(
-        _stray(subject="Re: BSD-7 claim update"), desk["mailbox"], "service_desk_gmail"
+        _stray(subject="Re: SD-7 claim update"), desk["mailbox"], "service_desk_gmail"
     )
     await db_session.commit()
 
@@ -329,7 +333,7 @@ def _reply_from(sender: str, **over) -> InboundEmail:
     base = {
         "to": "ops@bimaplan.co",
         "from_email": sender,
-        "subject": "Re: BSD-7 claim update",
+        "subject": "Re: SD-7 claim update",
         "body_text": "Still checking, will confirm tomorrow.",
         "message_id": f"m-{uuid4().hex[:8]}",
         "thread_id": "thread-original",
@@ -410,9 +414,9 @@ async def test_a_human_split_child_is_not_flagged_for_triage_the_human_just_did(
     ticket = desk["ticket"]
     values = dict(ticket.field_values or {})
     values["detected_issues"] = [
-        {"summary": "Claim status", "request_type": "claims", "lob": None,
+        {"summary": "Claim status", "request_type": "claims", "product": None,
          "confidence": 0.9, "split_reason": None},
-        {"summary": "Register reconciliation", "request_type": "query", "lob": None,
+        {"summary": "Register reconciliation", "request_type": "query", "product": None,
          "confidence": 0.85, "split_reason": "Different workflow"},
     ]
     ticket.field_values = values

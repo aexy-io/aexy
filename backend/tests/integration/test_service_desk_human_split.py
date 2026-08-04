@@ -15,6 +15,7 @@ from aexy.models.service_desk import ServiceDeskTicket, TicketPendingSegment
 from aexy.models.ticketing import Ticket, TicketResponse
 from aexy.models.workspace import Workspace, WorkspaceMember
 from aexy.services.service_desk_intake_service import ServiceDeskIntakeService
+from tests.conftest import seed_service_desk_taxonomy
 
 settings = get_settings()
 
@@ -38,21 +39,21 @@ def _issues() -> list[dict]:
         {
             "summary": "Check the policy status",
             "request_type": "query",
-            "lob": None,
+            "product": None,
             "confidence": 0.91,
             "split_reason": None,
         },
         {
             "summary": "Investigate claim C-9",
             "request_type": "claims",
-            "lob": None,
+            "product": None,
             "confidence": 0.88,
             "split_reason": "A separate claims workflow is required",
         },
         {
             "summary": "Release payout P-4",
             "request_type": "payout",
-            "lob": None,
+            "product": None,
             "confidence": 0.86,
             "split_reason": "A separate finance outcome is required",
         },
@@ -74,6 +75,10 @@ async def split_context(client, db_session: AsyncSession):
     )
     db_session.add(workspace)
     await db_session.flush()
+    # Stakeholders and request types are per-workspace rows rather than an enum,
+    # so a desk has to be set up before tickets can be filed. These tests assert
+    # on the legacy insurance slugs ("kam", "claims"), which is that template.
+    await seed_service_desk_taxonomy(db_session, workspace.id)
     db_session.add(
         WorkspaceMember(
             workspace_id=workspace.id,

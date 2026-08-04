@@ -346,8 +346,8 @@ class TicketFieldsUpdate(BaseModel):
 
 class DetectedIssue(BaseModel):
     summary: str = Field(..., min_length=1, max_length=240)
-    request_type: RequestType
-    lob: str | None = None
+    request_type: TaxonomySlug
+    product: str | None = None
     confidence: float = Field(..., ge=0, le=1)
     split_reason: str | None = None
 
@@ -408,8 +408,8 @@ class TicketEmailRecipient(BaseModel):
     label: str
     # The stage the ticket moves to when this recipient is written to, or None
     # when writing to them says nothing about who now has to act (the original
-    # requester, if they are not also a configured partner or insurer).
-    stage: PendingWith | None = None
+    # requester, if they are not also a configured account or vendor).
+    stage: TaxonomySlug | None = None
 
 
 class TicketAttachment(BaseModel):

@@ -318,14 +318,14 @@ async def test_row_scope_applies_to_by_id_paths_not_just_the_list(
             {
                 "summary": "Keep this request on the primary",
                 "request_type": "claims",
-                "lob": None,
+                "product": None,
                 "confidence": 0.9,
                 "split_reason": None,
             },
             {
                 "summary": "Create a separate payout request",
                 "request_type": "payout",
-                "lob": None,
+                "product": None,
                 "confidence": 0.9,
                 "split_reason": "Separate finance workflow",
             },

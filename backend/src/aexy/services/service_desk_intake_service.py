@@ -309,7 +309,7 @@ class ServiceDeskIntakeService:
         domain = _domain_of(email.from_email)
         account = await self._match_account(workspace_id, domain, address)
         vendor = None if account else await self._match_vendor(workspace_id, domain, address)
-        if partner is None and insurer is None:
+        if account is None and vendor is None:
             return None, None, None
 
         query = (
@@ -327,12 +327,12 @@ class ServiceDeskIntakeService:
             .order_by(Ticket.created_at.desc())
             .limit(_AI_MATCH_MAX_CANDIDATES)
         )
-        if partner is not None:
-            query = query.where(ServiceDeskTicket.account_id == partner.id)
+        if account is not None:
+            query = query.where(ServiceDeskTicket.account_id == account.id)
         else:
-            # An insurer writes about claims the desk sent them, so the plausible
-            # homes are tickets already handed to that insurer.
-            query = query.where(ServiceDeskTicket.vendor_id == insurer.id)
+            # A vendor writes about work the desk sent them, so the plausible
+            # homes are tickets already handed to that vendor.
+            query = query.where(ServiceDeskTicket.vendor_id == vendor.id)
         rows = (await self.db.execute(query)).all()
         if not rows:
             return None, None, None
@@ -344,7 +344,7 @@ class ServiceDeskIntakeService:
             f"[{sd.request_type}, pending with {sd.pending_with}]"
             for ticket, sd in rows
         )
-        sender_label = partner.name if partner is not None else insurer.name
+        sender_label = account.name if account is not None else vendor.name
 
         try:
             from aexy.llm.gateway import get_llm_gateway
@@ -390,8 +390,10 @@ class ServiceDeskIntakeService:
         except (TypeError, ValueError):
             confidence = 0.0
 
-        matched = _BSD_RE.search(str(raw or ""))
-        candidate = by_number.get(int(matched.group(1))) if matched else None
+        # Matches this workspace's own prefix only. A generic `\w+-(\d+)` would
+        # let the model name "INV-2024" and have it resolve to ticket 2024.
+        matched_number = await ticket_number_in_subject(self.db, workspace_id, str(raw or ""))
+        candidate = by_number.get(matched_number) if matched_number is not None else None
         if candidate is None:
             if raw:
                 return (
@@ -1196,7 +1198,7 @@ class ServiceDeskIntakeService:
                 confidence = max(0.0, min(1.0, float(raw.get("confidence", 0))))
             except (TypeError, ValueError):
                 confidence = 0.0
-            fingerprint = (summary.lower(), request_type, (lob or "").lower())
+            fingerprint = (summary.lower(), request_type, (product or "").lower())
             if fingerprint in seen:
                 continue
             seen.add(fingerprint)

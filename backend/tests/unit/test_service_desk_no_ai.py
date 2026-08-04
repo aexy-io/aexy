@@ -28,6 +28,7 @@ from aexy.models.workspace import Workspace, WorkspaceMember
 from aexy.schemas.service_desk import InboundEmail
 from aexy.services.gmail_sync_service import GmailSyncService
 from aexy.services.service_desk_intake_service import ServiceDeskIntakeService
+from tests.conftest import seed_service_desk_taxonomy
 
 
 @pytest.fixture(autouse=True)
@@ -54,6 +55,10 @@ async def _desk(
     ws = Workspace(name=f"WS {slug}", slug=slug, owner_id=owner.id)
     db.add(ws)
     await db.flush()
+    # Stakeholders and request types are per-workspace rows now, not an enum, so
+    # a bare workspace has no taxonomy and the service layer refuses to file a
+    # ticket into one. Seeds the legacy insurance slugs these tests assert on.
+    await seed_service_desk_taxonomy(db, ws.id)
 
     mailbox = ServiceDeskMailbox(
         workspace_id=ws.id, address="operations@bimaplan.co", channel="webhook"

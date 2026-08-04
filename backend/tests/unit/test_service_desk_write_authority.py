@@ -33,6 +33,7 @@ from aexy.services import service_desk_mailer
 from aexy.services.service_desk_ticket_service import ServiceDeskTicketService
 
 from fastapi import HTTPException
+from tests.conftest import seed_service_desk_taxonomy
 
 
 async def _member(db, ws_id: str, label: str, permissions: list[str]) -> str:
@@ -95,6 +96,10 @@ async def desk(db_session):
     ws = Workspace(id=str(uuid4()), name="BP", slug=f"bp-{uuid4().hex[:6]}", owner_id=owner.id)
     db_session.add(ws)
     await db_session.flush()
+    # Stakeholders and request types are per-workspace rows now, not an enum, so
+    # a bare workspace has no taxonomy and the service layer refuses to file a
+    # ticket into one. Seeds the legacy insurance slugs these tests assert on.
+    await seed_service_desk_taxonomy(db_session, ws.id)
 
     integration = GoogleIntegration(
         id=str(uuid4()),
@@ -342,7 +347,7 @@ async def test_email_goes_out_as_the_watched_mailbox_and_keeps_the_ticket_identi
     assert sent[0]["to"] == "claims@insurer-one.example"
     assert sent[0]["thread_id"] is None
     # The BSD number is what the deterministic inbound matcher reads.
-    assert sent[0]["subject"].startswith("[BSD-1] ")
+    assert sent[0]["subject"].startswith("[SD-1] ")
     assert detail.vendor_id is not None, "later stray replies must stay scoped to this insurer"
 
     outgoing = [c for c in detail.correspondence if c.direction == "outgoing"]
@@ -371,12 +376,12 @@ async def test_an_existing_bsd_subject_is_not_prefixed_twice(db_session, desk, s
         desk["ws"],
         desk["ticket"],
         "paimonking@runbox.com",
-        "Re: BSD-1 - claim update",
+        "Re: SD-1 - claim update",
         "Update below.",
         sender_id=desk["kam"],
         scope_developer_id=desk["kam"],
     )
-    assert sent[0]["subject"] == "Re: BSD-1 - claim update"
+    assert sent[0]["subject"] == "Re: SD-1 - claim update"
 
 
 @pytest.mark.asyncio
@@ -582,7 +587,7 @@ async def test_writing_to_an_insurer_starts_its_own_conversation(db_session, des
         scope_developer_id=desk["kam"],
     )
     assert sent[0]["thread_id"] is None
-    assert sent[0]["subject"].startswith("[BSD-1] ")
+    assert sent[0]["subject"].startswith("[SD-1] ")
 
 
 @pytest.mark.asyncio
