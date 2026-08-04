@@ -393,28 +393,22 @@ class ServiceDeskIntakeService:
         return row
 
     async def _random_owner(self, workspace_id: str) -> str | None:
-        """Pick a random member of the desk's own department who is still here.
+        """Pick a random member of the department that runs this desk.
 
-        Which department that is comes from the workspace's taxonomy — the
-        function its default (first internal) stakeholder routes to — not from a
-        literal. It used to be ``function_key == "ops_kam"``, a key only
-        workspaces set up from the insurance-broking template ever had, so
-        everybody else's incoming mail arrived unassigned with nothing to say why.
+        Which department that is, is now the workspace's own answer: the one named
+        in Service Desk settings, or — with none named — the department behind the
+        desk's first internal queue. It used to be the literal
+        ``function_key == "ops_kam"``, a key only workspaces set up from the
+        insurance-broking template ever had, so everybody else's incoming mail
+        arrived unassigned with nothing to say why.
 
         Department membership alone isn't enough: rows are not removed when
         someone leaves the workspace, so joining WorkspaceMember keeps tickets
         from being auto-assigned to a departed employee's dead queue.
         """
-        from aexy.services.organization_service import department_for_function
-        from aexy.services.service_desk_taxonomy import load_taxonomy
+        from aexy.services.service_desk_service import resolve_desk_department
 
-        taxonomy = await load_taxonomy(self.db, workspace_id, seed=False)
-        default_slug = taxonomy.default_stakeholder_slug
-        if default_slug is None:
-            return None
-        dept = await department_for_function(
-            self.db, workspace_id, taxonomy.internal_function_keys.get(default_slug)
-        )
+        dept = await resolve_desk_department(self.db, workspace_id)
         if dept is None:
             return None
 

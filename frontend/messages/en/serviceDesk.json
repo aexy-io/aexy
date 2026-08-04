@@ -129,7 +129,14 @@
       "red": "Red after (days)",
       "prefixInvalid": "1–10 letters or digits, starting with a letter.",
       "thresholdsInvalid": "Amber must be a smaller number of days than red, and both above zero.",
-      "prefixWarning": "Saving relabels every existing ticket as {prefix}-<number>. Replies quoting the old prefix will still thread correctly."
+      "prefixWarning": "Saving relabels every existing ticket as {prefix}-1234. Replies quoting the old prefix will still thread correctly."
+    },
+    "deskDepartment": {
+      "title": "Ticket intake",
+      "description": "Which department receives incoming tickets. Its members are auto-assigned new requests, and its head gets the digest of everything still open.",
+      "automaticNamed": "Automatic — {department} (from the first queue)",
+      "automaticNone": "Automatic — no department resolves yet",
+      "nobody": "No department is receiving tickets, so every request arrives unassigned and nobody gets the digest. Choose one, or give a department the function your first queue routes to."
     }
   }
 }

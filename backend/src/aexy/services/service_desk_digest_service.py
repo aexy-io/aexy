@@ -132,21 +132,18 @@ class ServiceDeskDigestService:
     async def build_digests(self, workspace_id: str) -> list[Digest]:
         all_rows = await self._open_rows(workspace_id)
 
-        # The desk team: the department behind the workspace's first internal
-        # stakeholder. Its members get a personal digest, its head gets the lot.
+        # The desk team: its members get a personal digest, its head gets the lot.
+        # The department named in Service Desk settings, or — with none named — the
+        # one behind the desk's first internal queue. Deliberately the same
+        # resolution intake uses to pick an owner: a workspace where the digest and
+        # auto-assignment disagreed about who runs the desk would be worse than
+        # either answer on its own.
+        #
         # Was pinned to `function_key == "ops_kam"`, so any workspace that didn't
         # happen to name a department that way got no per-person digests at all.
-        taxonomy = await load_taxonomy(self.db, workspace_id, seed=False)
-        desk_function = None
-        if (default_slug := taxonomy.default_stakeholder_slug) is not None:
-            desk_function = taxonomy.internal_function_keys.get(default_slug)
+        from aexy.services.service_desk_service import resolve_desk_department
 
-        # Shared resolver: it also matches retired spellings, so a workspace still
-        # holding `ops_kam` resolves to its Operations department instead of
-        # silently getting no digests at all.
-        from aexy.services.organization_service import department_for_function
-
-        dept = await department_for_function(self.db, workspace_id, desk_function)
+        dept = await resolve_desk_department(self.db, workspace_id)
 
         digests: list[Digest] = []
         owner_ids: list[str] = []
