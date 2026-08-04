@@ -60,6 +60,9 @@ export interface DepartmentMemberSummary {
   role_in_department: DepartmentMemberRole;
   is_primary: boolean;
   allocation_percent: number;
+  /** The headcount seat this person occupies in this department, if any. */
+  position_id: string | null;
+  position_title: string | null;
   /** From `workspace_members.manager_id` — who this person reports to. */
   manager_id: string | null;
   manager_name: string | null;
@@ -81,6 +84,8 @@ export interface DepartmentPosition {
   title: string;
   status: PositionStatus;
   filled_by_id: string | null;
+  /** Display name of whoever holds the seat — so "Filled" says who by. */
+  filled_by_name: string | null;
   created_at: string;
 }
 
@@ -107,12 +112,17 @@ export interface MembershipCreate {
   role_in_department?: DepartmentMemberRole;
   is_primary?: boolean;
   allocation_percent?: number;
+  /** A seat in this department to place them in. Omit to leave seats alone. */
+  position_id?: string | null;
 }
 
 export interface MembershipUpdate {
   role_in_department?: DepartmentMemberRole;
   is_primary?: boolean;
   allocation_percent?: number;
+  /** Seat id to move them into, or null to vacate the one they hold. Omitting
+   *  the key leaves seats untouched — send it only when changing the seat. */
+  position_id?: string | null;
 }
 
 export interface PersonDepartment {

@@ -65,6 +65,8 @@
       "everyoneAdded": "Everyone in the workspace is already in this department.",
       "primary": "Primary",
       "role": "Role",
+      "position": "Position",
+      "noPosition": "No position",
       "remove": "Remove from department",
       "roles": {
         "head": "Head",

@@ -17,6 +17,7 @@ from aexy.models.organization import (
     Department,
     DepartmentMember,
     DepartmentPosition,
+    PositionStatus,
 )
 from aexy.models.workspace import WorkspaceMember
 from aexy.schemas.organization import (
@@ -228,10 +229,13 @@ class OrganizationService:
             )
         ).scalars().all()
         base = self._to_response(dept, len(members))
+        # Seat holders are already on the roster, so name them from it rather than
+        # joining developers a second time.
+        holders = {m.developer_id: (m.name or m.email or "") for m in members}
         return DepartmentDetail(
             **base.model_dump(),
             members=members,
-            positions=[PositionResponse.model_validate(p) for p in positions],
+            positions=[self._to_position_response(p, holders) for p in positions],
         )
 
     async def update_department(
@@ -570,8 +574,12 @@ class OrganizationService:
         dev: Developer,
         managers: dict[str, str | None],
         names: dict[str, str],
+        seats: dict[tuple[str, str], DepartmentPosition] | None = None,
     ) -> MemberSummary:
         manager_id = managers.get(dev.id)
+        # (department_id, developer_id) -> the seat they hold there. Optional
+        # because the org chart draws reporting lines and has no use for seats.
+        seat = (seats or {}).get((m.department_id, dev.id))
         return MemberSummary(
             id=m.id,
             developer_id=dev.id,
@@ -581,6 +589,8 @@ class OrganizationService:
             role_in_department=m.role_in_department,
             is_primary=m.is_primary,
             allocation_percent=m.allocation_percent,
+            position_id=seat.id if seat else None,
+            position_title=seat.title if seat else None,
             manager_id=manager_id,
             manager_name=names.get(manager_id) if manager_id else None,
         )
@@ -619,7 +629,85 @@ class OrganizationService:
             return []
 
         managers, names = await self._reporting_lines(rows[0][2].workspace_id)
-        return [self._to_member_summary(m, dev, managers, names) for m, dev, _ in rows]
+        seats = await self._seats_by_holder(dept_id)
+        return [self._to_member_summary(m, dev, managers, names, seats) for m, dev, _ in rows]
+
+    # -------------------------------------------------------------------- seats
+
+    async def _seats_by_holder(
+        self, dept_id: str
+    ) -> dict[tuple[str, str], DepartmentPosition]:
+        """``(department_id, developer_id) -> the seat that person holds``.
+
+        A person holds at most one seat per department — ``_assign_position``
+        vacates the others — but the schema cannot say so, so this takes the
+        earliest-created seat when history has left more than one behind.
+        """
+        rows = (
+            await self.db.execute(
+                select(DepartmentPosition)
+                .where(
+                    DepartmentPosition.department_id == dept_id,
+                    DepartmentPosition.filled_by_id.isnot(None),
+                )
+                .order_by(DepartmentPosition.created_at, DepartmentPosition.id)
+            )
+        ).scalars().all()
+        out: dict[tuple[str, str], DepartmentPosition] = {}
+        for seat in rows:
+            out.setdefault((dept_id, seat.filled_by_id), seat)
+        return out
+
+    async def _assign_position(
+        self, workspace_id: str, dept_id: str, developer_id: str, position_id: str | None
+    ) -> None:
+        """Place ``developer_id`` in a seat, or vacate the one they hold.
+
+        The seat carries the link (``filled_by_id``), so placing someone is a
+        write to the position row rather than to their membership. Vacating sets
+        the seat back to ``open`` — the point of a headcount seat is that it can
+        be refilled, and a seat left ``filled`` by someone who has moved on is
+        both wrong and permanently unusable.
+        """
+        held = (
+            await self.db.execute(
+                select(DepartmentPosition).where(
+                    DepartmentPosition.department_id == dept_id,
+                    DepartmentPosition.filled_by_id == developer_id,
+                )
+            )
+        ).scalars().all()
+
+        target: DepartmentPosition | None = None
+        if position_id:
+            target = (
+                await self.db.execute(
+                    select(DepartmentPosition).where(
+                        DepartmentPosition.id == position_id,
+                        DepartmentPosition.department_id == dept_id,
+                        DepartmentPosition.workspace_id == workspace_id,
+                    )
+                )
+            ).scalar_one_or_none()
+            if target is None:
+                # Scoped to the department on purpose: a seat belongs to one
+                # department, so accepting another department's id would place
+                # someone in a seat that isn't on the roster they're being added to.
+                raise HTTPException(status_code=404, detail="Position not found in this department")
+            if target.filled_by_id and target.filled_by_id != developer_id:
+                raise HTTPException(status_code=409, detail="That position is already filled")
+
+        for seat in held:
+            if target is not None and seat.id == target.id:
+                continue
+            seat.filled_by_id = None
+            seat.status = PositionStatus.OPEN.value
+
+        if target is not None:
+            target.filled_by_id = developer_id
+            target.status = PositionStatus.FILLED.value
+
+        await self.db.flush()
 
     async def add_member(
         self, workspace_id: str, dept_id: str, data: MembershipCreate
@@ -651,11 +739,16 @@ class OrganizationService:
         )
         self.db.add(member)
         await self.db.flush()
+        if data.position_id:
+            await self._assign_position(
+                workspace_id, dept_id, data.developer_id, data.position_id
+            )
         # Joining a department can change what this person can see and reach, so
         # their cached resolution has to go — otherwise a new joiner is placed in
         # Sales and still can't open CRM for up to the cache TTL.
         await self._invalidate_member_access(workspace_id, data.developer_id)
         dev = await self.db.get(Developer, data.developer_id)
+        seat = (await self._seats_by_holder(dept_id)).get((dept_id, data.developer_id))
         return MemberSummary(
             id=member.id,
             developer_id=data.developer_id,
@@ -665,6 +758,8 @@ class OrganizationService:
             role_in_department=member.role_in_department,
             is_primary=member.is_primary,
             allocation_percent=member.allocation_percent,
+            position_id=seat.id if seat else None,
+            position_title=seat.title if seat else None,
         )
 
     async def update_member(
@@ -683,15 +778,25 @@ class OrganizationService:
             raise HTTPException(status_code=404, detail="Membership not found")
 
         payload = data.model_dump(exclude_unset=True)
+        # The seat lives on the position row, not on the membership, so it has to
+        # come out before the setattr loop — otherwise this writes a column that
+        # DepartmentMember does not have.
+        seat_change = "position_id" in payload
+        position_id = payload.pop("position_id", None)
         if payload.get("is_primary") is True:
             await self._clear_primary(workspace_id, member.developer_id, keep_member_id=member_id)
         for key, value in payload.items():
             setattr(member, key, value)
         await self.db.flush()
+        if seat_change:
+            await self._assign_position(
+                workspace_id, dept_id, member.developer_id, position_id
+            )
         # Changing which department is primary changes the suggested sidebar view.
         await self._invalidate_member_access(workspace_id, member.developer_id)
 
         dev = await self.db.get(Developer, member.developer_id)
+        seat = (await self._seats_by_holder(dept_id)).get((dept_id, member.developer_id))
         return MemberSummary(
             id=member.id,
             developer_id=member.developer_id,
@@ -701,6 +806,8 @@ class OrganizationService:
             role_in_department=member.role_in_department,
             is_primary=member.is_primary,
             allocation_percent=member.allocation_percent,
+            position_id=seat.id if seat else None,
+            position_title=seat.title if seat else None,
         )
 
     async def remove_member(self, workspace_id: str, dept_id: str, member_id: str) -> None:
@@ -716,6 +823,9 @@ class OrganizationService:
         if member is None:
             raise HTTPException(status_code=404, detail="Membership not found")
         developer_id = member.developer_id
+        # Free their seat first: a seat still "Filled" by someone who is no longer
+        # in the department reads as taken and can never be offered to anyone else.
+        await self._assign_position(workspace_id, dept_id, developer_id, None)
         await self.db.delete(member)
         await self.db.flush()
         # Leaving a department can take access away; that must bite immediately
@@ -839,6 +949,20 @@ class OrganizationService:
 
     # ---------------------------------------------------------------- positions
 
+    @staticmethod
+    def _to_position_response(
+        pos: DepartmentPosition, holders: dict[str, str]
+    ) -> PositionResponse:
+        return PositionResponse(
+            id=pos.id,
+            department_id=pos.department_id,
+            title=pos.title,
+            status=pos.status,
+            filled_by_id=pos.filled_by_id,
+            filled_by_name=holders.get(pos.filled_by_id) if pos.filled_by_id else None,
+            created_at=pos.created_at,
+        )
+
     async def add_position(
         self, workspace_id: str, dept_id: str, data: PositionCreate
     ) -> PositionResponse:
@@ -849,13 +973,19 @@ class OrganizationService:
             workspace_id=workspace_id,
             department_id=dept_id,
             title=data.title,
-            status=data.status,
+            # A seat created with a holder is filled, whatever the default says —
+            # otherwise it would be offered to someone else while occupied.
+            status=PositionStatus.FILLED.value if data.filled_by_id else data.status,
             filled_by_id=data.filled_by_id,
         )
         self.db.add(pos)
         await self.db.flush()
         await self.db.refresh(pos)
-        return PositionResponse.model_validate(pos)
+        holder = await self.db.get(Developer, pos.filled_by_id) if pos.filled_by_id else None
+        return self._to_position_response(
+            pos,
+            {pos.filled_by_id: (holder.name or holder.email or "")} if holder else {},
+        )
 
     # ---------------------------------------------------------------- reporting
 

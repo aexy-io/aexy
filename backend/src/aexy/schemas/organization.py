@@ -106,6 +106,11 @@ class MemberSummary(BaseModel):
     role_in_department: DepartmentMemberRole = "member"
     is_primary: bool = False
     allocation_percent: int = 100
+    # Which headcount seat this person occupies, if any. Resolved from
+    # `department_positions.filled_by_id` rather than stored on the membership —
+    # the seat is the thing that is filled or open, so it owns the link.
+    position_id: str | None = None
+    position_title: str | None = None
     # Person-level reporting line, from `workspace_members.manager_id`. Carried
     # here so the org chart can nest people under whoever they report to instead
     # of listing a department as a flat count — the department tree answers "which
@@ -175,12 +180,19 @@ class MembershipCreate(BaseModel):
     role_in_department: DepartmentMemberRole = "member"
     is_primary: bool = False
     allocation_percent: int = Field(100, ge=0, le=100)
+    # Optional headcount seat in this department to place them in. Omitting it
+    # leaves every seat as it was, which is the pre-existing behaviour.
+    position_id: str | None = None
 
 
 class MembershipUpdate(BaseModel):
     role_in_department: DepartmentMemberRole | None = None
     is_primary: bool | None = None
     allocation_percent: int | None = Field(None, ge=0, le=100)
+    # Set to a seat id to place them in it, or explicitly to null to vacate the
+    # seat they hold. Left unset, seats are untouched — so an unrelated role edit
+    # cannot empty a seat by omission.
+    position_id: str | None = None
 
 
 # ==================== Positions ====================
@@ -199,6 +211,9 @@ class PositionResponse(BaseModel):
     title: str
     status: PositionStatus
     filled_by_id: str | None = None
+    # Display name of whoever holds the seat, so "Filled" says who by. Populated
+    # by the service; `from_attributes` cannot reach it through the FK.
+    filled_by_name: str | None = None
     created_at: datetime
 
 
