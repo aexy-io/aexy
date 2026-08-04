@@ -25,11 +25,18 @@ access depending on which code path applied it.
 
 from typing import TypedDict
 
+from aexy.services.org_functions import canonical_function_key
+
 
 class UseCaseDepartment(TypedDict):
     """A department to seed for a use case."""
 
     name: str
+    # Canonical key from `org_functions`, asserted at import time below. This
+    # module and the Service Desk templates both seed departments, and when each
+    # kept its own vocabulary they disagreed — one called Operations `ops_kam`
+    # and the other `operations`, which since the key is unique per workspace
+    # meant the spelling you got depended on which code path ran first.
     function_key: str | None
     profile_slug: str
     persona: str
@@ -119,6 +126,30 @@ USE_CASES: dict[str, UseCaseConfig] = {
 # organization are cross-cutting, and a workspace where nobody can see the org
 # directory or message a colleague is not a workspace anyone wants.
 ALWAYS_ENABLED_APPS = ("dashboard", "chat", "organization")
+
+
+def _assert_canonical_function_keys() -> None:
+    """Fail at import if a use case seeds a key the registry doesn't declare.
+
+    The cost of getting this wrong is invisible at runtime: Service Desk row
+    visibility resolves a stakeholder's function key against
+    ``Department.function_key``, and a near-miss shows the department's people an
+    empty queue rather than an error.
+    """
+    for use_case, config in USE_CASES.items():
+        for department in config["departments"]:
+            key = department["function_key"]
+            if key is None:
+                continue
+            canonical = canonical_function_key(key)
+            if canonical != key:
+                raise ValueError(
+                    f"USE_CASES['{use_case}'] seeds function_key '{key}', which is "
+                    f"{'not a declared function' if canonical is None else f'a retired spelling of {canonical!r}'}"
+                )
+
+
+_assert_canonical_function_keys()
 
 
 def apps_for_use_cases(use_cases: list[str]) -> set[str]:

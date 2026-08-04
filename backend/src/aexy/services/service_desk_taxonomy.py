@@ -20,6 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.models.service_desk import ServiceDeskRequestType, ServiceDeskStakeholder
+from aexy.services.org_functions import canonical_function_key
 from aexy.services.service_desk_industry_templates import (
     DEFAULT_TEMPLATE_SLUG,
     DEFAULT_TERMINOLOGY,
@@ -97,12 +98,18 @@ class Taxonomy:
         The replacement for the ``INTERNAL_PENDING_WITH`` module dict, which
         hardcoded one company's department names and could not be inspected,
         let alone changed, from the UI.
+
+        Keys are canonicalised on the way out so a stakeholder row still holding a
+        retired spelling matches a department that has moved on (and vice versa) —
+        the two are edited independently, on different screens.
         """
-        return {
-            s.slug: s.function_key
-            for s in self.stakeholders
-            if s.semantics == SEMANTIC_INTERNAL and s.function_key
-        }
+        out: dict[str, str] = {}
+        for s in self.stakeholders:
+            if s.semantics != SEMANTIC_INTERNAL or not s.function_key:
+                continue
+            if canonical := canonical_function_key(s.function_key):
+                out[s.slug] = canonical
+        return out
 
     @property
     def default_stakeholder_slug(self) -> str | None:

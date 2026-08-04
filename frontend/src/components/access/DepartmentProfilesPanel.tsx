@@ -2,11 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Building2, Loader2, TriangleAlert, Users } from "lucide-react";
+import { Building2, Loader2, SlidersHorizontal, TriangleAlert, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { organizationApi, DepartmentAccessProfile } from "@/lib/organization-api";
-import { APP_CATALOG, PERSONA_LABELS } from "@/config/appDefinitions";
+import { useMemberAppAccess } from "@/hooks/useAppAccess";
+import { APP_CATALOG, AppAccessConfig, PERSONA_LABELS } from "@/config/appDefinitions";
+import { DepartmentProfileEditor } from "@/components/access/DepartmentProfileEditor";
 
 /**
  * Assign each department the apps its people should see.
@@ -39,9 +41,19 @@ const PERSONA_OPTIONS = [
 
 const PROFILES_KEY = "departmentAccessProfiles";
 
-export function DepartmentProfilesPanel({ workspaceId }: { workspaceId: string }) {
+export function DepartmentProfilesPanel({
+  workspaceId,
+  onShowOverrides,
+}: {
+  workspaceId: string;
+  /** Jump to the Members tab filtered to this department's overridden people. */
+  onShowOverrides?: (departmentId: string) => void;
+}) {
   const queryClient = useQueryClient();
   const [savingId, setSavingId] = useState<string | null>(null);
+  // Which department's grid is open. The bundle select stays for the common case;
+  // this is for the case the select cannot express — "Business, but not the Inbox".
+  const [editing, setEditing] = useState<DepartmentAccessProfile | null>(null);
 
   const { data, isLoading, error } = useQuery<DepartmentAccessProfile[]>({
     queryKey: [PROFILES_KEY, workspaceId],
@@ -51,6 +63,21 @@ export function DepartmentProfilesPanel({ workspaceId }: { workspaceId: string }
   });
 
   const profiles = useMemo(() => data ?? [], [data]);
+
+  // How many people in each department have pinned themselves off it. Editing a
+  // profile does not reach them for the apps they overrode, so the panel says so
+  // rather than letting an admin believe a change applied to everyone. Read from
+  // the same matrix the Members tab renders — no second source of truth.
+  const { members } = useMemberAppAccess(workspaceId);
+  const overriddenByDepartment = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const member of members ?? []) {
+      if (member.has_custom_overrides && member.department_id) {
+        counts[member.department_id] = (counts[member.department_id] ?? 0) + 1;
+      }
+    }
+    return counts;
+  }, [members]);
   const unconfigured = profiles.filter((p) => p.enabled_app_ids.length === 0);
 
   const mutation = useMutation({
@@ -58,14 +85,20 @@ export function DepartmentProfilesPanel({ workspaceId }: { workspaceId: string }
       departmentId,
       profileSlug,
       persona,
+      appConfig,
     }: {
       departmentId: string;
       profileSlug?: string | null;
       persona?: string | null;
+      appConfig?: Record<string, AppAccessConfig>;
     }) =>
       organizationApi.setAccessProfile(workspaceId, departmentId, {
         ...(profileSlug !== undefined ? { profile_slug: profileSlug } : {}),
         ...(persona !== undefined ? { default_persona: persona } : {}),
+        // Sent only when the grid was used. Passing both is how "Business,
+        // tweaked" is expressed: the server takes the config and keeps the slug
+        // as a label.
+        ...(appConfig !== undefined ? { app_config: appConfig } : {}),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [PROFILES_KEY, workspaceId] });
@@ -146,6 +179,7 @@ export function DepartmentProfilesPanel({ workspaceId }: { workspaceId: string }
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Apps
               </th>
+              <th className="px-4 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -171,6 +205,18 @@ export function DepartmentProfilesPanel({ workspaceId }: { workspaceId: string }
                       {profile.member_count === 1
                         ? "1 person"
                         : `${profile.member_count} people`}
+                      {overriddenByDepartment[profile.department_id] > 0 && (
+                        <>
+                          {" · "}
+                          <button
+                            onClick={() => onShowOverrides?.(profile.department_id)}
+                            className="text-primary hover:underline"
+                          >
+                            {overriddenByDepartment[profile.department_id]} with
+                            overrides
+                          </button>
+                        </>
+                      )}
                     </span>
                   </td>
 
@@ -232,12 +278,43 @@ export function DepartmentProfilesPanel({ workspaceId }: { workspaceId: string }
                       </span>
                     )}
                   </td>
+
+                  <td className="px-4 py-3 text-right">
+                    {/* The select above can only say "Business". This is the only
+                        way to say "Business without the Inbox", which the backend
+                        has stored all along. */}
+                    <button
+                      onClick={() => setEditing(profile)}
+                      disabled={isSaving}
+                      className="inline-flex items-center gap-1 whitespace-nowrap text-xs text-primary hover:underline disabled:opacity-50"
+                    >
+                      <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden />
+                      Customise
+                    </button>
+                  </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
+
+      {editing && (
+        <DepartmentProfileEditor
+          profile={editing}
+          onClose={() => setEditing(null)}
+          saving={mutation.isPending}
+          onSave={async ({ app_config, profile_slug }) => {
+            setSavingId(editing.department_id);
+            await mutation.mutateAsync({
+              departmentId: editing.department_id,
+              appConfig: app_config,
+              profileSlug: profile_slug,
+            });
+            setEditing(null);
+          }}
+        />
+      )}
 
       <p className="text-xs text-muted-foreground">
         The sidebar view is a default, not a lock — anyone can pick their own in

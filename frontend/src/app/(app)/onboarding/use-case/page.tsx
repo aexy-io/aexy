@@ -15,7 +15,29 @@ import {
   Sparkles,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { useOnboarding } from "../OnboardingContext";
+import { TeamStrategy, useOnboarding } from "../OnboardingContext";
+
+const TEAM_STRATEGIES: {
+  id: TeamStrategy;
+  label: string;
+  description: string;
+}[] = [
+  {
+    id: "per_department",
+    label: "One per department",
+    description: "Mirrors the org — Engineering, Sales, and so on.",
+  },
+  {
+    id: "single",
+    label: "One team for everyone",
+    description: "Honest for a small company that works as one unit.",
+  },
+  {
+    id: "none",
+    label: "No teams yet",
+    description: "Create them yourself later, under Settings → Teams.",
+  },
+];
 
 const useCases = [
   {
@@ -235,6 +257,41 @@ export default function UseCaseSelection() {
               </motion.button>
             );
           })}
+        </div>
+
+        {/* How teams start.
+            The picks above decide what people can *see*; this decides who chases
+            them, which is a different question with different consequences —
+            standups, blockers, review digests, sprint boards and leave approvals
+            all resolve through team membership. Onboarding used to seed no teams
+            at all, so an invite's team field opened onto an empty dropdown. */}
+        <div className="mb-8 rounded-xl border border-border/50 bg-muted/20 p-5">
+          <p className="text-sm font-medium text-foreground">How should teams start?</p>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Teams decide who gets standup prompts, review digests and leave
+            approvals. You can rename or split them later.
+          </p>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {TEAM_STRATEGIES.map((option) => {
+              const isSelected = data.teamStrategy === option.id;
+              return (
+                <button
+                  key={option.id}
+                  onClick={() => updateData({ teamStrategy: option.id })}
+                  className={`rounded-lg border p-3 text-left transition-all ${
+                    isSelected
+                      ? "border-primary-500/40 bg-primary-500/10"
+                      : "border-border/50 bg-background hover:border-border"
+                  }`}
+                >
+                  <span className="block text-sm font-medium">{option.label}</span>
+                  <span className="block text-xs text-muted-foreground">
+                    {option.description}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Navigation */}

@@ -28,6 +28,8 @@ from aexy.schemas.organization import (
     DepartmentNode,
     DepartmentResponse,
     DepartmentUpdate,
+    FunctionCatalog,
+    FunctionOption,
     MemberSummary,
     MembershipCreate,
     MembershipUpdate,
@@ -36,11 +38,51 @@ from aexy.schemas.organization import (
     PositionCreate,
     PositionResponse,
 )
+from aexy.services.org_functions import (
+    CUSTOM_PREFIX,
+    FUNCTIONS,
+    FUNCTIONS_BY_KEY,
+    canonical_function_key,
+    clean_function_key as _clean_key,
+    function_key_spellings,
+    validate_function_key,
+)
 
 
 def _slugify(value: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
     return slug or "department"
+
+
+async def department_for_function(
+    db: AsyncSession, workspace_id: str, function_key: str | None
+) -> Department | None:
+    """The active department claiming ``function_key``, whatever the spelling.
+
+    The one place that answers "who owns this function here". Callers used to
+    write the comparison themselves against a literal — Service Desk intake
+    auto-assigned tickets to ``function_key == "ops_kam"``, a key only workspaces
+    started from the insurance template ever had — and each open-coded query also
+    had to remember that a retired spelling still counts.
+
+    ``.first()`` rather than ``scalar_one_or_none()``: the unique index makes two
+    impossible in Postgres, but this is called from digests and mail intake, where
+    raising would take down every workspace after this one in the batch.
+    """
+    spellings = function_key_spellings(function_key) if function_key else ()
+    if not spellings:
+        return None
+    return (
+        await db.execute(
+            select(Department)
+            .where(
+                Department.workspace_id == workspace_id,
+                Department.function_key.in_(spellings),
+                Department.is_active.is_(True),
+            )
+            .order_by(Department.created_at, Department.id)
+        )
+    ).scalars().first()
 
 
 class OrganizationService:
@@ -130,6 +172,25 @@ class OrganizationService:
 
     # -------------------------------------------------------------- departments
 
+    @staticmethod
+    def _canonical_function_key(raw: str | None, current: str | None = None) -> str | None:
+        """Validate and canonicalise a function key on its way to the database.
+
+        Retired spellings resolve forward, so a workspace still holding
+        ``ops_kam`` writes ``operations`` the next time anyone saves.
+
+        ``current`` grandfathers a value that is already stored: a workspace whose
+        department carries a key predating the registry must still be able to
+        rename that department, and refusing the unchanged value would lock the
+        whole form. Only a *new* value has to be one we recognise.
+        """
+        if current is not None and raw is not None and _clean_key(raw) == _clean_key(current):
+            return current
+        try:
+            return validate_function_key(raw)
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
     async def _require_unique_function(
         self, workspace_id: str, function_key: str | None, exclude_id: str | None = None
     ) -> None:
@@ -138,12 +199,19 @@ class OrganizationService:
         ``uq_department_function_key`` enforces this, but an IntegrityError
         surfaces as a 500 — and the value is meaningful (Service Desk routes
         pending-with by it), so the caller deserves to be told which one clashed.
+
+        Matches every spelling of the function, not just the canonical one: a
+        workspace that still holds ``ops_kam`` has claimed ``operations``, and
+        letting a second department take the canonical spelling would give it two
+        departments for one function — which is what the unique index exists to
+        prevent, and which it cannot see.
         """
         if not function_key:
             return
+        spellings = function_key_spellings(function_key) or (function_key,)
         query = select(Department.name).where(
             Department.workspace_id == workspace_id,
-            Department.function_key == function_key,
+            Department.function_key.in_(spellings),
         )
         if exclude_id:
             query = query.where(Department.id != exclude_id)
@@ -169,7 +237,8 @@ class OrganizationService:
         parent: Department | None = None
         if data.parent_id:
             parent = await self._get(workspace_id, data.parent_id)
-        await self._require_unique_function(workspace_id, data.function_key or None)
+        function_key = self._canonical_function_key(data.function_key)
+        await self._require_unique_function(workspace_id, function_key)
         await self._require_member_if_set(workspace_id, data.head_id)
 
         dept_id = str(uuid4())
@@ -188,7 +257,7 @@ class OrganizationService:
             name=data.name,
             slug=slug,
             description=data.description,
-            function_key=data.function_key or None,
+            function_key=function_key,
             parent_id=parent.id if parent else None,
             path=path,
             depth=depth,
@@ -246,8 +315,11 @@ class OrganizationService:
         if "slug" in payload and payload["slug"]:
             payload["slug"] = await self._unique_slug(workspace_id, payload["slug"], exclude_id=dept_id)
         if "function_key" in payload:
+            payload["function_key"] = self._canonical_function_key(
+                payload["function_key"], current=dept.function_key
+            )
             await self._require_unique_function(
-                workspace_id, payload["function_key"] or None, exclude_id=dept_id
+                workspace_id, payload["function_key"], exclude_id=dept_id
             )
         if "head_id" in payload:
             await self._require_member_if_set(workspace_id, payload["head_id"])
@@ -946,6 +1018,77 @@ class OrganizationService:
         ]
         people.sort(key=lambda p: (p.name or p.email or "").lower())
         return people
+
+    # ---------------------------------------------------------------- functions
+
+    async def function_catalog(self, workspace_id: str) -> FunctionCatalog:
+        """The function picker's contents for this workspace.
+
+        Three things merged: the declared registry, whatever custom ``x_`` keys
+        this workspace already uses (so they keep appearing and don't have to be
+        retyped), and — for each option — who has claimed it and which desk
+        queues route to it. That last part is the answer to "does this field
+        matter", which the old free-text box could not give.
+        """
+        departments = (
+            await self.db.execute(
+                select(Department).where(
+                    Department.workspace_id == workspace_id,
+                    Department.function_key.isnot(None),
+                )
+            )
+        ).scalars().all()
+
+        claimed: dict[str, Department] = {}
+        for dept in departments:
+            if key := canonical_function_key(dept.function_key):
+                claimed.setdefault(key, dept)
+
+        # Stakeholder -> function, from the workspace's own taxonomy. seed=False:
+        # rendering a picker must not bring a desk into existence.
+        from aexy.services.service_desk_taxonomy import load_taxonomy
+
+        taxonomy = await load_taxonomy(self.db, workspace_id, seed=False)
+        routes: dict[str, list[str]] = {}
+        for slug, key in taxonomy.internal_function_keys.items():
+            routes.setdefault(key, []).append(slug)
+
+        options = [
+            FunctionOption(
+                key=spec.key,
+                label=spec.label,
+                description=spec.description,
+                routes_stakeholders=sorted(routes.get(spec.key, [])),
+            )
+            for spec in FUNCTIONS
+        ]
+        # Custom and pre-registry keys the workspace already holds. Listed after
+        # the standard set, labelled from the department that uses them.
+        for key, dept in sorted(claimed.items()):
+            if key in FUNCTIONS_BY_KEY:
+                continue
+            options.append(
+                FunctionOption(
+                    key=key,
+                    label=dept.name,
+                    description="",
+                    is_custom=True,
+                    routes_stakeholders=sorted(routes.get(key, [])),
+                )
+            )
+
+        for option in options:
+            if dept := claimed.get(option.key):
+                option.claimed_by_department_id = dept.id
+                option.claimed_by_department_name = dept.name
+
+        return FunctionCatalog(
+            options=options,
+            custom_prefix=CUSTOM_PREFIX,
+            unclaimed_stakeholder_functions=sorted(
+                key for key in routes if key not in claimed
+            ),
+        )
 
     # ---------------------------------------------------------------- positions
 

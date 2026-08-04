@@ -14,6 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.models.organization import Department, DepartmentMember
+from aexy.services.org_functions import canonical_function_key
 from aexy.services.service_desk_clock import (
     BREACH_AMBER_DAYS,
     BREACH_RED_DAYS,
@@ -66,20 +67,26 @@ logger = logging.getLogger(__name__)
 
 
 async def _caller_functions(db: AsyncSession, workspace_id: str, developer_id: str) -> set[str]:
-    """The ``function_key``s of every department the caller belongs to."""
-    return set(
-        (
-            await db.execute(
-                select(Department.function_key)
-                .join(DepartmentMember, DepartmentMember.department_id == Department.id)
-                .where(
-                    Department.workspace_id == workspace_id,
-                    DepartmentMember.developer_id == developer_id,
-                    Department.function_key.isnot(None),
-                )
+    """The ``function_key``s of every department the caller belongs to.
+
+    Canonicalised, because the two sides of this comparison are written by
+    different people at different times: the department key by an admin in the
+    org chart, the stakeholder key by whoever set up the desk. While a workspace
+    is part-migrated one side can say ``ops_kam`` and the other ``operations``,
+    and a raw string compare would quietly show that person nothing.
+    """
+    stored = (
+        await db.execute(
+            select(Department.function_key)
+            .join(DepartmentMember, DepartmentMember.department_id == Department.id)
+            .where(
+                Department.workspace_id == workspace_id,
+                DepartmentMember.developer_id == developer_id,
+                Department.function_key.isnot(None),
             )
-        ).scalars().all()
-    )
+        )
+    ).scalars().all()
+    return {key for key in (canonical_function_key(raw) for raw in stored) if key}
 
 
 async def resolve_scope_clause(db: AsyncSession, workspace_id: str, developer_id: str):

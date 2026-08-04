@@ -18,6 +18,7 @@ from aexy.schemas.organization import (
     DepartmentReparent,
     DepartmentResponse,
     DepartmentUpdate,
+    FunctionCatalog,
     ManagerAssign,
     MembershipCreate,
     MembershipUpdate,
@@ -255,6 +256,23 @@ async def remove_member(
     _: Developer = Depends(require_manage_org),
 ):
     await OrganizationService(db).remove_member(workspace_id, department_id, member_id)
+
+
+# ---------------------------------------------------------------- functions
+
+@router.get("/functions", response_model=FunctionCatalog)
+async def function_catalog(
+    workspace_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: Developer = Depends(get_current_developer),
+):
+    """What a department's "function" may be set to, and what each one drives.
+
+    Readable by any member, not gated on ``can_manage_org``: the Service Desk
+    setup screen renders the same catalogue to explain which department a queue
+    routes to, and that is a read anyone looking at the desk deserves.
+    """
+    return await OrganizationService(db).function_catalog(workspace_id)
 
 
 # ---------------------------------------------------------------- positions

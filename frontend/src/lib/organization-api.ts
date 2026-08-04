@@ -148,6 +148,33 @@ export interface PersonSummary {
   manager_name: string | null;
 }
 
+/** One choice in a department's "function" picker.
+ *
+ *  A function key is a routing key, not a label: Service Desk row-level
+ *  visibility, digests and ticket auto-assignment all resolve it. It used to be a
+ *  free-text field, so a typo produced an empty queue and no error. */
+export interface FunctionOption {
+  key: string;
+  label: string;
+  description: string;
+  /** A workspace-specific `x_` key. First-class, just undescribed. */
+  is_custom: boolean;
+  /** `function_key` is unique per workspace, so an option already taken names
+   *  who has it rather than failing on save. */
+  claimed_by_department_id: string | null;
+  claimed_by_department_name: string | null;
+  /** Service Desk buckets in THIS workspace routing to this function. */
+  routes_stakeholders: string[];
+}
+
+export interface FunctionCatalog {
+  options: FunctionOption[];
+  custom_prefix: string;
+  /** Internal stakeholders whose function no active department claims — queues
+   *  whose members currently see nothing. */
+  unclaimed_stakeholder_functions: string[];
+}
+
 export interface OrganizationPermissions {
   /** Whether the current user holds can_manage_org. The API enforces this
    *  regardless; the UI uses it to avoid offering actions that would 403. */
@@ -160,6 +187,12 @@ export const organizationApi = {
   getMyPermissions: async (workspaceId: string): Promise<OrganizationPermissions> => {
     const res = await api.get(`${base(workspaceId)}/my-permissions`);
     return res.data as OrganizationPermissions;
+  },
+
+  /** What a department's function may be set to, and what each one drives. */
+  getFunctionCatalog: async (workspaceId: string): Promise<FunctionCatalog> => {
+    const res = await api.get(`${base(workspaceId)}/functions`);
+    return res.data as FunctionCatalog;
   },
 
   listPeople: async (workspaceId: string): Promise<PersonSummary[]> => {

@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.models.developer import Developer
-from aexy.models.organization import Department, DepartmentMember
+from aexy.models.organization import DepartmentMember
 from aexy.models.service_desk import (
     ServiceDeskProduct,
     ServiceDeskMailbox,
@@ -141,22 +141,12 @@ class ServiceDeskDigestService:
         if (default_slug := taxonomy.default_stakeholder_slug) is not None:
             desk_function = taxonomy.internal_function_keys.get(default_slug)
 
-        # `.first()` rather than `scalar_one_or_none()`: the unique index makes
-        # two impossible in Postgres, but a raising digest would silently drop
-        # every workspace after this one in the schedule, and the schema is not
-        # the place to find that out.
-        dept = None
-        if desk_function:
-            dept = (
-                await self.db.execute(
-                    select(Department)
-                    .where(
-                        Department.workspace_id == workspace_id,
-                        Department.function_key == desk_function,
-                    )
-                    .order_by(Department.created_at, Department.id)
-                )
-            ).scalars().first()
+        # Shared resolver: it also matches retired spellings, so a workspace still
+        # holding `ops_kam` resolves to its Operations department instead of
+        # silently getting no digests at all.
+        from aexy.services.organization_service import department_for_function
+
+        dept = await department_for_function(self.db, workspace_id, desk_function)
 
         digests: list[Digest] = []
         owner_ids: list[str] = []

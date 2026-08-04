@@ -21,7 +21,10 @@
       "total": "Total",
       "ticketsTitle": "Open tickets",
       "empty": "No open tickets. New email requests will appear here automatically.",
-      "export": "Export CSV"
+      "export": "Export CSV",
+      "routesTo": "Routes to",
+      "external": "External",
+      "noDepartment": "No department"
     },
     "table": {
       "id": "Ticket",

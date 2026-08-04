@@ -55,6 +55,9 @@ export default function AccessControlPage() {
   const { templates, isLoading: templatesLoading } = useAppAccessTemplates(workspaceId);
 
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
+  // Set when arriving from a department's "N with overrides" link, so the matrix
+  // opens on the people that link was about rather than the whole workspace.
+  const [overrideFilter, setOverrideFilter] = useState<string | null>(null);
 
   const {
     requests,
@@ -76,6 +79,12 @@ export default function AccessControlPage() {
 
   // Get display apps (use frontend config as source of truth for icons)
   const displayApps = getAllApps().filter(app => app.id !== "dashboard");
+  // The whole matrix unless a department link narrowed it.
+  const visibleMembers = overrideFilter
+    ? members.filter(
+        (m) => m.department_id === overrideFilter && m.has_custom_overrides,
+      )
+    : members;
 
   const toggleMemberSelection = (developerId: string) => {
     setSelectedMembers((prev) =>
@@ -253,6 +262,23 @@ export default function AccessControlPage() {
 
       {activeTab === "matrix" ? (
         <div>
+          {/* A narrowed matrix has to say so and offer the way out — otherwise it
+              reads as "this workspace has three members". */}
+          {overrideFilter && (
+            <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 px-4 py-2 text-sm">
+              <span className="text-muted-foreground">
+                Showing only people who have overridden their department&apos;s
+                profile.
+              </span>
+              <button
+                onClick={() => setOverrideFilter(null)}
+                className="whitespace-nowrap text-primary hover:underline"
+              >
+                Show everyone
+              </button>
+            </div>
+          )}
+
           {/* Bulk Actions */}
           {selectedMembers.length > 0 && (
             <div className="mb-4 p-4 bg-card border border-border rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -387,7 +413,7 @@ export default function AccessControlPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {members.map((member) => (
+                    {visibleMembers.map((member) => (
                       <tr
                         key={member.developer_id}
                         className="border-b border-border/50 hover:bg-accent/30"
@@ -503,7 +529,13 @@ export default function AccessControlPage() {
         </div>
       ) : activeTab === "departments" ? (
         <div className="mt-4">
-          <DepartmentProfilesPanel workspaceId={workspaceId} />
+          <DepartmentProfilesPanel
+            workspaceId={workspaceId}
+            onShowOverrides={(departmentId) => {
+              setOverrideFilter(departmentId);
+              setActiveTab("matrix");
+            }}
+          />
         </div>
       ) : (
         /* Requests Tab */
