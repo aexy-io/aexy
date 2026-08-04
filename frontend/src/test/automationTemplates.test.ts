@@ -28,13 +28,23 @@ const validActions = (module: string) =>
 const enabledTemplates = CRM_TEMPLATE_LIST;
 
 describe("automation templates match the backend registry", () => {
-  it("offers exactly the three supported CRM starting templates", () => {
-    expect(enabledTemplates.map((template) => template.name)).toEqual([
-      "Lead Follow-up Sequence",
-      "Welcome Email Sequence",
-      "Deal Stage Notification",
-    ]);
-    expect(enabledTemplates.every((template) => template.module === "crm")).toBe(true);
+  it("offers templates only for modules the backend has enabled", () => {
+    // This used to assert an exact list of three CRM template names, from when
+    // the builder was CRM-only. Pinning the names meant the test failed for
+    // adding a template rather than for shipping a broken one — so it now
+    // asserts the property that actually matters, and holds however the gallery
+    // grows: a template for a module the registry doesn't offer can never be
+    // saved, because the module picker won't list it.
+    expect(enabledTemplates.length).toBeGreaterThan(0);
+    for (const template of enabledTemplates) {
+      expect(registry.modules).toContain(template.module);
+    }
+  });
+
+  it("gives every template a distinct name", () => {
+    // The gallery keys on name; a duplicate silently hides one of them.
+    const names = enabledTemplates.map((template) => template.name);
+    expect(new Set(names).size).toBe(names.length);
   });
 
   it.each(enabledTemplates.map((t) => [t.name, t] as const))(

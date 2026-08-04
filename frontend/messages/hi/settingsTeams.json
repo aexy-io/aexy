@@ -3,7 +3,12 @@
     "title": "टीमें",
     "description": "टीमें लोगों को समूहित करती हैं — escalation रूटिंग, on-call रोटेशन, standups और insights के लिए।",
     "create": "नई टीम",
-    "roles": { "lead": "लीड", "member": "सदस्य" },
+    "roles": {
+      "lead": "लीड",
+      "member": "सदस्य",
+      "admin": "एडमिन",
+      "manager": "मैनेजर"
+    },
     "form": {
       "heading": "टीम बनाएँ",
       "name": "नाम",

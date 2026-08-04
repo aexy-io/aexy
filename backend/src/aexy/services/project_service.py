@@ -10,7 +10,7 @@ from sqlalchemy import select, and_
 from aexy.models.project import Project, ProjectMember, ProjectTeam
 from aexy.models.workspace import WorkspaceMember
 from aexy.models.developer import Developer
-from aexy.models.team import Team, TeamMember
+from aexy.models.team import Team, TeamMember, TeamMemberRole
 
 
 def generate_slug(name: str) -> str:
@@ -96,12 +96,21 @@ class ProjectService:
                 invited_by_id=created_by_id,
             )
 
-            # Add as team member for sprint access
+            # Add as team member for sprint access, as the team's *lead*.
+            #
+            # This wrote "admin" — a value the vocabulary never declared (see
+            # TeamMemberRole) and that only half the code understands.
+            # `tracking_tasks` escalates blockers to lead/manager/admin alike, so
+            # that part worked; but `review_service` and `leave_request_service`
+            # both look for exactly `role == "lead"`, so the person who created
+            # the project was skipped when either needed someone accountable and
+            # they fell through to "any workspace manager". The creator of a
+            # project's team is its lead, and saying so makes them findable.
             team_member = TeamMember(
                 id=str(uuid4()),
                 team_id=project_id,
                 developer_id=created_by_id,
-                role="admin",
+                role=TeamMemberRole.LEAD.value,
                 source="manual",
             )
             self.db.add(team_member)

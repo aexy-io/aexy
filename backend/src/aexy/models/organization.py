@@ -111,6 +111,30 @@ class Department(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     settings: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
 
+    # ---- Access profile -----------------------------------------------------
+    # What the people in this department can see. Same shape as
+    # AppAccessTemplate.app_config: {app_id: {"enabled": bool, "modules": {...}}}.
+    #
+    # Held on the department rather than as an FK to app_access_templates
+    # because those rows are only created by migrate_app_access_templates.sql,
+    # while a dev/test schema is built by create_all — an FK would dangle
+    # exactly where the seeding didn't run. SYSTEM_APP_BUNDLES is the source
+    # the profile is seeded *from*; after that this column stands alone.
+    #
+    # An empty dict means "no profile", and a member whose departments all have
+    # no profile falls back to their role bundle (see AppAccessService).
+    app_config: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+
+    # Which bundle the profile came from ("engineering" / "business" / ...).
+    # Provenance for the UI ("Business profile", "re-sync from Business") — not
+    # a join, and never read when resolving access.
+    access_profile_slug: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    # Default sidebar view for people whose primary department this is. NULL
+    # means fall through to the platform default. A person can always override
+    # it for themselves (dashboard_preferences.sidebar_persona).
+    default_persona: Mapped[str | None] = mapped_column(String(32), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False,
     )

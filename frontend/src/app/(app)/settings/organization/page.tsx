@@ -29,6 +29,8 @@ import {
 import { useWorkspace, useWorkspaceMembers, useWorkspaceBilling, usePendingInvites, useWorkspaceAppSettings } from "@/hooks/useWorkspace";
 import { useAuth } from "@/hooks/useAuth";
 import { useDepartments, usePeople } from "@/hooks/useOrganization";
+import { useAccessPreview } from "@/hooks/useAccessPreview";
+import { useTeams } from "@/hooks/useTeams";
 import { PersonSummary } from "@/lib/organization-api";
 import { WorkspaceMember, WorkspacePendingInvite, repositoriesApi, Organization, communityApi } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
@@ -335,18 +337,38 @@ function MemberRow({
 
 interface InviteMemberModalProps {
   onClose: () => void;
-  onInvite: (email: string, role: string, departmentId: string | null) => Promise<void>;
+  onInvite: (
+    email: string,
+    role: string,
+    departmentId: string | null,
+    teamId: string | null,
+    roleInTeam: "lead" | "manager" | "member",
+  ) => Promise<void>;
   isInviting: boolean;
+  workspaceId: string | null;
 }
 
-function InviteMemberModal({ onClose, onInvite, isInviting }: InviteMemberModalProps) {
+function InviteMemberModal({ onClose, onInvite, isInviting, workspaceId }: InviteMemberModalProps) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("member");
   const [departmentId, setDepartmentId] = useState("");
+  const [teamId, setTeamId] = useState("");
+  const [roleInTeam, setRoleInTeam] = useState<"lead" | "manager" | "member">("member");
   const [error, setError] = useState<string | null>(null);
   // Optional. If the Organization module is off (or the caller lacks
   // can_view_org) this read fails and the picker simply isn't offered.
   const { data: departments } = useDepartments();
+  // Optional too: if the caller can't read teams the picker simply isn't offered.
+  const { teams } = useTeams(workspaceId);
+
+  // What this combination will actually give them. The department is the control
+  // that decides someone's whole navigation, and until now the only way to find
+  // out what it decided was to ask the person after they signed in.
+  const { appNames, baseline, baselineDetail, isLoading: previewLoading } =
+    useAccessPreview(workspaceId, {
+      departmentIds: departmentId ? [departmentId] : [],
+      role,
+    });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -358,7 +380,7 @@ function InviteMemberModal({ onClose, onInvite, isInviting }: InviteMemberModalP
     }
 
     try {
-      await onInvite(email.trim(), role, departmentId || null);
+      await onInvite(email.trim(), role, departmentId || null, teamId || null, roleInTeam);
       onClose();
     } catch (err: unknown) {
       const errorMessage = getApiErrorMessage(err, "Failed to invite member");
@@ -410,15 +432,93 @@ function InviteMemberModal({ onClose, onInvite, isInviting }: InviteMemberModalP
                   {departments.map((d) => (
                     <option key={d.id} value={d.id}>
                       {d.name}
+                      {d.has_access_profile ? "" : " (no access profile yet)"}
                     </option>
                   ))}
                 </select>
                 <p className="text-muted-foreground text-xs mt-1">
-                  Applied when they accept. Without one they won&apos;t appear in the org
-                  directory or receive service desk tickets.
+                  Applied when they accept. It decides which apps they see, and
+                  without one they won&apos;t appear in the org directory or receive
+                  service desk tickets.
                 </p>
               </div>
             )}
+
+            {/* Team — a separate placement from the department above, and easy to
+                forget precisely because the department is the one that changes
+                what they see. This is the one that makes them reachable. */}
+            {teams && teams.length > 0 && (
+              <div>
+                <label className="block text-sm text-muted-foreground mb-1">
+                  Team <span className="text-xs">(optional)</span>
+                </label>
+                <div className="flex gap-2">
+                  <select
+                    value={teamId}
+                    onChange={(e) => setTeamId(e.target.value)}
+                    className="flex-1 px-4 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-500"
+                  >
+                    <option value="">No team — add later</option>
+                    {teams.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                  {teamId && (
+                    <select
+                      value={roleInTeam}
+                      onChange={(e) =>
+                        setRoleInTeam(e.target.value as "lead" | "manager" | "member")
+                      }
+                      className="px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-500"
+                    >
+                      <option value="member">Member</option>
+                      <option value="manager">Manager</option>
+                      <option value="lead">Lead</option>
+                    </select>
+                  )}
+                </div>
+                <p className="text-muted-foreground text-xs mt-1">
+                  {teamId
+                    ? "Decides who chases them: standups, blocker escalation, review digests, sprint boards and leave approvals."
+                    : "Without a team they won't get standup prompts, their blockers have nobody to escalate to, and leave approvals fall back to a workspace manager."}
+                </p>
+              </div>
+            )}
+
+            {/* What they'll get. Shown for every combination, including no
+                department, because "no department" is itself a decision with a
+                consequence. */}
+            <div className="rounded-lg border border-border/60 bg-muted/30 p-3">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">
+                They will see
+              </p>
+              {previewLoading ? (
+                <p className="text-sm text-muted-foreground/70">Working it out…</p>
+              ) : appNames.length > 0 ? (
+                <>
+                  <p className="text-sm text-foreground">{appNames.join(", ")}</p>
+                  {baseline === "department" && baselineDetail && (
+                    <p className="mt-1 text-xs text-muted-foreground/70">
+                      From the {baselineDetail} access profile.
+                    </p>
+                  )}
+                  {baseline === "role_fallback" && (
+                    <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                      {departmentId
+                        ? "That department has no access profile, so this falls back to the default for their role."
+                        : "No department, so this falls back to the default for their role — which is engineering-shaped."}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground/70">
+                  Nothing yet — pick a department with an access profile.
+                </p>
+              )}
+            </div>
+
             {error && (
               <p className="text-red-400 text-sm">{error}</p>
             )}
@@ -841,8 +941,16 @@ export default function OrganizationSettingsPage() {
     [people],
   );
 
-  const handleInvite = async (email: string, role: string, departmentId: string | null) => {
-    await inviteMember({ email, role, departmentId });
+  const handleInvite = async (
+    email: string,
+    role: string,
+    departmentId: string | null,
+    teamId: string | null,
+    roleInTeam: "lead" | "manager" | "member",
+  ) => {
+    // Department and team are separate placements: the first decides what they
+    // see, the second decides who chases them for standups and approvals.
+    await inviteMember({ email, role, departmentId, teamId, roleInTeam });
   };
 
   const handleUpdateRole = async (developerId: string, role: string) => {
@@ -1244,6 +1352,7 @@ export default function OrganizationSettingsPage() {
           onClose={() => setShowInviteModal(false)}
           onInvite={handleInvite}
           isInviting={isInviting}
+          workspaceId={currentWorkspaceId}
         />
       )}
 

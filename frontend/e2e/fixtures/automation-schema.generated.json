@@ -4,7 +4,16 @@
     "generator": "backend/scripts/dump_automation_schema.py"
   },
   "modules": [
-    "crm"
+    "crm",
+    "tickets",
+    "hiring",
+    "email_marketing",
+    "uptime",
+    "sprints",
+    "forms",
+    "booking",
+    "tracking",
+    "compliance"
   ],
   "triggers": {
     "crm": [
@@ -64,6 +73,360 @@
         "id": "email.clicked",
         "description": "When a link in a tracked email is clicked"
       }
+    ],
+    "tickets": [
+      {
+        "id": "ticket.created",
+        "description": "When a new support ticket is created"
+      },
+      {
+        "id": "ticket.updated",
+        "description": "When a support ticket is updated"
+      },
+      {
+        "id": "ticket.status_changed",
+        "description": "When a ticket status changes"
+      },
+      {
+        "id": "ticket.assigned",
+        "description": "When a ticket is assigned to an agent"
+      },
+      {
+        "id": "ticket.priority_changed",
+        "description": "When a ticket priority level changes"
+      },
+      {
+        "id": "ticket.escalated",
+        "description": "When a ticket is escalated to a higher tier"
+      },
+      {
+        "id": "ticket.reopened",
+        "description": "When a resolved or closed ticket is reopened"
+      },
+      {
+        "id": "alert.ticket_created",
+        "description": "When an observability alert (e.g. OpenObserve) opens a new ticket"
+      },
+      {
+        "id": "alert.ticket_updated",
+        "description": "When a recurring observability alert updates an existing ticket"
+      },
+      {
+        "id": "sla.breached",
+        "description": "When an SLA deadline has been breached"
+      },
+      {
+        "id": "response.received",
+        "description": "When a customer response is received on a ticket"
+      },
+      {
+        "id": "response.sent",
+        "description": "When an agent response is sent on a ticket"
+      }
+    ],
+    "hiring": [
+      {
+        "id": "candidate.created",
+        "description": "When a new candidate is added to the pipeline"
+      },
+      {
+        "id": "candidate.updated",
+        "description": "When candidate information is updated"
+      },
+      {
+        "id": "candidate.stage_changed",
+        "description": "When a candidate moves to a new hiring stage"
+      },
+      {
+        "id": "candidate.rejected",
+        "description": "When a candidate is rejected"
+      },
+      {
+        "id": "candidate.hired",
+        "description": "When a candidate is marked as hired"
+      },
+      {
+        "id": "assessment.completed",
+        "description": "When a candidate completes an assessment"
+      },
+      {
+        "id": "assessment.score_above",
+        "description": "When an assessment score exceeds a threshold"
+      },
+      {
+        "id": "assessment.score_below",
+        "description": "When an assessment score falls below a threshold"
+      },
+      {
+        "id": "requirement.created",
+        "description": "When a new hiring requirement is created"
+      },
+      {
+        "id": "requirement.status_changed",
+        "description": "When a hiring requirement status changes"
+      }
+    ],
+    "email_marketing": [
+      {
+        "id": "campaign.sent",
+        "description": "When an email campaign is sent to recipients"
+      },
+      {
+        "id": "campaign.scheduled",
+        "description": "When an email campaign is scheduled for delivery"
+      },
+      {
+        "id": "email.opened",
+        "description": "When a campaign email is opened by a recipient"
+      },
+      {
+        "id": "email.clicked",
+        "description": "When a link in a campaign email is clicked"
+      },
+      {
+        "id": "email.unsubscribed",
+        "description": "When a recipient unsubscribes from emails"
+      },
+      {
+        "id": "recipient.added",
+        "description": "When a recipient is added to a campaign"
+      }
+    ],
+    "uptime": [
+      {
+        "id": "monitor.created",
+        "description": "When a new uptime monitor is created"
+      },
+      {
+        "id": "monitor.down",
+        "description": "When a monitored service goes down"
+      },
+      {
+        "id": "monitor.up",
+        "description": "When a monitored service comes back up"
+      },
+      {
+        "id": "monitor.degraded",
+        "description": "When a monitored service shows degraded performance"
+      },
+      {
+        "id": "monitor.ssl_expiring",
+        "description": "When an SSL certificate is approaching expiration"
+      },
+      {
+        "id": "monitor.repeated_failures",
+        "description": "When a monitor has multiple consecutive failures"
+      },
+      {
+        "id": "incident.created",
+        "description": "When a new incident is created"
+      },
+      {
+        "id": "incident.resolved",
+        "description": "When an incident is marked as resolved"
+      },
+      {
+        "id": "incident.acknowledged",
+        "description": "When an incident is acknowledged by responder"
+      }
+    ],
+    "sprints": [
+      {
+        "id": "task.created",
+        "description": "When a new task is created in a sprint"
+      },
+      {
+        "id": "task.status_changed",
+        "description": "When a task status changes"
+      },
+      {
+        "id": "task.assigned",
+        "description": "When a task is assigned to a team member"
+      },
+      {
+        "id": "task.completed",
+        "description": "When a task is marked as completed"
+      },
+      {
+        "id": "sprint.started",
+        "description": "When a sprint is started"
+      },
+      {
+        "id": "sprint.completed",
+        "description": "When a sprint is completed"
+      },
+      {
+        "id": "sprint.velocity_calculated",
+        "description": "When sprint velocity is calculated after completion"
+      },
+      {
+        "id": "sprint.burndown_off_track",
+        "description": "When the burndown chart deviates significantly from ideal"
+      },
+      {
+        "id": "epic.completed",
+        "description": "When all tasks in an epic are completed"
+      }
+    ],
+    "forms": [
+      {
+        "id": "form.submitted",
+        "description": "When a form submission is received"
+      }
+    ],
+    "booking": [
+      {
+        "id": "booking.created",
+        "description": "When a new booking is created"
+      },
+      {
+        "id": "booking.confirmed",
+        "description": "When a booking is confirmed"
+      },
+      {
+        "id": "booking.cancelled",
+        "description": "When a booking is cancelled"
+      },
+      {
+        "id": "booking.rescheduled",
+        "description": "When a booking is rescheduled"
+      },
+      {
+        "id": "booking.completed",
+        "description": "When a booking session is completed"
+      },
+      {
+        "id": "booking.no_show",
+        "description": "When an attendee does not show up for a booking"
+      },
+      {
+        "id": "booking.reminder",
+        "description": "When a booking reminder time is reached"
+      }
+    ],
+    "tracking": [
+      {
+        "id": "standup.submitted",
+        "description": "When a team member submits a standup update"
+      },
+      {
+        "id": "standup.missed",
+        "description": "When a team member misses a standup deadline"
+      },
+      {
+        "id": "standup.streak",
+        "description": "When a standup submission streak milestone is reached"
+      },
+      {
+        "id": "time_entry.created",
+        "description": "When a new time entry is logged"
+      },
+      {
+        "id": "time_entry.threshold",
+        "description": "When logged hours exceed a configured threshold"
+      },
+      {
+        "id": "time_entry.anomaly",
+        "description": "When an unusual time entry pattern is detected"
+      },
+      {
+        "id": "blocker.created",
+        "description": "When a new blocker is reported in tracking"
+      },
+      {
+        "id": "blocker.escalated",
+        "description": "When a blocker is escalated to management"
+      },
+      {
+        "id": "blocker.resolved",
+        "description": "When a tracked blocker is resolved"
+      },
+      {
+        "id": "blocker.stale",
+        "description": "When a blocker remains unresolved past its threshold"
+      },
+      {
+        "id": "blocker.pattern_detected",
+        "description": "When a recurring blocker pattern is detected"
+      },
+      {
+        "id": "work_log.submitted",
+        "description": "When a work log entry is submitted"
+      },
+      {
+        "id": "sentiment.negative",
+        "description": "When negative sentiment is detected in updates"
+      },
+      {
+        "id": "participation.low",
+        "description": "When team participation drops below threshold"
+      }
+    ],
+    "compliance": [
+      {
+        "id": "training.created",
+        "description": "When a new training program is created"
+      },
+      {
+        "id": "training.assigned",
+        "description": "When training is assigned to team members"
+      },
+      {
+        "id": "training.started",
+        "description": "When a team member starts assigned training"
+      },
+      {
+        "id": "training.completed",
+        "description": "When a team member completes assigned training"
+      },
+      {
+        "id": "training.waived",
+        "description": "When a training requirement is waived"
+      },
+      {
+        "id": "assignment.approaching_due",
+        "description": "When a training assignment due date is approaching"
+      },
+      {
+        "id": "assignment.overdue",
+        "description": "When a training assignment becomes overdue"
+      },
+      {
+        "id": "training.bulk_overdue",
+        "description": "When multiple training assignments become overdue"
+      },
+      {
+        "id": "certification.added",
+        "description": "When a new certification is added to a profile"
+      },
+      {
+        "id": "certification.expiring",
+        "description": "When a certification is approaching expiration"
+      },
+      {
+        "id": "certification.expired",
+        "description": "When a certification has expired"
+      },
+      {
+        "id": "certification.renewed",
+        "description": "When an expired certification is renewed"
+      },
+      {
+        "id": "certification.revoked",
+        "description": "When a certification is revoked"
+      },
+      {
+        "id": "certification.prerequisite_unmet",
+        "description": "When a certification prerequisite is not met"
+      },
+      {
+        "id": "compliance.status_changed",
+        "description": "When overall compliance status changes for a member"
+      },
+      {
+        "id": "audit.logged",
+        "description": "When a compliance audit event is logged"
+      }
     ]
   },
   "actions": {
@@ -83,6 +446,10 @@
       {
         "id": "webhook_call",
         "description": "Call an external webhook URL"
+      },
+      {
+        "id": "api_request",
+        "description": "Make a custom HTTP API request"
       },
       {
         "id": "run_agent",
@@ -141,6 +508,168 @@
       {
         "id": "remove_from_sequence",
         "description": "Remove a contact from an email sequence"
+      }
+    ],
+    "tickets": [
+      {
+        "id": "assign_ticket",
+        "description": "Assign a ticket to an agent or team"
+      },
+      {
+        "id": "change_status",
+        "description": "Change the status of a ticket"
+      },
+      {
+        "id": "change_priority",
+        "description": "Change the priority level of a ticket"
+      },
+      {
+        "id": "add_response",
+        "description": "Add an automated response to a ticket"
+      },
+      {
+        "id": "escalate",
+        "description": "Escalate a ticket to a higher support tier"
+      },
+      {
+        "id": "add_tag",
+        "description": "Add a tag to a ticket"
+      },
+      {
+        "id": "remove_tag",
+        "description": "Remove a tag from a ticket"
+      },
+      {
+        "id": "merge_tickets",
+        "description": "Merge duplicate tickets together"
+      }
+    ],
+    "hiring": [
+      {
+        "id": "move_stage",
+        "description": "Move a candidate to a different hiring stage"
+      },
+      {
+        "id": "reject_candidate",
+        "description": "Reject a candidate from the pipeline"
+      },
+      {
+        "id": "schedule_interview",
+        "description": "Schedule an interview with a candidate"
+      },
+      {
+        "id": "send_assessment",
+        "description": "Send an assessment to a candidate"
+      },
+      {
+        "id": "create_offer",
+        "description": "Create a job offer for a candidate"
+      },
+      {
+        "id": "add_note",
+        "description": "Add an internal note to a candidate profile"
+      }
+    ],
+    "email_marketing": [
+      {
+        "id": "add_to_campaign",
+        "description": "Add a recipient to an email campaign"
+      },
+      {
+        "id": "remove_from_campaign",
+        "description": "Remove a recipient from an email campaign"
+      },
+      {
+        "id": "update_recipient",
+        "description": "Update recipient attributes or segments"
+      },
+      {
+        "id": "pause_campaign",
+        "description": "Pause an active email campaign"
+      },
+      {
+        "id": "resume_campaign",
+        "description": "Resume a paused email campaign"
+      }
+    ],
+    "uptime": [
+      {
+        "id": "create_incident",
+        "description": "Create a new incident from a monitor alert"
+      },
+      {
+        "id": "resolve_incident",
+        "description": "Resolve an existing incident"
+      },
+      {
+        "id": "acknowledge_incident",
+        "description": "Acknowledge an open incident"
+      }
+    ],
+    "sprints": [
+      {
+        "id": "create_task",
+        "description": "Create a new task in a sprint"
+      },
+      {
+        "id": "move_task",
+        "description": "Move a task to a different status column"
+      },
+      {
+        "id": "assign_task",
+        "description": "Assign a task to a team member"
+      },
+      {
+        "id": "add_to_sprint",
+        "description": "Add a task to a sprint"
+      },
+      {
+        "id": "remove_from_sprint",
+        "description": "Remove a task from a sprint"
+      }
+    ],
+    "forms": [
+      {
+        "id": "create_crm_record",
+        "description": "Create a CRM record from form data"
+      },
+      {
+        "id": "create_ticket",
+        "description": "Create a support ticket from form data"
+      }
+    ],
+    "booking": [
+      {
+        "id": "confirm_booking",
+        "description": "Confirm a pending booking"
+      },
+      {
+        "id": "cancel_booking",
+        "description": "Cancel an existing booking"
+      },
+      {
+        "id": "reschedule_booking",
+        "description": "Reschedule a booking to a new time"
+      },
+      {
+        "id": "send_reminder",
+        "description": "Send a reminder for an upcoming booking"
+      }
+    ],
+    "tracking": [
+      {
+        "id": "escalate_blocker",
+        "description": "Escalate a stale blocker to management"
+      },
+      {
+        "id": "flag_anomaly",
+        "description": "Flag an anomalous time entry for review"
+      }
+    ],
+    "compliance": [
+      {
+        "id": "waive_training",
+        "description": "Waive a training assignment, with a recorded reason"
       }
     ]
   }

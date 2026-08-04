@@ -10,6 +10,8 @@ from aexy.api.developers import get_current_developer
 from aexy.core.database import get_db
 from aexy.models.developer import Developer
 from aexy.schemas.organization import (
+    DepartmentAccessProfileResponse,
+    DepartmentAccessProfileUpdate,
     DepartmentCreate,
     DepartmentDetail,
     DepartmentNode,
@@ -136,6 +138,59 @@ async def update_department(
     _: Developer = Depends(require_manage_org),
 ):
     return await OrganizationService(db).update_department(workspace_id, department_id, data)
+
+
+@router.get("/access-profiles", response_model=list[DepartmentAccessProfileResponse])
+async def list_department_access_profiles(
+    workspace_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: Developer = Depends(require_manage_org),
+):
+    """Every department's access profile.
+
+    Deliberately not ``/departments/access-profiles``: FastAPI matches routes in
+    declaration order, and ``/departments/{department_id}`` — declared above —
+    would happily treat "access-profiles" as a department id. A sibling path
+    can't be shadowed by accident later.
+
+    Manage-gated: this is the workspace's access configuration, not org trivia.
+    """
+    return await OrganizationService(db).list_access_profiles(workspace_id)
+
+
+@router.get(
+    "/departments/{department_id}/access-profile",
+    response_model=DepartmentAccessProfileResponse,
+)
+async def get_department_access_profile(
+    workspace_id: str,
+    department_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: Developer = Depends(require_manage_org),
+):
+    return await OrganizationService(db).get_access_profile(workspace_id, department_id)
+
+
+@router.put(
+    "/departments/{department_id}/access-profile",
+    response_model=DepartmentAccessProfileResponse,
+)
+async def set_department_access_profile(
+    workspace_id: str,
+    department_id: str,
+    data: DepartmentAccessProfileUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: Developer = Depends(require_manage_org),
+):
+    """Set what this department's members can see.
+
+    This decides access for everyone in the department at once, and — unlike the
+    role defaults it replaces — it is enforced on the API, so it is gated on
+    ``can_manage_org`` like every other structural change.
+    """
+    return await OrganizationService(db).set_access_profile(
+        workspace_id, department_id, data
+    )
 
 
 @router.post("/departments/{department_id}/reparent", response_model=DepartmentResponse)

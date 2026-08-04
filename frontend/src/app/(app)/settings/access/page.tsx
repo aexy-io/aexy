@@ -28,19 +28,24 @@ import { MemberAppAccessModal } from "@/components/members/MemberAppAccessModal"
 import { getAllApps } from "@/config/appDefinitions";
 import { useTranslations } from "next-intl";
 import { SettingsPage } from "@/components/settings/SettingsPrimitives";
+import { DepartmentProfilesPanel } from "@/components/access/DepartmentProfilesPanel";
+
+/** Departments first in the URL contract, since that is where access is decided. */
+type Tab = "matrix" | "requests" | "departments";
 
 export default function AccessControlPage() {
   const t = useTranslations("settingsAccess");
   const searchParams = useSearchParams();
-  const initialTab = searchParams.get("tab") === "requests" ? "requests" : "matrix";
+  const tabParam = searchParams.get("tab");
+  const initialTab: Tab =
+    tabParam === "requests" || tabParam === "departments" ? tabParam : "matrix";
 
-  const { currentWorkspaceId, currentWorkspace } = useWorkspace();
+  const { currentWorkspaceId } = useWorkspace();
   const workspaceId = currentWorkspaceId || "";
   const { isEnterprise } = useSubscription(currentWorkspaceId);
 
   const {
     members,
-    apps: matrixApps,
     isLoadingMatrix,
     matrixError,
     bulkApplyTemplate,
@@ -49,7 +54,7 @@ export default function AccessControlPage() {
 
   const { templates, isLoading: templatesLoading } = useAppAccessTemplates(workspaceId);
 
-  const [activeTab, setActiveTab] = useState<"matrix" | "requests">(initialTab);
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
 
   const {
     requests,
@@ -218,6 +223,16 @@ export default function AccessControlPage() {
           }`}
         >
           Access Matrix
+        </button>
+        <button
+          onClick={() => setActiveTab("departments")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === "departments"
+              ? "border-primary text-foreground"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Departments
         </button>
         <button
           onClick={() => setActiveTab("requests")}
@@ -393,8 +408,34 @@ export default function AccessControlPage() {
                               <p className="text-sm font-medium text-foreground">
                                 {member.developer_name || "Unknown"}
                               </p>
+                              {/* Where this row's ticks come from. Without it the
+                                  matrix presents resolved access as a fact with no
+                                  author, and an admin can't tell "Sales profile"
+                                  from "nobody configured this person". */}
                               <p className="text-xs text-muted-foreground">
-                                {member.role_name}
+                                {member.baseline === "department" && member.department_name ? (
+                                  <>
+                                    {member.department_name}
+                                    {member.department_count > 1 &&
+                                      ` +${member.department_count - 1}`}
+                                  </>
+                                ) : member.baseline === "member_template" ? (
+                                  <span className="text-violet-400">
+                                    {member.applied_template_name || "Pinned profile"}
+                                  </span>
+                                ) : (
+                                  <span
+                                    className="text-amber-600 dark:text-amber-400"
+                                    title="No department profile applies, so this person's access comes from their workspace role"
+                                  >
+                                    Role defaults
+                                  </span>
+                                )}
+                                {member.has_custom_overrides && (
+                                  <span className="ml-1 text-muted-foreground/70">
+                                    · overridden
+                                  </span>
+                                )}
                                 {member.is_admin && (
                                   <span className="ml-1 text-violet-400">
                                     (Admin)
@@ -459,6 +500,10 @@ export default function AccessControlPage() {
               No Access
             </div>
           </div>
+        </div>
+      ) : activeTab === "departments" ? (
+        <div className="mt-4">
+          <DepartmentProfilesPanel workspaceId={workspaceId} />
         </div>
       ) : (
         /* Requests Tab */

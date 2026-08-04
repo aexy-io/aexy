@@ -3,7 +3,12 @@
     "title": "Teams",
     "description": "Teams group people for escalation routing, on-call rotations, standups and insights.",
     "create": "New team",
-    "roles": { "lead": "Lead", "member": "Member" },
+    "roles": {
+      "lead": "Lead",
+      "member": "Member",
+      "admin": "Admin",
+      "manager": "Manager"
+    },
     "form": {
       "heading": "Create a team",
       "name": "Name",

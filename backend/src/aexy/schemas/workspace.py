@@ -3,6 +3,8 @@
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
+from aexy.schemas.team import TeamMemberRoleName
+
 
 # Workspace Schemas
 class WorkspaceCreate(BaseModel):
@@ -68,8 +70,24 @@ class WorkspaceMemberInvite(BaseModel):
     # Optional department placement, applied when the invite is accepted so the
     # person doesn't start out in no department at all. Left unset, the invite
     # behaves exactly as before — this is a convenience, not a requirement.
+    #
+    # It is also now the main thing an invite decides: the department's access
+    # profile is what the person will see, so inviting someone into Sales is how
+    # they end up with CRM rather than with a developer's sidebar.
     department_id: str | None = None
     role_in_department: str | None = None  # "head" | "manager" | "member"
+    # Pin an access template instead of using the department's profile — for the
+    # person who doesn't fit their department's shape. Left unset (the norm), the
+    # department decides.
+    access_template_id: str | None = None
+    # Optional *team* placement — a different question from the department, with
+    # different consequences. The department decides what they can see; the team
+    # decides who chases them: standups, blocker escalation, compliance
+    # reminders, review digests, sprint boards, leave approvals. Placed in a
+    # department but no team, a joiner gets the right navigation and is then
+    # silently left out of all of that.
+    team_id: str | None = None
+    role_in_team: TeamMemberRoleName | None = None  # "lead" | "manager" | "member"
 
 
 class WorkspaceMemberAdd(BaseModel):
@@ -204,6 +222,35 @@ class WorkspaceAppSettingsUpdate(BaseModel):
     """Schema for updating workspace app settings."""
 
     apps: dict[str, bool]  # {"hiring": true, "tracking": false}
+
+
+class OnboardingUseCasesApply(BaseModel):
+    """The use cases picked during onboarding."""
+
+    use_cases: list[str] = Field(default_factory=list)
+
+
+class OnboardingSeededDepartment(BaseModel):
+    """A department onboarding created or configured."""
+
+    id: str
+    name: str
+    function_key: str | None = None
+    access_profile_slug: str | None = None
+    default_persona: str | None = None
+
+
+class OnboardingUseCasesResult(BaseModel):
+    """What applying the use cases actually did.
+
+    Returned in full so the onboarding screen can show it rather than claim it:
+    the founder should be able to see that picking "CRM & Sales" created a Sales
+    department with the Business profile.
+    """
+
+    enabled_app_ids: list[str] = Field(default_factory=list)
+    disabled_app_ids: list[str] = Field(default_factory=list)
+    departments: list[OnboardingSeededDepartment] = Field(default_factory=list)
 
 
 # Billing Schemas

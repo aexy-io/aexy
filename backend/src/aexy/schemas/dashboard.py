@@ -8,6 +8,12 @@ from pydantic import BaseModel, Field
 
 # Type definitions
 PresetType = Literal["developer", "manager", "product", "hr", "support", "sales", "admin", "custom"]
+# The sidebar view, deliberately a separate type from PresetType even though the
+# values overlap today: preset_type is which *dashboard widgets* you see, and
+# conflating the two is what made every new joiner navigate as a developer.
+# "custom" is absent on purpose — it means "I rearranged my widgets", which says
+# nothing about navigation.
+SidebarPersona = Literal["developer", "manager", "product", "hr", "support", "sales", "admin"]
 WidgetSize = Literal["small", "medium", "large", "full"]
 
 
@@ -23,6 +29,7 @@ class DashboardPreferencesCreate(BaseModel):
     checklist_dismissed: bool = False
     sidebar_page_visits: dict[str, int] = Field(default_factory=dict)
     sidebar_pinned_items: list[str] = Field(default_factory=list)
+    sidebar_persona: SidebarPersona | None = None
 
 
 class DashboardPreferencesUpdate(BaseModel):
@@ -37,6 +44,10 @@ class DashboardPreferencesUpdate(BaseModel):
     checklist_dismissed: bool | None = None
     sidebar_page_visits: dict[str, int] | None = None
     sidebar_pinned_items: list[str] | None = None
+    # The sidebar view this person chose. "" means "go back to deriving it from
+    # my department" — a plain null can't say that, because null is also what an
+    # unrelated PATCH sends for every field it isn't touching.
+    sidebar_persona: SidebarPersona | Literal[""] | None = None
 
 
 class DashboardPreferencesResponse(BaseModel):
@@ -53,6 +64,9 @@ class DashboardPreferencesResponse(BaseModel):
     checklist_dismissed: bool
     sidebar_page_visits: dict[str, int]
     sidebar_pinned_items: list[str]
+    # None means the sidebar view is derived from the person's department rather
+    # than chosen — see AppAccessStatus.suggested_persona.
+    sidebar_persona: str | None = None
     created_at: datetime
     updated_at: datetime
 
