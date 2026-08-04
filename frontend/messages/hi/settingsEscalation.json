@@ -1,0 +1,7 @@
+{
+  "settingsEscalation": {
+    "title": "एस्केलेशन मैट्रिक्स",
+    "description": "टिकट severity के आधार पर स्वतः escalation नियम।",
+    "add": "एस्केलेशन मैट्रिक्स जोड़ें"
+  }
+}

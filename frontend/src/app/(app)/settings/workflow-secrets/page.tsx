@@ -18,7 +18,6 @@ import {
   AlertTriangle,
   KeyRound,
   Loader2,
-  Lock,
   Plus,
   RefreshCw,
   ShieldAlert,
@@ -29,6 +28,8 @@ import { formatDistanceToNow } from "date-fns";
 import { CopyButton } from "@/components/ui/copy-button";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useWorkspaceSecrets } from "@/hooks/useWorkspaceSecrets";
+import { useTranslations } from "next-intl";
+import { SettingsPage } from "@/components/settings/SettingsPrimitives";
 
 /**
  * Same character set the backend accepts, and the same one
@@ -38,6 +39,7 @@ import { useWorkspaceSecrets } from "@/hooks/useWorkspaceSecrets";
 const VALID_NAME = /^[A-Za-z0-9_-]{1,120}$/;
 
 export default function WorkflowSecretsPage() {
+  const t = useTranslations("settingsWorkflowSecrets");
   const { currentWorkspaceId } = useWorkspace();
   const {
     secrets,
@@ -124,33 +126,22 @@ export default function WorkflowSecretsPage() {
     (error as { response?: { status?: number } }).response?.status === 403;
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-            <Lock className="h-5 w-5 text-amber-400" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">Workflow Secrets</h1>
-            <p className="text-sm text-muted-foreground">
-              Credentials for automation steps, referenced as{" "}
-              <code className="font-mono text-xs">{"{{secrets.NAME}}"}</code>{" "}
-              instead of pasted in.
-            </p>
-          </div>
-        </div>
-        {!forbidden && (
+    <SettingsPage
+      title={t("title")}
+      description={t("description", { placeholder: "{{secrets.NAME}}" })}
+      width="wide"
+      actions={
+        !forbidden ? (
           <button
             onClick={() => (showForm ? resetForm() : setShowForm(true))}
-            className="inline-flex items-center gap-2 px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
           >
-            <Plus className="h-4 w-4" />
-            Add secret
+            <Plus className="h-4 w-4" aria-hidden />
+            {t("add")}
           </button>
-        )}
-      </div>
-
+        ) : undefined
+      }
+    >
       {/* The thing this page deliberately cannot do */}
       <div className="flex gap-3 rounded-lg border border-border bg-accent/30 p-4">
         <ShieldAlert className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
@@ -372,6 +363,6 @@ export default function WorkflowSecretsPage() {
           )}
         </>
       )}
-    </div>
+    </SettingsPage>
   );
 }

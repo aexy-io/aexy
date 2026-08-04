@@ -839,7 +839,7 @@ class TestTeamDistribution:
         # commit author login, not member-side GH config.
         member = Developer(
             id=str(uuid4()),
-            email="mobashir@bimaplan.co",
+            email="mobashir@example.com",
             name="Mobashir Real",
         )
         # Ghost A: noreply email but author_github_login on commits.

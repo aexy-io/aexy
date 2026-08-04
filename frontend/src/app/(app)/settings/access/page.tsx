@@ -4,8 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
-  Shield,
-  ChevronRight,
   Loader2,
   Check,
   Minus,
@@ -28,8 +26,11 @@ import { useMemberAppAccess, useAppAccessTemplates } from "@/hooks/useAppAccess"
 import { useAdminAccessRequests } from "@/hooks/useAccessRequests";
 import { MemberAppAccessModal } from "@/components/members/MemberAppAccessModal";
 import { getAllApps } from "@/config/appDefinitions";
+import { useTranslations } from "next-intl";
+import { SettingsPage } from "@/components/settings/SettingsPrimitives";
 
 export default function AccessControlPage() {
+  const t = useTranslations("settingsAccess");
   const searchParams = useSearchParams();
   const initialTab = searchParams.get("tab") === "requests" ? "requests" : "matrix";
 
@@ -184,31 +185,28 @@ export default function AccessControlPage() {
   const reviewedRequests = requests.filter((r) => r.status !== "pending");
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Access Control</h1>
-          <p className="text-muted-foreground text-sm mt-1">Manage app access for workspace members</p>
-        </div>
-        <div className="flex items-center gap-3">
+    <SettingsPage
+      title={t("title")}
+      description={t("description")}
+      width="wide"
+      actions={
+        <>
           <Link href="/settings/access/logs">
-            <Button variant="outline" className="gap-2">
-              <FileText className="h-4 w-4" />
-              Access Logs
-              {!isEnterprise && (
-                <Crown className="h-3 w-3 text-amber-400" />
-              )}
+            <Button variant="outline" size="sm" className="gap-2">
+              <FileText className="h-4 w-4" aria-hidden />
+              {t("logs")}
+              {!isEnterprise && <Crown className="h-3 w-3 text-amber-400" aria-hidden />}
             </Button>
           </Link>
           <Link href="/settings/access/templates">
-            <Button variant="outline" className="gap-2">
-              <Package className="h-4 w-4" />
-              Manage Templates
+            <Button variant="outline" size="sm" className="gap-2">
+              <Package className="h-4 w-4" aria-hidden />
+              {t("templates")}
             </Button>
           </Link>
-        </div>
-      </div>
-
+        </>
+      }
+    >
       {/* Tabs */}
       <div className="flex items-center gap-1 border-b border-border">
         <button
@@ -660,6 +658,6 @@ export default function AccessControlPage() {
           developerName={editingMember.developerName}
         />
       )}
-    </div>
+    </SettingsPage>
   );
 }

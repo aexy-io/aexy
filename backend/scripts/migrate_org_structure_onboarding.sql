@@ -1,5 +1,13 @@
 -- Onboarding: let an invite carry an optional department placement.
 --
+-- FILENAME IS LOAD-BEARING. run_migrations.py applies files in plain
+-- alphabetical order and stops at the first failure. This file references
+-- `departments`, which migrate_org_structure.sql creates, so it must sort
+-- *after* it — which "migrate_org_onboarding.sql" did not ("o" < "s"), taking
+-- every later migration down with it on any database that didn't already
+-- happen to have the table from create_all. Keep the `migrate_org_structure_`
+-- prefix if you rename this.
+--
 -- Without this, department membership is only reachable after the person has
 -- already accepted and logged in, so every new joiner starts in no department
 -- at all — invisible in the directory, out of scope for Service Desk row

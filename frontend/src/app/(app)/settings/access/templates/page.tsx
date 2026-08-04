@@ -25,7 +25,9 @@ import {
 import { toast } from "sonner";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAppAccessTemplates } from "@/hooks/useAppAccess";
-import { getAllApps, SYSTEM_BUNDLES, AppAccessConfig } from "@/config/appDefinitions";
+import { getAllApps, AppAccessConfig } from "@/config/appDefinitions";
+import { useTranslations } from "next-intl";
+import { SettingsPage } from "@/components/settings/SettingsPrimitives";
 
 // Icon mapping for templates
 const TEMPLATE_ICONS: Record<string, React.ReactNode> = {
@@ -45,6 +47,7 @@ interface TemplateFormData {
 }
 
 export default function AccessTemplatesPage() {
+  const t = useTranslations("settingsAccessTemplates");
   const { currentWorkspaceId } = useWorkspace();
   const workspaceId = currentWorkspaceId || "";
 
@@ -166,20 +169,21 @@ export default function AccessTemplatesPage() {
   const isSaving = isCreating || isUpdating;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Access Templates</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Create and manage access permission templates
-          </p>
-        </div>
-
-        <Button onClick={() => setShowCreateModal(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Create Template
+    <SettingsPage
+      title={t("title")}
+      description={t("description")}
+      width="wide"
+      breadcrumbs={[
+        { label: t("breadcrumbParent"), href: "/settings/access" },
+        { label: t("title") },
+      ]}
+      actions={
+        <Button size="sm" onClick={() => setShowCreateModal(true)} className="gap-2">
+          <Plus className="h-4 w-4" aria-hidden />
+          {t("create")}
         </Button>
-      </div>
+      }
+    >
 
       <div>
         {isLoading ? (
@@ -519,6 +523,6 @@ export default function AccessTemplatesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </SettingsPage>
   );
 }

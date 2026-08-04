@@ -1,0 +1,37 @@
+{
+  "settingsAppearance": {
+    "title": "Appearance",
+    "description": "Choose how the application looks and how its navigation is organised.",
+    "theme": {
+      "title": "Theme",
+      "description": "Your preferred colour scheme.",
+      "autosaveHint": "Changes are saved automatically and take effect immediately.",
+      "systemHint": "Currently using {mode} mode, following your system setting.",
+      "options": {
+        "dark": { "name": "Dark", "description": "Dark background with light text" },
+        "light": { "name": "Light", "description": "Light background with dark text" },
+        "system": { "name": "System", "description": "Match your system setting automatically" }
+      }
+    },
+    "workspaceView": {
+      "title": "Workspace view",
+      "description": "A role-based view that tailors both the sidebar and your dashboard widgets to the work that matters to you.",
+      "hint": "Applies to the sidebar immediately and resets your dashboard widgets to this view's defaults."
+    },
+    "sidebarLayout": {
+      "title": "Sidebar layout",
+      "description": "How navigation items are grouped.",
+      "preview": "Preview",
+      "options": {
+        "grouped": {
+          "name": "Grouped",
+          "description": "Organised by functional area — Engineering, People, Business, Knowledge"
+        },
+        "flat": {
+          "name": "Flat",
+          "description": "Every feature at the top level for quick access"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "settingsTeams": {
+    "title": "टीमें",
+    "description": "टीमें लोगों को समूहित करती हैं — escalation रूटिंग, on-call रोटेशन, standups और insights के लिए।",
+    "create": "नई टीम",
+    "roles": { "lead": "लीड", "member": "सदस्य" },
+    "form": {
+      "heading": "टीम बनाएँ",
+      "name": "नाम",
+      "namePlaceholder": "Platform, Support, Growth…",
+      "description": "विवरण (वैकल्पिक)",
+      "submit": "टीम बनाएँ"
+    },
+    "empty": {
+      "title": "अभी कोई टीम नहीं",
+      "description": "escalation रूट करने, on-call रोटेशन चलाने या standups समूहित करने के लिए टीम बनाएँ।"
+    },
+    "list": {
+      "heading": "{count, plural, one {# टीम} other {# टीमें}}",
+      "memberCount": "{count, plural, =0 {कोई सदस्य नहीं} one {# सदस्य} other {# सदस्य}}",
+      "repoBased": "रिपॉज़िटरी से सिंक",
+      "inactive": "निष्क्रिय"
+    },
+    "detail": {
+      "members": "सदस्य",
+      "noMembers": "इस टीम में अभी कोई नहीं है।",
+      "addPlaceholder": "वर्कस्पेस सदस्य जोड़ें…",
+      "add": "जोड़ें",
+      "remove": "टीम से हटाएँ",
+      "everyoneAdded": "हर वर्कस्पेस सदस्य पहले से इस टीम में है।",
+      "fromRepo": "रिपॉज़िटरी सिंक से",
+      "sync": "सदस्य सिंक करें",
+      "autoSync": "सदस्यों को रिपॉज़िटरी के साथ सिंक रखें",
+      "autoSyncHint": "योगदानकर्ता स्वतः जोड़े और हटाए जाते हैं। मैनुअल बदलाव अगले सिंक पर बदल दिए जाते हैं।",
+      "delete": "यह टीम हटाएँ",
+      "deleteConfirm": "हटाएँ",
+      "confirmDelete": "{name} और उसकी सदस्यता हटाएँ?",
+      "deleted": "टीम हटाई गई",
+      "cancel": "रद्द करें",
+      "close": "टीम विवरण बंद करें"
+    }
+  }
+}

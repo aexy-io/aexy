@@ -1,10 +1,9 @@
-"""Bimaplan Service Desk ticket lifecycle — Pending-With transitions + TAT.
+"""Service Desk ticket lifecycle — Pending-With transitions + TAT.
 
 Every ``pending_with`` change closes the open ledger segment (recording its
 duration) and opens a new one, so stakeholder-wise TAT is computable from the
 ledger. Closing sets the ticket closed + fires the closure email.
 
-See ``prds/BIMAPLAN_SERVICE_DESK_PLAN.md`` §6–§7.
 """
 
 import logging
@@ -17,8 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.models.service_desk import (
-    PendingWith,
-    ServiceDeskPartner,
+    ServiceDeskAccount,
     ServiceDeskTicket,
     TicketPendingSegment,
 )
@@ -32,7 +30,6 @@ from aexy.schemas.service_desk import (
 
 logger = logging.getLogger(__name__)
 
-TICKET_PREFIX = "BSD"
 _DAY = 86400.0
 
 
@@ -44,11 +41,54 @@ def _aware(dt: datetime) -> datetime:
 
 
 from aexy.services.service_desk_clock import load_clock  # noqa: E402
+from aexy.services.service_desk_config import (  # noqa: E402
+    display_id as render_display_id,
+    ticket_prefix,
+    ticket_prefix_display,
+)
+from aexy.services.service_desk_taxonomy import load_taxonomy  # noqa: E402
 
 
 class ServiceDeskTicketService:
+    """Pending-With transitions and TAT.
+
+    Outbound mail is queued, not sent inline: ``flush_notifications()`` sends it
+    and callers invoke that *after* committing. Telling a requester their ticket
+    is resolved and then rolling the closure back is the same mistake the intake
+    service documents avoiding — the API layer's ``get_db`` commits after the
+    handler returns, so anything sent inside a handler is sent before the outcome
+    is durable.
+    """
+
     def __init__(self, db: AsyncSession):
         self.db = db
+        self._pending_notifications: list[dict] = []
+
+    async def flush_notifications(self) -> None:
+        """Send queued closure mail. Call AFTER committing; never raises."""
+        pending, self._pending_notifications = self._pending_notifications, []
+        if not pending:
+            return
+        from aexy.models.service_desk import ServiceDeskMailbox
+        from aexy.services.service_desk_mailer import send_service_desk_email
+
+        for item in pending:
+            try:
+                mailbox = (
+                    await self.db.get(ServiceDeskMailbox, item["mailbox_id"])
+                    if item["mailbox_id"]
+                    else None
+                )
+                await send_service_desk_email(
+                    self.db,
+                    mailbox,
+                    item["to"],
+                    item["subject"],
+                    item["body"],
+                    thread_id=item["thread_id"],
+                )
+            except Exception as exc:  # noqa: BLE001 — closure mail is best-effort
+                logger.warning("Service desk: closure mail to %s skipped (%s)", item["to"], exc)
 
     # ------------------------------------------------------------------ loads
 
@@ -108,6 +148,19 @@ class ServiceDeskTicketService:
         if ticket is None:
             raise HTTPException(status_code=404, detail="Ticket not found")
 
+        # The schema used to be a `Literal[...]` of one company's stakeholders,
+        # which meant the wire type did this check. Now that the set is per
+        # workspace, this is the only thing standing between a request body and
+        # an arbitrary string in `pending_with` — which would put the ticket in a
+        # bucket no queue, dashboard column or visibility rule can ever match.
+        taxonomy = await load_taxonomy(self.db, workspace_id, seed=False)
+        if not taxonomy.has_stakeholder(new_value):
+            known = ", ".join(s.slug for s in taxonomy.stakeholders) or "none configured"
+            raise HTTPException(
+                status_code=422,
+                detail=f"Unknown stakeholder {new_value!r} for this workspace (known: {known})",
+            )
+
         old_value = sd.pending_with
         now = datetime.now(timezone.utc)
 
@@ -122,8 +175,8 @@ class ServiceDeskTicketService:
 
         sd.pending_with = new_value
 
-        # open a fresh segment unless we are closing (closed = terminal, no clock)
-        if new_value != PendingWith.CLOSED.value:
+        # open a fresh segment unless we are closing (terminal = no clock)
+        if not taxonomy.is_closed(new_value):
             self.db.add(
                 TicketPendingSegment(
                     id=str(uuid4()),
@@ -137,23 +190,29 @@ class ServiceDeskTicketService:
             )
 
         # ticket status side-effects
-        if new_value == PendingWith.CLOSED.value:
+        if taxonomy.is_closed(new_value):
             ticket.status = TicketStatus.CLOSED.value
             ticket.closed_at = now
             if ticket.resolved_at is None:
                 ticket.resolved_at = now
-        elif old_value == PendingWith.CLOSED.value:
-            # reopen
+        elif taxonomy.is_closed(old_value):
+            # Reopen. `resolved_at` has to go too: leaving it set means the
+            # ticket reads as resolved-but-open, and any resolution-time report
+            # would count it as closed at the old timestamp.
             ticket.status = TicketStatus.IN_PROGRESS.value
             ticket.closed_at = None
+            ticket.resolved_at = None
         else:
             if ticket.status == TicketStatus.NEW.value:
                 ticket.status = TicketStatus.IN_PROGRESS.value
             if ticket.first_response_at is None:
                 ticket.first_response_at = now
 
-        # human-readable timeline entry
-        line = f"Pending With changed from {old_value} to {new_value}"
+        # Human-readable timeline entry — labels, not slugs, since this is read
+        # by people and a slug like `third_party` is not what they see elsewhere.
+        old_label = (s.label if (s := taxonomy.stakeholder(old_value)) else old_value)
+        new_label = (s.label if (s := taxonomy.stakeholder(new_value)) else new_value)
+        line = f"Pending With changed from {old_label} to {new_label}"
         if note:
             line += f" — {note}"
         self.db.add(
@@ -167,7 +226,7 @@ class ServiceDeskTicketService:
         )
         await self.db.flush()
 
-        if new_value == PendingWith.CLOSED.value:
+        if taxonomy.is_closed(new_value):
             await self._send_closure(workspace_id, ticket, note)
 
         return await self.get_detail(workspace_id, ticket_id)
@@ -181,13 +240,26 @@ class ServiceDeskTicketService:
     ) -> ServiceDeskTicketDetail:
         sd = await self._sd(workspace_id, ticket_id, developer_id=scope_developer_id)
         payload = data.model_dump(exclude_unset=True)
-        assigned = payload.pop("assigned_kam_id", None)
+        assigned = payload.pop("assigned_owner_id", None)
 
         # Referenced master data must live in THIS workspace — these ids come
         # straight from the request body.
         await self._validate_refs(workspace_id, payload)
         if assigned is not None:
             await self._validate_member(workspace_id, assigned)
+
+        # `request_type` was a `Literal[...]`, so the wire type used to reject an
+        # unknown value. It is a per-workspace slug now, and nothing else here
+        # would stop an arbitrary string reaching the column — where it would
+        # break every filter and label that reads it.
+        if (rt := payload.get("request_type")) is not None:
+            taxonomy = await load_taxonomy(self.db, workspace_id, seed=False)
+            if not taxonomy.has_request_type(rt):
+                known = ", ".join(r.slug for r in taxonomy.request_types) or "none configured"
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Unknown request type {rt!r} for this workspace (known: {known})",
+                )
 
         for k, v in payload.items():
             setattr(sd, k, v)
@@ -201,13 +273,13 @@ class ServiceDeskTicketService:
     # ------------------------------------------------------- reference checks
 
     async def _validate_refs(self, workspace_id: str, payload: dict) -> None:
-        """404 on lob/partner/insurer ids that belong to another workspace."""
-        from aexy.models.service_desk import ServiceDeskInsurer, ServiceDeskLOB
+        """404 on product/account/vendor ids that belong to another workspace."""
+        from aexy.models.service_desk import ServiceDeskVendor, ServiceDeskProduct
 
         for key, model, label in (
-            ("lob_id", ServiceDeskLOB, "LOB"),
-            ("partner_id", ServiceDeskPartner, "Partner"),
-            ("insurer_id", ServiceDeskInsurer, "Insurer"),
+            ("product_id", ServiceDeskProduct, "Product"),
+            ("account_id", ServiceDeskAccount, "Account"),
+            ("vendor_id", ServiceDeskVendor, "Vendor"),
         ):
             value = payload.get(key)
             if not value:
@@ -261,6 +333,7 @@ class ServiceDeskTicketService:
 
         now = datetime.now(timezone.utc)
         clock = await load_clock(self.db, ticket.workspace_id)
+        taxonomy = await load_taxonomy(self.db, ticket.workspace_id, seed=False)
         stakeholder: dict[str, int] = defaultdict(int)
         current_pending: str | None = None
         current_seconds = 0
@@ -272,7 +345,7 @@ class ServiceDeskTicketService:
             if seg.exited_at is None:
                 current_pending = seg.pending_with
                 current_seconds = dur
-            if seg.pending_with != PendingWith.CLOSED.value:
+            if not taxonomy.is_closed(seg.pending_with):
                 stakeholder[seg.pending_with] += dur
 
         end = _aware(ticket.closed_at) if ticket.closed_at else now
@@ -298,11 +371,11 @@ class ServiceDeskTicketService:
         if ticket is None:
             raise HTTPException(status_code=404, detail="Ticket not found")
 
-        partner_name = None
-        if sd.partner_id:
-            partner_name = (
+        account_name = None
+        if sd.account_id:
+            account_name = (
                 await self.db.execute(
-                    select(ServiceDeskPartner.name).where(ServiceDeskPartner.id == sd.partner_id)
+                    select(ServiceDeskAccount.name).where(ServiceDeskAccount.id == sd.account_id)
                 )
             ).scalar_one_or_none()
 
@@ -322,17 +395,17 @@ class ServiceDeskTicketService:
             ticket_id=sd.ticket_id,
             workspace_id=sd.workspace_id,
             ticket_number=ticket.ticket_number,
-            display_id=f"{TICKET_PREFIX}-{ticket.ticket_number}",
+            display_id=await ticket_prefix_display(self.db, workspace_id, ticket.ticket_number),
             subject=fv.get("subject"),
             body=fv.get("body"),
             requester_email=ticket.submitter_email,
             requester_name=ticket.submitter_name,
             status=ticket.status,
-            lob_id=sd.lob_id,
-            partner_id=sd.partner_id,
-            partner_name=partner_name,
-            insurer_id=sd.insurer_id,
-            assigned_kam_id=ticket.assignee_id,
+            product_id=sd.product_id,
+            account_id=sd.account_id,
+            account_name=account_name,
+            vendor_id=sd.vendor_id,
+            assigned_owner_id=ticket.assignee_id,
             request_type=sd.request_type,
             pending_with=sd.pending_with,
             origin=sd.origin,
@@ -398,7 +471,10 @@ class ServiceDeskTicketService:
         lines: list[str] = []
         if ticket.submitter_email:
             lines.append(f"From: {ticket.submitter_name or ticket.submitter_email}")
-        lines.append(f"Ticket: {TICKET_PREFIX}-{ticket.ticket_number} ({sd.request_type})")
+        prefix = await ticket_prefix(self.db, workspace_id)
+        lines.append(
+            f"Ticket: {render_display_id(prefix, ticket.ticket_number)} ({sd.request_type})"
+        )
         if fv.get("body"):
             lines.append("")
             lines.extend(str(fv["body"]).split("\n"))
@@ -432,8 +508,8 @@ class ServiceDeskTicketService:
     # ------------------------------------------------------------- dashboard
 
     async def get_dashboard(self, workspace_id: str, developer_id: str | None = None):
-        """Open tickets bucketed by stakeholder × current-stage age (BRD §8)."""
-        from aexy.models.service_desk import ServiceDeskLOB
+        """Open tickets bucketed by stakeholder × current-stage age."""
+        from aexy.models.service_desk import ServiceDeskProduct
         from aexy.schemas.service_desk import (
             DashboardTicket,
             ServiceDeskDashboard,
@@ -441,17 +517,26 @@ class ServiceDeskTicketService:
         )
         from aexy.services.service_desk_service import resolve_scope_clause
 
+        # seed=False: the dashboard is a read. Seeding here silently gave every
+        # workspace the neutral template the first time anyone opened the desk,
+        # which pre-empted the first-run template picker and left a taxonomy that
+        # was a mix of the default and whatever was chosen afterwards.
+        taxonomy = await load_taxonomy(self.db, workspace_id, seed=False)
+        # "Open" is defined by the workspace's own terminal bucket. A workspace
+        # with no taxonomy at all has no terminal bucket, so every ticket counts
+        # as open — which is right: none of them have been closed.
+        closed_slug = taxonomy.closed_slug
+
         query = (
-            select(ServiceDeskTicket, Ticket, ServiceDeskPartner.name, ServiceDeskLOB.name)
+            select(ServiceDeskTicket, Ticket, ServiceDeskAccount.name, ServiceDeskProduct.name)
             .join(Ticket, Ticket.id == ServiceDeskTicket.ticket_id)
-            .outerjoin(ServiceDeskPartner, ServiceDeskPartner.id == ServiceDeskTicket.partner_id)
-            .outerjoin(ServiceDeskLOB, ServiceDeskLOB.id == ServiceDeskTicket.lob_id)
-            .where(
-                ServiceDeskTicket.workspace_id == workspace_id,
-                ServiceDeskTicket.pending_with != PendingWith.CLOSED.value,
-            )
+            .outerjoin(ServiceDeskAccount, ServiceDeskAccount.id == ServiceDeskTicket.account_id)
+            .outerjoin(ServiceDeskProduct, ServiceDeskProduct.id == ServiceDeskTicket.product_id)
+            .where(ServiceDeskTicket.workspace_id == workspace_id)
             .order_by(Ticket.created_at.desc())
         )
+        if closed_slug is not None:
+            query = query.where(ServiceDeskTicket.pending_with != closed_slug)
         if developer_id is not None:
             clause = await resolve_scope_clause(self.db, workspace_id, developer_id)
             if clause is not None:
@@ -470,13 +555,14 @@ class ServiceDeskTicketService:
         entered_by_ticket = {tid: entered for tid, entered in open_segs}
 
         now = datetime.now(timezone.utc)
-        # One read for the whole dashboard rather than per ticket.
+        # One read each for the whole dashboard rather than per ticket.
         clock = await load_clock(self.db, workspace_id)
+        prefix = await ticket_prefix(self.db, workspace_id)
         buckets: dict[str, StakeholderBucket] = {}
         tickets: list[DashboardTicket] = []
         breaching = 0
 
-        for sd, ticket, partner_name, lob_name in rows:
+        for sd, ticket, account_name, product_name in rows:
             # An open ticket should always have an open segment. If the ledger
             # drifted, age from creation rather than reporting 0 days / green —
             # a breach must surface, not be hidden by missing data.
@@ -498,13 +584,13 @@ class ServiceDeskTicketService:
             tickets.append(
                 DashboardTicket(
                     ticket_id=sd.ticket_id,
-                    display_id=f"{TICKET_PREFIX}-{ticket.ticket_number}",
+                    display_id=render_display_id(prefix, ticket.ticket_number),
                     subject=fv.get("subject"),
-                    lob_name=lob_name,
-                    partner_name=partner_name,
+                    product_name=product_name,
+                    account_name=account_name,
                     request_type=sd.request_type,
                     pending_with=sd.pending_with,
-                    assigned_kam_id=ticket.assignee_id,
+                    assigned_owner_id=ticket.assignee_id,
                     days_in_stage=stage_days,
                     overall_days=overall_days,
                     breach_level=level,
@@ -513,8 +599,19 @@ class ServiceDeskTicketService:
                 )
             )
 
+        # Every open stakeholder gets a column in the workspace's own order, even
+        # at zero — the dashboard is a queue board, and a column that vanishes
+        # when it empties makes the board reshuffle itself as work moves. The
+        # frontend used to impose a hardcoded insurance ordering for this reason.
+        ordered = [
+            buckets.get(slug) or StakeholderBucket(pending_with=slug)
+            for slug in taxonomy.open_slugs
+        ]
+        # Anything holding a retired slug still has to be visible somewhere.
+        ordered += [b for slug, b in buckets.items() if slug not in set(taxonomy.open_slugs)]
+
         return ServiceDeskDashboard(
-            stakeholders=list(buckets.values()),
+            stakeholders=ordered,
             tickets=tickets,
             total_open=len(tickets),
             breaching=breaching,
@@ -523,14 +620,16 @@ class ServiceDeskTicketService:
     # --------------------------------------------------------------- closure
 
     async def _send_closure(self, workspace_id: str, ticket: Ticket, note: str | None) -> None:
-        """Best-effort closure email to the requester (BRD 9.2), channel-aware."""
+        """Queue the closure email to the requester (BRD 9.2), channel-aware.
+
+        Rendered now (it needs the TAT that is only computable here) but *sent* by
+        ``flush_notifications()`` after the caller commits.
+        """
         if not ticket.submitter_email:
             return
-        from aexy.models.service_desk import ServiceDeskMailbox
-        from aexy.services.service_desk_mailer import send_service_desk_email
         from aexy.services.service_desk_templates import render_sd
 
-        display_id = f"{TICKET_PREFIX}-{ticket.ticket_number}"
+        display_id = await ticket_prefix_display(self.db, workspace_id, ticket.ticket_number)
         tat = await self.compute_tat(ticket.id, ticket)
         subject, body = await render_sd(
             self.db,
@@ -548,13 +647,13 @@ class ServiceDeskTicketService:
         # an arbitrary active Gmail mailbox, so a workspace with more than one
         # would answer from the wrong sender.
         sd = await self._sd(workspace_id, ticket.id)
-        mailbox = await self.db.get(ServiceDeskMailbox, sd.mailbox_id) if sd.mailbox_id else None
 
-        await send_service_desk_email(
-            self.db,
-            mailbox,
-            ticket.submitter_email,
-            subject,
-            body,
-            thread_id=sd.thread_ref,
+        self._pending_notifications.append(
+            {
+                "mailbox_id": sd.mailbox_id,
+                "to": ticket.submitter_email,
+                "subject": subject,
+                "body": body,
+                "thread_id": sd.thread_ref,
+            }
         )

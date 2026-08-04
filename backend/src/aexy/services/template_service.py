@@ -6,7 +6,8 @@ from datetime import datetime
 from typing import Any
 from uuid import uuid4
 
-from jinja2 import Environment, BaseLoader, StrictUndefined, TemplateSyntaxError, UndefinedError
+from jinja2 import BaseLoader, StrictUndefined, TemplateSyntaxError, UndefinedError
+from jinja2.sandbox import SandboxedEnvironment
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -40,7 +41,15 @@ class TemplateService:
     def __init__(self, db: AsyncSession):
         """Initialize the template service."""
         self.db = db
-        self._jinja_env = Environment(
+        # SandboxedEnvironment, not Environment. Template bodies are authored
+        # through the API by workspace admins (and, since the Service Desk module,
+        # by anyone holding can_manage_service_desk), and a plain Jinja
+        # environment lets a template author walk Python object internals —
+        # `{{ ''.__class__.__mro__ }}` and onwards — which turns "edit our
+        # acknowledgement email" into arbitrary attribute access on the server.
+        # The sandbox blocks that while leaving `{{var}}` and the filters below
+        # working exactly as before.
+        self._jinja_env = SandboxedEnvironment(
             loader=BaseLoader(),
             autoescape=True,
         )
@@ -53,7 +62,7 @@ class TemplateService:
         # unknown merge tags so validate_template can flag typo'd/undeclared
         # variables. Rendering still uses the lenient env so a missing optional
         # var never breaks a real send.
-        self._strict_jinja_env = Environment(
+        self._strict_jinja_env = SandboxedEnvironment(
             loader=BaseLoader(),
             autoescape=True,
             undefined=StrictUndefined,

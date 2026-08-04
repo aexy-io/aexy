@@ -1,66 +1,55 @@
 "use client";
 
-import { Suspense, useState, useEffect, useRef } from "react";
+/**
+ * CRM integrations — Google (Gmail + Calendar) sync and the deal-creation rules
+ * that hang off it.
+ *
+ * This used to be a section of `/crm/settings`, reachable through that page's own
+ * left-hand section switcher, plus a `/crm/settings/integrations` route that did
+ * nothing but `router.replace("/crm/settings?section=integrations")`. Both are
+ * gone: the section switcher was a second navigation tree sitting inside the
+ * Settings shell's own, and the redirect existed only to paper over the fact that
+ * the section had no URL of its own. It has one now.
+ */
+
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "@/hooks/useAuth";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { motion } from "framer-motion";
 import {
-  Plus,
-  Settings,
-  Trash2,
-  Edit2,
-  Save,
-  X,
-  Building2,
-  Users,
-  DollarSign,
-  LayoutGrid,
-  Target,
-  Palette,
-  Database,
-  Link2,
-  Mail,
-  Calendar,
-  RefreshCw,
-  CheckCircle2,
-  XCircle,
   AlertCircle,
-  Sparkles,
-  Clock,
-  Shield,
   Bot,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  DollarSign,
   Filter,
+  Mail,
+  Plus,
+  RefreshCw,
+  Settings,
+  Shield,
+  Sparkles,
+  Trash2,
+  Users,
+  X,
+  XCircle,
   Zap,
 } from "lucide-react";
-import { motion } from "framer-motion";
-import { useWorkspace } from "@/hooks/useWorkspace";
-import { useCRMObjects, useCRMAttributes } from "@/hooks/useCRM";
-import {
-  CRMObject,
-  CRMAttribute,
-  CRMAttributeType,
-  CRMObjectType,
-  googleIntegrationApi,
-  developerApi,
-  GoogleIntegrationStatus,
-  DealCreationSettings,
-} from "@/lib/api";
-import {
-  ObjectSettingsNav,
-  ObjectSettingsNavVertical,
-  SettingsTab,
-} from "@/components/crm/ObjectSettingsNav";
-import { AttributeList } from "@/components/crm/AttributeList";
-import { CreateAttributeModal } from "@/components/crm/CreateAttributeModal";
-import { ColorPicker } from "@/components/crm/ColorPicker";
+import { useTranslations } from "next-intl";
 
-const objectTypeIcons: Record<CRMObjectType, React.ReactNode> = {
-  company: <Building2 className="h-5 w-5" />,
-  person: <Users className="h-5 w-5" />,
-  deal: <DollarSign className="h-5 w-5" />,
-  lead: <Target className="h-5 w-5" />,
-  custom: <LayoutGrid className="h-5 w-5" />,
-};
+import { useWorkspace } from "@/hooks/useWorkspace";
+import {
+  DealCreationSettings,
+  developerApi,
+  googleIntegrationApi,
+  GoogleIntegrationStatus,
+} from "@/lib/api";
+import { AppAccessGuard } from "@/components/guards/AppAccessGuard";
+import {
+  SettingsEmptyState,
+  SettingsPage,
+  SettingsSkeleton,
+} from "@/components/settings/SettingsPrimitives";
 
 const DEFAULT_DEAL_SETTINGS: DealCreationSettings = {
   auto_create_deals: false,
@@ -98,271 +87,6 @@ function GoogleIcon({ className }: { className?: string }) {
   );
 }
 
-// Configuration Tab Content
-function ConfigurationTab({
-  object,
-  onUpdate,
-  isUpdating,
-}: {
-  object: CRMObject;
-  onUpdate: (data: { name: string; plural_name: string; description: string }) => Promise<void>;
-  isUpdating: boolean;
-}) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [name, setName] = useState(object.name);
-  const [pluralName, setPluralName] = useState(object.plural_name);
-  const [description, setDescription] = useState(object.description || "");
-
-  const handleSave = async () => {
-    await onUpdate({ name, plural_name: pluralName, description });
-    setIsEditing(false);
-  };
-
-  const handleCancel = () => {
-    setName(object.name);
-    setPluralName(object.plural_name);
-    setDescription(object.description || "");
-    setIsEditing(false);
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* Basic Info */}
-      <div className="bg-muted/50 border border-border rounded-xl p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-          <h3 className="text-lg font-semibold text-foreground">Basic Information</h3>
-          {!isEditing ? (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm bg-accent hover:bg-accent text-foreground rounded-lg transition-colors"
-            >
-              <Edit2 className="h-4 w-4" />
-              Edit
-            </button>
-          ) : (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleCancel}
-                className="flex items-center gap-1 px-3 py-1.5 text-sm border border-border text-foreground rounded-lg hover:bg-accent transition-colors"
-              >
-                <X className="h-4 w-4" />
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={isUpdating}
-                className="flex items-center gap-1 px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 text-foreground rounded-lg transition-colors"
-              >
-                <Save className="h-4 w-4" />
-                {isUpdating ? "Saving..." : "Save"}
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div className="grid grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-muted-foreground mb-2">
-              Name (singular)
-            </label>
-            {isEditing ? (
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
-            ) : (
-              <p className="text-foreground">{object.name}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-muted-foreground mb-2">
-              Name (plural)
-            </label>
-            {isEditing ? (
-              <input
-                type="text"
-                value={pluralName}
-                onChange={(e) => setPluralName(e.target.value)}
-                className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
-            ) : (
-              <p className="text-foreground">{object.plural_name}</p>
-            )}
-          </div>
-
-          <div className="col-span-2">
-            <label className="block text-sm font-medium text-muted-foreground mb-2">
-              Description
-            </label>
-            {isEditing ? (
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={2}
-                className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
-              />
-            ) : (
-              <p className="text-foreground">{object.description || "No description"}</p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Object Type */}
-      <div className="bg-muted/50 border border-border rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-foreground mb-4">Object Type</h3>
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-purple-500/20 rounded-lg text-purple-400">
-            {objectTypeIcons[object.object_type as CRMObjectType] || objectTypeIcons.custom}
-          </div>
-          <div>
-            <p className="text-foreground font-medium capitalize">{object.object_type}</p>
-            <p className="text-sm text-muted-foreground">
-              {object.is_system ? "System object (cannot be changed)" : "Custom object"}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Statistics */}
-      <div className="bg-muted/50 border border-border rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-foreground mb-4">Statistics</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="p-4 bg-accent/30 rounded-lg">
-            <p className="text-2xl font-bold text-foreground">{object.record_count}</p>
-            <p className="text-sm text-muted-foreground">Records</p>
-          </div>
-          <div className="p-4 bg-accent/30 rounded-lg">
-            <p className="text-2xl font-bold text-foreground">{object.attributes?.length || 0}</p>
-            <p className="text-sm text-muted-foreground">Attributes</p>
-          </div>
-          <div className="p-4 bg-accent/30 rounded-lg">
-            <p className="text-2xl font-bold text-foreground">
-              {new Date(object.created_at).toLocaleDateString()}
-            </p>
-            <p className="text-sm text-muted-foreground">Created</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Appearance Tab Content
-function AppearanceTab({
-  object,
-  onUpdate,
-  isUpdating,
-}: {
-  object: CRMObject;
-  onUpdate: (data: { color?: string; icon?: string }) => Promise<void>;
-  isUpdating: boolean;
-}) {
-  const [color, setColor] = useState(object.color || "#a855f7");
-
-  const handleColorChange = async (newColor: string) => {
-    setColor(newColor);
-    await onUpdate({ color: newColor });
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* Color */}
-      <div className="bg-muted/50 border border-border rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-foreground mb-4">Object Color</h3>
-        <p className="text-sm text-muted-foreground mb-4">
-          Choose a color to identify this object throughout the CRM
-        </p>
-        <div className="flex items-center gap-4">
-          <div
-            className="w-16 h-16 rounded-xl flex items-center justify-center"
-            style={{ backgroundColor: color }}
-          >
-            {objectTypeIcons[object.object_type as CRMObjectType] || objectTypeIcons.custom}
-          </div>
-          <ColorPicker value={color} onChange={handleColorChange} size="lg" />
-        </div>
-      </div>
-
-      {/* Icon */}
-      <div className="bg-muted/50 border border-border rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-foreground mb-4">Object Icon</h3>
-        <p className="text-sm text-muted-foreground mb-4">
-          Icon is determined by the object type and cannot be changed
-        </p>
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-accent rounded-lg text-muted-foreground">
-            {objectTypeIcons[object.object_type as CRMObjectType] || objectTypeIcons.custom}
-          </div>
-          <span className="text-foreground capitalize">{object.object_type} icon</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Attributes Tab Content
-function AttributesTab({ objectId }: { objectId: string }) {
-  const { currentWorkspace } = useWorkspace();
-  const workspaceId = currentWorkspace?.id || null;
-
-  const {
-    attributes,
-    isLoading,
-    createAttribute,
-    updateAttribute,
-    deleteAttribute,
-    isCreating,
-  } = useCRMAttributes(workspaceId, objectId);
-
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingAttribute, setEditingAttribute] = useState<CRMAttribute | null>(null);
-
-  const handleCreate = async (data: {
-    name: string;
-    attribute_type: CRMAttributeType;
-    description?: string;
-    is_required: boolean;
-    is_unique: boolean;
-    config?: Record<string, unknown>;
-  }) => {
-    await createAttribute(data);
-  };
-
-  const handleDelete = async (attribute: CRMAttribute) => {
-    await deleteAttribute(attribute.id);
-  };
-
-  const handleReorder = (reorderedAttributes: CRMAttribute[]) => {
-    console.log("Reorder attributes:", reorderedAttributes.map((a) => a.id));
-  };
-
-  return (
-    <div className="space-y-4">
-      <AttributeList
-        attributes={attributes}
-        onReorder={handleReorder}
-        onEdit={setEditingAttribute}
-        onDelete={handleDelete}
-        onAdd={() => setShowCreateModal(true)}
-        isLoading={isLoading}
-      />
-
-      <CreateAttributeModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onCreate={handleCreate}
-        isCreating={isCreating}
-        workspaceId={workspaceId}
-      />
-    </div>
-  );
-}
-
-// Integrations Tab Content
 function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1280,251 +1004,41 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
   );
 }
 
-type SettingsSection = "objects" | "integrations";
-
-function CRMSettingsPageContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const { user, logout } = useAuth();
+function CRMIntegrationsContent() {
+  const t = useTranslations("settingsCrm");
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || null;
 
-  const {
-    objects,
-    isLoading,
-    updateObject,
-    deleteObject,
-    isUpdating,
-    isDeleting,
-  } = useCRMObjects(workspaceId);
-
-  const [selectedSection, setSelectedSection] = useState<SettingsSection>("objects");
-  const [selectedObject, setSelectedObject] = useState<CRMObject | null>(null);
-  const [activeTab, setActiveTab] = useState<SettingsTab>("configuration");
-
-  // Check URL for section parameter
-  useEffect(() => {
-    const section = searchParams.get("section");
-    if (section === "integrations") {
-      setSelectedSection("integrations");
-    }
-  }, [searchParams]);
-
-  // Auto-select first object when switching to objects section
-  useEffect(() => {
-    if (selectedSection === "objects" && !selectedObject && objects.length > 0 && !isLoading) {
-      setSelectedObject(objects[0]);
-    }
-  }, [selectedSection, selectedObject, objects, isLoading]);
-
-  const handleUpdateObject = async (data: Record<string, unknown>) => {
-    if (selectedObject) {
-      await updateObject({ objectId: selectedObject.id, data });
-    }
-  };
-
-  const handleDeleteObject = async () => {
-    if (!selectedObject) return;
-    if (selectedObject.is_system) {
-      alert("System objects cannot be deleted");
-      return;
-    }
-    if (confirm("Delete this object and all its records?")) {
-      await deleteObject(selectedObject.id);
-      setSelectedObject(objects.find((o) => o.id !== selectedObject.id) || null);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background">
-<div className="flex">
-          <div className="w-64 bg-muted/30 border-r border-border p-4">
-            <div className="animate-pulse space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-14 bg-muted rounded-lg" />
-              ))}
-            </div>
-          </div>
-          <div className="flex-1 p-8">
-            <div className="animate-pulse space-y-4">
-              <div className="h-20 bg-muted rounded-xl" />
-              <div className="h-64 bg-muted rounded-xl" />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-background">
-<div className="flex">
-        {/* Sidebar */}
-        <div className="w-64 flex flex-col bg-muted/30 border-r border-border">
-        {/* Header */}
-        <div className="p-4 border-b border-border">
-          <Breadcrumb
-            items={[
-              { label: "CRM", href: "/crm" },
-              { label: "Settings" },
-            ]}
-            className="mb-3"
-          />
-          <h1 className="text-lg font-bold text-foreground">CRM Settings</h1>
-        </div>
-
-        {/* Section Navigation */}
-        <div className="p-2 border-b border-border">
-          <button
-            onClick={() => setSelectedSection("objects")}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
-              selectedSection === "objects"
-                ? "bg-purple-500/20 text-foreground"
-                : "text-foreground hover:bg-accent/50"
-            }`}
-          >
-            <Database className="h-5 w-5 text-purple-400" />
-            <div className="flex-1">
-              <div className="font-medium">Objects</div>
-              <div className="text-xs text-muted-foreground">Configure CRM objects</div>
-            </div>
-          </button>
-          <button
-            onClick={() => setSelectedSection("integrations")}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors mt-1 ${
-              selectedSection === "integrations"
-                ? "bg-purple-500/20 text-foreground"
-                : "text-foreground hover:bg-accent/50"
-            }`}
-          >
-            <Link2 className="h-5 w-5 text-blue-400" />
-            <div className="flex-1">
-              <div className="font-medium">Integrations</div>
-              <div className="text-xs text-muted-foreground">Google, Slack, etc.</div>
-            </div>
-          </button>
-        </div>
-
-        {/* Object list (only when objects section is selected) */}
-        {selectedSection === "objects" && (
-          <div className="flex-1 overflow-y-auto p-2 space-y-1">
-            {objects.map((object) => {
-              const icon =
-                objectTypeIcons[object.object_type as CRMObjectType] || objectTypeIcons.custom;
-              const isSelected = selectedObject?.id === object.id;
-
-              return (
-                <button
-                  key={object.id}
-                  onClick={() => {
-                    setSelectedObject(object);
-                    setActiveTab("configuration");
-                  }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
-                    isSelected
-                      ? "bg-accent/50 text-foreground"
-                      : "text-foreground hover:bg-accent/30"
-                  }`}
-                >
-                  <div
-                    className={`p-1.5 rounded-lg ${isSelected ? "text-purple-400" : "text-muted-foreground"}`}
-                    style={{
-                      backgroundColor: object.color ? `${object.color}20` : undefined,
-                    }}
-                  >
-                    {icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">{object.name}</div>
-                    <div className="text-xs text-muted-foreground">{object.record_count} records</div>
-                  </div>
-                  {object.is_system && (
-                    <span className="px-1.5 py-0.5 bg-accent rounded text-xs text-muted-foreground">
-                      System
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {selectedSection === "integrations" ? (
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="mb-6">
-              <h2 className="text-xl font-bold text-foreground">Integrations</h2>
-              <p className="text-muted-foreground mt-1">Connect external services to enhance your CRM</p>
-            </div>
-            {workspaceId && <IntegrationsTab workspaceId={workspaceId} />}
-          </div>
-        ) : selectedObject ? (
-          <>
-            {/* Object header with tabs */}
-            <ObjectSettingsNav
-              object={selectedObject}
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-            />
-
-            {/* Tab content */}
-            <div className="flex-1 overflow-y-auto p-6">
-              {activeTab === "configuration" && (
-                <ConfigurationTab
-                  object={selectedObject}
-                  onUpdate={handleUpdateObject}
-                  isUpdating={isUpdating}
-                />
-              )}
-
-              {activeTab === "appearance" && (
-                <AppearanceTab
-                  object={selectedObject}
-                  onUpdate={handleUpdateObject}
-                  isUpdating={isUpdating}
-                />
-              )}
-
-              {activeTab === "attributes" && (
-                <AttributesTab objectId={selectedObject.id} />
-              )}
-            </div>
-
-            {/* Delete object button */}
-            {!selectedObject.is_system && (
-              <div className="p-6 border-t border-border">
-                <button
-                  onClick={handleDeleteObject}
-                  disabled={isDeleting}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-600/30 text-red-400 rounded-lg transition-colors"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  {isDeleting ? "Deleting..." : "Delete Object"}
-                </button>
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <Settings className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground text-lg">Select an object to configure</p>
-            </div>
-          </div>
-        )}
-        </div>
-      </div>
-    </div>
+    <SettingsPage
+      title={t("integrations.title")}
+      description={t("integrations.description")}
+      width="wide"
+      breadcrumbs={[
+        { label: t("breadcrumbRoot"), href: "/settings" },
+        { label: t("title"), href: "/settings/crm" },
+        { label: t("integrations.title") },
+      ]}
+    >
+      {workspaceId ? (
+        <IntegrationsTab workspaceId={workspaceId} />
+      ) : (
+        <SettingsEmptyState
+          icon={<Settings className="h-8 w-8" aria-hidden />}
+          title={t("noWorkspace")}
+          description={t("noWorkspaceDetail")}
+        />
+      )}
+    </SettingsPage>
   );
 }
 
-export default function CRMSettingsPage() {
+export default function CRMIntegrationsSettingsPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center"><div className="animate-spin h-8 w-8 border-2 border-purple-500 border-t-transparent rounded-full" /></div>}>
-      <CRMSettingsPageContent />
-    </Suspense>
+    <AppAccessGuard appId="crm">
+      <Suspense fallback={<SettingsSkeleton rows={2} />}>
+        <CRMIntegrationsContent />
+      </Suspense>
+    </AppAccessGuard>
   );
 }

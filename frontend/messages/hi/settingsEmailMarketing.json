@@ -1,0 +1,32 @@
+{
+  "settingsEmailMarketing": {
+    "title": "ईमेल इंफ्रास्ट्रक्चर",
+    "description": "आउटबाउंड ईमेल के लिए sending domains, providers और subscription categories।",
+    "tabsLabel": "ईमेल इंफ्रास्ट्रक्चर सेक्शन",
+    "noWorkspace": "कोई workspace चुना नहीं गया",
+    "noWorkspaceDetail": "ईमेल इंफ्रास्ट्रक्चर प्रबंधित करने के लिए एक workspace चुनें।",
+    "loadFailed": "यह लोड नहीं हो सका",
+    "retry": "फिर कोशिश करें",
+    "domains": {
+      "tab": "Sending domains",
+      "description": "वे domains जिनसे आप भेजते हैं, उनका DNS सत्यापन और warming शेड्यूल।",
+      "add": "Domain जोड़ें",
+      "emptyTitle": "कोई sending domain नहीं",
+      "emptyDetail": "पहला campaign भेजने से पहले एक domain जोड़ें और उसके DNS रिकॉर्ड सत्यापित करें।"
+    },
+    "providers": {
+      "tab": "Providers",
+      "description": "वे सेवाएँ जो आपका मेल वास्तव में पहुँचाती हैं — SES, SendGrid, SMTP।",
+      "add": "Provider जोड़ें",
+      "emptyTitle": "कोई ईमेल provider नहीं",
+      "emptyDetail": "मेल वास्तव में provider ही पहुँचाता है। इसके बिना campaigns नहीं भेजे जा सकते।"
+    },
+    "categories": {
+      "tab": "श्रेणियाँ",
+      "description": "Subscription श्रेणियाँ प्राप्तकर्ताओं को यह चुनने देती हैं कि वे कौन-से ईमेल चाहते हैं।",
+      "add": "श्रेणी जोड़ें",
+      "emptyTitle": "कोई subscription श्रेणी नहीं",
+      "emptyDetail": "श्रेणियों से प्राप्तकर्ता एक तरह के ईमेल से unsubscribe कर सकते हैं, बाकी बने रहते हैं।"
+    }
+  }
+}

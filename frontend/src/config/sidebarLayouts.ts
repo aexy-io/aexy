@@ -147,7 +147,7 @@ const serviceDeskItems: SidebarItemConfig[] = [
 const emailItems: SidebarItemConfig[] = [
     { href: "/email-marketing/campaigns", label: "Campaigns", icon: Send },
     { href: "/email-marketing/templates", label: "Templates", icon: FileCode },
-    { href: "/email-marketing/settings", label: "Settings", icon: Settings },
+    { href: "/settings/email-marketing", label: "Settings", icon: Settings },
 ];
 
 const bookingItems: SidebarItemConfig[] = [

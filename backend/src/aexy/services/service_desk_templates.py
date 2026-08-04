@@ -5,7 +5,6 @@ shared ``TemplateService`` (Jinja2 ``{{var}}``). If Ops hasn't customised a
 template yet, sends fall back to the built-in default without writing a row —
 so nothing breaks before customisation, and editing simply upserts the row.
 
-See ``prds/BIMAPLAN_SERVICE_DESK_PLAN.md`` §7.
 """
 
 from uuid import uuid4
@@ -23,16 +22,17 @@ TEMPLATES: dict[str, dict] = {
         "subject": "{{display_id}} {{subject}}",
         "body": (
             "Dear {{requester_name}},\n\n"
-            "Thank you for writing to Bimaplan Operations. "
+            "Thank you for writing to {{desk_name}}. "
             "Your request has been logged as Ticket #{{display_id}}.\n\n"
             "Our team will review this and get back to you at the earliest. "
             "Please quote the Ticket ID in any further correspondence on this matter.\n\n"
-            "Regards,\nBimaplan Operations"
+            "Regards,\n{{desk_name}}"
         ),
         "vars": [
             {"name": "requester_name", "default": "there"},
             {"name": "display_id", "default": ""},
             {"name": "subject", "default": "Your request"},
+            {"name": "desk_name", "default": "our support team"},
         ],
     },
     "closure": {
@@ -46,13 +46,14 @@ TEMPLATES: dict[str, dict] = {
             "Total Time Taken: {{overall_days}} days\n\n"
             "If this does not fully address your concern, simply reply to this email "
             "and the ticket will be reopened.\n\n"
-            "Regards,\nBimaplan Operations"
+            "Regards,\n{{desk_name}}"
         ),
         "vars": [
             {"name": "requester_name", "default": "there"},
             {"name": "display_id", "default": ""},
             {"name": "closure_note", "default": "Resolved."},
             {"name": "overall_days", "default": "0"},
+            {"name": "desk_name", "default": "our support team"},
         ],
     },
     "digest": {
@@ -62,9 +63,10 @@ TEMPLATES: dict[str, dict] = {
         "body": (
             "Hi {{recipient_name}},\n\n"
             "Here is today's snapshot of open tickets {{scope}}:\n"
-            "Total Open: {{total_open}} | Breaching (>2 working days in current stage): {{breaching}}\n\n"
+            "Total Open: {{total_open}} | "
+            "Breaching (over {{breach_days}} working days in current stage): {{breaching}}\n\n"
             "{{tickets_block}}\n\n"
-            "Bimaplan Service Desk (auto-generated)"
+            "{{desk_name}} (auto-generated)"
         ),
         "vars": [
             {"name": "recipient_name", "default": "there"},
@@ -73,9 +75,33 @@ TEMPLATES: dict[str, dict] = {
             {"name": "breaching", "default": "0"},
             {"name": "tickets_block", "default": ""},
             {"name": "date", "default": ""},
+            {"name": "desk_name", "default": "Service Desk"},
+            # The threshold is per workspace now, so the copy can't hardcode "2"
+            # — a digest that says "over 2 working days" while the desk is set to
+            # 3 is worse than no number at all.
+            {"name": "breach_days", "default": "2"},
         ],
     },
 }
+
+
+async def desk_name(db: AsyncSession, workspace_id: str) -> str:
+    """The name the desk signs its mail with.
+
+    Defaults to the workspace's own name rather than a hardcoded company name, which
+    is what the built-in copy used to say — every other company sent
+    another company's branded acknowledgements until someone edited three templates.
+    Overridable via ``Workspace.settings["service_desk"]["desk_name"]``.
+    """
+    from aexy.models.workspace import Workspace
+
+    ws = await db.get(Workspace, workspace_id)
+    if ws is None:
+        return "Service Desk"
+    configured = ((ws.settings or {}).get("service_desk") or {}).get("desk_name")
+    if isinstance(configured, str) and configured.strip():
+        return configured.strip()
+    return ws.name or "Service Desk"
 
 
 def _transient(defn: dict) -> EmailTemplate:
@@ -102,6 +128,11 @@ async def render_sd(
     tmpl = await ts.get_template_by_slug(workspace_id, defn["slug"])
     if tmpl is None:
         tmpl = _transient(defn)  # not persisted — built-in default
+    # Supplied for every template rather than per call site: a customised
+    # template can reference {{desk_name}} even if the caller didn't think to
+    # pass it, and an unresolved merge tag in customer-facing mail is worse than
+    # a redundant lookup.
+    context = {"desk_name": await desk_name(db, workspace_id), **context}
     subject, html, text = ts.render_template(tmpl, context)
     return subject, (text or html)
 

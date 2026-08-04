@@ -1,10 +1,16 @@
 "use client";
 
+/**
+ * Email infrastructure — sending domains, providers and subscription categories.
+ *
+ * Moved here from `/email-marketing/settings`. It was the only place in the app
+ * where "Settings" meant a page outside `/settings`, and its own back button
+ * pointed at `/settings` — so the page already believed it belonged here.
+ */
+
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  ChevronLeft,
   Globe,
   Zap,
   Plus,
@@ -29,12 +35,81 @@ import {
   ChevronUp,
   ExternalLink,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAuth } from "@/hooks/useAuth";
 import { useSendingDomains, useEmailProviders, useSubscriptionCategories } from "@/hooks/useEmailMarketing";
 import { SendingDomain, EmailProvider, SubscriptionCategory, DNSRecord } from "@/lib/api";
+import { AppAccessGuard } from "@/components/guards/AppAccessGuard";
+import {
+  SettingsEmptyState,
+  SettingsPage,
+  SettingsSection,
+} from "@/components/settings/SettingsPrimitives";
+import { cn } from "@/lib/utils";
 
 type TabType = "domains" | "providers" | "categories";
+
+/**
+ * The error / spinner / empty triple each of the three tabs used to carry its own
+ * copy of, differing only in the noun and the icon. Each empty state also
+ * repeated the page's primary action as a hardcoded sky-blue button, so the same
+ * "Add domain" appeared twice on screen in two different colours.
+ */
+function TabPlaceholder({
+  error,
+  isLoading,
+  icon,
+  title,
+  description,
+  onRetry,
+  action,
+}: {
+  error: unknown;
+  isLoading: boolean;
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  onRetry: () => void;
+  action: React.ReactNode;
+}) {
+  const t = useTranslations("settingsEmailMarketing");
+
+  if (error) {
+    return (
+      <SettingsSection>
+        <SettingsEmptyState
+          icon={<AlertCircle className="h-8 w-8 text-destructive" aria-hidden />}
+          title={t("loadFailed")}
+          action={
+            <button
+              onClick={onRetry}
+              className="rounded-md border border-border px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-accent"
+            >
+              {t("retry")}
+            </button>
+          }
+        />
+      </SettingsSection>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <SettingsSection>
+        <div className="flex justify-center py-8" aria-busy="true">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden />
+        </div>
+      </SettingsSection>
+    );
+  }
+
+  return (
+    <SettingsSection>
+      <SettingsEmptyState icon={icon} title={title} description={description} action={action} />
+    </SettingsSection>
+  );
+}
 
 function DNSRecordRow({
   record,
@@ -557,8 +632,8 @@ function CategoryCard({
   );
 }
 
-export default function EmailSettingsPage() {
-  const router = useRouter();
+function EmailSettingsContent() {
+  const t = useTranslations("settingsEmailMarketing");
   const { currentWorkspace } = useWorkspace();
   useAuth(); // Auth check
   const workspaceId = currentWorkspace?.id || null;
@@ -792,124 +867,107 @@ export default function EmailSettingsPage() {
 
   if (!currentWorkspace) {
     return (
-      <div className="min-h-screen bg-background">
-<div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-          <div className="text-center">
-            <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-foreground mb-2">No Workspace Selected</h2>
-            <p className="text-muted-foreground">Please select a workspace to manage email settings.</p>
-          </div>
-        </div>
-      </div>
+      <SettingsPage title={t("title")} description={t("description")} width="wide">
+        <SettingsSection>
+          <SettingsEmptyState
+            icon={<AlertCircle className="h-8 w-8" aria-hidden />}
+            title={t("noWorkspace")}
+            description={t("noWorkspaceDetail")}
+          />
+        </SettingsSection>
+      </SettingsPage>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-<div className="p-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="flex items-center gap-4 mb-6">
-            <button
-              onClick={() => router.push("/settings")}
-              className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            <div className="flex-1">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-sky-500/20 rounded-lg">
-                  <Mail className="h-5 w-5 text-sky-400" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-foreground">Email Settings</h1>
-                  <p className="text-sm text-muted-foreground">Configure email infrastructure and providers</p>
-                </div>
-              </div>
-            </div>
-          </div>
+  // The add button belongs to whichever tab is open — one primary action in the
+  // page header rather than a second one repeated inside each tab body.
+  const tabAction = {
+    domains: {
+      label: t("domains.add"),
+      description: t("domains.description"),
+      onClick: () => setShowAddDomain(true),
+    },
+    providers: {
+      label: t("providers.add"),
+      description: t("providers.description"),
+      onClick: () => setShowAddProvider(true),
+    },
+    categories: {
+      label: t("categories.add"),
+      description: t("categories.description"),
+      onClick: () => setShowAddCategory(true),
+    },
+  }[activeTab];
 
-          {/* Tabs */}
-          <div className="flex items-center gap-1 p-1 bg-background/50 border border-border rounded-xl mb-6 w-fit">
-            <button
-              onClick={() => setActiveTab("domains")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
-                activeTab === "domains"
-                  ? "bg-muted text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Globe className="h-4 w-4" />
-              Sending Domains ({domains.length})
-            </button>
-            <button
-              onClick={() => setActiveTab("providers")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
-                activeTab === "providers"
-                  ? "bg-muted text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Zap className="h-4 w-4" />
-              Providers ({providers.length})
-            </button>
-            <button
-              onClick={() => setActiveTab("categories")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
-                activeTab === "categories"
-                  ? "bg-muted text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Tags className="h-4 w-4" />
-              Categories ({categories.length})
-            </button>
+  const tabs: { id: TabType; label: string; icon: React.ReactNode; count: number }[] = [
+    { id: "domains", label: t("domains.tab"), icon: <Globe className="h-4 w-4" />, count: domains.length },
+    { id: "providers", label: t("providers.tab"), icon: <Zap className="h-4 w-4" />, count: providers.length },
+    { id: "categories", label: t("categories.tab"), icon: <Tags className="h-4 w-4" />, count: categories.length },
+  ];
+
+  return (
+    <>
+      <SettingsPage
+        title={t("title")}
+        description={tabAction.description}
+        width="wide"
+        actions={
+          <button
+            onClick={tabAction.onClick}
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            <Plus className="h-4 w-4" aria-hidden />
+            {tabAction.label}
+          </button>
+        }
+      >
+          {/* Scrolls on narrow screens rather than widening the page. */}
+          <div
+            role="tablist"
+            aria-label={t("tabsLabel")}
+            className="flex gap-1 overflow-x-auto border-b border-border"
+          >
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={cn(
+                  "-mb-px flex shrink-0 items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors",
+                  activeTab === tab.id
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:border-border hover:text-foreground"
+                )}
+              >
+                {tab.icon}
+                {tab.label}
+                <span className="rounded bg-muted px-1.5 text-xs text-muted-foreground">{tab.count}</span>
+              </button>
+            ))}
           </div>
 
           {/* Domains Tab */}
           {activeTab === "domains" && (
             <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <p className="text-muted-foreground">
-                  Manage your sending domains and warming schedules
-                </p>
-                <button
-                  onClick={() => setShowAddDomain(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Domain
-                </button>
-              </div>
-
-              {domainsError ? (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 text-center">
-                  <AlertCircle className="h-8 w-8 text-red-400 mx-auto mb-2" />
-                  <p className="text-red-400">Failed to load domains</p>
-                  <button
-                    onClick={() => refetchDomains()}
-                    className="mt-2 text-sm text-sky-400 hover:text-sky-300"
-                  >
-                    Try Again
-                  </button>
-                </div>
-              ) : domainsLoading ? (
-                <div className="bg-background/50 border border-border rounded-xl p-12 text-center">
-                  <Loader2 className="h-8 w-8 text-muted-foreground animate-spin mx-auto" />
-                </div>
-              ) : domains.length === 0 ? (
-                <div className="bg-background/50 border border-border rounded-xl p-12 text-center">
-                  <Globe className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-foreground mb-2">No sending domains</h3>
-                  <p className="text-muted-foreground mb-4">Add a domain to start sending emails</p>
-                  <button
-                    onClick={() => setShowAddDomain(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add Domain
-                  </button>
-                </div>
+              {domainsError || domainsLoading || domains.length === 0 ? (
+                <TabPlaceholder
+                  error={domainsError}
+                  isLoading={domainsLoading}
+                  onRetry={() => refetchDomains()}
+                  icon={<Globe className="h-8 w-8" aria-hidden />}
+                  title={t("domains.emptyTitle")}
+                  description={t("domains.emptyDetail")}
+                  action={
+                    <button
+                      onClick={() => setShowAddDomain(true)}
+                      className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+                    >
+                      <Plus className="h-4 w-4" aria-hidden />
+                      {t("domains.add")}
+                    </button>
+                  }
+                />
               ) : (
                 <div className="grid grid-cols-1 gap-4">
                   {domains.map((domain) => (
@@ -931,47 +989,24 @@ export default function EmailSettingsPage() {
           {/* Providers Tab */}
           {activeTab === "providers" && (
             <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <p className="text-muted-foreground">
-                  Configure email service providers for sending
-                </p>
-                <button
-                  onClick={() => setShowAddProvider(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Provider
-                </button>
-              </div>
-
-              {providersError ? (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 text-center">
-                  <AlertCircle className="h-8 w-8 text-red-400 mx-auto mb-2" />
-                  <p className="text-red-400">Failed to load providers</p>
-                  <button
-                    onClick={() => refetchProviders()}
-                    className="mt-2 text-sm text-sky-400 hover:text-sky-300"
-                  >
-                    Try Again
-                  </button>
-                </div>
-              ) : providersLoading ? (
-                <div className="bg-background/50 border border-border rounded-xl p-12 text-center">
-                  <Loader2 className="h-8 w-8 text-muted-foreground animate-spin mx-auto" />
-                </div>
-              ) : providers.length === 0 ? (
-                <div className="bg-background/50 border border-border rounded-xl p-12 text-center">
-                  <Zap className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-foreground mb-2">No email providers</h3>
-                  <p className="text-muted-foreground mb-4">Add a provider to start sending emails</p>
-                  <button
-                    onClick={() => setShowAddProvider(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add Provider
-                  </button>
-                </div>
+              {providersError || providersLoading || providers.length === 0 ? (
+                <TabPlaceholder
+                  error={providersError}
+                  isLoading={providersLoading}
+                  onRetry={() => refetchProviders()}
+                  icon={<Zap className="h-8 w-8" aria-hidden />}
+                  title={t("providers.emptyTitle")}
+                  description={t("providers.emptyDetail")}
+                  action={
+                    <button
+                      onClick={() => setShowAddProvider(true)}
+                      className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+                    >
+                      <Plus className="h-4 w-4" aria-hidden />
+                      {t("providers.add")}
+                    </button>
+                  }
+                />
               ) : (
                 <div className="grid grid-cols-1 gap-4">
                   {providers.map((provider) => (
@@ -995,47 +1030,24 @@ export default function EmailSettingsPage() {
           {/* Categories Tab */}
           {activeTab === "categories" && (
             <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <p className="text-muted-foreground">
-                  Manage subscription categories for your emails
-                </p>
-                <button
-                  onClick={() => setShowAddCategory(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Category
-                </button>
-              </div>
-
-              {categoriesError ? (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 text-center">
-                  <AlertCircle className="h-8 w-8 text-red-400 mx-auto mb-2" />
-                  <p className="text-red-400">Failed to load categories</p>
-                  <button
-                    onClick={() => refetchCategories()}
-                    className="mt-2 text-sm text-sky-400 hover:text-sky-300"
-                  >
-                    Try Again
-                  </button>
-                </div>
-              ) : categoriesLoading ? (
-                <div className="bg-background/50 border border-border rounded-xl p-12 text-center">
-                  <Loader2 className="h-8 w-8 text-muted-foreground animate-spin mx-auto" />
-                </div>
-              ) : categories.length === 0 ? (
-                <div className="bg-background/50 border border-border rounded-xl p-12 text-center">
-                  <Tags className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-foreground mb-2">No subscription categories</h3>
-                  <p className="text-muted-foreground mb-4">Create categories to let users manage their email preferences</p>
-                  <button
-                    onClick={() => setShowAddCategory(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add Category
-                  </button>
-                </div>
+              {categoriesError || categoriesLoading || categories.length === 0 ? (
+                <TabPlaceholder
+                  error={categoriesError}
+                  isLoading={categoriesLoading}
+                  onRetry={() => refetchCategories()}
+                  icon={<Tags className="h-8 w-8" aria-hidden />}
+                  title={t("categories.emptyTitle")}
+                  description={t("categories.emptyDetail")}
+                  action={
+                    <button
+                      onClick={() => setShowAddCategory(true)}
+                      className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+                    >
+                      <Plus className="h-4 w-4" aria-hidden />
+                      {t("categories.add")}
+                    </button>
+                  }
+                />
               ) : (
                 <div className="grid grid-cols-1 gap-4">
                   {categories.map((category) => (
@@ -1054,8 +1066,7 @@ export default function EmailSettingsPage() {
               )}
             </div>
           )}
-        </div>
-      </div>
+      </SettingsPage>
 
       {/* Add Domain Modal */}
       {showAddDomain && (
@@ -1396,6 +1407,14 @@ export default function EmailSettingsPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
+  );
+}
+
+export default function EmailMarketingSettingsPage() {
+  return (
+    <AppAccessGuard appId="email_marketing">
+      <EmailSettingsContent />
+    </AppAccessGuard>
   );
 }

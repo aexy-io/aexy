@@ -1,0 +1,8 @@
+{
+  "settingsOncall": {
+    "title": "On-call",
+    "description": "Who responds to incidents for {team}, and when. People are notified before their shift begins.",
+    "fallbackTeam": "this team",
+    "configure": "Configure"
+  }
+}

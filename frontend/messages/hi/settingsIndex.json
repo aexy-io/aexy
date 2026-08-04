@@ -1,0 +1,10 @@
+{
+  "settingsIndex": {
+    "title": "सेटिंग्स",
+    "description": "अपना वर्कस्पेस, इंटीग्रेशन और खाता कॉन्फ़िगर करें।",
+    "searchPlaceholder": "सभी सेटिंग्स खोजें…",
+    "clear": "खोज साफ़ करें",
+    "noMatches": "“{query}” से कोई सेटिंग मेल नहीं खाती।",
+    "matches": "“{query}” से {count, plural, one {# सेटिंग} other {# सेटिंग्स}} मेल खाती हैं।"
+  }
+}

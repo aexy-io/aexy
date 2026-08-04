@@ -1,0 +1,6 @@
+{
+  "settingsIntegrations": {
+    "title": "Integrations",
+    "description": "Connect Jira, Linear, Slack and other external tools."
+  }
+}

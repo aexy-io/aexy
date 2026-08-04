@@ -1,4 +1,4 @@
-"""Bimaplan Service Desk API — master data + ticket listing/manual logging.
+"""Service Desk API — taxonomy, master data, ticket listing/manual logging.
 
 Mounted with ``require_app_access("service_desk")``. Email intake does NOT go
 through this router — it is driven by the inbound webhook / Gmail sync hooks
@@ -12,20 +12,29 @@ from aexy.api.developers import get_current_developer
 from aexy.core.database import get_db
 from aexy.models.developer import Developer
 from aexy.schemas.service_desk import (
-    InsurerCreate,
-    InsurerResponse,
-    InsurerUpdate,
-    LOBCreate,
-    LOBResponse,
+    ApplyIndustryTemplateRequest,
+    ApplyIndustryTemplateResponse,
+    IndustryTemplateResponse,
+    RequestTypeCreate,
+    RequestTypeResponse,
+    RequestTypeUpdate,
+    StakeholderCreate,
+    StakeholderResponse,
+    StakeholderUpdate,
+    VendorCreate,
+    VendorResponse,
+    VendorUpdate,
+    ProductCreate,
+    ProductResponse,
     MailboxCreate,
     MailboxResponse,
     ConvertToTaskRequest,
     ConvertToTaskResponse,
     MailboxUpdate,
     ManualTicketCreate,
-    PartnerCreate,
-    PartnerResponse,
-    PartnerUpdate,
+    AccountCreate,
+    AccountResponse,
+    AccountUpdate,
     PendingWithUpdate,
     ServiceDeskDashboard,
     ServiceDeskSettings,
@@ -80,8 +89,86 @@ async def update_settings(workspace_id: str, data: ServiceDeskSettingsUpdate, db
         ai_classification_enabled=data.ai_classification_enabled,
         working_hours_start=data.working_hours_start,
         working_hours_end=data.working_hours_end,
+        ticket_prefix=data.ticket_prefix,
+        timezone=data.timezone,
+        breach_red_days=data.breach_red_days,
+        breach_amber_days=data.breach_amber_days,
+        digest_hours=data.digest_hours,
+        terminology=data.terminology,
+        desk_name=data.desk_name,
         developer_id=str(current.id),
     )
+
+
+# ------------------------------------------------------- industry templates
+
+@router.get("/industry-templates", response_model=list[IndustryTemplateResponse])
+async def list_industry_templates(workspace_id: str, _: Developer = Depends(get_current_developer)):
+    """The starting points a desk can be set up from.
+
+    Static catalogue — no workspace data is read, so any member may list them
+    (the picker is shown during first-run setup before anything is configured).
+    """
+    return ServiceDeskService.list_industry_templates()
+
+
+@router.post("/industry-templates/apply", response_model=ApplyIndustryTemplateResponse)
+async def apply_industry_template(
+    workspace_id: str,
+    data: ApplyIndustryTemplateRequest,
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(require_manage),
+):
+    return await ServiceDeskService(db).apply_industry_template(
+        workspace_id,
+        data.template_slug,
+        apply_terminology=data.apply_terminology,
+        create_departments=data.create_departments,
+        developer_id=str(current.id),
+    )
+
+
+# ------------------------------------------------------------------ taxonomy
+
+@router.get("/stakeholders", response_model=list[StakeholderResponse])
+async def list_stakeholders(workspace_id: str, db: AsyncSession = Depends(get_db), _: Developer = Depends(get_current_developer)):
+    """Readable by any member: the ticket UI needs the labels to render at all."""
+    return await ServiceDeskService(db).list_stakeholders(workspace_id)
+
+
+@router.post("/stakeholders", response_model=StakeholderResponse, status_code=status.HTTP_201_CREATED)
+async def create_stakeholder(workspace_id: str, data: StakeholderCreate, db: AsyncSession = Depends(get_db), _: Developer = Depends(require_manage)):
+    return await ServiceDeskService(db).create_stakeholder(workspace_id, data)
+
+
+@router.patch("/stakeholders/{stakeholder_id}", response_model=StakeholderResponse)
+async def update_stakeholder(workspace_id: str, stakeholder_id: str, data: StakeholderUpdate, db: AsyncSession = Depends(get_db), _: Developer = Depends(require_manage)):
+    return await ServiceDeskService(db).update_stakeholder(workspace_id, stakeholder_id, data)
+
+
+@router.delete("/stakeholders/{stakeholder_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_stakeholder(workspace_id: str, stakeholder_id: str, db: AsyncSession = Depends(get_db), _: Developer = Depends(require_manage)):
+    await ServiceDeskService(db).delete_stakeholder(workspace_id, stakeholder_id)
+
+
+@router.get("/request-types", response_model=list[RequestTypeResponse])
+async def list_request_types(workspace_id: str, db: AsyncSession = Depends(get_db), _: Developer = Depends(get_current_developer)):
+    return await ServiceDeskService(db).list_request_types(workspace_id)
+
+
+@router.post("/request-types", response_model=RequestTypeResponse, status_code=status.HTTP_201_CREATED)
+async def create_request_type(workspace_id: str, data: RequestTypeCreate, db: AsyncSession = Depends(get_db), _: Developer = Depends(require_manage)):
+    return await ServiceDeskService(db).create_request_type(workspace_id, data)
+
+
+@router.patch("/request-types/{request_type_id}", response_model=RequestTypeResponse)
+async def update_request_type(workspace_id: str, request_type_id: str, data: RequestTypeUpdate, db: AsyncSession = Depends(get_db), _: Developer = Depends(require_manage)):
+    return await ServiceDeskService(db).update_request_type(workspace_id, request_type_id, data)
+
+
+@router.delete("/request-types/{request_type_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_request_type(workspace_id: str, request_type_id: str, db: AsyncSession = Depends(get_db), _: Developer = Depends(require_manage)):
+    await ServiceDeskService(db).delete_request_type(workspace_id, request_type_id)
 
 
 @router.get("/templates", response_model=list[ServiceDeskTemplate])
@@ -107,65 +194,65 @@ async def update_template(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown template")
 
 
-# ------------------------------------------------------------------ partners
+# ------------------------------------------------------------------ accounts
 
-@router.get("/partners", response_model=list[PartnerResponse])
-async def list_partners(workspace_id: str, db: AsyncSession = Depends(get_db), _: Developer = Depends(get_current_developer)):
-    return await ServiceDeskService(db).list_partners(workspace_id)
-
-
-@router.post("/partners", response_model=PartnerResponse, status_code=status.HTTP_201_CREATED)
-async def create_partner(workspace_id: str, data: PartnerCreate, db: AsyncSession = Depends(get_db), _: Developer = Depends(require_manage)):
-    return await ServiceDeskService(db).create_partner(workspace_id, data)
+@router.get("/accounts", response_model=list[AccountResponse])
+async def list_accounts(workspace_id: str, db: AsyncSession = Depends(get_db), _: Developer = Depends(get_current_developer)):
+    return await ServiceDeskService(db).list_accounts(workspace_id)
 
 
-@router.patch("/partners/{partner_id}", response_model=PartnerResponse)
-async def update_partner(workspace_id: str, partner_id: str, data: PartnerUpdate, db: AsyncSession = Depends(get_db), _: Developer = Depends(require_manage)):
-    return await ServiceDeskService(db).update_partner(workspace_id, partner_id, data)
+@router.post("/accounts", response_model=AccountResponse, status_code=status.HTTP_201_CREATED)
+async def create_account(workspace_id: str, data: AccountCreate, db: AsyncSession = Depends(get_db), _: Developer = Depends(require_manage)):
+    return await ServiceDeskService(db).create_account(workspace_id, data)
 
 
-@router.delete("/partners/{partner_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_partner(workspace_id: str, partner_id: str, db: AsyncSession = Depends(get_db), _: Developer = Depends(require_manage)):
-    await ServiceDeskService(db).delete_partner(workspace_id, partner_id)
+@router.patch("/accounts/{account_id}", response_model=AccountResponse)
+async def update_account(workspace_id: str, account_id: str, data: AccountUpdate, db: AsyncSession = Depends(get_db), _: Developer = Depends(require_manage)):
+    return await ServiceDeskService(db).update_account(workspace_id, account_id, data)
 
 
-# ------------------------------------------------------------------ insurers
-
-@router.get("/insurers", response_model=list[InsurerResponse])
-async def list_insurers(workspace_id: str, db: AsyncSession = Depends(get_db), _: Developer = Depends(get_current_developer)):
-    return await ServiceDeskService(db).list_insurers(workspace_id)
+@router.delete("/accounts/{account_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_account(workspace_id: str, account_id: str, db: AsyncSession = Depends(get_db), _: Developer = Depends(require_manage)):
+    await ServiceDeskService(db).delete_account(workspace_id, account_id)
 
 
-@router.post("/insurers", response_model=InsurerResponse, status_code=status.HTTP_201_CREATED)
-async def create_insurer(workspace_id: str, data: InsurerCreate, db: AsyncSession = Depends(get_db), _: Developer = Depends(require_manage)):
-    return await ServiceDeskService(db).create_insurer(workspace_id, data)
+# ------------------------------------------------------------------ vendors
+
+@router.get("/vendors", response_model=list[VendorResponse])
+async def list_vendors(workspace_id: str, db: AsyncSession = Depends(get_db), _: Developer = Depends(get_current_developer)):
+    return await ServiceDeskService(db).list_vendors(workspace_id)
 
 
-@router.patch("/insurers/{insurer_id}", response_model=InsurerResponse)
-async def update_insurer(workspace_id: str, insurer_id: str, data: InsurerUpdate, db: AsyncSession = Depends(get_db), _: Developer = Depends(require_manage)):
-    return await ServiceDeskService(db).update_insurer(workspace_id, insurer_id, data)
+@router.post("/vendors", response_model=VendorResponse, status_code=status.HTTP_201_CREATED)
+async def create_vendor(workspace_id: str, data: VendorCreate, db: AsyncSession = Depends(get_db), _: Developer = Depends(require_manage)):
+    return await ServiceDeskService(db).create_vendor(workspace_id, data)
 
 
-@router.delete("/insurers/{insurer_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_insurer(workspace_id: str, insurer_id: str, db: AsyncSession = Depends(get_db), _: Developer = Depends(require_manage)):
-    await ServiceDeskService(db).delete_insurer(workspace_id, insurer_id)
+@router.patch("/vendors/{vendor_id}", response_model=VendorResponse)
+async def update_vendor(workspace_id: str, vendor_id: str, data: VendorUpdate, db: AsyncSession = Depends(get_db), _: Developer = Depends(require_manage)):
+    return await ServiceDeskService(db).update_vendor(workspace_id, vendor_id, data)
 
 
-# ------------------------------------------------------------------ LOBs
-
-@router.get("/lobs", response_model=list[LOBResponse])
-async def list_lobs(workspace_id: str, db: AsyncSession = Depends(get_db), _: Developer = Depends(get_current_developer)):
-    return await ServiceDeskService(db).list_lobs(workspace_id)
+@router.delete("/vendors/{vendor_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_vendor(workspace_id: str, vendor_id: str, db: AsyncSession = Depends(get_db), _: Developer = Depends(require_manage)):
+    await ServiceDeskService(db).delete_vendor(workspace_id, vendor_id)
 
 
-@router.post("/lobs", response_model=LOBResponse, status_code=status.HTTP_201_CREATED)
-async def create_lob(workspace_id: str, data: LOBCreate, db: AsyncSession = Depends(get_db), _: Developer = Depends(require_manage)):
-    return await ServiceDeskService(db).create_lob(workspace_id, data)
+# ------------------------------------------------------------------ products
+
+@router.get("/products", response_model=list[ProductResponse])
+async def list_products(workspace_id: str, db: AsyncSession = Depends(get_db), _: Developer = Depends(get_current_developer)):
+    return await ServiceDeskService(db).list_products(workspace_id)
 
 
-@router.delete("/lobs/{lob_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_lob(workspace_id: str, lob_id: str, db: AsyncSession = Depends(get_db), _: Developer = Depends(require_manage)):
-    await ServiceDeskService(db).delete_lob(workspace_id, lob_id)
+@router.post("/products", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
+async def create_product(workspace_id: str, data: ProductCreate, db: AsyncSession = Depends(get_db), _: Developer = Depends(require_manage)):
+    return await ServiceDeskService(db).create_product(workspace_id, data)
+
+
+@router.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_product(workspace_id: str, product_id: str, db: AsyncSession = Depends(get_db), _: Developer = Depends(require_manage)):
+    await ServiceDeskService(db).delete_product(workspace_id, product_id)
 
 
 # ------------------------------------------------------------------ mailboxes
@@ -223,7 +310,8 @@ async def change_pending_with(
     db: AsyncSession = Depends(get_db),
     current: Developer = Depends(get_current_developer),
 ):
-    return await ServiceDeskTicketService(db).change_pending_with(
+    service = ServiceDeskTicketService(db)
+    detail = await service.change_pending_with(
         workspace_id,
         ticket_id,
         data.pending_with,
@@ -231,6 +319,13 @@ async def change_pending_with(
         note=data.note,
         scope_developer_id=current.id,
     )
+    # Commit before the closure email goes out. `get_db` would otherwise commit
+    # only after this handler returns, so mail sent inside the service told the
+    # requester their ticket was resolved before that was durable — the same
+    # ordering the intake service already gets right.
+    await db.commit()
+    await service.flush_notifications()
+    return detail
 
 
 @router.post("/tickets/{ticket_id}/convert-to-task", response_model=ConvertToTaskResponse)

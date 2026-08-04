@@ -9,15 +9,15 @@
     },
     "stats": {
       "totalOpen": "खुले टिकट",
-      "breaching": "ब्रीचिंग (>2 दिन)",
+      "breaching": "ब्रीचिंग ({red}d से अधिक)",
       "stakeholders": "सक्रिय स्टेकहोल्डर"
     },
     "dashboard": {
       "matrixTitle": "स्टेकहोल्डर और उम्र के अनुसार खुले टिकट",
       "stakeholder": "किसके पास लंबित",
-      "col01": "0–1 दिन",
-      "col12": "1–2 दिन",
-      "colGt2": ">2 दिन",
+      "col01": "{amber}d से कम",
+      "col12": "{amber}–{red}d",
+      "colGt2": "{red}d से अधिक",
       "total": "कुल",
       "ticketsTitle": "खुले टिकट",
       "empty": "कोई खुला टिकट नहीं। नए ईमेल अनुरोध यहाँ अपने आप दिखाई देंगे।",
@@ -26,10 +26,10 @@
     "table": {
       "id": "टिकट",
       "subject": "विषय",
-      "lob": "LOB",
-      "partner": "पार्टनर",
+      "product": "उत्पाद",
+      "account": "खाता",
       "type": "प्रकार",
-      "kam": "असाइन किया गया KAM",
+      "owner": "स्वामी",
       "pendingWith": "किसके पास लंबित",
       "daysInStage": "स्टेज में कार्यदिवस",
       "overallAge": "कुल उम्र",
@@ -40,9 +40,9 @@
       "back": "डैशबोर्ड पर वापस",
       "requester": "अनुरोधकर्ता",
       "requestType": "अनुरोध प्रकार",
-      "lob": "LOB",
-      "partner": "पार्टनर",
-      "assignedKam": "असाइन किया गया KAM",
+      "product": "उत्पाद",
+      "account": "खाता",
+      "assignedOwner": "नियुक्त स्वामी",
       "pendingWith": "किसके पास लंबित",
       "changeTo": "यहाँ ले जाएं",
       "note": "नोट (वैकल्पिक)",
@@ -74,8 +74,8 @@
       "requesterName": "अनुरोधकर्ता का नाम",
       "requesterEmail": "अनुरोधकर्ता ईमेल",
       "type": "अनुरोध प्रकार",
-      "lob": "LOB",
-      "partner": "पार्टनर",
+      "product": "उत्पाद",
+      "account": "खाता",
       "none": "— कोई नहीं —",
       "create": "टिकट बनाएं",
       "creating": "बनाया जा रहा है…"
@@ -91,20 +91,20 @@
       "customised": "अनुकूलित"
     },
     "settings": {
-      "partners": "पार्टनर",
-      "insurers": "बीमाकर्ता",
-      "lobs": "लाइन ऑफ बिज़नेस",
+      "accounts": "खाते",
+      "vendors": "वेंडर",
+      "products": "उत्पाद",
       "mailboxes": "मेलबॉक्स",
       "name": "नाम",
       "domains": "डोमेन (कॉमा से अलग)",
-      "assignedKam": "असाइन किया गया KAM (developer id)",
+      "assignedOwner": "नियुक्त स्वामी",
       "address": "पता",
       "channel": "चैनल",
       "add": "जोड़ें",
       "delete": "हटाएं",
       "empty": "अभी यहाँ कुछ नहीं है।",
       "readOnly": "आपके पास मास्टर डेटा के लिए केवल-पढ़ने की पहुँच है। बदलाव के लिए वर्कस्पेस एडमिन या सर्विस डेस्क मैनेजर से कहें।",
-      "domainsHint": "जैसे abcfinance.com, abc.co"
+      "domainsHint": "उदा. acme.com, acme.co"
     },
     "noDepartment": "आप अभी किसी विभाग में नहीं हैं, इसलिए आपको कोई टिकट नहीं भेजा जा सकता। किसी एडमिन से Organization → Departments में जोड़ने को कहें।",
     "workingHours": {
@@ -116,6 +116,17 @@
       "invalid": "समाप्ति समय शुरुआत के बाद होना चाहिए",
       "save": "समय सहेजें",
       "saving": "सहेज रहे हैं…"
+    },
+    "deskIdentity": {
+      "title": "डेस्क पहचान और लक्ष्य",
+      "description": "Ticket id prefix, वह timezone जिसमें दिन की सीमाएँ तय होती हैं, और breach thresholds। ये पहले code में तय थे; दिखाए गए मान वही डिफ़ॉल्ट हैं जो बदलने तक लागू रहेंगे।",
+      "prefix": "Ticket prefix",
+      "timezone": "Timezone",
+      "amber": "Amber इसके बाद (दिन)",
+      "red": "Red इसके बाद (दिन)",
+      "prefixInvalid": "1–10 अक्षर या अंक, शुरुआत अक्षर से।",
+      "thresholdsInvalid": "Amber, red से कम दिनों का होना चाहिए, और दोनों शून्य से अधिक।",
+      "prefixWarning": "सेव करने पर हर मौजूदा ticket {prefix}-<number> के रूप में दिखेगा। पुराने prefix वाले उत्तर फिर भी सही thread में जुड़ेंगे।"
     }
   }
 }

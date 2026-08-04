@@ -28,8 +28,14 @@ import { StorageUsageCard } from "@/components/billing/StorageUsageCard";
 import { UsageTrendChart } from "@/components/billing/UsageTrendChart";
 import { InvoiceList } from "@/components/billing/InvoiceList";
 import { WorkspaceLLMUsageCard } from "@/components/code-insights";
+import { useTranslations } from "next-intl";
+import {
+  SettingsPage,
+  SettingsSkeleton,
+} from "@/components/settings/SettingsPrimitives";
 
 function BillingContent() {
+  const t = useTranslations("settingsBilling");
   const searchParams = useSearchParams();
   const { user } = useAuth();
   const { currentWorkspaceId, currentWorkspace } = useWorkspace();
@@ -138,11 +144,11 @@ function BillingContent() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Billing & Usage</h1>
-        <p className="text-muted-foreground text-sm mt-1">Manage your subscription, track usage, and view invoices</p>
-      </div>
+    <SettingsPage
+      title={t("title")}
+      description={t("description")}
+      width="wide"
+    >
 
       <div className="space-y-8">
         {/* Success Message */}
@@ -533,26 +539,12 @@ function BillingContent() {
           </p>
         </div>
       </div>
-    </div>
+    </SettingsPage>
   );
 }
 
 function BillingLoadingFallback() {
-  return (
-    <div className="space-y-6 animate-pulse">
-      <div>
-        <div className="h-6 w-40 bg-accent rounded mb-2" />
-        <div className="h-4 w-72 bg-accent rounded" />
-      </div>
-      <div className="h-28 bg-accent rounded-xl" />
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-24 bg-accent rounded-xl" />
-        ))}
-      </div>
-      <div className="h-64 bg-accent rounded-xl" />
-    </div>
-  );
+  return <SettingsSkeleton rows={3} />;
 }
 
 export default function BillingSettingsPage() {

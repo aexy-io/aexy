@@ -60,6 +60,8 @@
       "merge": "Merge",
       "merging": "Merge हो रहा है…",
       "confirmMerge": "Merge {ghost} → {target}? सारी activity rows move हो जाएँगी और ghost row delete हो जाएगा।"
-    }
+    },
+    "adminLink": "एडमिन",
+    "breadcrumbParent": "पहचान"
   }
 }

@@ -816,7 +816,7 @@ function InboxPageContent() {
                 </button>
               )}
               <button
-                onClick={() => router.push("/crm/settings/integrations")}
+                onClick={() => router.push("/settings/crm/integrations")}
                 className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
               >
                 Settings

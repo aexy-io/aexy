@@ -15,6 +15,11 @@ import {
   Save,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { useTranslations } from "next-intl";
+import {
+  SettingsPage,
+  SettingsAccessDenied,
+} from "@/components/settings/SettingsPrimitives";
 
 interface PlanOverride {
   id: string;
@@ -71,6 +76,7 @@ const adminApi = {
 };
 
 export default function PlanOverridesPage() {
+  const t = useTranslations("settingsPlanOverrides");
   const queryClient = useQueryClient();
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("");
   const [editingOverride, setEditingOverride] =
@@ -141,35 +147,17 @@ export default function PlanOverridesPage() {
     saveMutation.mutate({ workspaceId: selectedWorkspaceId, data: cleaned });
   };
 
-  if (error) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">
-            Plan Overrides
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Platform admin access required
-          </p>
-        </div>
-        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-sm text-red-400">
-          You don&apos;t have permission to access this page. Only platform
-          admins can manage plan overrides.
-        </div>
-      </div>
-    );
-  }
+  // Platform-staff tooling: a workspace admin reaching this is not an
+  // error state, it is simply not their page.
+  if (error) return <SettingsAccessDenied title={t("denied.title")} detail={t("denied.body")} />;
+
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">
-          Plan Overrides
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Configure custom pricing, limits, and billing models per workspace
-        </p>
-      </div>
+    <SettingsPage
+      title={t("title")}
+      description={t("description")}
+      width="wide"
+    >
 
       {/* Create Override */}
       <div className="bg-card border border-border rounded-xl p-5">
@@ -469,6 +457,6 @@ export default function PlanOverridesPage() {
           </div>
         )}
       </div>
-    </div>
+    </SettingsPage>
   );
 }

@@ -1,0 +1,59 @@
+{
+  "settingsCrm": {
+    "title": "CRM ऑब्जेक्ट",
+    "description": "ऑब्जेक्ट आपके CRM की संरचना तय करते हैं: एक Company, Person या Deal में क्या रहता है, और उनके साथ आप कौन-से कस्टम रिकॉर्ड रखते हैं।",
+    "breadcrumbRoot": "सेटिंग्स",
+    "objects": "ऑब्जेक्ट",
+    "system": "सिस्टम",
+    "recordCount": "{count, plural, =0 {कोई रिकॉर्ड नहीं} one {# रिकॉर्ड} other {# रिकॉर्ड}}",
+    "tabsLabel": "ऑब्जेक्ट सेटिंग्स",
+    "noWorkspace": "कोई workspace चुना नहीं गया",
+    "noWorkspaceDetail": "CRM कॉन्फ़िगर करने के लिए एक workspace चुनें।",
+    "deleteConfirm": "{name} और इसके सभी रिकॉर्ड मिटाएँ? यह वापस नहीं किया जा सकता।",
+    "empty": {
+      "title": "अभी कोई CRM ऑब्जेक्ट नहीं",
+      "description": "Companies, People और Deals पहली बार CRM खोलने पर बन जाते हैं।"
+    },
+    "tabs": {
+      "configuration": "कॉन्फ़िगरेशन",
+      "appearance": "रूप-रंग",
+      "attributes": "एट्रिब्यूट"
+    },
+    "config": {
+      "basics": "मूल जानकारी",
+      "basicsDetail": "पूरे CRM में इस ऑब्जेक्ट के लिए उपयोग होने वाले नाम।",
+      "edit": "बदलें",
+      "cancel": "रद्द करें",
+      "save": "सहेजें",
+      "saving": "सहेजा जा रहा है…",
+      "nameSingular": "नाम (एकवचन)",
+      "namePlural": "नाम (बहुवचन)",
+      "description": "विवरण",
+      "noDescription": "कोई विवरण नहीं",
+      "type": "ऑब्जेक्ट प्रकार",
+      "systemObject": "सिस्टम ऑब्जेक्ट — प्रकार बदला नहीं जा सकता",
+      "customObject": "कस्टम ऑब्जेक्ट",
+      "stats": "आँकड़े",
+      "records": "रिकॉर्ड",
+      "attributes": "एट्रिब्यूट",
+      "created": "बनाया गया"
+    },
+    "appearance": {
+      "color": "ऑब्जेक्ट रंग",
+      "colorDetail": "सूचियों, pipelines और रिकॉर्ड हेडर में इस ऑब्जेक्ट की पहचान के लिए।",
+      "icon": "ऑब्जेक्ट आइकॉन",
+      "iconDetail": "आइकॉन ऑब्जेक्ट प्रकार के अनुसार तय होता है और बदला नहीं जा सकता।",
+      "typeIcon": "{type} आइकॉन"
+    },
+    "danger": {
+      "title": "यह ऑब्जेक्ट मिटाएँ",
+      "description": "{name} मिटाने से इसके सभी रिकॉर्ड और एट्रिब्यूट हट जाएँगे।",
+      "delete": "ऑब्जेक्ट मिटाएँ",
+      "deleting": "मिटाया जा रहा है…"
+    },
+    "integrations": {
+      "title": "इंटीग्रेशन",
+      "description": "Google जोड़ें ताकि Gmail और Calendar से CRM भरे, और आने वाले मेल को deals में बदलने के नियम तय करें।"
+    }
+  }
+}

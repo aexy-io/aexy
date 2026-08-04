@@ -3,14 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import {
-  ArrowLeft,
-  FolderGit2,
-  Loader2,
-  Lock,
-  Globe,
-} from "lucide-react";
+import { FolderGit2, Lock, Globe } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
 import { useWorkspace } from "@/hooks/useWorkspace";
 import {
@@ -18,8 +13,13 @@ import {
   teamRepositoriesApi,
   WorkspaceRepositoryItem,
 } from "@/lib/api";
+import {
+  SettingsPage,
+  SettingsSkeleton,
+} from "@/components/settings/SettingsPrimitives";
 
 export default function ProjectRepositoriesPage() {
+  const t = useTranslations("settingsProjectRepositories");
   const params = useParams();
   const projectId = params.projectId as string;
   const { currentWorkspaceId } = useWorkspace();
@@ -76,45 +76,27 @@ export default function ProjectRepositoriesPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
+  if (loading) return <SettingsSkeleton rows={1} />;
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
-      <div className="flex items-center gap-3">
-        <Link
-          href={`/settings/projects/${projectId}`}
-          className="p-2 -ml-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-accent"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <div>
-          <h1 className="text-xl font-semibold text-foreground flex items-center gap-2">
-            <FolderGit2 className="h-5 w-5 text-muted-foreground" />
-            Project Repositories
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Pick which workspace repos this project tracks. PR search, the
-            GitHub issue dropdown, and per-project insights all scope to
-            this selection.
-          </p>
-        </div>
-      </div>
-
+    <SettingsPage
+      title={t("title")}
+      description={t("description")}
+      width="wide"
+      breadcrumbs={[
+        { label: "Settings", href: "/settings" },
+        { label: "Projects", href: "/settings/projects" },
+        { label: t("title") },
+      ]}
+    >
       {catalog.length === 0 ? (
-        <div className="bg-card border border-border rounded-xl p-8 text-center">
-          <FolderGit2 className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+        <div className="rounded-xl border border-border bg-surface p-8 text-center">
+          <FolderGit2 className="mx-auto mb-3 h-10 w-10 text-muted-foreground" aria-hidden />
           <h2 className="text-base font-medium text-foreground">
-            No repositories adopted yet
+            {t("empty.title")}
           </h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Adopt repos into the workspace catalog first, then come back to
-            pick which ones this project tracks.
+          <p className="mt-1 text-sm text-muted-foreground">
+            {t("empty.description")}
           </p>
           <Link
             href="/settings/repositories"
@@ -172,6 +154,6 @@ export default function ProjectRepositoriesPage() {
           </ul>
         </div>
       )}
-    </div>
+    </SettingsPage>
   );
 }

@@ -40,6 +40,7 @@ from aexy.models.repository import (
     WorkspaceRepository,
     TeamRepository,
 )
+from aexy.models.workspace_ai_settings import WorkspaceAISettings
 from aexy.models.workspace_secret import WorkspaceSecret
 from aexy.models.workspace import (
     Workspace,
@@ -59,17 +60,17 @@ from aexy.models.organization import (
     PositionStatus,
 )
 from aexy.models.service_desk import (
-    ServiceDeskPartner,
-    ServiceDeskPartnerDomain,
-    ServiceDeskInsurer,
-    ServiceDeskInsurerDomain,
-    ServiceDeskLOB,
+    ServiceDeskAccount,
+    ServiceDeskAccountDomain,
+    ServiceDeskVendor,
+    ServiceDeskVendorDomain,
+    ServiceDeskProduct,
+    ServiceDeskStakeholder,
+    ServiceDeskRequestType,
     ServiceDeskMailbox,
     ServiceDeskTicket,
     ServiceDeskIngestedMessage,
     TicketPendingSegment,
-    RequestType,
-    PendingWith,
     TicketOrigin,
     MailboxChannel,
 )
@@ -633,6 +634,7 @@ __all__ = [
     "DeveloperOrganization",
     # Workspace
     "Workspace",
+    "WorkspaceAISettings",
     "WorkspaceSecret",
     "WorkspaceMember",
     "WorkspaceSubscription",
@@ -645,17 +647,17 @@ __all__ = [
     "DepartmentPosition",
     "DepartmentMemberRole",
     "PositionStatus",
-    "ServiceDeskPartner",
-    "ServiceDeskPartnerDomain",
-    "ServiceDeskInsurer",
-    "ServiceDeskInsurerDomain",
-    "ServiceDeskLOB",
+    "ServiceDeskAccount",
+    "ServiceDeskAccountDomain",
+    "ServiceDeskVendor",
+    "ServiceDeskVendorDomain",
+    "ServiceDeskProduct",
+    "ServiceDeskStakeholder",
+    "ServiceDeskRequestType",
     "ServiceDeskMailbox",
     "ServiceDeskTicket",
     "ServiceDeskIngestedMessage",
     "TicketPendingSegment",
-    "RequestType",
-    "PendingWith",
     "TicketOrigin",
     "MailboxChannel",
     # Sprint

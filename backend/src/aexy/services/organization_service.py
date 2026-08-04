@@ -2,7 +2,7 @@
 
 Hierarchy is stored as a materialized ``path`` of ancestor ids (incl. self),
 so subtree reads and re-parenting are simple string operations. See
-``models/organization.py`` and ``prds/BIMAPLAN_SERVICE_DESK_PLAN.md`` §3.
+``models/organization.py``.
 """
 
 import re
@@ -122,10 +122,47 @@ class OrganizationService:
 
     # -------------------------------------------------------------- departments
 
+    async def _require_unique_function(
+        self, workspace_id: str, function_key: str | None, exclude_id: str | None = None
+    ) -> None:
+        """409 on a function_key already claimed in this workspace.
+
+        ``uq_department_function_key`` enforces this, but an IntegrityError
+        surfaces as a 500 — and the value is meaningful (Service Desk routes
+        pending-with by it), so the caller deserves to be told which one clashed.
+        """
+        if not function_key:
+            return
+        query = select(Department.name).where(
+            Department.workspace_id == workspace_id,
+            Department.function_key == function_key,
+        )
+        if exclude_id:
+            query = query.where(Department.id != exclude_id)
+        clash = (await self.db.execute(query)).scalar_one_or_none()
+        if clash is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"The function '{function_key}' is already assigned to '{clash}'",
+            )
+
+    async def _require_member_if_set(self, workspace_id: str, developer_id: str | None) -> None:
+        """Membership check for the optional people references on a department.
+
+        ``head_id`` and ``filled_by_id`` only FK to ``developers.id``, so any id on
+        the platform was referentially valid here — while ``add_member`` and
+        ``set_manager`` both check. ``head_id`` is not cosmetic: the digest service
+        resolves it to decide who receives the *entire* desk's open-ticket list.
+        """
+        if developer_id:
+            await self._require_workspace_member(workspace_id, developer_id)
+
     async def create_department(self, workspace_id: str, data: DepartmentCreate) -> DepartmentResponse:
         parent: Department | None = None
         if data.parent_id:
             parent = await self._get(workspace_id, data.parent_id)
+        await self._require_unique_function(workspace_id, data.function_key or None)
+        await self._require_member_if_set(workspace_id, data.head_id)
 
         dept_id = str(uuid4())
         if parent:
@@ -197,6 +234,12 @@ class OrganizationService:
         payload = data.model_dump(exclude_unset=True)
         if "slug" in payload and payload["slug"]:
             payload["slug"] = await self._unique_slug(workspace_id, payload["slug"], exclude_id=dept_id)
+        if "function_key" in payload:
+            await self._require_unique_function(
+                workspace_id, payload["function_key"] or None, exclude_id=dept_id
+            )
+        if "head_id" in payload:
+            await self._require_member_if_set(workspace_id, payload["head_id"])
         for key, value in payload.items():
             setattr(dept, key, value)
         await self.db.flush()
@@ -509,6 +552,7 @@ class OrganizationService:
         self, workspace_id: str, dept_id: str, data: PositionCreate
     ) -> PositionResponse:
         await self._get(workspace_id, dept_id)
+        await self._require_member_if_set(workspace_id, data.filled_by_id)
         pos = DepartmentPosition(
             id=str(uuid4()),
             workspace_id=workspace_id,

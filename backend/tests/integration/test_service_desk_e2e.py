@@ -1,4 +1,4 @@
-"""End-to-end API tests for the Bimaplan Service Desk.
+"""End-to-end API tests for the Service Desk.
 
 Drives the whole journey through the HTTP layer (auth + app-access guards):
 master data + settings → manual ticket intake → pending-with transitions →
@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from aexy.core.config import get_settings
 from aexy.models.developer import Developer
 from aexy.models.workspace import Workspace, WorkspaceMember
+from tests.conftest import seed_service_desk_taxonomy
 
 settings = get_settings()
 
@@ -33,13 +34,17 @@ def _auth(developer_id: str) -> dict:
 
 @pytest_asyncio.fixture
 async def sd_ws(db_session: AsyncSession):
-    dev = Developer(id=str(uuid4()), email=f"ops-{uuid4().hex[:6]}@bimaplan.co", name="Ops Head")
+    dev = Developer(id=str(uuid4()), email=f"ops-{uuid4().hex[:6]}@example.com", name="Ops Head")
     db_session.add(dev)
     await db_session.flush()
-    ws = Workspace(id=str(uuid4()), name="Bimaplan", slug=f"bp-{uuid4().hex[:6]}", owner_id=dev.id)
+    ws = Workspace(id=str(uuid4()), name="Acme Ops", slug=f"acme-{uuid4().hex[:6]}", owner_id=dev.id)
     db_session.add(ws)
     await db_session.flush()
     db_session.add(WorkspaceMember(workspace_id=ws.id, developer_id=dev.id, role="admin", status="active"))
+    # Stakeholders and request types are per-workspace rows rather than an enum,
+    # so a desk has to be set up before tickets can be filed. These tests assert
+    # on the legacy insurance slugs ("kam", "claims"), which is that template.
+    await seed_service_desk_taxonomy(db_session, ws.id)
     await db_session.commit()
     return {"dev": dev, "ws": ws, "headers": _auth(dev.id)}
 
@@ -53,20 +58,20 @@ async def test_master_data_and_settings(client, sd_ws):
     ws, h = sd_ws["ws"].id, sd_ws["headers"]
     b = _base(ws)
 
-    # partner with a domain + assigned KAM
-    r = await client.post(b + "/partners", headers=h, json={
-        "name": "ABC Finance", "assigned_kam_id": sd_ws["dev"].id, "domains": ["abcfinance.com"],
+    # account with a domain + assigned KAM
+    r = await client.post(b + "/accounts", headers=h, json={
+        "name": "ABC Finance", "assigned_owner_id": sd_ws["dev"].id, "domains": ["abcfinance.com"],
     })
     assert r.status_code == 201, r.text
     assert r.json()["domains"] == ["abcfinance.com"]
 
-    # insurer, LOB, mailbox
-    assert (await client.post(b + "/insurers", headers=h, json={"name": "XYZ Life", "domains": ["xyzlife.com"]})).status_code == 201
-    assert (await client.post(b + "/lobs", headers=h, json={"name": "Credit Life"})).status_code == 201
-    assert (await client.post(b + "/mailboxes", headers=h, json={"address": "operations@bimaplan.co"})).status_code == 201
+    # vendor, Product, mailbox
+    assert (await client.post(b + "/vendors", headers=h, json={"name": "XYZ Life", "domains": ["xyzlife.com"]})).status_code == 201
+    assert (await client.post(b + "/products", headers=h, json={"name": "Credit Life"})).status_code == 201
+    assert (await client.post(b + "/mailboxes", headers=h, json={"address": "operations@example.com"})).status_code == 201
 
-    assert len((await client.get(b + "/partners", headers=h)).json()) == 1
-    assert len((await client.get(b + "/lobs", headers=h)).json()) == 1
+    assert len((await client.get(b + "/accounts", headers=h)).json()) == 1
+    assert len((await client.get(b + "/products", headers=h)).json()) == 1
 
     # settings toggle (default off → on)
     assert (await client.get(b + "/settings", headers=h)).json()["ai_classification_enabled"] is False
@@ -97,7 +102,9 @@ async def test_manual_ticket_lifecycle_and_tat(client, sd_ws):
     assert len(d["segments"]) == 1 and d["segments"][0]["exited_at"] is None
     assert d["tat"]["current_pending_with"] == "kam"
 
-    # move kam → insurer → closed
+    # move kam → insurer → closed. "insurer" is a *stakeholder* slug from the
+    # insurance template, not the renamed vendors master-data table — the
+    # taxonomy keeps the legacy slugs so live tickets keep resolving.
     d = (await client.patch(f"{b}/tickets/{tid}/pending-with", headers=h, json={"pending_with": "insurer", "note": "sent"})).json()
     assert d["pending_with"] == "insurer" and len(d["segments"]) == 2
 

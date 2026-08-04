@@ -10,10 +10,8 @@ import {
   FolderKanban,
   Activity,
   Save,
-  Trash2,
   RefreshCw,
   Shield,
-  Users,
   Globe,
   Lock,
   Check,
@@ -29,12 +27,13 @@ import {
   Vote,
   Workflow,
 } from "lucide-react";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { HelpTooltip } from "@/components/ui/tooltip";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import { useProject } from "@/hooks/useProjects";
 import { useAuth } from "@/hooks/useAuth";
 import { ProjectStatus, projectTabsApi } from "@/lib/api";
+import { useTranslations } from "next-intl";
+import { SettingsPage } from "@/components/settings/SettingsPrimitives";
 
 const STATUS_OPTIONS = [
   { value: "active", label: "Active", color: "bg-green-500" },
@@ -69,6 +68,7 @@ const PUBLIC_TABS = [
 ];
 
 export default function ProjectSettingsPage() {
+  const t = useTranslations("settingsProjects");
   const params = useParams();
   const router = useRouter();
   const projectId = params.projectId as string;
@@ -226,29 +226,16 @@ export default function ProjectSettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <Breadcrumb
-        items={[
-          { label: "Settings", href: "/settings" },
-          { label: "Projects", href: "/settings/projects" },
-          { label: project.name },
-        ]}
-        className="mb-0"
-      />
-
-      {/* Title */}
-      <div className="flex items-center gap-3">
-        <div
-          className="p-2 rounded-lg"
-          style={{ backgroundColor: project.color + "20" }}
-        >
-          <FolderKanban className="h-5 w-5" style={{ color: project.color }} />
-        </div>
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">{project.name}</h1>
-          <p className="text-muted-foreground text-sm">Project Settings</p>
-        </div>
-      </div>
+    <SettingsPage
+      title={project.name}
+      description={t("general.subtitle")}
+      width="wide"
+      breadcrumbs={[
+        { label: "Settings", href: "/settings" },
+        { label: "Projects", href: "/settings/projects" },
+        { label: project.name },
+      ]}
+    >
 
       <div>
         {/* Navigation Tabs */}
@@ -575,6 +562,6 @@ export default function ProjectSettingsPage() {
           </dl>
         </div>
       </div>
-    </div>
+    </SettingsPage>
   );
 }

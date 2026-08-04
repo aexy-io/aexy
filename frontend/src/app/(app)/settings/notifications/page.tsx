@@ -20,6 +20,13 @@ import { useWebPush } from "@/hooks/useWebPush";
 import { useSlackIntegration, useSlackChannels } from "@/hooks/useSlackIntegration";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
+import {
+  SettingsPage,
+  SettingsSection,
+  SettingsSkeleton,
+  SettingsEmptyState,
+} from "@/components/settings/SettingsPrimitives";
 
 // Complete event type labels covering all 37+ event types
 const EVENT_TYPE_LABELS: Record<string, { label: string; description: string }> = {
@@ -316,6 +323,7 @@ function CategorySection({
 }
 
 export default function NotificationSettingsPage() {
+  const t = useTranslations("settingsNotifications");
   const { user } = useAuth();
   const developerId = user?.id;
   const { currentWorkspaceId } = useWorkspace();
@@ -401,91 +409,44 @@ export default function NotificationSettingsPage() {
     ? categoryMap
     : {};
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6 animate-pulse">
-        <div>
-          <div className="h-6 w-36 bg-accent rounded mb-2" />
-          <div className="h-4 w-64 bg-accent rounded" />
-        </div>
-        <div className="bg-muted rounded-xl border border-border p-4">
-          <div className="h-4 w-40 bg-accent rounded mb-3" />
-          <div className="flex items-center gap-6">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-8 w-28 bg-accent rounded-lg" />
-            ))}
-          </div>
-        </div>
-        {[1, 2, 3].map((g) => (
-          <div key={g} className="bg-muted rounded-xl border border-border overflow-hidden">
-            <div className="px-5 py-3 border-b border-border">
-              <div className="h-4 w-32 bg-accent rounded" />
-            </div>
-            <div className="divide-y divide-border">
-              {[1, 2, 3].map((r) => (
-                <div key={r} className="flex items-center justify-between px-5 py-3.5">
-                  <div className="space-y-1.5">
-                    <div className="h-4 w-40 bg-accent rounded" />
-                    <div className="h-3 w-56 bg-accent rounded" />
-                  </div>
-                  <div className="flex gap-2">
-                    {[1, 2, 3, 4].map((c) => (
-                      <div key={c} className="h-7 w-16 bg-accent rounded-lg" />
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
+  if (isLoading) return <SettingsSkeleton rows={3} />;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Notifications</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Choose how and when you want to be notified
-        </p>
-      </div>
-
+    <SettingsPage title={t("title")} description={t("description")}>
       {/* Provider Status */}
-      <div className="bg-muted rounded-xl border border-border p-4">
-        <h3 className="text-sm font-medium text-foreground mb-3">Notification Channels</h3>
+      <SettingsSection title={t("channels.title")}>
         <div className="flex flex-wrap items-center gap-4">
           {/* In-App */}
           <div className="flex items-center gap-2 text-sm">
             <Monitor className="h-4 w-4 text-muted-foreground" />
-            <span className="text-foreground">In-App</span>
+            <span className="text-foreground">{t("channels.inApp")}</span>
             <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-            <span className="text-xs text-muted-foreground">Always on</span>
+            <span className="text-xs text-muted-foreground">{t("channels.alwaysOn")}</span>
           </div>
 
           {/* Email */}
           <div className="flex items-center gap-2 text-sm">
             <Mail className="h-4 w-4 text-muted-foreground" />
-            <span className="text-foreground">Email</span>
+            <span className="text-foreground">{t("channels.email")}</span>
             <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-            <span className="text-xs text-muted-foreground">Connected</span>
+            <span className="text-xs text-muted-foreground">{t("channels.connected")}</span>
           </div>
 
           {/* Slack */}
           <div className="flex items-center gap-2 text-sm">
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
-            <span className="text-foreground">Slack</span>
-            <span className="text-xs text-muted-foreground">Via workspace integration</span>
+            <span className="text-foreground">{t("channels.slack")}</span>
+            <span className="text-xs text-muted-foreground">{t("channels.viaIntegration")}</span>
           </div>
 
           {/* Web Push */}
           <div className="flex items-center gap-2 text-sm">
             <BellRing className="h-4 w-4 text-muted-foreground" />
-            <span className="text-foreground">Web Push</span>
+            <span className="text-foreground">{t("channels.webPush")}</span>
             {!pushSupported ? (
               <>
                 <XCircle className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">Not supported</span>
+                <span className="text-xs text-muted-foreground">{t("channels.notSupported")}</span>
               </>
             ) : pushSubscribed ? (
               <>
@@ -495,13 +456,13 @@ export default function NotificationSettingsPage() {
                   disabled={pushLoading}
                   className="text-xs text-primary hover:underline"
                 >
-                  {pushLoading ? "..." : "Disable"}
+                  {pushLoading ? "…" : t("channels.disable")}
                 </button>
               </>
             ) : pushPermission === "denied" ? (
               <>
                 <XCircle className="h-3.5 w-3.5 text-red-500" />
-                <span className="text-xs text-muted-foreground">Blocked in browser</span>
+                <span className="text-xs text-muted-foreground">{t("channels.blocked")}</span>
               </>
             ) : (
               <button
@@ -509,12 +470,12 @@ export default function NotificationSettingsPage() {
                 disabled={pushLoading}
                 className="px-2.5 py-1 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition disabled:opacity-50"
               >
-                {pushLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Enable"}
+                {pushLoading ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : t("channels.enable")}
               </button>
             )}
           </div>
         </div>
-      </div>
+      </SettingsSection>
 
       {/* Category Sections */}
       {Object.entries(categories).map(([category, eventTypes]) => (
@@ -534,13 +495,14 @@ export default function NotificationSettingsPage() {
       ))}
 
       {Object.keys(categories).length === 0 && (
-        <div className="bg-muted rounded-xl border border-border p-8 text-center">
-          <Bell className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">
-            No notification types available yet. Notifications will appear here as you use more features.
-          </p>
-        </div>
+        <SettingsSection flush>
+          <SettingsEmptyState
+            icon={<Bell className="h-8 w-8" />}
+            title={t("empty.title")}
+            description={t("empty.description")}
+          />
+        </SettingsSection>
       )}
-    </div>
+    </SettingsPage>
   );
 }

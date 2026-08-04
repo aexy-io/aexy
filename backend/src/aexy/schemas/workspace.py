@@ -232,3 +232,22 @@ class GitHubOrgLink(BaseModel):
     """Schema for linking a GitHub org."""
 
     github_org_id: str
+
+
+class MyWorkspacePermissionsResponse(BaseModel):
+    """The caller's effective permissions in a workspace.
+
+    The workspace-level counterpart to `MyProjectPermissionsResponse`. The
+    frontend had no way to ask this question — `usePermissions` returned `false`
+    for every workspace-level check with a comment saying it needed an endpoint —
+    so settings pages fell back to guessing from a role string.
+
+    `is_owner` is reported separately from the permission list because some
+    actions are the owner's by default (see `OWNER_ONLY_PERMISSIONS`) and the UI
+    needs to explain *why* a control is unavailable, not just hide it.
+    """
+
+    permissions: list[str]
+    workspace_id: str
+    role_name: str | None = None
+    is_owner: bool = False

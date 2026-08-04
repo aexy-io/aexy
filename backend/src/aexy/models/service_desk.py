@@ -1,11 +1,21 @@
-"""Bimaplan Service Desk models — email-intake ticketing on top of `Ticket`.
+"""Service Desk models — email-intake ticketing on top of `Ticket`.
 
 Adds the Service-Desk-specific layer the generic ticketing module lacks:
-master data (partners/insurers/LOBs + their email domains), the per-ticket
-extension (`ServiceDeskTicket`), the timestamped "Pending With" ledger
-(`TicketPendingSegment`), and the shared-mailbox registry.
 
-See ``prds/BIMAPLAN_SERVICE_DESK_PLAN.md`` §4–§6.
+* **Taxonomy** — the stakeholders a ticket can be pending with, and the request
+  types it can be triaged into. Both are per-workspace rows rather than Python
+  enums, because "who owes the next action" is a business's own vocabulary. See
+  ``services/service_desk_industry_templates.py`` for the starting points and
+  ``services/service_desk_taxonomy.py`` for the resolver.
+* **Master data** — accounts and vendors (external counterparties, identified by
+  email domain) and products.
+* The per-ticket extension (`ServiceDeskTicket`), the timestamped "Pending With"
+  ledger (`TicketPendingSegment`), and the shared-mailbox registry.
+
+Nothing here is industry-specific. An insurance broker labels an account
+"Partner", a vendor "Insurer" and a product "Line of Business"; a software
+company labels them "Customer", "Vendor" and "Product". Those are display labels
+resolved from the workspace's terminology, not table names.
 """
 
 from datetime import datetime
@@ -18,11 +28,13 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -32,37 +44,6 @@ from aexy.core.database import Base
 if TYPE_CHECKING:
     from aexy.models.developer import Developer
     from aexy.models.ticketing import Ticket
-
-
-class RequestType(str, Enum):
-    """The four Service Desk request types."""
-
-    QUERY = "query"
-    POLICY_ISSUANCE = "policy_issuance"
-    CLAIMS = "claims"
-    PAYOUT = "payout"
-
-
-class PendingWith(str, Enum):
-    """Who currently needs to act on a ticket."""
-
-    INSURER = "insurer"
-    PARTNER = "partner"
-    SALES = "sales"
-    THIRD_PARTY = "third_party"
-    FINANCE = "finance"
-    KAM = "kam"
-    MARKETING = "marketing"
-    CLOSED = "closed"
-
-
-# Internal pending-with states that map to an org function (Department.function_key).
-INTERNAL_PENDING_WITH = {
-    PendingWith.SALES.value: "sales",
-    PendingWith.FINANCE.value: "finance",
-    PendingWith.MARKETING.value: "marketing",
-    PendingWith.KAM.value: "ops_kam",
-}
 
 
 class TicketOrigin(str, Enum):
@@ -80,17 +61,109 @@ class MailboxChannel(str, Enum):
     GMAIL_SYNC = "gmail_sync"
 
 
-class ServiceDeskPartner(Base):
-    """A distribution partner (external, email-only) with an assigned KAM."""
+class ServiceDeskStakeholder(Base):
+    """One "pending with" bucket a ticket can sit in, defined per workspace.
 
-    __tablename__ = "service_desk_partners"
+    This replaced a ``PendingWith`` Python enum. The enum meant the set of
+    parties a request could be waiting on was fixed at deploy time — adding
+    "Legal" needed a code change, a migration and a release.
+
+    ``semantics`` is the part code is allowed to branch on: ``internal`` (a
+    department owes the action, scoped by ``function_key``), ``external`` (a
+    counterparty owes it) or ``closed`` (terminal — the breach clock stops).
+    ``slug`` and ``label`` belong to the workspace, so renaming "Insurer" to
+    "Underwriter" cannot change TAT maths. Same split as
+    ``WorkspaceStatusCategory.semantics`` for sprint statuses.
+    """
+
+    __tablename__ = "service_desk_stakeholders"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4()))
+    workspace_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+
+    # Stored on tickets and segments as a plain string — see the note on
+    # `ServiceDeskTicket.pending_with` for why this isn't a foreign key.
+    slug: Mapped[str] = mapped_column(String(64), nullable=False)
+    label: Mapped[str] = mapped_column(String(100), nullable=False)
+    semantics: Mapped[str] = mapped_column(String(20), nullable=False, default="internal", index=True)
+
+    # Which department owns this bucket, matched against `Department.function_key`.
+    # Only meaningful when semantics == "internal"; it decides whose tickets a
+    # member of that department can see.
+    function_key: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "slug", name="uq_service_desk_stakeholder_slug"),
+    )
+
+
+class ServiceDeskRequestType(Base):
+    """One triage category for an incoming request, defined per workspace.
+
+    Replaced a ``RequestType`` enum whose four members were an insurance
+    broker's: query, policy issuance, claims, payout.
+    """
+
+    __tablename__ = "service_desk_request_types"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4()))
+    workspace_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+
+    slug: Mapped[str] = mapped_column(String(64), nullable=False)
+    label: Mapped[str] = mapped_column(String(100), nullable=False)
+
+    # What untriaged mail becomes. At most one per workspace.
+    is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "slug", name="uq_service_desk_request_type_slug"),
+        # At most one default per workspace, enforced where it matters rather
+        # than by hoping every write path remembers to clear the previous one.
+        Index(
+            "uq_service_desk_request_type_default",
+            "workspace_id",
+            unique=True,
+            postgresql_where=text("is_default"),
+            sqlite_where=text("is_default"),
+        ),
+    )
+
+
+class ServiceDeskAccount(Base):
+    """An external organisation the desk serves, with an assigned owner.
+
+    Identified by email domain, so inbound mail can be attributed without the
+    sender being a user. An insurance broker calls these Partners, a software
+    company calls them Customers.
+    """
+
+    __tablename__ = "service_desk_accounts"
 
     id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4()))
     workspace_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    assigned_kam_id: Mapped[str | None] = mapped_column(
+    assigned_owner_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False), ForeignKey("developers.id", ondelete="SET NULL"), nullable=True, index=True
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
@@ -99,37 +172,41 @@ class ServiceDeskPartner(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
-    domains: Mapped[list["ServiceDeskPartnerDomain"]] = relationship(
-        "ServiceDeskPartnerDomain", back_populates="partner", cascade="all, delete-orphan", lazy="selectin"
+    domains: Mapped[list["ServiceDeskAccountDomain"]] = relationship(
+        "ServiceDeskAccountDomain", back_populates="account", cascade="all, delete-orphan", lazy="selectin"
     )
-    assigned_kam: Mapped["Developer"] = relationship("Developer", lazy="selectin")
+    assigned_owner: Mapped["Developer"] = relationship("Developer", lazy="selectin")
 
-    __table_args__ = (UniqueConstraint("workspace_id", "name", name="uq_service_desk_partner_name"),)
+    __table_args__ = (UniqueConstraint("workspace_id", "name", name="uq_service_desk_account_name"),)
 
 
-class ServiceDeskPartnerDomain(Base):
-    """An email domain that identifies a partner (e.g. abcfinance.com)."""
+class ServiceDeskAccountDomain(Base):
+    """An email domain that identifies an account (e.g. acme.com)."""
 
-    __tablename__ = "service_desk_partner_domains"
+    __tablename__ = "service_desk_account_domains"
 
     id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4()))
     workspace_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    partner_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("service_desk_partners.id", ondelete="CASCADE"), nullable=False, index=True
+    account_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("service_desk_accounts.id", ondelete="CASCADE"), nullable=False, index=True
     )
     domain: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
 
-    partner: Mapped["ServiceDeskPartner"] = relationship("ServiceDeskPartner", back_populates="domains")
+    account: Mapped["ServiceDeskAccount"] = relationship("ServiceDeskAccount", back_populates="domains")
 
-    __table_args__ = (UniqueConstraint("workspace_id", "domain", name="uq_service_desk_partner_domain"),)
+    __table_args__ = (UniqueConstraint("workspace_id", "domain", name="uq_service_desk_account_domain"),)
 
 
-class ServiceDeskInsurer(Base):
-    """An insurer (external, email-only). Used to tag insurer-originated mail."""
+class ServiceDeskVendor(Base):
+    """An external counterparty the desk escalates to, identified by domain.
 
-    __tablename__ = "service_desk_insurers"
+    An insurance broker calls these Insurers; a software company calls them
+    Vendors or upstream providers.
+    """
+
+    __tablename__ = "service_desk_vendors"
 
     id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4()))
     workspace_id: Mapped[str] = mapped_column(
@@ -142,36 +219,39 @@ class ServiceDeskInsurer(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
-    domains: Mapped[list["ServiceDeskInsurerDomain"]] = relationship(
-        "ServiceDeskInsurerDomain", back_populates="insurer", cascade="all, delete-orphan", lazy="selectin"
+    domains: Mapped[list["ServiceDeskVendorDomain"]] = relationship(
+        "ServiceDeskVendorDomain", back_populates="vendor", cascade="all, delete-orphan", lazy="selectin"
     )
 
-    __table_args__ = (UniqueConstraint("workspace_id", "name", name="uq_service_desk_insurer_name"),)
+    __table_args__ = (UniqueConstraint("workspace_id", "name", name="uq_service_desk_vendor_name"),)
 
 
-class ServiceDeskInsurerDomain(Base):
-    """An email domain that identifies an insurer."""
+class ServiceDeskVendorDomain(Base):
+    """An email domain that identifies a vendor."""
 
-    __tablename__ = "service_desk_insurer_domains"
+    __tablename__ = "service_desk_vendor_domains"
 
     id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4()))
     workspace_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    insurer_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("service_desk_insurers.id", ondelete="CASCADE"), nullable=False, index=True
+    vendor_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("service_desk_vendors.id", ondelete="CASCADE"), nullable=False, index=True
     )
     domain: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
 
-    insurer: Mapped["ServiceDeskInsurer"] = relationship("ServiceDeskInsurer", back_populates="domains")
+    vendor: Mapped["ServiceDeskVendor"] = relationship("ServiceDeskVendor", back_populates="domains")
 
-    __table_args__ = (UniqueConstraint("workspace_id", "domain", name="uq_service_desk_insurer_domain"),)
+    __table_args__ = (UniqueConstraint("workspace_id", "domain", name="uq_service_desk_vendor_domain"),)
 
 
-class ServiceDeskLOB(Base):
-    """A line of business / product (Credit Life, GPA, Travel, …). Master data."""
+class ServiceDeskProduct(Base):
+    """A product or service line a request can be about. Master data.
 
-    __tablename__ = "service_desk_lobs"
+    An insurance broker calls these Lines of Business.
+    """
+
+    __tablename__ = "service_desk_products"
 
     id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4()))
     workspace_id: Mapped[str] = mapped_column(
@@ -181,7 +261,7 @@ class ServiceDeskLOB(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
-    __table_args__ = (UniqueConstraint("workspace_id", "name", name="uq_service_desk_lob_name"),)
+    __table_args__ = (UniqueConstraint("workspace_id", "name", name="uq_service_desk_product_name"),)
 
 
 class ServiceDeskMailbox(Base):
@@ -220,18 +300,24 @@ class ServiceDeskTicket(Base):
         UUID(as_uuid=False), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True
     )
 
-    lob_id: Mapped[str | None] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("service_desk_lobs.id", ondelete="SET NULL"), nullable=True
+    product_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("service_desk_products.id", ondelete="SET NULL"), nullable=True
     )
-    partner_id: Mapped[str | None] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("service_desk_partners.id", ondelete="SET NULL"), nullable=True, index=True
+    account_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("service_desk_accounts.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    insurer_id: Mapped[str | None] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("service_desk_insurers.id", ondelete="SET NULL"), nullable=True
+    vendor_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("service_desk_vendors.id", ondelete="SET NULL"), nullable=True
     )
 
-    request_type: Mapped[str] = mapped_column(String(30), default=RequestType.QUERY.value, nullable=False, index=True)
-    pending_with: Mapped[str] = mapped_column(String(20), default=PendingWith.KAM.value, nullable=False, index=True)
+    # Taxonomy slugs, not foreign keys. A ticket's history has to stay readable
+    # after a stakeholder or request type is retired, and the pending ledger
+    # below carries the same slugs for closed segments going back years — a FK
+    # with ON DELETE SET NULL would erase that history, and RESTRICT would make
+    # retiring a bucket impossible. Writes are validated against the workspace's
+    # active rows in the service layer.
+    request_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    pending_with: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     origin: Mapped[str] = mapped_column(String(20), default=TicketOrigin.EMAIL.value, nullable=False)
 
     needs_triage: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
@@ -253,9 +339,9 @@ class ServiceDeskTicket(Base):
     )
 
     ticket: Mapped["Ticket"] = relationship("Ticket", lazy="selectin")
-    partner: Mapped["ServiceDeskPartner"] = relationship("ServiceDeskPartner", lazy="selectin")
-    lob: Mapped["ServiceDeskLOB"] = relationship("ServiceDeskLOB", lazy="selectin")
-    insurer: Mapped["ServiceDeskInsurer"] = relationship("ServiceDeskInsurer", lazy="selectin")
+    account: Mapped["ServiceDeskAccount"] = relationship("ServiceDeskAccount", lazy="selectin")
+    product: Mapped["ServiceDeskProduct"] = relationship("ServiceDeskProduct", lazy="selectin")
+    vendor: Mapped["ServiceDeskVendor"] = relationship("ServiceDeskVendor", lazy="selectin")
 
 
 class TicketPendingSegment(Base):
@@ -273,7 +359,7 @@ class TicketPendingSegment(Base):
     ticket_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False), ForeignKey("tickets.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    pending_with: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    pending_with: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     entered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     exited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     duration_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -282,6 +368,20 @@ class TicketPendingSegment(Base):
     )
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = (
+        # The "exactly one open segment" invariant this class documents. Declared
+        # in the metadata as well as the migration so create_all enforces it too;
+        # migration-only meant a Docker-first environment could accumulate two
+        # open segments and the migration's index could then never be created.
+        Index(
+            "uq_ticket_open_segment",
+            "ticket_id",
+            unique=True,
+            postgresql_where=text("exited_at IS NULL"),
+            sqlite_where=text("exited_at IS NULL"),
+        ),
+    )
 
 
 class ServiceDeskIngestedMessage(Base):

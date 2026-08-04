@@ -134,7 +134,7 @@ def test_end_before_start_is_zero():
 @pytest.mark.asyncio
 async def test_load_clock_takes_only_mandatory_workspace_wide_holidays(db_session: AsyncSession):
     """An optional or team-scoped holiday must not move a workspace-wide SLA."""
-    owner = Developer(email=f"o-{uuid4().hex[:6]}@bimaplan.co", name="Owner")
+    owner = Developer(email=f"o-{uuid4().hex[:6]}@example.com", name="Owner")
     db_session.add(owner)
     await db_session.flush()
     ws = Workspace(name="Clock", slug=f"clock-{uuid4().hex[:6]}", owner_id=owner.id)
@@ -162,7 +162,7 @@ async def test_load_clock_takes_only_mandatory_workspace_wide_holidays(db_sessio
 
 @pytest.mark.asyncio
 async def test_load_clock_honours_a_per_workspace_shift(db_session: AsyncSession):
-    owner = Developer(email=f"o-{uuid4().hex[:6]}@bimaplan.co", name="Owner")
+    owner = Developer(email=f"o-{uuid4().hex[:6]}@example.com", name="Owner")
     db_session.add(owner)
     await db_session.flush()
     ws = Workspace(
@@ -179,7 +179,7 @@ async def test_load_clock_honours_a_per_workspace_shift(db_session: AsyncSession
 @pytest.mark.asyncio
 async def test_load_clock_survives_a_malformed_shift_setting(db_session: AsyncSession):
     """A bad setting must not take the dashboard down with it."""
-    owner = Developer(email=f"o-{uuid4().hex[:6]}@bimaplan.co", name="Owner")
+    owner = Developer(email=f"o-{uuid4().hex[:6]}@example.com", name="Owner")
     db_session.add(owner)
     await db_session.flush()
     ws = Workspace(

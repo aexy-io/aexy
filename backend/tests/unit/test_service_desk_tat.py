@@ -14,16 +14,22 @@ from aexy.models.service_desk import ServiceDeskTicket, TicketPendingSegment
 from aexy.models.ticketing import Ticket, TicketForm, TicketResponse
 from aexy.models.workspace import Workspace
 from aexy.services.service_desk_ticket_service import ServiceDeskTicketService
+from tests.conftest import seed_service_desk_taxonomy
 
 
 async def _ws(db: AsyncSession, slug: str) -> Workspace:
-    owner = Developer(email=f"o-{slug}@bimaplan.co", name="Owner")
+    owner = Developer(email=f"o-{slug}@example.com", name="Owner")
     db.add(owner)
     await db.flush()
     ws = Workspace(name=slug, slug=slug, owner_id=owner.id)
     db.add(ws)
     await db.commit()
     await db.refresh(ws)
+    # Stakeholders/request types are per-workspace rows now, not an enum, so a
+    # bare workspace has no taxonomy and the service layer refuses to file a
+    # ticket into one. Seeds the legacy insurance slugs these tests assert on.
+    await seed_service_desk_taxonomy(db, ws.id)
+
     return ws
 
 

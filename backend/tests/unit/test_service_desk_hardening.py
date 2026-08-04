@@ -1,7 +1,7 @@
 """Regression tests for Service Desk intake hardening.
 
 Each test pins a specific defect found in review:
-- a "Re: BSD-<n>" subject threading onto a GENERIC ticket (shared ticket_number)
+- a "Re: SD-<n>" subject threading onto a GENERIC ticket (shared ticket_number)
 - redelivered replies being appended twice (idempotency only covered the first
   message of a thread)
 - a reply to a closed ticket landing silently instead of reopening it
@@ -20,7 +20,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from aexy.models.developer import Developer
 from aexy.models.organization import Department, DepartmentMember
 from aexy.models.service_desk import (
-    PendingWith,
     ServiceDeskIngestedMessage,
     ServiceDeskMailbox,
     ServiceDeskTicket,
@@ -30,10 +29,11 @@ from aexy.models.ticketing import Ticket, TicketForm, TicketResponse
 from aexy.models.workspace import Workspace, WorkspaceMember
 from aexy.schemas.service_desk import InboundEmail
 from aexy.services.service_desk_intake_service import ServiceDeskIntakeService
+from tests.conftest import seed_service_desk_taxonomy
 
 
 async def _ws(db: AsyncSession, slug: str) -> Workspace:
-    owner = Developer(id=str(uuid4()), email=f"owner-{slug}@bimaplan.co", name="Owner")
+    owner = Developer(id=str(uuid4()), email=f"owner-{slug}@example.com", name="Owner")
     db.add(owner)
     await db.flush()
     ws = Workspace(id=str(uuid4()), name=f"WS {slug}", slug=slug, owner_id=owner.id)
@@ -41,12 +41,17 @@ async def _ws(db: AsyncSession, slug: str) -> Workspace:
     await db.flush()
     db.add(WorkspaceMember(workspace_id=ws.id, developer_id=owner.id, role="admin", status="active"))
     await db.commit()
+    # Stakeholders/request types are per-workspace rows now, not an enum, so a
+    # bare workspace has no taxonomy and the service layer refuses to file a
+    # ticket into one. Seeds the legacy insurance slugs these tests assert on.
+    await seed_service_desk_taxonomy(db, ws.id)
+
     return ws
 
 
 async def _mailbox(db: AsyncSession, ws: Workspace) -> ServiceDeskMailbox:
     mb = ServiceDeskMailbox(
-        id=str(uuid4()), workspace_id=ws.id, address="operations@bimaplan.co", channel="webhook"
+        id=str(uuid4()), workspace_id=ws.id, address="operations@example.com", channel="webhook"
     )
     db.add(mb)
     await db.commit()
@@ -55,7 +60,7 @@ async def _mailbox(db: AsyncSession, ws: Workspace) -> ServiceDeskMailbox:
 
 def _email(**kw) -> InboundEmail:
     base = dict(
-        to="operations@bimaplan.co", from_email="partner@abcfinance.com",
+        to="operations@example.com", from_email="partner@abcfinance.com",
         subject="Help", body_text="Body",
     )
     base.update(kw)
@@ -73,14 +78,14 @@ async def test_bsd_subject_cannot_hijack_a_generic_ticket(db_session: AsyncSessi
     await db_session.flush()
     generic = Ticket(
         id=str(uuid4()), form_id=form.id, workspace_id=ws.id, ticket_number=7,
-        submitter_email="employee@bimaplan.co", field_values={"subject": "My salary slip"},
+        submitter_email="employee@example.com", field_values={"subject": "My salary slip"},
         status="new", source="portal",
     )
     db_session.add(generic)
     await db_session.commit()
 
     ticket = await ServiceDeskIntakeService(db_session).ingest(
-        _email(from_email="attacker@outside.com", subject="Re: BSD-7 please advise",
+        _email(from_email="attacker@outside.com", subject="Re: SD-7 please advise",
                body_text="INJECTED", message_id="<hj-1@outside.com>"),
         mb, source="service_desk_webhook",
     )
@@ -110,7 +115,7 @@ async def test_bsd_subject_still_threads_onto_a_real_service_desk_ticket(db_sess
     await db_session.commit()
 
     again = await intake.ingest(
-        _email(subject=f"Re: BSD-{first.ticket_number} more info", body_text="extra detail",
+        _email(subject=f"Re: SD-{first.ticket_number} more info", body_text="extra detail",
                message_id="<th-2@x.com>"),
         mb, source="service_desk_webhook",
     )
@@ -134,7 +139,7 @@ async def test_redelivered_reply_is_not_appended_twice(db_session: AsyncSession)
     first = await intake.ingest(_email(message_id="<dup-1@x.com>"), mb, source="service_desk_webhook")
     await db_session.commit()
 
-    reply = _email(subject=f"Re: BSD-{first.ticket_number}", body_text="my reply",
+    reply = _email(subject=f"Re: SD-{first.ticket_number}", body_text="my reply",
                    message_id="<dup-2@x.com>")
     assert await intake.ingest(reply, mb, source="service_desk_webhook") is not None
     await db_session.commit()
@@ -168,24 +173,24 @@ async def test_reply_to_a_closed_ticket_reopens_it(db_session: AsyncSession):
     ticket = await intake.ingest(_email(message_id="<re-1@x.com>"), mb, source="service_desk_webhook")
     await db_session.commit()
     await ServiceDeskTicketService(db_session).change_pending_with(
-        ws.id, ticket.id, PendingWith.CLOSED.value
+        ws.id, ticket.id, "closed"
     )
     await db_session.commit()
 
     sd = (await db_session.execute(
         select(ServiceDeskTicket).where(ServiceDeskTicket.ticket_id == ticket.id)
     )).scalar_one()
-    assert sd.pending_with == PendingWith.CLOSED.value
+    assert sd.pending_with == "closed"
 
     await intake.ingest(
-        _email(subject=f"Re: BSD-{ticket.ticket_number}", body_text="still broken",
+        _email(subject=f"Re: SD-{ticket.ticket_number}", body_text="still broken",
                message_id="<re-2@x.com>"),
         mb, source="service_desk_webhook",
     )
     await db_session.commit()
 
     await db_session.refresh(sd)
-    assert sd.pending_with == PendingWith.KAM.value
+    assert sd.pending_with == "kam"
     # and the ledger has an open segment again, so TAT resumes
     open_segs = (await db_session.execute(
         select(TicketPendingSegment).where(
@@ -193,7 +198,7 @@ async def test_reply_to_a_closed_ticket_reopens_it(db_session: AsyncSession):
             TicketPendingSegment.exited_at.is_(None),
         )
     )).scalars().all()
-    assert len(open_segs) == 1 and open_segs[0].pending_with == PendingWith.KAM.value
+    assert len(open_segs) == 1 and open_segs[0].pending_with == "kam"
 
 
 @pytest.mark.asyncio
@@ -279,8 +284,8 @@ async def test_auto_assignment_skips_a_departed_kam(db_session: AsyncSession):
     db_session.add(dept)
     await db_session.flush()
 
-    stayed = Developer(id=str(uuid4()), email=f"stay-{uuid4().hex[:6]}@bimaplan.co", name="Stayed")
-    left = Developer(id=str(uuid4()), email=f"left-{uuid4().hex[:6]}@bimaplan.co", name="Left")
+    stayed = Developer(id=str(uuid4()), email=f"stay-{uuid4().hex[:6]}@example.com", name="Stayed")
+    left = Developer(id=str(uuid4()), email=f"left-{uuid4().hex[:6]}@example.com", name="Left")
     db_session.add_all([stayed, left])
     await db_session.flush()
     for dev in (stayed, left):

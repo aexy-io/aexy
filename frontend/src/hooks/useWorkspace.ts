@@ -288,6 +288,31 @@ export function useWorkspaceMembers(
   };
 }
 
+/**
+ * Whether the signed-in user may see workspace administration surfaces.
+ *
+ * Callers used to derive this from `currentWorkspace.members`, but the
+ * workspace detail endpoint returns `member_count` and no member list, and
+ * nothing in the app ever wrote the `developer_id` localStorage key those
+ * checks read — so the result was always `false` and every workspace
+ * owner/admin was denied the admin-only settings pages. This resolves the role
+ * from the members endpoint, with the workspace's own `owner_id` as a
+ * synchronous fast path so the nav doesn't flicker while members load.
+ */
+export function useIsWorkspaceAdmin(workspaceId: string | null) {
+  const { user } = useAuth();
+  const { currentWorkspace } = useWorkspace();
+  const { members, isLoading } = useWorkspaceMembers(workspaceId);
+
+  const isOwner = !!(user?.id && currentWorkspace?.owner_id === user.id);
+  const role = members.find((m) => m.developer_id === user?.id)?.role;
+
+  return {
+    isWorkspaceAdmin: isOwner || role === "owner" || role === "admin",
+    isLoading,
+  };
+}
+
 // Hook for workspace billing
 export function useWorkspaceBilling(workspaceId: string | null) {
   const {

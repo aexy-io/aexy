@@ -12,6 +12,7 @@ import {
   Zap,
   Repeat,
   ChevronRight,
+  FolderKanban,
   LayoutGrid,
   Target,
   List,
@@ -37,6 +38,7 @@ const objectTypeIcons: Record<CRMObjectType, React.ReactNode> = {
   person: <Users className="h-5 w-5" />,
   deal: <DollarSign className="h-5 w-5" />,
   lead: <Target className="h-5 w-5" />,
+  project: <FolderKanban className="h-5 w-5" />,
   custom: <LayoutGrid className="h-5 w-5" />,
 };
 
@@ -45,6 +47,7 @@ const objectTypeColors: Record<CRMObjectType, string> = {
   person: "bg-purple-500/20 text-purple-400 border-purple-500/30",
   deal: "bg-green-500/20 text-green-400 border-green-500/30",
   lead: "bg-pink-500/20 text-pink-400 border-pink-500/30",
+  project: "bg-sky-500/20 text-sky-400 border-sky-500/30",
   custom: "bg-orange-500/20 text-orange-400 border-orange-500/30",
 };
 
@@ -234,7 +237,7 @@ function GoogleIntegrationBanner({
           </div>
         </div>
         <a
-          href="/crm/settings/integrations"
+          href="/settings/crm/integrations"
           className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           Manage
@@ -530,7 +533,7 @@ export default function CRMPage() {
                   Sequences
                 </button>
                 <button
-                  onClick={() => router.push("/crm/settings")}
+                  onClick={() => router.push("/settings/crm")}
                   className="flex items-center gap-2 px-3 py-2 bg-muted hover:bg-accent border border-border text-foreground rounded-lg transition-colors text-sm"
                 >
                   <Settings className="h-4 w-4" />
@@ -583,7 +586,7 @@ export default function CRMPage() {
                 title="Integrations"
                 description="Connect Google, Slack, and more"
                 icon={<RefreshCw className="h-5 w-5 text-purple-400" />}
-                href="/crm/settings/integrations"
+                href="/settings/crm/integrations"
                 color="bg-purple-500/20"
               />
             </div>

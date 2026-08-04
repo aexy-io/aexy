@@ -7,14 +7,10 @@ import {
   Phone,
   Settings,
   Calendar,
-  Bell,
   RefreshCw,
   Link as LinkIcon,
   Unlink,
-  Globe,
-  Clock,
 } from "lucide-react";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { HelpTooltip } from "@/components/ui/tooltip";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useTeam, useTeamMembers } from "@/hooks/useTeams";
@@ -31,6 +27,8 @@ import {
 import OnCallScheduleEditor from "@/components/oncall/OnCallScheduleEditor";
 import CurrentOnCallBadge from "@/components/oncall/CurrentOnCallBadge";
 import SwapRequestsList from "@/components/oncall/SwapRequestsList";
+import { useTranslations } from "next-intl";
+import { SettingsPage } from "@/components/settings/SettingsPrimitives";
 
 const TIMEZONES = [
   "UTC",
@@ -48,6 +46,7 @@ const TIMEZONES = [
 ];
 
 export default function OnCallSettingsPage() {
+  const t = useTranslations("settingsOncall");
   const params = useParams();
   const router = useRouter();
   const teamId = params.projectId as string;
@@ -184,41 +183,30 @@ export default function OnCallSettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <Breadcrumb
-        items={[
-          { label: "Settings", href: "/settings" },
-          { label: "Projects", href: "/settings/projects" },
-          { label: team?.name || "Project", href: `/settings/projects/${teamId}` },
-          { label: "On-Call" },
-        ]}
-        className="mb-0"
-      />
-
-      {/* Title and Settings Button */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Phone className="h-6 w-6 text-green-400" />
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-semibold text-foreground">On-Call Settings</h1>
-              <HelpTooltip content="Defines who is responsible for responding to incidents during each time period. Team members are notified before their shifts begin" />
-            </div>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {team?.name || "Team"}
-            </p>
-          </div>
-        </div>
+    <SettingsPage
+      title={t("title")}
+      description={t("description", { team: team?.name || t("fallbackTeam") })}
+      width="wide"
+      breadcrumbs={[
+        { label: "Settings", href: "/settings" },
+        { label: "Projects", href: "/settings/projects" },
+        { label: team?.name || "Project", href: `/settings/projects/${teamId}` },
+        { label: t("title") },
+      ]}
+      actions={
         <button
           onClick={() => setShowSettings(!showSettings)}
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${
-            showSettings ? "bg-blue-600 text-white" : "bg-muted text-foreground hover:bg-accent"
+          className={`inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors ${
+            showSettings
+              ? "bg-primary text-primary-foreground"
+              : "border border-border text-foreground hover:bg-accent"
           }`}
         >
-          <Settings className="h-4 w-4" />
-          Settings
+          <Settings className="h-4 w-4" aria-hidden />
+          {t("configure")}
         </button>
-      </div>
+      }
+    >
 
       <div>
         {/* Not Enabled State */}
@@ -432,6 +420,6 @@ export default function OnCallSettingsPage() {
           </div>
         )}
       </div>
-    </div>
+    </SettingsPage>
   );
 }

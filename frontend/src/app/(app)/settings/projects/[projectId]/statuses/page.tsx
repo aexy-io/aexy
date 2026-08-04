@@ -5,34 +5,10 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import {
-  AlertCircle,
-  ArrowLeft,
-  Clock,
-  FolderKanban,
-  Layers,
-  Plus,
-  RefreshCw,
-  Shield,
-  Workflow,
-} from "lucide-react";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
+import { AlertCircle, ArrowLeft, Clock, FolderKanban, Layers, Plus, RefreshCw, Shield, Workflow } from "lucide-react";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
 
-import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import { useProject } from "@/hooks/useProjects";
@@ -43,8 +19,11 @@ import { StatusModal } from "@/components/settings/StatusModal";
 import { DeleteStatusModal } from "@/components/settings/DeleteStatusModal";
 import { CategoryModal } from "@/components/settings/CategoryModal";
 import { SortableCategoryItem } from "@/components/settings/SortableCategoryItem";
+import { useTranslations } from "next-intl";
+import { SettingsPage } from "@/components/settings/SettingsPrimitives";
 
 export default function ProjectStatusesPage() {
+  const t = useTranslations("settingsProjects");
   const params = useParams();
   const projectId = params.projectId as string;
 
@@ -211,29 +190,17 @@ export default function ProjectStatusesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <Breadcrumb
-        items={[
-          { label: "Settings", href: "/settings" },
-          { label: "Projects", href: "/settings/projects" },
-          { label: project.name, href: `/settings/projects/${projectId}` },
-          { label: "Statuses" },
-        ]}
-        className="mb-0"
-      />
-
-      <div className="flex items-center gap-3">
-        <div
-          className="p-2 rounded-lg"
-          style={{ backgroundColor: project.color + "20" }}
-        >
-          <FolderKanban className="h-5 w-5" style={{ color: project.color }} />
-        </div>
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">{project.name}</h1>
-          <p className="text-muted-foreground text-sm">Task Statuses</p>
-        </div>
-      </div>
+    <SettingsPage
+      title={project.name}
+      description={t("statuses.subtitle")}
+      width="wide"
+      breadcrumbs={[
+        { label: "Settings", href: "/settings" },
+        { label: "Projects", href: "/settings/projects" },
+        { label: project.name, href: `/settings/projects/${projectId}` },
+        { label: "Statuses" },
+      ]}
+    >
 
       <div>
         <div className="flex gap-2 mb-8">
@@ -464,6 +431,6 @@ export default function ProjectStatusesPage() {
           isDeleting={isDeleting}
         />
       )}
-    </div>
+    </SettingsPage>
   );
 }

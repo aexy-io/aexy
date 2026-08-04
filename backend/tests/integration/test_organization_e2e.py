@@ -22,8 +22,8 @@ def _auth(developer_id: str) -> dict:
 
 @pytest_asyncio.fixture
 async def org_ws(db_session: AsyncSession):
-    dev = Developer(id=str(uuid4()), email=f"admin-{uuid4().hex[:6]}@bimaplan.co", name="Admin")
-    member = Developer(id=str(uuid4()), email=f"m-{uuid4().hex[:6]}@bimaplan.co", name="Member")
+    dev = Developer(id=str(uuid4()), email=f"admin-{uuid4().hex[:6]}@example.com", name="Admin")
+    member = Developer(id=str(uuid4()), email=f"m-{uuid4().hex[:6]}@example.com", name="Member")
     db_session.add_all([dev, member])
     await db_session.flush()
     ws = Workspace(id=str(uuid4()), name="Org", slug=f"org-{uuid4().hex[:6]}", owner_id=dev.id)
@@ -137,11 +137,11 @@ async def test_invite_can_carry_an_optional_department(client, org_ws, db_sessio
 
     # a department from nowhere is refused up front, not silently ignored later
     bad = await client.post(f"/api/v1/workspaces/{ws}/members/invite", headers=h, json={
-        "email": f"nope-{uuid4().hex[:6]}@bimaplan.co", "role": "member", "department_id": str(uuid4()),
+        "email": f"nope-{uuid4().hex[:6]}@example.com", "role": "member", "department_id": str(uuid4()),
     })
     assert bad.status_code == 404, bad.text
 
-    email = f"joiner-{uuid4().hex[:6]}@bimaplan.co"
+    email = f"joiner-{uuid4().hex[:6]}@example.com"
     r = await client.post(f"/api/v1/workspaces/{ws}/members/invite", headers=h, json={
         "email": email, "role": "member",
         "department_id": dept["id"], "role_in_department": "member",
@@ -169,7 +169,7 @@ async def test_invite_can_carry_an_optional_department(client, org_ws, db_sessio
     assert placed[0]["is_primary"] is True
 
     # ...and an invite with no department still joins fine, just unplaced
-    plain_email = f"plain-{uuid4().hex[:6]}@bimaplan.co"
+    plain_email = f"plain-{uuid4().hex[:6]}@example.com"
     r = await client.post(f"/api/v1/workspaces/{ws}/members/invite", headers=h, json={
         "email": plain_email, "role": "member",
     })

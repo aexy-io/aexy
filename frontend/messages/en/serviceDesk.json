@@ -9,15 +9,15 @@
     },
     "stats": {
       "totalOpen": "Open tickets",
-      "breaching": "Breaching (>2 days)",
+      "breaching": "Breaching (over {red}d)",
       "stakeholders": "Active stakeholders"
     },
     "dashboard": {
       "matrixTitle": "Open tickets by stakeholder and age",
       "stakeholder": "Pending With",
-      "col01": "0–1 day",
-      "col12": "1–2 days",
-      "colGt2": ">2 days",
+      "col01": "Under {amber}d",
+      "col12": "{amber}–{red}d",
+      "colGt2": "Over {red}d",
       "total": "Total",
       "ticketsTitle": "Open tickets",
       "empty": "No open tickets. New email requests will appear here automatically.",
@@ -26,10 +26,10 @@
     "table": {
       "id": "Ticket",
       "subject": "Subject",
-      "lob": "LOB",
-      "partner": "Partner",
+      "product": "Product",
+      "account": "Account",
       "type": "Type",
-      "kam": "Assigned KAM",
+      "owner": "Owner",
       "pendingWith": "Pending With",
       "daysInStage": "Working days in stage",
       "overallAge": "Overall age",
@@ -40,9 +40,9 @@
       "back": "Back to dashboard",
       "requester": "Requester",
       "requestType": "Request type",
-      "lob": "LOB",
-      "partner": "Partner",
-      "assignedKam": "Assigned KAM",
+      "product": "Product",
+      "account": "Account",
+      "assignedOwner": "Assigned owner",
       "pendingWith": "Pending With",
       "changeTo": "Move to",
       "note": "Note (optional)",
@@ -74,8 +74,8 @@
       "requesterName": "Requester name",
       "requesterEmail": "Requester email",
       "type": "Request type",
-      "lob": "LOB",
-      "partner": "Partner",
+      "product": "Product",
+      "account": "Account",
       "none": "— None —",
       "create": "Create ticket",
       "creating": "Creating…"
@@ -91,20 +91,20 @@
       "customised": "Customised"
     },
     "settings": {
-      "partners": "Partners",
-      "insurers": "Insurers",
-      "lobs": "Lines of Business",
+      "accounts": "Accounts",
+      "vendors": "Vendors",
+      "products": "Products",
       "mailboxes": "Mailboxes",
       "name": "Name",
       "domains": "Domains (comma-separated)",
-      "assignedKam": "Assigned KAM (developer id)",
+      "assignedOwner": "Assigned owner",
       "address": "Address",
       "channel": "Channel",
       "add": "Add",
       "delete": "Delete",
       "empty": "Nothing here yet.",
       "readOnly": "You have read-only access to Master Data. Ask a workspace admin or service desk manager to make changes.",
-      "domainsHint": "e.g. abcfinance.com, abc.co"
+      "domainsHint": "e.g. acme.com, acme.co"
     },
     "noDepartment": "You're not in a department yet, so no tickets can be routed to you. Ask an admin to add you from Organization → Departments.",
     "workingHours": {
@@ -116,6 +116,17 @@
       "invalid": "The end must be later than the start",
       "save": "Save hours",
       "saving": "Saving…"
+    },
+    "deskIdentity": {
+      "title": "Desk identity & targets",
+      "description": "Ticket id prefix, the timezone day boundaries resolve in, and the breach thresholds. These were fixed in code; the values shown are the defaults still in force if you never change them.",
+      "prefix": "Ticket prefix",
+      "timezone": "Timezone",
+      "amber": "Amber after (days)",
+      "red": "Red after (days)",
+      "prefixInvalid": "1–10 letters or digits, starting with a letter.",
+      "thresholdsInvalid": "Amber must be a smaller number of days than red, and both above zero.",
+      "prefixWarning": "Saving relabels every existing ticket as {prefix}-<number>. Replies quoting the old prefix will still thread correctly."
     }
   }
 }

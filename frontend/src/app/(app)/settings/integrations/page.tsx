@@ -9,7 +9,6 @@ import {
   ArrowRight,
   Check,
   CheckCircle,
-  ChevronDown,
   ExternalLink,
   GitBranch,
   Hash,
@@ -36,6 +35,8 @@ import { useTaskStatuses } from "@/hooks/useTaskConfig";
 import { useAuth } from "@/hooks/useAuth";
 import { StatusMapping, slackApi, authApi } from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
+import { SettingsPage } from "@/components/settings/SettingsPrimitives";
 
 type TabType = "github" | "jira" | "linear" | "slack";
 
@@ -546,6 +547,7 @@ function ConnectedIntegration({
 }
 
 function IntegrationsPageContent() {
+  const t = useTranslations("settingsIntegrations");
   const { user } = useAuth();
   const {
     currentWorkspace,
@@ -710,13 +712,7 @@ function IntegrationsPageContent() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Integrations</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Connect Jira, Linear, Slack, and other external tools
-        </p>
-      </div>
+    <SettingsPage title={t("title")} description={t("description")} width="wide">
 
       <div>
         {!hasWorkspaces ? (
@@ -1305,7 +1301,7 @@ function IntegrationsPageContent() {
           </>
         )}
       </div>
-    </div>
+    </SettingsPage>
   );
 }
 

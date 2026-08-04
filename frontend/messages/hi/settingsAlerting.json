@@ -1,0 +1,7 @@
+{
+  "settingsAlerting": {
+    "title": "अलर्ट इंटीग्रेशन",
+    "description": "observability अलर्ट को deduplicated टिकट में बदलें — एक त्रुटि से एक ही टिकट, चाहे वह कितनी बार आए।",
+    "create": "नया इंटीग्रेशन"
+  }
+}

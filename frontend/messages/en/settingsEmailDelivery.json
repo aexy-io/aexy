@@ -1,0 +1,7 @@
+{
+  "settingsEmailDelivery": {
+    "title": "Email delivery",
+    "description": "Delivery status and logs for outbound email.",
+    "adminOnly": "Only workspace owners and admins can see email delivery monitoring."
+  }
+}

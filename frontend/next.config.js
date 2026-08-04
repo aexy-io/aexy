@@ -36,6 +36,27 @@ const nextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      // CRM and Email Marketing settings moved under /settings, where every
+      // other settings page lives and where the shell's permission gate applies.
+      //
+      // `/crm/settings` in particular cannot just 404: `/crm/[objectSlug]`
+      // matches it, so a stale link would render an object page for a
+      // nonexistent object called "settings" rather than failing honestly.
+      { source: '/crm/settings', destination: '/settings/crm', permanent: false },
+      {
+        source: '/crm/settings/integrations',
+        destination: '/settings/crm/integrations',
+        permanent: false,
+      },
+      {
+        source: '/email-marketing/settings',
+        destination: '/settings/email-marketing',
+        permanent: false,
+      },
+    ];
+  },
   async headers() {
     // Clickjacking & frame-busting policy.
     //

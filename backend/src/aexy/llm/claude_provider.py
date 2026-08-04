@@ -39,7 +39,14 @@ logger = logging.getLogger(__name__)
 class ClaudeProvider(LLMProvider):
     """Claude/Anthropic API provider implementation."""
 
-    ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
+    # Split into origin + path on purpose. With the full endpoint as `base_url`,
+    # httpx resolves the request URL `""` to ".../v1/messages/" — with the
+    # trailing slash — and Anthropic answers 307 to the un-slashed form. httpx
+    # does not follow redirects by default, so every call raised instead of
+    # completing. Keep the full URL as a constant for callers that want it.
+    ANTHROPIC_API_ORIGIN = "https://api.anthropic.com"
+    MESSAGES_PATH = "/v1/messages"
+    ANTHROPIC_API_URL = f"{ANTHROPIC_API_ORIGIN}{MESSAGES_PATH}"
     DEFAULT_MODEL = "claude-sonnet-4-20250514"
 
     def __init__(self, config: LLMConfig) -> None:
@@ -55,7 +62,7 @@ class ClaudeProvider(LLMProvider):
             raise ValueError("Anthropic API key is required for Claude provider")
 
         self._client = httpx.AsyncClient(
-            base_url=self.ANTHROPIC_API_URL,
+            base_url=self.ANTHROPIC_API_ORIGIN,
             headers={
                 "x-api-key": config.api_key,
                 "anthropic-version": "2023-06-01",
@@ -97,7 +104,7 @@ class ClaudeProvider(LLMProvider):
         }
 
         try:
-            response = await self._client.post("", json=payload)
+            response = await self._client.post(self.MESSAGES_PATH, json=payload)
             response.raise_for_status()
             data = response.json()
 
@@ -405,7 +412,7 @@ class ClaudeProvider(LLMProvider):
         try:
             # Make a minimal API call
             response = await self._client.post(
-                "",
+                self.MESSAGES_PATH,
                 json={
                     "model": self._model,
                     "max_tokens": 10,

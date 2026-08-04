@@ -1,0 +1,13 @@
+{
+  "settingsAccessLogs": {
+    "title": "Access logs",
+    "description": "Audit trail of access-control changes.",
+    "breadcrumbParent": "Access Control",
+    "refresh": "Refresh",
+    "upsell": {
+      "title": "Enterprise feature",
+      "body": "Access logs are available on the Enterprise plan. Upgrade to track every access-control change and security event.",
+      "cta": "View plans"
+    }
+  }
+}

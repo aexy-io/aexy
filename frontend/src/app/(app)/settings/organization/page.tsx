@@ -14,7 +14,6 @@ import {
   Plus,
   Settings,
   Shield,
-  Trash2,
   UserMinus,
   Users,
   Link as LinkIcon,
@@ -706,6 +705,8 @@ function PendingInviteRow({ invite, onRevoke, onResend, isRevoking }: PendingInv
 }
 
 import { APP_CATALOG } from "@/config/appDefinitions";
+import { useTranslations } from "next-intl";
+import { SettingsPage } from "@/components/settings/SettingsPrimitives";
 
 const APP_LABELS: Record<string, { label: string; description: string }> = Object.fromEntries(
   Object.entries(APP_CATALOG)
@@ -773,6 +774,7 @@ function AppSettingsSection({ appSettings, onUpdate, isUpdating, isOwner }: AppS
 }
 
 export default function OrganizationSettingsPage() {
+  const t = useTranslations("settingsOrganization");
   const { user } = useAuth();
   const {
     workspaces,
@@ -921,7 +923,7 @@ export default function OrganizationSettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <SettingsPage title={t("title")} description={t("description")} width="wide">
       {/* Success Toast */}
       {successMessage && (
         <div className="fixed top-4 right-4 z-50 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
@@ -930,12 +932,6 @@ export default function OrganizationSettingsPage() {
         </div>
       )}
 
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Organization Settings</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Manage your workspace and team members
-        </p>
-      </div>
 
       {members.length >= 3 && (
         <UpgradeBanner
@@ -1259,6 +1255,6 @@ export default function OrganizationSettingsPage() {
           organizations={organizations}
         />
       )}
-    </div>
+    </SettingsPage>
   );
 }

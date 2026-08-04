@@ -22,6 +22,8 @@ import { useTeams } from "@/hooks/useTeams";
 import { insightsApi } from "@/lib/api";
 import { AISettingsSection } from "@/components/code-insights/AISettingsSection";
 import { LLMUsageCard, WorkspaceLLMUsageCard } from "@/components/code-insights";
+import { useTranslations } from "next-intl";
+import { SettingsPage } from "@/components/settings/SettingsPrimitives";
 
 interface WorkingHoursConfig {
   start_hour: number;
@@ -86,6 +88,7 @@ const TIMEZONES = [
 ];
 
 export default function InsightsSettingsPage() {
+  const t = useTranslations("settingsInsights");
   const { isAuthenticated } = useAuth();
   const { currentWorkspaceId, currentWorkspace } = useWorkspace();
   const { teams } = useTeams(currentWorkspaceId);
@@ -189,13 +192,7 @@ export default function InsightsSettingsPage() {
 
   return (
     <PremiumGate feature="advanced_analytics">
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Insights</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Configure developer insights, team metrics, and working hours
-        </p>
-      </div>
+      <SettingsPage title={t("title")} description={t("description")}>
 
       <div className="space-y-6">
         {/* Tab Selector */}
@@ -540,7 +537,7 @@ export default function InsightsSettingsPage() {
           </div>
         </div>
       </div>
-    </div>
+      </SettingsPage>
     </PremiumGate>
   );
 }

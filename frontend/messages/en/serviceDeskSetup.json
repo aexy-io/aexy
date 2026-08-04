@@ -1,0 +1,26 @@
+{
+  "serviceDeskSetup": {
+    "title": "Set up your service desk",
+    "description": "Pick the starting point closest to how your team works. It sets the stakeholders a request can be waiting on, the request types you triage into, and what you call your accounts and products — all editable afterwards.",
+    "apply": "Set up the desk",
+    "applied": "Service desk configured",
+    "changeLater": "Nothing here is permanent. You can rename, reorder, add and remove all of it in Service Desk settings.",
+    "card": {
+      "stakeholders": "Pending with",
+      "requestTypes": "Request types",
+      "vocabulary": "Vocabulary"
+    },
+    "done": {
+      "title": "Your desk is ready",
+      "description": "Register a shared mailbox and add your accounts and products to start taking requests.",
+      "withDepartments": "We also created the departments the desk routes to: {departments}. Add people to them next — until a department has members, tickets waiting on it are visible to nobody.",
+      "completeOrg": "Set up departments",
+      "masterData": "Desk settings",
+      "viewDesk": "Go to the desk"
+    },
+    "notReady": {
+      "title": "This service desk isn't set up yet",
+      "description": "Ask a workspace owner or admin to choose a starting point for it. Once they have, incoming requests will appear here."
+    }
+  }
+}

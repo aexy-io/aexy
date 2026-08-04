@@ -5,25 +5,24 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Clock, GitBranch } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { useServiceDeskTicket, useServiceDeskMutations } from "@/hooks/useServiceDesk";
+import {
+  useServiceDeskTicket,
+  useServiceDeskMutations,
+  useServiceDeskSettings,
+  useServiceDeskTaxonomy,
+} from "@/hooks/useServiceDesk";
 import { useProjects } from "@/hooks/useProjects";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { PendingWith } from "@/lib/service-desk-api";
 import {
   SERVICE_DESK_BREACH_COLORS,
-  SERVICE_DESK_PENDING_WITH_COLORS,
-  SERVICE_DESK_PENDING_WITH_LABELS,
-  SERVICE_DESK_REQUEST_TYPE_LABELS,
+  serviceDeskStakeholderColor,
 } from "@/lib/statusColors";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-
-const PENDING_OPTIONS: PendingWith[] = [
-  "kam", "insurer", "partner", "sales", "third_party", "finance", "marketing", "closed",
-];
 
 function fmtDays(seconds: number): string {
   const d = seconds / 86400;
@@ -43,6 +42,9 @@ export default function ServiceDeskTicketDetailPage() {
   const { changePendingWith, convertToTask } = useServiceDeskMutations();
   const { currentWorkspace } = useWorkspace();
   const { projects } = useProjects(currentWorkspace?.id ?? null);
+  const { data: settings } = useServiceDeskSettings();
+  const { stakeholders, stakeholderLabel, requestTypeLabel } = useServiceDeskTaxonomy();
+  const terms = settings?.terminology ?? {};
 
   const [target, setTarget] = useState<PendingWith | "">("");
   const [note, setNote] = useState("");
@@ -51,7 +53,11 @@ export default function ServiceDeskTicketDetailPage() {
   if (isLoading) return <div className="flex justify-center py-16"><Spinner /></div>;
   if (!ticket) return <div className="p-6 text-muted-foreground">Not found.</div>;
 
-  const pc = SERVICE_DESK_PENDING_WITH_COLORS[ticket.pending_with];
+  const currentSh = stakeholders.find((x) => x.slug === ticket.pending_with);
+  const pc = serviceDeskStakeholderColor(ticket.pending_with, {
+    position: currentSh?.position,
+    semantics: currentSh?.semantics,
+  });
   const bc = SERVICE_DESK_BREACH_COLORS[ticket.tat.breach_level];
 
   const apply = async () => {
@@ -78,11 +84,11 @@ export default function ServiceDeskTicketDetailPage() {
       {/* Fields */}
       <Card className="grid grid-cols-2 gap-4 p-4 sm:grid-cols-3">
         <Field label={t("detail.requester")} value={ticket.requester_name || ticket.requester_email || "—"} />
-        <Field label={t("detail.requestType")} value={SERVICE_DESK_REQUEST_TYPE_LABELS[ticket.request_type] ?? ticket.request_type} />
-        <Field label={t("detail.partner")} value={ticket.partner_name ?? "—"} />
+        <Field label={t("detail.requestType")} value={requestTypeLabel(ticket.request_type)} />
+        <Field label={terms.account ?? t("detail.account")} value={ticket.account_name ?? "—"} />
         <Field
           label={t("detail.pendingWith")}
-          value={<span className={`inline-flex rounded px-1.5 py-0.5 text-xs ${pc?.bg} ${pc?.text}`}>{SERVICE_DESK_PENDING_WITH_LABELS[ticket.pending_with] ?? ticket.pending_with}</span>}
+          value={<span className={`inline-flex rounded px-1.5 py-0.5 text-xs ${pc?.bg} ${pc?.text}`}>{stakeholderLabel(ticket.pending_with)}</span>}
         />
       </Card>
 
@@ -104,7 +110,7 @@ export default function ServiceDeskTicketDetailPage() {
           <div className="space-y-0.5">
             {Object.entries(ticket.tat.stakeholder_seconds).map(([k, secs]) => (
               <div key={k} className="flex justify-between text-xs">
-                <span>{SERVICE_DESK_PENDING_WITH_LABELS[k] ?? k}</span>
+                <span>{stakeholderLabel(k)}</span>
                 <span className="text-muted-foreground">{fmtDays(secs)}</span>
               </div>
             ))}
@@ -122,9 +128,11 @@ export default function ServiceDeskTicketDetailPage() {
             className="rounded-md border border-border bg-background px-3 py-2 text-sm"
           >
             <option value="">—</option>
-            {PENDING_OPTIONS.filter((o) => o !== ticket.pending_with).map((o) => (
-              <option key={o} value={o}>{SERVICE_DESK_PENDING_WITH_LABELS[o]}</option>
-            ))}
+            {stakeholders
+              .filter((o) => o.slug !== ticket.pending_with)
+              .map((o) => (
+                <option key={o.slug} value={o.slug}>{o.label}</option>
+              ))}
           </select>
           <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("detail.note")} className="max-w-xs" />
           <Button onClick={apply} disabled={!target || changePendingWith.isPending}>{t("detail.apply")}</Button>
@@ -165,12 +173,16 @@ export default function ServiceDeskTicketDetailPage() {
         <div className="mb-3 flex items-center gap-1.5 text-sm font-semibold"><Clock className="h-4 w-4" /> {t("detail.timeline")}</div>
         <ol className="space-y-3">
           {ticket.segments.map((s) => {
-            const c = SERVICE_DESK_PENDING_WITH_COLORS[s.pending_with];
+            const sh = stakeholders.find((x) => x.slug === s.pending_with);
+            const c = serviceDeskStakeholderColor(s.pending_with, {
+              position: sh?.position,
+              semantics: sh?.semantics,
+            });
             return (
               <li key={s.id} className="flex gap-3">
                 <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${c?.dot ?? "bg-muted-foreground"}`} />
                 <div className="text-sm">
-                  <div className="font-medium">{SERVICE_DESK_PENDING_WITH_LABELS[s.pending_with] ?? s.pending_with}</div>
+                  <div className="font-medium">{stakeholderLabel(s.pending_with)}</div>
                   <div className="text-xs text-muted-foreground">
                     {new Date(s.entered_at).toLocaleString()}
                     {s.exited_at ? ` → ${new Date(s.exited_at).toLocaleString()}` : ` · ${t("detail.open")}`}

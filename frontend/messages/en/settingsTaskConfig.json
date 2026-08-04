@@ -1,0 +1,6 @@
+{
+  "settingsTaskConfig": {
+    "title": "Task configuration",
+    "description": "The custom statuses and fields every sprint board renders."
+  }
+}

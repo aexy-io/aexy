@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import {
-  KeyRound,
   Plus,
   Loader2,
   CheckCircle2,
@@ -15,6 +14,12 @@ import { useTranslations } from "next-intl";
 import { useApiTokens, ApiTokenCreated } from "@/hooks/useApiTokens";
 import { CopyButton } from "@/components/ui/copy-button";
 import { formatDistanceToNow } from "date-fns";
+import {
+  SettingsPage,
+  SettingsSection,
+  SettingsSkeleton,
+  SettingsEmptyState,
+} from "@/components/settings/SettingsPrimitives";
 
 // Expiry values in days; null means no expiry. Labels are resolved via i18n.
 const EXPIRY_VALUES: (number | null)[] = [30, 60, 90, 180, 365, null];
@@ -77,32 +82,24 @@ export default function ApiTokensPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-            <KeyRound className="h-5 w-5 text-amber-400" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">{t("title")}</h1>
-            <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
-          </div>
-        </div>
+    <SettingsPage
+      title={t("title")}
+      description={t("subtitle")}
+      width="wide"
+      actions={
         <button
           onClick={() => setShowCreate(!showCreate)}
-          className="inline-flex items-center gap-2 px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+          className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-4 w-4" aria-hidden />
           {t("createButton")}
         </button>
-      </div>
-
+      }
+    >
       {/* Create form */}
       {showCreate && (
-        <div className="bg-accent/50 border border-border rounded-lg p-4 space-y-4">
-          <h3 className="text-sm font-medium">{t("form.heading")}</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <SettingsSection title={t("form.heading")}>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="block text-xs text-muted-foreground mb-1">
                 {t("form.nameLabel")}
@@ -137,28 +134,28 @@ export default function ApiTokensPage() {
               </select>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="mt-4 flex items-center gap-2">
             <button
               onClick={handleCreate}
               disabled={!name.trim() || isCreating}
-              className="inline-flex items-center gap-2 px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
             >
-              {isCreating && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {isCreating && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}
               {t("form.submit")}
             </button>
             <button
               onClick={() => setShowCreate(false)}
-              className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               {tc("cancel")}
             </button>
           </div>
-        </div>
+        </SettingsSection>
       )}
 
       {/* Newly created token banner */}
       {newlyCreatedToken && (
-        <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-4 space-y-3">
+        <div className="space-y-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-emerald-400" />
             <span className="text-sm font-medium">
@@ -186,23 +183,19 @@ export default function ApiTokensPage() {
 
       {/* Token list */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
+        <SettingsSkeleton rows={1} />
       ) : tokens.length === 0 ? (
-        <div className="text-center py-16 space-y-3">
-          <div className="mx-auto h-12 w-12 rounded-full bg-accent flex items-center justify-center">
-            <ShieldAlert className="h-6 w-6 text-muted-foreground" />
-          </div>
-          <p className="text-sm font-medium">{t("empty.title")}</p>
-          <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-            {t("empty.description")}
-          </p>
-        </div>
+        <SettingsSection flush>
+          <SettingsEmptyState
+            icon={<ShieldAlert className="h-8 w-8" />}
+            title={t("empty.title")}
+            description={t("empty.description")}
+          />
+        </SettingsSection>
       ) : (
-        <div className="border border-border rounded-lg divide-y divide-border">
+        <SettingsSection flush footer={t("footer")}>
           {/* Table header */}
-          <div className="grid grid-cols-[1fr_140px_140px_100px_80px] gap-4 px-4 py-2 text-xs text-muted-foreground font-medium">
+          <div className="grid grid-cols-[1fr_140px_140px_100px_80px] gap-4 border-b border-border px-5 py-2 text-xs font-medium text-muted-foreground">
             <div>{t("table.name")}</div>
             <div>{t("table.created")}</div>
             <div>{t("table.lastUsed")}</div>
@@ -212,7 +205,7 @@ export default function ApiTokensPage() {
           {tokens.map((token) => (
             <div
               key={token.id}
-              className="grid grid-cols-[1fr_140px_140px_100px_80px] gap-4 px-4 py-3 items-center text-sm hover:bg-accent/30 transition-colors"
+              className="grid grid-cols-[1fr_140px_140px_100px_80px] items-center gap-4 border-b border-border px-5 py-3 text-sm transition-colors last:border-b-0 hover:bg-accent/30"
             >
               <div>
                 <div className="font-medium">{token.name}</div>
@@ -293,13 +286,8 @@ export default function ApiTokensPage() {
               </div>
             </div>
           ))}
-        </div>
+        </SettingsSection>
       )}
-
-      {/* Info */}
-      {tokens.length > 0 && (
-        <p className="text-xs text-muted-foreground">{t("footer")}</p>
-      )}
-    </div>
+    </SettingsPage>
   );
 }

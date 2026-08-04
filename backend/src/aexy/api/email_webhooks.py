@@ -20,6 +20,7 @@ from aexy.models.email_infrastructure import (
 from aexy.services.email_webhook_verify import (
     is_allowed_sns_topic,
     is_safe_sns_subscribe_url,
+    verify_inbound_email_request,
     verify_mailgun_signature,
     verify_postmark_basic_auth,
     verify_sendgrid_signature,
@@ -652,10 +653,12 @@ async def handle_inbound_email(
         # Parse based on content type
         if "multipart/form-data" in content_type or "application/x-www-form-urlencoded" in content_type:
             # SendGrid/Mailgun format (form data)
-            form_data = await request.form()
-            email_data = _parse_inbound_form_data(dict(form_data))
+            form_data = dict(await request.form())
+            _require_inbound_credential(request, form_data)
+            email_data = _parse_inbound_form_data(form_data)
         else:
             # JSON format (Postmark, custom)
+            _require_inbound_credential(request, None)
             body = await request.body()
             payload = json.loads(body)
             email_data = _parse_inbound_json(payload)
@@ -676,11 +679,37 @@ async def handle_inbound_email(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid payload format",
         )
+    except HTTPException:
+        # Re-raise before the catch-all: the 401 from the credential check must
+        # reach the provider as a 401, not be laundered into a 500 (which reads
+        # as our fault and makes the provider retry).
+        raise
     except Exception as e:
         logger.error(f"Error handling inbound email: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error processing inbound email",
+        )
+
+
+def _require_inbound_credential(request: Request, form_fields: dict | None) -> None:
+    """401 unless the post proves it came from our mail provider.
+
+    Kept separate from the event webhooks above because the consequences differ:
+    those log a bounce, this one creates a Service Desk ticket and emails an
+    acknowledgement to whatever address the payload names. Unauthenticated, that
+    is a ticket-injection vector *and* an email reflector on the workspace's own
+    sending domain.
+    """
+    if not verify_inbound_email_request(
+        authorization_header=request.headers.get("Authorization"),
+        token_header=request.headers.get("X-Aexy-Webhook-Token"),
+        token_query=request.query_params.get("token"),
+        form_fields=form_fields,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid inbound email webhook credentials",
         )
 
 

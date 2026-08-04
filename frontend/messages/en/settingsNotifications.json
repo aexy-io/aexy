@@ -1,0 +1,24 @@
+{
+  "settingsNotifications": {
+    "title": "Notifications",
+    "description": "Choose how and when you want to be notified.",
+    "channels": {
+      "title": "Notification channels",
+      "inApp": "In-app",
+      "email": "Email",
+      "slack": "Slack",
+      "webPush": "Web push",
+      "alwaysOn": "Always on",
+      "connected": "Connected",
+      "viaIntegration": "Via workspace integration",
+      "notSupported": "Not supported by this browser",
+      "blocked": "Blocked in browser",
+      "enable": "Enable",
+      "disable": "Disable"
+    },
+    "empty": {
+      "title": "No notification types yet",
+      "description": "Notification types appear here as you start using more features."
+    }
+  }
+}

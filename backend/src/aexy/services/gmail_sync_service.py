@@ -838,7 +838,7 @@ class GmailSyncService:
             from aexy.schemas.service_desk import InboundEmail
 
             mailbox = await ServiceDeskIntakeService.find_mailbox_by_integration(
-                self.db, integration.id
+                self.db, integration.id, workspace_id=integration.workspace_id
             )
             if mailbox is not None:
                 to_addr = None

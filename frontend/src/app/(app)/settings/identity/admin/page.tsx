@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Fingerprint, GitMerge, Sparkles, ArrowLeft } from "lucide-react";
+import { GitMerge, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 
@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMergeGhost, useWorkspaceGhosts } from "@/hooks/useIdentity";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import type { WorkspaceGhostDeveloper } from "@/lib/identity-api";
+import { SettingsPage } from "@/components/settings/SettingsPrimitives";
 
 export default function AdminGhostsPage() {
   const t = useTranslations("identity.admin");
@@ -52,28 +53,15 @@ export default function AdminGhostsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <header className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <div className="rounded-lg bg-primary/10 p-2 mt-0.5">
-            <Fingerprint className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold text-foreground">{t("title")}</h2>
-            <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-              {t("intro")}
-            </p>
-          </div>
-        </div>
-        <Link
-          href="/settings/identity"
-          className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
-        >
-          <ArrowLeft className="h-3 w-3" />
-          /settings/identity
-        </Link>
-      </header>
-
+    <SettingsPage
+      title={t("title")}
+      description={t("intro")}
+      width="wide"
+      breadcrumbs={[
+        { label: t("breadcrumbParent"), href: "/settings/identity" },
+        { label: t("title") },
+      ]}
+    >
       {!isAdmin && (
         <section className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
           {t("adminOnlyHint")}
@@ -183,6 +171,6 @@ export default function AdminGhostsPage() {
           </table>
         </section>
       )}
-    </div>
+    </SettingsPage>
   );
 }

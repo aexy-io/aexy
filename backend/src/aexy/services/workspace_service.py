@@ -705,6 +705,21 @@ class WorkspaceService:
                         invite.id, invite.department_id, invite.workspace_id,
                     )
                     return
+                # Only claim "primary" if they don't already have one. A second
+                # is_primary row violates the one-primary-per-workspace invariant
+                # (uq_department_member_primary), so on a database that has the
+                # index this INSERT would fail and the placement would be
+                # swallowed by the handler below — the person joins with no
+                # department, which is precisely what this code exists to avoid.
+                has_primary = (
+                    await self.db.execute(
+                        select(DepartmentMember.id).where(
+                            DepartmentMember.workspace_id == invite.workspace_id,
+                            DepartmentMember.developer_id == developer_id,
+                            DepartmentMember.is_primary.is_(True),
+                        )
+                    )
+                ).scalar_one_or_none()
                 self.db.add(
                     DepartmentMember(
                         id=str(uuid4()),
@@ -713,7 +728,7 @@ class WorkspaceService:
                         developer_id=developer_id,
                         role_in_department=invite.role_in_department or "member",
                         # First department someone lands in is their primary one.
-                        is_primary=True,
+                        is_primary=has_primary is None,
                         source="invite",
                     )
                 )

@@ -8,6 +8,7 @@ from aexy.api.access_guard import (
     require_app_access_sprint_scoped,
     require_workspace_member,
     require_workspace_permission,
+    require_workspace_permission_for_writes,
 )
 from aexy.api.admin import router as admin_router
 from aexy.api.platform_admin import router as platform_admin_router
@@ -108,6 +109,7 @@ from aexy.api.crm_pipelines import router as crm_pipelines_router
 # Platform-wide Automations
 from aexy.api.automations import router as automations_router
 # Visual Workflow Builder
+from aexy.api.workspace_ai_settings import router as workspace_ai_settings_router
 from aexy.api.workspace_secrets import router as workspace_secrets_router
 from aexy.api.workflows import router as workflows_router
 from aexy.api.workflows import workflows_router as workflows_list_router
@@ -239,7 +241,7 @@ api_router.include_router(billing_router, tags=["billing"])
 # Organization & Team Management
 api_router.include_router(workspaces_router, tags=["workspaces"])
 api_router.include_router(invites_router, tags=["invites"])
-api_router.include_router(workspace_teams_router, tags=["workspace-teams"])
+api_router.include_router(workspace_teams_router, tags=["workspace-teams"], dependencies=[Depends(require_workspace_permission_for_writes("can_manage_team_members"))])
 # Sprint Planning
 api_router.include_router(sprints_router, tags=["sprints"], dependencies=[Depends(require_app_access("sprints"))])
 # sprint_tasks enforces the sprints toggle inside get_sprint_and_check_permission
@@ -253,10 +255,10 @@ api_router.include_router(workspace_tasks_router, tags=["workspace-tasks"])
 api_router.include_router(task_templates_router, tags=["task-templates"])
 api_router.include_router(task_links_router, tags=["task-links"])
 # Task Configuration
-api_router.include_router(task_config_router, tags=["task-config"])
+api_router.include_router(task_config_router, tags=["task-config"], dependencies=[Depends(require_workspace_permission_for_writes("can_manage_workspace_settings"))])
 # External Integrations
-api_router.include_router(integrations_router, tags=["integrations"])
-api_router.include_router(integration_webhooks_router, tags=["integration-webhooks"])
+api_router.include_router(integrations_router, tags=["integrations"], dependencies=[Depends(require_workspace_permission_for_writes("can_manage_integrations"))])
+api_router.include_router(integration_webhooks_router, tags=["integration-webhooks"], dependencies=[Depends(require_workspace_permission_for_writes("can_manage_integrations"))])
 # Epics
 api_router.include_router(epics_router, tags=["epics"], dependencies=[Depends(require_app_access("sprints"))])
 # User Stories
@@ -290,13 +292,13 @@ api_router.include_router(document_spaces_router, tags=["document-spaces"], depe
 # inside tracking.py where the workspace is resolved server-side.
 api_router.include_router(tracking_router, tags=["tracking"])
 # Ticketing
-api_router.include_router(ticket_forms_router, tags=["ticket-forms"], dependencies=[Depends(require_app_access("tickets"))])
+api_router.include_router(ticket_forms_router, tags=["ticket-forms"], dependencies=[Depends(require_app_access("tickets")), Depends(require_workspace_permission_for_writes("can_manage_forms"))])
 api_router.include_router(tickets_router, tags=["tickets"], dependencies=[Depends(require_app_access("tickets"))])
 api_router.include_router(public_forms_router, tags=["public-forms"])
 api_router.include_router(public_tickets_router, tags=["public-tickets"])
 api_router.include_router(public_community_router, tags=["public-community"])
-api_router.include_router(escalation_router, tags=["escalation"], dependencies=[Depends(require_app_access("tickets"))])
-api_router.include_router(escalation_ticket_router, tags=["escalation"], dependencies=[Depends(require_app_access("tickets"))])
+api_router.include_router(escalation_router, tags=["escalation"], dependencies=[Depends(require_app_access("tickets")), Depends(require_workspace_permission_for_writes("can_manage_tickets"))])
+api_router.include_router(escalation_ticket_router, tags=["escalation"], dependencies=[Depends(require_app_access("tickets")), Depends(require_workspace_permission_for_writes("can_manage_tickets"))])
 # Forms (Standalone Module with CRM/Ticketing integration)
 api_router.include_router(forms_router, tags=["forms"], dependencies=[Depends(require_app_access("forms"))])
 api_router.include_router(public_forms_new_router, tags=["forms-public"])
@@ -314,6 +316,7 @@ api_router.include_router(crm_pipelines_router, tags=["crm-pipelines"], dependen
 # Platform-wide Automations
 api_router.include_router(automations_router, tags=["automations"], dependencies=[Depends(require_app_access("automations"))])
 # Visual Workflow Builder
+api_router.include_router(workspace_ai_settings_router)
 api_router.include_router(workspace_secrets_router)
 api_router.include_router(workflows_router, tags=["workflows"])
 api_router.include_router(workflows_list_router, tags=["workflows"])
@@ -338,7 +341,7 @@ api_router.include_router(roles_router, tags=["roles"])
 api_router.include_router(projects_router, tags=["projects"])
 api_router.include_router(public_projects_router, tags=["public-projects"])
 # App Access Control
-api_router.include_router(app_access_router, tags=["app-access"])
+api_router.include_router(app_access_router, tags=["app-access"], dependencies=[Depends(require_workspace_permission_for_writes("can_manage_roles"))])
 # Email Marketing
 api_router.include_router(email_marketing_router, tags=["email-marketing"], dependencies=[Depends(require_app_access("email_marketing"))])
 # Email Infrastructure (Multi-domain sending, warming, routing)

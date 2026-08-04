@@ -5,15 +5,15 @@ import { Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import {
-  useInsurers,
-  useLobs,
+  useVendors,
+  useProducts,
   useMailboxes,
-  usePartners,
+  useAccounts,
   useServiceDeskMutations,
   useServiceDeskSettings,
   useServiceDeskTemplates,
 } from "@/hooks/useServiceDesk";
-import { ServiceDeskTemplate } from "@/lib/service-desk-api";
+import { ServiceDeskSettingsPatch, ServiceDeskTemplate } from "@/lib/service-desk-api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -170,6 +170,127 @@ function WorkingHoursEditor({
   );
 }
 
+/** Ticket prefix, timezone and breach thresholds.
+ *
+ *  All four were module constants baked to one customer's operation — "BSD"
+ *  ticket ids, Asia/Kolkata day boundaries, a 2-business-day target — so any
+ *  other desk inherited them with no way to change them. The defaults shown
+ *  here still reproduce exactly that behaviour.
+ */
+function DeskIdentityEditor({
+  prefix,
+  timezone,
+  red,
+  amber,
+  canManage,
+  saving,
+  onSave,
+}: {
+  prefix: string;
+  timezone: string;
+  red: number;
+  amber: number;
+  canManage: boolean;
+  saving: boolean;
+  onSave: (patch: ServiceDeskSettingsPatch) => void;
+}) {
+  const t = useTranslations("serviceDesk");
+  const [p, setP] = useState(prefix);
+  const [tz, setTz] = useState(timezone);
+  const [r, setR] = useState(String(red));
+  const [a, setA] = useState(String(amber));
+
+  useEffect(() => {
+    setP(prefix);
+    setTz(timezone);
+    setR(String(red));
+    setA(String(amber));
+  }, [prefix, timezone, red, amber]);
+
+  const redNum = Number(r);
+  const amberNum = Number(a);
+  // Mirror the server's rules so the reason is visible before the round trip.
+  const prefixValid = /^[A-Za-z][A-Za-z0-9]{0,9}$/.test(p);
+  const thresholdsValid =
+    Number.isFinite(redNum) && Number.isFinite(amberNum) && redNum > 0 && amberNum > 0 && amberNum < redNum;
+  const dirty = p !== prefix || tz !== timezone || redNum !== red || amberNum !== amber;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <label className="mb-1 block text-xs text-muted-foreground">{t("deskIdentity.prefix")}</label>
+          <Input
+            value={p}
+            disabled={!canManage}
+            onChange={(e) => setP(e.target.value.toUpperCase())}
+            className="w-28 font-mono"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs text-muted-foreground">{t("deskIdentity.timezone")}</label>
+          <Input
+            value={tz}
+            disabled={!canManage}
+            onChange={(e) => setTz(e.target.value)}
+            placeholder="Asia/Kolkata"
+            className="w-48 font-mono"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs text-muted-foreground">{t("deskIdentity.amber")}</label>
+          <Input
+            type="number"
+            step="0.5"
+            min="0.5"
+            value={a}
+            disabled={!canManage}
+            onChange={(e) => setA(e.target.value)}
+            className="w-24"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs text-muted-foreground">{t("deskIdentity.red")}</label>
+          <Input
+            type="number"
+            step="0.5"
+            min="0.5"
+            value={r}
+            disabled={!canManage}
+            onChange={(e) => setR(e.target.value)}
+            className="w-24"
+          />
+        </div>
+        {canManage && (
+          <Button
+            size="sm"
+            className="mb-0.5"
+            disabled={!dirty || !prefixValid || !thresholdsValid || saving}
+            onClick={() =>
+              onSave({
+                ticket_prefix: p,
+                timezone: tz,
+                breach_red_days: redNum,
+                breach_amber_days: amberNum,
+              })
+            }
+          >
+            {saving ? t("workingHours.saving") : t("workingHours.save")}
+          </Button>
+        )}
+      </div>
+      {!prefixValid && <p className="text-xs text-amber-500">{t("deskIdentity.prefixInvalid")}</p>}
+      {!thresholdsValid && <p className="text-xs text-amber-500">{t("deskIdentity.thresholdsInvalid")}</p>}
+      {/* Display ids are rendered from the ticket number, not stored, so this
+          relabels tickets that already exist. Replies quoting the old prefix
+          still thread correctly — the server keeps accepting it. */}
+      {prefixValid && p !== prefix && (
+        <p className="text-xs text-muted-foreground">{t("deskIdentity.prefixWarning", { prefix: p })}</p>
+      )}
+    </div>
+  );
+}
+
 /** Shift length in hours, to one decimal — what one "day" of the target means. */
 function hoursBetween(from: string, to: string): string {
   const [fh, fm] = from.split(":").map(Number);
@@ -180,17 +301,21 @@ function hoursBetween(from: string, to: string): string {
 
 export default function ServiceDeskSettingsPage() {
   const t = useTranslations("serviceDesk");
-  const partners = usePartners();
-  const insurers = useInsurers();
-  const lobs = useLobs();
+  const accounts = useAccounts();
+  const vendors = useVendors();
+  const products = useProducts();
   const mailboxes = useMailboxes();
   const settings = useServiceDeskSettings();
   const templates = useServiceDeskTemplates();
   const m = useServiceDeskMutations();
+  // The workspace's own nouns for the three master-data tables. An insurance
+  // desk still reads "Partners"/"Insurers"/"Lines of Business"; a software desk
+  // reads "Customers"/"Vendors"/"Products".
+  const terms = settings.data?.terminology ?? {};
 
   const [pName, setPName] = useState("");
   const [pDomains, setPDomains] = useState("");
-  const [pKam, setPKam] = useState("");
+  const [pOwner, setPOwner] = useState("");
   const [iName, setIName] = useState("");
   const [iDomains, setIDomains] = useState("");
   const [lName, setLName] = useState("");
@@ -252,6 +377,20 @@ export default function ServiceDeskSettingsPage() {
         />
       </Section>
 
+      {/* Desk identity + SLA — previously code constants fixed to one customer */}
+      <Section title={t("deskIdentity.title")}>
+        <p className="max-w-2xl text-sm text-muted-foreground">{t("deskIdentity.description")}</p>
+        <DeskIdentityEditor
+          prefix={settings.data?.ticket_prefix ?? "BSD"}
+          timezone={settings.data?.timezone ?? "Asia/Kolkata"}
+          red={settings.data?.breach_red_days ?? 2}
+          amber={settings.data?.breach_amber_days ?? 1}
+          canManage={canManage}
+          saving={m.updateSettings.isPending}
+          onSave={(patch) => m.updateSettings.mutate(patch)}
+        />
+      </Section>
+
       {/* Email templates (editable copy) */}
       <Section title={t("templates.title")}>
         <p className="text-sm text-muted-foreground">{t("templates.description")}</p>
@@ -271,25 +410,25 @@ export default function ServiceDeskSettingsPage() {
       </Section>
 
       {/* Partners */}
-      <Section title={t("settings.partners")}>
+      <Section title={terms.accounts ?? t("settings.accounts")}>
         {canManage && (
           <div className="flex flex-wrap items-end gap-2">
             <Input value={pName} onChange={(e) => setPName(e.target.value)} placeholder={t("settings.name")} className="max-w-[180px]" />
             <Input value={pDomains} onChange={(e) => setPDomains(e.target.value)} placeholder={t("settings.domainsHint")} className="max-w-[220px]" />
-            <Input value={pKam} onChange={(e) => setPKam(e.target.value)} placeholder={t("settings.assignedKam")} className="max-w-[200px]" />
+            <Input value={pOwner} onChange={(e) => setPOwner(e.target.value)} placeholder={t("settings.assignedOwner")} className="max-w-[200px]" />
             <Button
-              disabled={!pName.trim() || m.createPartner.isPending}
+              disabled={!pName.trim() || m.createAccount.isPending}
               onClick={async () => {
-                await m.createPartner.mutateAsync({ name: pName.trim(), assigned_kam_id: pKam.trim() || null, domains: domains(pDomains) });
-                setPName(""); setPDomains(""); setPKam("");
+                await m.createAccount.mutateAsync({ name: pName.trim(), assigned_owner_id: pOwner.trim() || null, domains: domains(pDomains) });
+                setPName(""); setPDomains(""); setPOwner("");
               }}
             >{t("settings.add")}</Button>
           </div>
         )}
-        {partners.isLoading ? <Spinner size="sm" /> : (partners.data ?? []).length === 0 ? (
+        {accounts.isLoading ? <Spinner size="sm" /> : (accounts.data ?? []).length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("settings.empty")}</p>
-        ) : (partners.data ?? []).map((p) => (
-          <Row key={p.id} canManage={canManage} onDelete={() => m.deletePartner.mutate(p.id)}>
+        ) : (accounts.data ?? []).map((p) => (
+          <Row key={p.id} canManage={canManage} onDelete={() => m.deleteAccount.mutate(p.id)}>
             <span className="font-medium">{p.name}</span>{" "}
             {p.domains.map((d) => <Badge key={d} variant="secondary" className="ml-1 text-[10px]">{d}</Badge>)}
           </Row>
@@ -297,19 +436,19 @@ export default function ServiceDeskSettingsPage() {
       </Section>
 
       {/* Insurers */}
-      <Section title={t("settings.insurers")}>
+      <Section title={terms.vendors ?? t("settings.vendors")}>
         {canManage && (
           <div className="flex flex-wrap items-end gap-2">
             <Input value={iName} onChange={(e) => setIName(e.target.value)} placeholder={t("settings.name")} className="max-w-[180px]" />
             <Input value={iDomains} onChange={(e) => setIDomains(e.target.value)} placeholder={t("settings.domainsHint")} className="max-w-[220px]" />
             <Button
-              disabled={!iName.trim() || m.createInsurer.isPending}
-              onClick={async () => { await m.createInsurer.mutateAsync({ name: iName.trim(), domains: domains(iDomains) }); setIName(""); setIDomains(""); }}
+              disabled={!iName.trim() || m.createVendor.isPending}
+              onClick={async () => { await m.createVendor.mutateAsync({ name: iName.trim(), domains: domains(iDomains) }); setIName(""); setIDomains(""); }}
             >{t("settings.add")}</Button>
           </div>
         )}
-        {(insurers.data ?? []).map((i) => (
-          <Row key={i.id} canManage={canManage} onDelete={() => m.deleteInsurer.mutate(i.id)}>
+        {(vendors.data ?? []).map((i) => (
+          <Row key={i.id} canManage={canManage} onDelete={() => m.deleteVendor.mutate(i.id)}>
             <span className="font-medium">{i.name}</span>{" "}
             {i.domains.map((d) => <Badge key={d} variant="secondary" className="ml-1 text-[10px]">{d}</Badge>)}
           </Row>
@@ -317,19 +456,19 @@ export default function ServiceDeskSettingsPage() {
       </Section>
 
       {/* LOBs */}
-      <Section title={t("settings.lobs")}>
+      <Section title={terms.products ?? t("settings.products")}>
         {canManage && (
           <div className="flex items-end gap-2">
             <Input value={lName} onChange={(e) => setLName(e.target.value)} placeholder={t("settings.name")} className="max-w-[220px]" />
-            <Button disabled={!lName.trim() || m.createLob.isPending} onClick={async () => { await m.createLob.mutateAsync({ name: lName.trim() }); setLName(""); }}>{t("settings.add")}</Button>
+            <Button disabled={!lName.trim() || m.createProduct.isPending} onClick={async () => { await m.createProduct.mutateAsync({ name: lName.trim() }); setLName(""); }}>{t("settings.add")}</Button>
           </div>
         )}
         <div className="flex flex-wrap gap-2">
-          {(lobs.data ?? []).map((l) => (
+          {(products.data ?? []).map((l) => (
             <span key={l.id} className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-sm">
               {l.name}
               {canManage && (
-                <button onClick={() => m.deleteLob.mutate(l.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-3 w-3" /></button>
+                <button onClick={() => m.deleteProduct.mutate(l.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-3 w-3" /></button>
               )}
             </span>
           ))}

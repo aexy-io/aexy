@@ -1,6 +1,6 @@
-"""Unit tests for the Bimaplan Service Desk intake service.
+"""Unit tests for the Service Desk intake service.
 
-Covers domain-based auto-assignment (partner → insurer → internal → random KAM
+Covers domain-based auto-assignment (account → vendor → internal → random KAM
 fallback), first pending-with segment creation, reply threading, and
 idempotency. AI classification and the receipt email are best-effort hooks and
 are stubbed out here.
@@ -15,19 +15,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from aexy.models.developer import Developer
 from aexy.models.organization import Department, DepartmentMember
 from aexy.models.service_desk import (
-    ServiceDeskInsurer,
-    ServiceDeskInsurerDomain,
+    ServiceDeskVendor,
+    ServiceDeskVendorDomain,
     ServiceDeskMailbox,
-    ServiceDeskPartner,
-    ServiceDeskPartnerDomain,
+    ServiceDeskAccount,
+    ServiceDeskAccountDomain,
     ServiceDeskTicket,
     TicketPendingSegment,
 )
 from aexy.models.ticketing import Ticket, TicketResponse
 from aexy.models.workspace import Workspace, WorkspaceMember
 from aexy.schemas.service_desk import InboundEmail
-from aexy.services import service_desk_intake_service as sd_mod
 from aexy.services.service_desk_intake_service import ServiceDeskIntakeService
+from tests.conftest import seed_service_desk_taxonomy
 
 
 @pytest.fixture(autouse=True)
@@ -40,18 +40,23 @@ def _stub_best_effort(monkeypatch):
 
 
 async def _workspace(db: AsyncSession, slug: str) -> Workspace:
-    owner = Developer(email=f"owner-{slug}@bimaplan.co", name=f"Owner {slug}")
+    owner = Developer(email=f"owner-{slug}@example.com", name=f"Owner {slug}")
     db.add(owner)
     await db.flush()
     ws = Workspace(name=f"WS {slug}", slug=slug, owner_id=owner.id)
     db.add(ws)
     await db.commit()
     await db.refresh(ws)
+    # Stakeholders/request types are per-workspace rows now, not an enum, so a
+    # bare workspace has no taxonomy and the service layer refuses to file a
+    # ticket into one. Seeds the legacy insurance slugs these tests assert on.
+    await seed_service_desk_taxonomy(db, ws.id)
+
     return ws
 
 
 async def _mailbox(db: AsyncSession, ws: Workspace) -> ServiceDeskMailbox:
-    mb = ServiceDeskMailbox(workspace_id=ws.id, address="operations@bimaplan.co", channel="webhook")
+    mb = ServiceDeskMailbox(workspace_id=ws.id, address="operations@example.com", channel="webhook")
     db.add(mb)
     await db.commit()
     await db.refresh(mb)
@@ -66,7 +71,7 @@ async def _ops_kam(db: AsyncSession, ws: Workspace, n: int = 2) -> list[str]:
     await db.flush()
     ids = []
     for i in range(n):
-        dev = Developer(email=f"kam{i}-{ws.slug}@bimaplan.co", name=f"KAM{i}")
+        dev = Developer(email=f"kam{i}-{ws.slug}@example.com", name=f"KAM{i}")
         db.add(dev)
         await db.flush()
         db.add(DepartmentMember(workspace_id=ws.id, department_id=dept.id, developer_id=dev.id))
@@ -83,7 +88,7 @@ async def _ops_kam(db: AsyncSession, ws: Workspace, n: int = 2) -> list[str]:
 
 
 def _email(**kw) -> InboundEmail:
-    base = dict(to="operations@bimaplan.co", from_email="x@example.com", subject="Help", body_text="Body")
+    base = dict(to="operations@example.com", from_email="x@example.com", subject="Help", body_text="Body")
     base.update(kw)
     return InboundEmail(**base)
 
@@ -98,13 +103,13 @@ async def _sd_for(db: AsyncSession, ticket_id: str) -> ServiceDeskTicket:
 async def test_partner_domain_match_assigns_mapped_kam(db_session: AsyncSession):
     ws = await _workspace(db_session, "sd-a")
     mb = await _mailbox(db_session, ws)
-    kam = Developer(email="neha@bimaplan.co", name="Neha")
+    kam = Developer(email="neha@example.com", name="Neha")
     db_session.add(kam)
     await db_session.flush()
-    partner = ServiceDeskPartner(workspace_id=ws.id, name="ABC Finance", assigned_kam_id=kam.id)
-    db_session.add(partner)
+    account = ServiceDeskAccount(workspace_id=ws.id, name="ABC Finance", assigned_owner_id=kam.id)
+    db_session.add(account)
     await db_session.flush()
-    db_session.add(ServiceDeskPartnerDomain(workspace_id=ws.id, partner_id=partner.id, domain="abcfinance.com"))
+    db_session.add(ServiceDeskAccountDomain(workspace_id=ws.id, account_id=account.id, domain="abcfinance.com"))
     await db_session.commit()
 
     ticket = await ServiceDeskIntakeService(db_session).ingest(
@@ -115,7 +120,7 @@ async def test_partner_domain_match_assigns_mapped_kam(db_session: AsyncSession)
     assert ticket is not None
     assert ticket.assignee_id == kam.id
     sd = await _sd_for(db_session, ticket.id)
-    assert sd.partner_id == partner.id
+    assert sd.account_id == account.id
     assert sd.pending_with == "kam"
     assert sd.needs_triage is False
     # first ledger segment opened
@@ -130,10 +135,10 @@ async def test_insurer_domain_match_flags_triage(db_session: AsyncSession):
     ws = await _workspace(db_session, "sd-b")
     mb = await _mailbox(db_session, ws)
     await _ops_kam(db_session, ws)
-    insurer = ServiceDeskInsurer(workspace_id=ws.id, name="XYZ Life")
-    db_session.add(insurer)
+    vendor = ServiceDeskVendor(workspace_id=ws.id, name="XYZ Life")
+    db_session.add(vendor)
     await db_session.flush()
-    db_session.add(ServiceDeskInsurerDomain(workspace_id=ws.id, insurer_id=insurer.id, domain="xyzlifeinsurance.com"))
+    db_session.add(ServiceDeskVendorDomain(workspace_id=ws.id, vendor_id=vendor.id, domain="xyzlifeinsurance.com"))
     await db_session.commit()
 
     ticket = await ServiceDeskIntakeService(db_session).ingest(
@@ -142,8 +147,8 @@ async def test_insurer_domain_match_flags_triage(db_session: AsyncSession):
     await db_session.commit()
 
     sd = await _sd_for(db_session, ticket.id)
-    assert sd.insurer_id == insurer.id
-    assert sd.partner_id is None
+    assert sd.vendor_id == vendor.id
+    assert sd.account_id is None
     assert sd.needs_triage is True
 
 
@@ -154,7 +159,7 @@ async def test_internal_sender_marks_internal(db_session: AsyncSession):
     kams = await _ops_kam(db_session, ws)
 
     ticket = await ServiceDeskIntakeService(db_session).ingest(
-        _email(from_email="priya.sales@bimaplan.co", message_id="m3"), mb, "service_desk_webhook"
+        _email(from_email="priya.sales@example.com", message_id="m3"), mb, "service_desk_webhook"
     )
     await db_session.commit()
 
@@ -177,7 +182,7 @@ async def test_no_match_random_fallback(db_session: AsyncSession):
 
     sd = await _sd_for(db_session, ticket.id)
     assert sd.needs_triage is True
-    assert sd.partner_id is None
+    assert sd.account_id is None
     assert ticket.assignee_id in kams
 
 
@@ -235,7 +240,7 @@ async def test_subject_bsd_token_threads(db_session: AsyncSession):
     num = first.ticket_number
 
     second = await svc.ingest(
-        _email(from_email="a@newpartner.io", message_id="s2", subject=f"Re: BSD-{num} Original", body_text="threaded"), mb, "service_desk_webhook"
+        _email(from_email="a@newpartner.io", message_id="s2", subject=f"Re: SD-{num} Original", body_text="threaded"), mb, "service_desk_webhook"
     )
     await db_session.commit()
 

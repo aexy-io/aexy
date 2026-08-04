@@ -26,6 +26,7 @@ from aexy.core.config import get_settings
 from aexy.models.developer import Developer
 from aexy.models.organization import Department, DepartmentMember
 from aexy.models.workspace import Workspace, WorkspaceMember
+from tests.conftest import seed_service_desk_taxonomy
 
 settings = get_settings()
 
@@ -40,7 +41,7 @@ def _sd(ws_id: str) -> str:
 
 
 async def _developer(db: AsyncSession, label: str) -> Developer:
-    dev = Developer(id=str(uuid4()), email=f"{label}-{uuid4().hex[:6]}@bimaplan.co", name=label)
+    dev = Developer(id=str(uuid4()), email=f"{label}-{uuid4().hex[:6]}@example.com", name=label)
     db.add(dev)
     await db.flush()
     return dev
@@ -89,6 +90,14 @@ async def tenants(db_session: AsyncSession):
     db_session.add(
         DepartmentMember(id=str(uuid4()), workspace_id=ws_a.id, department_id=dept.id, developer_id=sales.id)
     )
+
+    # A department's function key only grants visibility if some stakeholder
+    # routes to it, and stakeholders are per-workspace rows now rather than an
+    # enum — so a desk with no taxonomy scopes everyone to "none", correctly.
+    # These tests describe an insurance desk (sales/finance/marketing queues), so
+    # they set one up, which is what an admin does before anyone uses the desk.
+    await seed_service_desk_taxonomy(db_session, ws_a.id)
+    await seed_service_desk_taxonomy(db_session, ws_b.id)
     await db_session.commit()
 
     return {
@@ -122,7 +131,7 @@ async def test_outsider_is_locked_out_of_another_workspace(client, tenants, seed
         "ticket detail": await client.get(f"{b}/tickets/{seeded_ticket}", headers=h),
         "ticket list": await client.get(f"{b}/tickets", headers=h),
         "dashboard": await client.get(f"{b}/dashboard", headers=h),
-        "partners": await client.get(f"{b}/partners", headers=h),
+        "accounts": await client.get(f"{b}/accounts", headers=h),
         "templates": await client.get(f"{b}/templates", headers=h),
         "settings read": await client.get(f"{b}/settings", headers=h),
         "settings write": await client.patch(f"{b}/settings", headers=h, json={"ai_classification_enabled": True}),
@@ -144,7 +153,7 @@ async def test_plain_member_can_read_but_not_manage(client, tenants):
     b = _sd(ws)
 
     # reads are fine
-    assert (await client.get(f"{b}/partners", headers=h)).status_code == 200
+    assert (await client.get(f"{b}/accounts", headers=h)).status_code == 200
     settings = await client.get(f"{b}/settings", headers=h)
     assert settings.status_code == 200
     # ...and the response tells the UI it is read-only, so it can hide controls
@@ -155,10 +164,10 @@ async def test_plain_member_can_read_but_not_manage(client, tenants):
 
     # writes are refused
     forbidden = {
-        "create partner": await client.post(f"{b}/partners", headers=h, json={"name": "Rogue", "domains": ["rogue.com"]}),
-        "create insurer": await client.post(f"{b}/insurers", headers=h, json={"name": "Rogue Life"}),
-        "create lob": await client.post(f"{b}/lobs", headers=h, json={"name": "Rogue LOB"}),
-        "create mailbox": await client.post(f"{b}/mailboxes", headers=h, json={"address": "rogue@bimaplan.co"}),
+        "create account": await client.post(f"{b}/accounts", headers=h, json={"name": "Rogue", "domains": ["rogue.com"]}),
+        "create vendor": await client.post(f"{b}/vendors", headers=h, json={"name": "Rogue Life"}),
+        "create product": await client.post(f"{b}/products", headers=h, json={"name": "Rogue Product"}),
+        "create mailbox": await client.post(f"{b}/mailboxes", headers=h, json={"address": "rogue@example.com"}),
         "flip AI toggle": await client.patch(f"{b}/settings", headers=h, json={"ai_classification_enabled": True}),
         "rewrite receipt": await client.patch(f"{b}/templates/receipt", headers=h, json={"subject": "pwned", "body": "pwned"}),
         "create department": await client.post(f"/api/v1/workspaces/{ws}/organization/departments", headers=h, json={"name": "Rogue Dept"}),
@@ -188,7 +197,7 @@ async def test_view_permission_gates_the_module(client, tenants):
 
     assert (await client.get(f"/api/v1/workspaces/{ws}/organization/departments", headers=h)).status_code == 200
 
-    for path in ("/tickets", "/dashboard", "/partners", "/settings"):
+    for path in ("/tickets", "/dashboard", "/accounts", "/settings"):
         r = await client.get(_sd(ws) + path, headers=h)
         assert r.status_code == 403, f"revoked member reached service desk {path}: {r.status_code}"
 
@@ -309,14 +318,14 @@ async def test_convert_to_task_rejects_a_project_from_another_workspace(client, 
 
 @pytest.mark.asyncio
 async def test_master_data_ids_must_belong_to_the_workspace(client, tenants, seeded_ticket):
-    """A partner/LOB id from elsewhere must not be attachable to our ticket."""
+    """A account/Product id from elsewhere must not be attachable to our ticket."""
     ws, h = tenants["ws_a"], tenants["admin"]
     b = _sd(ws)
 
-    r = await client.patch(f"{b}/tickets/{seeded_ticket}", headers=h, json={"partner_id": str(uuid4())})
+    r = await client.patch(f"{b}/tickets/{seeded_ticket}", headers=h, json={"account_id": str(uuid4())})
     assert r.status_code == 404, r.text
-    r = await client.patch(f"{b}/tickets/{seeded_ticket}", headers=h, json={"lob_id": str(uuid4())})
+    r = await client.patch(f"{b}/tickets/{seeded_ticket}", headers=h, json={"product_id": str(uuid4())})
     assert r.status_code == 404, r.text
     r = await client.post(f"{b}/tickets/manual", headers=h,
-                          json={"subject": "x", "request_type": "query", "partner_id": str(uuid4())})
+                          json={"subject": "x", "request_type": "query", "account_id": str(uuid4())})
     assert r.status_code == 404, r.text

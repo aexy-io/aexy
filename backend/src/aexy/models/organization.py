@@ -6,7 +6,6 @@ A first-class org layer that sits *above* the delivery-focused ``Team`` model
 support **multi-function membership** (one person may belong to several
 departments, exactly one marked primary).
 
-See ``prds/BIMAPLAN_SERVICE_DESK_PLAN.md`` §3.
 """
 
 from datetime import datetime
@@ -19,12 +18,14 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -138,6 +139,19 @@ class Department(Base):
 
     __table_args__ = (
         UniqueConstraint("workspace_id", "slug", name="uq_department_slug"),
+        # One department per canonical function per workspace. Declared here as
+        # well as in the migration because create_all (which builds the schema on
+        # app startup) only knows about indexes in the metadata — leaving it
+        # migration-only meant a Docker-first environment could write duplicate
+        # rows and then the migration's CREATE UNIQUE INDEX could never succeed.
+        Index(
+            "uq_department_function_key",
+            "workspace_id",
+            "function_key",
+            unique=True,
+            postgresql_where=text("function_key IS NOT NULL"),
+            sqlite_where=text("function_key IS NOT NULL"),
+        ),
     )
 
 
@@ -196,6 +210,16 @@ class DepartmentMember(Base):
 
     __table_args__ = (
         UniqueConstraint("department_id", "developer_id", name="uq_department_member"),
+        # At most one primary department per person per workspace — see the note
+        # on Department.__table_args__ for why this is declared here too.
+        Index(
+            "uq_department_member_primary",
+            "workspace_id",
+            "developer_id",
+            unique=True,
+            postgresql_where=text("is_primary"),
+            sqlite_where=text("is_primary"),
+        ),
     )
 
 

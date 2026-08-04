@@ -292,14 +292,14 @@ async def oauth_callback(
     custom_redirect = state_parts[2] if len(state_parts) > 2 else ""
 
     if error:
-        redirect = custom_redirect or f"{frontend_url}/crm/settings/integrations"
+        redirect = custom_redirect or f"{frontend_url}/settings/crm/integrations"
         return RedirectResponse(
             url=f"{redirect}?google=error&message={urllib.parse.quote(error)}",
             status_code=status.HTTP_302_FOUND,
         )
 
     if expected_workspace_id != workspace_id:
-        redirect = custom_redirect or f"{frontend_url}/crm/settings/integrations"
+        redirect = custom_redirect or f"{frontend_url}/settings/crm/integrations"
         return RedirectResponse(
             url=f"{redirect}?google=error&message=Invalid+state",
             status_code=status.HTTP_302_FOUND,
@@ -321,7 +321,7 @@ async def oauth_callback(
 
             if response.status_code != 200:
                 logger.error(f"Token exchange failed: {response.text}")
-                redirect = custom_redirect or f"{frontend_url}/crm/settings/integrations"
+                redirect = custom_redirect or f"{frontend_url}/settings/crm/integrations"
                 return RedirectResponse(
                     url=f"{redirect}?google=error&message=Token+exchange+failed",
                     status_code=status.HTTP_302_FOUND,
@@ -378,7 +378,7 @@ async def oauth_callback(
 
         await db.commit()
 
-        redirect = custom_redirect or f"{frontend_url}/crm/settings/integrations"
+        redirect = custom_redirect or f"{frontend_url}/settings/crm/integrations"
         return RedirectResponse(
             url=f"{redirect}?google=connected",
             status_code=status.HTTP_302_FOUND,
@@ -386,7 +386,7 @@ async def oauth_callback(
 
     except Exception as e:
         logger.exception(f"OAuth callback error: {e}")
-        redirect = custom_redirect or f"{frontend_url}/crm/settings/integrations"
+        redirect = custom_redirect or f"{frontend_url}/settings/crm/integrations"
         return RedirectResponse(
             url=f"{redirect}?google=error&message={urllib.parse.quote(str(e))}",
             status_code=status.HTTP_302_FOUND,
@@ -422,14 +422,14 @@ async def google_oauth_callback(
         return f"{base_url}{separator}{params}"
 
     if error:
-        redirect = custom_redirect or f"{frontend_url}/crm/settings?section=integrations"
+        redirect = custom_redirect or f"{frontend_url}/settings/crm/integrations"
         return RedirectResponse(
             url=build_redirect_url(redirect, f"google=error&message={urllib.parse.quote(error)}"),
             status_code=status.HTTP_302_FOUND,
         )
 
     if not workspace_id:
-        redirect = custom_redirect or f"{frontend_url}/crm/settings?section=integrations"
+        redirect = custom_redirect or f"{frontend_url}/settings/crm/integrations"
         return RedirectResponse(
             url=build_redirect_url(redirect, "google=error&message=Invalid+state"),
             status_code=status.HTTP_302_FOUND,
@@ -451,7 +451,7 @@ async def google_oauth_callback(
 
             if response.status_code != 200:
                 logger.error(f"Token exchange failed: {response.text}")
-                redirect = custom_redirect or f"{frontend_url}/crm/settings?section=integrations"
+                redirect = custom_redirect or f"{frontend_url}/settings/crm/integrations"
                 return RedirectResponse(
                     url=build_redirect_url(redirect, "google=error&message=Token+exchange+failed"),
                     status_code=status.HTTP_302_FOUND,
@@ -508,7 +508,7 @@ async def google_oauth_callback(
 
         await db.commit()
 
-        redirect = custom_redirect or f"{frontend_url}/crm/settings?section=integrations"
+        redirect = custom_redirect or f"{frontend_url}/settings/crm/integrations"
         return RedirectResponse(
             url=build_redirect_url(redirect, "google=connected"),
             status_code=status.HTTP_302_FOUND,
@@ -516,7 +516,7 @@ async def google_oauth_callback(
 
     except Exception as e:
         logger.exception(f"OAuth callback error: {e}")
-        redirect = custom_redirect or f"{frontend_url}/crm/settings?section=integrations"
+        redirect = custom_redirect or f"{frontend_url}/settings/crm/integrations"
         return RedirectResponse(
             url=build_redirect_url(redirect, f"google=error&message={urllib.parse.quote(str(e))}"),
             status_code=status.HTTP_302_FOUND,

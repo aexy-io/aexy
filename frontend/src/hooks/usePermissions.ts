@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { dashboardApi } from "@/lib/api";
+import { dashboardApi, workspaceApi } from "@/lib/api";
 import { useMyProjectPermissions } from "./useProjects";
 
 /**
@@ -33,47 +33,56 @@ export function useAccessibleWidgets(workspaceId: string | null, projectId?: str
  * Otherwise, uses workspace-level permissions from the member role
  */
 export function usePermissions(workspaceId: string | null, projectId?: string | null) {
-  // If we have a project context, use project permissions
+  // If we have a project context, use project permissions (that endpoint already
+  // handles inheritance from the workspace role).
   const projectPerms = useMyProjectPermissions(
     projectId ? workspaceId : null,
     projectId || null
   );
 
-  // For now, workspace-level permissions would need a separate endpoint
-  // The project permissions endpoint handles inheritance, so it works for both
-  // When no project is specified, we could query org-level permissions
+  // Workspace-level permissions. This branch used to `return false` for every
+  // check, with a comment saying it needed an endpoint — so every caller silently
+  // behaved as though the user could do nothing, and features gated on it were
+  // either dead or fell back to guessing from a role string.
+  const {
+    data: workspacePerms,
+    isLoading: workspaceLoading,
+    error: workspaceError,
+  } = useQuery({
+    queryKey: ["workspacePermissions", workspaceId],
+    queryFn: () => workspaceApi.getMyPermissions(workspaceId!),
+    enabled: !!workspaceId && !projectId,
+    // Permissions change when an admin edits a role, not while someone works —
+    // and this gates navigation, so re-fetching it on every focus is wasteful.
+    staleTime: 5 * 60_000,
+  });
+
+  const permissions = projectId ? projectPerms.permissions : workspacePerms?.permissions ?? [];
 
   const hasPermission = (permission: string): boolean => {
-    if (projectId) {
-      return projectPerms.hasPermission(permission);
-    }
-    // Without project context, we'd need workspace-level permission check
-    // For now, return false - this should be connected to workspace member role
-    return false;
+    if (projectId) return projectPerms.hasPermission(permission);
+    return permissions.includes(permission);
   };
 
-  const hasAnyPermission = (permissions: string[]): boolean => {
-    if (projectId) {
-      return projectPerms.hasAnyPermission(permissions);
-    }
-    return false;
+  const hasAnyPermission = (needed: string[]): boolean => {
+    if (projectId) return projectPerms.hasAnyPermission(needed);
+    return needed.some((p) => permissions.includes(p));
   };
 
-  const hasAllPermissions = (permissions: string[]): boolean => {
-    if (projectId) {
-      return projectPerms.hasAllPermissions(permissions);
-    }
-    return false;
+  const hasAllPermissions = (needed: string[]): boolean => {
+    if (projectId) return projectPerms.hasAllPermissions(needed);
+    return needed.every((p) => permissions.includes(p));
   };
 
   return {
-    permissions: projectId ? projectPerms.permissions : [],
-    isLoading: projectId ? projectPerms.isLoading : false,
-    error: projectId ? projectPerms.error : null,
+    permissions,
+    isLoading: projectId ? projectPerms.isLoading : workspaceLoading,
+    error: projectId ? projectPerms.error : workspaceError,
     hasPermission,
     hasAnyPermission,
     hasAllPermissions,
-    isWorkspaceOwner: projectPerms.isWorkspaceOwner,
+    isWorkspaceOwner: projectId ? projectPerms.isWorkspaceOwner : !!workspacePerms?.is_owner,
+    roleName: projectId ? undefined : workspacePerms?.role_name ?? null,
   };
 }
 
@@ -92,111 +101,125 @@ export interface PermissionGateProps {
 }
 
 /**
- * Permission constants for easy reference
- * These match the backend PERMISSIONS definitions
+ * The workspace permission catalogue, mirroring `backend/src/aexy/models/permissions.py`.
+ *
+ * This map was hand-maintained and had drifted badly: 39 of its 70 entries named
+ * permissions the backend has never defined (`can_manage_webhooks`,
+ * `can_view_teams`, `can_delete_workspace`, …) while 30 real ones were missing.
+ * Gating a page on a phantom key hides it from everyone, permanently and
+ * silently — nobody holds a permission that doesn't exist. All 61 keys below are
+ * generated from the backend catalogue, and `settingsNavigation.test.ts` asserts
+ * the two stay in step.
+ *
+ * Entries marked owner-only are excluded from the `admin` role template by
+ * default (`OWNER_ONLY_PERMISSIONS`); an owner can delegate any of them per
+ * member.
  */
 export const PERMISSIONS = {
   // Members
   CAN_INVITE_MEMBERS: "can_invite_members",
   CAN_REMOVE_MEMBERS: "can_remove_members",
   CAN_VIEW_MEMBERS: "can_view_members",
-  CAN_MANAGE_MEMBER_ROLES: "can_manage_member_roles",
 
   // Roles
-  CAN_MANAGE_ROLES: "can_manage_roles",
-  CAN_ASSIGN_ROLES: "can_assign_roles",
-  CAN_VIEW_ROLES: "can_view_roles",
+  CAN_MANAGE_ROLES: "can_manage_roles",  // owner-only by default
+  CAN_ASSIGN_ROLES: "can_assign_roles",  // owner-only by default
 
   // Projects
   CAN_CREATE_PROJECTS: "can_create_projects",
   CAN_EDIT_PROJECTS: "can_edit_projects",
-  CAN_DELETE_PROJECTS: "can_delete_projects",
+  CAN_DELETE_PROJECTS: "can_delete_projects",  // owner-only by default
   CAN_VIEW_PROJECTS: "can_view_projects",
-  CAN_MANAGE_PROJECT_MEMBERS: "can_manage_project_members",
 
   // Teams
   CAN_CREATE_TEAMS: "can_create_teams",
   CAN_EDIT_TEAMS: "can_edit_teams",
-  CAN_DELETE_TEAMS: "can_delete_teams",
-  CAN_VIEW_TEAMS: "can_view_teams",
+  CAN_DELETE_TEAMS: "can_delete_teams",  // owner-only by default
   CAN_MANAGE_TEAM_MEMBERS: "can_manage_team_members",
-
-  // Sprints
-  CAN_CREATE_SPRINTS: "can_create_sprints",
-  CAN_EDIT_SPRINTS: "can_edit_sprints",
-  CAN_DELETE_SPRINTS: "can_delete_sprints",
-  CAN_VIEW_SPRINTS: "can_view_sprints",
-  CAN_MANAGE_SPRINT_TASKS: "can_manage_sprint_tasks",
-
-  // Tasks
-  CAN_CREATE_TASKS: "can_create_tasks",
-  CAN_EDIT_TASKS: "can_edit_tasks",
-  CAN_DELETE_TASKS: "can_delete_tasks",
-  CAN_VIEW_TASKS: "can_view_tasks",
-  CAN_ASSIGN_TASKS: "can_assign_tasks",
-
-  // Epics
-  CAN_CREATE_EPICS: "can_create_epics",
-  CAN_EDIT_EPICS: "can_edit_epics",
-  CAN_DELETE_EPICS: "can_delete_epics",
-  CAN_VIEW_EPICS: "can_view_epics",
 
   // Tickets
   CAN_VIEW_TICKETS: "can_view_tickets",
   CAN_CREATE_TICKETS: "can_create_tickets",
   CAN_MANAGE_TICKETS: "can_manage_tickets",
-  CAN_RESPOND_TICKETS: "can_respond_tickets",
-  CAN_MANAGE_TICKET_FORMS: "can_manage_ticket_forms",
+  CAN_DELETE_TICKETS: "can_delete_tickets",  // owner-only by default
 
-  // CRM
+  // Organization
+  CAN_VIEW_ORG: "can_view_org",
+  CAN_MANAGE_ORG: "can_manage_org",
+
+  // Service Desk
+  CAN_VIEW_SERVICE_DESK: "can_view_service_desk",
+  CAN_MANAGE_SERVICE_DESK: "can_manage_service_desk",
+
+  // Crm
   CAN_VIEW_CRM: "can_view_crm",
-  CAN_CREATE_CRM_RECORDS: "can_create_crm_records",
-  CAN_EDIT_CRM_RECORDS: "can_edit_crm_records",
-  CAN_DELETE_CRM_RECORDS: "can_delete_crm_records",
-  CAN_MANAGE_CRM_PIPELINES: "can_manage_crm_pipelines",
-  CAN_MANAGE_CRM_AUTOMATIONS: "can_manage_crm_automations",
+  CAN_MANAGE_CRM: "can_manage_crm",
 
-  // Documents
+  // Docs
   CAN_VIEW_DOCS: "can_view_docs",
   CAN_CREATE_DOCS: "can_create_docs",
   CAN_EDIT_DOCS: "can_edit_docs",
-  CAN_DELETE_DOCS: "can_delete_docs",
-  CAN_MANAGE_DOC_TEMPLATES: "can_manage_doc_templates",
+  CAN_DELETE_DOCS: "can_delete_docs",  // owner-only by default
 
-  // Assessments
-  CAN_VIEW_ASSESSMENTS: "can_view_assessments",
-  CAN_CREATE_ASSESSMENTS: "can_create_assessments",
-  CAN_MANAGE_ASSESSMENTS: "can_manage_assessments",
-  CAN_GRADE_ASSESSMENTS: "can_grade_assessments",
+  // Sprints
+  CAN_VIEW_SPRINTS: "can_view_sprints",
+  CAN_MANAGE_SPRINTS: "can_manage_sprints",
+  CAN_MANAGE_TASKS: "can_manage_tasks",
 
   // Hiring
   CAN_VIEW_HIRING: "can_view_hiring",
   CAN_MANAGE_HIRING: "can_manage_hiring",
-  CAN_VIEW_CANDIDATES: "can_view_candidates",
-  CAN_MANAGE_CANDIDATES: "can_manage_candidates",
+  CAN_SCHEDULE_INTERVIEWS: "can_schedule_interviews",
 
   // Tracking
   CAN_VIEW_TRACKING: "can_view_tracking",
   CAN_MANAGE_TRACKING: "can_manage_tracking",
-  CAN_VIEW_TIME_ENTRIES: "can_view_time_entries",
-  CAN_MANAGE_TIME_ENTRIES: "can_manage_time_entries",
+  CAN_SUBMIT_STANDUPS: "can_submit_standups",
   CAN_VIEW_TRACKER_RECORDS: "can_view_tracker_records",
+
+  // Reviews
+  CAN_VIEW_REVIEWS: "can_view_reviews",
+  CAN_MANAGE_REVIEWS: "can_manage_reviews",
+  CAN_SUBMIT_FEEDBACK: "can_submit_feedback",
+
+  // Learning
+  CAN_VIEW_LEARNING: "can_view_learning",
+  CAN_MANAGE_LEARNING: "can_manage_learning",
+
+  // Forms
+  CAN_VIEW_FORMS: "can_view_forms",
+  CAN_MANAGE_FORMS: "can_manage_forms",
+
+  // Oncall
+  CAN_VIEW_ONCALL: "can_view_oncall",
+  CAN_MANAGE_ONCALL: "can_manage_oncall",
+
+  // Insights
+  CAN_VIEW_INSIGHTS: "can_view_insights",
+  CAN_MANAGE_INSIGHTS: "can_manage_insights",
+
+  // Compliance
+  CAN_VIEW_COMPLIANCE: "can_view_compliance",
+  CAN_MANAGE_COMPLIANCE: "can_manage_compliance",
+
+  // Tables
+  CAN_VIEW_TABLES: "can_view_tables",
+  CAN_CREATE_TABLES: "can_create_tables",
+  CAN_MANAGE_TABLES: "can_manage_tables",
+
+  // Leaves
+  CAN_REQUEST_LEAVES: "can_request_leaves",
+  CAN_APPROVE_LEAVES: "can_approve_leaves",
+  CAN_VIEW_LEAVES: "can_view_leaves",
+  CAN_MANAGE_LEAVES: "can_manage_leaves",
 
   // Billing
   CAN_VIEW_BILLING: "can_view_billing",
-  CAN_MANAGE_BILLING: "can_manage_billing",
-  CAN_MANAGE_SUBSCRIPTIONS: "can_manage_subscriptions",
+  CAN_MANAGE_BILLING: "can_manage_billing",  // owner-only by default
 
-  // Integrations
-  CAN_VIEW_INTEGRATIONS: "can_view_integrations",
-  CAN_MANAGE_INTEGRATIONS: "can_manage_integrations",
-  CAN_MANAGE_WEBHOOKS: "can_manage_webhooks",
-
-  // Workspace
+  // Settings
   CAN_MANAGE_WORKSPACE_SETTINGS: "can_manage_workspace_settings",
-  CAN_DELETE_WORKSPACE: "can_delete_workspace",
-  CAN_VIEW_ANALYTICS: "can_view_analytics",
-  CAN_EXPORT_DATA: "can_export_data",
+  CAN_MANAGE_INTEGRATIONS: "can_manage_integrations",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

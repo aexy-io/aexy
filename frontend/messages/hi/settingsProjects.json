@@ -1,0 +1,16 @@
+{
+  "settingsProjects": {
+    "general": { "subtitle": "प्रोजेक्ट सेटिंग्स" },
+    "permissions": { "subtitle": "अनुमतियाँ और सदस्य" },
+    "statuses": { "subtitle": "टास्क स्थितियाँ" },
+    "repositories": { "subtitle": "जुड़ी रिपॉज़िटरी" },
+    "tabs": {
+      "general": "सामान्य",
+      "permissions": "अनुमतियाँ",
+      "repositories": "रिपॉज़िटरी",
+      "statuses": "स्थितियाँ",
+      "tracker": "ट्रैकर",
+      "oncall": "ऑन-कॉल"
+    }
+  }
+}

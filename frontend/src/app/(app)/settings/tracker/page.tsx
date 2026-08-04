@@ -2,18 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Activity, Loader2, ChevronRight, Trash2 } from "lucide-react";
+import { Loader2, ChevronRight, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
-import {
-  useWorkspaceTrackerProjects,
-  useAdminTimesheet,
-  useTargetHours,
-  useUpsertTargetHours,
-  useDeleteTargetHours,
-} from "@/hooks/useTrackerAdmin";
+import { useWorkspaceTrackerProjects, useAdminTimesheet, useTargetHours, useUpsertTargetHours, useDeleteTargetHours } from "@/hooks/useTrackerAdmin";
+import { SettingsPage, SettingsSection, SettingsSkeleton, SettingsEmptyState } from "@/components/settings/SettingsPrimitives";
 
 function fmtDuration(minutes: number) {
   if (!minutes) return "0m";
@@ -57,7 +51,7 @@ export default function WorkspaceTrackerAdminPage() {
   const tabBtn = (id: "projects" | "records" | "targets", label: string) => (
     <button
       onClick={() => setTab(id)}
-      className={
+     className={
         tab === id
           ? "px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium"
           : "px-4 py-2 bg-muted hover:bg-accent text-foreground rounded-lg text-sm font-medium transition"
@@ -68,18 +62,13 @@ export default function WorkspaceTrackerAdminPage() {
   );
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-6">
-      <Breadcrumb items={[{ label: "Settings", href: "/settings" }, { label: t("title") }]} className="mb-6" />
-
-      <div className="mb-6">
-        <h1 className="flex items-center gap-2 text-2xl font-semibold">
-          <Activity className="h-6 w-6 text-blue-500" />
-          {t("title")}
-        </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">{t("adminSubtitle")}</p>
-      </div>
-
-      <div className="mb-6 flex gap-2">
+    <SettingsPage
+      title={t("title")}
+      description={t("adminSubtitle")}
+      width="wide"
+      breadcrumbs={[{ label: "Settings", href: "/settings" }, { label: t("title") }]}
+    >
+      <div className="flex gap-2">
         {tabBtn("projects", t("tabProjects"))}
         {tabBtn("records", t("tabRecords"))}
         {tabBtn("targets", t("tabTargets"))}
@@ -94,19 +83,19 @@ export default function WorkspaceTrackerAdminPage() {
         />
       ) : tab === "projects" ? (
         projectsQuery.isLoading ? (
-          <div className="flex justify-center py-16 text-gray-400">
+          <div className="flex justify-center py-16 text-muted-foreground">
             <Loader2 className="h-6 w-6 animate-spin" />
           </div>
         ) : projectsQuery.isError ? (
-          <div className="rounded-xl border border-dashed border-gray-300 py-16 text-center text-gray-500 dark:border-gray-700">
+          <div className="rounded-xl border border-dashed border-border py-16 text-center text-gray-500 ">
             {t("adminAccessDenied")}
           </div>
         ) : !projectsQuery.data?.length ? (
-          <div className="rounded-xl border border-dashed border-gray-300 py-16 text-center text-gray-500 dark:border-gray-700">
+          <div className="rounded-xl border border-dashed border-border py-16 text-center text-gray-500 ">
             {t("noProjects")}
           </div>
         ) : (
-          <ul className="divide-y divide-gray-100 rounded-xl border border-gray-200 dark:divide-gray-800 dark:border-gray-800">
+          <ul className="divide-y divide-gray-100 rounded-xl border border-border dark:divide-gray-800 ">
             {projectsQuery.data.map((p) => (
               <li key={p.id} className="flex items-center justify-between gap-3 p-4">
                 <div className="min-w-0">
@@ -117,17 +106,17 @@ export default function WorkspaceTrackerAdminPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <span
-                    className={
+                   className={
                       p.enabled
                         ? "rounded px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                        : "rounded px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                        : "rounded px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-muted-foreground"
                     }
                   >
                     {p.enabled ? t("enabled") : t("disabled")}
                   </span>
                   <Link
                     href={`/settings/projects/${p.id}/tracker`}
-                    className="flex items-center gap-1 text-sm text-blue-600 hover:underline"
+                   className="flex items-center gap-1 text-sm text-blue-600 hover:underline"
                   >
                     {t("configure")}
                     <ChevronRight className="h-4 w-4" />
@@ -146,7 +135,7 @@ export default function WorkspaceTrackerAdminPage() {
           <select
             value={developerId}
             onChange={(e) => setDeveloperId(e.target.value)}
-            className="rounded-lg border border-gray-300 bg-transparent px-3 py-2 text-sm dark:border-gray-700"
+           className="rounded-lg border border-border bg-transparent px-3 py-2 text-sm "
           >
             <option value="">{t("selectDeveloper")}</option>
             {(members as Array<{ developer_id: string; name?: string; email?: string }> | undefined)?.map((m) => (
@@ -158,7 +147,7 @@ export default function WorkspaceTrackerAdminPage() {
 
           {developerId &&
             (timesheet.isLoading ? (
-              <div className="flex justify-center py-12 text-gray-400">
+              <div className="flex justify-center py-12 text-muted-foreground">
                 <Loader2 className="h-6 w-6 animate-spin" />
               </div>
             ) : timesheet.isError ? (
@@ -166,7 +155,7 @@ export default function WorkspaceTrackerAdminPage() {
                 {t("noRecordsPermission")}
               </div>
             ) : !timesheet.data?.days?.length ? (
-              <div className="rounded-xl border border-dashed border-gray-300 py-12 text-center text-gray-500 dark:border-gray-700">
+              <div className="rounded-xl border border-dashed border-border py-12 text-center text-gray-500 ">
                 {t("noActivity")}
               </div>
             ) : (
@@ -177,7 +166,7 @@ export default function WorkspaceTrackerAdminPage() {
                 {timesheet.data.days.map((day) => (
                   <div
                     key={day.date}
-                    className="rounded-xl border border-gray-200 bg-card p-4 dark:border-gray-800"
+                   className="rounded-xl border border-border bg-card p-4 "
                   >
                     <div className="mb-2 flex items-center justify-between">
                       <span className="font-medium">{day.date}</span>
@@ -204,7 +193,7 @@ export default function WorkspaceTrackerAdminPage() {
             ))}
         </div>
       )}
-    </div>
+    </SettingsPage>
   );
 }
 
@@ -272,21 +261,15 @@ function TargetsTab({
       onError: () => toast.error(t("saveError")),
     });
 
-  if (isLoading)
-    return (
-      <div className="flex justify-center py-16 text-gray-400">
-        <Loader2 className="h-6 w-6 animate-spin" />
-      </div>
-    );
+  if (isLoading) return <SettingsSkeleton rows={1} />;
   if (isError)
     return (
-      <div className="rounded-xl border border-dashed border-gray-300 py-16 text-center text-gray-500 dark:border-gray-700">
-        {t("adminAccessDenied")}
-      </div>
+      <SettingsSection flush>
+        <SettingsEmptyState title={t("adminAccessDenied")} />
+      </SettingsSection>
     );
 
-  const inputCls =
-    "w-28 rounded-lg border border-gray-300 bg-transparent px-3 py-2 text-sm dark:border-gray-700";
+  const inputCls = "w-28 rounded-lg border border-border bg-transparent px-3 py-2 text-sm ";
   const availableMembers = members.filter(
     (m) => !devRows.some((r) => r.developer_id === m.developer_id),
   );
@@ -295,18 +278,18 @@ function TargetsTab({
     <div className="space-y-6">
       <div>
         <h2 className="font-medium">{t("targetsTitle")}</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400">{t("targetsSubtitle")}</p>
+        <p className="text-sm text-muted-foreground">{t("targetsSubtitle")}</p>
       </div>
 
       {/* Workspace default */}
-      <div className="space-y-3 rounded-xl border border-gray-200 bg-card p-4 dark:border-gray-800">
+      <div className="space-y-3 rounded-xl border border-border bg-card p-4 ">
         <div>
           <h3 className="text-sm font-medium">{t("workspaceDefault")}</h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400">{t("workspaceDefaultHint")}</p>
+          <p className="text-xs text-muted-foreground">{t("workspaceDefaultHint")}</p>
         </div>
         <div className="flex items-end gap-3">
           <label className="text-sm">
-            <span className="mb-1 block text-gray-600 dark:text-gray-400">{t("hoursPerDay")}</span>
+            <span className="mb-1 block text-muted-foreground">{t("hoursPerDay")}</span>
             <input
               type="number"
               min={0}
@@ -315,13 +298,13 @@ function TargetsTab({
               value={defaultHours}
               onChange={(e) => setDefaultHours(e.target.value)}
               placeholder="8"
-              className={inputCls}
+             className={inputCls}
             />
           </label>
           <button
             onClick={saveDefault}
             disabled={upsert.isPending}
-            className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+           className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
             {upsert.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
             {t("save")}
@@ -330,10 +313,10 @@ function TargetsTab({
       </div>
 
       {/* Per-developer overrides */}
-      <div className="space-y-3 rounded-xl border border-gray-200 bg-card p-4 dark:border-gray-800">
+      <div className="space-y-3 rounded-xl border border-border bg-card p-4 ">
         <h3 className="text-sm font-medium">{t("developerOverrides")}</h3>
         {devRows.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400">{t("noOverrides")}</p>
+          <p className="text-sm text-muted-foreground">{t("noOverrides")}</p>
         ) : (
           <ul className="divide-y divide-gray-100 dark:divide-gray-800">
             {devRows.map((r) => (
@@ -343,7 +326,7 @@ function TargetsTab({
                   <span className="tabular-nums text-gray-500">{r.target_hours_per_day}h</span>
                   <button
                     onClick={() => removeRow(r.id)}
-                    className="text-gray-400 hover:text-red-500"
+                   className="text-muted-foreground hover:text-red-500"
                     title={t("remove")}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -353,13 +336,13 @@ function TargetsTab({
             ))}
           </ul>
         )}
-        <div className="flex items-end gap-3 border-t border-gray-100 pt-3 dark:border-gray-800">
+        <div className="flex items-end gap-3 border-t border-gray-100 pt-3 ">
           <label className="text-sm">
-            <span className="mb-1 block text-gray-600 dark:text-gray-400">{t("selectDeveloper")}</span>
+            <span className="mb-1 block text-muted-foreground">{t("selectDeveloper")}</span>
             <select
               value={newDevId}
               onChange={(e) => setNewDevId(e.target.value)}
-              className="rounded-lg border border-gray-300 bg-transparent px-3 py-2 text-sm dark:border-gray-700"
+             className="rounded-lg border border-border bg-transparent px-3 py-2 text-sm "
             >
               <option value="">{t("selectDeveloper")}</option>
               {availableMembers.map((m) => (
@@ -370,7 +353,7 @@ function TargetsTab({
             </select>
           </label>
           <label className="text-sm">
-            <span className="mb-1 block text-gray-600 dark:text-gray-400">{t("hoursPerDay")}</span>
+            <span className="mb-1 block text-muted-foreground">{t("hoursPerDay")}</span>
             <input
               type="number"
               min={0}
@@ -378,13 +361,13 @@ function TargetsTab({
               step={0.5}
               value={newDevHours}
               onChange={(e) => setNewDevHours(e.target.value)}
-              className={inputCls}
+             className={inputCls}
             />
           </label>
           <button
             onClick={addDevOverride}
             disabled={upsert.isPending || !newDevId}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+           className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
             {t("addOverride")}
           </button>
@@ -392,17 +375,17 @@ function TargetsTab({
       </div>
 
       {/* Per-project overrides (read-only; set on each project's Tracker page) */}
-      <div className="space-y-3 rounded-xl border border-gray-200 bg-card p-4 dark:border-gray-800">
+      <div className="space-y-3 rounded-xl border border-border bg-card p-4 ">
         <h3 className="text-sm font-medium">{t("projectOverrides")}</h3>
         {projectRows.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400">{t("noProjectOverrides")}</p>
+          <p className="text-sm text-muted-foreground">{t("noProjectOverrides")}</p>
         ) : (
           <ul className="divide-y divide-gray-100 dark:divide-gray-800">
             {projectRows.map((r) => (
               <li key={r.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                 <Link
                   href={`/settings/projects/${r.project_id}/tracker`}
-                  className="truncate text-blue-600 hover:underline"
+                 className="truncate text-blue-600 hover:underline"
                 >
                   {projectName(r.project_id!)}
                 </Link>
@@ -410,7 +393,7 @@ function TargetsTab({
                   <span className="tabular-nums text-gray-500">{r.target_hours_per_day}h</span>
                   <button
                     onClick={() => removeRow(r.id)}
-                    className="text-gray-400 hover:text-red-500"
+                   className="text-muted-foreground hover:text-red-500"
                     title={t("remove")}
                   >
                     <Trash2 className="h-4 w-4" />

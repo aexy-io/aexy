@@ -396,6 +396,21 @@ class Settings(BaseSettings):
     postmark_webhook_basic_auth: str = ""        # "user:pass" — verified against Authorization header
     ses_sns_topic_arn_allowlist: str = ""        # comma-separated TopicArns we will accept events from
 
+    # Shared secret for the *inbound mail* webhook (/webhooks/email/inbound),
+    # which is a different problem from the event webhooks above: SendGrid
+    # Inbound Parse does not sign its posts at all, so the only thing that can
+    # authenticate them is a secret we put in the URL ourselves. Configure the
+    # provider to post to
+    #   https://…/api/v1/webhooks/email/inbound?token=<this value>
+    # (or send it as the X-Aexy-Webhook-Token header).
+    #
+    # This matters more than it looks: inbound mail creates Service Desk tickets
+    # and sends an acknowledgement to the address in the payload, so an
+    # unauthenticated endpoint is both a ticket-injection and an email-reflection
+    # primitive on the workspace's own sender. Mailgun/Postmark inbound routes
+    # are verified with their own scheme and need no token.
+    inbound_email_webhook_token: str = ""
+
     # When True (default), verify_*_signature helpers return False on missing
     # config — i.e., the webhook is rejected. Set to False ONLY for local
     # development where you intentionally want to accept unsigned events;

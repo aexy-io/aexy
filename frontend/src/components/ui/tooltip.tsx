@@ -42,6 +42,12 @@ function SimpleTooltip({ children, content, className, side = "top" }: SimpleToo
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
+          {/* `inline-block` suits the badge/pill triggers this was written for,
+              but it silently re-flows a block-level child: wrap a full-width
+              nav link and consecutive items pack onto one line, because the
+              `space-y-*` margins on their parent don't apply to inline flow.
+              Pass `className="block w-full"` for those — `cn` is tailwind-merge,
+              so a caller's display class wins over this default. */}
           <span className={cn("inline-block", className)}>{children}</span>
         </TooltipTrigger>
         <TooltipContent side={side}>

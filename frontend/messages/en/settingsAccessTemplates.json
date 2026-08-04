@@ -1,0 +1,8 @@
+{
+  "settingsAccessTemplates": {
+    "title": "Access templates",
+    "description": "Reusable bundles of app and module access you can apply to members.",
+    "breadcrumbParent": "Access Control",
+    "create": "Create template"
+  }
+}

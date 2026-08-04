@@ -13,13 +13,11 @@ import {
   RefreshCw,
   Settings,
   Shield,
-  Target,
   Trash2,
   UserMinus,
   Users,
   Check,
   X,
-  ChevronUp,
 } from "lucide-react";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import { useProjects, useProjectMembers } from "@/hooks/useProjects";
@@ -27,8 +25,10 @@ import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
 import { useRoles } from "@/hooks/useRoles";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
-import { Project, ProjectMember, CustomRole, WorkspaceMember } from "@/lib/api";
-import { PremiumGate, ProBadge, UpgradeModal } from "@/components/PremiumGate";
+import { Project, CustomRole } from "@/lib/api";
+import { UpgradeModal } from "@/components/PremiumGate";
+import { useTranslations } from "next-intl";
+import { SettingsPage } from "@/components/settings/SettingsPrimitives";
 
 function getRoleBadgeColor(roleName: string | null) {
   if (!roleName) return "bg-muted text-muted-foreground";
@@ -469,6 +469,7 @@ function ProjectCard({
 }
 
 export default function ProjectsSettingsPage() {
+  const t = useTranslations("settingsProjectsList");
   const { user } = useAuth();
   const {
     currentWorkspace,
@@ -518,11 +519,11 @@ export default function ProjectsSettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Projects</h1>
-        <p className="text-muted-foreground text-sm mt-1">Manage projects, members, and permissions</p>
-      </div>
+    <SettingsPage
+      title={t("title")}
+      description={t("description")}
+      width="wide"
+    >
 
       <div>
         {!hasWorkspaces ? (
@@ -606,6 +607,6 @@ export default function ProjectsSettingsPage() {
           isCreating={isCreating}
         />
       )}
-    </div>
+    </SettingsPage>
   );
 }

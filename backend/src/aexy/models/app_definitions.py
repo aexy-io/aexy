@@ -554,10 +554,6 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
                 "enabled": True,
                 "modules": {"chart": True, "departments": True, "directory": True},
             },
-            "service_desk": {
-                "enabled": True,
-                "modules": {"dashboard": True, "tickets": True, "settings": True},
-            },
             "tracking": {
                 "enabled": True,
                 "modules": {"standups": True, "blockers": True, "time": True},
@@ -605,10 +601,6 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
             "organization": {
                 "enabled": True,
                 "modules": {"chart": True, "departments": True, "directory": True},
-            },
-            "service_desk": {
-                "enabled": True,
-                "modules": {"dashboard": True, "tickets": True, "settings": True},
             },
             "reviews": {
                 "enabled": True,
@@ -670,10 +662,6 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
                 "enabled": True,
                 "modules": {"chart": True, "departments": True, "directory": True},
             },
-            "service_desk": {
-                "enabled": True,
-                "modules": {"dashboard": True, "tickets": True, "settings": True},
-            },
             "crm": {
                 "enabled": True,
                 "modules": {
@@ -723,10 +711,6 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
             "organization": {
                 "enabled": True,
                 "modules": {"chart": True, "departments": True, "directory": True},
-            },
-            "service_desk": {
-                "enabled": True,
-                "modules": {"dashboard": True, "tickets": True, "settings": True},
             },
             "tracking": {
                 "enabled": True,

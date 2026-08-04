@@ -142,7 +142,7 @@ export const APP_CATALOG: Record<string, AppDefinition> = {
     modules: [
       { id: "dashboard", name: "Dashboard", description: "Open tickets by stakeholder and age", route: "" },
       { id: "tickets", name: "Tickets", description: "All service desk tickets", route: "/tickets" },
-      { id: "settings", name: "Master Data", description: "Partners, insurers, LOBs, and mailboxes", route: "/settings" },
+      { id: "settings", name: "Master Data", description: "Accounts, vendors, products, and mailboxes", route: "/settings" },
     ],
   },
   organization: {
@@ -650,7 +650,7 @@ export const SIDEBAR_TO_APP_MAP: Record<string, string> = {
   "/email-marketing": "email_marketing",
   "/email-marketing/campaigns": "email_marketing",
   "/email-marketing/templates": "email_marketing",
-  "/email-marketing/settings": "email_marketing",
+  "/settings/email-marketing": "email_marketing",
   "/docs": "docs",
   "/forms": "forms",
   "/oncall": "oncall",

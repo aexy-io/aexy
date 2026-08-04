@@ -1,0 +1,48 @@
+{
+  "aiSettings": {
+    "title": "AI और प्रोवाइडर",
+    "subtitle": "तय करें कि यह workspace AI का उपयोग करेगा या नहीं, और किसका प्रोवाइडर उपयोग होगा।",
+    "loadFailed": "इस workspace की AI सेटिंग्स लोड नहीं हो सकीं।",
+    "adminsOnly": "केवल workspace owner या admin ये सेटिंग्स बदल सकते हैं। आप देख सकते हैं कि अभी क्या लागू है।",
+    "keyNeverRead": "API keys दोबारा पढ़ी नहीं जा सकतीं — न यहाँ, न API से, और न ही उस व्यक्ति द्वारा जिसने इसे सेव किया। केवल चलती हुई AI call ही इसे decrypt करती है। Key बदलने के लिए नई key ऊपर पेस्ट करें।",
+    "planGate": {
+      "title": "Pro और Enterprise पर उपलब्ध",
+      "body": "यह workspace {tier} plan पर है। पूरे workspace में AI बंद करने या अपनी provider keys उपयोग करने के लिए upgrade करें। पहले सेव की गई कोई भी सेटिंग लागू रहती है।"
+    },
+    "inForce": {
+      "label": "अभी लागू:",
+      "disabled": "इस workspace के लिए AI बंद है।",
+      "workspace": "आपका अपना provider और key इस workspace के लिए काम कर रहे हैं।",
+      "platform": "प्लेटफ़ॉर्म का डिफ़ॉल्ट provider इस workspace के लिए काम कर रहा है।"
+    },
+    "access": {
+      "title": "AI पहुँच",
+      "help": "पूरे workspace के लिए एक स्विच। यह हर module, background job और scheduled task पर लागू होता है — केवल दिखने वाली स्क्रीन पर नहीं।",
+      "disableLabel": "इस workspace के लिए सभी AI बंद करें",
+      "disableHelp": "हर LLM call रोक देता है, जिसमें email classification, summaries, agents और file understanding शामिल हैं।",
+      "reasonLabel": "कारण (वैकल्पिक)",
+      "reasonPlaceholder": "Data-processing समीक्षा लंबित",
+      "reasonHelp": "बदलाव के साथ दर्ज होता है, ताकि \"कुछ काम क्यों नहीं कर रहा?\" का उत्तर यहीं मिले।"
+    },
+    "provider": {
+      "title": "आपका अपना provider",
+      "help": "इसे प्लेटफ़ॉर्म डिफ़ॉल्ट पर छोड़ें, या workspace को अपने account पर सेट करें ताकि prompts आपके contract पर जाएँ।",
+      "providerLabel": "Provider",
+      "platformDefault": "प्लेटफ़ॉर्म डिफ़ॉल्ट",
+      "modelLabel": "Model",
+      "modelPlaceholder": "डिफ़ॉल्ट के लिए खाली छोड़ें",
+      "baseUrlLabel": "Endpoint URL",
+      "apiKeyLabel": "API key",
+      "apiKeyPlaceholder": "अपनी provider key पेस्ट करें",
+      "apiKeyInstalled": "{hint} पर समाप्त होने वाली key इंस्टॉल है",
+      "apiKeyHelp": "एन्क्रिप्टेड रूप में सेव होती है और API कभी वापस नहीं भेजता।",
+      "apiKeyRotateHelp": "इंस्टॉल की गई key रखने के लिए खाली छोड़ें। नई पेस्ट करने पर वह बदल जाएगी।",
+      "keyRequired": "इस provider के लिए API key आवश्यक है।",
+      "fallbackLabel": "मेरा provider फेल हो तो प्लेटफ़ॉर्म provider पर जाएँ",
+      "fallbackHelp": "डिफ़ॉल्ट रूप से बंद: यदि आपने key दी है ताकि prompts आपके account पर रहें, तो चुपचाप fallback करना उसका उद्देश्य ही समाप्त कर देगा।",
+      "test": "कनेक्शन जाँचें",
+      "testOk": "Provider ने उत्तर दिया।",
+      "usePlatform": "इसके बजाय प्लेटफ़ॉर्म डिफ़ॉल्ट उपयोग करें"
+    }
+  }
+}

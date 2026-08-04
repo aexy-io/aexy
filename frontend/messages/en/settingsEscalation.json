@@ -1,0 +1,7 @@
+{
+  "settingsEscalation": {
+    "title": "Escalation matrix",
+    "description": "Automatic escalation rules based on ticket severity.",
+    "add": "Add escalation matrix"
+  }
+}

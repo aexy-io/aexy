@@ -13,7 +13,7 @@ dependencies close the API hole:
   themselves (body/query params, or via a referenced entity).
 """
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +21,7 @@ from aexy.api.developers import get_current_developer
 from aexy.core.database import get_db
 from aexy.models.app_definitions import APP_CATALOG
 from aexy.models.developer import Developer
+from aexy.models.permissions import PERMISSIONS
 from aexy.models.documentation import Document
 from aexy.models.sprint import Sprint
 from aexy.models.team import Team
@@ -33,6 +34,19 @@ def _validate_app_id(app_id: str) -> None:
     for unknown ids)."""
     if app_id not in APP_CATALOG:
         raise ValueError(f"Unknown app id {app_id!r}: not in APP_CATALOG")
+
+
+def _validate_permission(permission: str) -> None:
+    """Fail loudly at import/startup on an unknown permission key.
+
+    The mirror image of ``_validate_app_id``, and the more dangerous of the two:
+    an unknown app id makes a guard permissive, but an unknown *permission* makes
+    it absolute. Nobody can hold a permission that isn't in the catalogue, so a
+    single typo here locks every user — including the workspace owner — out of the
+    module, with a 403 that looks exactly like a legitimate denial.
+    """
+    if permission not in PERMISSIONS:
+        raise ValueError(f"Unknown permission {permission!r}: not in PERMISSIONS")
 
 
 async def ensure_app_enabled(
@@ -131,6 +145,8 @@ def require_workspace_permission(permission: str):
     Note this is coarser than row-level scoping: it decides whether the caller
     may open the module at all, not which rows they see.
     """
+    _validate_permission(permission)
+
     async def _guard(
         workspace_id: str,
         current_developer: Developer = Depends(get_current_developer),
@@ -141,9 +157,56 @@ def require_workspace_permission(permission: str):
         if not await PermissionService(db).check_permission(
             str(workspace_id), str(current_developer.id), permission
         ):
+            # Name the permission: "you do not have permission" leaves an admin
+            # guessing which of 61 to grant, and support guessing with them.
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You do not have permission to access this module",
+                detail=f"This requires the {permission!r} permission in this workspace",
+            )
+
+    return _guard
+
+
+def require_workspace_permission_for_writes(permission: str):
+    """Like ``require_workspace_permission``, but only for mutating requests.
+
+    Settings routers are read by more than their own settings page: teams are
+    listed by escalation routing, on-call rotations and standups; task statuses by
+    every board; integrations by half the app. Gating a whole router on its
+    ``can_manage_*`` permission would therefore break ordinary members' *reads* to
+    protect writes nobody outside the settings page makes.
+
+    So this enforces on POST/PUT/PATCH/DELETE and lets GET/HEAD/OPTIONS through to
+    the baseline member check. One dependency per router closes the write hole
+    without auditing several hundred individual endpoints — and unlike a
+    per-endpoint gate, a route added later is covered automatically.
+
+    Endpoints needing something stricter (owner-only deletes, row-level scoping)
+    still add their own check; this is the floor, not the ceiling.
+    """
+    _validate_permission(permission)
+
+    _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+
+    async def _guard(
+        request: Request,
+        workspace_id: str,
+        current_developer: Developer = Depends(get_current_developer),
+        db: AsyncSession = Depends(get_db),
+    ) -> None:
+        if request.method in _SAFE_METHODS:
+            return
+
+        from aexy.services.permission_service import PermissionService
+
+        if not await PermissionService(db).check_permission(
+            str(workspace_id), str(current_developer.id), permission
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    f"Changing this requires the {permission!r} permission in this workspace"
+                ),
             )
 
     return _guard

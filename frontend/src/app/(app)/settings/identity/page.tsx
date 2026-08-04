@@ -1,17 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import {
-  CheckCircle2,
-  Fingerprint,
-  Github,
-  GitCommit,
-  GitPullRequest,
-  MessageSquare,
-  RefreshCw,
-  Settings2,
-  Sparkles,
-} from "lucide-react";
+import { CheckCircle2, Github, GitCommit, GitPullRequest, MessageSquare, RefreshCw, Settings2, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -19,6 +9,7 @@ import { useClaimGhostCommits, useGhostClaimPreview } from "@/hooks/useIdentity"
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 
 import { EmailAliasesSection } from "./EmailAliasesSection";
+import { SettingsPage, SettingsSection } from "@/components/settings/SettingsPrimitives";
 
 function MetricChip({
   icon: Icon,
@@ -59,34 +50,23 @@ export default function IdentitySettingsPage() {
     : 0;
 
   return (
-    <div className="space-y-6">
-      <header className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <div className="rounded-lg bg-primary/10 p-2 mt-0.5">
-            <Fingerprint className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold text-foreground">
-              {t("title")}
-            </h2>
-            <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-              {t("intro")}
-            </p>
-          </div>
-        </div>
-        {isAdmin && (
+    <SettingsPage
+      title={t("title")}
+      description={t("intro")}
+      actions={
+        isAdmin ? (
           <Link
             href="/settings/identity/admin"
-            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-border rounded-md px-2 py-1 shrink-0"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
-            <Settings2 className="h-3 w-3" />
-            Admin
+            <Settings2 className="h-3 w-3" aria-hidden />
+            {t("adminLink")}
           </Link>
-        )}
-      </header>
-
+        ) : undefined
+      }
+    >
       {!hasGithub && !isLoading && (
-        <section className="rounded-xl border border-border bg-card p-6">
+        <SettingsSection>
           <p className="text-sm text-foreground">{t("noGithub")}</p>
           <Link
             href="/settings/integrations"
@@ -95,7 +75,7 @@ export default function IdentitySettingsPage() {
             <Github className="h-4 w-4" />
             {t("noGithubLink")}
           </Link>
-        </section>
+        </SettingsSection>
       )}
 
       {/* Loading skeleton — visible bones so users see structure forming. */}
@@ -201,6 +181,6 @@ export default function IdentitySettingsPage() {
       )}
 
       {hasGithub && !isLoading && <EmailAliasesSection />}
-    </div>
+    </SettingsPage>
   );
 }

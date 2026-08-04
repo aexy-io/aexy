@@ -331,29 +331,6 @@
       ]
     },
     {
-      "title": "Modules",
-      "items": [
-        {
-          "title": "Audit In App Docs",
-          "slug": "audit-in-app-docs",
-          "path": "audit-in-app-docs.md",
-          "description": ""
-        },
-        {
-          "title": "Reviews Ux Tracker",
-          "slug": "reviews-ux-tracker",
-          "path": "reviews-ux-tracker.md",
-          "description": ""
-        },
-        {
-          "title": "Ux Tracker",
-          "slug": "ux-tracker",
-          "path": "ux-tracker.md",
-          "description": ""
-        }
-      ]
-    },
-    {
       "title": "Other",
       "items": [
         {
@@ -635,24 +612,6 @@
       "section": "Testing",
       "description": "Overall testing approach",
       "path": "testing/testing-strategy.md"
-    },
-    "audit-in-app-docs": {
-      "title": "Audit In App Docs",
-      "section": "Modules",
-      "description": "",
-      "path": "audit-in-app-docs.md"
-    },
-    "reviews-ux-tracker": {
-      "title": "Reviews Ux Tracker",
-      "section": "Modules",
-      "description": "",
-      "path": "reviews-ux-tracker.md"
-    },
-    "ux-tracker": {
-      "title": "Ux Tracker",
-      "section": "Modules",
-      "description": "",
-      "path": "ux-tracker.md"
     },
     "integrations/openobserve": {
       "title": "Openobserve",
@@ -1105,44 +1064,14 @@
         "slug": "notifications-and-chat"
       },
       "next": {
-        "title": "Audit In App Docs",
-        "slug": "audit-in-app-docs"
-      }
-    },
-    "audit-in-app-docs": {
-      "prev": {
-        "title": "Testing Strategy",
-        "slug": "testing/testing-strategy"
-      },
-      "next": {
-        "title": "Reviews Ux Tracker",
-        "slug": "reviews-ux-tracker"
-      }
-    },
-    "reviews-ux-tracker": {
-      "prev": {
-        "title": "Audit In App Docs",
-        "slug": "audit-in-app-docs"
-      },
-      "next": {
-        "title": "Ux Tracker",
-        "slug": "ux-tracker"
-      }
-    },
-    "ux-tracker": {
-      "prev": {
-        "title": "Reviews Ux Tracker",
-        "slug": "reviews-ux-tracker"
-      },
-      "next": {
         "title": "Openobserve",
         "slug": "integrations/openobserve"
       }
     },
     "integrations/openobserve": {
       "prev": {
-        "title": "Ux Tracker",
-        "slug": "ux-tracker"
+        "title": "Testing Strategy",
+        "slug": "testing/testing-strategy"
       },
       "next": null
     }

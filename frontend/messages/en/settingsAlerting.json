@@ -1,0 +1,7 @@
+{
+  "settingsAlerting": {
+    "title": "Alert integrations",
+    "description": "Turn observability alerts into deduplicated tickets — one error becomes one ticket, however many times it fires.",
+    "create": "New integration"
+  }
+}

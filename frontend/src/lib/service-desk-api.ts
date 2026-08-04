@@ -2,24 +2,77 @@ import { api } from "./api";
 
 // Types
 
-export type RequestType = "query" | "policy_issuance" | "claims" | "payout";
-export type PendingWith =
-  | "insurer" | "partner" | "sales" | "third_party" | "finance" | "kam" | "marketing" | "closed";
+/**
+ * Stakeholder and request-type slugs are defined per workspace, so these are
+ * plain strings rather than unions of one industry's vocabulary. They used to be
+ * `"insurer" | "partner" | "kam" | …`, which meant adding a stakeholder needed a
+ * frontend release — and every workspace saw insurance words.
+ *
+ * Resolve labels and ordering from `listStakeholders` / `listRequestTypes`; never
+ * compare a slug to a literal in a component.
+ */
+export type RequestType = string;
+export type PendingWith = string;
+
 export type TicketOrigin = "email" | "manual" | "internal";
 export type MailboxChannel = "webhook" | "gmail_sync";
 export type BreachLevel = "green" | "amber" | "red";
 
-export interface Partner {
+/** Which bucket a ticket is waiting in. Code branches on `semantics`, never `slug`. */
+export type StakeholderSemantics = "internal" | "external" | "closed";
+
+export interface Stakeholder {
+  id: string;
+  workspace_id: string;
+  slug: string;
+  label: string;
+  semantics: StakeholderSemantics;
+  /** The department that owns this queue — only meaningful when internal. */
+  function_key: string | null;
+  position: number;
+  is_active: boolean;
+}
+
+export interface RequestTypeRow {
+  id: string;
+  workspace_id: string;
+  slug: string;
+  label: string;
+  is_default: boolean;
+  position: number;
+  is_active: boolean;
+}
+
+/** A starting point for a desk. Carries no company-specific data. */
+export interface IndustryTemplate {
+  slug: string;
+  name: string;
+  description: string;
+  terminology: Record<string, string>;
+  stakeholders: { slug: string; label: string; semantics: StakeholderSemantics; function_key: string | null }[];
+  request_types: { slug: string; label: string; is_default: boolean }[];
+  departments: string[];
+}
+
+export interface ApplyTemplateResult {
+  template_slug: string;
+  stakeholders_added: number;
+  request_types_added: number;
+  departments_created: string[];
+  terminology_applied: boolean;
+}
+
+export interface Account {
   id: string;
   workspace_id: string;
   name: string;
-  assigned_kam_id: string | null;
+  assigned_owner_id: string | null;
   is_active: boolean;
   domains: string[];
   created_at: string;
 }
 
-export interface Insurer {
+export interface Vendor {
   id: string;
   workspace_id: string;
   name: string;
@@ -28,7 +81,7 @@ export interface Insurer {
   created_at: string;
 }
 
-export interface LOB {
+export interface Product {
   id: string;
   workspace_id: string;
   name: string;
@@ -56,11 +109,11 @@ export interface ServiceDeskTicket {
   requester_email: string | null;
   requester_name: string | null;
   status: string | null;
-  lob_id: string | null;
-  partner_id: string | null;
-  partner_name: string | null;
-  insurer_id: string | null;
-  assigned_kam_id: string | null;
+  product_id: string | null;
+  account_id: string | null;
+  account_name: string | null;
+  vendor_id: string | null;
+  assigned_owner_id: string | null;
   request_type: RequestType;
   pending_with: PendingWith;
   origin: TicketOrigin;
@@ -108,11 +161,11 @@ export interface DashboardTicket {
   ticket_id: string;
   display_id: string;
   subject: string | null;
-  lob_name: string | null;
-  partner_name: string | null;
+  product_name: string | null;
+  account_name: string | null;
   request_type: RequestType;
   pending_with: PendingWith;
-  assigned_kam_id: string | null;
+  assigned_owner_id: string | null;
   days_in_stage: number;
   overall_days: number;
   breach_level: BreachLevel;
@@ -136,10 +189,25 @@ export interface ServiceDeskSettings {
    *  department, so no ticket can ever match — an empty list is a
    *  misconfiguration, not a quiet day. */
   scope: "all" | "function" | "none";
-  /** The shift the breach clock runs on, IST, as "HH:MM". Always populated —
-   *  the API reports the defaults when nothing has been set. */
+  /** The shift the breach clock runs on, in `timezone`, as "HH:MM". Always
+   *  populated — the API reports the defaults when nothing has been set. */
   working_hours_start: string;
   working_hours_end: string;
+  /** Desk identity and SLA, per workspace. These were code constants fixed to
+   *  one customer's operation (BSD ticket ids, Asia/Kolkata, 2 business days);
+   *  the defaults still report exactly that, so nothing changes unless edited. */
+  ticket_prefix: string;
+  timezone: string;
+  breach_red_days: number;
+  breach_amber_days: number;
+  /** Local hours the digest goes out, in `timezone`. Was a global IST cron. */
+  digest_hours: number[];
+  /** Which industry template this desk started from, if any. */
+  industry_template: string | null;
+  /** Resolved labels for accounts/vendors/products — always fully populated. */
+  terminology: Record<string, string>;
+  /** Name used in outbound email copy; defaults to the workspace name. */
+  desk_name: string | null;
 }
 
 /** Only the fields being changed; the API leaves the rest alone. */
@@ -147,6 +215,14 @@ export interface ServiceDeskSettingsPatch {
   ai_classification_enabled?: boolean;
   working_hours_start?: string;
   working_hours_end?: string;
+  ticket_prefix?: string;
+  timezone?: string;
+  breach_red_days?: number;
+  breach_amber_days?: number;
+  digest_hours?: number[];
+  /** Merged into the stored map — send only the nouns being relabelled. */
+  terminology?: Record<string, string>;
+  desk_name?: string;
 }
 
 export interface ServiceDeskTemplate {
@@ -183,11 +259,11 @@ export const serviceDeskApi = {
   ): Promise<ServiceDeskTicketDetail> =>
     (await api.patch(`${base(ws)}/tickets/${id}/pending-with`, { pending_with, note })).data,
   updateTicket: async (
-    ws: string, id: string, data: Partial<{ request_type: RequestType; lob_id: string | null; partner_id: string | null; assigned_kam_id: string | null; needs_triage: boolean }>,
+    ws: string, id: string, data: Partial<{ request_type: RequestType; product_id: string | null; account_id: string | null; assigned_owner_id: string | null; needs_triage: boolean }>,
   ): Promise<ServiceDeskTicketDetail> =>
     (await api.patch(`${base(ws)}/tickets/${id}`, data)).data,
   createManual: async (
-    ws: string, data: { subject: string; body?: string; requester_email?: string; requester_name?: string; request_type?: RequestType; lob_id?: string; partner_id?: string },
+    ws: string, data: { subject: string; body?: string; requester_email?: string; requester_name?: string; request_type?: RequestType; product_id?: string; account_id?: string },
   ): Promise<{ ticket_id: string }> =>
     (await api.post(`${base(ws)}/tickets/manual`, data)).data,
   convertToTask: async (
@@ -195,24 +271,57 @@ export const serviceDeskApi = {
   ): Promise<{ task_id: string; task_title: string; linked: boolean }> =>
     (await api.post(`${base(ws)}/tickets/${ticketId}/convert-to-task`, data)).data,
 
-  // partners
-  listPartners: async (ws: string): Promise<Partner[]> => (await api.get(`${base(ws)}/partners`)).data,
-  createPartner: async (ws: string, data: { name: string; assigned_kam_id?: string | null; domains?: string[] }): Promise<Partner> =>
-    (await api.post(`${base(ws)}/partners`, data)).data,
-  updatePartner: async (ws: string, id: string, data: Partial<{ name: string; assigned_kam_id: string | null; domains: string[]; is_active: boolean }>): Promise<Partner> =>
-    (await api.patch(`${base(ws)}/partners/${id}`, data)).data,
-  deletePartner: async (ws: string, id: string): Promise<void> => { await api.delete(`${base(ws)}/partners/${id}`); },
+  // accounts
+  listAccounts: async (ws: string): Promise<Account[]> => (await api.get(`${base(ws)}/accounts`)).data,
+  createAccount: async (ws: string, data: { name: string; assigned_owner_id?: string | null; domains?: string[] }): Promise<Account> =>
+    (await api.post(`${base(ws)}/accounts`, data)).data,
+  updateAccount: async (ws: string, id: string, data: Partial<{ name: string; assigned_owner_id: string | null; domains: string[]; is_active: boolean }>): Promise<Account> =>
+    (await api.patch(`${base(ws)}/accounts/${id}`, data)).data,
+  deleteAccount: async (ws: string, id: string): Promise<void> => { await api.delete(`${base(ws)}/accounts/${id}`); },
 
-  // insurers
-  listInsurers: async (ws: string): Promise<Insurer[]> => (await api.get(`${base(ws)}/insurers`)).data,
-  createInsurer: async (ws: string, data: { name: string; domains?: string[] }): Promise<Insurer> =>
-    (await api.post(`${base(ws)}/insurers`, data)).data,
-  deleteInsurer: async (ws: string, id: string): Promise<void> => { await api.delete(`${base(ws)}/insurers/${id}`); },
+  // vendors
+  listVendors: async (ws: string): Promise<Vendor[]> => (await api.get(`${base(ws)}/vendors`)).data,
+  createVendor: async (ws: string, data: { name: string; domains?: string[] }): Promise<Vendor> =>
+    (await api.post(`${base(ws)}/vendors`, data)).data,
+  deleteVendor: async (ws: string, id: string): Promise<void> => { await api.delete(`${base(ws)}/vendors/${id}`); },
 
-  // LOBs
-  listLobs: async (ws: string): Promise<LOB[]> => (await api.get(`${base(ws)}/lobs`)).data,
-  createLob: async (ws: string, data: { name: string }): Promise<LOB> => (await api.post(`${base(ws)}/lobs`, data)).data,
-  deleteLob: async (ws: string, id: string): Promise<void> => { await api.delete(`${base(ws)}/lobs/${id}`); },
+  // products
+  listProducts: async (ws: string): Promise<Product[]> => (await api.get(`${base(ws)}/products`)).data,
+  createProduct: async (ws: string, data: { name: string }): Promise<Product> => (await api.post(`${base(ws)}/products`, data)).data,
+  deleteProduct: async (ws: string, id: string): Promise<void> => { await api.delete(`${base(ws)}/products/${id}`); },
+
+  // taxonomy — the workspace's own stakeholders and request types
+  listStakeholders: async (ws: string): Promise<Stakeholder[]> =>
+    (await api.get(`${base(ws)}/stakeholders`)).data,
+  createStakeholder: async (
+    ws: string,
+    data: { slug: string; label: string; semantics?: StakeholderSemantics; function_key?: string | null; position?: number },
+  ): Promise<Stakeholder> => (await api.post(`${base(ws)}/stakeholders`, data)).data,
+  updateStakeholder: async (
+    ws: string, id: string,
+    data: Partial<{ label: string; semantics: StakeholderSemantics; function_key: string | null; position: number; is_active: boolean }>,
+  ): Promise<Stakeholder> => (await api.patch(`${base(ws)}/stakeholders/${id}`, data)).data,
+  deleteStakeholder: async (ws: string, id: string): Promise<void> => { await api.delete(`${base(ws)}/stakeholders/${id}`); },
+
+  listRequestTypes: async (ws: string): Promise<RequestTypeRow[]> =>
+    (await api.get(`${base(ws)}/request-types`)).data,
+  createRequestType: async (
+    ws: string, data: { slug: string; label: string; is_default?: boolean; position?: number },
+  ): Promise<RequestTypeRow> => (await api.post(`${base(ws)}/request-types`, data)).data,
+  updateRequestType: async (
+    ws: string, id: string,
+    data: Partial<{ label: string; is_default: boolean; position: number; is_active: boolean }>,
+  ): Promise<RequestTypeRow> => (await api.patch(`${base(ws)}/request-types/${id}`, data)).data,
+  deleteRequestType: async (ws: string, id: string): Promise<void> => { await api.delete(`${base(ws)}/request-types/${id}`); },
+
+  // industry templates
+  listIndustryTemplates: async (ws: string): Promise<IndustryTemplate[]> =>
+    (await api.get(`${base(ws)}/industry-templates`)).data,
+  applyIndustryTemplate: async (
+    ws: string,
+    data: { template_slug: string; apply_terminology?: boolean; create_departments?: boolean },
+  ): Promise<ApplyTemplateResult> =>
+    (await api.post(`${base(ws)}/industry-templates/apply`, data)).data,
 
   // mailboxes
   listMailboxes: async (ws: string): Promise<Mailbox[]> => (await api.get(`${base(ws)}/mailboxes`)).data,

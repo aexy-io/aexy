@@ -5,14 +5,12 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
-  Sparkles,
   Github,
   Users,
   Building2,
   Loader2,
   CheckCircle2,
   Mail,
-  CreditCard,
   BarChart3,
   Clock,
 } from "lucide-react";
@@ -23,6 +21,8 @@ import { ChangePlanModal } from "@/components/billing/ChangePlanModal";
 import { PlanComparison } from "@/components/billing/PlanComparison";
 import { PlanFeatures } from "@/lib/api";
 import { STRIPE_ENABLED, buildSalesMailto } from "@/lib/billingMode";
+import { useTranslations } from "next-intl";
+import { SettingsPage } from "@/components/settings/SettingsPrimitives";
 
 // Plan display configuration — keyed by billing_model for new plans, with tier fallbacks
 const planConfig: Record<string, {
@@ -183,6 +183,7 @@ function formatPlanPrice(plan: PlanFeatures, billingPeriod: "monthly" | "annual"
 }
 
 export default function PlansPage() {
+  const t = useTranslations("settingsPlans");
   const searchParams = useSearchParams();
   const router = useRouter();
   const { currentWorkspaceId, isOwner } = useWorkspace();
@@ -311,13 +312,11 @@ export default function PlansPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Subscription Plans</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Compare plans and upgrade or downgrade your subscription
-        </p>
-      </div>
+    <SettingsPage
+      title={t("title")}
+      description={t("description")}
+      width="wide"
+    >
 
       {/* Checkout feedback banner */}
       {checkoutMessage && (
@@ -488,6 +487,6 @@ export default function PlansPage() {
           billingPeriod={billingPeriod}
         />
       )}
-    </div>
+    </SettingsPage>
   );
 }

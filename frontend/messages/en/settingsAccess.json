@@ -1,0 +1,8 @@
+{
+  "settingsAccess": {
+    "title": "Access control",
+    "description": "Which apps and modules each member can reach.",
+    "logs": "Access logs",
+    "templates": "Manage templates"
+  }
+}
