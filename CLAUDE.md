@@ -200,7 +200,12 @@ When adding a new backend feature:
 5. **API**: Create router in `api/`, then import and mount in `api/__init__.py`
 
 When adding a new app/module visible in the UI:
-- Update **both** `frontend/src/config/appDefinitions.ts` AND `backend/src/aexy/models/app_definitions.py` — these must stay in sync
+- Update **both** `frontend/src/config/appDefinitions.ts` AND `backend/src/aexy/models/app_definitions.py` — these must stay in sync, including the system bundles at the bottom of each file
+- Regenerate the parity fixture so the two are checked rather than trusted:
+  ```bash
+  cd backend && python scripts/dump_app_catalog.py
+  ```
+  The backend is the authority (the access resolver and role fallback read `SYSTEM_APP_BUNDLES`). `frontend/src/test/appCatalogParity.test.ts` asserts the TypeScript matches the fixture, and `backend/tests/unit/test_app_catalog_fixture.py` asserts the fixture matches the Python — so forgetting either side fails a test instead of silently granting different apps depending on which file the code path read.
 - Update `frontend/src/config/sidebarLayouts.ts` for navigation entries
 
 ### API Pattern
