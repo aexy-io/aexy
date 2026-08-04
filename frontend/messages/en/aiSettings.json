@@ -1,0 +1,48 @@
+{
+  "aiSettings": {
+    "title": "AI & Providers",
+    "subtitle": "Control whether this workspace uses AI at all, and whose provider it uses.",
+    "loadFailed": "Could not load AI settings for this workspace.",
+    "adminsOnly": "Only the workspace owner or an admin can change these settings. You can see what is in force.",
+    "keyNeverRead": "API keys cannot be read back — not here, not through the API, not by the person who saved them. Only a running AI call decrypts one. To change a key, paste a new one over it.",
+    "planGate": {
+      "title": "Available on Pro and Enterprise",
+      "body": "This workspace is on the {tier} plan. Upgrade to turn AI off workspace-wide or to use your own provider keys. Any setting already saved stays in force."
+    },
+    "inForce": {
+      "label": "In force now:",
+      "disabled": "AI is switched off for this workspace.",
+      "workspace": "Your own provider and key are serving this workspace.",
+      "platform": "The platform's default provider is serving this workspace."
+    },
+    "access": {
+      "title": "AI access",
+      "help": "One switch for the whole workspace. It applies to every module, background job and scheduled task — not just the screens you can see.",
+      "disableLabel": "Disable all AI for this workspace",
+      "disableHelp": "Blocks every LLM call, including email classification, summaries, agents and file understanding.",
+      "reasonLabel": "Reason (optional)",
+      "reasonPlaceholder": "Pending data-processing review",
+      "reasonHelp": "Recorded with the change, so the answer to \"why is nothing working?\" is here rather than in someone's memory."
+    },
+    "provider": {
+      "title": "Your own provider",
+      "help": "Leave this on the platform default, or point the workspace at your own account so prompts travel on your contract.",
+      "providerLabel": "Provider",
+      "platformDefault": "Platform default",
+      "modelLabel": "Model",
+      "modelPlaceholder": "Leave blank for the default",
+      "baseUrlLabel": "Endpoint URL",
+      "apiKeyLabel": "API key",
+      "apiKeyPlaceholder": "Paste your provider key",
+      "apiKeyInstalled": "A key ending {hint} is installed",
+      "apiKeyHelp": "Stored encrypted and never returned by the API.",
+      "apiKeyRotateHelp": "Leave blank to keep the installed key. Pasting a new one replaces it.",
+      "keyRequired": "This provider needs an API key.",
+      "fallbackLabel": "Fall back to the platform provider if mine fails",
+      "fallbackHelp": "Off by default: if you supplied a key so your prompts stay on your account, a silent fallback would defeat that.",
+      "test": "Test connection",
+      "testOk": "The provider answered.",
+      "usePlatform": "Use the platform default instead"
+    }
+  }
+}

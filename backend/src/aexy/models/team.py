@@ -41,6 +41,15 @@ class Team(Base):
         String(50), nullable=False, default="manual"
     )  # "manual" | "repo_based" | "auto_sync"
 
+    # Org rollup: which department this delivery team belongs to (nullable —
+    # existing teams roll up to no department). See models/organization.py.
+    department_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("departments.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     # For repo_based teams - list of repository IDs
     source_repository_ids: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     auto_sync_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

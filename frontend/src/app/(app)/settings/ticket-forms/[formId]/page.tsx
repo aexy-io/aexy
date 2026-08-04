@@ -25,8 +25,6 @@ import {
   ToggleLeft,
   Hash,
 } from "lucide-react";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
-import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useTicketForm } from "@/hooks/useTicketing";
 import {
@@ -36,6 +34,8 @@ import {
   TicketPriority,
   TicketSeverity,
 } from "@/lib/api";
+import { useTranslations } from "next-intl";
+import { SettingsPage } from "@/components/settings/SettingsPrimitives";
 
 const PRIORITY_OPTIONS: { value: TicketPriority; label: string }[] = [
   { value: "low", label: "Low" },
@@ -309,6 +309,7 @@ function FieldEditor({
 }
 
 export default function FormBuilderPage() {
+  const t = useTranslations("settingsFormBuilder");
   const router = useRouter();
   const params = useParams();
   const formId = params.formId as string;
@@ -446,43 +447,36 @@ export default function FormBuilderPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <Breadcrumb
-          items={[
-            { label: "Settings", href: "/settings" },
-            { label: "Ticket Forms", href: "/settings/ticket-forms" },
-            { label: form.name },
-          ]}
-          className="mb-2"
-        />
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-semibold text-foreground">{form.name}</h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              {form.fields?.length || 0} fields
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleCopyUrl}
-              className="flex items-center gap-2 px-3 py-2 bg-muted hover:bg-accent text-foreground rounded-lg transition text-sm"
-            >
-              <Copy className="h-4 w-4" />
-              Copy URL
-            </button>
-            <a
-              href={publicUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 px-3 py-2 bg-muted hover:bg-accent text-foreground rounded-lg transition text-sm"
-            >
-              <Eye className="h-4 w-4" />
-              Preview
-            </a>
-          </div>
-        </div>
-      </div>
+    <SettingsPage
+      title={form.name}
+      description={t("fieldCount", { count: form.fields?.length || 0 })}
+      width="wide"
+      breadcrumbs={[
+        { label: "Settings", href: "/settings" },
+        { label: t("breadcrumbParent"), href: "/settings/ticket-forms" },
+        { label: form.name },
+      ]}
+      actions={
+        <>
+          <button
+            onClick={handleCopyUrl}
+            className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-accent"
+          >
+            <Copy className="h-4 w-4" aria-hidden />
+            {t("copyUrl")}
+          </button>
+          <a
+            href={publicUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-accent"
+          >
+            <Eye className="h-4 w-4" aria-hidden />
+            {t("preview")}
+          </a>
+        </>
+      }
+    >
 
       <div>
         {/* Tabs */}
@@ -795,6 +789,6 @@ export default function FormBuilderPage() {
           </div>
         </div>
       )}
-    </div>
+    </SettingsPage>
   );
 }

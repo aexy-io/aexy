@@ -5,19 +5,27 @@ import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSettingsSearch } from "@/hooks/useSettingsSearch";
-import { getAllSettingsNavItems, type SettingsNavItem } from "@/config/settingsNavigation";
+import {
+  canAccessSettingsItem,
+  getAllSettingsNavItems,
+  type SettingsNavItem,
+} from "@/config/settingsNavigation";
 
 interface SettingsSearchProps {
-  isAdmin: boolean;
+  permissions: string[];
+  isOwner: boolean;
+  isPlatformAdmin: boolean;
 }
 
-export function SettingsSearch({ isAdmin }: SettingsSearchProps) {
+export function SettingsSearch({ permissions, isOwner, isPlatformAdmin }: SettingsSearchProps) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const items = getAllSettingsNavItems().filter(
-    (item) => !item.adminOnly || isAdmin
+  // Search must not surface a page the caller cannot open — that turns a search
+  // box into a directory of everything they are missing.
+  const items = getAllSettingsNavItems().filter((item) =>
+    canAccessSettingsItem(item, { permissions, isOwner, isPlatformAdmin })
   );
 
   const { query, setQuery, results, selectedIndex, setSelectedIndex, onKeyDown, reset } =

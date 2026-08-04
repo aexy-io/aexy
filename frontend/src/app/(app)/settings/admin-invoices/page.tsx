@@ -17,6 +17,11 @@ import {
   Zap,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { useTranslations } from "next-intl";
+import {
+  SettingsPage,
+  SettingsAccessDenied,
+} from "@/components/settings/SettingsPrimitives";
 
 interface AdminInvoice {
   id: string;
@@ -155,6 +160,7 @@ function getPaymentMethodBadge(method: string) {
 }
 
 export default function AdminInvoicesPage() {
+  const t = useTranslations("settingsInvoices");
   const queryClient = useQueryClient();
 
   // Create invoice form state
@@ -280,31 +286,17 @@ export default function AdminInvoicesPage() {
     });
   };
 
-  if (error) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Invoices</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Platform admin access required
-          </p>
-        </div>
-        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-sm text-red-400">
-          You don&apos;t have permission to access this page. Only platform
-          admins can manage invoices.
-        </div>
-      </div>
-    );
-  }
+  // Platform-staff tooling: a workspace admin reaching this is not an
+  // error state, it is simply not their page.
+  if (error) return <SettingsAccessDenied title={t("denied.title")} detail={t("denied.body")} />;
+
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Invoices</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Create, manage, and reconcile invoices for B2B customers
-        </p>
-      </div>
+    <SettingsPage
+      title={t("title")}
+      description={t("description")}
+      width="wide"
+    >
 
       {/* Create Invoice */}
       <div className="bg-card border border-border rounded-xl p-5">
@@ -651,6 +643,6 @@ export default function AdminInvoicesPage() {
           </div>
         )}
       </div>
-    </div>
+    </SettingsPage>
   );
 }

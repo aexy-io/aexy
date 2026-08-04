@@ -17,6 +17,7 @@ import {
 import { motion } from "framer-motion";
 import { useOnboarding } from "../OnboardingContext";
 import { workspaceApi } from "@/lib/api";
+import { useDepartments } from "@/hooks/useOrganization";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface InviteEntry {
@@ -36,6 +37,11 @@ export default function InviteTeam() {
   const [isSending, setIsSending] = useState(false);
   const [sentCount, setSentCount] = useState(0);
   const [failedEmails, setFailedEmails] = useState<string[]>([]);
+  // One department for the whole batch. A workspace created moments ago has no
+  // departments at all, so this renders only for a workspace that already has
+  // structure — otherwise it would be a control with nothing to choose.
+  const [departmentId, setDepartmentId] = useState("");
+  const { data: departments } = useDepartments();
 
   useEffect(() => {
     setCurrentStep(6);
@@ -116,7 +122,12 @@ export default function InviteTeam() {
       try {
         for (const invite of invites) {
           try {
-            await workspaceApi.inviteMember(data.workspace.id, invite.email, invite.role);
+            await workspaceApi.inviteMember(
+              data.workspace.id,
+              invite.email,
+              invite.role,
+              departmentId || null,
+            );
             setSentCount((prev) => prev + 1);
           } catch (err) {
             console.error(`Failed to invite ${invite.email}:`, err);
@@ -293,6 +304,28 @@ export default function InviteTeam() {
               <p className="text-sm text-muted-foreground max-w-xs mx-auto">
                 Add email addresses above or paste a list. You can always invite teammates later from Settings.
               </p>
+            </div>
+          )}
+
+          {/* Optional department for the batch — only when the workspace already
+              has departments to choose from. */}
+          {invites.length > 0 && departments && departments.length > 0 && (
+            <div className="bg-muted/20 border border-border/30 rounded-xl p-4 mb-8">
+              <label className="block text-sm text-muted-foreground mb-2">
+                Add everyone to a department <span className="text-xs">(optional)</span>
+              </label>
+              <select
+                value={departmentId}
+                onChange={(e) => setDepartmentId(e.target.value)}
+                className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-500"
+              >
+                <option value="">No department — assign later</option>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
 

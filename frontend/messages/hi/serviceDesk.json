@@ -1,0 +1,132 @@
+{
+  "serviceDesk": {
+    "title": "सर्विस डेस्क",
+    "subtitle": "ईमेल-इनटेक टिकटिंग, स्टेकहोल्डर टर्नअराउंड ट्रैकिंग के साथ",
+    "tabs": {
+      "dashboard": "डैशबोर्ड",
+      "tickets": "टिकट",
+      "settings": "मास्टर डेटा"
+    },
+    "stats": {
+      "totalOpen": "खुले टिकट",
+      "breaching": "ब्रीचिंग ({red}d से अधिक)",
+      "stakeholders": "सक्रिय स्टेकहोल्डर"
+    },
+    "dashboard": {
+      "matrixTitle": "स्टेकहोल्डर और उम्र के अनुसार खुले टिकट",
+      "stakeholder": "किसके पास लंबित",
+      "col01": "{amber}d से कम",
+      "col12": "{amber}–{red}d",
+      "colGt2": "{red}d से अधिक",
+      "total": "कुल",
+      "ticketsTitle": "खुले टिकट",
+      "empty": "कोई खुला टिकट नहीं। नए ईमेल अनुरोध यहाँ अपने आप दिखाई देंगे।",
+      "export": "CSV एक्सपोर्ट"
+    },
+    "table": {
+      "id": "टिकट",
+      "subject": "विषय",
+      "product": "उत्पाद",
+      "account": "खाता",
+      "type": "प्रकार",
+      "owner": "स्वामी",
+      "pendingWith": "किसके पास लंबित",
+      "daysInStage": "स्टेज में कार्यदिवस",
+      "overallAge": "कुल उम्र",
+      "status": "स्थिति",
+      "triage": "ट्राइएज"
+    },
+    "detail": {
+      "back": "डैशबोर्ड पर वापस",
+      "requester": "अनुरोधकर्ता",
+      "requestType": "अनुरोध प्रकार",
+      "product": "उत्पाद",
+      "account": "खाता",
+      "assignedOwner": "नियुक्त स्वामी",
+      "pendingWith": "किसके पास लंबित",
+      "changeTo": "यहाँ ले जाएं",
+      "note": "नोट (वैकल्पिक)",
+      "apply": "लागू करें",
+      "overallTat": "कुल TAT (बीता समय)",
+      "currentStage": "वर्तमान स्टेज (कार्यदिवस)",
+      "stakeholderTat": "प्रति स्टेकहोल्डर समय",
+      "timeline": "हैंडऑफ टाइमलाइन",
+      "days": "{days} दिन",
+      "open": "खुला",
+      "needsTriage": "ट्राइएज आवश्यक",
+      "convertToTask": "टास्क में बदलें",
+      "selectProject": "प्रोजेक्ट चुनें…",
+      "convert": "बदलें",
+      "converting": "बदला जा रहा है…",
+      "linkedToTask": "प्रोजेक्ट टास्क से जुड़ा हुआ"
+    },
+    "ai": {
+      "title": "AI ईमेल वर्गीकरण",
+      "description": "AI को आने वाले ईमेल पढ़कर अनुरोध प्रकार और LOB सुझाने दें। बंद होने पर, KAM टिकट को मैन्युअल रूप से वर्गीकृत करते हैं।",
+      "enabled": "सक्षम"
+    },
+    "manual": {
+      "logTicket": "टिकट लॉग करें",
+      "title": "टिकट लॉग करें",
+      "subtitle": "फोन या WhatsApp से प्राप्त अनुरोध के लिए",
+      "subject": "विषय",
+      "description": "विवरण",
+      "requesterName": "अनुरोधकर्ता का नाम",
+      "requesterEmail": "अनुरोधकर्ता ईमेल",
+      "type": "अनुरोध प्रकार",
+      "product": "उत्पाद",
+      "account": "खाता",
+      "none": "— कोई नहीं —",
+      "create": "टिकट बनाएं",
+      "creating": "बनाया जा रहा है…"
+    },
+    "templates": {
+      "title": "ईमेल टेम्पलेट",
+      "description": "स्वचालित ईमेल की कॉपी संपादित करें। हर टेम्पलेट के नीचे दिए गए प्लेसहोल्डर टोकन उपयोग करें।",
+      "subject": "विषय",
+      "body": "मुख्य भाग",
+      "variables": "प्लेसहोल्डर",
+      "save": "सहेजें",
+      "saving": "सहेजा जा रहा है…",
+      "customised": "अनुकूलित"
+    },
+    "settings": {
+      "accounts": "खाते",
+      "vendors": "वेंडर",
+      "products": "उत्पाद",
+      "mailboxes": "मेलबॉक्स",
+      "name": "नाम",
+      "domains": "डोमेन (कॉमा से अलग)",
+      "assignedOwner": "नियुक्त स्वामी",
+      "address": "पता",
+      "channel": "चैनल",
+      "add": "जोड़ें",
+      "delete": "हटाएं",
+      "empty": "अभी यहाँ कुछ नहीं है।",
+      "readOnly": "आपके पास मास्टर डेटा के लिए केवल-पढ़ने की पहुँच है। बदलाव के लिए वर्कस्पेस एडमिन या सर्विस डेस्क मैनेजर से कहें।",
+      "domainsHint": "उदा. acme.com, acme.co"
+    },
+    "noDepartment": "आप अभी किसी विभाग में नहीं हैं, इसलिए आपको कोई टिकट नहीं भेजा जा सकता। किसी एडमिन से Organization → Departments में जोड़ने को कहें।",
+    "workingHours": {
+      "title": "कार्य समय",
+      "description": "ब्रीच क्लॉक केवल इन घंटों (IST) में चलती है। रात, सप्ताहांत और कंपनी की छुट्टियों में रुक जाती है — इसलिए \"2 business days\" का मतलब दो शिफ्ट है, 48 घंटे नहीं। छुट्टियाँ Leave module से आती हैं।",
+      "from": "शिफ्ट शुरू",
+      "to": "शिफ्ट समाप्त",
+      "summary": "शिफ्ट {hours} घंटे की है, इसलिए 2-दिन का लक्ष्य इसका दोगुना है।",
+      "invalid": "समाप्ति समय शुरुआत के बाद होना चाहिए",
+      "save": "समय सहेजें",
+      "saving": "सहेज रहे हैं…"
+    },
+    "deskIdentity": {
+      "title": "डेस्क पहचान और लक्ष्य",
+      "description": "Ticket id prefix, वह timezone जिसमें दिन की सीमाएँ तय होती हैं, और breach thresholds। ये पहले code में तय थे; दिखाए गए मान वही डिफ़ॉल्ट हैं जो बदलने तक लागू रहेंगे।",
+      "prefix": "Ticket prefix",
+      "timezone": "Timezone",
+      "amber": "Amber इसके बाद (दिन)",
+      "red": "Red इसके बाद (दिन)",
+      "prefixInvalid": "1–10 अक्षर या अंक, शुरुआत अक्षर से।",
+      "thresholdsInvalid": "Amber, red से कम दिनों का होना चाहिए, और दोनों शून्य से अधिक।",
+      "prefixWarning": "सेव करने पर हर मौजूदा ticket {prefix}-<number> के रूप में दिखेगा। पुराने prefix वाले उत्तर फिर भी सही thread में जुड़ेंगे।"
+    }
+  }
+}

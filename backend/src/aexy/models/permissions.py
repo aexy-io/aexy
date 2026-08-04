@@ -26,6 +26,8 @@ class PermissionCategory(str, Enum):
     COMPLIANCE = "compliance"
     TABLES = "tables"
     LEAVES = "leaves"
+    ORGANIZATION = "organization"
+    SERVICE_DESK = "service_desk"
 
 
 # Master permission catalog
@@ -120,6 +122,32 @@ PERMISSIONS: dict[str, dict] = {
         "category": PermissionCategory.TICKETS,
         "description": "Delete tickets",
         "default_for": ["admin"],
+    },
+    # Organization structure (departments / org chart)
+    "can_view_org": {
+        "category": PermissionCategory.ORGANIZATION,
+        "description": "View organization structure, departments, and org chart",
+        "default_for": ["admin", "manager", "developer", "hr", "support", "sales", "viewer"],
+    },
+    "can_manage_org": {
+        "category": PermissionCategory.ORGANIZATION,
+        "description": "Create/edit departments, membership, reporting lines, and headcount",
+        "default_for": ["admin", "manager", "hr"],
+    },
+    # Service Desk (email-intake ticketing)
+    "can_view_service_desk": {
+        "category": PermissionCategory.SERVICE_DESK,
+        "description": "View service desk tickets and dashboard",
+        # "developer" is here because the legacy workspace role "member" maps to
+        # that template, and a KAM is usually a plain member. Opening the module
+        # is not the same as seeing everything in it — row-level scoping still
+        # limits each caller to their own department's tickets.
+        "default_for": ["admin", "manager", "support", "sales", "developer"],
+    },
+    "can_manage_service_desk": {
+        "category": PermissionCategory.SERVICE_DESK,
+        "description": "Manage tickets, pending-with, and master data (partners/insurers/LOBs/mailboxes)",
+        "default_for": ["admin", "manager", "support"],
     },
     # CRM
     "can_view_crm": {
@@ -348,11 +376,47 @@ def get_permissions_for_template(template_id: str) -> list[str]:
     ]
 
 
+# What separates an owner from an admin.
+#
+# These two templates used to be byte-identical — both `list(PERMISSIONS.keys())` —
+# so "owner" was a label with no consequences. Three groups belong to the person
+# who owns the workspace:
+#
+# * the deletes, because they destroy data nobody can get back;
+# * billing, because it spends money;
+# * role management, because an admin who can edit roles can grant themselves
+#   everything here and lock the owner out — which makes every other line in this
+#   set unenforceable.
+#
+# This is a *default*, not a wall: an owner can hand any of these to a specific
+# person through `WorkspaceMember.permission_overrides`, which is applied after
+# the role template in `PermissionService.get_effective_permissions`.
+OWNER_ONLY_PERMISSIONS: frozenset[str] = frozenset({
+    "can_delete_projects",
+    "can_delete_teams",
+    "can_delete_docs",
+    "can_delete_tickets",
+    "can_manage_billing",
+    "can_manage_roles",
+    "can_assign_roles",
+})
+
+# Fail loudly at import if a permission is retired or renamed without updating the
+# set above — a typo here silently hands an admin a destructive permission back.
+if _unknown := OWNER_ONLY_PERMISSIONS - set(PERMISSIONS):
+    raise ValueError(f"OWNER_ONLY_PERMISSIONS names unknown permissions: {sorted(_unknown)}")
+
+
+def get_admin_permissions() -> list[str]:
+    """Everything except what only the workspace owner may do."""
+    return [p for p in PERMISSIONS if p not in OWNER_ONLY_PERMISSIONS]
+
+
 # Role templates with default permissions
 ROLE_TEMPLATES: dict[str, dict] = {
     "owner": {
         "name": "Owner",
-        "description": "Workspace owner with full access",
+        "description": "Workspace owner with full access, including deletes and billing",
         "color": "#f59e0b",  # amber
         "icon": "Crown",
         "is_system": True,
@@ -361,12 +425,12 @@ ROLE_TEMPLATES: dict[str, dict] = {
     },
     "admin": {
         "name": "Admin",
-        "description": "Full access to all features and settings",
+        "description": "Manages the workspace day to day; the owner keeps deletes, billing and roles",
         "color": "#9333ea",  # purple
         "icon": "Shield",
         "is_system": True,
         "priority": 100,
-        "permissions": list(PERMISSIONS.keys()),  # All permissions
+        "permissions": get_admin_permissions(),
     },
     "manager": {
         "name": "Manager",

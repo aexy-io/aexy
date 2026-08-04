@@ -160,7 +160,7 @@ const SHARED_ITEMS: Record<string, ChecklistItemDef> = {
     label: "Set up CRM pipeline",
     description: "Configure your sales pipeline stages",
     icon: Building2,
-    href: "/crm/settings",
+    href: "/settings/crm",
   },
   "setup-forms": {
     id: "setup-forms",

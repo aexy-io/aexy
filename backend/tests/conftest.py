@@ -609,3 +609,27 @@ async def seed_crm_object(db: AsyncSession, workspace_id: str, name: str = "Obje
     db.add(crm_object)
     await db.flush()
     return crm_object.id
+
+
+async def seed_service_desk_taxonomy(
+    db: AsyncSession,
+    workspace_id: str,
+    template_slug: str = "insurance_broking",
+) -> None:
+    """Give `workspace_id` a Service Desk taxonomy (stakeholders + request types).
+
+    Stakeholders and request types used to be Python enums, so every workspace had
+    them for free. They are per-workspace rows now, which means a test that pokes
+    `pending_with="kam"` straight into the database is describing a workspace that
+    has never been set up — and the service layer will rightly refuse it.
+
+    Defaults to `insurance_broking` because that template's slugs (`kam`,
+    `insurer`, `third_party`, `query`, …) are the legacy enum values these tests
+    were written against.
+    """
+    from aexy.services.service_desk_industry_templates import get_template
+    from aexy.services.service_desk_taxonomy import seed_taxonomy
+
+    template = get_template(template_slug)
+    assert template is not None, f"unknown industry template {template_slug!r}"
+    await seed_taxonomy(db, workspace_id, template)

@@ -435,7 +435,7 @@ export default function NewCampaignPage() {
                         <Tag className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                         <p className="text-muted-foreground text-sm">No subscription categories found</p>
                         <Link
-                          href="/email-marketing/settings"
+                          href="/settings/email-marketing"
                           className="text-sky-400 hover:text-sky-300 text-sm"
                         >
                           Create categories in settings

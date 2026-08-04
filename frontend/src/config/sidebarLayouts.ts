@@ -16,6 +16,8 @@ import {
     GraduationCap,
     Users,
     Building2,
+    Network,
+    Headset,
     Mail,
     MessageSquare,
     Ban,
@@ -113,6 +115,12 @@ const reviewsItems: SidebarItemConfig[] = [
     { href: "/reviews/manage", label: "Manage", icon: Settings },
 ];
 
+const organizationItems: SidebarItemConfig[] = [
+    { href: "/organization", label: "Org Chart", icon: Network },
+    { href: "/organization/departments", label: "Departments", icon: Building2 },
+    { href: "/organization/directory", label: "Directory", icon: Users },
+];
+
 const hiringItems: SidebarItemConfig[] = [
     { href: "/hiring/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/hiring/candidates", label: "Candidates", icon: UserPlus },
@@ -130,10 +138,16 @@ const crmItems: SidebarItemConfig[] = [
     { href: "/crm/sequences", label: "Sequences", icon: Repeat },
 ];
 
+const serviceDeskItems: SidebarItemConfig[] = [
+    { href: "/service-desk", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/service-desk/tickets", label: "Tickets", icon: Ticket },
+    { href: "/service-desk/settings", label: "Master Data", icon: Settings },
+];
+
 const emailItems: SidebarItemConfig[] = [
     { href: "/email-marketing/campaigns", label: "Campaigns", icon: Send },
     { href: "/email-marketing/templates", label: "Templates", icon: FileCode },
-    { href: "/email-marketing/settings", label: "Settings", icon: Settings },
+    { href: "/settings/email-marketing", label: "Settings", icon: Settings },
 ];
 
 const bookingItems: SidebarItemConfig[] = [
@@ -295,6 +309,12 @@ export const GROUPED_LAYOUT: SidebarLayoutConfig = {
             label: "People",
             items: [
                 {
+                    href: "/organization",
+                    label: "Organization",
+                    icon: Network,
+                    items: organizationItems,
+                },
+                {
                     href: "/reviews",
                     label: "Reviews",
                     icon: ClipboardCheck,
@@ -326,6 +346,12 @@ export const GROUPED_LAYOUT: SidebarLayoutConfig = {
                     label: "CRM",
                     icon: Building2,
                     items: crmItems,
+                },
+                {
+                    href: "/service-desk",
+                    label: "Service Desk",
+                    icon: Headset,
+                    items: serviceDeskItems,
                 },
                 {
                     href: "/booking",
@@ -418,6 +444,12 @@ export const FLAT_LAYOUT: SidebarLayoutConfig = {
                     personas: ["hr", "manager", "admin"],
                 },
                 {
+                    href: "/organization",
+                    label: "Organization",
+                    icon: Network,
+                    items: organizationItems,
+                },
+                {
                     href: "/reviews",
                     label: "Reviews",
                     icon: ClipboardCheck,
@@ -435,6 +467,13 @@ export const FLAT_LAYOUT: SidebarLayoutConfig = {
                     label: "CRM",
                     icon: Building2,
                     items: crmItems,
+                    personas: ["sales", "support", "admin"],
+                },
+                {
+                    href: "/service-desk",
+                    label: "Service Desk",
+                    icon: Headset,
+                    items: serviceDeskItems,
                     personas: ["sales", "support", "admin"],
                 },
                 {

@@ -1,0 +1,6 @@
+{
+  "settingsRepositories": {
+    "title": "Repositories",
+    "description": "Which GitHub repositories are synced and analysed."
+  }
+}

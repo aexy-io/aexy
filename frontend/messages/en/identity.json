@@ -60,6 +60,8 @@
       "merge": "Merge",
       "merging": "Merging…",
       "confirmMerge": "Merge {ghost} → {target}? All activity rows move and the ghost row is deleted."
-    }
+    },
+    "adminLink": "Admin",
+    "breadcrumbParent": "Identity"
   }
 }

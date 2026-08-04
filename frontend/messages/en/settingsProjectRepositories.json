@@ -1,0 +1,10 @@
+{
+  "settingsProjectRepositories": {
+    "title": "Project repositories",
+    "description": "Which workspace repos this project tracks. PR search, the GitHub issue dropdown and per-project insights all scope to this selection.",
+    "empty": {
+      "title": "No repositories adopted yet",
+      "description": "Adopt repos into the workspace catalogue first, then come back to pick which ones this project tracks."
+    }
+  }
+}

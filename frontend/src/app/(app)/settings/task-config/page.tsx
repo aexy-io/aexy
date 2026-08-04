@@ -49,6 +49,11 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useTranslations } from "next-intl";
+import {
+  SettingsPage,
+  SettingsSkeleton,
+} from "@/components/settings/SettingsPrimitives";
 
 type TabType = "statuses" | "fields";
 
@@ -412,6 +417,7 @@ function FieldModal({ field, onClose, onSave, isSaving }: FieldModalProps) {
 }
 
 export default function TaskConfigPage() {
+  const t = useTranslations("settingsTaskConfig");
   const { user } = useAuth();
   const {
     currentWorkspace,
@@ -588,23 +594,10 @@ export default function TaskConfigPage() {
 
   const isLoading = currentWorkspaceLoading || statusesLoading || fieldsLoading;
 
-  if (isLoading) {
-    return (
-      <div className="py-20 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-foreground">Loading task configuration...</p>
-        </div>
-      </div>
-    );
-  }
+  if (isLoading) return <SettingsSkeleton rows={2} />;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Task Configuration</h1>
-        <p className="text-muted-foreground text-sm mt-1">Configure custom statuses and fields for sprint tasks</p>
-      </div>
+    <SettingsPage title={t("title")} description={t("description")} width="wide">
 
       <div>
         {!hasWorkspaces ? (
@@ -930,6 +923,6 @@ export default function TaskConfigPage() {
           isDeleting={isDeletingStatus}
         />
       )}
-    </div>
+    </SettingsPage>
   );
 }

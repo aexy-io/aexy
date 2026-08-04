@@ -1,7 +1,7 @@
 "use client";
 
 import { getApiErrorMessage } from "@/lib/utils";
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -14,7 +14,6 @@ import {
   Plus,
   Settings,
   Shield,
-  Trash2,
   UserMinus,
   Users,
   Link as LinkIcon,
@@ -29,6 +28,8 @@ import {
 } from "lucide-react";
 import { useWorkspace, useWorkspaceMembers, useWorkspaceBilling, usePendingInvites, useWorkspaceAppSettings } from "@/hooks/useWorkspace";
 import { useAuth } from "@/hooks/useAuth";
+import { useDepartments, usePeople } from "@/hooks/useOrganization";
+import { PersonSummary } from "@/lib/organization-api";
 import { WorkspaceMember, WorkspacePendingInvite, repositoriesApi, Organization, communityApi } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { UpgradeBanner } from "@/components/UpgradeBanner";
@@ -132,6 +133,9 @@ interface MemberRowProps {
   member: WorkspaceMember;
   currentUserId: string | undefined;
   isCurrentUserAdmin: boolean;
+  /** Org-side view of the same person, when the Organization module is readable.
+   *  Undefined means we simply don't know, so nothing is claimed either way. */
+  person?: PersonSummary;
   onUpdateRole: (developerId: string, role: string) => void;
   onRemove: (developerId: string) => void;
   onResendInvite: (developerId: string) => Promise<void>;
@@ -142,6 +146,7 @@ function MemberRow({
   member,
   currentUserId,
   isCurrentUserAdmin,
+  person,
   onUpdateRole,
   onRemove,
   onResendInvite,
@@ -218,6 +223,25 @@ function MemberRow({
           </div>
           {member.developer_email && (
             <p className="text-muted-foreground text-sm">{member.developer_email}</p>
+          )}
+          {/* Where they sit in the org. Absence is worth showing, not hiding:
+              an unassigned member is invisible in the directory and cannot be
+              routed service desk work. */}
+          {person && (
+            <p className="text-xs mt-0.5">
+              {person.departments.length > 0 ? (
+                <span className="text-muted-foreground">
+                  {person.departments.map((d) => d.name).join(", ")}
+                </span>
+              ) : (
+                <Link
+                  href="/organization/departments"
+                  className="text-amber-500 hover:underline"
+                >
+                  No department — assign
+                </Link>
+              )}
+            </p>
           )}
         </div>
       </div>
@@ -311,14 +335,18 @@ function MemberRow({
 
 interface InviteMemberModalProps {
   onClose: () => void;
-  onInvite: (email: string, role: string) => Promise<void>;
+  onInvite: (email: string, role: string, departmentId: string | null) => Promise<void>;
   isInviting: boolean;
 }
 
 function InviteMemberModal({ onClose, onInvite, isInviting }: InviteMemberModalProps) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("member");
+  const [departmentId, setDepartmentId] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // Optional. If the Organization module is off (or the caller lacks
+  // can_view_org) this read fails and the picker simply isn't offered.
+  const { data: departments } = useDepartments();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -330,7 +358,7 @@ function InviteMemberModal({ onClose, onInvite, isInviting }: InviteMemberModalP
     }
 
     try {
-      await onInvite(email.trim(), role);
+      await onInvite(email.trim(), role, departmentId || null);
       onClose();
     } catch (err: unknown) {
       const errorMessage = getApiErrorMessage(err, "Failed to invite member");
@@ -368,6 +396,29 @@ function InviteMemberModal({ onClose, onInvite, isInviting }: InviteMemberModalP
                 ))}
               </select>
             </div>
+            {departments && departments.length > 0 && (
+              <div>
+                <label className="block text-sm text-muted-foreground mb-1">
+                  Department <span className="text-xs">(optional)</span>
+                </label>
+                <select
+                  value={departmentId}
+                  onChange={(e) => setDepartmentId(e.target.value)}
+                  className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-500"
+                >
+                  <option value="">No department — assign later</option>
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-muted-foreground text-xs mt-1">
+                  Applied when they accept. Without one they won&apos;t appear in the org
+                  directory or receive service desk tickets.
+                </p>
+              </div>
+            )}
             {error && (
               <p className="text-red-400 text-sm">{error}</p>
             )}
@@ -654,6 +705,8 @@ function PendingInviteRow({ invite, onRevoke, onResend, isRevoking }: PendingInv
 }
 
 import { APP_CATALOG } from "@/config/appDefinitions";
+import { useTranslations } from "next-intl";
+import { SettingsPage } from "@/components/settings/SettingsPrimitives";
 
 const APP_LABELS: Record<string, { label: string; description: string }> = Object.fromEntries(
   Object.entries(APP_CATALOG)
@@ -721,6 +774,7 @@ function AppSettingsSection({ appSettings, onUpdate, isUpdating, isOwner }: AppS
 }
 
 export default function OrganizationSettingsPage() {
+  const t = useTranslations("settingsOrganization");
   const { user } = useAuth();
   const {
     workspaces,
@@ -778,8 +832,17 @@ export default function OrganizationSettingsPage() {
   const isAdmin = currentMember?.role === "owner" || currentMember?.role === "admin";
   const isOwner = currentMember?.role === "owner";
 
-  const handleInvite = async (email: string, role: string) => {
-    await inviteMember({ email, role });
+  // Org placement per member, so this page can flag people who belong to no
+  // department. Fails closed: if the Organization module is off, the map is
+  // empty and no placement is shown at all.
+  const { data: people } = usePeople();
+  const peopleById = useMemo(
+    () => new Map((people ?? []).map((p) => [p.developer_id, p])),
+    [people],
+  );
+
+  const handleInvite = async (email: string, role: string, departmentId: string | null) => {
+    await inviteMember({ email, role, departmentId });
   };
 
   const handleUpdateRole = async (developerId: string, role: string) => {
@@ -860,7 +923,7 @@ export default function OrganizationSettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <SettingsPage title={t("title")} description={t("description")} width="wide">
       {/* Success Toast */}
       {successMessage && (
         <div className="fixed top-4 right-4 z-50 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
@@ -869,12 +932,6 @@ export default function OrganizationSettingsPage() {
         </div>
       )}
 
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Organization Settings</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Manage your workspace and team members
-        </p>
-      </div>
 
       {members.length >= 3 && (
         <UpgradeBanner
@@ -1082,6 +1139,7 @@ export default function OrganizationSettingsPage() {
                         member={member}
                         currentUserId={user?.id}
                         isCurrentUserAdmin={isAdmin}
+                        person={peopleById.get(member.developer_id)}
                         onUpdateRole={handleUpdateRole}
                         onRemove={handleRemove}
                         onResendInvite={handleResendMemberInvite}
@@ -1197,6 +1255,6 @@ export default function OrganizationSettingsPage() {
           organizations={organizations}
         />
       )}
-    </div>
+    </SettingsPage>
   );
 }

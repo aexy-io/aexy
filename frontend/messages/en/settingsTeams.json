@@ -1,0 +1,43 @@
+{
+  "settingsTeams": {
+    "title": "Teams",
+    "description": "Teams group people for escalation routing, on-call rotations, standups and insights.",
+    "create": "New team",
+    "roles": { "lead": "Lead", "member": "Member" },
+    "form": {
+      "heading": "Create a team",
+      "name": "Name",
+      "namePlaceholder": "Platform, Support, Growth…",
+      "description": "Description (optional)",
+      "submit": "Create team"
+    },
+    "empty": {
+      "title": "No teams yet",
+      "description": "Create a team to route escalations, run an on-call rotation, or group standups."
+    },
+    "list": {
+      "heading": "{count, plural, one {# team} other {# teams}}",
+      "memberCount": "{count, plural, =0 {No members} one {# member} other {# members}}",
+      "repoBased": "Synced from a repository",
+      "inactive": "Inactive"
+    },
+    "detail": {
+      "members": "{count, plural, =0 {Members} one {Member} other {Members}}",
+      "noMembers": "Nobody is on this team yet.",
+      "addPlaceholder": "Add a workspace member…",
+      "add": "Add",
+      "remove": "Remove from team",
+      "everyoneAdded": "Every workspace member is already on this team.",
+      "fromRepo": "from repository sync",
+      "sync": "Sync members",
+      "autoSync": "Keep members in sync with the repository",
+      "autoSyncHint": "Contributors are added and removed automatically. Manual changes are replaced on the next sync.",
+      "delete": "Delete this team",
+      "deleteConfirm": "Delete",
+      "confirmDelete": "Delete {name} and its membership?",
+      "deleted": "Team deleted",
+      "cancel": "Cancel",
+      "close": "Close team details"
+    }
+  }
+}

@@ -4,25 +4,7 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import {
-  ArrowLeft,
-  FolderKanban,
-  Shield,
-  Users,
-  ChevronDown,
-  Check,
-  X,
-  Crown,
-  RefreshCw,
-  UserMinus,
-  Plus,
-  Mail,
-  UserPlus,
-  AlertCircle,
-  CheckCircle,
-  Workflow,
-} from "lucide-react";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { ArrowLeft, FolderKanban, Shield, Users, ChevronDown, Check, X, Crown, RefreshCw, UserMinus, Plus, Mail, UserPlus, AlertCircle, CheckCircle, Workflow } from "lucide-react";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import { useProject, useProjectMembers } from "@/hooks/useProjects";
 import { useRoles } from "@/hooks/useRoles";
@@ -30,6 +12,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
 import { UpgradeModal } from "@/components/PremiumGate";
 import { ProjectInviteResult } from "@/lib/api";
+import { useTranslations } from "next-intl";
+import { SettingsPage } from "@/components/settings/SettingsPrimitives";
 
 function getRoleBadgeColor(roleName: string | null) {
   if (!roleName) return "bg-muted text-muted-foreground";
@@ -51,6 +35,7 @@ function getRoleBadgeColor(roleName: string | null) {
 }
 
 export default function ProjectPermissionsPage() {
+  const t = useTranslations("settingsProjects");
   const params = useParams();
   const projectId = params.projectId as string;
 
@@ -197,30 +182,17 @@ export default function ProjectPermissionsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <Breadcrumb
-        items={[
-          { label: "Settings", href: "/settings" },
-          { label: "Projects", href: "/settings/projects" },
-          { label: project.name, href: `/settings/projects/${projectId}` },
-          { label: "Permissions" },
-        ]}
-        className="mb-0"
-      />
-
-      {/* Title */}
-      <div className="flex items-center gap-3">
-        <div
-          className="p-2 rounded-lg"
-          style={{ backgroundColor: project.color + "20" }}
-        >
-          <FolderKanban className="h-5 w-5" style={{ color: project.color }} />
-        </div>
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">{project.name}</h1>
-          <p className="text-muted-foreground text-sm">Permissions & Members</p>
-        </div>
-      </div>
+    <SettingsPage
+      title={project.name}
+      description={t("permissions.subtitle")}
+      width="wide"
+      breadcrumbs={[
+        { label: "Settings", href: "/settings" },
+        { label: "Projects", href: "/settings/projects" },
+        { label: project.name, href: `/settings/projects/${projectId}` },
+        { label: "Permissions" },
+      ]}
+    >
 
       <div>
         {/* Navigation Tabs */}
@@ -647,6 +619,6 @@ export default function ProjectPermissionsPage() {
       {showUpgradeModal && (
         <UpgradeModal feature="team_features" onClose={() => setShowUpgradeModal(false)} />
       )}
-    </div>
+    </SettingsPage>
   );
 }

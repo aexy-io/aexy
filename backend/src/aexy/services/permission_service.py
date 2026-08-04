@@ -48,6 +48,9 @@ class PermissionService:
         if not org_member or org_member.status != "active":
             return permissions
 
+        # Resolved up front but applied *last* — see the end of this method.
+        is_owner = await self._is_workspace_owner(workspace_id, developer_id)
+
         # Step 2: Get org role permissions
         if org_member.role_id:
             org_role = await self._get_role(org_member.role_id)
@@ -85,6 +88,24 @@ class PermissionService:
                             permissions.add(perm)
                         else:
                             permissions.discard(perm)
+
+        # Step 5: The workspace owner always holds everything, applied after every
+        # other step for two reasons.
+        #
+        # `workspaces.owner_id` — not the membership row's `role` string — is the
+        # authority on who the owner is. Creation does set that row to "owner", but
+        # a transfer, a seed script or a hand-fixed database can leave the real
+        # owner on an admin row, and admins no longer hold deletes, billing or role
+        # management (see OWNER_ONLY_PERMISSIONS), so that would lock an owner out
+        # of their own workspace.
+        #
+        # Applying it last also survives a project role, which *replaces* the org
+        # permission set in step 4 — an owner with a project role would otherwise
+        # lose the ability to delete that very project. Overrides cannot revoke
+        # from an owner either, which is deliberate: a workspace whose owner has
+        # revoked their own billing access has nobody who can restore it.
+        if is_owner:
+            permissions.update(ROLE_TEMPLATES["owner"]["permissions"])
 
         return permissions
 
@@ -243,6 +264,17 @@ class PermissionService:
         )
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def _is_workspace_owner(self, workspace_id: str, developer_id: str) -> bool:
+        """Whether this developer owns the workspace, per `workspaces.owner_id`."""
+        from aexy.models.workspace import Workspace
+
+        owner_id = (
+            await self.db.execute(
+                select(Workspace.owner_id).where(Workspace.id == workspace_id)
+            )
+        ).scalar_one_or_none()
+        return owner_id is not None and str(owner_id) == str(developer_id)
 
     async def _get_project_member(
         self, project_id: str, developer_id: str

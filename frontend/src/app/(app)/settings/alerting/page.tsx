@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import {
-  Siren,
   Plus,
   Loader2,
   Copy,
@@ -31,6 +30,8 @@ import {
 } from "@/lib/api";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { useTranslations } from "next-intl";
+import { SettingsPage } from "@/components/settings/SettingsPrimitives";
 
 function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
@@ -505,33 +506,28 @@ function CreateForm({ workspaceId, onDone }: { workspaceId: string; onDone: () =
 }
 
 export default function AlertingSettingsPage() {
+  const t = useTranslations("settingsAlerting");
   const { currentWorkspaceId } = useWorkspace();
   const { data: integrations, isLoading } = useAlertIntegrations(currentWorkspaceId);
   const [creating, setCreating] = useState(false);
 
   return (
-    <div className="max-w-3xl space-y-6">
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-2">
-          <Siren className="h-5 w-5 text-rose-400" />
-          <div>
-            <h1 className="text-lg font-semibold">Alert Integrations</h1>
-            <p className="text-sm text-muted-foreground">
-              Turn observability alerts (OpenObserve, etc.) into deduplicated tickets. One error → one ticket.
-            </p>
-          </div>
-        </div>
-        {!creating && (
+    <SettingsPage
+      title={t("title")}
+      description={t("description")}
+      actions={
+        !creating ? (
           <button
             type="button"
             onClick={() => setCreating(true)}
-            className="inline-flex items-center gap-1 text-sm px-3 py-1.5 rounded bg-primary text-primary-foreground"
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
           >
-            <Plus className="h-4 w-4" /> New integration
+            <Plus className="h-4 w-4" aria-hidden />
+            {t("create")}
           </button>
-        )}
-      </div>
-
+        ) : undefined
+      }
+    >
       <SetupGuide />
 
       {creating && currentWorkspaceId && (
@@ -556,6 +552,6 @@ export default function AlertingSettingsPage() {
           )}
         </div>
       )}
-    </div>
+    </SettingsPage>
   );
 }

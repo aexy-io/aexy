@@ -1,0 +1,16 @@
+{
+  "settingsProjects": {
+    "general": { "subtitle": "Project settings" },
+    "permissions": { "subtitle": "Permissions and members" },
+    "statuses": { "subtitle": "Task statuses" },
+    "repositories": { "subtitle": "Linked repositories" },
+    "tabs": {
+      "general": "General",
+      "permissions": "Permissions",
+      "repositories": "Repositories",
+      "statuses": "Statuses",
+      "tracker": "Tracker",
+      "oncall": "On-call"
+    }
+  }
+}

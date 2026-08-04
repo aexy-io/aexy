@@ -1,0 +1,10 @@
+{
+  "settingsInvoices": {
+    "title": "Invoices",
+    "description": "Create, manage and reconcile invoices for B2B customers.",
+    "denied": {
+      "title": "Platform admin access required",
+      "body": "Only Aexy platform staff can manage this. Workspace owners and admins do not have access."
+    }
+  }
+}

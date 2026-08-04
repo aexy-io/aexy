@@ -28,6 +28,7 @@ from aexy.schemas.workspace import (
     InviteInfoResponse,
     AcceptInviteResponse,
     MyInvitationResponse,
+    MyWorkspacePermissionsResponse,
 )
 from aexy.services.workspace_service import WorkspaceService
 from aexy.services.developer_service import DeveloperService
@@ -178,6 +179,45 @@ async def get_workspace(
     team_count = len(workspace.teams) if workspace.teams else 0
 
     return workspace_to_response(workspace, member_count, team_count)
+
+
+@router.get("/{workspace_id}/my-permissions", response_model=MyWorkspacePermissionsResponse)
+async def get_my_workspace_permissions(
+    workspace_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """What the caller may do in this workspace, so the UI can hide what would 403.
+
+    Any member may read their own permissions — being told what you cannot do is
+    not privileged information, and withholding it is exactly what left the
+    settings nav guessing.
+    """
+    from aexy.models.workspace import Workspace
+    from aexy.services.permission_service import PermissionService
+
+    service = WorkspaceService(db)
+    if not await service.check_permission(workspace_id, str(current_user.id), "viewer"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not a member of this workspace",
+        )
+
+    permission_service = PermissionService(db)
+    permissions = await permission_service.get_effective_permissions(
+        workspace_id, str(current_user.id)
+    )
+    role_info = await permission_service.get_user_role_info(workspace_id, str(current_user.id))
+    owner_id = (
+        await db.execute(select(Workspace.owner_id).where(Workspace.id == workspace_id))
+    ).scalar_one_or_none()
+
+    return MyWorkspacePermissionsResponse(
+        permissions=sorted(permissions),
+        workspace_id=workspace_id,
+        role_name=role_info.get("role_name"),
+        is_owner=owner_id is not None and str(owner_id) == str(current_user.id),
+    )
 
 
 @router.get("/{workspace_id}/llm-usage")
@@ -526,6 +566,26 @@ async def invite_member(
     workspace = await service.get_workspace(workspace_id)
     workspace_name = workspace.name if workspace else "the workspace"
 
+    # An optional department placement is validated now rather than on accept, so
+    # a mistyped id surfaces to the person making the invite instead of quietly
+    # doing nothing days later.
+    if data.department_id:
+        from aexy.models.organization import Department
+
+        dept = (
+            await db.execute(
+                select(Department).where(
+                    Department.id == data.department_id,
+                    Department.workspace_id == workspace_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if dept is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Department not found in this workspace",
+            )
+
     # Find developer by email
     developer = await dev_service.get_by_email(data.email)
 
@@ -552,6 +612,8 @@ async def invite_member(
                 email=data.email,
                 role=data.role,
                 invited_by_id=str(current_user.id),
+                department_id=data.department_id,
+                role_in_department=data.role_in_department,
             )
             await db.commit()
             await db.refresh(pending_invite)
@@ -624,6 +686,8 @@ The Aexy Team
                 email=data.email,
                 role=data.role,
                 invited_by_id=str(current_user.id),
+                department_id=data.department_id,
+                role_in_department=data.role_in_department,
             )
             await db.commit()
             await db.refresh(pending_invite)

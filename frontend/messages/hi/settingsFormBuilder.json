@@ -1,0 +1,8 @@
+{
+  "settingsFormBuilder": {
+    "breadcrumbParent": "टिकट फ़ॉर्म",
+    "fieldCount": "{count, plural, =0 {अभी कोई फ़ील्ड नहीं} one {# फ़ील्ड} other {# फ़ील्ड}}",
+    "copyUrl": "सार्वजनिक URL कॉपी करें",
+    "preview": "पूर्वावलोकन"
+  }
+}

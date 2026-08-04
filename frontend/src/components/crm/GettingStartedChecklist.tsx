@@ -55,7 +55,7 @@ export function GettingStartedChecklist({ onDismiss }: GettingStartedChecklistPr
       id: "import-data",
       label: "Import your data",
       description: "Bulk import from CSV",
-      href: "/crm/settings?tab=import",
+      href: "/settings/crm",
       icon: FileSpreadsheet,
       completed: false,
     },
@@ -72,7 +72,7 @@ export function GettingStartedChecklist({ onDismiss }: GettingStartedChecklistPr
       label: "Customize your objects",
       description: "Add custom attributes",
       icon: Settings,
-      href: "/crm/settings",
+      href: "/settings/crm",
       completed: false,
     },
     {
@@ -80,7 +80,7 @@ export function GettingStartedChecklist({ onDismiss }: GettingStartedChecklistPr
       label: "Invite team members",
       description: "Collaborate with your team",
       icon: UserPlus,
-      href: "/crm/settings?tab=team",
+      href: "/settings/crm",
       completed: false,
     },
   ]);

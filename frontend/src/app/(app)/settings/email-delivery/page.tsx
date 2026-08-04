@@ -12,13 +12,18 @@ import {
   RefreshCw,
   Filter,
 } from "lucide-react";
-import { useWorkspace } from "@/hooks/useWorkspace";
+import { useWorkspace, useIsWorkspaceAdmin } from "@/hooks/useWorkspace";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspaceEmailStats, useWorkspaceEmailLogs } from "@/hooks/useWorkspaceEmailDelivery";
 import { formatDistanceToNow } from "date-fns";
 import { WorkspaceEmailLog } from "@/lib/api";
 import { DataTable, DataTableColumn } from "@/components/ui/data-table";
+import { useTranslations } from "next-intl";
+import {
+  SettingsPage,
+  SettingsAccessDenied,
+} from "@/components/settings/SettingsPrimitives";
 
 function StatusBadge({ status }: { status: string }) {
   const config: Record<string, { color: string; icon: React.ElementType }> = {
@@ -86,16 +91,10 @@ function StatCard({
 
 function EnterpriseUpgradePrompt() {
   const router = useRouter();
+  const t = useTranslations("settingsEmailDelivery");
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Email Delivery</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Monitor email delivery status and logs
-        </p>
-      </div>
-
+    <SettingsPage title={t("title")} description={t("description")}>
       <div className="py-8">
         <div className="flex flex-col items-center justify-center text-center">
           <div className="p-4 bg-amber-500/20 rounded-full mb-6">
@@ -155,7 +154,7 @@ function EnterpriseUpgradePrompt() {
           </div>
         </div>
       </div>
-    </div>
+    </SettingsPage>
   );
 }
 
@@ -169,15 +168,18 @@ const STATUS_OPTIONS = [
 ];
 
 export default function EmailDeliverySettingsPage() {
+  const t = useTranslations("settingsEmailDelivery");
   const router = useRouter();
   const { user } = useAuth();
-  const { currentWorkspaceId, currentWorkspace } = useWorkspace();
+  const { currentWorkspaceId } = useWorkspace();
   const { isEnterprise, isLoading: subscriptionLoading, tier } = useSubscription(currentWorkspaceId);
 
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(1);
 
-  const developerId = typeof window !== "undefined" ? localStorage.getItem("developer_id") : null;
+  // Nothing in the app writes a `developer_id` localStorage key, so reading one
+  // here made this always null and both queries below fetched with no caller.
+  const developerId = user?.id ?? null;
 
   const {
     data: stats,
@@ -198,8 +200,7 @@ export default function EmailDeliverySettingsPage() {
   });
 
   // Check workspace admin access
-  const member = currentWorkspace?.members?.find((m) => m.developer_id === developerId);
-  const isWorkspaceAdmin = member?.role === "owner" || member?.role === "admin";
+  const { isWorkspaceAdmin } = useIsWorkspaceAdmin(currentWorkspaceId);
 
   // Loading state
   if (subscriptionLoading) {
@@ -244,26 +245,10 @@ export default function EmailDeliverySettingsPage() {
     return <EnterpriseUpgradePrompt />;
   }
 
-  // Not a workspace admin - show access denied
+  // Not a workspace admin. This page-level check is now belt-and-braces: the
+  // shell already gates the whole route on can_manage_integrations.
   if (!isWorkspaceAdmin) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Email Delivery</h1>
-          <p className="text-muted-foreground text-sm mt-1">Access Denied</p>
-        </div>
-        <div className="py-8 text-center">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-foreground mb-2">Admin Access Required</h2>
-          <p className="text-muted-foreground mb-6">
-            Only workspace owners and admins can access email delivery monitoring.
-          </p>
-          <Link href="/settings/appearance" className="text-blue-400 hover:underline">
-            Return to settings
-          </Link>
-        </div>
-      </div>
-    );
+    return <SettingsAccessDenied detail={t("adminOnly")} />;
   }
 
   const emailLogColumns = useMemo<DataTableColumn<WorkspaceEmailLog>[]>(
@@ -321,22 +306,24 @@ export default function EmailDeliverySettingsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Email Delivery</h1>
-          <p className="text-muted-foreground text-sm mt-1">Monitor email delivery status and logs</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleRefresh}
-            className="flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-lg text-foreground hover:text-foreground hover:bg-accent transition"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </button>
-        </div>
-      </div>
+    <SettingsPage
+      title={t("title")}
+      description={t("description")}
+      width="wide"
+      actions={
+        <>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleRefresh}
+              className="flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-lg text-foreground hover:text-foreground hover:bg-accent transition"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </button>
+          </div>
+        </>
+      }
+    >
 
       <div className="space-y-6">
         {/* Stats */}
@@ -456,6 +443,6 @@ export default function EmailDeliverySettingsPage() {
           )}
         </div>
       </div>
-    </div>
+    </SettingsPage>
   );
 }

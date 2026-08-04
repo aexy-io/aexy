@@ -2089,10 +2089,22 @@ export interface Workspace {
   is_active: boolean;
   created_at: string;
   updated_at: string;
-  // Some workspace endpoints return an embedded member list (e.g. for
-  // settings/email-delivery permission checks). Optional because most
-  // list endpoints omit it.
-  members?: WorkspaceMember[];
+}
+
+/**
+ * The caller's effective permissions in a workspace.
+ *
+ * `Workspace` used to carry an optional `members?` array with a comment claiming
+ * some endpoints embedded it for permission checks. Nothing ever did — the detail
+ * endpoint returns `member_count` and no list — so every check written against it
+ * silently resolved to "no permissions". Ask for permissions directly instead.
+ */
+export interface MyWorkspacePermissions {
+  permissions: string[];
+  workspace_id: string;
+  role_name: string | null;
+  /** Reported separately: some actions are the owner's by default. */
+  is_owner: boolean;
 }
 
 export interface WorkspaceListItem {
@@ -2840,6 +2852,12 @@ export const workspaceApi = {
     return response.data;
   },
 
+  /** The caller's effective permissions here, so the UI can hide what would 403. */
+  getMyPermissions: async (workspaceId: string): Promise<MyWorkspacePermissions> => {
+    const response = await api.get(`/workspaces/${workspaceId}/my-permissions`);
+    return response.data;
+  },
+
   create: async (data: {
     name: string;
     type?: string;
@@ -2887,10 +2905,19 @@ export const workspaceApi = {
     return response.data;
   },
 
-  inviteMember: async (workspaceId: string, email: string, role = "member"): Promise<WorkspaceInviteResult> => {
+  /** `departmentId` is optional: when given, accepting the invite also places the
+   *  person in that department, so they don't start out unassigned (invisible in
+   *  the org directory and out of scope for Service Desk row filtering). */
+  inviteMember: async (
+    workspaceId: string,
+    email: string,
+    role = "member",
+    departmentId?: string | null,
+  ): Promise<WorkspaceInviteResult> => {
     const response = await api.post(`/workspaces/${workspaceId}/members/invite`, {
       email,
       role,
+      ...(departmentId ? { department_id: departmentId } : {}),
     });
     return response.data;
   },
@@ -9788,7 +9815,8 @@ export const linearApi = {
 // CRM Types
 // ============================================================================
 
-export type CRMObjectType = "company" | "person" | "deal" | "lead" | "custom";
+// Mirrors the backend's `CRMObjectType` literal, which also allows "project".
+export type CRMObjectType = "company" | "person" | "deal" | "lead" | "project" | "custom";
 
 export type CRMAttributeType =
   | "text"

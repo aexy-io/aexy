@@ -16,6 +16,11 @@ import { useAppAccessLogs, useAppAccessLogsSummary } from "@/hooks/useAppAccess"
 import { AppAccessLog } from "@/lib/api";
 import { DataTable, DataTableColumn } from "@/components/ui/data-table";
 import { formatDistanceToNow } from "date-fns";
+import { useTranslations } from "next-intl";
+import {
+  SettingsPage,
+  SettingsSkeleton,
+} from "@/components/settings/SettingsPrimitives";
 
 const ACTION_LABELS: Record<string, string> = {
   template_created: "Template Created",
@@ -48,6 +53,7 @@ const ACTION_COLORS: Record<string, string> = {
 };
 
 export default function AccessLogsPage() {
+  const t = useTranslations("settingsAccessLogs");
   const { currentWorkspaceId } = useWorkspace();
   const workspaceId = currentWorkspaceId || "";
   const { isEnterprise, isLoading: subscriptionLoading } = useSubscription(currentWorkspaceId);
@@ -128,92 +134,62 @@ export default function AccessLogsPage() {
     },
   ], []);
 
-  if (subscriptionLoading) {
-    return (
-      <div className="space-y-6 animate-pulse">
-        <div>
-          <div className="h-6 w-32 bg-accent rounded mb-2" />
-          <div className="h-4 w-64 bg-accent rounded" />
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-20 bg-accent rounded-xl" />
-          ))}
-        </div>
-        <div className="bg-card border border-border rounded-lg">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="flex items-center gap-4 p-4 border-b border-border/50">
-              <div className="h-6 w-28 bg-accent rounded-full" />
-              <div className="h-4 w-32 bg-accent rounded" />
-              <div className="h-3 w-24 bg-accent rounded ml-auto" />
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  if (subscriptionLoading) return <SettingsSkeleton rows={2} />;
 
   if (!isEnterprise) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Access Logs</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            View audit trail of access control changes
-          </p>
-        </div>
-
+      <SettingsPage
+        title={t("title")}
+        description={t("description")}
+        breadcrumbs={[
+          { label: t("breadcrumbParent"), href: "/settings/access" },
+          { label: t("title") },
+        ]}
+      >
         <div className="text-center py-16">
           <div className="mx-auto w-20 h-20 rounded-full bg-amber-500/10 flex items-center justify-center mb-6">
             <Crown className="h-10 w-10 text-amber-400" />
           </div>
-          <h2 className="text-2xl font-bold text-foreground mb-2">Enterprise Feature</h2>
-          <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-            Access logs are available on the Enterprise plan. Upgrade to track
-            all access control changes and security events.
+          <h2 className="mb-2 text-lg font-semibold text-foreground">{t("upsell.title")}</h2>
+          <p className="mx-auto mb-6 max-w-md text-sm text-muted-foreground">
+            {t("upsell.body")}
           </p>
           <Link href="/settings/plans">
-            <Button>View Plans</Button>
+            <Button>{t("upsell.cta")}</Button>
           </Link>
         </div>
-      </div>
+      </SettingsPage>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Access Logs</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            View audit trail of access control changes
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refetch()}
-            disabled={isLoading}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
-        </div>
-      </div>
+    <SettingsPage
+      title={t("title")}
+      description={t("description")}
+      width="wide"
+      breadcrumbs={[
+        { label: t("breadcrumbParent"), href: "/settings/access" },
+        { label: t("title") },
+      ]}
+      actions={
+        <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
+          <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+          {t("refresh")}
+        </Button>
+      }
+    >
 
       <div>
         {/* Summary Cards */}
         {summary && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-card border border-border rounded-lg p-4">
+            <div className="rounded-lg border border-border bg-surface p-4">
               <p className="text-sm text-muted-foreground">Total Events (30 days)</p>
               <p className="text-2xl font-bold text-foreground">
                 {summary.total_events.toLocaleString()}
               </p>
             </div>
-            <div className="bg-card border border-border rounded-lg p-4">
+            <div className="rounded-lg border border-border bg-surface p-4">
               <p className="text-sm text-muted-foreground">Access Updates</p>
               <p className="text-2xl font-bold text-violet-400">
                 {(
@@ -222,7 +198,7 @@ export default function AccessLogsPage() {
                 ).toLocaleString()}
               </p>
             </div>
-            <div className="bg-card border border-border rounded-lg p-4">
+            <div className="rounded-lg border border-border bg-surface p-4">
               <p className="text-sm text-muted-foreground">Template Changes</p>
               <p className="text-2xl font-bold text-blue-400">
                 {(
@@ -232,7 +208,7 @@ export default function AccessLogsPage() {
                 ).toLocaleString()}
               </p>
             </div>
-            <div className="bg-card border border-border rounded-lg p-4">
+            <div className="rounded-lg border border-border bg-surface p-4">
               <p className="text-sm text-muted-foreground">Access Denials</p>
               <p className="text-2xl font-bold text-red-400">
                 {(summary.action_counts["access_denied"] || 0).toLocaleString()}
@@ -291,6 +267,6 @@ export default function AccessLogsPage() {
           />
         )}
       </div>
-    </div>
+    </SettingsPage>
   );
 }

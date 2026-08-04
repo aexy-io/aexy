@@ -5,6 +5,781 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2026-08-04
+
+### Feature: the Service Desk is industry-agnostic — vocabulary and taxonomy per workspace
+
+0.11.0 shipped a ticketing desk shaped like one insurance brokerage. The
+stakeholders a ticket could wait on were a Python enum (`KAM`, `INSURER`,
+`PARTNER`), the request types were another (`POLICY_ISSUANCE`, `CLAIMS`,
+`PAYOUT`), and the master-data tables were named `service_desk_partners`,
+`service_desk_insurers` and `service_desk_lobs`. None of it was editable, because
+none of it was data.
+
+**Four industry templates**, in `service_desk_industry_templates.py`: `generic`,
+`software_support`, `insurance_broking` and `financial_services`. Each declares
+its stakeholders, request types, departments and vocabulary as frozen
+dataclasses, validated at import time — duplicate slugs, a stakeholder routed to
+a department no template provides, more than one default request type, or
+anything other than exactly one closed stakeholder is a startup error rather
+than a runtime surprise. Templates are code, not rows, for the same reason
+dashboard presets are: they are product decisions, and a half-applied one is
+worse than none.
+
+**The enums became per-workspace tables.** `service_desk_stakeholders` and
+`service_desk_request_types` are editable, and each stakeholder carries a stable
+`semantics` value (`internal` / `external` / `closed`). Code branches on
+semantics; only humans read the slug and label. That is the pattern
+`WorkspaceStatusCategory` already used, and it is what makes renaming "Insurer"
+to "Carrier" a text edit rather than a migration.
+
+**Master data is named for what it is**: accounts, vendors and products, with the
+ticket foreign keys renamed to match. The insurance template deliberately pins
+the old slugs (`kam`, `insurer`, `partner`, `query`, `policy_issuance`, …), so an
+insurance desk reads exactly as it did before — the vocabulary moved out of the
+schema, not out of the product.
+
+**Everything else that was one operation's constant is now workspace
+configuration**: the ticket prefix (`BSD` → a neutral `SD`), the digest hours,
+the breach target and its amber threshold, the working-hours window the clock
+resolves day boundaries in, and the eight terminology words the UI interpolates.
+The frontend reads all of it from the API; `statusColors.ts` no longer holds a
+label map keyed by insurance slugs, and assigns colours by position and
+semantics.
+
+**First run.** A desk with no taxonomy now shows a template picker instead of an
+empty queue board, and applying one also creates the departments its internal
+stakeholders route to — so Organization is populated as a side effect, which is
+the ordering that actually works, because visibility rules resolve through
+departments.
+
+**A read was writing configuration.** `list_stakeholders`, `list_request_types`
+and `get_dashboard` all seeded a default taxonomy when they found none, so merely
+opening the desk pre-empted the first-run picker and left an eleven-stakeholder
+mixture of two templates. Of the thirteen call sites, only ticket creation still
+seeds — inbound mail must never be dropped for want of configuration.
+
+#### Upgrade notes
+
+```bash
+docker exec aexy-backend python scripts/run_migrations.py --file migrate_service_desk_agnostic.sql
+```
+
+The migration handles three database shapes, because `create_all` on startup may
+already have built the new tables alongside the populated old ones: it renames
+when only the old tables exist, copies then drops when both exist and only one
+side holds rows, and **refuses** when both hold data rather than guessing which
+is authoritative. It applies no taxonomy: an existing desk keeps its data, and
+choosing a template is a deliberate act. Seeding a fresh workspace:
+
+```bash
+docker exec aexy-backend python scripts/seed_service_desk.py --workspace <id> --template insurance_broking
+```
+
+### Feature: Settings, rebuilt — one design system, a real index, and access control
+
+Settings had grown to 40 pages with no shared anything. Four different page-title
+sizes, six competing per-page `max-w-*` values fighting the shell's own width, 18
+copies of the same `bg-card rounded-xl border` block, and two unrelated ideas of
+"loading" (17 bespoke skeletons, 22 spinners). `bg-card` is the *same* value as
+`bg-background` in dark mode, so every one of those cards had no elevation at
+all — the reason the whole area read as unfinished.
+
+**A design system**: `SettingsPage`, `SettingsSection`, `SettingsRow`,
+`SettingsChoiceCard`, `SettingsEmptyState`, `SettingsSkeleton`, `SettingsSaveBar`
+and `SettingsAccessDenied`, on `bg-surface` so sections are actually raised. All
+40 pages are migrated onto them, each with a `useTranslations` namespace and
+English plus Hindi messages.
+
+**A landing page.** `/settings` was a bare `router.replace("/settings/appearance")`
+— "Settings" dropped you into the theme picker with no sense of the other 29
+destinations, discoverable only by reading the sidebar top to bottom. It is now a
+searchable index built from the same declarations the sidebar uses, and the
+sidebar itself has collapsible categories, an inline filter and persistence.
+
+**CRM and Email Marketing settings moved in**, to `/settings/crm`,
+`/settings/crm/integrations` and `/settings/email-marketing`. They were the only
+pages where "Settings" meant somewhere outside `/settings`, which also meant the
+shell's permission gate never applied to them. The CRM page had carried two
+navigation trees of its own — a section switcher and the object list — that would
+have sat beside the Settings sidebar; the switcher is gone and Integrations has
+its own URL, replacing a route that existed only to redirect into
+`?section=integrations`. The old URLs redirect: `/crm/settings` cannot simply
+404, because `/crm/[objectSlug]` matches it and a stale link would render an
+object page for a nonexistent object called "settings".
+
+### Feature: Settings access control — owner is no longer the same as admin
+
+**`owner` and `admin` were byte-identical.** Both role templates were
+`list(PERMISSIONS.keys())`, so "owner" meant nothing. Seven permissions are now
+owner-only — the four deletes, billing, and the two role-management
+permissions — leaving the owner with 61 and an admin with 54. Roles are on that
+list because an admin who can edit roles can grant themselves every other
+owner-only permission and lock the owner out. An owner can still delegate any of
+them to one person through the existing `permission_overrides`.
+
+**`Workspace.owner_id` is now authoritative.** `get_effective_permissions`
+resolves ownership up front but applies it last, after project-role replacement
+and after overrides, so a transferred or externally-seeded workspace can no
+longer leave its real owner on admin permissions — and an override cannot strip
+the owner of their own workspace.
+
+**The client had no workspace permission data at all.** `usePermissions` returned
+a literal `false` for every workspace-level check, with a comment saying it should
+be wired up. There is now a `GET /workspaces/{id}/my-permissions` behind it,
+modelled on the project-level endpoint.
+
+**Every settings page declares a gate.** The old mechanism was an `adminOnly`
+boolean set on 10 of 30 entries — repositories, projects, task configuration,
+integrations, escalation, ticket forms and billing were visible to every member.
+A page you may not open is now hidden from the sidebar and the index, and
+visiting the URL renders a panel naming what is missing and who can grant it.
+
+**Hiding a page is not access control**, so the routers behind them enforce it
+too: one `require_workspace_permission` dependency, plus a method-aware variant
+for routers whose reads should stay open, applied to the eight that backed
+ungated pages. A 403 now names the permission it wanted.
+
+**39 phantom permission constants** were removed from the frontend map, which had
+drifted to naming permissions the backend has never defined — `can_manage_webhooks`,
+`can_view_teams`, `can_delete_workspace` — while missing 30 real ones. Gating a
+page on a key that does not exist hides it from *everyone*, permanently, with no
+error anywhere. A test now reads the backend catalogue directly and asserts the
+two agree, that every non-personal page is gated, and that every nav entry points
+at a page that exists on disk.
+
+### Feature: Teams settings page
+
+`models/team.py`, `api/workspace_teams.py`, `teamApi` and the `useTeams` hooks
+were all complete, and ten places *consumed* teams — escalation routing, on-call
+rotations, standups, insights, tickets, forms. There was simply nowhere in the UI
+to create one, so a workspace could only get a team by calling the API directly.
+The page manages the list, members and in-team roles, the optional department
+link, and repository-backed sync. Deleting a team is owner-only.
+
+### Fixed
+
+**Only platform staff ever saw the admin-only settings pages.** The gate called
+`useAdmin`, which reports Aexy staff, not workspace admins — so a workspace owner
+was denied their own Organization, Billing and SSO pages while an Aexy employee
+saw them in every tenant.
+
+**Sidebar tooltips broke the layout they wrapped.** `SimpleTooltip` renders an
+`inline-block` wrapper, which re-flows block children; a caller passing
+`className="block w-full"` now wins, since `cn` is tailwind-merge.
+
+**`GET /crm/objects` returned 500 for any workspace that ran the standard seed.**
+`seed_standard_objects` creates a Lead object, but the response schema's
+`CRMObjectType` literal omitted `"lead"` — the response model rejected a row the
+service itself had written. The frontend union also gained the `"project"` type
+the backend allows.
+
+**The Google OAuth callback pointed at a route that no longer exists** in ten
+places, so completing a connect landed on a dead page.
+
+**The email-delivery page fetched with a null caller**, and the CRM attribute list
+offered two affordances with nothing behind them: rows were draggable with no
+endpoint to persist an order, and an edit button set state nothing rendered.
+
+**Four `service_desk` entries had gone missing from the stock app bundles**, which
+would have left new workspaces without the module. Its own module blurb still
+read "Partners, insurers, LOBs" as well.
+
+## [0.12.0] - 2026-08-04
+
+### Fix: Service Desk hardening — cross-tenant mail, an open webhook, and one customer's constants
+
+Review follow-up on 0.11.0. Three of these are tenancy bugs, one is an
+authentication gap, and the rest is the module quietly being Bimaplan-shaped in
+ways no other workspace could change.
+
+**A mailbox could point at another workspace's Google account.** `integration_id`
+arrived in the request body and was stored unchecked; it only FKs to
+`google_integrations.id`, and the Gmail-sync fan-out matched on that id alone.
+A service-desk manager who knew another workspace's integration id therefore got
+that workspace's inbound mail filed as tickets *in their own desk* on the next
+sync, and outbound closure mail sent *as them*. Now: refused at create/update
+time, the sync lookup is scoped to the integration's own workspace, and the
+mailer refuses a mismatch outright — every other body-supplied id on this branch
+was already checked (`_validate_refs`, `_require_own`, the `convert_to_task` team
+check); this one had been missed.
+
+**Two workspaces could claim the same mailbox address.** The unique constraint is
+per workspace, but the inbound webhook has no workspace context and resolves
+`to` → mailbox across all of them, picking the oldest. Registering an address you
+don't own therefore diverted someone else's mail — first registration won.
+Addresses are now globally unique among service-desk mailboxes.
+
+**The inbound-mail webhook was unauthenticated.** `/webhooks/email/inbound`
+verified nothing, unlike the four event webhooks hardened under WS-057/WS-082.
+Since 0.11.0 it also creates tickets and sends an acknowledgement to the address
+in the payload, which made it both a ticket-injection vector — spoof a partner
+domain and land in that partner's KAM queue — and an email reflector on the
+workspace's own sending domain. It now accepts Postmark Basic Auth, a Mailgun
+signature block, or a shared token in the URL/header, and falls through to the
+existing `webhooks_require_signing` rule (default **True**, so an unconfigured
+deployment fails closed). SendGrid Inbound Parse does not sign its posts at all,
+which is why the token exists.
+
+**Migrations could not be applied in order.** `migrate_org_onboarding.sql` sorted
+*before* `migrate_org_structure.sql` (`o` < `s`) but references `departments`,
+which the latter creates — and `run_migrations.py` stops at the first failure, so
+the whole 0.11.0 migration set failed on any database that didn't already have
+the table from `create_all`. Renamed to `migrate_org_structure_onboarding.sql`.
+The three partial unique indexes are now declared in the model metadata as well
+as in SQL, because `create_all` only builds what is in the metadata: a
+Docker-first environment could accumulate rows that made `CREATE UNIQUE INDEX`
+impossible afterwards. And accepting an invite no longer writes a second
+`is_primary` department row — which violated exactly that index, and was
+swallowed by the placement's own error handler, so the person joined with no
+department at all: the one outcome the feature exists to prevent.
+
+**Everything that was one customer's operation is now per workspace.** The ticket
+prefix (`BSD`, for "Bimaplan Service Desk", written as a constant in four
+modules), the timezone the breach clock resolves day boundaries in
+(`Asia/Kolkata`, hardcoded), the 2-business-day breach target and its amber
+warning, and the built-in email copy that signed off as "Bimaplan Operations" —
+so every other company sent Bimaplan-branded acknowledgements until someone
+edited three templates. All of it is editable on `Service Desk → Master Data`,
+and **every default reproduces the previous behaviour exactly**: display ids are
+rendered from `ticket_number` rather than stored, so changing the default would
+have silently relabelled existing tickets. Subject-line threading accepts the
+workspace's prefix *and* the legacy `BSD`, so mail already in flight still lands
+on the right ticket. Service Desk is also no longer force-enabled in all four
+stock app bundles; it stays in the catalog and is enabled per workspace, which is
+appropriate for a module with insurers, LOBs and KAMs in its data model.
+
+**Also fixed:** the closure email was sent inside the request, before the
+transaction committed, so a rollback left the requester told their ticket was
+resolved — it is queued and flushed after commit now, like intake already did.
+The digest no longer mails people who have left the workspace (department rows
+outlive membership, which is why intake's `_random_kam` already joined
+`WorkspaceMember`), isolates each workspace so one bad template can't cost every
+later workspace its digest, and runs with a 30-minute activity timeout instead of
+the 300s default it inherited while fanning out over every workspace. A
+department head and a headcount seat must now be workspace members —`head_id`
+decides who receives the entire desk's open-ticket list. A duplicate
+`function_key` returns 409 naming the clash instead of a 500. Reopening a ticket
+clears `resolved_at` as well as `closed_at`. Manual logging calls a public
+`create_ticket` rather than reaching into intake's private method. And
+`TemplateService` renders through Jinja's `SandboxedEnvironment`: template bodies
+are authored through the API, and `can_manage_service_desk` (which defaults to
+include `support`) had made a plain environment reachable by more roles.
+
+`test_digest_builder` asserted a 3-calendar-day age against a clock that only
+accrues working hours, so it passed on a Thursday and failed on a Monday — the
+same trap 0.11.0's own changelog describes fixing in `test_service_desk_tat.py`,
+missed one file over.
+
+#### Upgrade notes
+
+Inbound mail now requires a credential. Set one and put it in the provider's
+webhook URL, or inbound mail will 401:
+
+```bash
+INBOUND_EMAIL_WEBHOOK_TOKEN=<random string>
+# SendGrid/other: https://…/api/v1/webhooks/email/inbound?token=<same value>
+# Mailgun and Postmark inbound routes are verified by their own scheme already.
+```
+
+### Feature: workspace-wide AI controls — one kill switch, and your own provider keys
+
+Two things a workspace owner could not previously say: "no AI on our data", and
+"use our Anthropic account, not yours".
+
+**The kill switch.** Every module that used AI carried its own toggle — Service
+Desk's `ai_classification_enabled`, agent settings, file understanding — so
+turning AI off across a workspace meant finding each one and hoping nobody
+shipped a new module next week. `Settings → AI & Providers` now has a single
+switch for the whole workspace, with an optional reason recorded alongside it so
+the answer to "why has nothing been classified since Tuesday?" is in the row
+rather than in somebody's memory.
+
+It is enforced in `llm/gateway.py`, at the point a provider is resolved — not at
+the API edge. A switch that only guarded HTTP handlers would leave every Temporal
+activity, scheduled job and inbound webhook still calling out, which is most of
+the AI in the product. `analyze`, `analyze_batch`, `extract_task_signals`,
+`call_llm` and `score_match` all route through the same check, and the
+vision/embeddings helpers are covered through their shared rate-limit gate — image
+understanding of a workspace's own files is AI processing of that workspace's
+data, whatever the endpoint is called. The check sits *before* the analysis cache,
+so a disabled workspace gets a hard stop rather than a previously-generated
+answer. It raises `AIDisabledError`, deliberately not `ValueError`, because
+Temporal's LLM retry policy treats ValueError as non-retryable and everything
+else as worth retrying for an hour — a disabled workspace is neither.
+
+**Your own provider.** An owner or admin can point the workspace at claude,
+gemini, openrouter, deepseek, ollama or lmstudio with its own key, model and (for
+self-hosted) endpoint. The credential is stored with the same Fernet envelope as
+integration credentials and has no read path at all: the API returns only the
+last four characters and when it was installed. Provider instances are cached by
+a fingerprint that includes the key, so rotation takes effect immediately and a
+per-call `httpx` client isn't leaked on every LLM call.
+
+`allow_platform_fallback` defaults to **off**. An organisation that supplied a
+key did so precisely so its prompts would not travel through the platform's
+account; falling back the moment that key misbehaved would defeat the point
+without anyone noticing. With fallback off and the key unusable, the workspace
+stops instead. Rate-limit accounting follows the provider actually used, so a
+workspace on its own Claude key is no longer counted against — or throttled
+by — the deployment's provider bucket.
+
+Editing these settings requires the **Pro or Enterprise** plan and an owner/admin
+role. *Enforcement of an existing setting is not plan-gated:* a workspace that
+turned AI off keeps it off after a downgrade, and gets a 402 if it tries to turn
+it back on. Silently resuming LLM calls on someone's data because a card expired
+would be the worst available failure mode for this particular switch. Reading the
+settings is open to any member — whether AI is on is about their data.
+
+A live **Test connection** button probes the configured provider with a
+one-token prompt and reports the provider's own message, because "wrong key" and
+"wrong model name" and "endpoint unreachable" otherwise all present identically:
+as a batch of features quietly degrading, hours later, in a worker log.
+
+**Two provider bugs found while testing this, both fixed.** `ClaudeProvider`
+used the full messages endpoint as its httpx `base_url` and then requested `""`,
+which resolves to `/v1/messages/` — with the trailing slash — and Anthropic
+answers `307` to the un-slashed form. httpx does not follow redirects by
+default, so *every* Claude call raised instead of completing; it went unnoticed
+because this deployment defaults to Gemini. And a workspace that selected a
+provider without naming a model was handed the deployment's model name
+regardless of provider, so picking Claude on a Gemini deployment asked Anthropic
+for `gemini-2.0-flash`.
+
+An absent settings row means "platform default, AI on", so nothing changes for
+any existing workspace and no backfill is needed. If
+`migrate_workspace_ai_settings.sql` has not been applied yet, the lookup degrades
+to that default in a savepoint rather than taking every AI feature down —
+fail-open for exactly that one error, and fail-closed for anything else, because
+ignoring any other failure would mean ignoring a switch somebody deliberately
+turned on.
+
+#### Upgrade notes
+
+```bash
+docker exec aexy-backend python scripts/run_migrations.py --file migrate_workspace_ai_settings.sql
+```
+
+## [0.11.0] - 2026-07-30
+
+### Feature: Bimaplan Service Desk — email-intake ticketing + Organization structure
+
+Three parts, released together: the two modules, the onboarding paths that
+turned out never to place anyone in a department, and the breach clock.
+
+Adds two new modules. **Organization** models the company itself — departments,
+reporting lines, headcount — and **Service Desk** is an email-first ticketing
+desk for Bimaplan's insurance operations: mail sent to a shared mailbox becomes
+a ticket, gets classified and auto-assigned to a KAM, and is tracked by *who
+currently owes an action* rather than by a status column.
+
+**Organization structure.** `departments` is a materialised-path tree
+(`path`/`depth`, so subtree reads are one `LIKE` query and reparenting rewrites
+descendants in a single statement), plus `department_members` with
+head/manager/member roles and per-person allocation, and `department_positions`
+for planned-vs-filled headcount. Two joins into existing tables: delivery teams
+roll up via `teams.department_id`, and people-level reporting lines live on
+`workspace_members.manager_id` — both nullable, so existing workspaces are
+unaffected. A `function_key` (`ops_kam`, `sales`, `finance`, `hr`, …) marks what
+a department *does*, which is what Service Desk routing keys off, so ops can
+rename "Operations" without breaking assignment. Frontend: departments manager,
+org chart, and a people directory. `migrate_org_structure.sql`.
+
+**Email → ticket.** Service Desk tickets are ordinary `Ticket` rows
+(`source='service_desk_*'`) with a 1:1 `service_desk_tickets` extension, so they
+inherit comments, attachments and audit trail — but they're filtered out of the
+generic tickets list and stats, which stay the general-purpose module. Intake
+accepts both inbound-parse webhooks and Gmail sync, resolves the sender to a
+partner (by email domain) or insurer, picks the request type (`query`,
+`policy_issuance`, `claims`, `payout`), assigns the partner's KAM (falling back
+to a random active member of the ops/KAM department), and sends an
+acknowledgement. Replies thread back onto the original ticket by subject token
+(`BSD-123`) and reopen it if it had been closed.
+
+**Pending-with ledger.** Instead of a status field, every hand-off appends to
+`ticket_pending_segments` — an append-only ledger of who held the ticket and for
+how long. The TAT/breach clock counts only time held by *Bimaplan* functions
+(`kam`, `sales`, `finance`, `marketing`), so a ticket parked with an insurer or
+partner doesn't accrue against us. Dashboard aggregates open volume, breaches
+and per-function load off the same ledger.
+
+**Master data, templates, digest.** Workspace-scoped partners (with KAM +
+domains), insurers, and lines of business drive classification and assignment;
+the three customer-facing emails (receipt, hand-off, closure) are editable
+templates with a live preview. A Temporal schedule (`service-desk-digest`,
+09:00/13:00/17:00 IST via new cron support in `schedules.py`) mails each KAM
+their open tickets. Any ticket can be converted into a sprint task, linked both
+ways.
+
+**Authorization.** `require_app_access` only checks the workspace-wide module
+toggle — and defaults to *enabled* — so it says nothing about who is asking. A
+new `require_workspace_member()` guard is mounted alongside it on both routers,
+where a future endpoint can't forget it; mutations additionally require
+`can_manage_service_desk` / `can_manage_org`, and every by-id ticket path (not
+just the list) applies the KAM row-scope clause, 404-ing rather than 403-ing so
+out-of-scope ids stay unenumerable. Cross-workspace ids passed as
+`partner_id`/`lob_id`/`project_id` are validated against the caller's workspace.
+Intake is idempotent per `Message-ID` (`service_desk_ingested_messages`, enforced
+by a unique constraint rather than a read-then-write check), subject threading is
+joined to `service_desk_tickets` so a `Re: BSD-7` can't attach an external
+sender's mail to an unrelated generic ticket #7, ticket-number collisions retry
+on a savepoint, and outbound mail is queued and flushed only after commit so a
+requester can't be acknowledged for a ticket that rolled back.
+
+**Read-only UI.** Both modules tell the client what the caller may do, so pages
+stop offering actions that would only 403: Service Desk returns `can_manage` on
+the settings payload the Master Data page already fetches, and Organization —
+which has no settings object — gets a small `GET /organization/my-permissions`,
+named after the existing `projects.py::get_my_permissions`. Non-managers see the
+data with an explanatory banner and no controls.
+
+Fully internationalised (new `serviceDesk` + `organization` namespaces, en + hi).
+Migrations: `migrate_org_structure.sql`, `migrate_service_desk.sql`,
+`migrate_service_desk_hardening.sql`.
+
+
+#### Fix: nobody was ever put in a department
+
+The Organization module shipped with departments, reporting lines and Service
+Desk routing that all key off department membership — and no path that ever
+creates it. Workspace creation seeds no departments, the invite carried only
+email and role, and `addMember`/`removeMember`/`addPosition`/`setManager` existed
+in the API and the hooks with **no caller anywhere in the UI**. The only way to
+place a person in a department was the seed script. So every new joiner landed
+unassigned: invisible in the directory (which iterates departments), permanently
+out of scope for Service Desk row filtering, and ineligible for KAM
+auto-assignment.
+
+**The seed produced unusable KAMs.** It created a `Developer` and a
+`DepartmentMember` but never a `WorkspaceMember`. Since auto-assignment requires
+an active workspace member and every Service Desk route sits behind
+`require_workspace_member`, seeded KAMs could not be assigned a ticket and could
+not open the workspace at all. Fixed, and re-seeding now reactivates a
+previously-removed KAM instead of silently skipping them.
+
+**Membership is confined to the workspace.** `add_member` accepted any
+`developer_id` on the platform and returned that person's name and email, so it
+doubled as a cross-workspace read of someone else's contact details;
+`set_manager` accepted a manager from another workspace (the column FKs to
+`developers.id`, not to `workspace_members`) and accepted reporting cycles — A→B
+plus B→A was fine, which would make anything walking the chain recurse until it
+ran out of stack. Both now require an active member of the same workspace, and
+cycles are refused by walking the proposed manager's chain.
+
+**Somewhere to actually do it.** A department roster dialog on
+Organization → Departments wires up the four orphaned mutations: add and remove
+people, change head/manager/member, and define positions (the department detail
+read now returns `positions`, which it previously accepted writes for and never
+returned). The person picker offers only people not already in the department and
+flags the ones in no department at all. Everything is gated on `can_manage_org`,
+so a read-only caller gets the roster without the controls.
+
+**Unassigned people are visible.** A new `GET /organization/people` walks from
+workspace membership rather than from departments — the only read that can show
+someone who belongs to nothing. The directory now renders an "Unassigned"
+group off it (and dropped its per-department N+1 reads), the
+workspace members settings page shows each person's departments or an
+"assign" link, and reporting lines are finally readable and editable there
+instead of `manager_id` being a write-only column.
+
+**Optional department on invite.** `workspace_pending_invites` gains nullable
+`department_id` and `role_in_department` (`migrate_org_onboarding.sql`), applied
+on accept as the person's primary department with `source="invite"`. It stays
+optional by design — an admin inviting someone in a hurry is never forced to
+settle the org structure first. A department that no longer exists cannot cost
+someone their invitation: the placement runs in a savepoint and only logs. A
+mistyped id is rejected at invite time rather than silently doing nothing days
+later. Pickers appear in the settings invite dialog and the onboarding wizard,
+and only when the workspace actually has departments to choose from.
+
+**`can_view_org` / `can_view_service_desk` are enforced.** Both were in the
+catalog and advertised by `app_definitions` from the start, but nothing checked
+them, so revoking someone's access to a module had no effect. A new
+`require_workspace_permission` guard is mounted on both routers. `developer` is
+added to `can_view_service_desk`'s defaults because the legacy workspace role
+`member` maps to that template and a KAM is usually a plain member — opening the
+module is not the same as seeing everything in it, and row-level scoping is
+unchanged. In practice the gate bites on per-member overrides and custom roles;
+every legacy role that clears the membership guard still has both permissions.
+
+**An empty ticket list says why.** `GET /service-desk/settings` now reports
+`scope` (`all` / `function` / `none`), so the tickets page can tell a quiet day
+apart from "you are in no department, so nothing can ever match you" — the state
+a new joiner is in, and previously indistinguishable from having no work.
+
+Also fixes a latent `TypeError` in invite acceptance: `expires_at` was compared
+directly against an aware `datetime`, which raises rather than returning False if
+a naive value ever reaches it.
+
+
+#### Change: the Service Desk breach clock counts working hours in IST
+
+The BRD's ">2 days in the same stage" was implemented as calendar days, so a
+ticket arriving Friday evening was already red by Monday morning — three days
+elapsed, not one of them a working hour. The clock now measures **2 business
+days of working time**: it accrues only inside the shift and stops overnight, at
+weekends, and on holidays.
+
+One "day" is one shift, not 24 hours, so `to_days` divides by the shift length
+and the 2-day target is 18 working hours on a 09:30–18:30 day. A ticket arriving
+17:30 on Friday has one hour of allowance left that day, reads 1.11 days at
+Monday's close, and does not breach until 17:30 on Tuesday — by which point four
+calendar days have passed.
+
+The shift defaults to **09:30–18:30 IST** and Ops can change it themselves from
+the Master Data page — `PATCH /service-desk/settings` now takes
+`working_hours_start`/`working_hours_end` (gated on `can_manage_service_desk`)
+and persists to `Workspace.settings["service_desk"]["working_hours"]`, so no
+migration is needed. The patch is partial, so flipping the AI toggle can't wipe
+the hours. An inverted or malformed window is refused at the API rather than
+saved, and the change is logged with the actor, because moving the window
+re-scores every open ticket's stage age. `Clock` still falls back to a 9h day if
+it meets bad data, but that guard is for rows written before the validation
+existed — not a licence to save nonsense. Boundaries resolve
+in `Asia/Kolkata` — whether an instant falls inside Tuesday's shift depends on
+the timezone you ask in, and 13:00 UTC is exactly the 18:30 IST close. IST has
+no DST, so the boundaries are unambiguous.
+
+Holidays come from the Leave module's existing `holidays` table rather than a
+hardcoded calendar — its own docstring says it is for business-day calculations.
+Only mandatory, workspace-wide entries count: optional holidays are not days off
+for everyone, and an SLA that changes depending on which team you ask about is
+not an SLA.
+
+**Overall TAT deliberately stays wall-clock.** Stage and per-stakeholder figures
+answer "are we late?" and must not accrue over a weekend; overall answers "how
+long has the requester been waiting?", and they waited through the weekend. The
+two are now labelled distinctly in the UI ("Current stage (business days)" vs
+"Overall TAT (elapsed)").
+
+All of it lives in one new `services/service_desk_clock.py`. The threshold was
+previously written four times — as a bare `> 2` in the ticket service, again in
+the digest service, and a third time in the digest email copy — so it could
+drift silently. The segment ledger's `duration_seconds` is untouched: it remains
+the wall-clock audit record of each hand-off, and business time is recomputed
+from the segment boundaries rather than trusting that column.
+
+The existing red-breach test asserted on `now - 3 days`, which under a business
+clock passes on a Thursday and fails on a Monday. It now uses a 7-day window,
+which is exactly five business days whatever day the suite runs on.
+
+## [0.10.2] - 2026-08-04
+
+### Fix: uploaded files that were never uploaded, and uploaded files that could never be opened
+
+Reported as "file upload on the public form is not working". It wasn't, but
+chasing it turned up a second, wider failure with the same shape: files that
+uploaded perfectly and then could not be fetched by anyone.
+
+**The form never sent the file.** The `file` field's handler called
+`onChange(file.name)` — it put the *filename* into the submission and threw the
+`File` away. The submit payload is JSON, so bytes could never have ridden along
+with it, and no upload endpoint existed to send them to. A submitter picked a
+file, saw its name appear, submitted, and got a ticket whose attachment field
+was a string. The field's own rules (`max_file_size_mb`, `allowed_file_types`)
+were never enforced either, because there was nothing to enforce them against.
+
+There is now `POST /public/forms/{token}/uploads`. The page uploads as soon as a
+file is picked and submits a reference to the stored object. The reference is
+**HMAC-signed**: attachments on a form-created ticket are readable through that
+ticket's public share link, so accepting a caller-supplied storage key would
+have let anyone attach — and then read — any object in the bucket. Unsigned,
+tampered, or cross-form references are dropped rather than trusted. Being an
+unauthenticated endpoint it is also bounded by a per-IP rate limit, the field's
+size and MIME rules, and a per-field count cap.
+
+**Task attachments uploaded fine and then 404'd.** These were never broken at
+the upload step — the bytes are in storage. What was stored alongside them was a
+dead link. `get_object_url()` composes `{S3_PUBLIC_ENDPOINT_URL}/{bucket}/{key}`
+and that value went into `task_attachments.file_url`, but nothing serves the
+configured public path in production — the request reaches the API, which
+correctly 404s a route it has never had. Objects are also written with no
+public-read ACL, so an unsigned URL is refused (`403 AccessDenied`) even where
+the proxy does exist. Two independent reasons the link could not work, which is
+why it looked like an upload bug: the failure only ever showed up at read time.
+
+Client-facing URLs are now **presigned per response** and never persisted — a
+signed URL expires, so storing one only moves the problem. Rows carry
+`storage_key`, and the ticket module's existing approach (store the private key,
+never a public URL) is now what every one of these surfaces does.
+
+**Audited the rest.** Ticket attachments and compliance documents were already
+correct. Chat presigns. Two more had the same defect and are fixed here:
+
+* **Drive** persisted the same dead URL, and the Drive UI opens `file_url`
+  directly while the Docs viewer renders it into `<img>`/`<video>`.
+* **Assessment proctoring recordings** *did* presign, but recovered the key by
+  splitting the URL on `.r2.cloudflarestorage.com/` — an R2-only form. On the
+  path-style URLs this deployment actually writes that yields no key, silently,
+  inside a `try/except`. Recordings never played back and nothing logged why.
+  Key recovery now handles both addressing styles.
+
+That last pattern also explains a quieter casualty: the AI metadata pipeline
+prefers `file_url` over `file_key`, so it had been fetching these dead URLs too.
+Summaries and tags for drive files and task attachments were failing for the
+same reason the previews were.
+
+**Existing rows repaired.** `migrate_storage_keys_backfill.sql` recovers
+`storage_key` for every task attachment and drive file from the URL already
+stored. Nothing was lost — upload success was always checked — so recovering the
+key is enough to make old attachments load again. The derivation keys off the
+object prefix rather than the bucket name, so it holds across deployments with
+different `S3_BUCKET_NAME` values, and it skips rows whose URLs don't match
+rather than writing a wrong key; those still resolve through the read-time
+fallback.
+
+#### Upgrade notes
+
+**The object storage route must pass the path through unmodified.** SigV4 signs
+the URI path along with the `Host` header, so the previous
+`rewrite ^/storage/(.*)$ /$1` silently invalidates every presigned URL
+(`SignatureDoesNotMatch`). `nginx/nginx.conf` now serves storage from a
+bucket-rooted location with no rewrite:
+
+```
+location /aexy-storage/ {   # must equal S3_BUCKET_NAME
+    proxy_pass http://rustfs;
+}
+```
+
+paired with a **bare** origin — `S3_PUBLIC_ENDPOINT_URL=https://server.aexy.io`,
+no `/storage` suffix (the prod default is updated). This needs no new DNS record.
+Deployments whose edge is not this nginx must apply the equivalent rule there;
+until they do, attachment URLs will fail at the edge rather than at storage.
+
+## [0.10.1] - 2026-07-30
+
+### Fix: tasks moved to In Review disappeared from the board
+
+Reported by the tech team using the feature. A task set to review didn't land in
+the wrong column — it left the board entirely.
+
+Two spellings of the same status exist. The seeded status row is `in_review`
+(`task_config_service.DEFAULT_STATUSES`), but the shared UI `STATUS_CONFIG` map
+— which every status picker writes from — said `review`, as do the keyboard
+shortcut and several hardcoded lists. The kanban builds its columns from the
+seeded slugs and buckets tasks by `sprint_tasks.status`, so a task stored as
+`review` went into a bucket no column reads and was never rendered.
+
+That also explains why it looked erratic: **dragging** a card onto the In Review
+column always worked, because the drag handler uses the project's real slugs.
+Only the status dropdown, the edit modal, and the `4` shortcut broke it.
+
+**Canonicalised on write.** `SprintTaskService.canonical_status_slug` resolves
+whichever spelling a caller sends to the one that task's own board has a column
+for, and all three write paths use it. So it no longer matters which spelling
+arrives — an older client, the Slack integration, or a UI path nobody has found
+all store something renderable. A workspace whose status set genuinely uses
+`review` keeps it; the alias resolves toward the board, not toward one spelling.
+
+**Existing rows rescued.** `migrate_task_status_review_slug.sql` moves stranded
+tasks, per workspace so a set that legitimately uses `review` is untouched. It
+also repairs two things the status column alone would have left broken:
+
+* **Both sides of each history transition.** Rewriting only the destination left
+  a later row reading `review → done` right after an earlier one reading
+  `todo → in_review` — a timeline that jumps through a status which no longer
+  exists.
+* **WIP limits.** They live in `sprints.settings->'wip_limits'` keyed by status
+  slug and are read back by slug, so a limit set on `review` silently stopped
+  applying once the column became `in_review`. No error — the cap just never
+  fired again.
+
+**And it can't hide a task again.** The board now renders an amber
+"unrecognised status" column for anything matching no column. A card in an ugly
+column is a nuisance; a card that vanishes costs someone their work.
+
+
+## [0.10.0] - 2026-07-29
+
+### Workflow secrets, and the credential fields that were never safe
+
+A place to put a credential that is not the workflow definition. Minor rather
+than patch: a new stored resource with its own settings surface, a palette
+action that was never runnable becoming runnable, and several behaviour changes
+that affect automations already saved (see Upgrade notes).
+
+Also covers #218 and #219, which merged without versions of their own.
+
+**Workspace secrets.** Named values, Fernet-encrypted, referenced from a step
+as `{{secrets.NAME}}`. Managed under Settings → Security → Workflow Secrets.
+There is no endpoint that returns a value — not to a member, not to an admin,
+not to whoever saved it — so rotation is an overwrite and a lost credential is
+replaced rather than looked up. The builder inserts references from a picker on
+webhook headers and on the `api_request` auth fields.
+
+**Run an automation by hand** (#218). A published automation can be run for one
+chosen record from the builder. It refuses up front — paused, over the monthly
+allowance, record from another workspace, record of the wrong type — rather
+than reporting "triggered" for work that cannot happen. The response promises
+only that the run started; the outcome lands in run history.
+
+### Fixed
+
+- **A credential pasted into a webhook header was readable by the whole
+  workspace.** Header templates live in the workflow definition and reading a
+  workflow needs only `member`. Pasting one is now refused at save, with the
+  reference offered in its place.
+- **A resolved credential came back out through run history.** The webhook step
+  records the response body, and receivers commonly echo the request they were
+  sent, so the value returned by the far end landed in the run log. Resolved
+  values are scrubbed from the stored response.
+- **The scrub could still leak a prefix.** Truncation ran before redaction, so a
+  credential straddling the 1000-character cut was sliced in half and the
+  remaining prefix matched nothing. Ordering is now an invariant of the helper.
+- **`api_request` never worked and leaked its credential.** The config panel
+  wrote `api_url`/`api_method`/`api_body` while the executor read
+  `webhook_url`/`http_method`/`body_template`, so every step failed on "No
+  webhook URL specified"; meanwhile its Bearer Token and API Key fields were
+  read by nothing and sat in the workflow definition in plain text. Both
+  executors now read those keys and apply the auth config as a header, from a
+  secret reference only. The action leaves the hidden set.
+- **`send_slack` collected headers and a timeout that nothing read.** Both were
+  copy-pasted from `webhook_call`; the headers field invited a credential into
+  the graph to no purpose. Removed, stripped on save, and cleared from existing
+  definitions, versions and templates by migration.
+- **The durable executor could not resolve a secret in a header at all.**
+  Templates render before secrets resolve and the renderer rejects any
+  unresolvable `{{...}}`, so every `{{secrets.NAME}}` header failed with
+  "Dynamic value is missing".
+- **PATCH accepted fields it silently discarded** (#218). Undeclared fields were
+  dropped with a 200 — `runs_this_month` looked resettable and was not, and the
+  builder's trigger sync had never once taken effect, leaving the canvas and the
+  stored trigger free to disagree. Unknown fields are now refused.
+- **Creating an automation with a bad `object_id` returned 500** (#218), and one
+  belonging to another workspace was accepted outright — the foreign key has no
+  workspace in it. Both are refused with a 400.
+- **`greenlet` was never a declared dependency** (#219). It reached the Docker
+  image transitively, so production worked by accident while a clean checkout
+  could not run the async test suite. `uv.lock` had also drifted from
+  `pyproject.toml` for several releases.
+
+### Upgrade notes
+
+- `migrate_workspace_secrets.sql` and `migrate_strip_inert_slack_config.sql`
+  are picked up automatically. The second rewrites stored workflow JSON —
+  definitions, version history and templates — to drop the dead `send_slack`
+  keys. It only touches rows that carry them.
+- **Behaviour change:** a literal credential in a webhook header or in an
+  `api_request` auth field now blocks save, and fails the step at run time for
+  workflows saved before this release. Move those values into a workspace
+  secret before deploying — an `api_request` step with a pasted token was
+  sending unauthenticated requests regardless.
+- **Behaviour change:** a canvas save whose trigger node carries a trigger the
+  module does not offer now returns 422 instead of silently succeeding.
+- Secrets are encrypted with the same key as integration credentials. Losing
+  `SECRET_KEY` loses them, and there is no read path to export them first.
+
+### Known limitations
+
+- Redaction matches a credential verbatim, so a receiver echoing it
+  HTML-escaped or URL-encoded would not be caught.
+- Secret values have no minimum length; a very short one would over-redact the
+  recorded response.
+- Secrets resolve into headers and the `api_request` auth fields only — never
+  into a body, subject or message, where they would reach run history or an
+  inbox.
+
 ## [0.9.0] - 2026-07-29
 
 ### CRM automations: visual builder wired to a durable execution engine

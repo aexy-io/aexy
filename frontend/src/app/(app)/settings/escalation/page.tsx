@@ -26,7 +26,8 @@ import {
   EscalationLevel,
   NotificationChannel,
 } from "@/lib/api";
-import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { SettingsPage } from "@/components/settings/SettingsPrimitives";
 
 const SEVERITY_OPTIONS: { value: TicketSeverity; label: string; color: string }[] = [
   { value: "critical", label: "Critical", color: "bg-red-500" },
@@ -174,6 +175,7 @@ function RuleEditor({ rule, onChange, onRemove, members, teams }: RuleEditorProp
 }
 
 export default function EscalationSettingsPage() {
+  const t = useTranslations("settingsEscalation");
   const queryClient = useQueryClient();
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || null;
@@ -303,25 +305,22 @@ export default function EscalationSettingsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Escalation Matrix</h1>
-          <p className="text-muted-foreground text-sm mt-1">Configure automatic escalation rules based on ticket severity</p>
-        </div>
-        <div className="flex items-center gap-3">
-          {!isCreating && (
-            <button
-              onClick={() => setIsCreating(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500 transition"
-            >
-              <Plus className="h-4 w-4" />
-              Add Escalation Matrix
-            </button>
-          )}
-        </div>
-      </div>
-
+    <SettingsPage
+      title={t("title")}
+      description={t("description")}
+      width="wide"
+      actions={
+        !isCreating ? (
+          <button
+            onClick={() => setIsCreating(true)}
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            <Plus className="h-4 w-4" aria-hidden />
+            {t("add")}
+          </button>
+        ) : undefined
+      }
+    >
       <div>
 
         {/* Create/Edit Form */}
@@ -594,6 +593,6 @@ export default function EscalationSettingsPage() {
           </div>
         )}
       </div>
-    </div>
+    </SettingsPage>
   );
 }

@@ -830,6 +830,49 @@ class GmailSyncService:
         self.db.add(synced_email)
         await self.db.flush()
 
+        # Service Desk intake: if this mailbox is a registered service-desk
+        # source, turn the email into a ticket and skip CRM enrichment (a
+        # partner writing the ops desk is not a sales contact).
+        try:
+            from aexy.services.service_desk_intake_service import ServiceDeskIntakeService
+            from aexy.schemas.service_desk import InboundEmail
+
+            mailbox = await ServiceDeskIntakeService.find_mailbox_by_integration(
+                self.db, integration.id, workspace_id=integration.workspace_id
+            )
+            if mailbox is not None:
+                to_addr = None
+                if email_data.get("to_emails"):
+                    first = email_data["to_emails"][0]
+                    to_addr = first.get("email") if isinstance(first, dict) else first
+                intake = ServiceDeskIntakeService(self.db)
+                # Savepoint: a failed intake must not poison the session for the
+                # rest of this sync. Swallowing the error and carrying on with a
+                # transaction that needs rollback made every later statement in
+                # the batch fail with PendingRollbackError.
+                async with self.db.begin_nested():
+                    await intake.ingest(
+                        InboundEmail(
+                            to=to_addr or mailbox.address,
+                            from_email=email_data.get("from_email") or "",
+                            from_name=email_data.get("from_name"),
+                            subject=email_data.get("subject") or "",
+                            body_text=email_data.get("body_text") or "",
+                            body_html=email_data.get("body_html"),
+                            message_id=message_id,
+                            thread_id=message.get("threadId"),
+                        ),
+                        mailbox,
+                        source="service_desk_gmail",
+                    )
+                # Each message is an independent unit; commit before notifying so
+                # the requester is never acknowledged for a rolled-back ticket.
+                await self.db.commit()
+                await intake.flush_notifications()
+                return synced_email
+        except Exception as e:
+            logger.warning(f"Service desk intake (gmail) failed: {e}")
+
         # Auto-enrich: create contact and company from email sender if not exists
         contact_record = None
         company_record = None

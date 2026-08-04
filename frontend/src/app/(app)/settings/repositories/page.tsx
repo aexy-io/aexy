@@ -33,6 +33,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useSubscription } from "@/hooks/useSubscription";
 import { UpgradeBanner } from "@/components/UpgradeBanner";
+import { useTranslations } from "next-intl";
+import { SettingsPage } from "@/components/settings/SettingsPrimitives";
 
 type SyncStatus = "pending" | "syncing" | "synced" | "failed";
 type WebhookStatus = "none" | "pending" | "active" | "failed";
@@ -291,6 +293,7 @@ function ReclaimBanner({
 }
 
 export default function RepositorySettingsPage() {
+  const t = useTranslations("settingsRepositories");
   const { user } = useAuth();
   const { currentWorkspaceId } = useWorkspace();
   const { isFree, maxRepos } = useSubscription();
@@ -565,13 +568,7 @@ export default function RepositorySettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Repository Settings</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Manage which repositories are synced and analyzed
-        </p>
-      </div>
+    <SettingsPage title={t("title")} description={t("description")} width="wide">
 
       {isFree && repositories.length >= maxRepos - 1 && (
         <UpgradeBanner
@@ -901,6 +898,6 @@ export default function RepositorySettingsPage() {
           </div>
         )}
       </div>
-    </div>
+    </SettingsPage>
   );
 }

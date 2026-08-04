@@ -9,6 +9,7 @@ import {
   Building2,
   Users,
   DollarSign,
+  FolderKanban,
   LayoutGrid,
   Target,
   LayoutList,
@@ -34,6 +35,7 @@ const objectTypeIcons: Record<CRMObjectType, React.ReactNode> = {
   person: <Users className="h-5 w-5" />,
   deal: <DollarSign className="h-5 w-5" />,
   lead: <Target className="h-5 w-5" />,
+  project: <FolderKanban className="h-5 w-5" />,
   custom: <LayoutGrid className="h-5 w-5" />,
 };
 

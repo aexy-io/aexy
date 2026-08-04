@@ -1,3 +1,5 @@
+import type { Permission } from "@/hooks/usePermissions";
+import { PERMISSIONS } from "@/hooks/usePermissions";
 import {
   Palette,
   Building2,
@@ -15,6 +17,7 @@ import {
   Sparkles,
   CreditCard,
   Users,
+  UsersRound,
   Webhook,
   KeyRound,
   Lock,
@@ -34,7 +37,31 @@ export interface SettingsNavItem {
   href: string;
   icon: LucideIcon;
   description: string;
-  adminOnly?: boolean;
+  /**
+   * The workspace permission required to open this page. Absent means the page is
+   * a personal preference — your theme, your notification channels, your own
+   * commits, your own API tokens — rather than workspace configuration.
+   *
+   * This replaced an `adminOnly` boolean that only 10 of 30 entries set, leaving
+   * the other 20 — repositories, projects, task configuration, integrations,
+   * escalation, ticket forms, billing — visible to every member of the workspace.
+   *
+   * Always use a `PERMISSIONS` constant, never a bare string. A key the backend
+   * doesn't define hides the page from everyone, permanently and silently: nobody
+   * holds a permission that does not exist. `settingsNavigation.test.ts` asserts
+   * every key here exists in the backend catalogue.
+   */
+  permission?: Permission | Permission[];
+  /** Require ANY of `permission` instead of all of them. */
+  anyPermission?: boolean;
+  /**
+   * Workspace owner only, whatever their permissions — for pages whose whole
+   * purpose is destructive or financial. Mirrors `OWNER_ONLY_PERMISSIONS` on the
+   * backend, which an owner can still delegate per member.
+   */
+  ownerOnly?: boolean;
+  /** Aexy platform staff, not workspace admins — cross-tenant internal tooling. */
+  platformAdminOnly?: boolean;
   enterpriseBadge?: boolean;
   keywords: string[];
   external?: boolean;
@@ -57,6 +84,7 @@ export const settingsNavigation: SettingsNavCategory[] = [
         href: "/settings/appearance",
         icon: Palette,
         description: "Customize sidebar layout and visual preferences",
+        // Personal preference: your own theme and navigation.
         keywords: ["theme", "dark", "light", "layout", "sidebar", "visual"],
       },
       {
@@ -65,6 +93,7 @@ export const settingsNavigation: SettingsNavCategory[] = [
         href: "/settings/organization",
         icon: Building2,
         description: "Manage your organization settings and preferences",
+        permission: PERMISSIONS.CAN_MANAGE_ORG,
         keywords: ["workspace", "team", "members", "invite"],
       },
       {
@@ -73,7 +102,37 @@ export const settingsNavigation: SettingsNavCategory[] = [
         href: "/settings/organization/roles",
         icon: Users,
         description: "Configure custom roles and permissions",
+        // Owner-only: an admin who can edit roles can grant themselves every
+        // other owner-only permission and lock the owner out.
+        permission: PERMISSIONS.CAN_MANAGE_ROLES,
+        ownerOnly: true,
         keywords: ["permissions", "role", "custom", "rbac"],
+      },
+      {
+        id: "ai",
+        label: "AI & Providers",
+        href: "/settings/ai",
+        icon: Sparkles,
+        description: "Turn AI off for the whole workspace, or use your own provider keys",
+        permission: PERMISSIONS.CAN_MANAGE_WORKSPACE_SETTINGS,
+        enterpriseBadge: true,
+        keywords: [
+          "ai",
+          "llm",
+          "disable",
+          "kill switch",
+          "provider",
+          "api key",
+          "anthropic",
+          "claude",
+          "gemini",
+          "openrouter",
+          "deepseek",
+          "ollama",
+          "byok",
+          "privacy",
+          "data",
+        ],
       },
       {
         id: "notifications",
@@ -81,6 +140,7 @@ export const settingsNavigation: SettingsNavCategory[] = [
         href: "/settings/notifications",
         icon: Bell,
         description: "Configure notification channels and preferences",
+        // Personal preference: which of your own notifications reach you where.
         keywords: ["notification", "alert", "email", "slack", "bell", "in-app"],
       },
     ],
@@ -95,6 +155,7 @@ export const settingsNavigation: SettingsNavCategory[] = [
         href: "/settings/repositories",
         icon: FolderGit2,
         description: "Manage GitHub repositories for analysis and sync",
+        permission: PERMISSIONS.CAN_MANAGE_INTEGRATIONS,
         keywords: ["github", "repo", "sync", "git", "code"],
       },
       {
@@ -103,7 +164,29 @@ export const settingsNavigation: SettingsNavCategory[] = [
         href: "/settings/identity",
         icon: Fingerprint,
         description: "Reclaim commits attributed to an orphaned GitHub identity",
+        // Personal: you are claiming your OWN commits. Gating this on an admin
+        // permission would mean only admins could fix their own attribution.
         keywords: ["ghost", "claim", "github", "commits", "merge", "attribution"],
+      },
+      {
+        id: "teams",
+        label: "Teams",
+        href: "/settings/teams",
+        icon: UsersRound,
+        description: "Create teams, manage their members, and sync them from repositories",
+        permission: PERMISSIONS.CAN_MANAGE_TEAM_MEMBERS,
+        keywords: [
+          "team",
+          "squad",
+          "group",
+          "members",
+          "department",
+          "repository",
+          "sync",
+          "oncall",
+          "standup",
+          "escalation",
+        ],
       },
       {
         id: "projects",
@@ -111,6 +194,7 @@ export const settingsNavigation: SettingsNavCategory[] = [
         href: "/settings/projects",
         icon: FolderKanban,
         description: "Manage projects, members, and permissions",
+        permission: PERMISSIONS.CAN_EDIT_PROJECTS,
         keywords: ["project", "team", "kanban", "sprint"],
       },
       {
@@ -119,6 +203,10 @@ export const settingsNavigation: SettingsNavCategory[] = [
         href: "/settings/task-config",
         icon: ListChecks,
         description: "Configure custom statuses and fields for sprint tasks",
+        // Not CAN_MANAGE_TASKS: every member holds that (it means "work with
+        // tasks"), and this page edits the workspace-wide status and field
+        // schema every board then renders.
+        permission: PERMISSIONS.CAN_MANAGE_WORKSPACE_SETTINGS,
         keywords: ["status", "field", "custom", "task", "sprint", "workflow"],
       },
       {
@@ -127,7 +215,7 @@ export const settingsNavigation: SettingsNavCategory[] = [
         href: "/settings/insights",
         icon: TrendingUp,
         description: "Configure developer insights, team metrics, and working hours",
-        adminOnly: true,
+        permission: PERMISSIONS.CAN_MANAGE_INSIGHTS,
         keywords: ["metrics", "analytics", "developer", "performance", "hours"],
       },
       {
@@ -136,7 +224,7 @@ export const settingsNavigation: SettingsNavCategory[] = [
         href: "/settings/tracker",
         icon: Activity,
         description: "Enable the Aexy Tracker per project and view team tracker records",
-        adminOnly: true,
+        permission: PERMISSIONS.CAN_MANAGE_TRACKING,
         keywords: ["tracker", "timesheet", "capture", "screenshots", "activity", "macos"],
       },
     ],
@@ -151,6 +239,7 @@ export const settingsNavigation: SettingsNavCategory[] = [
         href: "/settings/escalation",
         icon: AlertTriangle,
         description: "Configure automatic escalation rules based on ticket severity",
+        permission: PERMISSIONS.CAN_MANAGE_TICKETS,
         keywords: ["escalation", "severity", "rules", "notification", "sla"],
       },
       {
@@ -159,6 +248,7 @@ export const settingsNavigation: SettingsNavCategory[] = [
         href: "/settings/ticket-forms",
         icon: Ticket,
         description: "Create and manage public forms for collecting tickets",
+        permission: PERMISSIONS.CAN_MANAGE_FORMS,
         keywords: ["form", "ticket", "public", "submission", "template"],
       },
       {
@@ -167,6 +257,7 @@ export const settingsNavigation: SettingsNavCategory[] = [
         href: "/settings/alerting",
         icon: Siren,
         description: "Turn observability alerts (OpenObserve, etc.) into deduplicated tickets",
+        permission: PERMISSIONS.CAN_MANAGE_TICKETS,
         keywords: ["alert", "openobserve", "observability", "logging", "incident", "dedup", "monitoring", "webhook"],
       },
     ],
@@ -181,26 +272,38 @@ export const settingsNavigation: SettingsNavCategory[] = [
         href: "/settings/community",
         icon: Globe,
         description: "Publish chat channels as a public, SEO-friendly forum",
-        adminOnly: true,
+        // Publishes workspace content to the open internet.
+        permission: PERMISSIONS.CAN_MANAGE_WORKSPACE_SETTINGS,
         keywords: ["community", "public", "forum", "seo", "chat", "channels", "discourse", "slack"],
       },
       {
         id: "crm-settings",
-        label: "CRM Settings",
-        href: "/crm/settings",
+        label: "CRM Objects",
+        href: "/settings/crm",
         icon: Contact,
-        description: "Configure CRM objects, integrations, and deal automation",
-        keywords: ["crm", "contacts", "deals", "pipeline", "sales"],
-        external: true,
+        description: "Configure CRM objects, attributes, and their appearance",
+        permission: PERMISSIONS.CAN_MANAGE_CRM,
+        keywords: ["crm", "contacts", "deals", "pipeline", "sales", "objects", "attributes"],
+      },
+      {
+        id: "crm-integrations",
+        label: "CRM Integrations",
+        href: "/settings/crm/integrations",
+        icon: Link2,
+        description: "Connect Google so Gmail and Calendar populate the CRM",
+        // Same gate as CRM Objects: this is CRM configuration, not the generic
+        // workspace integrations page.
+        permission: PERMISSIONS.CAN_MANAGE_CRM,
+        keywords: ["crm", "google", "gmail", "calendar", "sync", "deals", "automation"],
       },
       {
         id: "email-marketing",
-        label: "Email Marketing",
-        href: "/email-marketing/settings",
+        label: "Email Infrastructure",
+        href: "/settings/email-marketing",
         icon: Mail,
-        description: "Configure sending domains, providers, and email infrastructure",
-        keywords: ["email", "marketing", "campaign", "domain", "sending"],
-        external: true,
+        description: "Configure sending domains, providers, and subscription categories",
+        permission: PERMISSIONS.CAN_MANAGE_INTEGRATIONS,
+        keywords: ["email", "marketing", "campaign", "domain", "sending", "ses", "provider"],
       },
       {
         id: "email-delivery",
@@ -208,7 +311,7 @@ export const settingsNavigation: SettingsNavCategory[] = [
         href: "/settings/email-delivery",
         icon: Send,
         description: "Monitor email delivery status and logs",
-        adminOnly: true,
+        permission: PERMISSIONS.CAN_MANAGE_INTEGRATIONS,
         enterpriseBadge: true,
         keywords: ["email", "delivery", "logs", "status", "bounce"],
       },
@@ -224,6 +327,7 @@ export const settingsNavigation: SettingsNavCategory[] = [
         href: "/settings/integrations",
         icon: Link2,
         description: "Connect Jira, Linear, Slack, and other external tools",
+        permission: PERMISSIONS.CAN_MANAGE_INTEGRATIONS,
         keywords: ["jira", "linear", "slack", "github", "connect", "external"],
       },
       {
@@ -232,7 +336,7 @@ export const settingsNavigation: SettingsNavCategory[] = [
         href: "/settings/webhooks",
         icon: Webhook,
         description: "Manage webhook endpoints for real-time event notifications",
-        adminOnly: true,
+        permission: PERMISSIONS.CAN_MANAGE_INTEGRATIONS,
         keywords: ["webhook", "event", "endpoint", "notification", "api", "callback"],
       },
     ],
@@ -247,7 +351,9 @@ export const settingsNavigation: SettingsNavCategory[] = [
         href: "/settings/sso",
         icon: KeyRound,
         description: "Configure SAML or OpenID Connect for centralized authentication",
-        adminOnly: true,
+        // Owner-only: whoever controls the identity provider controls every login.
+        permission: PERMISSIONS.CAN_MANAGE_WORKSPACE_SETTINGS,
+        ownerOnly: true,
         enterpriseBadge: true,
         keywords: ["sso", "saml", "oidc", "authentication", "identity", "okta", "azure"],
       },
@@ -257,6 +363,8 @@ export const settingsNavigation: SettingsNavCategory[] = [
         href: "/settings/api-tokens",
         icon: KeyRound,
         description: "Create and manage API tokens for MCP and external integrations",
+        // Personal: tokens are minted against the caller's own identity and carry
+        // only their own permissions, so this is not an escalation path.
         keywords: ["api", "token", "key", "mcp", "integration", "authentication"],
       },
       {
@@ -266,7 +374,7 @@ export const settingsNavigation: SettingsNavCategory[] = [
         icon: Lock,
         description:
           "Store credentials for automation steps so they are referenced, not pasted into workflows",
-        adminOnly: true,
+        permission: PERMISSIONS.CAN_MANAGE_INTEGRATIONS,
         keywords: [
           "secret",
           "credential",
@@ -291,6 +399,8 @@ export const settingsNavigation: SettingsNavCategory[] = [
         href: "/settings/plans",
         icon: Sparkles,
         description: "Compare plans and upgrade or downgrade your subscription",
+        permission: PERMISSIONS.CAN_MANAGE_BILLING,
+        ownerOnly: true,
         keywords: ["plan", "pricing", "upgrade", "downgrade", "subscription", "pro", "enterprise"],
       },
       {
@@ -299,6 +409,8 @@ export const settingsNavigation: SettingsNavCategory[] = [
         href: "/settings/billing",
         icon: CreditCard,
         description: "Manage your subscription, billing, and payment methods",
+        permission: PERMISSIONS.CAN_MANAGE_BILLING,
+        ownerOnly: true,
         keywords: ["billing", "payment", "invoice", "stripe", "credit card"],
       },
       {
@@ -307,7 +419,9 @@ export const settingsNavigation: SettingsNavCategory[] = [
         href: "/settings/billing/breakdown",
         icon: Receipt,
         description: "Line-item breakdown of charges, usage, rates, and prior periods",
-        adminOnly: true,
+        // Read-only reporting, so viewing is enough — an admin reconciling spend
+        // shouldn't need the permission that lets them change the plan.
+        permission: PERMISSIONS.CAN_VIEW_BILLING,
         keywords: ["billing", "breakdown", "line item", "usage", "rate", "invoice", "history"],
       },
       {
@@ -316,6 +430,7 @@ export const settingsNavigation: SettingsNavCategory[] = [
         href: "/settings/usage",
         icon: Activity,
         description: "Monitor AI token consumption, plan limits, and cost projections",
+        permission: PERMISSIONS.CAN_VIEW_BILLING,
         keywords: ["usage", "tokens", "limits", "consumption", "cost", "ai", "quota"],
       },
       {
@@ -324,7 +439,9 @@ export const settingsNavigation: SettingsNavCategory[] = [
         href: "/settings/access",
         icon: Shield,
         description: "Manage which apps and modules each member can access",
-        adminOnly: true,
+        // Same reasoning as Organization Roles: this grants access to other people.
+        permission: PERMISSIONS.CAN_MANAGE_ROLES,
+        ownerOnly: true,
         keywords: ["access", "control", "permission", "app", "module", "matrix"],
       },
       {
@@ -333,7 +450,8 @@ export const settingsNavigation: SettingsNavCategory[] = [
         href: "/settings/plan-overrides",
         icon: Settings2,
         description: "Configure custom pricing, limits, and billing models per workspace",
-        adminOnly: true,
+        // Aexy staff tooling: sets pricing across tenants, not a workspace setting.
+        platformAdminOnly: true,
         keywords: ["plan", "override", "custom", "pricing", "discount", "admin", "billing model"],
       },
       {
@@ -342,7 +460,7 @@ export const settingsNavigation: SettingsNavCategory[] = [
         href: "/settings/admin-invoices",
         icon: Receipt,
         description: "Create, manage, and reconcile invoices for B2B customers",
-        adminOnly: true,
+        platformAdminOnly: true,
         keywords: ["invoice", "billing", "payment", "bank transfer", "manual", "reconcile"],
       },
     ],
@@ -351,4 +469,38 @@ export const settingsNavigation: SettingsNavCategory[] = [
 
 export function getAllSettingsNavItems(): SettingsNavItem[] {
   return settingsNavigation.flatMap((category) => category.items);
+}
+
+/**
+ * Whether the caller may open this settings page.
+ *
+ * One function decides, so the sidebar, the index and the access-denied panel can
+ * never disagree about who sees what. The previous split — an `adminOnly` flag in
+ * the nav plus ad-hoc checks inside individual pages — is how the whole thing
+ * drifted out of step in the first place.
+ */
+export function canAccessSettingsItem(
+  item: SettingsNavItem,
+  ctx: {
+    permissions: string[];
+    isOwner: boolean;
+    isPlatformAdmin: boolean;
+  }
+): boolean {
+  // Cross-tenant staff tooling is never reachable by workspace role.
+  if (item.platformAdminOnly) return ctx.isPlatformAdmin;
+
+  // Platform staff support customers, so they can see workspace pages.
+  if (ctx.isPlatformAdmin) return true;
+
+  // The owner holds everything, including the owner-only pages.
+  if (ctx.isOwner) return true;
+
+  if (item.ownerOnly) return false;
+  if (!item.permission) return true;
+
+  const needed = Array.isArray(item.permission) ? item.permission : [item.permission];
+  return item.anyPermission
+    ? needed.some((p) => ctx.permissions.includes(p))
+    : needed.every((p) => ctx.permissions.includes(p));
 }

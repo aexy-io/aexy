@@ -1,0 +1,132 @@
+{
+  "serviceDesk": {
+    "title": "Service Desk",
+    "subtitle": "Email-intake ticketing with stakeholder turnaround tracking",
+    "tabs": {
+      "dashboard": "Dashboard",
+      "tickets": "Tickets",
+      "settings": "Master Data"
+    },
+    "stats": {
+      "totalOpen": "Open tickets",
+      "breaching": "Breaching (over {red}d)",
+      "stakeholders": "Active stakeholders"
+    },
+    "dashboard": {
+      "matrixTitle": "Open tickets by stakeholder and age",
+      "stakeholder": "Pending With",
+      "col01": "Under {amber}d",
+      "col12": "{amber}–{red}d",
+      "colGt2": "Over {red}d",
+      "total": "Total",
+      "ticketsTitle": "Open tickets",
+      "empty": "No open tickets. New email requests will appear here automatically.",
+      "export": "Export CSV"
+    },
+    "table": {
+      "id": "Ticket",
+      "subject": "Subject",
+      "product": "Product",
+      "account": "Account",
+      "type": "Type",
+      "owner": "Owner",
+      "pendingWith": "Pending With",
+      "daysInStage": "Working days in stage",
+      "overallAge": "Overall age",
+      "status": "Status",
+      "triage": "Triage"
+    },
+    "detail": {
+      "back": "Back to dashboard",
+      "requester": "Requester",
+      "requestType": "Request type",
+      "product": "Product",
+      "account": "Account",
+      "assignedOwner": "Assigned owner",
+      "pendingWith": "Pending With",
+      "changeTo": "Move to",
+      "note": "Note (optional)",
+      "apply": "Apply",
+      "overallTat": "Overall TAT (elapsed)",
+      "currentStage": "Current stage (working days)",
+      "stakeholderTat": "Time per stakeholder",
+      "timeline": "Handoff timeline",
+      "days": "{days} days",
+      "open": "open",
+      "needsTriage": "Needs triage",
+      "convertToTask": "Convert to task",
+      "selectProject": "Select a project…",
+      "convert": "Convert",
+      "converting": "Converting…",
+      "linkedToTask": "Linked to a project task"
+    },
+    "ai": {
+      "title": "AI email categorisation",
+      "description": "Let AI read incoming emails and suggest the Request Type and LOB. When off, KAMs classify tickets manually.",
+      "enabled": "Enabled"
+    },
+    "manual": {
+      "logTicket": "Log ticket",
+      "title": "Log a ticket",
+      "subtitle": "For a request received by phone or WhatsApp",
+      "subject": "Subject",
+      "description": "Description",
+      "requesterName": "Requester name",
+      "requesterEmail": "Requester email",
+      "type": "Request type",
+      "product": "Product",
+      "account": "Account",
+      "none": "— None —",
+      "create": "Create ticket",
+      "creating": "Creating…"
+    },
+    "templates": {
+      "title": "Email templates",
+      "description": "Edit the copy for the automated emails. Use the placeholder tokens listed under each template.",
+      "subject": "Subject",
+      "body": "Body",
+      "variables": "Placeholders",
+      "save": "Save",
+      "saving": "Saving…",
+      "customised": "Customised"
+    },
+    "settings": {
+      "accounts": "Accounts",
+      "vendors": "Vendors",
+      "products": "Products",
+      "mailboxes": "Mailboxes",
+      "name": "Name",
+      "domains": "Domains (comma-separated)",
+      "assignedOwner": "Assigned owner",
+      "address": "Address",
+      "channel": "Channel",
+      "add": "Add",
+      "delete": "Delete",
+      "empty": "Nothing here yet.",
+      "readOnly": "You have read-only access to Master Data. Ask a workspace admin or service desk manager to make changes.",
+      "domainsHint": "e.g. acme.com, acme.co"
+    },
+    "noDepartment": "You're not in a department yet, so no tickets can be routed to you. Ask an admin to add you from Organization → Departments.",
+    "workingHours": {
+      "title": "Working hours",
+      "description": "The breach clock only runs during these hours, IST. It stops overnight, at weekends, and on company holidays — so \"2 business days\" means two of these shifts, not 48 hours. Holidays come from the Leave module.",
+      "from": "Shift starts",
+      "to": "Shift ends",
+      "summary": "Shift is {hours}h, so the 2-day target is twice that.",
+      "invalid": "The end must be later than the start",
+      "save": "Save hours",
+      "saving": "Saving…"
+    },
+    "deskIdentity": {
+      "title": "Desk identity & targets",
+      "description": "Ticket id prefix, the timezone day boundaries resolve in, and the breach thresholds. These were fixed in code; the values shown are the defaults still in force if you never change them.",
+      "prefix": "Ticket prefix",
+      "timezone": "Timezone",
+      "amber": "Amber after (days)",
+      "red": "Red after (days)",
+      "prefixInvalid": "1–10 letters or digits, starting with a letter.",
+      "thresholdsInvalid": "Amber must be a smaller number of days than red, and both above zero.",
+      "prefixWarning": "Saving relabels every existing ticket as {prefix}-<number>. Replies quoting the old prefix will still thread correctly."
+    }
+  }
+}

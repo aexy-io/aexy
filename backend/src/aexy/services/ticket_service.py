@@ -285,6 +285,14 @@ class TicketService:
             if filters.created_before:
                 base_stmt = base_stmt.where(Ticket.created_at <= filters.created_before)
 
+        # Service Desk tickets live in their own module (source='service_desk_*').
+        # Exclude them from the generic tickets list unless a caller explicitly
+        # scopes to a form (which opts back in).
+        if not (filters and filters.form_id):
+            base_stmt = base_stmt.where(
+                or_(Ticket.source.is_(None), Ticket.source.notlike("service_desk%"))
+            )
+
         # Count total
         count_stmt = select(func.count()).select_from(base_stmt.subquery())
         count_result = await self.db.execute(count_stmt)
@@ -1093,11 +1101,14 @@ class TicketService:
         Returns:
             Dictionary of statistics.
         """
+        # Exclude Service Desk tickets (their own module) from generic stats.
+        not_sd = or_(Ticket.source.is_(None), Ticket.source.notlike("service_desk%"))
+
         # Total tickets
         total_stmt = (
             select(func.count())
             .select_from(Ticket)
-            .where(Ticket.workspace_id == workspace_id)
+            .where(Ticket.workspace_id == workspace_id, not_sd)
         )
         total_result = await self.db.execute(total_stmt)
         total = total_result.scalar() or 0
@@ -1105,7 +1116,7 @@ class TicketService:
         # By status
         status_stmt = (
             select(Ticket.status, func.count())
-            .where(Ticket.workspace_id == workspace_id)
+            .where(Ticket.workspace_id == workspace_id, not_sd)
             .group_by(Ticket.status)
         )
         status_result = await self.db.execute(status_stmt)
@@ -1126,6 +1137,7 @@ class TicketService:
                 and_(
                     Ticket.workspace_id == workspace_id,
                     Ticket.sla_breached == True,
+                    not_sd,
                 )
             )
         )

@@ -6,18 +6,10 @@ import Link from "next/link";
 import { Activity, Shield, FolderGit2, Workflow, AlertTriangle, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { usePermissions, PERMISSIONS } from "@/hooks/usePermissions";
-import {
-  useProjectTrackerConfig,
-  useUpdateProjectTrackerConfig,
-  useTargetHours,
-  useUpsertTargetHours,
-  useDeleteTargetHours,
-  DEFAULT_CAPTURE_CONFIG,
-  TrackerCaptureConfig,
-} from "@/hooks/useTrackerAdmin";
+import { useProjectTrackerConfig, useUpdateProjectTrackerConfig, useTargetHours, useUpsertTargetHours, useDeleteTargetHours, DEFAULT_CAPTURE_CONFIG, TrackerCaptureConfig } from "@/hooks/useTrackerAdmin";
+import { SettingsPage, SettingsSection, SettingsSkeleton, SettingsEmptyState } from "@/components/settings/SettingsPrimitives";
 
 export default function ProjectTrackerSettingsPage() {
   const t = useTranslations("settings.tracker");
@@ -109,17 +101,17 @@ export default function ProjectTrackerSettingsPage() {
   );
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-6">
-      <Breadcrumb
-        items={[
-          { label: "Settings", href: "/settings" },
-          { label: "Projects", href: "/settings/projects" },
-          { label: t("title") },
-        ]}
-        className="mb-6"
-      />
-
-      <div className="flex gap-2 mb-8 flex-wrap">
+    <SettingsPage
+      title={t("title")}
+      description={t("projectSubtitle")}
+      width="wide"
+      breadcrumbs={[
+        { label: "Settings", href: "/settings" },
+        { label: "Projects", href: "/settings/projects" },
+        { label: t("title") },
+      ]}
+    >
+      <div className="flex flex-wrap gap-2">
         {tab(`/settings/projects/${projectId}`, "General")}
         {tab(`/settings/projects/${projectId}/permissions`, "Permissions", <Shield className="h-4 w-4" />)}
         {tab(`/settings/projects/${projectId}/repositories`, "Repositories", <FolderGit2 className="h-4 w-4" />)}
@@ -128,23 +120,13 @@ export default function ProjectTrackerSettingsPage() {
       </div>
 
       {permsLoading || isLoading ? (
-        <div className="flex justify-center py-16 text-gray-400">
-          <Loader2 className="h-6 w-6 animate-spin" />
-        </div>
+        <SettingsSkeleton rows={2} />
       ) : !canEdit ? (
-        <div className="rounded-xl border border-dashed border-gray-300 py-16 text-center text-gray-500 dark:border-gray-700">
-          {t("accessDenied")}
-        </div>
+        <SettingsSection flush>
+          <SettingsEmptyState title={t("accessDenied")} />
+        </SettingsSection>
       ) : (
-        <div className="space-y-6">
-          <div>
-            <h1 className="flex items-center gap-2 text-2xl font-semibold">
-              <Activity className="h-6 w-6 text-blue-500" />
-              {t("title")}
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{t("projectSubtitle")}</p>
-          </div>
-
+        <div className="space-y-5">
           {/* Privacy notice */}
           <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300">
             <div className="font-medium">{t("privacyTitle")}</div>
@@ -174,7 +156,7 @@ export default function ProjectTrackerSettingsPage() {
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <label className="text-sm">
-                <span className="mb-1 block text-gray-600 dark:text-gray-400">{t("sampleInterval")}</span>
+                <span className="mb-1 block text-muted-foreground">{t("sampleInterval")}</span>
                 <input
                   type="number"
                   min={1}
@@ -186,7 +168,7 @@ export default function ProjectTrackerSettingsPage() {
               </label>
 
               <label className="text-sm">
-                <span className="mb-1 block text-gray-600 dark:text-gray-400">{t("idleThreshold")}</span>
+                <span className="mb-1 block text-muted-foreground">{t("idleThreshold")}</span>
                 <input
                   type="number"
                   min={30}
@@ -198,7 +180,7 @@ export default function ProjectTrackerSettingsPage() {
               </label>
 
               <label className="text-sm">
-                <span className="mb-1 block text-gray-600 dark:text-gray-400">{t("screenshotPolicy")}</span>
+                <span className="mb-1 block text-muted-foreground">{t("screenshotPolicy")}</span>
                 <select
                   value={config.screenshot_policy}
                   onChange={(e) =>
@@ -214,7 +196,7 @@ export default function ProjectTrackerSettingsPage() {
 
               {config.screenshot_policy !== "off" && (
                 <label className="text-sm">
-                  <span className="mb-1 block text-gray-600 dark:text-gray-400">{t("screenshotEvery")}</span>
+                  <span className="mb-1 block text-muted-foreground">{t("screenshotEvery")}</span>
                   <input
                     type="number"
                     min={1}
@@ -235,7 +217,7 @@ export default function ProjectTrackerSettingsPage() {
             )}
 
             <label className="block text-sm">
-              <span className="mb-1 block text-gray-600 dark:text-gray-400">{t("excludedApps")}</span>
+              <span className="mb-1 block text-muted-foreground">{t("excludedApps")}</span>
               <input
                 type="text"
                 value={excludedText}
@@ -255,18 +237,18 @@ export default function ProjectTrackerSettingsPage() {
               {t("paused")}
             </label>
 
-            <p className="text-xs text-gray-400">{t("applyNote")}</p>
+            <p className="text-xs text-muted-foreground">{t("applyNote")}</p>
           </fieldset>
 
           {/* Per-project target hours */}
           <div className="space-y-3 rounded-xl border border-gray-200 bg-card p-4 dark:border-gray-800">
             <div>
               <h2 className="text-sm font-medium">{t("projectTargetTitle")}</h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{t("projectTargetHint")}</p>
+              <p className="text-xs text-muted-foreground">{t("projectTargetHint")}</p>
             </div>
             <div className="flex items-end gap-3">
               <label className="text-sm">
-                <span className="mb-1 block text-gray-600 dark:text-gray-400">{t("hoursPerDay")}</span>
+                <span className="mb-1 block text-muted-foreground">{t("hoursPerDay")}</span>
                 <input
                   type="number"
                   min={0}
@@ -310,6 +292,6 @@ export default function ProjectTrackerSettingsPage() {
           </div>
         </div>
       )}
-    </div>
+    </SettingsPage>
   );
 }

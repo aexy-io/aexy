@@ -1,0 +1,32 @@
+{
+  "settingsEmailMarketing": {
+    "title": "Email Infrastructure",
+    "description": "Sending domains, providers and subscription categories for outbound email.",
+    "tabsLabel": "Email infrastructure sections",
+    "noWorkspace": "No workspace selected",
+    "noWorkspaceDetail": "Pick a workspace to manage its email infrastructure.",
+    "loadFailed": "Couldn't load this",
+    "retry": "Try again",
+    "domains": {
+      "tab": "Sending domains",
+      "description": "Domains you send from, their DNS verification, and warming schedules.",
+      "add": "Add domain",
+      "emptyTitle": "No sending domains",
+      "emptyDetail": "Add a domain and verify its DNS records before your first campaign goes out."
+    },
+    "providers": {
+      "tab": "Providers",
+      "description": "The services that actually deliver your mail — SES, SendGrid, SMTP.",
+      "add": "Add provider",
+      "emptyTitle": "No email providers",
+      "emptyDetail": "A provider is what actually delivers the mail. Without one, campaigns cannot send."
+    },
+    "categories": {
+      "tab": "Categories",
+      "description": "Subscription categories let recipients choose which kinds of email they want.",
+      "add": "Add category",
+      "emptyTitle": "No subscription categories",
+      "emptyDetail": "Categories let recipients unsubscribe from one kind of email without leaving the rest."
+    }
+  }
+}

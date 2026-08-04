@@ -112,6 +112,56 @@ APP_CATALOG: dict[str, AppConfig] = {
         "required_permission": "can_view_tickets",
         "modules": {},
     },
+    "service_desk": {
+        "name": "Service Desk",
+        "description": "Email-intake ticketing with stakeholder TAT tracking",
+        "icon": "Headset",
+        "category": AppCategory.BUSINESS,
+        "base_route": "/service-desk",
+        "required_permission": "can_view_service_desk",
+        "modules": {
+            "dashboard": {
+                "name": "Dashboard",
+                "description": "Open tickets by stakeholder and age",
+                "route": "",
+            },
+            "tickets": {
+                "name": "Tickets",
+                "description": "All service desk tickets",
+                "route": "/tickets",
+            },
+            "settings": {
+                "name": "Master Data",
+                "description": "Partners, insurers, LOBs, and mailboxes",
+                "route": "/settings",
+            },
+        },
+    },
+    "organization": {
+        "name": "Organization",
+        "description": "Departments, org chart, reporting lines, and headcount",
+        "icon": "Network",
+        "category": AppCategory.PEOPLE,
+        "base_route": "/organization",
+        "required_permission": "can_view_org",
+        "modules": {
+            "chart": {
+                "name": "Org Chart",
+                "description": "Visual department hierarchy and reporting lines",
+                "route": "",
+            },
+            "departments": {
+                "name": "Departments",
+                "description": "Manage departments, functions, and membership",
+                "route": "/departments",
+            },
+            "directory": {
+                "name": "Directory",
+                "description": "People directory with department and manager",
+                "route": "/directory",
+            },
+        },
+    },
     "reviews": {
         "name": "Reviews",
         "description": "Performance reviews and feedback",
@@ -500,6 +550,10 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
         "color": "#2563eb",  # blue
         "apps": {
             "dashboard": {"enabled": True, "modules": {}},
+            "organization": {
+                "enabled": True,
+                "modules": {"chart": True, "departments": True, "directory": True},
+            },
             "tracking": {
                 "enabled": True,
                 "modules": {"standups": True, "blockers": True, "time": True},
@@ -544,6 +598,10 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
         "color": "#f43f5e",  # rose
         "apps": {
             "dashboard": {"enabled": True, "modules": {}},
+            "organization": {
+                "enabled": True,
+                "modules": {"chart": True, "departments": True, "directory": True},
+            },
             "reviews": {
                 "enabled": True,
                 "modules": {
@@ -600,6 +658,10 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
         "color": "#06b6d4",  # cyan
         "apps": {
             "dashboard": {"enabled": True, "modules": {}},
+            "organization": {
+                "enabled": True,
+                "modules": {"chart": True, "departments": True, "directory": True},
+            },
             "crm": {
                 "enabled": True,
                 "modules": {
@@ -646,6 +708,10 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
         "color": "#9333ea",  # purple
         "apps": {
             "dashboard": {"enabled": True, "modules": {}},
+            "organization": {
+                "enabled": True,
+                "modules": {"chart": True, "departments": True, "directory": True},
+            },
             "tracking": {
                 "enabled": True,
                 "modules": {"standups": True, "blockers": True, "time": True},

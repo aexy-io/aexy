@@ -610,6 +610,24 @@ SCHEDULES: list[dict] = [
         "interval": timedelta(hours=24),
         "queue": TaskQueue.OPERATIONS,
     },
+    # Service Desk — open-ticket digest. Fires every half hour and the activity
+    # decides which workspaces are due, because the send time is per workspace:
+    # this was a single `0 9,13,17` cron pinned to Asia/Kolkata for the whole
+    # deployment, so a desk in another country was paged in the middle of its
+    # night. Half-hourly rather than hourly so zones with a :30 offset (IST
+    # among them) still get 09:00 local rather than 09:30.
+    {
+        "id": "service-desk-digest",
+        "activity": "send_service_desk_digest",
+        "input_module": "aexy.temporal.activities.service_desk",
+        "input_class": "SendServiceDeskDigestInput",
+        "cron": ["0,30 * * * *"],
+        "queue": TaskQueue.OPERATIONS,
+        # send_all() walks every workspace with a mailbox and sends synchronously.
+        # SingleActivityInput defaults to 300s, which is a ceiling on how many
+        # workspaces can have a desk before digests start timing out mid-list.
+        "timeout_seconds": 1800,
+    },
 ]
 
 
@@ -651,19 +669,32 @@ async def register_schedules(client: Client) -> None:
                 input_module = import_module(schedule_def["input_module"])
                 input_class = getattr(input_module, schedule_def["input_class"])
 
+                # Honour a per-schedule timeout: SingleActivityInput defaults to
+                # 300s, which silently truncates any activity that fans out over
+                # every workspace.
+                activity_kwargs: dict = {
+                    "activity_name": activity_name,
+                    "activity_input": input_class(),
+                }
+                if "timeout_seconds" in schedule_def:
+                    activity_kwargs["timeout_seconds"] = schedule_def["timeout_seconds"]
+
                 action = ScheduleActionStartWorkflow(
                     SingleActivityWorkflow.run,
-                    SingleActivityInput(
-                        activity_name=activity_name,
-                        activity_input=input_class(),
-                    ),
+                    SingleActivityInput(**activity_kwargs),
                     id=f"scheduled-{schedule_id}",
                     task_queue=queue,
                 )
 
-            spec = ScheduleSpec(
-                intervals=[ScheduleIntervalSpec(every=schedule_def["interval"])],
-            )
+            if "cron" in schedule_def:
+                spec = ScheduleSpec(
+                    cron_expressions=schedule_def["cron"],
+                    time_zone_name=schedule_def.get("time_zone_name"),
+                )
+            else:
+                spec = ScheduleSpec(
+                    intervals=[ScheduleIntervalSpec(every=schedule_def["interval"])],
+                )
 
             # Create, or push the current spec onto an existing schedule.
             # Skipping on "already exists" meant a changed interval in code

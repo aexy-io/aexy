@@ -24,6 +24,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import json
 import logging
 import re
 from datetime import datetime, timezone
@@ -311,6 +312,84 @@ def verify_postmark_basic_auth(authorization_header: str | None) -> bool:
     except Exception:
         return False
     return hmac.compare_digest(decoded, expected)
+
+
+# ---------------------------------------------------------------------------
+# Inbound mail (/webhooks/email/inbound)
+# ---------------------------------------------------------------------------
+
+def verify_inbound_email_request(
+    *,
+    authorization_header: str | None,
+    token_header: str | None,
+    token_query: str | None,
+    form_fields: dict | None = None,
+) -> bool:
+    """Authenticate a post to the inbound-mail webhook.
+
+    This endpoint is not an event feed — it *creates* tickets and sends an
+    acknowledgement to the address named in the payload, so leaving it open is
+    both a ticket-injection vector (spoof a partner domain and land in that
+    partner's KAM queue) and an email reflector on the workspace's own sender.
+
+    Three accepted proofs, in order of strength:
+
+    1. Postmark Basic Auth, when configured — Postmark's own inbound scheme.
+    2. Mailgun's HMAC signature block, when present in the form body — Mailgun
+       Routes post the same ``timestamp``/``token``/``signature`` triple as its
+       event webhooks.
+    3. A shared token we put in the URL or a header. **SendGrid Inbound Parse
+       does not sign its requests at all**, so for that provider this is the
+       only thing that can authenticate a post.
+
+    Falls through to ``_missing_config`` when nothing is configured, so a
+    deployment that forgot to set a secret fails closed in production
+    (``webhooks_require_signing`` defaults to True) rather than quietly
+    accepting forged mail.
+    """
+    settings = get_settings()
+
+    expected_token = (settings.inbound_email_webhook_token or "").strip()
+    if expected_token:
+        for candidate in (token_header, token_query):
+            if candidate and hmac.compare_digest(candidate.strip(), expected_token):
+                return True
+
+    # Postmark inbound posts with the same Basic Auth credentials as its events.
+    if (settings.postmark_webhook_basic_auth or "").strip():
+        if authorization_header and verify_postmark_basic_auth(authorization_header):
+            return True
+
+    # Mailgun Routes carry a signature block in the form body.
+    if (settings.mailgun_webhook_signing_key or "").strip() and form_fields:
+        block = form_fields.get("signature")
+        if isinstance(block, str):
+            try:
+                block = json.loads(block)
+            except json.JSONDecodeError:
+                block = None
+        if not isinstance(block, dict):
+            block = {
+                "timestamp": form_fields.get("timestamp"),
+                "token": form_fields.get("token"),
+                "signature": form_fields.get("signature"),
+            }
+        if verify_mailgun_signature(
+            block.get("timestamp"), block.get("token"), block.get("signature")
+        ):
+            return True
+
+    if (
+        expected_token
+        or (settings.postmark_webhook_basic_auth or "").strip()
+        or (settings.mailgun_webhook_signing_key or "").strip()
+    ):
+        # Something was configured and none of it matched — a real rejection,
+        # not a missing-config situation.
+        logger.warning("Inbound email webhook rejected: no accepted credential matched")
+        return False
+
+    return _missing_config("Inbound")
 
 
 # ---------------------------------------------------------------------------

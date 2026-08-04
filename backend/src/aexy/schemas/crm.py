@@ -9,7 +9,11 @@ from pydantic import BaseModel, ConfigDict, Field
 # TYPE LITERALS
 # =============================================================================
 
-CRMObjectType = Literal["company", "person", "deal", "project", "custom"]
+# Must stay in step with `models.crm.CRMObjectType`. "lead" was missing here while
+# `seed_standard_objects` creates a Lead object, so every workspace that ran the
+# standard seed got a 500 on `GET /crm/objects` — the response model rejected a
+# row the service itself had written.
+CRMObjectType = Literal["company", "person", "deal", "lead", "project", "custom"]
 
 CRMAttributeType = Literal[
     "text", "textarea", "number", "currency", "date", "timestamp",

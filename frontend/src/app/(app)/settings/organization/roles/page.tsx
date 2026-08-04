@@ -4,23 +4,20 @@ import { getApiErrorMessage } from "@/lib/utils";
 import { useState } from "react";
 import Link from "next/link";
 import {
-  Building2,
   ChevronDown,
   ChevronRight,
-  Crown,
   Edit2,
   Plus,
   RefreshCw,
   Shield,
   Trash2,
-  Users,
-  Check,
-  X,
 } from "lucide-react";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import { useRoles, useRoleTemplates, usePermissionCatalog } from "@/hooks/useRoles";
 import { useAuth } from "@/hooks/useAuth";
 import { CustomRole, RoleTemplateInfo, PermissionInfo } from "@/lib/api";
+import { useTranslations } from "next-intl";
+import { SettingsPage } from "@/components/settings/SettingsPrimitives";
 
 function getRoleBadgeColor(roleName: string) {
   const name = roleName.toLowerCase();
@@ -336,6 +333,7 @@ function CreateRoleModal({
 }
 
 export default function RolesSettingsPage() {
+  const t = useTranslations("settingsRoles");
   const { user } = useAuth();
   const { currentWorkspaceId, currentWorkspace, currentWorkspaceLoading } = useWorkspace();
   const { members: workspaceMembers } = useWorkspaceMembers(currentWorkspaceId);
@@ -372,11 +370,11 @@ export default function RolesSettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Organization Roles</h1>
-        <p className="text-muted-foreground text-sm mt-1">Configure custom roles and permissions</p>
-      </div>
+    <SettingsPage
+      title={t("title")}
+      description={t("description")}
+      width="wide"
+    >
 
       <div>
         {/* Header */}
@@ -488,6 +486,6 @@ export default function RolesSettingsPage() {
           isCreating={isCreating}
         />
       )}
-    </div>
+    </SettingsPage>
   );
 }

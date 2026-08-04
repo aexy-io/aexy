@@ -1,0 +1,8 @@
+{
+  "settingsWebhooks": {
+    "title": "Webhooks",
+    "description": "Real-time notifications when events occur in your workspace.",
+    "add": "Add webhook",
+    "refresh": "Refresh"
+  }
+}

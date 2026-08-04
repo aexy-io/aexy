@@ -1,0 +1,10 @@
+{
+  "settingsIndex": {
+    "title": "Settings",
+    "description": "Configure your workspace, integrations, and account.",
+    "searchPlaceholder": "Search all settings…",
+    "clear": "Clear search",
+    "noMatches": "No settings match “{query}”.",
+    "matches": "{count, plural, one {# setting matches} other {# settings match}} “{query}”."
+  }
+}

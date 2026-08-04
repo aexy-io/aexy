@@ -3,18 +3,15 @@
 import { getApiErrorMessage } from "@/lib/utils";
 import { useState, useEffect, useCallback } from "react";
 import {
-  ShieldCheck,
   Crown,
   Loader2,
   AlertCircle,
   CheckCircle2,
   Copy,
-  ExternalLink,
   Trash2,
   Play,
   Power,
   PowerOff,
-  Plus,
   Info,
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
@@ -27,6 +24,11 @@ import {
   SSOProvider,
   SSOTestResult,
 } from "@/lib/api";
+import { useTranslations } from "next-intl";
+import {
+  SettingsPage,
+  SettingsSkeleton,
+} from "@/components/settings/SettingsPrimitives";
 
 function StatusBadge({ status }: { status: string }) {
   const config: Record<string, { color: string; label: string }> = {
@@ -338,6 +340,7 @@ function ConfigureForm({
 }
 
 export default function SSOSettingsPage() {
+  const t = useTranslations("settingsSso");
   const { currentWorkspace } = useWorkspace();
   const { isEnterprise } = useSubscription();
   const workspaceId = currentWorkspace?.id;
@@ -425,56 +428,30 @@ export default function SSOSettingsPage() {
     }
   };
 
-  if (!workspaceId || loading) {
-    return (
-      <div className="p-6 max-w-3xl mx-auto animate-pulse">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="h-6 w-6 bg-accent rounded" />
-          <div className="h-7 w-48 bg-accent rounded" />
-        </div>
-        <div className="h-4 w-80 bg-accent rounded mb-8" />
-        <div className="bg-accent/30 rounded-xl p-5 mb-6">
-          <div className="h-4 w-40 bg-accent rounded mb-3" />
-          <div className="grid grid-cols-2 gap-3">
-            <div className="h-10 bg-accent rounded" />
-            <div className="h-10 bg-accent rounded" />
-          </div>
-        </div>
-        <div className="bg-accent/30 rounded-xl p-6 space-y-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i}>
-              <div className="h-4 w-24 bg-accent rounded mb-2" />
-              <div className="h-10 bg-accent rounded-lg" />
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  if (!workspaceId || loading) return <SettingsSkeleton rows={3} />;
 
   if (!isEnterprise) {
     return (
-      <div className="p-6 max-w-3xl mx-auto">
-        <div className="text-center py-16">
+      <SettingsPage title={t("title")} description={t("description")}>
+        <div className="py-12 text-center">
           <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-amber-500/10 mb-6">
             <Crown className="h-8 w-8 text-amber-400" />
           </div>
-          <h2 className="text-xl font-semibold text-foreground mb-2">
-            Enterprise Feature
+          <h2 className="mb-2 text-lg font-semibold text-foreground">
+            {t("upsell.title")}
           </h2>
-          <p className="text-muted-foreground max-w-md mx-auto mb-6">
-            SSO/SAML authentication is available on Enterprise plans. Upgrade to enable
-            centralized identity management for your organization.
+          <p className="mx-auto mb-6 max-w-md text-sm text-muted-foreground">
+            {t("upsell.body")}
           </p>
           <a
             href="/settings/plans"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
           >
-            <Crown className="h-4 w-4" />
-            View Plans
+            <Crown className="h-4 w-4" aria-hidden />
+            {t("upsell.cta")}
           </a>
         </div>
-      </div>
+      </SettingsPage>
     );
   }
 
@@ -482,16 +459,7 @@ export default function SSOSettingsPage() {
   const metadataUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/api/auth/saml/metadata`;
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <ShieldCheck className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold text-foreground">Single Sign-On</h1>
-        </div>
-        <p className="text-muted-foreground">
-          Configure SAML 2.0 or OpenID Connect for centralized authentication.
-        </p>
-      </div>
+    <SettingsPage title={t("title")} description={t("description")}>
 
       {/* Service Provider Info */}
       <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-5 mb-6">
@@ -724,6 +692,6 @@ export default function SSOSettingsPage() {
           ))}
         </div>
       </div>
-    </div>
+    </SettingsPage>
   );
 }

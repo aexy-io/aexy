@@ -1,0 +1,8 @@
+{
+  "settingsFormBuilder": {
+    "breadcrumbParent": "Ticket Forms",
+    "fieldCount": "{count, plural, =0 {No fields yet} one {# field} other {# fields}}",
+    "copyUrl": "Copy public URL",
+    "preview": "Preview"
+  }
+}

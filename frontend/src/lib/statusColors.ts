@@ -258,3 +258,59 @@ export function normaliseStatusSlug(slug: string, known: string[]): string {
   if (known.length === 0 || known.includes(slug)) return slug;
   return STATUS_SLUG_ALIASES[slug]?.find((a) => known.includes(a)) ?? slug;
 }
+
+// ─── Service Desk ────────────────────────────────────────
+
+// Palette for stakeholder queues. Assigned by slug rather than listed per
+// stakeholder: the buckets are defined per workspace now, so a fixed map keyed on
+// `insurer`/`partner`/`kam` left every other company's queues unstyled. Ordered
+// so adjacent hues don't collide when a desk has many stakeholders.
+const STAKEHOLDER_PALETTE: StatusColor[] = [
+  { bg: "bg-purple-50 dark:bg-purple-900/30", text: "text-purple-600 dark:text-purple-400", dot: "bg-purple-500" },
+  { bg: "bg-blue-50 dark:bg-blue-900/30", text: "text-blue-600 dark:text-blue-400", dot: "bg-blue-500" },
+  { bg: "bg-amber-50 dark:bg-amber-900/30", text: "text-amber-600 dark:text-amber-400", dot: "bg-amber-500" },
+  { bg: "bg-cyan-50 dark:bg-cyan-900/30", text: "text-cyan-600 dark:text-cyan-400", dot: "bg-cyan-500" },
+  { bg: "bg-pink-50 dark:bg-pink-900/30", text: "text-pink-600 dark:text-pink-400", dot: "bg-pink-500" },
+  { bg: "bg-indigo-50 dark:bg-indigo-900/30", text: "text-indigo-600 dark:text-indigo-400", dot: "bg-indigo-500" },
+  { bg: "bg-teal-50 dark:bg-teal-900/30", text: "text-teal-600 dark:text-teal-400", dot: "bg-teal-500" },
+  { bg: "bg-fuchsia-50 dark:bg-fuchsia-900/30", text: "text-fuchsia-600 dark:text-fuchsia-400", dot: "bg-fuchsia-500" },
+];
+
+const TERMINAL_COLOR: StatusColor = {
+  bg: "bg-accent/50",
+  text: "text-muted-foreground",
+  dot: "bg-muted-foreground",
+};
+
+/**
+ * A stable colour for a stakeholder queue.
+ *
+ * Derived from the slug so the same bucket is the same colour on every page and
+ * across reloads, without anyone maintaining a colour per stakeholder. Terminal
+ * buckets are always muted — "closed" should recede, whatever it is called.
+ *
+ * Pass `position` when you have it (the workspace's own ordering) to spread
+ * colours evenly; the slug hash is the fallback for a slug with no row, which is
+ * what a retired stakeholder on an old ticket looks like.
+ */
+export function serviceDeskStakeholderColor(
+  slug: string,
+  opts?: { semantics?: string; position?: number },
+): StatusColor {
+  if (opts?.semantics === "closed") return TERMINAL_COLOR;
+  if (typeof opts?.position === "number") {
+    return STAKEHOLDER_PALETTE[opts.position % STAKEHOLDER_PALETTE.length];
+  }
+  let hash = 0;
+  for (let i = 0; i < slug.length; i++) hash = (hash * 31 + slug.charCodeAt(i)) | 0;
+  return STAKEHOLDER_PALETTE[Math.abs(hash) % STAKEHOLDER_PALETTE.length];
+}
+
+// Traffic-light for current-stage age. The thresholds themselves are per
+// workspace (breach_amber_days / breach_red_days) — the server decides which
+// band a ticket is in and sends the level.
+export const SERVICE_DESK_BREACH_COLORS: Record<string, StatusColor> = {
+  green: { bg: "bg-green-50 dark:bg-green-900/30", text: "text-green-600 dark:text-green-400", dot: "bg-green-500" },
+  amber: { bg: "bg-amber-50 dark:bg-amber-900/30", text: "text-amber-600 dark:text-amber-400", dot: "bg-amber-500" },
+  red: { bg: "bg-red-50 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400", dot: "bg-red-500" },
+};

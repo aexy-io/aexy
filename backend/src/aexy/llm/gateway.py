@@ -127,7 +127,12 @@ class LLMGateway:
         embeddings). Reuses the same Redis-backed limiter as text LLMs but
         keys by `provider_key` ("qwen-openrouter", "embeddings-ollama", …)
         so vision/embedding usage is tracked separately from chat.
+
+        Also the enforcement point for the workspace AI kill switch on these
+        paths: image understanding and embeddings are AI processing of the
+        workspace's own files, so "disable AI" has to stop them too.
         """
+        await self._ensure_ai_enabled(workspace_id)
         result = await self.rate_limiter.check_rate_limit(
             provider_key,
             tokens_estimate=tokens_estimate,
@@ -228,11 +233,78 @@ class LLMGateway:
         await self._record(vision.provider_name, used, workspace_id, developer_id)
         return result
 
+    # ─── Workspace AI governance ────────────────────────────────────────────
+    async def _workspace_ai(self, workspace_id: str):
+        """Load the workspace's resolved AI settings.
+
+        Deliberately a session of our own, never the caller's: a lookup on the
+        caller's session would autoflush their pending objects mid-analysis, and
+        a failed statement would poison their transaction.
+        """
+        from aexy.core.database import get_async_session
+        from aexy.services.workspace_ai_settings_service import resolve_ai_config
+
+        async with get_async_session() as session:
+            return await resolve_ai_config(session, workspace_id)
+
+    async def _ensure_ai_enabled(self, workspace_id: str | None) -> None:
+        """Raise if this workspace has switched AI off. No-op without context."""
+        if not workspace_id:
+            return
+        from aexy.services.workspace_ai_settings_service import AIDisabledError
+
+        if not (await self._workspace_ai(workspace_id)).enabled:
+            raise AIDisabledError(
+                f"AI is disabled for workspace {workspace_id} by its administrators"
+            )
+
+    async def _resolve_provider(self, workspace_id: str | None) -> LLMProvider:
+        """The provider this call must use, honouring the workspace's AI settings.
+
+        This is the single choke point for two workspace-level controls (see
+        ``models/workspace_ai_settings.py``): the AI kill switch, and a
+        bring-your-own provider/credential. Putting it here rather than at each
+        API entry point means Temporal activities, background jobs and webhooks
+        are covered by the same rule as HTTP requests — the switch says "no AI on
+        our data", and a switch that only guards screens would not deliver that.
+
+        ``workspace_id is None`` means the caller has no workspace context
+        (platform-level analysis), which keeps the previous behaviour exactly.
+
+        Raises:
+            AIDisabledError: when the workspace has AI switched off.
+        """
+        if not workspace_id:
+            return self.provider
+
+        from aexy.services.workspace_ai_settings_service import AIDisabledError
+
+        resolved = await self._workspace_ai(workspace_id)
+
+        if not resolved.enabled:
+            raise AIDisabledError(
+                f"AI is disabled for workspace {workspace_id} by its administrators"
+            )
+        if resolved.config is None:
+            return self.provider
+
+        try:
+            return _provider_for_config(resolved.config)
+        except Exception as exc:  # noqa: BLE001 — bad org config, not a bug here
+            if resolved.allow_platform_fallback:
+                logger.warning(
+                    "Workspace %s provider %s unusable (%s); falling back to the platform provider",
+                    workspace_id, resolved.config.provider, exc,
+                )
+                return self.provider
+            raise
+
     async def _check_rate_limit(
         self,
         tokens_estimate: int = 1000,
         workspace_id: str | None = None,
         developer_id: str | None = None,
+        provider_name: str | None = None,
     ) -> None:
         """Check rate limit and raise if exceeded.
 
@@ -240,12 +312,15 @@ class LLMGateway:
             tokens_estimate: Estimated tokens for this request.
             workspace_id: Optional workspace ID for workspace-level limits.
             developer_id: Optional developer ID for developer-level limits.
+            provider_name: The provider actually serving this call. Defaults to
+                the platform provider; a workspace using its own key must be
+                counted (and limited) under *its* provider, not ours.
 
         Raises:
             LLMRateLimitError: If rate limit is exceeded.
         """
         result = await self.rate_limiter.check_rate_limit(
-            self.provider.provider_name,
+            provider_name or self.provider.provider_name,
             tokens_estimate=tokens_estimate,
             workspace_id=workspace_id,
             developer_id=developer_id,
@@ -263,6 +338,7 @@ class LLMGateway:
         tokens_used: int,
         workspace_id: str | None = None,
         developer_id: str | None = None,
+        provider_name: str | None = None,
     ) -> None:
         """Record usage for rate limiting.
 
@@ -270,9 +346,12 @@ class LLMGateway:
             tokens_used: Number of tokens used.
             workspace_id: Optional workspace ID for workspace-level tracking.
             developer_id: Optional developer ID for developer-level tracking.
+            provider_name: The provider actually serving this call — must match
+                what ``_check_rate_limit`` counted against, or the bucket that
+                was checked and the bucket that was charged diverge.
         """
         await self.rate_limiter.record_request(
-            self.provider.provider_name,
+            provider_name or self.provider.provider_name,
             tokens_used=tokens_used,
             workspace_id=workspace_id,
             developer_id=developer_id,
@@ -440,6 +519,10 @@ class LLMGateway:
         Raises:
             LLMRateLimitError: If rate limit is exceeded.
         """
+        # Before the cache, not after: a workspace that switched AI off should
+        # get a hard stop, not a previously-generated answer.
+        provider = await self._resolve_provider(workspace_id)
+
         cache_key = None
 
         # Check cache first (no rate limit cost)
@@ -458,9 +541,10 @@ class LLMGateway:
                 tokens_estimate=1000,
                 workspace_id=workspace_id,
                 developer_id=developer_id,
+                provider_name=provider.provider_name,
             )
 
-        result = await self.provider.analyze(request)
+        result = await provider.analyze(request)
 
         # Record usage for rate limiting
         total_tokens = result.input_tokens + result.output_tokens
@@ -468,6 +552,7 @@ class LLMGateway:
             total_tokens,
             workspace_id=workspace_id,
             developer_id=developer_id,
+            provider_name=provider.provider_name,
         )
 
         # Track usage for billing (workspace_id enables per-org billing attribution)
@@ -563,6 +648,8 @@ class LLMGateway:
         Raises:
             LLMRateLimitError: If rate limit is exceeded.
         """
+        provider = await self._resolve_provider(workspace_id)
+
         cache_key = None
 
         if use_cache and self.cache:
@@ -577,15 +664,17 @@ class LLMGateway:
                 tokens_estimate=500,
                 workspace_id=workspace_id,
                 developer_id=developer_id,
+                provider_name=provider.provider_name,
             )
 
-        result = await self.provider.extract_task_signals(task_description)
+        result = await provider.extract_task_signals(task_description)
 
         # Record usage (estimate ~500 tokens)
         await self._record_rate_limit_usage(
             500,
             workspace_id=workspace_id,
             developer_id=developer_id,
+            provider_name=provider.provider_name,
         )
 
         if use_cache and self.cache and cache_key:
@@ -623,16 +712,21 @@ class LLMGateway:
         Raises:
             LLMRateLimitError: If rate limit is exceeded.
         """
+        # Workspace AI settings first: an org that disabled AI must not spend a
+        # rate-limit token, and one with its own key must not be billed ours.
+        provider = await self._resolve_provider(workspace_id)
+
         # Check rate limit
         if not skip_rate_limit:
             await self._check_rate_limit(
                 tokens_estimate=tokens_estimate,
                 workspace_id=workspace_id,
                 developer_id=developer_id,
+                provider_name=provider.provider_name,
             )
 
         # Call provider directly
-        result = await self.provider._call_api(system_prompt, user_prompt)
+        result = await provider._call_api(system_prompt, user_prompt)
 
         # Record usage for rate limiting + billing
         if isinstance(result, tuple) and len(result) >= 2:
@@ -643,6 +737,7 @@ class LLMGateway:
                 total_tokens,
                 workspace_id=workspace_id,
                 developer_id=developer_id,
+                provider_name=provider.provider_name,
             )
 
             # Track usage for billing
@@ -650,8 +745,8 @@ class LLMGateway:
                 billing_result = AnalysisResult(
                     summary=result[0][:100] if result else "",
                     confidence=1.0,
-                    provider=self.provider.__class__.__name__.lower().replace("provider", ""),
-                    model=getattr(self.provider, "model", "unknown"),
+                    provider=provider.__class__.__name__.lower().replace("provider", ""),
+                    model=getattr(provider, "model", "unknown"),
                     input_tokens=input_tokens,
                     output_tokens=output_tokens,
                 )
@@ -664,13 +759,13 @@ class LLMGateway:
                 )
 
             # Log prompt/completion for fine-tuning dataset
-            provider_name = self.provider.__class__.__name__.lower().replace("provider", "")
+            provider_name = provider.__class__.__name__.lower().replace("provider", "")
             await self._log_prompt(
                 db=db,
                 developer_id=developer_id,
                 workspace_id=workspace_id,
                 provider=provider_name,
-                model=getattr(self.provider, "model", "unknown"),
+                model=getattr(provider, "model", "unknown"),
                 operation="call_llm",
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
@@ -685,35 +780,42 @@ class LLMGateway:
         self,
         task_signals: TaskSignals,
         developer_skills: dict[str, Any],
+        workspace_id: str | None = None,
     ) -> MatchScore:
         """Score a developer-task match.
 
         Args:
             task_signals: Extracted task signals.
             developer_skills: Developer skill fingerprint.
+            workspace_id: Optional workspace context, so the workspace's AI
+                settings (kill switch, own provider) apply here too. Optional to
+                keep existing platform-level callers working unchanged.
 
         Returns:
             Match score.
         """
-        return await self.provider.score_match(task_signals, developer_skills)
+        provider = await self._resolve_provider(workspace_id)
+        return await provider.score_match(task_signals, developer_skills)
 
     async def rank_developers(
         self,
         task_signals: TaskSignals,
         developers: list[dict[str, Any]],
+        workspace_id: str | None = None,
     ) -> list[MatchScore]:
         """Rank multiple developers for a task.
 
         Args:
             task_signals: Extracted task signals.
             developers: List of developer skill profiles.
+            workspace_id: Optional workspace context (see ``score_match``).
 
         Returns:
             Ranked list of match scores.
         """
         scores = []
         for developer in developers:
-            score = await self.score_match(task_signals, developer)
+            score = await self.score_match(task_signals, developer, workspace_id=workspace_id)
             scores.append(score)
 
         # Sort by overall score descending
@@ -803,6 +905,44 @@ def create_provider(config: LLMConfig) -> LLMProvider:
 
     else:
         raise ValueError(f"Unsupported LLM provider: {config.provider}")
+
+
+# Provider instances built from *workspace* configs, keyed by a fingerprint of
+# the config. Every provider owns an httpx.AsyncClient, so constructing one per
+# LLM call would open a fresh connection pool per call and leak sockets under
+# load. Bounded and cleared wholesale rather than LRU-evicted: the working set is
+# "one per workspace that configured its own key", which is small, and a rare
+# full flush only costs a reconnect.
+_workspace_providers: dict[str, LLMProvider] = {}
+_WORKSPACE_PROVIDER_CACHE_MAX = 128
+
+
+def _config_fingerprint(config: LLMConfig) -> str:
+    """Stable key for a config. Includes the key so rotation takes effect."""
+    material = "|".join(
+        str(x)
+        for x in (
+            config.provider,
+            config.model,
+            config.base_url or "",
+            config.api_key or "",
+            config.max_tokens,
+        )
+    )
+    return hashlib.sha256(material.encode("utf-8")).hexdigest()
+
+
+def _provider_for_config(config: LLMConfig) -> LLMProvider:
+    """Get (or build) the cached provider instance for a workspace config."""
+    key = _config_fingerprint(config)
+    cached = _workspace_providers.get(key)
+    if cached is not None:
+        return cached
+    provider = create_provider(config)
+    if len(_workspace_providers) >= _WORKSPACE_PROVIDER_CACHE_MAX:
+        _workspace_providers.clear()
+    _workspace_providers[key] = provider
+    return provider
 
 
 _llm_gateway_instance: LLMGateway | None = None

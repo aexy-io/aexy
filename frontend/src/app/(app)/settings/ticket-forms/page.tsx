@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import {
   Plus,
   Ticket,
-  Settings,
   Copy,
   Trash2,
   ExternalLink,
@@ -35,6 +34,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useTicketForms, useTicketFormTemplates } from "@/hooks/useTicketing";
 import { TicketFormTemplateType, FormTemplate } from "@/lib/api";
+import { useTranslations } from "next-intl";
+import { SettingsPage } from "@/components/settings/SettingsPrimitives";
 
 // Maps the icon *name* returned by the templates API to a lucide component.
 // The picker is data-driven off the API, so any new backend template renders
@@ -251,6 +252,7 @@ function FormRow({ form, onDuplicate, onDelete, isDuplicating, isDeleting, templ
 }
 
 export default function TicketFormsPage() {
+  const t = useTranslations("settingsTicketForms");
   const router = useRouter();
   const { user } = useAuth();
   const { currentWorkspace, currentWorkspaceId } = useWorkspace();
@@ -338,24 +340,20 @@ export default function TicketFormsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Ticket Forms</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Create and manage public forms for collecting tickets
-          </p>
-        </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition"
-          >
-            <Plus className="h-4 w-4" />
-            Create Form
-          </button>
-        </div>
-
-
+    <SettingsPage
+      title={t("title")}
+      description={t("description")}
+      width="wide"
+      actions={
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+        >
+          <Plus className="h-4 w-4" aria-hidden />
+          {t("create")}
+        </button>
+      }
+    >
       {/* Forms List */}
       <div>
         {forms.length === 0 ? (
@@ -505,6 +503,6 @@ export default function TicketFormsPage() {
           </div>
         </div>
       )}
-    </div>
+    </SettingsPage>
   );
 }

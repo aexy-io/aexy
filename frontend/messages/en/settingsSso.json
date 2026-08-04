@@ -1,0 +1,11 @@
+{
+  "settingsSso": {
+    "title": "Single sign-on",
+    "description": "SAML 2.0 or OpenID Connect for centralised authentication.",
+    "upsell": {
+      "title": "Enterprise feature",
+      "body": "SSO is available on Enterprise plans. Upgrade to manage identity centrally for your organisation.",
+      "cta": "View plans"
+    }
+  }
+}

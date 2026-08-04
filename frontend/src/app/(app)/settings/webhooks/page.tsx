@@ -27,6 +27,8 @@ import { PremiumGate } from "@/components/PremiumGate";
 import { useBookingWebhooks, useBookingWebhookEvents } from "@/hooks/useWebhooks";
 import { webhooksApi, BookingWebhook } from "@/lib/api";
 import { formatDistanceToNow } from "date-fns";
+import { useTranslations } from "next-intl";
+import { SettingsPage } from "@/components/settings/SettingsPrimitives";
 
 function StatusBadge({ webhook }: { webhook: BookingWebhook }) {
   if (!webhook.is_active) {
@@ -333,6 +335,7 @@ function CreateWebhookForm({
 }
 
 export default function WebhooksSettingsPage() {
+  const t = useTranslations("settingsWebhooks");
   const { currentWorkspaceId } = useWorkspace();
   const {
     webhooks,
@@ -407,32 +410,29 @@ export default function WebhooksSettingsPage() {
 
   return (
     <PremiumGate feature="webhooks">
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Webhooks</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Receive real-time notifications when events occur in your workspace
-          </p>
-        </div>
+      <SettingsPage
+        title={t("title")}
+        description={t("description")}
+        width="wide"
+        actions={
         <div className="flex items-center gap-2">
           <button
             onClick={() => refetch()}
             className="flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-lg text-foreground hover:bg-accent transition text-sm"
           >
-            <RefreshCw className="h-4 w-4" />
-            Refresh
+            <RefreshCw className="h-4 w-4" aria-hidden />
+            {t("refresh")}
           </button>
           <button
             onClick={() => setShowCreate(true)}
             className="flex items-center gap-2 px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition"
           >
-            <Plus className="h-4 w-4" />
-            Add Webhook
+            <Plus className="h-4 w-4" aria-hidden />
+            {t("add")}
           </button>
         </div>
-      </div>
-
+        }
+      >
       {/* Test result toast */}
       {testResult && (
         <div
@@ -541,7 +541,7 @@ const valid = crypto.timingSafeEqual(
 );`}</code>
         </div>
       </div>
-    </div>
+      </SettingsPage>
     </PremiumGate>
   );
 }

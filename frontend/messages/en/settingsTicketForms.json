@@ -1,0 +1,7 @@
+{
+  "settingsTicketForms": {
+    "title": "Ticket forms",
+    "description": "Public forms that collect structured information when a ticket is submitted.",
+    "create": "Create form"
+  }
+}
