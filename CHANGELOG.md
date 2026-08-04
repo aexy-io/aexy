@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.14.0] - 2026-08-04
 
+### Feature: sending pools have a UI
+
+The pool endpoints had no client code at all, so a pool could only be created with
+curl — which is why the routing they drive stayed broken without anyone noticing.
+
+A **Pools** tab on Settings → Email Infrastructure creates a pool, picks its
+strategy, and manages its member domains. Two details it gets right rather than
+showing everything unconditionally: a new pool starts with every verified domain
+already in it, because a pool with no members routes nothing; and the per-member
+knob shown follows the strategy — `weight` only means something under *Weighted*,
+`priority` only under *Failover*. Each strategy explains what it does, since
+"health_based" is not self-evident. Members show whether they can currently send
+and how much of today's limit they have used, so a pool that looks full but
+cannot route is visibly so.
+
+Two endpoints were missing and are added: `PATCH /pools/{id}` (used by the
+strategy dropdown and *Make default*) and `DELETE /pools/{id}`, which refuses
+while an unfinished campaign still routes through the pool and says how many —
+a campaign's `sending_pool_id` FKs only to `sending_pools.id`, so deleting the
+pool beneath it would leave it pointing at nothing and quietly fall back to the
+platform mailer. A sent campaign does not pin a pool forever; only unfinished
+sends do.
+
+The campaign wizard offers a pool when one exists, and says plainly that picking
+one means the From Email above will not be used — the pool takes the address from
+whichever domain it routes to.
+
 ### Fix: sending-pool routing, which could never have run
 
 A sending pool spreads a campaign across several domains, picking the healthiest

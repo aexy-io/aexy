@@ -14511,8 +14511,21 @@ export type EmailTemplateCategory = "general" | "marketing" | "onboarding" | "re
 export type CampaignStatus = "draft" | "scheduled" | "sending" | "sent" | "paused" | "cancelled" | "completed";
 export type CampaignType = "one_time" | "recurring" | "triggered";
 export type RecipientStatus = "pending" | "sent" | "delivered" | "opened" | "clicked" | "bounced" | "failed" | "unsubscribed" | "complained";
-export type DomainStatus = "pending" | "verified" | "failed" | "suspended";
-export type WarmingStatus = "not_started" | "in_progress" | "completed" | "paused";
+/**
+ * Mirrors the backend `DomainStatus` enum. `verifying`, `warming`, `active` and
+ * `paused` were missing, which is how the campaign detail page came to test for
+ * statuses this union did not contain — two of its three arms were unreachable.
+ */
+export type DomainStatus =
+  | "pending"
+  | "verifying"
+  | "verified"
+  | "failed"
+  | "paused"
+  | "warming"
+  | "active";
+export type WarmingStatus = "not_started" | "in_progress" | "completed" | "paused" | "failed";
+export type RoutingStrategy = "round_robin" | "weighted" | "health_based" | "failover";
 
 export interface EmailTemplate {
   id: string;
@@ -14632,6 +14645,10 @@ export interface EmailCampaignCreate {
   list_id?: string;
   audience_filters?: FilterCondition[];
   recipient_emails?: string[];  // For manual upload list
+  /** Route through a pool: the chosen domain's identity supplies the From. */
+  sending_pool_id?: string;
+  /** Or pin one address. Mutually exclusive with `sending_pool_id`. */
+  sending_identity_id?: string;
 }
 
 export interface EmailCampaignUpdate {
@@ -14759,6 +14776,45 @@ export interface EmailProvider {
   last_error?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface SendingPoolMember {
+  id: string;
+  pool_id: string;
+  domain_id: string;
+  /** Share of traffic under the `weighted` strategy. */
+  weight: number;
+  /** Order tried under `failover`; lower goes first. */
+  priority: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface SendingPool {
+  id: string;
+  workspace_id: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  is_default: boolean;
+  routing_strategy: RoutingStrategy;
+  settings: Record<string, unknown>;
+  members: SendingPoolMember[];
+  created_at: string;
+  updated_at: string;
+}
+
+/** What `GET /pools` returns — a count instead of the member rows. */
+export interface SendingPoolSummary {
+  id: string;
+  workspace_id: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  is_default: boolean;
+  routing_strategy: RoutingStrategy;
+  member_count: number;
+  created_at: string;
 }
 
 export interface VisualBlock {
@@ -15150,6 +15206,72 @@ export const emailInfrastructureApi = {
     test: async (workspaceId: string, providerId: string): Promise<{ success: boolean; message: string }> => {
       const response = await api.post(`/workspaces/${workspaceId}/email-infrastructure/providers/${providerId}/test`);
       return response.data;
+    },
+  },
+
+  // Sending pools. The endpoints have existed since the multi-domain
+  // infrastructure landed; nothing on the client had ever called them, so a pool
+  // could only be created with curl.
+  pools: {
+    list: async (workspaceId: string): Promise<SendingPoolSummary[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/email-infrastructure/pools`);
+      return response.data;
+    },
+
+    get: async (workspaceId: string, poolId: string): Promise<SendingPool> => {
+      const response = await api.get(`/workspaces/${workspaceId}/email-infrastructure/pools/${poolId}`);
+      return response.data;
+    },
+
+    create: async (
+      workspaceId: string,
+      data: {
+        name: string;
+        description?: string;
+        routing_strategy?: RoutingStrategy;
+        is_default?: boolean;
+        members?: { domain_id: string; weight?: number; priority?: number }[];
+      }
+    ): Promise<SendingPool> => {
+      const response = await api.post(`/workspaces/${workspaceId}/email-infrastructure/pools`, data);
+      return response.data;
+    },
+
+    update: async (
+      workspaceId: string,
+      poolId: string,
+      data: {
+        name?: string;
+        description?: string;
+        routing_strategy?: RoutingStrategy;
+        is_active?: boolean;
+        is_default?: boolean;
+      }
+    ): Promise<SendingPool> => {
+      const response = await api.patch(`/workspaces/${workspaceId}/email-infrastructure/pools/${poolId}`, data);
+      return response.data;
+    },
+
+    delete: async (workspaceId: string, poolId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/email-infrastructure/pools/${poolId}`);
+    },
+
+    addMember: async (
+      workspaceId: string,
+      poolId: string,
+      data: { domain_id: string; weight?: number; priority?: number }
+    ): Promise<SendingPoolMember> => {
+      const response = await api.post(
+        `/workspaces/${workspaceId}/email-infrastructure/pools/${poolId}/members`,
+        data
+      );
+      return response.data;
+    },
+
+    removeMember: async (workspaceId: string, poolId: string, domainId: string): Promise<void> => {
+      await api.delete(
+        `/workspaces/${workspaceId}/email-infrastructure/pools/${poolId}/members/${domainId}`
+      );
     },
   },
 };

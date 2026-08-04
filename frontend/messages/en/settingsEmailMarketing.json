@@ -1,7 +1,7 @@
 {
   "settingsEmailMarketing": {
     "title": "Email Infrastructure",
-    "description": "Sending domains, providers and subscription categories for outbound email.",
+    "description": "Sending domains, providers, pools and subscription categories for outbound email.",
     "tabsLabel": "Email infrastructure sections",
     "noWorkspace": "No workspace selected",
     "noWorkspaceDetail": "Pick a workspace to manage its email infrastructure.",
@@ -20,6 +20,52 @@
       "add": "Add provider",
       "emptyTitle": "No email providers",
       "emptyDetail": "A provider is what actually delivers the mail. Without one, campaigns cannot send."
+    },
+    "pools": {
+      "tab": "Pools",
+      "description": "Pools spread a campaign across several domains, so one domain's reputation can't sink the whole send.",
+      "add": "New pool",
+      "newPool": "New sending pool",
+      "name": "Name",
+      "namePlaceholder": "Marketing, Transactional…",
+      "strategy": "Routing strategy",
+      "create": "Create pool",
+      "cancel": "Cancel",
+      "delete": "Delete pool",
+      "confirmDelete": "Delete",
+      "makeDefault": "Make default",
+      "default": "Default",
+      "memberCount": "{count, plural, =0 {no domains} one {# domain} other {# domains}}",
+      "emptyTitle": "No sending pools",
+      "emptyDetail": "Without a pool a campaign sends from the single domain its From address belongs to. A pool lets it use several, chosen per recipient.",
+      "noVerifiedYet": "You have no verified domains yet, so this pool will start empty and route nothing.",
+      "noMembers": "No domains in this pool — it can't route anything yet.",
+      "addMember": "Add domain",
+      "removeMember": "Remove from pool",
+      "chooseDomain": "Choose a domain…",
+      "allAdded": "Every verified domain is already in this pool.",
+      "needVerifiedDomain": "Verify a domain before adding it to a pool.",
+      "weightIs": "weight {weight}",
+      "priorityIs": "priority {priority}",
+      "usage": "{sent}/{limit} today",
+      "strategies": {
+        "health_based": {
+          "label": "Healthiest first",
+          "detail": "Picks the domain with the best reputation and most headroom, favouring one the recipient's provider already trusts."
+        },
+        "round_robin": {
+          "label": "Round robin",
+          "detail": "Spreads volume evenly by sending from whichever domain has sent least today."
+        },
+        "weighted": {
+          "label": "Weighted",
+          "detail": "Splits traffic by each member's weight — useful while warming a new domain alongside an established one."
+        },
+        "failover": {
+          "label": "Failover",
+          "detail": "Always uses the highest-priority domain, dropping to the next only when it can't send."
+        }
+      }
     },
     "categories": {
       "tab": "Categories",

@@ -936,6 +936,61 @@ async def add_pool_member(
         )
 
 
+@router.patch("/pools/{pool_id}", response_model=SendingPoolResponse)
+async def update_pool(
+    workspace_id: str,
+    pool_id: str,
+    data: SendingPoolUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: Developer = Depends(get_current_developer),
+):
+    """Update a sending pool's name, strategy or flags."""
+    await check_workspace_permission(db, workspace_id, current_user.id, "admin")
+
+    service = RoutingService(db)
+    pool = await service.update_pool(pool_id, workspace_id, **data.model_dump(exclude_unset=True))
+    if not pool:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pool not found")
+
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+    from aexy.models.email_infrastructure import SendingPool
+
+    # Same eager load as create and get: serializing `members` on an async session
+    # without it raises MissingGreenlet.
+    result = await db.execute(
+        select(SendingPool)
+        .options(selectinload(SendingPool.members))
+        .where(SendingPool.id == pool_id)
+    )
+    return result.scalar_one()
+
+
+@router.delete("/pools/{pool_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_pool(
+    workspace_id: str,
+    pool_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: Developer = Depends(get_current_developer),
+):
+    """Delete a sending pool.
+
+    Refused while an unfinished campaign still routes through it: a campaign's
+    `sending_pool_id` FKs only to `sending_pools.id`, so deleting the pool would
+    leave it pointing at nothing and quietly fall back to the platform mailer.
+    """
+    await check_workspace_permission(db, workspace_id, current_user.id, "admin")
+
+    service = RoutingService(db)
+    try:
+        deleted = await service.delete_pool(pool_id, workspace_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pool not found")
+
+
 @router.delete("/pools/{pool_id}/members/{domain_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def remove_pool_member(
     workspace_id: str,

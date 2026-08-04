@@ -1,7 +1,7 @@
 {
   "settingsEmailMarketing": {
     "title": "ईमेल इंफ्रास्ट्रक्चर",
-    "description": "आउटबाउंड ईमेल के लिए sending domains, providers और subscription categories।",
+    "description": "आउटबाउंड ईमेल के लिए sending domains, providers, pools और subscription categories।",
     "tabsLabel": "ईमेल इंफ्रास्ट्रक्चर सेक्शन",
     "noWorkspace": "कोई workspace चुना नहीं गया",
     "noWorkspaceDetail": "ईमेल इंफ्रास्ट्रक्चर प्रबंधित करने के लिए एक workspace चुनें।",
@@ -20,6 +20,52 @@
       "add": "Provider जोड़ें",
       "emptyTitle": "कोई ईमेल provider नहीं",
       "emptyDetail": "मेल वास्तव में provider ही पहुँचाता है। इसके बिना campaigns नहीं भेजे जा सकते।"
+    },
+    "pools": {
+      "tab": "Pools",
+      "description": "Pool एक campaign को कई domains में बाँटते हैं, ताकि किसी एक domain की प्रतिष्ठा पूरे send को न डुबाए।",
+      "add": "नया pool",
+      "newPool": "नया sending pool",
+      "name": "नाम",
+      "namePlaceholder": "Marketing, Transactional…",
+      "strategy": "Routing रणनीति",
+      "create": "Pool बनाएँ",
+      "cancel": "रद्द करें",
+      "delete": "Pool मिटाएँ",
+      "confirmDelete": "मिटाएँ",
+      "makeDefault": "डिफ़ॉल्ट बनाएँ",
+      "default": "डिफ़ॉल्ट",
+      "memberCount": "{count, plural, =0 {कोई domain नहीं} one {# domain} other {# domains}}",
+      "emptyTitle": "कोई sending pool नहीं",
+      "emptyDetail": "Pool के बिना campaign उसी एक domain से जाता है जिससे From पता जुड़ा है। Pool से वह कई domains उपयोग कर सकता है, हर प्राप्तकर्ता के लिए चुने हुए।",
+      "noVerifiedYet": "अभी कोई सत्यापित domain नहीं है, इसलिए यह pool खाली रहेगा और कुछ route नहीं करेगा।",
+      "noMembers": "इस pool में कोई domain नहीं — यह अभी कुछ route नहीं कर सकता।",
+      "addMember": "Domain जोड़ें",
+      "removeMember": "Pool से हटाएँ",
+      "chooseDomain": "Domain चुनें…",
+      "allAdded": "हर सत्यापित domain पहले से इस pool में है।",
+      "needVerifiedDomain": "Pool में जोड़ने से पहले domain सत्यापित करें।",
+      "weightIs": "weight {weight}",
+      "priorityIs": "priority {priority}",
+      "usage": "आज {sent}/{limit}",
+      "strategies": {
+        "health_based": {
+          "label": "सबसे स्वस्थ पहले",
+          "detail": "सबसे अच्छी प्रतिष्ठा और सबसे ज़्यादा गुंजाइश वाला domain चुनता है, और जिसे प्राप्तकर्ता का provider पहले से भरोसा करता है उसे प्राथमिकता देता है।"
+        },
+        "round_robin": {
+          "label": "Round robin",
+          "detail": "जिस domain ने आज सबसे कम भेजा है उससे भेजकर मात्रा बराबर बाँटता है।"
+        },
+        "weighted": {
+          "label": "Weighted",
+          "detail": "हर सदस्य के weight के अनुसार ट्रैफ़िक बाँटता है — नए domain को पुराने के साथ warm करते समय उपयोगी।"
+        },
+        "failover": {
+          "label": "Failover",
+          "detail": "सर्वोच्च priority वाला domain हमेशा उपयोग करता है, और जब वह न भेज सके तभी अगले पर जाता है।"
+        }
+      }
     },
     "categories": {
       "tab": "श्रेणियाँ",

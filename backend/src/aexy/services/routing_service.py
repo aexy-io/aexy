@@ -5,7 +5,7 @@ import random
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
@@ -630,6 +630,59 @@ class RoutingService:
         await self.db.refresh(member)
 
         return member
+
+    async def update_pool(
+        self,
+        pool_id: str,
+        workspace_id: str,
+        **fields,
+    ) -> SendingPool | None:
+        """Update a pool's name, description, strategy or active/default flags."""
+        pool = await self._get_pool(pool_id, workspace_id)
+        if not pool:
+            return None
+
+        for key, value in fields.items():
+            if value is not None:
+                setattr(pool, key, value)
+
+        await self.db.commit()
+        await self.db.refresh(pool)
+        return pool
+
+    async def delete_pool(self, pool_id: str, workspace_id: str) -> bool:
+        """Delete a pool, refusing while a campaign still routes through it.
+
+        Members go with it (`cascade="all, delete-orphan"`), but a campaign's
+        `sending_pool_id` only FKs to `sending_pools.id`, so deleting a pool out
+        from under a campaign would leave it pointing at nothing and silently fall
+        back to the platform mailer at send time.
+        """
+        from aexy.models.email_marketing import CampaignStatus, EmailCampaign
+
+        pool = await self._get_pool(pool_id, workspace_id)
+        if not pool:
+            return False
+
+        in_use = (
+            await self.db.execute(
+                select(func.count(EmailCampaign.id)).where(
+                    EmailCampaign.sending_pool_id == pool_id,
+                    EmailCampaign.status.notin_(
+                        [CampaignStatus.SENT.value, CampaignStatus.CANCELLED.value]
+                    ),
+                )
+            )
+        ).scalar() or 0
+        if in_use:
+            raise ValueError(
+                f"{in_use} campaign(s) still send through '{pool.name}' — "
+                "point them elsewhere first"
+            )
+
+        await self.db.delete(pool)
+        await self.db.commit()
+        return True
 
     async def remove_domain_from_pool(
         self,

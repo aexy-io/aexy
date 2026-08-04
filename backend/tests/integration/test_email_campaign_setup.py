@@ -442,6 +442,58 @@ async def test_identity_mode_checks_the_identity_not_from_email(db_session, ws):
 
 
 @pytest.mark.asyncio
+async def test_deleting_a_pool_is_refused_while_a_campaign_uses_it(db_session, ws):
+    """A campaign's `sending_pool_id` FKs only to `sending_pools.id`.
+
+    Deleting the pool underneath it would leave the campaign pointing at nothing
+    and silently fall back to the platform mailer at send time.
+    """
+    pool = _pool(ws.id, name="Marketing")
+    db_session.add(pool)
+    await db_session.flush()
+    await _campaign_with_template(db_session, ws.id, sending_pool_id=pool.id)
+
+    svc = RoutingService(db_session)
+    with pytest.raises(ValueError, match="still send through 'Marketing'"):
+        await svc.delete_pool(pool.id, ws.id)
+
+
+@pytest.mark.asyncio
+async def test_a_pool_can_be_deleted_once_nothing_routes_through_it(db_session, ws):
+    pool = _pool(ws.id, name="Marketing")
+    d = _domain(ws.id, DomainStatus.VERIFIED.value, domain="one.com")
+    db_session.add_all([pool, d])
+    await db_session.flush()
+    db_session.add(_member(pool.id, d.id))
+    c = await _campaign_with_template(db_session, ws.id, sending_pool_id=pool.id)
+
+    # Point the campaign away, exactly as the UI's "clear routing" does.
+    await CampaignService(db_session).update_routing(c.id, ws.id, RoutingConfigUpdate())
+
+    assert await RoutingService(db_session).delete_pool(pool.id, ws.id) is True
+    # Members go with it via cascade.
+    remaining = (
+        await db_session.execute(
+            select(SendingPoolMember).where(SendingPoolMember.pool_id == pool.id)
+        )
+    ).scalars().all()
+    assert remaining == []
+
+
+@pytest.mark.asyncio
+async def test_a_sent_campaign_does_not_block_deleting_its_pool(db_session, ws):
+    """History should not pin a pool forever — only unfinished sends do."""
+    pool = _pool(ws.id, name="Old")
+    db_session.add(pool)
+    await db_session.flush()
+    await _campaign_with_template(
+        db_session, ws.id, sending_pool_id=pool.id, status=CampaignStatus.SENT.value
+    )
+
+    assert await RoutingService(db_session).delete_pool(pool.id, ws.id) is True
+
+
+@pytest.mark.asyncio
 async def test_update_routing_preserves_unrelated_routing_config(db_session, ws):
     """`fallback_enabled` is read by the send path and is not in this schema."""
     pool = _pool(ws.id)

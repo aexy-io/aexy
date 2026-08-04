@@ -19,7 +19,12 @@ import {
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAuth } from "@/hooks/useAuth";
-import { useEmailTemplates, useEmailCampaigns, useSubscriptionCategories } from "@/hooks/useEmailMarketing";
+import {
+  useEmailTemplates,
+  useEmailCampaigns,
+  useSendingPools,
+  useSubscriptionCategories,
+} from "@/hooks/useEmailMarketing";
 import { useEmailMarketingSetup } from "@/hooks/useEmailMarketingSetup";
 import { SenderNotReadyBanner } from "@/components/email-marketing/EmailMarketingSetup";
 import { EmailCampaignCreate, CampaignType, FilterCondition } from "@/lib/api";
@@ -57,11 +62,13 @@ export default function NewCampaignPage() {
   const [audienceType, setAudienceType] = useState<"all" | "segment" | "list">("all");
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [emailListText, setEmailListText] = useState("");
+  const [sendingPoolId, setSendingPoolId] = useState("");
 
   const { templates, isLoading: templatesLoading } = useEmailTemplates(workspaceId);
   const { createCampaign } = useEmailCampaigns(workspaceId);
   const { categories, isLoading: categoriesLoading } = useSubscriptionCategories(workspaceId);
   const setup = useEmailMarketingSetup(workspaceId);
+  const { pools } = useSendingPools(workspaceId);
 
   // Addresses that can actually send: the backend resolves the campaign's
   // from_email to one of these domains and refuses the send if it can't, so
@@ -120,6 +127,7 @@ export default function NewCampaignPage() {
         scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
         audience_filters: audienceFilters,
         recipient_emails: recipientEmails,
+        sending_pool_id: sendingPoolId || undefined,
       };
 
       const campaign = await createCampaign(data);
@@ -339,6 +347,37 @@ export default function NewCampaignPage() {
                     ) : null}
                   </div>
                 </div>
+
+                {/* Only when there is something to choose. A pool routes each
+                    recipient to the healthiest of several domains and takes the
+                    From address from the one it picks, so it overrides the field
+                    above — which is why picking one says so rather than leaving
+                    two contradictory settings on screen. */}
+                {pools.length > 0 && (
+                  <div>
+                    <label className="block text-sm text-muted-foreground mb-2">
+                      Sending pool <span className="text-muted-foreground/60">(optional)</span>
+                    </label>
+                    <select
+                      value={sendingPoolId}
+                      onChange={(e) => setSendingPoolId(e.target.value)}
+                      className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    >
+                      <option value="">Send from the address above</option>
+                      {pools.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} · {p.member_count} domain{p.member_count === 1 ? "" : "s"}
+                        </option>
+                      ))}
+                    </select>
+                    {sendingPoolId && (
+                      <p className="mt-1.5 text-xs text-muted-foreground">
+                        The pool picks a domain per recipient and sends from that
+                        domain&apos;s address, so From Email above won&apos;t be used.
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm text-muted-foreground mb-2">Campaign Type</label>
