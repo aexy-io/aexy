@@ -1294,6 +1294,29 @@ async def notify_campaign_scheduled(
     )
 
 
+async def notify_campaign_send_blocked(
+    db: AsyncSession,
+    creator_id: str,
+    campaign_name: str,
+    reason: str,
+    workspace_id: str,
+    campaign_id: str,
+) -> Notification | None:
+    """Notify the creator that a due campaign couldn't send, and why."""
+    service = NotificationService(db)
+    return await service.create_notification_from_event(
+        recipient_id=creator_id,
+        event_type=NotificationEventType.CAMPAIGN_SEND_BLOCKED,
+        context={
+            "campaign_name": campaign_name,
+            "reason": reason,
+            "workspace_id": workspace_id,
+            # Straight to the campaign, since fixing it is the point.
+            "action_url": f"/email-marketing/campaigns/{campaign_id}",
+        },
+    )
+
+
 async def notify_campaign_completed(
     db: AsyncSession,
     creator_id: str,

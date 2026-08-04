@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
@@ -504,12 +504,33 @@ class DomainService:
 
         Says nothing about whether the domain may *send*; that is ``can_send``.
         """
-        result = await self.db.execute(
-            select(SendingDomain).where(SendingDomain.workspace_id == workspace_id)
-        )
-        candidates = list(result.scalars().all())
+        _, _, email_domain = email.rpartition("@")
+        if not email_domain:
+            return None
+        email_domain = email_domain.lower()
 
-        matches = [d for d in candidates if self.email_matches_domain(email, d)]
+        # Narrowed in SQL rather than filtered in Python over every domain the
+        # workspace owns. This runs once per recipient — each campaign send is its
+        # own Temporal activity with its own session, so there is no loop to cache
+        # in — and a workspace with fifty domains was shipping fifty rows per
+        # recipient to discard forty-nine.
+        #
+        # The predicate narrows; `email_matches_domain` still decides, so there is
+        # one authoritative rule and this cannot drift into disagreeing with the
+        # identity-creation path that shares it. `subdomain || '.' || domain` is
+        # NULL when there is no subdomain, which simply fails to match — the apex
+        # arm covers that row.
+        result = await self.db.execute(
+            select(SendingDomain).where(
+                SendingDomain.workspace_id == workspace_id,
+                or_(
+                    func.lower(SendingDomain.domain) == email_domain,
+                    func.lower(SendingDomain.subdomain + "." + SendingDomain.domain)
+                    == email_domain,
+                ),
+            )
+        )
+        matches = [d for d in result.scalars().all() if self.email_matches_domain(email, d)]
         if not matches:
             return None
 
@@ -519,9 +540,6 @@ class DomainService:
         # both match `hi@mail.acme.com`. Prefer the exact one (it is the row whose
         # DNS was actually verified for that name), then one that can send, then
         # the workspace default.
-        _, _, email_domain = email.rpartition("@")
-        email_domain = email_domain.lower()
-
         def rank(d: SendingDomain) -> tuple[bool, bool, bool]:
             # A row whose own `domain` *is* the address's domain owns that name
             # outright; a parent row only covers it through its `subdomain` field,

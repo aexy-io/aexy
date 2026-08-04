@@ -274,6 +274,10 @@ class EmailCampaignListResponse(BaseModel):
     open_count: int
     click_count: int
     created_at: datetime
+    # On the list too, not just the detail payload: a scheduled campaign that
+    # cannot send is exactly the row someone needs to spot without opening it.
+    # Cheap — it is a column, unlike `sender`, which costs a domain lookup.
+    last_error: str | None = None
 
 
 class CampaignScheduleRequest(BaseModel):

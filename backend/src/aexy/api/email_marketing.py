@@ -9,6 +9,7 @@ from aexy.api.developers import get_current_developer
 from aexy.models.developer import Developer
 from aexy.services.template_service import TemplateService
 from aexy.services.campaign_service import CampaignService
+from aexy.services.email_campaign_service import EmailCampaignService
 from aexy.services.provider_service import ProviderService
 from aexy.services.workspace_service import WorkspaceService
 from aexy.services.activity_logger import log_activity
@@ -764,7 +765,7 @@ async def send_test_email(
     # moment the real campaign ran.
     # Pool-routed campaigns resolve through the pool, so a test on one proves the
     # pool has a usable member — which is the thing that would fail for real.
-    sender_domain, sender_problem = await campaign_service.resolve_campaign_sender(campaign)
+    _, sender_problem = await campaign_service.resolve_campaign_sender(campaign)
     if sender_problem:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -780,29 +781,41 @@ async def send_test_email(
     )
 
     provider_service = ProviderService(db)
-    provider_id = sender_domain.provider_id if sender_domain else None
-    if not provider_id:
-        default_provider = await provider_service.get_default_provider(workspace_id)
-        provider_id = default_provider.id if default_provider else None
+    default_provider = await provider_service.get_default_provider(workspace_id)
+    default_provider_id = default_provider.id if default_provider else None
+
+    # Resolved per recipient through the same code the real send uses, because a
+    # pool picks its domain per recipient — and with it the From address. Reading
+    # `campaign.from_email` here instead, as this did, showed an address a pooled
+    # campaign would never send from.
+    email_campaign_service = EmailCampaignService(db)
 
     results = []
     for email in data.to_emails:
+        resolved = await email_campaign_service.resolve_send_sender(campaign, email)
+        provider_id = (
+            resolved.domain.provider_id if resolved.domain else None
+        ) or default_provider_id
+
         if provider_id:
             result = await provider_service.send_email(
                 provider_id=provider_id,
                 to_email=email,
-                from_email=campaign.from_email,
-                from_name=campaign.from_name,
+                from_email=resolved.from_email,
+                from_name=resolved.from_name,
                 subject=f"[TEST] {subject}",
                 html_body=html_body,
                 text_body=text_body or "",
-                reply_to=campaign.reply_to,
+                reply_to=resolved.reply_to,
             )
             results.append({
                 "email": email,
                 "status": "sent" if result.get("success") else "failed",
                 "error": result.get("error"),
                 "via": "provider",
+                # Which address it actually went out as, since for a pooled
+                # campaign that is not the one on the campaign.
+                "from_email": resolved.from_email,
             })
         else:
             # No provider configured: the platform mailer, same as a real send's

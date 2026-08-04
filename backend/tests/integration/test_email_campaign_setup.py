@@ -155,6 +155,34 @@ async def _campaign_with_template(db_session, ws_id, from_email="sender@ex.com",
     return c
 
 
+async def _crm_audience(db_session, ws_id, size: int = 2):
+    """A CRM list with `size` records on it, for the paths that need an audience.
+
+    `schedule_campaign` refuses a campaign with no recipients, so anything testing
+    scheduling needs somebody to send to.
+    """
+    obj = CRMObject(id=str(uuid4()), workspace_id=ws_id, name="Contact",
+                    slug=f"contact-{uuid4().hex[:6]}", plural_name="Contacts",
+                    object_type="standard")
+    db_session.add(obj)
+    await db_session.flush()
+    recs = [
+        CRMRecord(id=str(uuid4()), workspace_id=ws_id, object_id=obj.id,
+                  values={"email": f"{uuid4().hex[:6]}@ex.com"})
+        for _ in range(size)
+    ]
+    db_session.add_all(recs)
+    lst = CRMList(id=str(uuid4()), workspace_id=ws_id, name="L",
+                  slug=f"l-{uuid4().hex[:6]}", object_id=obj.id)
+    db_session.add(lst)
+    await db_session.flush()
+    db_session.add_all(
+        [CRMListEntry(id=str(uuid4()), list_id=lst.id, record_id=r.id) for r in recs]
+    )
+    await db_session.commit()
+    return lst
+
+
 @pytest.mark.asyncio
 async def test_start_sending_blocked_without_any_domain(db_session, ws):
     c = await _campaign_with_template(db_session, ws.id)
@@ -513,13 +541,41 @@ async def test_update_routing_preserves_unrelated_routing_config(db_session, ws)
 # --- the scheduled path ---------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_schedule_is_refused_without_a_verified_sender(db_session, ws):
-    """Refuse at schedule time, not an hour later inside the poller."""
-    c = await _campaign_with_template(db_session, ws.id)
-    with pytest.raises(ValueError, match="No sending domain"):
-        await CampaignService(db_session).schedule_campaign(
-            c.id, ws.id, datetime.now(timezone.utc) + timedelta(hours=1)
-        )
+async def test_scheduling_is_allowed_while_dns_propagates(db_session, ws):
+    """Scheduling does not require a sender yet — the poller owns that gate.
+
+    DNS propagation takes hours, sometimes a day, and scheduling next week's
+    newsletter during it is legitimate. Refusing here would have been the stricter
+    choice but not the more useful one: the poller holds a campaign it cannot send
+    and records why, so nothing goes out unverified either way. What scheduling does
+    do is say up front what it is waiting for.
+    """
+    lst = await _crm_audience(db_session, ws.id)
+    c = await _campaign_with_template(db_session, ws.id, list_id=lst.id)
+
+    scheduled = await CampaignService(db_session).schedule_campaign(
+        c.id, ws.id, datetime.now(timezone.utc) + timedelta(hours=1)
+    )
+
+    assert scheduled.status == CampaignStatus.SCHEDULED.value
+    assert "No sending domain" in (scheduled.last_error or "")
+
+
+@pytest.mark.asyncio
+async def test_scheduling_clears_a_stale_sender_problem(db_session, ws):
+    """A domain verified since the last attempt leaves no complaint behind."""
+    db_session.add(_domain(ws.id, DomainStatus.VERIFIED.value, domain="ex.com"))
+    lst = await _crm_audience(db_session, ws.id)
+    c = await _campaign_with_template(
+        db_session, ws.id, from_email="sender@ex.com", list_id=lst.id
+    )
+    c.last_error = "No sending domain in this workspace covers sender@ex.com"
+    await db_session.commit()
+
+    scheduled = await CampaignService(db_session).schedule_campaign(
+        c.id, ws.id, datetime.now(timezone.utc) + timedelta(hours=1)
+    )
+    assert scheduled.last_error is None
 
 
 @pytest.mark.asyncio
@@ -547,3 +603,115 @@ async def test_due_campaign_without_verified_sender_is_not_reported_sent(db_sess
     assert refreshed.status != CampaignStatus.SENT.value
     assert refreshed.status != CampaignStatus.SENDING.value
     assert refreshed.last_error and "No sending domain" in refreshed.last_error
+
+
+@pytest.mark.asyncio
+async def test_a_blocked_schedule_is_held_then_handed_back(db_session, ws):
+    """Held while the cause can plausibly be fixed, not forever.
+
+    Holding lets a domain finish verifying, which takes hours. A week later nobody
+    is coming, and a campaign still reading "scheduled" for a date long past is
+    lying about its own state — so it goes back to draft carrying the reason.
+    """
+    svc = EmailCampaignService(db_session)
+
+    held = await _campaign_with_template(
+        db_session,
+        ws.id,
+        status=CampaignStatus.SCHEDULED.value,
+        scheduled_at=datetime.now(timezone.utc) - timedelta(minutes=5),
+    )
+    result = await svc.check_scheduled_campaigns()
+    assert (result["blocked"], result["expired"]) == (1, 0)
+    await db_session.refresh(held)
+    assert held.status == CampaignStatus.SCHEDULED.value
+    assert held.scheduled_at is not None
+
+    # Past the grace period, the same refusal ends it.
+    held.scheduled_at = datetime.now(timezone.utc) - (svc.SCHEDULE_GRACE_PERIOD + timedelta(hours=1))
+    await db_session.commit()
+
+    result = await svc.check_scheduled_campaigns()
+    assert result["expired"] == 1
+    await db_session.refresh(held)
+    assert held.status == CampaignStatus.DRAFT.value
+    assert held.scheduled_at is None
+    assert "No sending domain" in (held.last_error or "")
+
+
+# --- the address a send actually goes out as -------------------------------
+
+@pytest.mark.asyncio
+async def test_resolve_send_sender_uses_the_campaign_address_by_default(db_session, ws):
+    d = _domain(ws.id, DomainStatus.VERIFIED.value, domain="acme.com")
+    db_session.add(d)
+    c = await _campaign_with_template(db_session, ws.id, from_email="hello@acme.com")
+
+    resolved = await EmailCampaignService(db_session).resolve_send_sender(c, "to@x.com")
+    assert resolved.from_email == "hello@acme.com"
+    assert resolved.domain.id == d.id
+
+
+@pytest.mark.asyncio
+async def test_resolve_send_sender_uses_the_pools_address_not_the_campaigns(db_session, ws):
+    """The bug in the test-send endpoint.
+
+    A pooled campaign sends as the domain the router picked, so reporting
+    `campaign.from_email` back to someone testing their setup showed an address the
+    real send would never use — false reassurance from the one button whose whole
+    job is reassurance.
+    """
+    d = _domain(ws.id, DomainStatus.VERIFIED.value, domain="pooled.com")
+    pool = _pool(ws.id)
+    db_session.add_all([d, pool])
+    await db_session.flush()
+    db_session.add(_member(pool.id, d.id))
+    c = await _campaign_with_template(
+        db_session,
+        ws.id,
+        from_email="hello@unrelated.com",
+        sending_pool_id=pool.id,
+    )
+
+    resolved = await EmailCampaignService(db_session).resolve_send_sender(c, "to@x.com")
+    assert resolved.domain.id == d.id
+    assert resolved.from_email.endswith("@pooled.com")
+    assert resolved.from_email != "hello@unrelated.com"
+
+
+@pytest.mark.asyncio
+async def test_resolve_send_sender_prefers_a_pinned_identity(db_session, ws):
+    d = _domain(ws.id, DomainStatus.VERIFIED.value, domain="acme.com")
+    db_session.add(d)
+    await db_session.flush()
+    identity = SendingIdentity(
+        id=str(uuid4()), workspace_id=ws.id, domain_id=d.id,
+        email="press@acme.com", display_name="Acme Press", reply_to="inbox@acme.com",
+    )
+    db_session.add(identity)
+    c = await _campaign_with_template(
+        db_session, ws.id, from_email="hello@acme.com", sending_identity_id=identity.id
+    )
+
+    resolved = await EmailCampaignService(db_session).resolve_send_sender(c, "to@x.com")
+    assert (resolved.from_email, resolved.from_name, resolved.reply_to) == (
+        "press@acme.com",
+        "Acme Press",
+        "inbox@acme.com",
+    )
+
+
+# --- the default pool is singular -----------------------------------------
+
+@pytest.mark.asyncio
+async def test_making_a_pool_default_unsets_the_previous_one(db_session, ws):
+    """"Default" is singular, and PATCH is the path the UI's button takes."""
+    svc = RoutingService(db_session)
+    first = await svc.create_pool(ws.id, name="First", is_default=True)
+    second = await svc.create_pool(ws.id, name="Second")
+
+    await svc.update_pool(second.id, ws.id, is_default=True)
+
+    await db_session.refresh(first)
+    await db_session.refresh(second)
+    assert (first.is_default, second.is_default) == (False, True)

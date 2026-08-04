@@ -31,6 +31,33 @@ export function isSendableDomain(domain: SendingDomain): boolean {
   return (SENDABLE_DOMAIN_STATUSES as readonly string[]).includes(domain.status);
 }
 
+/**
+ * Whether `email` may be sent from `domain` — the client-side twin of
+ * `DomainService.email_matches_domain`.
+ *
+ * A domain row can carry a subdomain (`mail` + `example.com`), and the DNS records
+ * are published against the apex, so both `user@mail.example.com` and
+ * `user@example.com` are ours.
+ */
+export function emailMatchesDomain(email: string, domain: SendingDomain): boolean {
+  const at = email.trim().toLowerCase().lastIndexOf("@");
+  if (at < 0) return false;
+  const emailDomain = email.trim().toLowerCase().slice(at + 1);
+  if (!emailDomain) return false;
+
+  const apex = (domain.domain || "").toLowerCase();
+  const full = domain.subdomain ? `${domain.subdomain.toLowerCase()}.${apex}` : apex;
+  return emailDomain === full || emailDomain === apex;
+}
+
+/** The sendable domain that owns `email`, if the workspace has one. */
+export function findSenderDomain(
+  email: string,
+  domains: SendingDomain[]
+): SendingDomain | undefined {
+  return domains.find((d) => emailMatchesDomain(email, d));
+}
+
 export type StepState = "todo" | "pending" | "done";
 
 export interface EmailMarketingSetup {

@@ -1047,11 +1047,12 @@ function EmailSettingsContent() {
             </div>
           )}
 
-          {/* Categories Tab */}
+          {/* Pools Tab */}
           {activeTab === "pools" && (
             <SendingPoolsPanel workspaceId={workspaceId} domains={domains} />
           )}
 
+          {/* Categories Tab */}
           {activeTab === "categories" && (
             <div className="space-y-4">
               {categoriesError || categoriesLoading || categories.length === 0 ? (
@@ -1109,7 +1110,7 @@ function EmailSettingsContent() {
                 className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-sky-500"
               />
               <p className="text-xs text-muted-foreground mt-2">
-                You'll need to add DNS records to verify ownership
+                You&apos;ll need to add DNS records to verify ownership
               </p>
             </div>
             <div className="p-4 border-t border-border flex justify-end gap-2">

@@ -17,6 +17,7 @@ import {
   Send,
   Loader2,
   AlertCircle,
+  AlertTriangle,
   Calendar,
   Copy,
   MoreHorizontal,
@@ -83,6 +84,18 @@ function CampaignCard({
           </div>
         </Link>
         <div className="flex items-center gap-2">
+          {/* A scheduled campaign that can't send is exactly the row someone needs
+              to spot without opening it. The poller holds it and records why; until
+              this was here, the reason lived only on a worker's log. */}
+          {campaign.last_error && campaign.status !== "sent" && (
+            <span
+              className="flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs text-amber-500"
+              title={campaign.last_error}
+            >
+              <AlertTriangle className="h-3 w-3" aria-hidden />
+              Blocked
+            </span>
+          )}
           <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${statusColor.bg} ${statusColor.text}`}>
             {campaign.status}
           </span>

@@ -230,6 +230,7 @@ const PRESET_CHECKLIST_ITEMS: Record<PresetType, ChecklistItemDef[]> = {
     SHARED_ITEMS["create-agent"],
     SHARED_ITEMS["setup-forms"],
     SHARED_ITEMS["add-integration"],
+    SHARED_ITEMS["connect-calendar"],
     SHARED_ITEMS["invite-team"],
   ],
   admin: [

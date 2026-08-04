@@ -9,6 +9,7 @@ import {
   Mail,
   Loader2,
   AlertCircle,
+  AlertTriangle,
   Users,
   FileText,
   Send,
@@ -25,7 +26,7 @@ import {
   useSendingPools,
   useSubscriptionCategories,
 } from "@/hooks/useEmailMarketing";
-import { useEmailMarketingSetup } from "@/hooks/useEmailMarketingSetup";
+import { findSenderDomain, useEmailMarketingSetup } from "@/hooks/useEmailMarketingSetup";
 import { SenderNotReadyBanner } from "@/components/email-marketing/EmailMarketingSetup";
 import { EmailCampaignCreate, CampaignType, FilterCondition } from "@/lib/api";
 
@@ -74,7 +75,28 @@ export default function NewCampaignPage() {
   // from_email to one of these domains and refuses the send if it can't, so
   // offering a free-text field was offering a way to fail later.
   const senderDomains = setup.domain.sendable;
-  const canSend = setup.isReadyToSend;
+
+  // Scoped to *this* campaign, not the workspace. `setup.isReadyToSend` only says
+  // some sendable domain exists, while `start_sending` requires this campaign's own
+  // from_email to resolve to one — so with acme.com verified and a From of
+  // hi@other.com the wizard used to offer Send Now, the field below said it would
+  // save as a draft, and the detail page then refused. Three components, two
+  // answers. A pool sidesteps the address entirely by choosing a domain per
+  // recipient; the backend re-checks that the pool has a usable member.
+  const selectedPool = pools.find((p) => p.id === sendingPoolId);
+  const senderCanSend = selectedPool
+    ? selectedPool.member_count > 0
+    : findSenderDomain(fromEmail, senderDomains) !== undefined;
+
+  // The other reason a send is refused, and the content step walks straight into
+  // it: it offers "Custom HTML Content" as an alternative to picking a template,
+  // but `start_sending` requires `campaign.template` and `process_campaign_sending`
+  // cancels a campaign whose template is missing — so an HTML-only campaign can be
+  // built and never sent. Confirmed against the API: POST /send returns
+  // 400 "Campaign must have a template". Offering Send Now for one would repeat
+  // exactly the walk-into-a-wall this gate exists to stop, so it is part of the
+  // same question. HTML-only still saves as a draft, which is what it is good for.
+  const canSend = senderCanSend && Boolean(templateId);
 
   // Parse email list from textarea
   const parsedEmails = useMemo(() => {
@@ -335,11 +357,13 @@ export default function NewCampaignPage() {
                       <p className="mt-1.5 text-xs text-amber-400">
                         That isn&apos;t a valid email address.
                       </p>
-                    ) : senderDomains.length > 0 &&
+                    ) : /* Same rule `canSend` uses, so the warning and the button
+                           below cannot contradict each other. Suppressed when a pool
+                           is chosen, because then this address is not what sends. */
+                    senderDomains.length > 0 &&
+                      !selectedPool &&
                       EMAIL_RE.test(fromEmail.trim()) &&
-                      !senderDomains.some((d) =>
-                        fromEmail.trim().toLowerCase().endsWith(`@${d.domain.toLowerCase()}`)
-                      ) ? (
+                      !findSenderDomain(fromEmail, senderDomains) ? (
                       <p className="mt-1.5 text-xs text-amber-400">
                         Sending needs a verified domain:{" "}
                         {senderDomains.map((d) => d.domain).join(", ")}. This will save as a draft.
@@ -622,6 +646,34 @@ export default function NewCampaignPage() {
                 {/* Repeated here rather than assumed remembered from step 1: this
                     is the screen where someone decides to press send. */}
                 <SenderNotReadyBanner workspaceId={workspaceId} />
+
+                {/* The workspace-level banner above covers "no verified domain at
+                    all". This covers the other two ways a send is refused — a
+                    verified domain that isn't this From address's, and an HTML-only
+                    campaign with no template. Without it the Send button simply
+                    wasn't there and nothing said why. */}
+                {!canSend && setup.isReadyToSend && (
+                  <div
+                    className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm"
+                    role="status"
+                  >
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" aria-hidden />
+                    <div>
+                      <p className="font-medium text-foreground">
+                        This will save as a draft
+                      </p>
+                      <p className="mt-0.5 text-muted-foreground">
+                        {!senderCanSend
+                          ? selectedPool
+                            ? `The pool "${selectedPool.name}" has no domains in it, so there is nothing to send through.`
+                            : `Nothing verified covers ${fromEmail || "that address"}. Sending works from ${senderDomains
+                                .map((d) => d.domain)
+                                .join(", ")}.`
+                          : "Sending needs a template — custom HTML can be saved and edited, but only a template can go out. Pick one on the Content step."}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-4">
                   <div className="p-4 bg-muted/50 rounded-lg">

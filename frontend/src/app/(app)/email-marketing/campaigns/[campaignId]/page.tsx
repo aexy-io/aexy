@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Mail,
@@ -50,6 +50,7 @@ type TabType = "overview" | "recipients" | "analytics";
 export default function CampaignDetailPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const { currentWorkspace } = useWorkspace();
   const { user, logout } = useAuth();
   const campaignId = params.campaignId as string;
@@ -85,6 +86,7 @@ export default function CampaignDetailPage() {
   // `DomainStatus` union does not contain — two of the three arms were dead.
   const hasVerifiedSender = campaign?.sender?.can_send ?? false;
   const senderProblem = campaign?.sender?.reason ?? null;
+
 
   const getRecipientStatusColor = (status: string) => {
     switch (status) {
@@ -164,6 +166,28 @@ export default function CampaignDetailPage() {
     }
   };
 
+  // The wizard's "Send Now" lands here with `?action=send`. Nothing read it, so
+  // that button created a campaign and then sat on this page having done nothing —
+  // the user had to find Send themselves, which is the opposite of what the button
+  // says. Routed through `handleSend`, so the confirm stands: an irreversible
+  // action deserves the same prompt however you arrived at it.
+  const autoSendHandled = useRef(false);
+  useEffect(() => {
+    if (autoSendHandled.current) return;
+    if (searchParams.get("action") !== "send") return;
+    if (!campaign || !hasVerifiedSender) return;
+    // Only a draft. Arriving at an already-sending campaign with a stale link in
+    // the history must not fire anything.
+    if (campaign.status !== "draft") return;
+
+    autoSendHandled.current = true;
+    // Drop the parameter first, so declining the confirm — or a refusal from the
+    // backend — doesn't re-prompt on every refresh.
+    router.replace(`/email-marketing/campaigns/${campaignId}`);
+    void handleSend();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleSend is stable enough; the ref guards re-entry
+  }, [campaign, hasVerifiedSender, searchParams, router, campaignId]);
+
   const handlePause = async () => {
     await pauseCampaign.mutateAsync(campaignId);
     refetch();
@@ -224,7 +248,9 @@ export default function CampaignDetailPage() {
           <div className="text-center">
             <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-foreground mb-2">Campaign Not Found</h2>
-            <p className="text-muted-foreground mb-4">The campaign you're looking for doesn't exist.</p>
+            <p className="text-muted-foreground mb-4">
+              The campaign you&apos;re looking for doesn&apos;t exist.
+            </p>
             <Link
               href="/email-marketing/campaigns"
               className="text-sky-400 hover:text-sky-300"

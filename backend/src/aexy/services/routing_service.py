@@ -579,17 +579,7 @@ class RoutingService:
         )
 
         if is_default:
-            # Unset other defaults
-            result = await self.db.execute(
-                select(SendingPool).where(
-                    and_(
-                        SendingPool.workspace_id == workspace_id,
-                        SendingPool.is_default == True,
-                    )
-                )
-            )
-            for existing in result.scalars().all():
-                existing.is_default = False
+            await self._clear_default_pools(workspace_id)
 
         self.db.add(pool)
         await self.db.commit()
@@ -631,6 +621,29 @@ class RoutingService:
 
         return member
 
+    async def _clear_default_pools(
+        self,
+        workspace_id: str,
+        except_pool_id: str | None = None,
+    ) -> None:
+        """Unset `is_default` on the workspace's other pools.
+
+        "Default" is singular, so whoever sets it has to clear the previous
+        holder. Shared by create and update because only create used to do it,
+        which let a PATCH — the path the UI's "Make default" button takes — leave
+        two pools both claiming to be the default.
+        """
+        conditions = [
+            SendingPool.workspace_id == workspace_id,
+            SendingPool.is_default == True,
+        ]
+        if except_pool_id:
+            conditions.append(SendingPool.id != except_pool_id)
+
+        result = await self.db.execute(select(SendingPool).where(and_(*conditions)))
+        for existing in result.scalars().all():
+            existing.is_default = False
+
     async def update_pool(
         self,
         pool_id: str,
@@ -645,6 +658,9 @@ class RoutingService:
         for key, value in fields.items():
             if value is not None:
                 setattr(pool, key, value)
+
+        if fields.get("is_default"):
+            await self._clear_default_pools(workspace_id, except_pool_id=pool_id)
 
         await self.db.commit()
         await self.db.refresh(pool)

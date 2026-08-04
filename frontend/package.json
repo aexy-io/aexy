@@ -1,6 +1,6 @@
 {
   "name": "aexy-frontend",
-  "version": "0.14.0",
+  "version": "0.14.1",
   "private": true,
   "scripts": {
     "predev": "npm run i18n:merge",
@@ -9,7 +9,7 @@
     "prebuild": "npm run i18n:merge && node scripts/generate-changelog.mjs && node scripts/generate-docs.mjs",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
@@ -73,7 +73,7 @@
     "isomorphic-dompurify": "^3.14.0",
     "lowlight": "^3.0.0",
     "lucide-react": "^0.469.0",
-    "next": "^16.2.1",
+    "next": "^16.3.0",
     "next-intl": "^4.8.3",
     "next-nprogress-bar": "^2.4.7",
     "nprogress": "^0.2.0",
@@ -109,7 +109,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^4.2.1",
     "eslint": "^9.39.4",
-    "eslint-config-next": "^16.2.1",
+    "eslint-config-next": "^16.3.0",
     "jsdom": "^24.0.0",
     "typescript": "^5.3.3",
     "vitest": "^4.1.4"

@@ -110,6 +110,7 @@ class NotificationEventType(str, Enum):
     # Campaigns
     CAMPAIGN_COMPLETED = "campaign_completed"
     CAMPAIGN_SCHEDULED = "campaign_scheduled"
+    CAMPAIGN_SEND_BLOCKED = "campaign_send_blocked"
 
     # Automations
     AUTOMATION_RUN_FAILED = "automation_run_failed"
@@ -564,6 +565,11 @@ NOTIFICATION_TEMPLATES = {
         "title": "Campaign Scheduled",
         "body_template": "Campaign \"{campaign_name}\" is scheduled for {scheduled_at}",
         "email_subject": "Campaign Scheduled: {campaign_name}",
+    },
+    NotificationEventType.CAMPAIGN_SEND_BLOCKED: {
+        "title": "Campaign Could Not Send",
+        "body_template": "Campaign \"{campaign_name}\" was due to send but couldn't: {reason}",
+        "email_subject": "Campaign Not Sent: {campaign_name}",
     },
     # Automations
     NotificationEventType.AUTOMATION_RUN_FAILED: {

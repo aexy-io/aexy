@@ -5,6 +5,95 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.1] - 2026-08-04
+
+### Fixed: nine things a review of 0.14.0 turned up
+
+Reviewing the campaign work against its own claims found the places where three
+components still disagreed, or where a fix stopped one step short.
+
+**The wizard's send gate was workspace-wide; the backend's is campaign-specific.**
+"Send Now" appeared whenever *some* domain was verified, while `start_sending`
+requires *this campaign's* From address to resolve to one. With `acme.com` verified
+and a From of `hi@other.com` the wizard offered to send, the field below said it
+would save as a draft, and the detail page then refused — three answers to one
+question. The wizard now asks the same question the backend does, through a
+client-side twin of `email_matches_domain`, and the Review step says which domains
+would work rather than silently dropping the button.
+
+**"Send Now" had never sent.** It routed to the campaign with `?action=send`, and
+the detail page read no search params at all — so the wizard's final button
+created a draft and left the user to find Send themselves. It now fires the send
+on arrival, still through the same confirm: an irreversible action deserves the
+same prompt however you reach it.
+
+**A test send on a pooled campaign showed an address it would never use.** The
+endpoint resolved the domain through the pool but then sent from
+`campaign.from_email`, while a real pooled send takes the From address from the
+domain the router picked per recipient. Address resolution now lives in one place
+(`resolve_send_sender`) that both the real send and the test send call, and the
+response reports the address each test actually went out as. A test send that
+reassures you about the wrong address is worse than no test send.
+
+**Scheduling no longer refuses an unverified sender.** 0.14.0 gated it at schedule
+time *and* in the poller, which meant you couldn't schedule next week's newsletter
+while DNS propagated — even though the poller is built to hold exactly that
+campaign until the domain verifies. Scheduling now records what it is waiting for
+and leaves the gate to the poller, which is where it can actually be re-checked.
+
+**But the poller no longer waits forever.** A blocked campaign was retried on
+every poll indefinitely, with the reason living only in a worker's log. It is now
+held for three days — long enough for DNS and for a weekend — and then handed back
+as a draft with the reason on it, notifying the campaign's creator (new
+`campaign_send_blocked` notification, email on by default since the send time has
+already passed). `last_error` also rides the campaign *list*, so a blocked campaign
+is visible as a **Blocked** chip without opening it.
+
+**A campaign built from "Custom HTML Content" could never be sent** — found while
+verifying the above in the browser, and it is the same shape. The wizard's Content
+step offers custom HTML as an alternative to picking a template, but
+`start_sending` requires `campaign.template` and `process_campaign_sending` cancels
+a campaign whose template is missing. Confirmed against the running API:
+`POST /campaigns/{id}/send` returns 400 *"Campaign must have a template"*. The
+wizard's Send Now now requires a template as well as a sendable sender, and says
+which of the two is missing. HTML-only still saves as a draft. Note this is the
+gate reported honestly, not the underlying limitation removed: making the send path
+render `html_content` is a feature, not a fix.
+
+**Two defaults could claim to be the default pool.** `create_pool` cleared the
+previous holder; the `PATCH` added in 0.14.0 — the path the *Make default* button
+takes — did not.
+
+**`resolve_domain_for_email` fetched every domain in the workspace** and filtered
+in Python, once per recipient. The name match is now a SQL predicate, so a
+workspace with fifty domains stops shipping fifty rows per recipient; the Python
+rule still decides, so the two cannot drift apart.
+
+**A stalled backend could make the app unbuildable.** `community-api`'s server-side
+fetches had no deadline, and `community/[slug]/sitemap.xml` is prerendered — so a
+backend that accepted the connection and then hung took out the whole production
+build at Next's 60s per-route limit, which is exactly what happened here. Those
+fetches now time out at 10s and fall back to the empty result they already had a
+path for.
+
+### Fixed: the frontend had no working linter
+
+Next 16 removed `next lint` and ESLint 9 stopped reading `.eslintrc.*`, so
+`npm run lint` had been failing with *"Invalid project directory provided, no such
+directory: .../lint"* and a bare `eslint` had no config to load. A flat
+`eslint.config.mjs` restores it, and `npm run lint` now runs `eslint .`.
+
+It finds 244 errors and 1039 warnings across the existing codebase — mostly
+`react-hooks/*` rules from the plugin's v7 rewrite (86 `set-state-in-effect`) and
+79 unescaped apostrophes. None are new; nothing had been checking. Left as the
+shared config rates them rather than quietly downgraded, so the number is visible.
+
+### Changed
+
+- Next.js 16.2.3 → 16.3.0, `eslint-config-next` to match.
+- `connect-calendar` is back on the sales onboarding checklist — 0.14.0 dropped it
+  to make room for the sending-domain item, which nothing required.
+
 ## [0.14.0] - 2026-08-04
 
 ### Feature: sending pools have a UI

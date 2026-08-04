@@ -6,7 +6,9 @@ Each method converts the old sync Temporal activity logic to async using self.db
 
 import hashlib
 import logging
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from email_validator import EmailNotValidError, validate_email
@@ -27,7 +29,26 @@ from aexy.models.email_marketing import (
     VisualTemplateBlock,
 )
 
+if TYPE_CHECKING:  # imported for the annotation only; the module imports it lazily
+    from aexy.models.email_infrastructure import SendingDomain
+
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ResolvedSender:
+    """The address a campaign will actually send as, for one recipient.
+
+    Its own type because three things need the same answer and used to compute it
+    separately: the real send, the test send, and the sender gate. The test send
+    reporting a different From address than the real send would defeat the point of
+    testing at all.
+    """
+
+    from_email: str
+    from_name: str
+    reply_to: str | None
+    domain: "SendingDomain | None"
 
 
 class EmailCampaignService:
@@ -142,6 +163,126 @@ class EmailCampaignService:
         logger.info(f"Queued {sent_count} emails for campaign {campaign_id}, {remaining_count} remaining")
         return {"status": "in_progress", "queued": sent_count, "remaining": remaining_count}
 
+    async def resolve_send_sender(
+        self,
+        campaign: EmailCampaign,
+        recipient_email: str,
+    ) -> ResolvedSender:
+        """Which address this campaign sends as, and from which domain.
+
+        Three modes, and the campaign's own `from_email` wins in only one of them:
+
+        * **identity** — a pinned address; its display name and reply-to win too.
+        * **pool** — the router picks a domain per recipient, so the From address
+          comes from the domain it picked. Sending as an address on a domain other
+          than the one delivering it is what the sender gate exists to prevent.
+        * **neither** — the normal path: resolve the domain that owns `from_email`.
+
+        Shared with the test-send endpoint, which used to send from
+        `campaign.from_email` in all three cases — so a test on a pooled campaign
+        showed an address the real send would never use, which is precisely the
+        kind of false reassurance a test send exists to avoid.
+
+        Says nothing about whether the domain may send; that is `can_send`, and the
+        caller layers fallback on top.
+        """
+        from aexy.models.email_infrastructure import SendingDomain, SendingIdentity
+        from aexy.services.domain_service import DomainService
+        from aexy.services.routing_service import RoutingService
+
+        from_email = campaign.from_email
+        from_name = campaign.from_name
+        reply_to = campaign.reply_to
+        domain: SendingDomain | None = None
+
+        routing_config = campaign.routing_config or {}
+        # None, not a default: absent means "use the pool's own strategy", which is
+        # what a pool's `routing_strategy` column is for. Defaulting to
+        # health_based here would override every pool's choice.
+        strategy = routing_config.get("strategy")
+
+        if campaign.sending_identity_id:
+            identity = (
+                await self.db.execute(
+                    select(SendingIdentity).where(
+                        SendingIdentity.id == campaign.sending_identity_id
+                    )
+                )
+            ).scalar_one_or_none()
+            if identity and identity.is_active:
+                from_email = identity.email
+                if identity.display_name:
+                    from_name = identity.display_name
+                if identity.reply_to:
+                    reply_to = identity.reply_to
+
+                domain = (
+                    await self.db.execute(
+                        select(SendingDomain).where(SendingDomain.id == identity.domain_id)
+                    )
+                ).scalar_one_or_none()
+
+        elif campaign.sending_pool_id:
+            # `min_health_score` and `prefer_warming_complete` come from the
+            # campaign's own routing_config, so a transactional campaign can demand
+            # a healthier domain than a newsletter.
+            decision = await RoutingService(self.db).route_email(
+                workspace_id=campaign.workspace_id,
+                recipient_email=recipient_email,
+                pool_id=campaign.sending_pool_id,
+                prefer_warming_complete=routing_config.get("prefer_warming_complete", True),
+                min_health_score=routing_config.get("min_health_score", 50),
+                strategy=strategy,
+            )
+
+            if decision:
+                domain = (
+                    await self.db.execute(
+                        select(SendingDomain).where(SendingDomain.id == decision.domain_id)
+                    )
+                ).scalar_one_or_none()
+                from_email = decision.from_email
+                if decision.identity_id:
+                    identity = (
+                        await self.db.execute(
+                            select(SendingIdentity).where(
+                                SendingIdentity.id == decision.identity_id
+                            )
+                        )
+                    ).scalar_one_or_none()
+                    if identity:
+                        from_name = identity.display_name or from_name
+                        reply_to = identity.reply_to or reply_to
+            else:
+                logger.warning(
+                    "Campaign %s: pool %s had no domain able to send to %s",
+                    campaign.id,
+                    campaign.sending_pool_id,
+                    recipient_email,
+                )
+
+        else:
+            # Until this branch existed, no API-created campaign ever resolved a
+            # domain, so every send fell through to the platform mailer and went out
+            # from the deployment's own address — ignoring `from_email` entirely.
+            domain = await DomainService(self.db).resolve_domain_for_email(
+                campaign.workspace_id, from_email
+            )
+            if domain is None:
+                logger.warning(
+                    "Campaign %s: no sending domain owns %s in workspace %s",
+                    campaign.id,
+                    from_email,
+                    campaign.workspace_id,
+                )
+
+        return ResolvedSender(
+            from_email=from_email,
+            from_name=from_name,
+            reply_to=reply_to,
+            domain=domain,
+        )
+
     async def send_campaign_email(
         self,
         campaign_id: str,
@@ -227,97 +368,16 @@ class EmailCampaignService:
             domain_service = DomainService(self.db)
             reputation_service = ReputationService(self.db)
 
+            # Still read here for `fallback_enabled` below; the rest of the routing
+            # config is the resolver's business.
             routing_config = campaign.routing_config or {}
-            # None, not a default: absent means "use the pool's own strategy",
-            # which is what a pool's `routing_strategy` column is for. Defaulting
-            # to health_based here would override every pool's choice.
-            strategy = routing_config.get("strategy")
 
-            from_email = campaign.from_email
-            from_name = campaign.from_name
-            reply_to = campaign.reply_to
-
-            send_domain = None
+            resolved = await self.resolve_send_sender(campaign, recipient.email)
+            from_email = resolved.from_email
+            from_name = resolved.from_name
+            reply_to = resolved.reply_to
+            send_domain = resolved.domain
             send_provider = None
-
-            if campaign.sending_identity_id:
-                identity_result = await self.db.execute(
-                    select(SendingIdentity).where(SendingIdentity.id == campaign.sending_identity_id)
-                )
-                send_identity = identity_result.scalar_one_or_none()
-                if send_identity and send_identity.is_active:
-                    from_email = send_identity.email
-                    if send_identity.display_name:
-                        from_name = send_identity.display_name
-                    if send_identity.reply_to:
-                        reply_to = send_identity.reply_to
-
-                    domain_result = await self.db.execute(
-                        select(SendingDomain).where(SendingDomain.id == send_identity.domain_id)
-                    )
-                    send_domain = domain_result.scalar_one_or_none()
-
-            elif campaign.sending_pool_id:
-                # Pool routing picks the healthiest domain in the pool per
-                # recipient, so the From address comes from the *chosen* domain's
-                # identity — not from `campaign.from_email`. Sending as an address
-                # on a domain other than the one delivering it is what the sender
-                # gate exists to prevent, so the decision's `from_email` wins here.
-                #
-                # `min_health_score` and `prefer_warming_complete` come from the
-                # campaign's own routing_config, so a transactional campaign can
-                # demand a healthier domain than a newsletter.
-                routing_decision = await routing_service.route_email(
-                    workspace_id=campaign.workspace_id,
-                    recipient_email=recipient.email,
-                    pool_id=campaign.sending_pool_id,
-                    prefer_warming_complete=routing_config.get("prefer_warming_complete", True),
-                    min_health_score=routing_config.get("min_health_score", 50),
-                    strategy=strategy,
-                )
-
-                if routing_decision:
-                    domain_result = await self.db.execute(
-                        select(SendingDomain).where(SendingDomain.id == routing_decision.domain_id)
-                    )
-                    send_domain = domain_result.scalar_one_or_none()
-                    from_email = routing_decision.from_email
-                    if routing_decision.identity_id:
-                        identity = (
-                            await self.db.execute(
-                                select(SendingIdentity).where(
-                                    SendingIdentity.id == routing_decision.identity_id
-                                )
-                            )
-                        ).scalar_one_or_none()
-                        if identity:
-                            from_name = identity.display_name or from_name
-                            reply_to = identity.reply_to or reply_to
-                else:
-                    logger.warning(
-                        "Campaign %s: pool %s had no domain able to send to %s",
-                        campaign.id,
-                        campaign.sending_pool_id,
-                        recipient.email,
-                    )
-
-            else:
-                # The normal path. Resolve the sending domain from the address the
-                # campaign says it is sending as, which is what the sending-domain
-                # setup exists to establish. Until this branch existed, no
-                # API-created campaign ever resolved a domain, so every send fell
-                # through to the platform mailer below and went out from the
-                # deployment's own address — ignoring `from_email` entirely.
-                send_domain = await domain_service.resolve_domain_for_email(
-                    campaign.workspace_id, from_email
-                )
-                if send_domain is None:
-                    logger.warning(
-                        "Campaign %s: no sending domain owns %s in workspace %s",
-                        campaign.id,
-                        from_email,
-                        campaign.workspace_id,
-                    )
 
             # Check if domain can send
             domain_blocked_reason: str | None = None
@@ -575,6 +635,10 @@ class EmailCampaignService:
             "clicks": campaign.unique_click_count,
         }
 
+    # How long a due campaign is held while whatever blocks it gets fixed. Long
+    # enough for DNS to propagate and for someone to notice over a weekend.
+    SCHEDULE_GRACE_PERIOD = timedelta(days=3)
+
     async def check_scheduled_campaigns(self) -> dict:
         """Check for scheduled campaigns that are due to be sent."""
         logger.info("Checking for scheduled campaigns")
@@ -596,6 +660,7 @@ class EmailCampaignService:
 
         started_count = 0
         blocked_count = 0
+        expired_count = 0
         for campaign in campaigns:
             try:
                 # Go through `start_sending` rather than flipping the status by
@@ -628,12 +693,56 @@ class EmailCampaignService:
                 campaign.status = CampaignStatus.SCHEDULED.value
                 campaign.started_at = None
                 campaign.last_error = reason
+
+                # But not forever. Holding it lets a domain finish verifying, which
+                # takes hours; a week later nobody is coming, and a campaign that
+                # still says "scheduled" for a date long past is lying about its
+                # own state. Hand it back as a draft with the reason on it.
+                overdue_by = now - (campaign.scheduled_at or now)
+                if overdue_by > self.SCHEDULE_GRACE_PERIOD:
+                    campaign.status = CampaignStatus.DRAFT.value
+                    campaign.scheduled_at = None
+                    logger.warning(
+                        "Scheduled campaign %s gave up after %s: %s",
+                        campaign.id,
+                        overdue_by,
+                        reason,
+                    )
+                    await self._notify_send_blocked(campaign, reason)
+                    expired_count += 1
+
                 await self.db.commit()
                 blocked_count += 1
             except Exception as e:
                 logger.error(f"Failed to start campaign {campaign.id}: {e}")
 
-        return {"started": started_count, "blocked": blocked_count}
+        return {
+            "started": started_count,
+            "blocked": blocked_count,
+            "expired": expired_count,
+        }
+
+    async def _notify_send_blocked(self, campaign: EmailCampaign, reason: str) -> None:
+        """Tell the campaign's creator, if it has one.
+
+        Best-effort: a notification that fails must not take the poller's other
+        campaigns down with it.
+        """
+        if not campaign.created_by_id:
+            return
+        try:
+            from aexy.services.notification_service import notify_campaign_send_blocked
+
+            await notify_campaign_send_blocked(
+                db=self.db,
+                creator_id=campaign.created_by_id,
+                campaign_name=campaign.name,
+                reason=reason,
+                workspace_id=campaign.workspace_id,
+                campaign_id=campaign.id,
+            )
+        except Exception as e:
+            logger.error(f"Failed to notify about blocked campaign {campaign.id}: {e}")
 
     async def aggregate_daily_analytics(self) -> dict:
         """Aggregate campaign analytics on a daily basis."""

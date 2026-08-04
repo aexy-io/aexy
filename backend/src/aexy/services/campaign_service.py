@@ -272,12 +272,14 @@ class CampaignService:
         if not campaign.template_id:
             raise ValueError("Campaign must have a template to be scheduled")
 
-        # Refuse at schedule time too, rather than letting the poller discover it
-        # an hour later — when it did, `check_scheduled_campaigns` skipped the gate
-        # entirely and the campaign reported `sent` having delivered nothing.
+        # Deliberately *not* gated on the sender here. Scheduling next week's
+        # newsletter while DNS propagates is legitimate — propagation can take a
+        # day — and the poller holds a campaign it cannot send yet rather than
+        # reporting success, so the gate belongs there. Recording the problem now
+        # means the campaign says what it is waiting for before its send time
+        # arrives, instead of looking scheduled and fine.
         _, sender_problem = await self.resolve_campaign_sender(campaign)
-        if sender_problem:
-            raise ValueError(sender_problem)
+        campaign.last_error = sender_problem or None
 
         # Calculate recipients before scheduling
         recipient_count = await self.calculate_audience(campaign)
