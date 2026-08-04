@@ -20,6 +20,8 @@ from aexy.models.organization import (
 )
 from aexy.models.workspace import WorkspaceMember
 from aexy.schemas.organization import (
+    DepartmentAccessProfileResponse,
+    DepartmentAccessProfileUpdate,
     DepartmentCreate,
     DepartmentDetail,
     DepartmentNode,
@@ -118,6 +120,11 @@ class OrganizationService:
         resp = DepartmentResponse.model_validate(dept)
         resp.member_count = member_count
         resp.headcount_actual = member_count
+        # Derived rather than mapped: the profile itself is deliberately not in
+        # the list response (it is large and every caller here renders a row),
+        # but whether one exists decides whether the row can say "using role
+        # defaults" — which is the thing an admin needs to notice.
+        resp.has_access_profile = bool(dept.app_config)
         return resp
 
     # -------------------------------------------------------------- departments
@@ -246,6 +253,207 @@ class OrganizationService:
         await self.db.refresh(dept)
         counts = await self._member_counts(workspace_id)
         return self._to_response(dept, counts.get(dept_id, 0))
+
+    async def seed_departments_for_use_cases(
+        self, workspace_id: str, use_cases: list[str]
+    ) -> list[DepartmentResponse]:
+        """Create the departments implied by onboarding's use-case picks.
+
+        Idempotent, and deliberately conservative about departments that already
+        exist: a workspace being re-onboarded, or one where the founder already
+        made a "Sales" department by hand, gets its existing department given a
+        profile rather than a near-duplicate created beside it. Matching is by
+        ``function_key`` first (the canonical identity) and then by name, since a
+        hand-made department usually has no function key.
+
+        An existing department that already carries a profile is left completely
+        alone — somebody configured that on purpose.
+        """
+        from aexy.services.onboarding_use_cases import departments_for_use_cases
+        from aexy.schemas.organization import DepartmentAccessProfileUpdate
+
+        wanted = departments_for_use_cases(use_cases)
+        if not wanted:
+            return []
+
+        existing = (
+            await self.db.execute(
+                select(Department).where(Department.workspace_id == workspace_id)
+            )
+        ).scalars().all()
+        by_function = {d.function_key: d for d in existing if d.function_key}
+        by_name = {d.name.strip().lower(): d for d in existing}
+
+        results: list[DepartmentResponse] = []
+        for spec in wanted:
+            match = by_function.get(spec["function_key"]) or by_name.get(
+                spec["name"].strip().lower()
+            )
+            if match is None:
+                created = await self.create_department(
+                    workspace_id,
+                    DepartmentCreate(
+                        name=spec["name"],
+                        function_key=spec["function_key"],
+                    ),
+                )
+                department_id = created.id
+                # Register it so two use cases naming the same department in
+                # different ways can't create it twice in one call.
+                by_name[spec["name"].strip().lower()] = await self._get(
+                    workspace_id, department_id
+                )
+                if spec["function_key"]:
+                    by_function[spec["function_key"]] = by_name[
+                        spec["name"].strip().lower()
+                    ]
+            elif match.app_config:
+                # Already configured by hand — don't overwrite somebody's work.
+                counts = await self._member_counts(workspace_id)
+                results.append(self._to_response(match, counts.get(str(match.id), 0)))
+                continue
+            else:
+                department_id = str(match.id)
+
+            await self.set_access_profile(
+                workspace_id,
+                department_id,
+                DepartmentAccessProfileUpdate(
+                    profile_slug=spec["profile_slug"],
+                    default_persona=spec["persona"],
+                ),
+            )
+            counts = await self._member_counts(workspace_id)
+            results.append(
+                self._to_response(
+                    await self._get(workspace_id, department_id),
+                    counts.get(department_id, 0),
+                )
+            )
+
+        return results
+
+    # ------------------------------------------------------- access profiles
+
+    async def get_access_profile(
+        self, workspace_id: str, dept_id: str
+    ) -> DepartmentAccessProfileResponse:
+        """What this department's members can see."""
+        dept = await self._get(workspace_id, dept_id)
+        counts = await self._member_counts(workspace_id)
+        return self._to_profile_response(dept, counts.get(dept_id, 0))
+
+    async def list_access_profiles(
+        self, workspace_id: str
+    ) -> list[DepartmentAccessProfileResponse]:
+        """Every department's profile, for the admin access screen.
+
+        Includes departments with no profile: those are the ones an admin needs
+        to see, because their members are still being decided by role.
+        """
+        depts = (
+            await self.db.execute(
+                select(Department)
+                .where(Department.workspace_id == workspace_id)
+                .order_by(Department.depth, Department.position, Department.name)
+            )
+        ).scalars().all()
+        counts = await self._member_counts(workspace_id)
+        return [self._to_profile_response(d, counts.get(str(d.id), 0)) for d in depts]
+
+    async def set_access_profile(
+        self, workspace_id: str, dept_id: str, data: DepartmentAccessProfileUpdate
+    ) -> DepartmentAccessProfileResponse:
+        """Assign, edit or clear a department's access profile.
+
+        Changing this changes what every member of the department resolves to, so
+        it drops the cached resolutions for the whole workspace rather than for
+        one person.
+        """
+        from aexy.models.app_definitions import (
+            SYSTEM_APP_BUNDLES,
+            validate_app_access_config,
+        )
+        from aexy.services.app_access_service import invalidate_app_settings_cache
+
+        dept = await self._get(workspace_id, dept_id)
+        payload = data.model_dump(exclude_unset=True)
+
+        app_config: dict | None = None
+        slug: str | None = dept.access_profile_slug
+
+        if "app_config" in payload and payload["app_config"] is not None:
+            app_config = payload["app_config"]
+            is_valid, error = validate_app_access_config({"apps": app_config})
+            if not is_valid:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid access profile: {error}",
+                )
+            # An explicit config keeps whatever slug was sent as its label, so
+            # "Business, tweaked" stays recognisable in the UI.
+            if "profile_slug" in payload:
+                slug = payload["profile_slug"] or None
+        elif "profile_slug" in payload:
+            slug = payload["profile_slug"] or None
+            if slug is None:
+                # Clearing the profile: members fall back to their role bundle,
+                # and API enforcement for them switches back off. Explicit,
+                # because a department nobody configured shouldn't enforce a
+                # default nobody chose.
+                app_config = {}
+            else:
+                bundle = SYSTEM_APP_BUNDLES.get(slug)
+                if bundle is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=(
+                            f"Unknown access profile {slug!r}. Expected one of: "
+                            + ", ".join(sorted(SYSTEM_APP_BUNDLES))
+                        ),
+                    )
+                # Deep-copied: SYSTEM_APP_BUNDLES is a module-level dict, and
+                # handing its nested dicts to a row would let a later edit to
+                # one department rewrite the bundle for the whole process.
+                app_config = {
+                    app_id: {
+                        "enabled": bool(cfg.get("enabled", False)),
+                        "modules": dict(cfg.get("modules") or {}),
+                    }
+                    for app_id, cfg in bundle["apps"].items()
+                }
+
+        if app_config is not None:
+            dept.app_config = app_config
+        dept.access_profile_slug = slug
+        if "default_persona" in payload:
+            dept.default_persona = payload["default_persona"] or None
+
+        await self.db.flush()
+        await self.db.refresh(dept)
+        await invalidate_app_settings_cache(workspace_id)
+
+        counts = await self._member_counts(workspace_id)
+        return self._to_profile_response(dept, counts.get(dept_id, 0))
+
+    @staticmethod
+    def _to_profile_response(
+        dept: Department, member_count: int
+    ) -> DepartmentAccessProfileResponse:
+        app_config = dept.app_config or {}
+        return DepartmentAccessProfileResponse(
+            department_id=str(dept.id),
+            department_name=dept.name,
+            access_profile_slug=dept.access_profile_slug,
+            app_config=app_config,
+            default_persona=dept.default_persona,
+            enabled_app_ids=sorted(
+                app_id
+                for app_id, cfg in app_config.items()
+                if isinstance(cfg, dict) and cfg.get("enabled")
+            ),
+            member_count=member_count,
+        )
 
     async def reparent_department(
         self, workspace_id: str, dept_id: str, new_parent_id: str | None
@@ -443,6 +651,10 @@ class OrganizationService:
         )
         self.db.add(member)
         await self.db.flush()
+        # Joining a department can change what this person can see and reach, so
+        # their cached resolution has to go — otherwise a new joiner is placed in
+        # Sales and still can't open CRM for up to the cache TTL.
+        await self._invalidate_member_access(workspace_id, data.developer_id)
         dev = await self.db.get(Developer, data.developer_id)
         return MemberSummary(
             id=member.id,
@@ -476,6 +688,8 @@ class OrganizationService:
         for key, value in payload.items():
             setattr(member, key, value)
         await self.db.flush()
+        # Changing which department is primary changes the suggested sidebar view.
+        await self._invalidate_member_access(workspace_id, member.developer_id)
 
         dev = await self.db.get(Developer, member.developer_id)
         return MemberSummary(
@@ -501,8 +715,30 @@ class OrganizationService:
         ).scalar_one_or_none()
         if member is None:
             raise HTTPException(status_code=404, detail="Membership not found")
+        developer_id = member.developer_id
         await self.db.delete(member)
         await self.db.flush()
+        # Leaving a department can take access away; that must bite immediately
+        # rather than at the end of a cache window.
+        await self._invalidate_member_access(workspace_id, developer_id)
+
+    @staticmethod
+    async def _invalidate_member_access(workspace_id: str, developer_id: str) -> None:
+        """Drop this member's cached access resolution across all workers.
+
+        Imported lazily: app_access_service imports the organization models, and
+        importing it at module scope here closes the loop.
+        """
+        from aexy.services.app_access_service import (
+            clear_effective_access_cache,
+            invalidate_app_settings_cache,
+        )
+
+        clear_effective_access_cache(workspace_id, developer_id)
+        # The pub/sub channel is workspace-grained, so other workers clear the
+        # whole workspace. Membership changes are rare enough that re-resolving a
+        # workspace's members is cheaper than a second channel would be.
+        await invalidate_app_settings_cache(workspace_id)
 
     async def _clear_primary(
         self, workspace_id: str, developer_id: str, keep_member_id: str | None = None

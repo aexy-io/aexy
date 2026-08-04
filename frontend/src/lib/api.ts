@@ -2916,16 +2916,62 @@ export const workspaceApi = {
   /** `departmentId` is optional: when given, accepting the invite also places the
    *  person in that department, so they don't start out unassigned (invisible in
    *  the org directory and out of scope for Service Desk row filtering). */
+  /**
+   * Two placements, answering different questions.
+   *
+   * `departmentId` decides what the person can *see* — their department's access
+   * profile is what they get. `accessTemplateId` pins a profile to this
+   * individual instead, for the hire who doesn't fit their department's shape.
+   *
+   * `teamId` decides who *chases* them: standup prompts, blocker escalation,
+   * compliance reminders, review digests, sprint boards and leave approvals all
+   * resolve through team membership. Omitting it isn't an error, but the joiner
+   * is then silently outside all of that.
+   *
+   * Both are applied when the invite is accepted, and independently — a stale
+   * one can't cost them the other.
+   */
   inviteMember: async (
     workspaceId: string,
     email: string,
     role = "member",
     departmentId?: string | null,
+    accessTemplateId?: string | null,
+    teamId?: string | null,
+    roleInTeam?: "lead" | "manager" | "member" | null,
   ): Promise<WorkspaceInviteResult> => {
     const response = await api.post(`/workspaces/${workspaceId}/members/invite`, {
       email,
       role,
       ...(departmentId ? { department_id: departmentId } : {}),
+      ...(accessTemplateId ? { access_template_id: accessTemplateId } : {}),
+      ...(teamId ? { team_id: teamId } : {}),
+      ...(teamId && roleInTeam ? { role_in_team: roleInTeam } : {}),
+    });
+    return response.data;
+  },
+
+  /**
+   * Turn onboarding's use-case picks into workspace configuration: switch off
+   * the apps nobody asked for, and seed a department per use case carrying the
+   * access profile and sidebar view its people should have.
+   */
+  applyOnboardingUseCases: async (
+    workspaceId: string,
+    useCases: string[],
+  ): Promise<{
+    enabled_app_ids: string[];
+    disabled_app_ids: string[];
+    departments: Array<{
+      id: string;
+      name: string;
+      function_key: string | null;
+      access_profile_slug: string | null;
+      default_persona: string | null;
+    }>;
+  }> => {
+    const response = await api.post(`/workspaces/${workspaceId}/onboarding/use-cases`, {
+      use_cases: useCases,
     });
     return response.data;
   },
@@ -12837,6 +12883,12 @@ export interface DashboardPreferences {
   checklist_dismissed: boolean;
   sidebar_page_visits: Record<string, number>;
   sidebar_pinned_items: string[];
+  /**
+   * The sidebar view this person chose. Null means "derive it from my
+   * department" — deliberately separate from `preset_type`, which is the
+   * dashboard *widget* preset and defaults to "developer" for everybody.
+   */
+  sidebar_persona: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -12851,6 +12903,8 @@ export interface DashboardPreferencesUpdate {
   checklist_dismissed?: boolean;
   sidebar_page_visits?: Record<string, number>;
   sidebar_pinned_items?: string[];
+  /** Empty string means "go back to deriving my view from my department". */
+  sidebar_persona?: string | null;
 }
 
 export interface DashboardPresetInfo {
@@ -17392,10 +17446,35 @@ export interface AppAccessConfig {
   modules?: Record<string, boolean>;
 }
 
+/** Which layer of the chain decided an app's `enabled`. */
+export type AccessSource =
+  | "workspace_disabled"
+  | "department"
+  | "role_fallback"
+  | "member_template"
+  | "member_override";
+
 export interface EffectiveAppAccess {
   app_id: string;
   enabled: boolean;
+  /**
+   * Whether the API will let this member in, as opposed to whether the app
+   * belongs in their navigation. These differ for admins, who can always reach
+   * a workspace-enabled app, and for apps nobody has configured, which stay
+   * reachable so that adopting department profiles can't lock anyone out.
+   */
+  can_access: boolean;
   modules: Record<string, boolean>;
+  source: AccessSource;
+  source_detail: string | null;
+}
+
+export interface AccessDepartmentInfo {
+  id: string;
+  name: string;
+  is_primary: boolean;
+  has_profile: boolean;
+  access_profile_slug: string | null;
 }
 
 export interface MemberEffectiveAccess {
@@ -17404,6 +17483,32 @@ export interface MemberEffectiveAccess {
   applied_template_name: string | null;
   has_custom_overrides: boolean;
   is_admin: boolean;
+  /** Where the baseline came from: "department", "role_fallback", "member_template". */
+  baseline: AccessSource;
+  departments: AccessDepartmentInfo[];
+  /** Sidebar view implied by the primary department; a personal choice wins. */
+  suggested_persona: string | null;
+}
+
+/** A single three-state override. `enabled: null` means inherit. */
+export interface MemberAppOverride {
+  enabled?: boolean | null;
+  modules?: Record<string, boolean> | null;
+}
+
+export interface AccessPreviewApp {
+  app_id: string;
+  name: string;
+  enabled: boolean;
+  module_names: string[];
+}
+
+export interface AccessPreviewResponse {
+  baseline: AccessSource;
+  baseline_detail: string | null;
+  suggested_persona: string | null;
+  apps: AccessPreviewApp[];
+  enabled_app_names: string[];
 }
 
 export interface MemberAccessMatrixEntry {
@@ -17416,6 +17521,15 @@ export interface MemberAccessMatrixEntry {
   has_custom_overrides: boolean;
   is_admin: boolean;
   apps: Record<string, "full" | "partial" | "none">;
+  /**
+   * Where this member's access comes from. A `baseline` of "role_fallback" is
+   * the row an admin needs to notice: it means this person's departments carry
+   * no profile, so their navigation is decided by their legacy workspace role.
+   */
+  baseline: AccessSource;
+  department_id: string | null;
+  department_name: string | null;
+  department_count: number;
 }
 
 export interface AccessMatrixResponse {
@@ -17532,18 +17646,61 @@ export const appAccessApi = {
     return response.data;
   },
 
+  /**
+   * Submit a whole desired grid; the server diffs it against the member's
+   * baseline and stores only the differences, so anything matching their
+   * department profile keeps inheriting. `override_count` reports what was
+   * actually kept — zero means "you agreed with the department".
+   */
   updateMemberAccess: async (
     workspaceId: string,
     developerId: string,
     data: {
       app_config: Record<string, AppAccessConfig>;
       applied_template_id?: string | null;
+      reasons?: Record<string, string>;
     }
-  ): Promise<{ success: boolean; developer_id: string }> => {
+  ): Promise<{ success: boolean; developer_id: string; override_count: number }> => {
     const response = await api.patch(
       `/workspaces/${workspaceId}/app-access/members/${developerId}`,
       data
     );
+    return response.data;
+  },
+
+  /**
+   * Express overrides directly, per app: grant, revoke, or omit to inherit.
+   * The intent-shaped counterpart to updateMemberAccess.
+   */
+  setMemberOverrides: async (
+    workspaceId: string,
+    developerId: string,
+    data: {
+      overrides: Record<string, MemberAppOverride>;
+      reasons?: Record<string, string>;
+    }
+  ): Promise<{ success: boolean; developer_id: string; override_count: number }> => {
+    const response = await api.put(
+      `/workspaces/${workspaceId}/app-access/members/${developerId}/overrides`,
+      data
+    );
+    return response.data;
+  },
+
+  /** What would somebody with this department/profile/role see? */
+  previewAccess: async (
+    workspaceId: string,
+    data: {
+      department_ids?: string[];
+      access_template_id?: string | null;
+      role?: string;
+    }
+  ): Promise<AccessPreviewResponse> => {
+    const response = await api.post(`/workspaces/${workspaceId}/app-access/preview`, {
+      department_ids: data.department_ids ?? [],
+      access_template_id: data.access_template_id ?? null,
+      role: data.role ?? "member",
+    });
     return response.data;
   },
 
@@ -17559,7 +17716,7 @@ export const appAccessApi = {
     return response.data;
   },
 
-  resetMemberToDefaults: async (
+  resetMemberToInherited: async (
     workspaceId: string,
     developerId: string
   ): Promise<{ success: boolean; developer_id: string }> => {

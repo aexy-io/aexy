@@ -118,7 +118,10 @@ function TeamDetail({
                       {m.developer_name || m.developer_email}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {t(`roles.${m.role}`)}
+                      {/* `role` is a free-text column, and project creation
+                          writes values the Teams UI never offers ("admin"),
+                          which used to render as the raw message key. */}
+                      {t.has(`roles.${m.role}`) ? t(`roles.${m.role}`) : m.role}
                       {/* Where the membership came from: a repo-synced member is
                           replaced on the next sync, so removing them by hand is
                           temporary and worth flagging. */}

@@ -329,6 +329,9 @@ class WorkspaceService:
 
         await self.db.flush()
         await self.db.refresh(member)
+        # Role is the access baseline for anyone whose departments carry no
+        # profile, so a role change can change what they see and reach.
+        await self._invalidate_access_cache(workspace_id)
         return member
 
     async def set_member_status(
@@ -362,6 +365,9 @@ class WorkspaceService:
         member.status = new_status
         await self.db.flush()
         await self.db.refresh(member)
+        # A removed member resolves to no access at all; that has to bite now,
+        # not at the end of a cache window.
+        await self._invalidate_access_cache(workspace_id)
         return member
 
     async def get_members(
@@ -562,11 +568,15 @@ class WorkspaceService:
         expires_days: int = 7,
         department_id: str | None = None,
         role_in_department: str | None = None,
+        team_id: str | None = None,
+        role_in_team: str | None = None,
     ) -> WorkspacePendingInvite:
         """Create a pending invite for a non-existing user.
 
-        ``department_id`` is optional; when set, accepting the invite also places
-        the person in that department (see ``accept_pending_invite``).
+        ``department_id`` and ``team_id`` are both optional and both applied when
+        the invite is accepted (see ``accept_pending_invite``). They answer
+        different questions: the department decides what the person can see, the
+        team decides who chases them for standups, escalations and approvals.
         """
         from datetime import timedelta
 
@@ -588,6 +598,8 @@ class WorkspaceService:
             app_permissions=app_permissions,
             department_id=department_id,
             role_in_department=role_in_department,
+            team_id=team_id,
+            role_in_team=role_in_team,
             status="pending",
             expires_at=expires_at,
         )
@@ -699,12 +711,111 @@ class WorkspaceService:
 
         if invite.department_id:
             await self._place_in_department(invite, developer_id)
+            # The department decides what this person can see, so their sidebar
+            # and their reach both depend on the placement above having landed.
+            # Nothing has resolved access for them yet, but another worker may
+            # have cached the "not a member" answer from a page load moments ago.
+            await self._invalidate_access_cache(str(invite.workspace_id))
+
+        if invite.team_id:
+            # Independent of the department, and of its success: a joiner can
+            # legitimately have one without the other, and neither should be able
+            # to cost them the other.
+            await self._place_in_team(invite, developer_id)
 
         # Mark invite as accepted
         invite.status = "accepted"
         await self.db.flush()
 
         return member
+
+    async def _place_in_team(
+        self, invite: WorkspacePendingInvite, developer_id: str
+    ) -> None:
+        """Apply the invite's optional team placement.
+
+        Best-effort in a savepoint, for the same reason as
+        ``_place_in_department``: the team may have been renamed, deactivated or
+        deleted in the days between invite and accept, and a stale placement must
+        not cost someone their invitation.
+
+        Placement is what makes a joiner reachable — standup prompts, blocker
+        escalation, compliance reminders, review digests and leave approvals all
+        resolve through team membership, so someone in no team is silently left
+        out of all of it rather than visibly broken.
+        """
+        from aexy.models.team import TEAM_MEMBER_ROLES, Team, TeamMember, TeamMemberRole
+
+        try:
+            async with self.db.begin_nested():
+                team = (
+                    await self.db.execute(
+                        select(Team).where(
+                            Team.id == invite.team_id,
+                            Team.workspace_id == invite.workspace_id,
+                            Team.is_active == True,  # noqa: E712
+                        )
+                    )
+                ).scalar_one_or_none()
+                if team is None:
+                    logger.warning(
+                        "Invite %s named team %s, which no longer exists (or is "
+                        "inactive) in workspace %s",
+                        invite.id, invite.team_id, invite.workspace_id,
+                    )
+                    return
+
+                # Re-accepting, or an admin who already added them by hand while
+                # the invite was outstanding: leave the existing membership alone
+                # rather than raising on the unique pair.
+                already = (
+                    await self.db.execute(
+                        select(TeamMember.id).where(
+                            TeamMember.team_id == team.id,
+                            TeamMember.developer_id == developer_id,
+                        )
+                    )
+                ).scalar_one_or_none()
+                if already is not None:
+                    return
+
+                # An unrecognised role would exclude them from the lead lookups
+                # (see TeamMemberRole), so fall back to plain member rather than
+                # storing something half the code ignores.
+                role = invite.role_in_team or TeamMemberRole.MEMBER.value
+                if role not in TEAM_MEMBER_ROLES:
+                    logger.warning(
+                        "Invite %s named unknown team role %r; using %r",
+                        invite.id, role, TeamMemberRole.MEMBER.value,
+                    )
+                    role = TeamMemberRole.MEMBER.value
+
+                self.db.add(
+                    TeamMember(
+                        id=str(uuid4()),
+                        team_id=team.id,
+                        developer_id=developer_id,
+                        role=role,
+                        source="manual",
+                        joined_at=datetime.now(timezone.utc),
+                    )
+                )
+        except Exception:  # noqa: BLE001 - never block the join
+            logger.exception(
+                "Could not place developer %s in team %s on invite accept",
+                developer_id, invite.team_id,
+            )
+
+    @staticmethod
+    async def _invalidate_access_cache(workspace_id: str) -> None:
+        """Drop cached access resolutions for a workspace, across workers.
+
+        Imported lazily to keep the workspace service importable from the access
+        service, which needs the workspace models.
+        """
+        from aexy.services.app_access_service import invalidate_app_settings_cache
+
+        await invalidate_app_settings_cache(workspace_id)
 
     async def _place_in_department(
         self, invite: WorkspacePendingInvite, developer_id: str
@@ -821,6 +932,7 @@ class WorkspaceService:
         member.app_permissions = app_permissions
         await self.db.flush()
         await self.db.refresh(member)
+        await self._invalidate_access_cache(workspace_id)
         return member
 
     async def get_workspace_app_settings(self, workspace_id: str) -> dict:

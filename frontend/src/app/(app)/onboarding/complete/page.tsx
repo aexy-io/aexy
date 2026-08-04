@@ -13,7 +13,6 @@ import {
   Rocket,
   Bot,
   Briefcase,
-  BookOpen,
   GraduationCap,
   Target,
   Mail,
@@ -22,89 +21,21 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useOnboarding } from "../OnboardingContext";
-import { repositoriesApi, appAccessApi, AppAccessConfig } from "@/lib/api";
-import { useAuth } from "@/hooks/useAuth";
+import { repositoriesApi, workspaceApi } from "@/lib/api";
 import confetti from "canvas-confetti";
 import type { LucideIcon } from "lucide-react";
 
-// Map onboarding use cases → which apps to enable
-const useCaseToApps: Record<string, Record<string, AppAccessConfig>> = {
-  engineering: {
-    dashboard: { enabled: true },
-    tracking: { enabled: true, modules: { standups: true, blockers: true, time: true } },
-    sprints: { enabled: true, modules: { board: true, epics: true, tasks: true, backlog: true } },
-    tickets: { enabled: true },
-    oncall: { enabled: true },
-    uptime: { enabled: true, modules: { monitors: true, incidents: true, history: true } },
-    insights: { enabled: true, modules: { team_overview: true, leaderboard: true, developer_drilldown: true } },
-  },
-  gtm: {
-    dashboard: { enabled: true },
-    crm: { enabled: true, modules: { overview: true, inbox: true, agents: true, activities: true, automations: true, calendar: true } },
-    email_marketing: { enabled: true, modules: { campaigns: true, templates: true, settings: true } },
-    booking: { enabled: true, modules: { event_types: true, availability: true, calendars: true } },
-  },
-  sales: {
-    dashboard: { enabled: true },
-    crm: { enabled: true, modules: { overview: true, inbox: true, agents: true, activities: true, automations: true, calendar: true } },
-    email_marketing: { enabled: true, modules: { campaigns: true, templates: true, settings: true } },
-    booking: { enabled: true, modules: { event_types: true, availability: true, calendars: true } },
-    tickets: { enabled: true },
-  },
-  ai: {
-    dashboard: { enabled: true },
-    agents: { enabled: true },
-    automations: { enabled: true },
-  },
-  people: {
-    dashboard: { enabled: true },
-    reviews: { enabled: true, modules: { cycles: true, goals: true, peer_requests: true, manage: true } },
-    hiring: { enabled: true, modules: { dashboard: true, candidates: true, assessments: true, questions: true, templates: true, analytics: true } },
-    learning: { enabled: true },
-    compliance: { enabled: true, modules: { reminders: true, document_center: true, training: true, certifications: true } },
-  },
-  knowledge: {
-    dashboard: { enabled: true },
-    docs: { enabled: true },
-    tables: { enabled: true },
-    forms: { enabled: true },
-  },
-};
-
-// All app IDs that can be controlled
-const ALL_APP_IDS = [
-  "dashboard", "tracking", "sprints", "tickets", "reviews", "hiring",
-  "learning", "crm", "email_marketing", "docs", "forms", "oncall",
-  "booking", "uptime", "automations", "agents", "tables", "insights", "compliance",
-];
-
-function buildAppConfigFromUseCases(useCases: string[]): Record<string, AppAccessConfig> {
-  const config: Record<string, AppAccessConfig> = {};
-
-  // Start with all apps disabled
-  for (const appId of ALL_APP_IDS) {
-    config[appId] = { enabled: false };
-  }
-
-  // Enable apps based on selected use cases (merge)
-  for (const uc of useCases) {
-    const ucApps = useCaseToApps[uc];
-    if (!ucApps) continue;
-    for (const [appId, appConfig] of Object.entries(ucApps)) {
-      if (appConfig.enabled) {
-        config[appId] = {
-          enabled: true,
-          modules: { ...(config[appId]?.modules || {}), ...(appConfig.modules || {}) },
-        };
-      }
-    }
-  }
-
-  // Dashboard is always enabled
-  config.dashboard = { enabled: true };
-
-  return config;
-}
+// The use-case → apps mapping used to live here, and was applied by writing
+// `app_config` to the founder's own member row. That taught the workspace
+// nothing, so everyone invited afterwards fell back to their legacy role's
+// bundle — a founder who picked "CRM & Sales" gave their first salesperson
+// standups and sprints and no CRM.
+//
+// It now lives in backend/src/aexy/services/onboarding_use_cases.py and is
+// applied by POST /workspaces/{id}/onboarding/use-cases, which configures the
+// workspace's apps *and* seeds a department per use case with the access profile
+// and sidebar view its people should have. The copy here had also already
+// drifted from the bundles it was supposed to mirror.
 
 const useCaseLabelMap: Record<string, string> = {
   engineering: "Engineering",
@@ -242,7 +173,6 @@ const alwaysShowLinks: QuickLink[] = [
 export default function OnboardingComplete() {
   const router = useRouter();
   const { data, setCurrentStep, resetOnboarding } = useOnboarding();
-  const { user } = useAuth();
 
   useEffect(() => {
     setCurrentStep(7);
@@ -253,14 +183,14 @@ export default function OnboardingComplete() {
         await repositoriesApi.completeOnboarding();
         localStorage.setItem("aexy_onboarding_complete", "true");
 
-        // Apply app access based on selected use cases
+        // Configure the workspace from the selected use cases: switch off the
+        // apps nobody asked for, and seed a department per use case carrying the
+        // access profile its people should have. The founder needs no override —
+        // as owner they resolve to full access anyway, and writing them one
+        // would pin them out of every later change.
         const workspaceId = data.workspace.id || localStorage.getItem("current_workspace_id");
-        const developerId = user?.id;
-        if (workspaceId && developerId && data.useCases.length > 0) {
-          const appConfig = buildAppConfigFromUseCases(data.useCases);
-          await appAccessApi.updateMemberAccess(workspaceId, developerId, {
-            app_config: appConfig,
-          });
+        if (workspaceId && data.useCases.length > 0) {
+          await workspaceApi.applyOnboardingUseCases(workspaceId, data.useCases);
         }
       } catch (err) {
         console.error("Failed to mark onboarding as complete:", err);

@@ -1,6 +1,8 @@
 """Team-related Pydantic schemas."""
 
 from datetime import datetime
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -57,17 +59,25 @@ class TeamListResponse(BaseModel):
 
 
 # Team Member Schemas
+#
+# Constrained rather than a bare `str` with a trailing comment: the comment used
+# to read `"lead" | "member"` while `project_service` wrote "admin" and
+# `tracking_tasks` escalated to lead/manager/admin, so nothing stopped a fourth
+# value appearing and the Teams page rendering a raw i18n key for it.
+TeamMemberRoleName = Literal["lead", "manager", "member"]
+
+
 class TeamMemberAdd(BaseModel):
     """Schema for adding a team member."""
 
     developer_id: str
-    role: str = Field(default="member")  # "lead" | "member"
+    role: TeamMemberRoleName = Field(default="member")
 
 
 class TeamMemberUpdate(BaseModel):
     """Schema for updating a team member."""
 
-    role: str  # "lead" | "member"
+    role: TeamMemberRoleName
 
 
 class TeamMemberResponse(BaseModel):

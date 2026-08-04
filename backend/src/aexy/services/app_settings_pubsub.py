@@ -1,10 +1,11 @@
-"""Cross-process invalidation for the workspace app_settings cache.
+"""Cross-process invalidation for the workspace access caches.
 
-The app-toggle guard reads ``workspace.settings["app_settings"]`` on nearly
-every request and caches it in-process (see ``app_access_service``). That cache
-is per-process, so when an admin toggles a module the writing worker clears its
-own copy but other workers/containers keep serving the stale value until the
-TTL lapses.
+The access guard reads ``workspace.settings["app_settings"]`` and each member's
+resolved access on nearly every request, and caches both in-process (see
+``app_access_service``). Those caches are per-process, so when an admin toggles a
+module — or edits a department's access profile, which changes what many members
+resolve to at once — the writing worker clears its own copy but other
+workers/containers keep serving the stale value until the TTL lapses.
 
 This module closes that gap with a tiny Redis pub/sub channel: writers publish
 the changed workspace id, and every worker runs a background subscriber that
@@ -61,7 +62,7 @@ async def run_app_settings_invalidation_subscriber() -> None:
     (shutdown). Imported lazily to avoid a circular import with the service that
     owns the cache.
     """
-    from aexy.services.app_access_service import clear_app_settings_cache
+    from aexy.services.app_access_service import clear_workspace_access_caches
 
     backoff = 1.0
     while True:
@@ -77,7 +78,7 @@ async def run_app_settings_invalidation_subscriber() -> None:
                         continue
                     workspace_id = message.get("data")
                     if workspace_id:
-                        clear_app_settings_cache(str(workspace_id))
+                        clear_workspace_access_caches(str(workspace_id))
             finally:
                 await pubsub.unsubscribe(APP_SETTINGS_INVALIDATION_CHANNEL)
                 await pubsub.aclose()

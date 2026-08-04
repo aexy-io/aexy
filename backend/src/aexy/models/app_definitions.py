@@ -528,6 +528,94 @@ APP_CATALOG: dict[str, AppConfig] = {
             },
         },
     },
+    # The three below were reachable from the sidebar but absent from this
+    # catalogue, which meant nothing could hide or enforce them: access
+    # resolution keys off app ids, and a route belonging to no app is treated as
+    # "not access-controlled" and shown to everybody. Between them they accounted
+    # for 22 of the 89 sidebar entries — the whole /gtm tree, Leave, and
+    # Community — so a workspace that doesn't sell anything still showed its
+    # engineers ABM, Intent and Competitors.
+    #
+    # They are enabled in every system bundle, so adding them changes nobody's
+    # navigation today; it only makes them configurable, which they were not.
+    "gtm": {
+        "name": "GTM Intelligence",
+        "description": "Visitor tracking, lead scoring, routing, and go-to-market ops",
+        "icon": "Crosshair",
+        "category": AppCategory.BUSINESS,
+        "base_route": "/gtm",
+        "required_permission": "can_view_crm",
+        "modules": {
+            "visitors": {
+                "name": "Visitors",
+                "description": "Website visitor identification and activity",
+                "route": "/visitors",
+            },
+            "scoring": {
+                "name": "Scoring & ICP",
+                "description": "Lead scoring and ideal-customer profiles",
+                "route": "/scoring",
+            },
+            "routing": {
+                "name": "Routing",
+                "description": "Assign inbound leads to owners",
+                "route": "/routing",
+            },
+            "sequences": {
+                "name": "Sequences",
+                "description": "Outbound sequences and cadences",
+                "route": "/sequences",
+            },
+            "analytics": {
+                "name": "Analytics",
+                "description": "Funnel and campaign analytics",
+                "route": "/analytics",
+            },
+            "abm": {
+                "name": "ABM",
+                "description": "Account-based marketing programmes",
+                "route": "/abm",
+            },
+            "competitors": {
+                "name": "Competitors",
+                "description": "Competitive intelligence tracking",
+                "route": "/competitors",
+            },
+            "intent": {
+                "name": "Intent",
+                "description": "Buying-intent signals",
+                "route": "/intent",
+            },
+            "health": {
+                "name": "Health",
+                "description": "Account health scoring",
+                "route": "/health",
+            },
+        },
+    },
+    "leave": {
+        "name": "Leave",
+        "description": "Leave requests, approvals, and balances",
+        "icon": "Palmtree",
+        "category": AppCategory.PEOPLE,
+        "base_route": "/leave",
+        "required_permission": None,
+        # Approvals and settings are tab query params on one page rather than
+        # sub-routes, so there is nothing here for module-level access to gate.
+        "modules": {},
+    },
+    "community": {
+        "name": "Community",
+        "description": "Public community spaces, channels, and topics",
+        "icon": "Globe",
+        "category": AppCategory.PRODUCTIVITY,
+        # Deliberately outside the (app) route group — it is a public surface, so
+        # the base route has no shared shell. Still catalogued, because the
+        # sidebar links to it and admins should be able to switch it off.
+        "base_route": "/community",
+        "required_permission": None,
+        "modules": {},
+    },
 }
 
 
@@ -580,6 +668,11 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
             "mcp": {"enabled": True, "modules": {}},
             "chat": {"enabled": True, "modules": {}},
             "tables": {"enabled": True, "modules": {}},
+            # Catalogued late (see APP_CATALOG): enabled everywhere so that
+            # making them configurable doesn't remove them from anyone.
+            "gtm": {"enabled": True, "modules": {}},
+            "leave": {"enabled": True, "modules": {}},
+            "community": {"enabled": True, "modules": {}},
             # Disabled for engineering
             "reviews": {"enabled": False},
             "hiring": {"enabled": False},
@@ -639,6 +732,11 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
             "mcp": {"enabled": True, "modules": {}},
             "chat": {"enabled": True, "modules": {}},
             "tables": {"enabled": False},
+            # Catalogued late (see APP_CATALOG): enabled everywhere so that
+            # making them configurable doesn't remove them from anyone.
+            "gtm": {"enabled": True, "modules": {}},
+            "leave": {"enabled": True, "modules": {}},
+            "community": {"enabled": True, "modules": {}},
             # Disabled for people ops
             "tracking": {"enabled": False},
             "sprints": {"enabled": False},
@@ -689,6 +787,11 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
             "mcp": {"enabled": True, "modules": {}},
             "chat": {"enabled": True, "modules": {}},
             "tables": {"enabled": True, "modules": {}},
+            # Catalogued late (see APP_CATALOG): enabled everywhere so that
+            # making them configurable doesn't remove them from anyone.
+            "gtm": {"enabled": True, "modules": {}},
+            "leave": {"enabled": True, "modules": {}},
+            "community": {"enabled": True, "modules": {}},
             # Disabled for business
             "tracking": {"enabled": False},
             "sprints": {"enabled": False},
@@ -778,6 +881,11 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
             "mcp": {"enabled": True, "modules": {}},
             "chat": {"enabled": True, "modules": {}},
             "tables": {"enabled": True, "modules": {}},
+            # Catalogued late (see APP_CATALOG): enabled everywhere so that
+            # making them configurable doesn't remove them from anyone.
+            "gtm": {"enabled": True, "modules": {}},
+            "leave": {"enabled": True, "modules": {}},
+            "community": {"enabled": True, "modules": {}},
             "insights": {
                 "enabled": True,
                 "modules": {

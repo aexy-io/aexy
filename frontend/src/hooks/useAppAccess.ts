@@ -5,7 +5,6 @@ import { useCallback, useMemo } from "react";
 import {
   appAccessApi,
   MemberEffectiveAccess,
-  AppAccessTemplate,
   AccessMatrixResponse,
   AppAccessConfig,
   AppAccessLogsResponse,
@@ -19,8 +18,6 @@ const ACCESS_KEY = "appAccess";
  * Hook for managing app access for the current user
  */
 export function useAppAccess(workspaceId: string | null, developerId: string | null) {
-  const queryClient = useQueryClient();
-
   // Fetch effective access for the current user
   const {
     data: effectiveAccess,
@@ -35,26 +32,27 @@ export function useAppAccess(workspaceId: string | null, developerId: string | n
     retry: 1,
   });
 
-  // Check if user has access to an app
+  /**
+   * Whether an app belongs in this person's navigation.
+   *
+   * Returns false until access has loaded. It used to return true, on the theory
+   * that showing everything avoided a flicker — but the flicker was the symptom:
+   * the full sidebar painted and then items vanished as the real answer arrived,
+   * which is what made navigation feel untrustworthy. Callers should render a
+   * skeleton while `isLoading` rather than guess.
+   */
   const hasAppAccess = useCallback(
     (appId: string): boolean => {
-      if (!effectiveAccess) {
-        // Default to true if access data hasn't loaded yet to avoid flickering
-        return true;
-      }
-
-      const appAccess = effectiveAccess.apps[appId];
-      return appAccess?.enabled ?? false;
+      if (!effectiveAccess) return false;
+      return effectiveAccess.apps[appId]?.enabled ?? false;
     },
     [effectiveAccess]
   );
 
-  // Check if user has access to a specific module
+  /** Whether a specific module of an app belongs in their navigation. */
   const hasModuleAccess = useCallback(
     (appId: string, moduleId: string): boolean => {
-      if (!effectiveAccess) {
-        return true;
-      }
+      if (!effectiveAccess) return false;
 
       const appAccess = effectiveAccess.apps[appId];
       if (!appAccess?.enabled) {
@@ -67,6 +65,30 @@ export function useAppAccess(workspaceId: string | null, developerId: string | n
       }
 
       return appAccess.modules[moduleId] ?? false;
+    },
+    [effectiveAccess]
+  );
+
+  /**
+   * Whether the API will let them in, as opposed to whether it is in their
+   * navigation. Use this to decide whether to show an "access denied" page:
+   * blocking an admin whose profile simply doesn't include an app would be
+   * wrong, because the API will happily serve them.
+   */
+  const canAccessApp = useCallback(
+    (appId: string): boolean => {
+      if (!effectiveAccess) return false;
+      return effectiveAccess.apps[appId]?.can_access ?? false;
+    },
+    [effectiveAccess]
+  );
+
+  /** Which layer decided an app — for explaining access, not gating it. */
+  const getAccessSource = useCallback(
+    (appId: string) => {
+      const appAccess = effectiveAccess?.apps[appId];
+      if (!appAccess) return null;
+      return { source: appAccess.source, detail: appAccess.source_detail };
     },
     [effectiveAccess]
   );
@@ -86,10 +108,9 @@ export function useAppAccess(workspaceId: string | null, developerId: string | n
 
   // Get all accessible app IDs
   const accessibleApps = useMemo((): string[] => {
-    if (!effectiveAccess?.apps) {
-      // Return all apps if access data hasn't loaded
-      return Object.keys(APP_CATALOG);
-    }
+    // Empty rather than "everything" until it loads, for the same reason
+    // hasAppAccess no longer defaults to true.
+    if (!effectiveAccess?.apps) return [];
 
     return Object.entries(effectiveAccess.apps)
       .filter(([, access]) => access.enabled)
@@ -99,10 +120,7 @@ export function useAppAccess(workspaceId: string | null, developerId: string | n
   // Get accessible modules for an app
   const getAccessibleModules = useCallback(
     (appId: string): string[] => {
-      if (!effectiveAccess) {
-        // Return all modules if access data hasn't loaded
-        return APP_CATALOG[appId]?.modules.map((m) => m.id) ?? [];
-      }
+      if (!effectiveAccess) return [];
 
       const appAccess = effectiveAccess.apps[appId];
       if (!appAccess?.enabled) {
@@ -130,6 +148,11 @@ export function useAppAccess(workspaceId: string | null, developerId: string | n
     appliedTemplateId: effectiveAccess?.applied_template_id ?? null,
     appliedTemplateName: effectiveAccess?.applied_template_name ?? null,
     hasCustomOverrides: effectiveAccess?.has_custom_overrides ?? false,
+    /** "department" | "role_fallback" | "member_template" */
+    baseline: effectiveAccess?.baseline ?? null,
+    departments: effectiveAccess?.departments ?? [],
+    /** Sidebar view implied by the primary department; a personal choice wins. */
+    suggestedPersona: effectiveAccess?.suggested_persona ?? null,
 
     // Loading state
     isLoading,
@@ -140,6 +163,8 @@ export function useAppAccess(workspaceId: string | null, developerId: string | n
     hasAppAccess,
     hasModuleAccess,
     hasRouteAccess,
+    canAccessApp,
+    getAccessSource,
     accessibleApps,
     getAccessibleModules,
   };
@@ -280,7 +305,7 @@ export function useMemberAppAccess(workspaceId: string | null) {
   // Reset member to defaults mutation
   const resetMemberMutation = useMutation({
     mutationFn: (developerId: string) =>
-      appAccessApi.resetMemberToDefaults(workspaceId!, developerId),
+      appAccessApi.resetMemberToInherited(workspaceId!, developerId),
     onSuccess: (_, developerId) => {
       queryClient.invalidateQueries({ queryKey: [ACCESS_KEY, "matrix", workspaceId] });
       queryClient.invalidateQueries({
@@ -319,7 +344,7 @@ export function useMemberAppAccess(workspaceId: string | null) {
     getMemberAccess,
     updateMemberAccess: updateMemberAccessMutation.mutateAsync,
     applyTemplateToMember: applyTemplateMutation.mutateAsync,
-    resetMemberToDefaults: resetMemberMutation.mutateAsync,
+    resetMemberToInherited: resetMemberMutation.mutateAsync,
     bulkApplyTemplate: bulkApplyTemplateMutation.mutateAsync,
 
     // Mutation states

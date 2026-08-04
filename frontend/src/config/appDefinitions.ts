@@ -7,6 +7,9 @@
 import {
   LayoutDashboard,
   Activity,
+  Crosshair,
+  Palmtree,
+  Globe,
   Zap,
   Ticket,
   Star,
@@ -396,6 +399,58 @@ export const APP_CATALOG: Record<string, AppDefinition> = {
       { id: "certifications", name: "Certifications", description: "Certification tracking", route: "/certifications" },
     ],
   },
+  // These three were reachable from the sidebar but absent from this catalogue,
+  // so nothing could hide or enforce them: `getAppIdFromPath` returned undefined
+  // and the sidebar treats "belongs to no app" as "always visible". Between them
+  // they were 22 of the 89 sidebar entries — the whole /gtm tree, Leave and
+  // Community — which is why a workspace that sells nothing still showed its
+  // engineers ABM, Intent and Competitors.
+  //
+  // Enabled in every system bundle, so cataloguing them removes them from
+  // nobody; it only makes them configurable. Keep in sync with
+  // backend/src/aexy/models/app_definitions.py.
+  gtm: {
+    id: "gtm",
+    name: "GTM Intelligence",
+    description: "Visitor tracking, lead scoring, routing, and go-to-market ops",
+    icon: Crosshair,
+    category: "business",
+    baseRoute: "/gtm",
+    requiredPermission: "can_view_crm",
+    modules: [
+      { id: "visitors", name: "Visitors", description: "Website visitor identification and activity", route: "/visitors" },
+      { id: "scoring", name: "Scoring & ICP", description: "Lead scoring and ideal-customer profiles", route: "/scoring" },
+      { id: "routing", name: "Routing", description: "Assign inbound leads to owners", route: "/routing" },
+      { id: "sequences", name: "Sequences", description: "Outbound sequences and cadences", route: "/sequences" },
+      { id: "analytics", name: "Analytics", description: "Funnel and campaign analytics", route: "/analytics" },
+      { id: "abm", name: "ABM", description: "Account-based marketing programmes", route: "/abm" },
+      { id: "competitors", name: "Competitors", description: "Competitive intelligence tracking", route: "/competitors" },
+      { id: "intent", name: "Intent", description: "Buying-intent signals", route: "/intent" },
+      { id: "health", name: "Health", description: "Account health scoring", route: "/health" },
+    ],
+  },
+  leave: {
+    id: "leave",
+    name: "Leave",
+    description: "Leave requests, approvals, and balances",
+    icon: Palmtree,
+    category: "people",
+    baseRoute: "/leave",
+    requiredPermission: null,
+    // Approvals and settings are tab query params on one page, not sub-routes,
+    // so there is nothing for module-level access to gate.
+    modules: [],
+  },
+  community: {
+    id: "community",
+    name: "Community",
+    description: "Public community spaces, channels, and topics",
+    icon: Globe,
+    category: "productivity",
+    baseRoute: "/community",
+    requiredPermission: null,
+    modules: [],
+  },
 };
 
 export const CATEGORY_LABELS: Record<AppCategory | "other", string> = {
@@ -675,7 +730,68 @@ export const SIDEBAR_TO_APP_MAP: Record<string, string> = {
   "/compliance/training": "compliance",
   "/compliance/certifications": "compliance",
   "/chat": "chat",
+
+  // Routes that used to belong to no app and were therefore shown to everyone
+  // regardless of access. `getAppIdFromPath` returning undefined means "not
+  // access-controlled" to every caller, so these were unhideable — including all
+  // fourteen /gtm entries. Prefix matching covers the deeper /gtm/* pages.
+  "/gtm": "gtm",
+  "/leave": "leave",
+  "/community": "community",
+  // Sub-surfaces of apps that already existed, but under paths the prefix rules
+  // could never reach from the app's own base route:
+  "/my-work": "sprints",       // personal view of sprint tasks
+  "/operations": "automations", // the Autopilot overview over agents + workflows
+  "/exports": "reports",        // the `exports` module of Reports, at a top-level path
+  "/activity": "dashboard",     // workspace activity feed
 };
+
+/**
+ * Which module of its app a route belongs to, if any.
+ *
+ * Needed because module-level access was configurable everywhere and enforced
+ * nowhere: the sidebar only ever asked `getAppIdFromPath`, so turning off CRM's
+ * Inbox left the Inbox link in place and opening it worked fine.
+ *
+ * Returns undefined for a route that belongs to an app but to none of its
+ * modules (e.g. /crm/sequences) — those follow app-level access, which is the
+ * only honest answer when there is no module to consult.
+ */
+export function getModuleIdFromPath(pathname: string): string | undefined {
+  const path = pathname.split("?")[0];
+  const appId = getAppIdFromPath(path);
+  if (!appId) return undefined;
+
+  const app = APP_CATALOG[appId];
+  if (!app || app.modules.length === 0) return undefined;
+
+  // Two ways a path can relate to its app: normally it sits under the app's
+  // base route, but SIDEBAR_TO_APP_MAP also maps routes that don't — /exports
+  // belongs to Reports while living at the top level.
+  const candidates = [
+    path.startsWith(app.baseRoute) ? path.slice(app.baseRoute.length) : null,
+    path,
+  ].filter((value): value is string => value !== null);
+
+  // Longest route first, so a module anchored at "" (the app's own landing page)
+  // can't shadow the more specific ones.
+  const byLength = [...app.modules].sort((a, b) => b.route.length - a.route.length);
+
+  for (const relative of candidates) {
+    for (const mod of byLength) {
+      if (!mod.route) continue;
+      if (relative === mod.route || relative.startsWith(`${mod.route}/`)) {
+        return mod.id;
+      }
+    }
+    if (relative === "") {
+      const landing = app.modules.find((mod) => mod.route === "");
+      if (landing) return landing.id;
+    }
+  }
+
+  return undefined;
+}
 
 // Get app ID from pathname
 export function getAppIdFromPath(pathname: string): string | undefined {

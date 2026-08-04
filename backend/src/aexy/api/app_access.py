@@ -15,6 +15,11 @@ from aexy.schemas.app_access import (
     AppAccessTemplateListResponse,
     AppAccessTemplatesListWrapper,
     MemberAppAccessUpdate,
+    MemberAppOverridesUpdate,
+    AccessDepartmentInfo,
+    AccessPreviewRequest,
+    AccessPreviewResponse,
+    AccessPreviewApp,
     ApplyTemplateRequest,
     BulkApplyTemplateRequest,
     BulkApplyTemplateResponse,
@@ -370,7 +375,10 @@ async def get_member_effective_access(
         app_id: AppAccessInfo(
             app_id=app_id,
             enabled=app_access["enabled"],
+            can_access=app_access["can_access"],
             modules=app_access["modules"],
+            source=app_access["source"],
+            source_detail=app_access["source_detail"],
         )
         for app_id, app_access in access["apps"].items()
     }
@@ -381,6 +389,11 @@ async def get_member_effective_access(
         applied_template_name=access["applied_template_name"],
         has_custom_overrides=access["has_custom_overrides"],
         is_admin=access["is_admin"],
+        baseline=access["baseline"],
+        departments=[
+            AccessDepartmentInfo(**department) for department in access["departments"]
+        ],
+        suggested_persona=access["suggested_persona"],
     )
 
 
@@ -422,13 +435,76 @@ async def update_member_access(
             developer_id=developer_id,
             app_config=data.app_config,
             applied_template_id=data.applied_template_id,
+            reasons=data.reasons,
+            actor_id=str(current_user.id),
         )
-        return {"success": True, "developer_id": developer_id}
+        overrides = (member.app_permissions or {}).get("overrides") or {}
+        # Report what was actually stored. A full grid can diff down to nothing
+        # — the admin agreed with the department profile — and "0 overrides" is
+        # a meaningful, reassuring answer rather than a failure.
+        return {
+            "success": True,
+            "developer_id": developer_id,
+            "override_count": len(overrides),
+        }
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
+
+
+@router.put("/members/{developer_id}/overrides")
+async def set_member_overrides(
+    workspace_id: str,
+    developer_id: str,
+    data: MemberAppOverridesUpdate,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Set a member's per-app overrides directly (inherit / grant / revoke).
+
+    The intent-shaped counterpart to PATCH /members/{id}: that one takes a whole
+    grid and works out the deltas, this one takes the deltas. An app absent from
+    ``overrides`` inherits from the member's department profile.
+    """
+    workspace_service = WorkspaceService(db)
+
+    if not await workspace_service.check_permission(
+        workspace_id, str(current_user.id), "admin"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin permission required",
+        )
+
+    from aexy.core.workspace_auth import assert_active_member
+    await assert_active_member(db, workspace_id, developer_id)
+
+    service = AppAccessService(db)
+    try:
+        member = await service.set_member_overrides(
+            workspace_id=workspace_id,
+            developer_id=developer_id,
+            overrides={
+                app_id: override.model_dump(exclude_none=True)
+                for app_id, override in data.overrides.items()
+            },
+            reasons=data.reasons,
+            actor_id=str(current_user.id),
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+    overrides = (member.app_permissions or {}).get("overrides") or {}
+    return {
+        "success": True,
+        "developer_id": developer_id,
+        "override_count": len(overrides),
+    }
 
 
 @router.post("/members/{developer_id}/apply-template")
@@ -462,6 +538,7 @@ async def apply_template_to_member(
             workspace_id=workspace_id,
             developer_id=developer_id,
             template_id=data.template_id,
+            actor_id=str(current_user.id),
         )
         return {"success": True, "developer_id": developer_id}
     except ValueError as e:
@@ -478,7 +555,10 @@ async def reset_member_to_defaults(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Reset a member's app access to their role defaults."""
+    """Drop a member's overrides so they inherit their department profile again.
+
+    (Or their role bundle, if none of their departments carries a profile.)
+    """
     workspace_service = WorkspaceService(db)
 
     if not await workspace_service.check_permission(
@@ -491,7 +571,7 @@ async def reset_member_to_defaults(
 
     service = AppAccessService(db)
     try:
-        member = await service.reset_member_to_role_defaults(
+        member = await service.reset_member_to_inherited(
             workspace_id=workspace_id,
             developer_id=developer_id,
         )
@@ -527,6 +607,7 @@ async def bulk_apply_template(
             workspace_id=workspace_id,
             developer_ids=data.developer_ids,
             template_id=data.template_id,
+            actor_id=str(current_user.id),
         )
         applied_ids = [str(m.developer_id) for m in members]
         return BulkApplyTemplateResponse(
@@ -539,6 +620,76 @@ async def bulk_apply_template(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
+
+
+@router.post("/preview", response_model=AccessPreviewResponse)
+async def preview_access(
+    workspace_id: str,
+    data: AccessPreviewRequest,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """What would somebody with this department/profile/role see?
+
+    Lets the invite screen say "Priya will see CRM, Email and Docs" before the
+    invite goes out, instead of the sender finding out afterwards from the
+    person who received it.
+    """
+    workspace_service = WorkspaceService(db)
+
+    if not await workspace_service.check_permission(
+        workspace_id, str(current_user.id), "admin"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin permission required",
+        )
+
+    service = AppAccessService(db)
+    try:
+        app_config, baseline, baseline_detail, persona = await service.preview_access(
+            workspace_id=workspace_id,
+            department_ids=data.department_ids,
+            access_template_id=data.access_template_id,
+            role=data.role,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    # Fold in the workspace toggle: previewing an app the workspace has turned
+    # off would promise the invitee something they will never see.
+    apps: list[AccessPreviewApp] = []
+    for app_id, definition in APP_CATALOG.items():
+        config = app_config.get(app_id) or {}
+        enabled = bool(config.get("enabled")) and (
+            await service.check_workspace_app_enabled(workspace_id, app_id)
+        )
+        if not enabled:
+            continue
+        granted = config.get("modules") or {}
+        module_names = [
+            module_config["name"]
+            for module_id, module_config in definition.get("modules", {}).items()
+            # An empty grant map means "all modules of this app".
+            if not granted or granted.get(module_id, True)
+        ]
+        apps.append(
+            AccessPreviewApp(
+                app_id=app_id,
+                name=definition["name"],
+                enabled=True,
+                module_names=module_names,
+            )
+        )
+
+    apps.sort(key=lambda app: app.name)
+    return AccessPreviewResponse(
+        baseline=baseline,
+        baseline_detail=baseline_detail,
+        suggested_persona=persona,
+        apps=apps,
+        enabled_app_names=[app.name for app in apps],
+    )
 
 
 # Access Matrix Endpoint
@@ -573,6 +724,10 @@ async def get_access_matrix(
             has_custom_overrides=entry["has_custom_overrides"],
             is_admin=entry["is_admin"],
             apps=entry["apps"],
+            baseline=entry["baseline"],
+            department_id=entry["department_id"],
+            department_name=entry["department_name"],
+            department_count=entry["department_count"],
         )
         for entry in matrix_data
     ]

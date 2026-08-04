@@ -110,6 +110,24 @@ class AppAccessInfo(BaseModel):
     app_id: str
     enabled: bool
     modules: dict[str, bool]
+    # Whether the API will let this member in, as opposed to whether the app
+    # belongs in their navigation. These differ for admins, who can always reach
+    # a workspace-enabled app but whose sidebar follows their profile.
+    can_access: bool = True
+    # Which layer decided `enabled`: workspace_disabled | department |
+    # role_fallback | member_template | member_override.
+    source: str = "role_fallback"
+    source_detail: str | None = None
+
+
+class AccessDepartmentInfo(BaseModel):
+    """A department contributing to a member's access baseline."""
+
+    id: str
+    name: str
+    is_primary: bool
+    has_profile: bool
+    access_profile_slug: str | None = None
 
 
 class EffectiveAccessResponse(BaseModel):
@@ -120,10 +138,22 @@ class EffectiveAccessResponse(BaseModel):
     applied_template_name: str | None
     has_custom_overrides: bool
     is_admin: bool
+    # Where the baseline came from, so the UI can say "from the Sales
+    # department" rather than presenting resolved access as if it were a fact
+    # with no author.
+    baseline: str = "role_fallback"
+    departments: list[AccessDepartmentInfo] = Field(default_factory=list)
+    # Sidebar view implied by the primary department; a personal choice wins.
+    suggested_persona: str | None = None
 
 
 class MemberAppAccessUpdate(BaseModel):
-    """Schema for updating a member's app access."""
+    """Schema for updating a member's app access.
+
+    ``app_config`` is a desired picture, not what gets stored: the service diffs
+    it against the member's baseline and persists only the differences, so
+    everything not mentioned keeps inheriting from their department.
+    """
 
     app_config: dict = Field(
         ...,
@@ -131,7 +161,77 @@ class MemberAppAccessUpdate(BaseModel):
     )
     applied_template_id: str | None = Field(
         default=None,
-        description="Template ID if applying a template"
+        description="Pin this member to a template as their baseline"
+    )
+    reasons: dict[str, str] | None = Field(
+        default=None,
+        description="Optional per-app note explaining an override, kept for audit",
+    )
+
+
+class AccessPreviewRequest(BaseModel):
+    """What would somebody see, given this department / profile / role?
+
+    Answers the invite screen's question before the invite is sent, so nobody
+    has to send one and then go and look at what the person ended up with.
+    """
+
+    department_ids: list[str] = Field(
+        default_factory=list,
+        description="Departments the person would belong to (union of grants)",
+    )
+    access_template_id: str | None = Field(
+        default=None,
+        description="Pin a template instead of using the departments' profiles",
+    )
+    role: str = Field(
+        default="member",
+        description="Legacy workspace role, used only when no profile applies",
+    )
+
+
+class AccessPreviewApp(BaseModel):
+    """One app in a preview, with the modules that come with it."""
+
+    app_id: str
+    name: str
+    enabled: bool
+    module_names: list[str] = Field(default_factory=list)
+
+
+class AccessPreviewResponse(BaseModel):
+    """Resolved preview: which apps, and where the answer came from."""
+
+    baseline: str
+    baseline_detail: str | None = None
+    suggested_persona: str | None = None
+    apps: list[AccessPreviewApp] = Field(default_factory=list)
+    enabled_app_names: list[str] = Field(default_factory=list)
+
+
+class MemberAppOverride(BaseModel):
+    """A single per-app override. Omit an app entirely to inherit it."""
+
+    enabled: bool | None = Field(
+        default=None,
+        description="True grants, False revokes, null inherits",
+    )
+    modules: dict[str, bool] | None = Field(
+        default=None,
+        description="Per-module grants/revokes; omitted modules inherit",
+    )
+
+
+class MemberAppOverridesUpdate(BaseModel):
+    """Three-state override write: inherit / grant / revoke, per app."""
+
+    overrides: dict[str, MemberAppOverride] = Field(
+        default_factory=dict,
+        description="app_id -> override. Apps absent from this map inherit.",
+    )
+    reasons: dict[str, str] | None = Field(
+        default=None,
+        description="Optional per-app note explaining an override, kept for audit",
     )
 
 
@@ -182,6 +282,13 @@ class MemberAccessMatrixEntry(BaseModel):
     has_custom_overrides: bool
     is_admin: bool
     apps: dict[str, str]  # app_id -> "full" | "partial" | "none"
+    # Where this member's access comes from. `baseline` of "role_fallback" is
+    # the signal an admin needs: it means this person's departments carry no
+    # profile, so their navigation is being decided by their legacy role.
+    baseline: str = "role_fallback"
+    department_id: str | None = None
+    department_name: str | None = None
+    department_count: int = 0
 
 
 class AccessMatrixResponse(BaseModel):

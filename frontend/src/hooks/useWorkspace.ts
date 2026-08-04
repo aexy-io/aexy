@@ -194,11 +194,26 @@ export function useWorkspaceMembers(
       email,
       role,
       departmentId,
+      teamId,
+      roleInTeam,
     }: {
       email: string;
       role?: string;
+      /** Decides what they can see (their department's access profile). */
       departmentId?: string | null;
-    }) => workspaceApi.inviteMember(workspaceId!, email, role, departmentId),
+      /** Decides who chases them: standups, escalations, approvals, sprints. */
+      teamId?: string | null;
+      roleInTeam?: "lead" | "manager" | "member" | null;
+    }) =>
+      workspaceApi.inviteMember(
+        workspaceId!,
+        email,
+        role,
+        departmentId,
+        null,
+        teamId,
+        roleInTeam,
+      ),
     onSuccess: () => {
       toast.success("Member invited");
       queryClient.invalidateQueries({ queryKey: ["workspaceMembers", workspaceId] });

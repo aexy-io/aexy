@@ -8,7 +8,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from aexy.models.team import Team, TeamMember
+from aexy.models.team import TEAM_MEMBER_ROLES, Team, TeamMember
 from aexy.models.workspace import WorkspaceMember
 from aexy.models.developer import Developer
 from aexy.models.activity import Commit
@@ -162,7 +162,19 @@ class TeamManagementService:
         role: str = "member",
         source: str = "manual",
     ) -> TeamMember:
-        """Add a member to a team."""
+        """Add a member to a team.
+
+        Validates the role for the same reason as ``update_team_member_role``:
+        this is the seam the repo sync, the settings UI and invite placement all
+        go through, and an undeclared value quietly excludes the person from the
+        lead lookups rather than failing.
+        """
+        if role not in TEAM_MEMBER_ROLES:
+            raise ValueError(
+                f"Unknown team role {role!r}. Expected one of: "
+                + ", ".join(sorted(TEAM_MEMBER_ROLES))
+            )
+
         # Check if already a member
         existing = await self.get_team_member(team_id, developer_id)
         if existing:
@@ -233,7 +245,20 @@ class TeamManagementService:
         developer_id: str,
         new_role: str,
     ) -> TeamMember | None:
-        """Update a team member's role."""
+        """Update a team member's role.
+
+        Rejects a role outside the declared vocabulary. The API schema already
+        constrains it, but this is the seam every other caller uses too, and an
+        undeclared value here is not inert: `review_service` and
+        `leave_request_service` look for exactly ``"lead"``, so a typo silently
+        removes someone from both lookups rather than failing.
+        """
+        if new_role not in TEAM_MEMBER_ROLES:
+            raise ValueError(
+                f"Unknown team role {new_role!r}. Expected one of: "
+                + ", ".join(sorted(TEAM_MEMBER_ROLES))
+            )
+
         member = await self.get_team_member(team_id, developer_id)
         if not member:
             return None

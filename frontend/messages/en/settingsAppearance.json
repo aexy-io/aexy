@@ -18,6 +18,14 @@
       "description": "A role-based view that tailors both the sidebar and your dashboard widgets to the work that matters to you.",
       "hint": "Applies to the sidebar immediately and resets your dashboard widgets to this view's defaults."
     },
+    "sidebarView": {
+      "title": "Sidebar view",
+      "description": "Which navigation you see. Separate from the dashboard view above — that one decides your widgets.",
+      "followDepartment": "Follow my department ({view})",
+      "followDepartmentUnset": "Follow my department",
+      "derivedHint": "Your department sets this to {view}. Pick a view above to override it for yourself.",
+      "chosenHint": "You've chosen this view yourself, so it won't change if your department does."
+    },
     "sidebarLayout": {
       "title": "Sidebar layout",
       "description": "How navigation items are grouped.",

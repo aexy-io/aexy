@@ -7,6 +7,8 @@ import { useSidebarLayout } from "@/hooks/useSidebarLayout";
 import { SidebarLayoutType } from "@/config/sidebarLayouts";
 import { useTheme, ThemeMode } from "@/hooks/useTheme";
 import { useDashboardPreferences } from "@/hooks/useDashboardPreferences";
+import { useSidebarPersona } from "@/hooks/useSidebarPersona";
+import { PERSONA_LABELS } from "@/config/appDefinitions";
 import { PresetType } from "@/config/dashboardPresets";
 import { PresetSelector } from "@/components/dashboard/PresetSelector";
 import {
@@ -14,6 +16,18 @@ import {
   SettingsSection,
   SettingsChoiceCard,
 } from "@/components/settings/SettingsPrimitives";
+
+// The sidebar views on offer. "custom" is absent on purpose: it means "I
+// rearranged my dashboard widgets", which says nothing about navigation.
+const SIDEBAR_VIEW_OPTIONS = [
+  "developer",
+  "manager",
+  "product",
+  "hr",
+  "support",
+  "sales",
+  "admin",
+];
 
 const THEME_OPTIONS: { id: ThemeMode; icon: React.ReactNode }[] = [
   { id: "dark", icon: <Moon className="h-5 w-5" /> },
@@ -81,6 +95,8 @@ export default function AppearanceSettingsPage() {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const { preferences, setPreset, isUpdating } = useDashboardPreferences();
   const currentPreset: PresetType = (preferences?.preset_type as PresetType) || "developer";
+  const { chosenPersona, suggestedPersona, isPersonaDerived, setPersona } =
+    useSidebarPersona();
 
   return (
     <SettingsPage title={t("title")} description={t("description")}>
@@ -117,6 +133,52 @@ export default function AppearanceSettingsPage() {
           onSelectPreset={(preset: PresetType) => setPreset(preset)}
           isLoading={isUpdating}
         />
+      </SettingsSection>
+
+      {/* The sidebar view, separate from the dashboard preset above. They used to
+          be the same field, so navigation was decided by which *widgets* someone
+          had picked — and since that defaults to "developer", everyone navigated
+          as a developer until they found this page. */}
+      <SettingsSection
+        title={t("sidebarView.title")}
+        description={t("sidebarView.description")}
+        footer={
+          isPersonaDerived && suggestedPersona
+            ? t("sidebarView.derivedHint", {
+                view: PERSONA_LABELS[suggestedPersona] || suggestedPersona,
+              })
+            : t("sidebarView.chosenHint")
+        }
+      >
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setPersona(null)}
+            className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+              !chosenPersona
+                ? "border-primary bg-primary/10 text-foreground"
+                : "border-border text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {suggestedPersona
+              ? t("sidebarView.followDepartment", {
+                  view: PERSONA_LABELS[suggestedPersona] || suggestedPersona,
+                })
+              : t("sidebarView.followDepartmentUnset")}
+          </button>
+          {SIDEBAR_VIEW_OPTIONS.map((option) => (
+            <button
+              key={option}
+              onClick={() => setPersona(option)}
+              className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+                chosenPersona === option
+                  ? "border-primary bg-primary/10 text-foreground"
+                  : "border-border text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {PERSONA_LABELS[option] || option}
+            </button>
+          ))}
+        </div>
       </SettingsSection>
 
       <SettingsSection
