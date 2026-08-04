@@ -114,20 +114,27 @@ async def test_finance_member_scoped(db_session: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_kam_sees_own_and_kam_queue(db_session: AsyncSession):
+async def test_kam_sees_only_what_is_assigned_to_them(db_session: AsyncSession):
+    """"Pending with KAM" is a stage, not a shared queue.
+
+    Every ticket nobody has picked up sits pending-with KAM, so honouring that
+    value as a queue showed each KAM the whole desk — which is what the two-scope
+    model exists to stop. Ops visibility is by assignment; the other functions
+    keep their queues (see test_finance_member_scoped).
+    """
     ws = await _ws(db_session, "p4-c")
     kam = await _dev(db_session, "neha")
     other = await _dev(db_session, "other")
     await _member(db_session, ws, kam, "member")
     dept = await _dept(db_session, ws, "ops_kam")
     await _join(db_session, ws, dept, kam)
-    await _ticket(db_session, ws, "kam", None)               # kam queue — visible
-    await _ticket(db_session, ws, "insurer", kam.id)          # assigned to me — visible
+    await _ticket(db_session, ws, "kam", None)               # unassigned — not theirs
+    mine = await _ticket(db_session, ws, "insurer", kam.id)   # assigned to me — visible
     await _ticket(db_session, ws, "insurer", other.id)        # someone else's — hidden
     await db_session.commit()
 
     rows = await ServiceDeskService(db_session).list_tickets(ws.id, developer_id=kam.id)
-    assert len(rows) == 2
+    assert [r.ticket_id for r in rows] == [mine.id]
 
 
 @pytest.mark.asyncio
@@ -149,19 +156,37 @@ async def test_digest_builder(db_session: AsyncSession):
     neha = await _dev(db_session, "neha2")
     nehal = await _dev(db_session, "nehal2")
     dept = await _dept(db_session, ws, "ops_kam", head_id=head.id)
+<<<<<<< ours
     # Digest recipients must still be on the team: department rows survive
     # someone leaving the workspace, so a departed employee would otherwise keep
     # receiving the desk's open-ticket list (subjects, partners) three times a
     # day. Membership is therefore part of the setup, not incidental to it.
+=======
+    # Heading the department is not by itself full visibility — the head needs
+    # the view-all permission, or they get an assigned-only digest like a KAM.
+    db_session.add(
+        WorkspaceMember(
+            workspace_id=ws.id, developer_id=head.id, role="member", status="active",
+            permission_overrides={"can_view_all_service_desk": True},
+        )
+    )
+    await db_session.flush()
+>>>>>>> theirs
     await _member(db_session, ws, neha, "member")
     await _member(db_session, ws, nehal, "member")
     await _join(db_session, ws, dept, neha)
     await _join(db_session, ws, dept, nehal)
+<<<<<<< ours
     # 7 calendar days is five business days whatever weekday the suite runs on.
     # `3` passed on a Thursday and failed on a Monday, because the breach clock
     # only accrues working hours — the same trap already fixed in
     # test_service_desk_tat.py, missed here.
     await _ticket(db_session, ws, "insurer", neha.id, stage_age_days=7)  # breaching, neha
+=======
+    # 5 calendar days, not 3: the clock counts working hours, so a 3-day age
+    # lands on exactly 2.0 working days (not > 2) whenever it spans a weekend.
+    await _ticket(db_session, ws, "insurer", neha.id, stage_age_days=5)  # breaching, neha
+>>>>>>> theirs
     await _ticket(db_session, ws, "kam", neha.id)                         # neha
     await _ticket(db_session, ws, "finance", nehal.id)                    # nehal
     await db_session.commit()
@@ -205,6 +230,23 @@ async def test_digest_skips_people_who_left_the_workspace(db_session: AsyncSessi
     emails = {d.recipient_email for d in await ServiceDeskDigestService(db_session).build_digests(ws.id)}
     assert "departed@example.com" not in emails
 
+    # Nehal leaves the workspace. The department row stays behind, but the
+    # digest must stop mailing them ticket details they can no longer read.
+    member = (
+        await db_session.execute(
+            select(WorkspaceMember).where(
+                WorkspaceMember.workspace_id == ws.id,
+                WorkspaceMember.developer_id == nehal.id,
+            )
+        )
+    ).scalar_one()
+    member.status = "removed"
+    await db_session.commit()
+
+    after = {d.recipient_email for d in await ServiceDeskDigestService(db_session).build_digests(ws.id)}
+    assert "nehal2@bimaplan.co" not in after
+    assert "neha2@bimaplan.co" in after
+
 
 @pytest.mark.asyncio
 async def test_ai_toggle_gates_classification(db_session: AsyncSession, monkeypatch):
@@ -223,6 +265,7 @@ async def test_ai_toggle_gates_classification(db_session: AsyncSession, monkeypa
 
     async def spy(self, *a, **k):
         calls.append("classified")
+        return [], False  # (issue candidates, overflow) — nothing detected
 
     monkeypatch.setattr(ServiceDeskIntakeService, "_classify", spy)
     monkeypatch.setattr(ServiceDeskIntakeService, "_send_receipt", lambda self, *a, **k: _noop())
@@ -242,6 +285,28 @@ async def test_ai_toggle_gates_classification(db_session: AsyncSession, monkeypa
     await svc.ingest(InboundEmail(to="operations@example.com", from_email="y@new.io", subject="s", message_id="ai-2"), mb, "service_desk_webhook")
     await db_session.commit()
     assert calls == ["classified"]
+
+
+@pytest.mark.asyncio
+async def test_auto_split_setting_defaults_off_and_is_patchable(db_session: AsyncSession):
+    """The switch reaches the workspace the same way the AI switch does."""
+    from aexy.services.service_desk_service import ServiceDeskService
+
+    ws = await _ws(db_session, "p4-auto-split")
+    service = ServiceDeskService(db_session)
+
+    assert (await service.get_settings(ws.id))["auto_split_enabled"] is False
+
+    await service.update_settings(ws.id, auto_split_enabled=True)
+    await db_session.commit()
+    settings = await service.get_settings(ws.id)
+    assert settings["auto_split_enabled"] is True
+    # Patch semantics: flipping one switch leaves the other alone.
+    assert settings["ai_classification_enabled"] is False
+
+    await service.update_settings(ws.id, auto_split_enabled=False)
+    await db_session.commit()
+    assert (await service.get_settings(ws.id))["auto_split_enabled"] is False
 
 
 @pytest.mark.asyncio

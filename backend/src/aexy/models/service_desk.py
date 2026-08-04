@@ -299,6 +299,14 @@ class ServiceDeskTicket(Base):
     workspace_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    # Canonical split-family relationship. ``Ticket.field_values`` still keeps
+    # display metadata, but assignment and authorization must never trust JSON.
+    split_parent_ticket_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("tickets.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     product_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False), ForeignKey("service_desk_products.id", ondelete="SET NULL"), nullable=True
@@ -338,10 +346,19 @@ class ServiceDeskTicket(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
+<<<<<<< ours
     ticket: Mapped["Ticket"] = relationship("Ticket", lazy="selectin")
     account: Mapped["ServiceDeskAccount"] = relationship("ServiceDeskAccount", lazy="selectin")
     product: Mapped["ServiceDeskProduct"] = relationship("ServiceDeskProduct", lazy="selectin")
     vendor: Mapped["ServiceDeskVendor"] = relationship("ServiceDeskVendor", lazy="selectin")
+=======
+    ticket: Mapped["Ticket"] = relationship(
+        "Ticket", foreign_keys=[ticket_id], lazy="selectin"
+    )
+    partner: Mapped["ServiceDeskAccount"] = relationship("ServiceDeskAccount", lazy="selectin")
+    lob: Mapped["ServiceDeskProduct"] = relationship("ServiceDeskProduct", lazy="selectin")
+    insurer: Mapped["ServiceDeskVendor"] = relationship("ServiceDeskVendor", lazy="selectin")
+>>>>>>> theirs
 
 
 class TicketPendingSegment(Base):

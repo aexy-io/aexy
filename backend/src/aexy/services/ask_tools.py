@@ -261,12 +261,21 @@ async def _list_tickets(
     priority = tool_input.get("priority")
     limit = tool_input.get("limit", 20)
 
+    # Service Desk tickets share this table and field_values carries the
+    # requester's email subject and body, so asking the assistant to "list
+    # tickets" would otherwise read out every ticket the desk's row scope hides.
+    from aexy.services.service_desk_service import generic_ticket_scope_clause
+
+    visibility = await generic_ticket_scope_clause(db, workspace_id, developer_id)
+
     stmt = (
         select(Ticket)
         .where(Ticket.workspace_id == workspace_id)
         .order_by(Ticket.created_at.desc())
         .limit(limit)
     )
+    if visibility is not None:
+        stmt = stmt.where(visibility)
     if status:
         stmt = stmt.where(Ticket.status == status)
     if priority:

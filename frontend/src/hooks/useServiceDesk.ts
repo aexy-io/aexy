@@ -208,6 +208,11 @@ export function useServiceDeskMutations() {
   };
 
   return {
+    splitDetectedIssues: useMutation({
+      mutationFn: ({ id, issue_indexes }: { id: string; issue_indexes: number[] }) =>
+        serviceDeskApi.splitDetectedIssues(ws!, id, issue_indexes),
+      onSuccess: (_r, v) => invalidateTickets(v.id),
+    }),
     changePendingWith: useMutation({
       mutationFn: ({ id, pending_with, note }: { id: string; pending_with: PendingWith; note?: string }) =>
         serviceDeskApi.changePendingWith(ws!, id, pending_with, note),
@@ -222,6 +227,11 @@ export function useServiceDeskMutations() {
       mutationFn: (data: Parameters<typeof serviceDeskApi.createManual>[1]) => serviceDeskApi.createManual(ws!, data),
       onSuccess: () => invalidateTickets(),
     }),
+    emailStakeholder: useMutation({
+      mutationFn: ({ id, data }: { id: string; data: { to: string; subject: string; body: string; attachment_filenames?: string[]; move_ticket?: boolean } }) =>
+        serviceDeskApi.emailStakeholder(ws!, id, data),
+      onSuccess: (_r, v) => invalidateTickets(v.id),
+    }),
     convertToTask: useMutation({
       mutationFn: ({ id, data }: { id: string; data: Parameters<typeof serviceDeskApi.convertToTask>[2] }) =>
         serviceDeskApi.convertToTask(ws!, id, data),
@@ -230,7 +240,10 @@ export function useServiceDeskMutations() {
     updateSettings: useMutation({
       mutationFn: (patch: ServiceDeskSettingsPatch) => serviceDeskApi.updateSettings(ws!, patch),
       onSuccess: () => {
-        if (ws) qc.invalidateQueries({ queryKey: keys.settings(ws) });
+        if (ws) {
+          qc.invalidateQueries({ queryKey: keys.settings(ws) });
+          invalidateTickets();
+        }
       },
     }),
     updateTemplate: useMutation({

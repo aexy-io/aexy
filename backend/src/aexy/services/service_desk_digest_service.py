@@ -28,9 +28,14 @@ from aexy.models.service_desk import (
 )
 from aexy.models.ticketing import Ticket
 from aexy.models.workspace import Workspace, WorkspaceMember
+<<<<<<< ours
 from aexy.services.service_desk_clock import DEFAULT_DIGEST_HOURS, load_clock
 from aexy.services.service_desk_config import display_id, ticket_prefix
 from aexy.services.service_desk_taxonomy import load_taxonomy
+=======
+from aexy.services.service_desk_clock import load_clock
+from aexy.services.service_desk_service import has_full_service_desk_view
+>>>>>>> theirs
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +128,7 @@ class ServiceDeskDigestService:
                     pending_with=sd.pending_with,
                     days_in_stage=stage_days,
                     overall_days=overall_days,
-                    breaching=clock.is_breaching(stage_seconds),
+                    breaching=clock.is_breaching(stage_seconds, sd.pending_with),
                     assignee_id=ticket.assignee_id,
                 )
             )
@@ -161,11 +166,17 @@ class ServiceDeskDigestService:
         digests: list[Digest] = []
         owner_ids: list[str] = []
         if dept is not None:
+<<<<<<< ours
             # Only people still on the team. Department rows are not removed when
             # someone leaves the workspace (which is exactly why intake's
             # `_random_owner` joins WorkspaceMember), so without this a departed
             # employee keeps receiving the desk's open-ticket list three times a
             # day — including ticket subjects and account names.
+=======
+            # Department rows survive someone leaving the workspace, so join
+            # WorkspaceMember: a departed KAM must not keep receiving ticket
+            # details by email after losing API access to the same rows.
+>>>>>>> theirs
             member_ids = (
                 await self.db.execute(
                     select(DepartmentMember.developer_id)
@@ -198,7 +209,25 @@ class ServiceDeskDigestService:
         if desk_lead_id:
             head = await self.db.get(Developer, desk_lead_id)
             if head and head.email:
-                digests.append(Digest(head.email, head.name or head.email, True, list(all_rows)))
+                # Being head of the department is not by itself permission to
+                # read every ticket — that is can_view_all_service_desk /
+                # can_manage_service_desk. A head without it gets the same
+                # assigned-only digest a KAM gets, so the digest can't email
+                # around the row scope the API enforces.
+                full_view = await has_full_service_desk_view(
+                    self.db, workspace_id, ops_head_id
+                )
+                if full_view:
+                    digests.append(Digest(head.email, head.name or head.email, True, list(all_rows)))
+                elif ops_head_id not in kam_ids:
+                    digests.append(
+                        Digest(
+                            head.email,
+                            head.name or head.email,
+                            False,
+                            [r for r in all_rows if r.assignee_id == ops_head_id],
+                        )
+                    )
 
         return digests
 

@@ -1,9 +1,9 @@
 """Service Desk Pydantic schemas (taxonomy, master data, intake, ticket views)."""
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 # Stakeholder and request-type slugs used to be `Literal[...]` unions listing one
@@ -229,6 +229,20 @@ class MailboxResponse(BaseModel):
 
 # ==================== Intake (internal, normalized email) ====================
 
+class InboundAttachment(BaseModel):
+    """A bounded, provider-normalized attachment summary for intake AI."""
+
+    filename: str
+    content_type: str | None = None
+    size_bytes: int | None = None
+    preview: str | None = None
+    # The provider's handle for re-fetching the bytes later. Captured whether or
+    # not AI is on, because it is an identifier and not content: without it a KAM
+    # can see that a claim register arrived but can never forward it, which is
+    # the whole reason the file was sent to the desk.
+    attachment_id: str | None = None
+
+
 class InboundEmail(BaseModel):
     """A provider/channel-agnostic inbound email handed to the intake service."""
 
@@ -241,6 +255,18 @@ class InboundEmail(BaseModel):
     message_id: str | None = None
     thread_id: str | None = None
     in_reply_to: str | None = None
+    attachments: list[InboundAttachment] = Field(default_factory=list)
+    # Raw message headers, keys lower-cased. Intake reads these to recognise
+    # automatic responses and our own outbound mail; providers hand them over in
+    # whatever case and value type they like, hence the normalisation below.
+    headers: dict[str, str] = Field(default_factory=dict)
+
+    @field_validator("headers", mode="before")
+    @classmethod
+    def _normalise_headers(cls, value: object) -> dict[str, str]:
+        if not isinstance(value, dict):
+            return {}
+        return {str(name).strip().lower(): str(item) for name, item in value.items()}
 
 
 # ==================== Manual ticket logging ====================
@@ -318,6 +344,23 @@ class TicketFieldsUpdate(BaseModel):
     assigned_owner_id: str | None = None
 
 
+class DetectedIssue(BaseModel):
+    summary: str = Field(..., min_length=1, max_length=240)
+    request_type: RequestType
+    lob: str | None = None
+    confidence: float = Field(..., ge=0, le=1)
+    split_reason: str | None = None
+
+
+class HumanSplitRequest(BaseModel):
+    issue_indexes: list[int] = Field(..., min_length=1)
+
+
+class HumanSplitResponse(BaseModel):
+    created_ticket_ids: list[str]
+    created_ticket_display_ids: list[str]
+
+
 class SegmentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -341,11 +384,72 @@ class TicketTAT(BaseModel):
     stakeholder_seconds: dict[str, int] = Field(default_factory=dict)
 
 
+class ServiceDeskCorrespondence(BaseModel):
+    """An external email matched to this Service Desk ticket, either direction."""
+
+    id: str
+    author_email: str | None = None
+    # The internal person who pressed Send. Only set on outgoing mail: an
+    # inbound reply has no Aexy author. Without it the ticket shows only the
+    # shared mailbox, so nobody can tell which KAM actually wrote to a partner.
+    author_name: str | None = None
+    content: str
+    created_at: datetime
+    # "outgoing" is mail a KAM or manager sent from the ticket; "incoming" is a
+    # stakeholder reply the mailbox sync matched onto it. The card must say
+    # which, or a thread of both reads as if the stakeholder said everything.
+    direction: Literal["incoming", "outgoing"] = "incoming"
+
+
+class TicketEmailRecipient(BaseModel):
+    """One address the ticket may be emailed from the desk."""
+
+    email: str
+    label: str
+    # The stage the ticket moves to when this recipient is written to, or None
+    # when writing to them says nothing about who now has to act (the original
+    # requester, if they are not also a configured partner or insurer).
+    stage: PendingWith | None = None
+
+
+class TicketAttachment(BaseModel):
+    """A file that arrived on the ticket's original email."""
+
+    filename: str
+    content_type: str | None = None
+    size_bytes: int | None = None
+    # False when the provider gave us no handle for the bytes, e.g. mail that
+    # arrived before attachment ids were captured. The UI must not offer to
+    # forward a file the send would then fail on.
+    can_forward: bool = False
+
+
+class StakeholderEmailRequest(BaseModel):
+    to: str = Field(..., min_length=3, max_length=255)
+    subject: str = Field(..., min_length=1, max_length=255)
+    body: str = Field(..., min_length=1, max_length=20000)
+    # Filenames chosen from the ticket's own attachments. Never a client-supplied
+    # payload: the bytes are re-fetched from the original email, so a caller
+    # cannot use the desk to send a file that never arrived on the ticket.
+    attachment_filenames: list[str] = Field(default_factory=list, max_length=10)
+    # Sending is usually the hand-off, so the stage follows the recipient by
+    # default. A KAM sending an update rather than a request unticks it.
+    move_ticket: bool = True
+
+
 class ServiceDeskTicketDetail(ServiceDeskTicketResponse):
     body: str | None = None
     linked_task_id: str | None = None
+    detected_issues: list[DetectedIssue] = Field(default_factory=list)
+    split_done_indexes: list[int] = Field(default_factory=list)
     segments: list[SegmentResponse] = Field(default_factory=list)
+    correspondence: list[ServiceDeskCorrespondence] = Field(default_factory=list)
+    email_recipients: list[TicketEmailRecipient] = Field(default_factory=list)
+    attachments: list[TicketAttachment] = Field(default_factory=list)
     tat: TicketTAT
+    # Server-computed write authority for the requesting caller, so the UI never
+    # re-derives (and drifts from) the ``can_edit_ticket`` rule.
+    can_edit: bool = False
 
 
 # ==================== Dashboard (stakeholder × age) ====================
@@ -386,15 +490,59 @@ class ServiceDeskDashboard(BaseModel):
 
 # ==================== Org-level settings ====================
 
+class TestStageSLA(BaseModel):
+    """A deliberately short, test-only working-time threshold for one stage."""
+
+    amber_minutes: int = Field(..., ge=1, le=240)
+    red_minutes: int = Field(..., ge=2, le=240)
+
+    @model_validator(mode="after")
+    def _red_must_follow_amber(self):
+        if self.red_minutes <= self.amber_minutes:
+            raise ValueError("red_minutes must be greater than amber_minutes")
+        return self
+
+
+class TestSLAOverride(BaseModel):
+    """Temporary minute rules for the three externally visible desk stages.
+
+    The short expiry is an intentional safety rail: these values exist only to
+    make a controlled test observable, never to replace the two-business-day
+    operating target.
+    """
+
+    expires_at: datetime
+    kam: TestStageSLA
+    insurer: TestStageSLA
+    partner: TestStageSLA
+
+    @field_validator("expires_at")
+    @classmethod
+    def _must_be_a_short_future_expiry(cls, value: datetime) -> datetime:
+        if value.tzinfo is None:
+            raise ValueError("expires_at must include a timezone")
+        now = datetime.now(timezone.utc)
+        expires_at = value.astimezone(timezone.utc)
+        if expires_at <= now:
+            raise ValueError("expires_at must be in the future")
+        if expires_at > now + timedelta(hours=24):
+            raise ValueError("test SLA overrides may last at most 24 hours")
+        return expires_at
+
 class ServiceDeskSettings(BaseModel):
     """Workspace-level Service Desk settings."""
 
     ai_classification_enabled: bool = False
+    # Whether intake may auto-create a second ticket when one email carries two
+    # clearly different, high-confidence requests. Off by default: everything
+    # else stays a single ticket flagged for triage, which is the safe outcome.
+    auto_split_enabled: bool = False
     # Whether the CALLER may edit master data / settings / templates, i.e. holds
     # can_manage_service_desk. Returned here so the Master Data page can hide
     # controls it would only get a 403 from; the server-side gate is still the
     # authority (api/service_desk.py::require_manage).
     can_manage: bool = False
+<<<<<<< ours
     # How wide the caller's ticket view is: "all" (manager), "function" (scoped
     # to their department's queue) or "none" (in no department, so no ticket can
     # ever match). Lets the tickets page distinguish "nothing to do" from
@@ -424,6 +572,24 @@ class ServiceDeskSettings(BaseModel):
     # The desk's own name, used in outbound email copy. Defaults to the
     # workspace name rather than a hardcoded company.
     desk_name: str | None = None
+=======
+    # How wide the caller's ticket view is: "all" (full-view or manager),
+    # "function" (their department's pending-with queue), "assigned" (an Ops KAM,
+    # who sees only their own tickets) or "none" (in no department, so no ticket
+    # can ever match). Lets the tickets page distinguish "nothing to do" from
+    # "you only ever see your own" and from "nobody has placed you in a
+    # department yet". Defaults to "all" so a response from an older server can
+    # never raise a false alarm.
+    scope: Literal["all", "assigned", "function", "none"] = "all"
+    # The working window the breach clock runs on, IST, as "HH:MM". Returned so
+    # the Master Data page can show and edit it — the clock reads the same values
+    # (services/service_desk_clock.py::load_clock).
+    working_hours_start: str = "09:30"
+    working_hours_end: str = "18:30"
+    # ``None`` means the normal two-business-day target is in force. Expired
+    # values are deliberately omitted by the service and ignored by the clock.
+    test_sla: TestSLAOverride | None = None
+>>>>>>> theirs
 
 
 _HHMM = r"^([01]\d|2[0-3]):[0-5]\d$"
@@ -433,8 +599,10 @@ class ServiceDeskSettingsUpdate(BaseModel):
     """All fields optional so the page can PATCH any one on its own."""
 
     ai_classification_enabled: bool | None = None
+    auto_split_enabled: bool | None = None
     working_hours_start: str | None = Field(None, pattern=_HHMM)
     working_hours_end: str | None = Field(None, pattern=_HHMM)
+<<<<<<< ours
     # Everything below was a module constant baked to one customer's operation:
     # "BSD" ticket ids, Asia/Kolkata day boundaries, a 2-business-day target.
     ticket_prefix: str | None = Field(None, pattern=r"^[A-Za-z][A-Za-z0-9]{0,9}$")
@@ -444,6 +612,12 @@ class ServiceDeskSettingsUpdate(BaseModel):
     digest_hours: list[int] | None = None
     terminology: dict[str, str] | None = None
     desk_name: str | None = Field(None, max_length=120)
+=======
+    # Send a complete replacement when starting or changing a test. Send only
+    # ``clear_test_sla`` to remove it immediately after the test is complete.
+    test_sla: TestSLAOverride | None = None
+    clear_test_sla: bool = False
+>>>>>>> theirs
 
     @model_validator(mode="after")
     def _window_must_be_forward(self):
@@ -457,6 +631,7 @@ class ServiceDeskSettingsUpdate(BaseModel):
         if self.working_hours_start and self.working_hours_end:
             if self.working_hours_end <= self.working_hours_start:  # "HH:MM" sorts correctly
                 raise ValueError("working_hours_end must be later than working_hours_start")
+<<<<<<< ours
         # Amber is the warning *before* red; inverted, the dashboard would show
         # red tickets that had never been amber and the colours would mean
         # nothing.
@@ -488,6 +663,10 @@ class ServiceDeskSettingsUpdate(BaseModel):
                 )
             if any(not v.strip() for v in self.terminology.values()):
                 raise ValueError("terminology labels must not be blank")
+=======
+        if self.clear_test_sla and self.test_sla is not None:
+            raise ValueError("send either test_sla or clear_test_sla, not both")
+>>>>>>> theirs
         return self
 
 

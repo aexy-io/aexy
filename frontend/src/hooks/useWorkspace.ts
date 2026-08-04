@@ -211,8 +211,19 @@ export function useWorkspaceMembers(
   });
 
   const updateRoleMutation = useMutation({
-    mutationFn: ({ developerId, role }: { developerId: string; role: string }) =>
-      workspaceApi.updateMemberRole(workspaceId!, developerId, role),
+    mutationFn: ({
+      developerId,
+      role,
+      roleId,
+    }: {
+      developerId: string;
+      role?: string;
+      roleId?: string | null;
+    }) =>
+      workspaceApi.updateMemberRole(workspaceId!, developerId, {
+        ...(role !== undefined ? { role } : {}),
+        ...(roleId !== undefined ? { role_id: roleId } : {}),
+      }),
     onSuccess: () => {
       toast.success("Member role updated");
       queryClient.invalidateQueries({ queryKey: ["workspaceMembers", workspaceId] });

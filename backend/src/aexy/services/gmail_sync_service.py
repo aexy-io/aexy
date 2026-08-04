@@ -1,12 +1,19 @@
 """Gmail Sync Service for syncing emails from Google."""
 
 import base64
+import csv
+import io
+import json
 import logging
+import re
+import zipfile
 from datetime import datetime, timedelta, timezone
 from email.utils import parseaddr
+from itertools import islice
 from typing import Any
 
 import httpx
+from openpyxl import load_workbook
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -21,6 +28,21 @@ from aexy.models.google_integration import (
 from aexy.models.crm import CRMRecord, CRMObject, CRMObjectType, CRMRecordRelation
 
 logger = logging.getLogger(__name__)
+
+
+# Payloads made of nothing but base64 characters may still be encoded, but the
+# alphabet alone is ambiguous because legitimate text can also match it.
+_BASE64_ONLY_RE = re.compile(rb"[A-Za-z0-9+/]+={0,2}")
+
+_SERVICE_DESK_ATTACHMENT_RAW_BYTE_LIMIT = 2 * 1024 * 1024
+_SERVICE_DESK_XLSX_EXPANDED_BYTE_LIMIT = 16 * 1024 * 1024
+_SERVICE_DESK_ATTACHMENT_METADATA_LIMIT = 10
+_SERVICE_DESK_ATTACHMENT_PREVIEW_LIMIT = 3
+_SERVICE_DESK_ATTACHMENT_PREVIEW_CHAR_LIMIT = 600
+# Forwarding a file to an insurer is a different job from sampling it for the
+# classifier, so it gets its own ceiling. Gmail itself rejects much above this,
+# and holding the bytes in memory is what actually costs us.
+_SERVICE_DESK_ATTACHMENT_FORWARD_BYTE_LIMIT = 10 * 1024 * 1024
 
 
 # Default deal creation settings
@@ -834,13 +856,28 @@ class GmailSyncService:
         # source, turn the email into a ticket and skip CRM enrichment (a
         # partner writing the ops desk is not a sales contact).
         try:
-            from aexy.services.service_desk_intake_service import ServiceDeskIntakeService
+            from aexy.services.service_desk_intake_service import (
+                ServiceDeskIntakeService,
+                ai_classification_enabled,
+            )
             from aexy.schemas.service_desk import InboundEmail
 
             mailbox = await ServiceDeskIntakeService.find_mailbox_by_integration(
                 self.db, integration.id, workspace_id=integration.workspace_id
             )
             if mailbox is not None:
+                try:
+                    attachments = await self._service_desk_attachment_context(
+                        integration,
+                        message_id,
+                        message.get("payload") or {},
+                        with_previews=await ai_classification_enabled(
+                            self.db, mailbox.workspace_id
+                        ),
+                    )
+                except Exception as exc:  # noqa: BLE001 - context must not block intake
+                    logger.info("Service desk attachment context skipped: %s", exc)
+                    attachments = []
                 to_addr = None
                 if email_data.get("to_emails"):
                     first = email_data["to_emails"][0]
@@ -861,6 +898,8 @@ class GmailSyncService:
                             body_html=email_data.get("body_html"),
                             message_id=message_id,
                             thread_id=message.get("threadId"),
+                            attachments=attachments,
+                            headers=email_data.get("headers") or {},
                         ),
                         mailbox,
                         source="service_desk_gmail",
@@ -951,6 +990,9 @@ class GmailSyncService:
             "body_text": body_text,
             "body_html": body_html,
             "has_attachments": has_attachments,
+            # Service Desk intake reads these to recognise auto-responders and
+            # the mail this application itself sent from this same account.
+            "headers": headers,
         }
 
     def _parse_email_list(self, header_value: str) -> list[dict]:
@@ -978,7 +1020,12 @@ class GmailSyncService:
             body = part.get("body", {})
             data = body.get("data")
 
-            if data:
+            # A part carrying a filename is an attachment, not message body: a
+            # text/plain or text/html attachment used to be base64-decoded whole
+            # right here, bypassing the raw-byte ceiling that guards the Service
+            # Desk attachment path — and then landing in body_text as if the
+            # requester had typed it.
+            if data and not part.get("filename"):
                 decoded = base64.urlsafe_b64decode(data).decode("utf-8", errors="ignore")
                 if mime_type == "text/plain" and not body_text:
                     body_text = decoded
@@ -1003,6 +1050,250 @@ class GmailSyncService:
             return False
 
         return check_part(payload)
+
+    async def _service_desk_attachment_context(
+        self,
+        integration: GoogleIntegration,
+        message_id: str,
+        payload: dict,
+        with_previews: bool = True,
+    ) -> list[dict[str, Any]]:
+        """Return attachment metadata plus small, best-effort classifier previews.
+
+        ``with_previews`` is the workspace's AI opt-in. The previews exist only
+        to feed the classifier, so with AI off none are built and no attachment
+        is ever downloaded — the KAM still sees the file name, type and size.
+        """
+        parts: list[dict] = []
+
+        def collect(part: dict) -> None:
+            if part.get("filename"):
+                parts.append(part)
+            for nested in part.get("parts", []):
+                if isinstance(nested, dict):
+                    collect(nested)
+
+        collect(payload)
+        context: list[dict[str, Any]] = []
+        previews_loaded = 0
+        for part in parts[:_SERVICE_DESK_ATTACHMENT_METADATA_LIMIT]:
+            body = part.get("body") if isinstance(part.get("body"), dict) else {}
+            filename = str(part.get("filename") or "attachment")
+            content_type = str(part.get("mimeType") or "application/octet-stream")
+            size_bytes = self._declared_attachment_size(body)
+            item: dict[str, Any] = {
+                "filename": filename,
+                "content_type": content_type,
+                "size_bytes": size_bytes,
+                # Identifier only, never content, so it is captured whether or not
+                # AI is on. Without it the desk can show that a claim register
+                # arrived but can never forward it to the insurer.
+                "attachment_id": (body.get("attachmentId") if isinstance(body, dict) else None),
+            }
+            if (
+                with_previews
+                and previews_loaded < _SERVICE_DESK_ATTACHMENT_PREVIEW_LIMIT
+                and self._supports_service_desk_preview(filename, content_type)
+            ):
+                try:
+                    raw = await self._gmail_attachment_bytes(
+                        integration,
+                        message_id,
+                        body,
+                        filename=filename,
+                        content_type=content_type,
+                    )
+                    item["preview"] = self._service_desk_preview(
+                        filename,
+                        content_type,
+                        raw,
+                    )
+                    if item["preview"]:
+                        previews_loaded += 1
+                    if item["size_bytes"] is None:
+                        item["size_bytes"] = len(raw)
+                except Exception as exc:  # noqa: BLE001 - attachment context is best-effort
+                    logger.info(
+                        "Service desk attachment preview skipped for %s: %s",
+                        filename,
+                        exc,
+                    )
+            context.append(item)
+        return context
+
+    async def _gmail_attachment_bytes(
+        self,
+        integration: GoogleIntegration,
+        message_id: str,
+        body: dict,
+        max_bytes: int | None = None,
+        filename: str | None = None,
+        content_type: str | None = None,
+    ) -> bytes:
+        """Load attachment bytes only when every pre-decode size check is safe.
+
+        ``max_bytes`` defaults to the classifier's preview ceiling. Forwarding
+        passes its own, larger one: a claim register too big to sample is still
+        a file the insurer needs to receive.
+        """
+        limit = max_bytes or _SERVICE_DESK_ATTACHMENT_RAW_BYTE_LIMIT
+        declared_size = self._declared_attachment_size(body)
+        if declared_size is not None and declared_size > limit:
+            raise ValueError("attachment exceeds the Service Desk raw-byte limit")
+
+        encoded = body.get("data")
+        if not encoded and body.get("attachmentId"):
+            if declared_size is None:
+                raise ValueError("attachment size is unavailable before download")
+            response = await self._make_gmail_request(
+                integration,
+                "GET",
+                f"/users/me/messages/{message_id}/attachments/{body['attachmentId']}",
+            )
+            response_size = self._declared_attachment_size(response)
+            if response_size is not None and response_size > limit:
+                raise ValueError("attachment response exceeds the Service Desk raw-byte limit")
+            encoded = response.get("data")
+        if not encoded:
+            return b""
+
+        if isinstance(encoded, bytes):
+            encoded_text = encoded.decode("ascii")
+        else:
+            encoded_text = str(encoded)
+        encoded_without_padding = encoded_text.rstrip("=")
+        decoded_size_upper_bound = (len(encoded_without_padding) * 3) // 4
+        if decoded_size_upper_bound > limit:
+            raise ValueError("encoded attachment exceeds the Service Desk raw-byte limit")
+
+        raw = base64.urlsafe_b64decode(
+            encoded_text + "=" * (-len(encoded_text) % 4)
+        )
+        if len(raw) > limit:
+            raise ValueError("decoded attachment exceeds the Service Desk raw-byte limit")
+        return self._decode_if_still_base64(
+            raw, filename=filename, content_type=content_type
+        )
+
+    @staticmethod
+    def _decode_if_still_base64(
+        raw: bytes,
+        *,
+        filename: str | None = None,
+        content_type: str | None = None,
+    ) -> bytes:
+        """Undo a second layer of base64 left by some senders' MIME parts.
+
+        Gmail normally hands back the part's decoded content, but for some
+        clients the transfer encoding survives and what arrives is the base64
+        text itself. Everything downstream then breaks in the same way: the
+        classifier reads an unintelligible blob instead of the claim rows, and
+        the file the desk forwards to an insurer cannot be opened. Decoding here
+        fixes both, because every caller loads its bytes through this method.
+
+        Base64-looking text is a legitimate file in its own right, so alphabet
+        membership alone is not enough evidence. Decode only when the resulting
+        bytes have the tabular structure expected for a CSV attachment. Unknown
+        and plain-text formats keep the exact bytes Gmail returned.
+        """
+        compact = raw.translate(None, b"\r\n")
+        if len(compact) < 8 or len(compact) % 4 != 0:
+            return raw
+        if not _BASE64_ONLY_RE.fullmatch(compact):
+            return raw
+        try:
+            decoded = base64.b64decode(compact, validate=True)
+        except Exception:  # noqa: BLE001 — an undecodable payload is just not double-encoded
+            return raw
+
+        name = (filename or "").lower()
+        kind = (content_type or "").lower()
+        if not (name.endswith(".csv") or kind in {"text/csv", "application/csv"}):
+            return raw
+        try:
+            rows = list(islice(csv.reader(io.StringIO(decoded.decode("utf-8"))), 2))
+        except (UnicodeDecodeError, csv.Error):
+            return raw
+        if len(rows) < 2 or not any(len(row) > 1 for row in rows):
+            return raw
+        return decoded
+
+    @staticmethod
+    def _declared_attachment_size(body: dict) -> int | None:
+        value = body.get("size")
+        try:
+            size = int(value)
+        except (TypeError, ValueError):
+            return None
+        return size if size >= 0 else None
+
+    @staticmethod
+    def _supports_service_desk_preview(filename: str, content_type: str) -> bool:
+        name = filename.lower()
+        return (
+            name.endswith((".csv", ".tsv", ".xlsx", ".txt", ".md", ".log", ".json", ".xml"))
+            or content_type.startswith("text/")
+            or content_type in {"application/json", "application/xml"}
+        )
+
+    @staticmethod
+    def _xlsx_expansion_is_bounded(raw: bytes) -> bool:
+        try:
+            with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+                expanded_size = 0
+                for member in archive.infolist():
+                    expanded_size += member.file_size
+                    if expanded_size > _SERVICE_DESK_XLSX_EXPANDED_BYTE_LIMIT:
+                        return False
+        except zipfile.BadZipFile:
+            return False
+        return True
+
+    @staticmethod
+    def _service_desk_preview(filename: str, content_type: str, raw: bytes) -> str | None:
+        """Produce a capped spreadsheet sample or a short text preview."""
+        if not raw or len(raw) > _SERVICE_DESK_ATTACHMENT_RAW_BYTE_LIMIT:
+            return None
+        name = filename.lower()
+        try:
+            if name.endswith(".xlsx"):
+                if not GmailSyncService._xlsx_expansion_is_bounded(raw):
+                    return None
+                workbook = load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
+                try:
+                    rows = list(workbook.active.iter_rows(values_only=True, max_row=4))
+                finally:
+                    workbook.close()
+                return json.dumps(
+                    [
+                        [str(cell)[:120] if cell is not None else "" for cell in row]
+                        for row in rows
+                    ],
+                    ensure_ascii=False,
+                )[:_SERVICE_DESK_ATTACHMENT_PREVIEW_CHAR_LIMIT]
+            if name.endswith((".csv", ".tsv")):
+                delimiter = "\t" if name.endswith(".tsv") else ","
+                reader = csv.reader(
+                    io.StringIO(raw.decode("utf-8", errors="replace")),
+                    delimiter=delimiter,
+                )
+                rows = list(islice(reader, 4))
+                return json.dumps(
+                    [[cell[:120] for cell in row] for row in rows],
+                    ensure_ascii=False,
+                )[:_SERVICE_DESK_ATTACHMENT_PREVIEW_CHAR_LIMIT]
+            text = raw.decode("utf-8", errors="replace")
+            return (
+                " ".join(text.split())[:_SERVICE_DESK_ATTACHMENT_PREVIEW_CHAR_LIMIT]
+                or None
+            )
+        except Exception as exc:  # noqa: BLE001 - parsing must never block ticket intake
+            logger.info(
+                "Service desk attachment preview parsing skipped for %s: %s",
+                filename,
+                exc,
+            )
+            return None
 
     async def link_emails_to_records(
         self,

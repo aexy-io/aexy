@@ -2131,6 +2131,10 @@ export interface WorkspaceMember {
   developer_email: string | null;
   developer_avatar_url: string | null;
   role: "owner" | "admin" | "member" | "viewer";
+  /** The custom role in force for this member, if one is assigned. It replaces
+   *  the legacy role's permission set — that is how capabilities no template
+   *  carries (e.g. full Service Desk visibility) are granted. */
+  role_id: string | null;
   status: "pending" | "active" | "suspended" | "removed";
   is_billable: boolean;
   app_permissions: Record<string, boolean> | null;
@@ -2926,8 +2930,14 @@ export const workspaceApi = {
     return response.data;
   },
 
-  updateMemberRole: async (workspaceId: string, developerId: string, role: string): Promise<WorkspaceMember> => {
-    const response = await api.patch(`/workspaces/${workspaceId}/members/${developerId}`, { role });
+  // Either field alone is a valid change. Pass role_id: null to revoke a custom
+  // role and fall back to the legacy one.
+  updateMemberRole: async (
+    workspaceId: string,
+    developerId: string,
+    data: { role?: string; role_id?: string | null },
+  ): Promise<WorkspaceMember> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/members/${developerId}`, data);
     return response.data;
   },
 

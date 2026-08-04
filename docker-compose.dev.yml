@@ -1,7 +1,7 @@
 services:
   postgres:
     build: ./postgres
-    image: aexy-postgres:18-alpine-pgvector
+    image: aexy-postgres:17-alpine-pgvector
     container_name: aexy-postgres
     environment:
       POSTGRES_USER: postgres
@@ -29,6 +29,13 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: aexy-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
 
   rustfs:
     image: rustfs/rustfs:latest
@@ -87,7 +94,6 @@ services:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/aexy
       - REDIS_URL=redis://redis:6379/0
       - TEMPORAL_ADDRESS=temporal:7233
-      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
       - S3_ENDPOINT_URL=http://rustfs:9000
       - S3_ACCESS_KEY_ID=${RUSTFS_ROOT_USER:-aexy-admin}
       - S3_SECRET_ACCESS_KEY=${RUSTFS_ROOT_PASSWORD:-aexy-secret-key}
@@ -113,11 +119,12 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: aexy-temporal-worker
+    env_file:
+      - ./backend/.env
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/aexy
       - REDIS_URL=redis://redis:6379/0
       - TEMPORAL_ADDRESS=temporal:7233
-      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
       - S3_ENDPOINT_URL=http://rustfs:9000
       - S3_ACCESS_KEY_ID=${RUSTFS_ROOT_USER:-aexy-admin}
       - S3_SECRET_ACCESS_KEY=${RUSTFS_ROOT_PASSWORD:-aexy-secret-key}
@@ -142,7 +149,7 @@ services:
       dockerfile: Dockerfile
     container_name: aexy-frontend
     ports:
-      - "3003:3000"
+      - "3000:3000"
     env_file:
       - ./frontend/.env
     environment:

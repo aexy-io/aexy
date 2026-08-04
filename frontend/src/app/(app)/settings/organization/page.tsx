@@ -30,7 +30,8 @@ import { useWorkspace, useWorkspaceMembers, useWorkspaceBilling, usePendingInvit
 import { useAuth } from "@/hooks/useAuth";
 import { useDepartments, usePeople } from "@/hooks/useOrganization";
 import { PersonSummary } from "@/lib/organization-api";
-import { WorkspaceMember, WorkspacePendingInvite, repositoriesApi, Organization, communityApi } from "@/lib/api";
+import { CustomRole, WorkspaceMember, WorkspacePendingInvite, repositoriesApi, Organization, communityApi } from "@/lib/api";
+import { useRoles } from "@/hooks/useRoles";
 import { useQuery } from "@tanstack/react-query";
 import { UpgradeBanner } from "@/components/UpgradeBanner";
 import { TeamReviewCard } from "@/components/code-insights";
@@ -136,7 +137,12 @@ interface MemberRowProps {
   /** Org-side view of the same person, when the Organization module is readable.
    *  Undefined means we simply don't know, so nothing is claimed either way. */
   person?: PersonSummary;
+  /** The workspace's custom roles, so the menu can assign one. A legacy role
+   *  covers the common cases; a custom role is the only way to grant a
+   *  capability no template carries (full Service Desk visibility, say). */
+  customRoles: CustomRole[];
   onUpdateRole: (developerId: string, role: string) => void;
+  onUpdateCustomRole: (developerId: string, roleId: string | null) => void;
   onRemove: (developerId: string) => void;
   onResendInvite: (developerId: string) => Promise<void>;
   onSetStatus: (developerId: string, status: "active" | "removed") => Promise<void>;
@@ -147,7 +153,9 @@ function MemberRow({
   currentUserId,
   isCurrentUserAdmin,
   person,
+  customRoles,
   onUpdateRole,
+  onUpdateCustomRole,
   onRemove,
   onResendInvite,
   onSetStatus,
@@ -288,6 +296,31 @@ function MemberRow({
                       <span className={member.role === role.value ? "" : "ml-6"}>{role.label}</span>
                     </button>
                   ))}
+                  {customRoles.length > 0 && (
+                    <div className="border-t border-border mt-1 pt-1">
+                      <div className="px-3 py-2 text-xs text-muted-foreground uppercase tracking-wider">
+                        Custom Role
+                      </div>
+                      {[{ id: null, name: "None" }, ...customRoles].map((role) => {
+                        const active = (member.role_id ?? null) === role.id;
+                        return (
+                          <button
+                            key={role.id ?? "none"}
+                            onClick={() => {
+                              onUpdateCustomRole(member.developer_id, role.id);
+                              setShowMenu(false);
+                            }}
+                            className={`w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2 ${
+                              active ? "text-primary-400" : "text-foreground"
+                            }`}
+                          >
+                            {active && <Check className="h-4 w-4" />}
+                            <span className={active ? "" : "ml-6"}>{role.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                   <div className="border-t border-border mt-1 pt-1">
                     {isPending && (
                       <button
@@ -841,12 +874,20 @@ export default function OrganizationSettingsPage() {
     [people],
   );
 
+  // The catalog is admin-only, so this is empty for everyone who could not
+  // assign a role anyway and the section simply doesn't render.
+  const { roles: customRoles } = useRoles(isAdmin ? currentWorkspaceId ?? null : null);
+
   const handleInvite = async (email: string, role: string, departmentId: string | null) => {
     await inviteMember({ email, role, departmentId });
   };
 
   const handleUpdateRole = async (developerId: string, role: string) => {
     await updateMemberRole({ developerId, role });
+  };
+
+  const handleUpdateCustomRole = async (developerId: string, roleId: string | null) => {
+    await updateMemberRole({ developerId, roleId });
   };
 
   const handleRemove = async (developerId: string) => {
@@ -1140,7 +1181,9 @@ export default function OrganizationSettingsPage() {
                         currentUserId={user?.id}
                         isCurrentUserAdmin={isAdmin}
                         person={peopleById.get(member.developer_id)}
+                        customRoles={customRoles}
                         onUpdateRole={handleUpdateRole}
+                        onUpdateCustomRole={handleUpdateCustomRole}
                         onRemove={handleRemove}
                         onResendInvite={handleResendMemberInvite}
                         onSetStatus={handleSetStatus}

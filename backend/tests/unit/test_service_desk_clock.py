@@ -95,6 +95,20 @@ def test_exactly_two_working_days_is_the_target_not_past_it():
     assert not CLOCK.is_breaching(two_days)
 
 
+def test_short_test_sla_changes_only_the_configured_current_stage():
+    clock = Clock(test_stage_slas={"kam": (5, 10), "insurer": (8, 16), "partner": (6, 12)})
+
+    assert clock.breach_level(4 * 60, "kam") == "green"
+    assert clock.breach_level(5 * 60, "kam") == "amber"
+    assert clock.breach_level(10 * 60, "kam") == "amber"
+    assert clock.breach_level(10 * 60 + 1, "kam") == "red"
+    assert clock.is_breaching(10 * 60 + 1, "kam")
+
+    # Internal queues are not part of the temporary test contract and therefore
+    # retain the normal two-working-day threshold.
+    assert clock.breach_level(10 * 60 + 1, "finance") == "green"
+
+
 def test_day_boundaries_are_ist_not_utc():
     """13:00 UTC is 18:30 IST — the shift has just closed."""
     assert datetime(2026, 7, 1, 13, 0, tzinfo=timezone.utc).astimezone(IST).time() == time(18, 30)
@@ -177,6 +191,39 @@ async def test_load_clock_honours_a_per_workspace_shift(db_session: AsyncSession
 
 
 @pytest.mark.asyncio
+async def test_load_clock_honours_active_test_sla_and_ignores_expired_one(db_session: AsyncSession):
+    owner = Developer(email=f"o-{uuid4().hex[:6]}@bimaplan.co", name="Owner")
+    db_session.add(owner)
+    await db_session.flush()
+    future = (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()
+    expired = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()
+    ws = Workspace(
+        name="Test SLA", slug=f"test-sla-{uuid4().hex[:6]}", owner_id=owner.id,
+        settings={"service_desk": {"test_sla": {
+            "expires_at": future,
+            "kam": {"amber_minutes": 5, "red_minutes": 10},
+            "insurer": {"amber_minutes": 6, "red_minutes": 12},
+            "partner": {"amber_minutes": 7, "red_minutes": 14},
+        }}},
+    )
+    db_session.add(ws)
+    await db_session.commit()
+
+    clock = await load_clock(db_session, ws.id)
+    assert clock.breach_level(5 * 60, "kam") == "amber"
+
+    ws.settings = {"service_desk": {"test_sla": {
+        "expires_at": expired,
+        "kam": {"amber_minutes": 5, "red_minutes": 10},
+        "insurer": {"amber_minutes": 6, "red_minutes": 12},
+        "partner": {"amber_minutes": 7, "red_minutes": 14},
+    }}}
+    await db_session.commit()
+    expired_clock = await load_clock(db_session, ws.id)
+    assert expired_clock.breach_level(5 * 60, "kam") == "green"
+
+
+@pytest.mark.asyncio
 async def test_load_clock_survives_a_malformed_shift_setting(db_session: AsyncSession):
     """A bad setting must not take the dashboard down with it."""
     owner = Developer(email=f"o-{uuid4().hex[:6]}@example.com", name="Owner")
@@ -191,3 +238,32 @@ async def test_load_clock_survives_a_malformed_shift_setting(db_session: AsyncSe
 
     clock = await load_clock(db_session, ws.id)
     assert (clock.work_start, clock.work_end) == (time(9, 30), time(18, 30))
+
+
+def test_cumulative_time_turns_a_reset_stage_clock_red():
+    """A holding reply hands the ticket back and restarts the stage clock.
+
+    Without the cumulative check, an insurer who answers "still checking" every
+    day would sit permanently green no matter how long they had really held the
+    ticket. That is exactly the delay the two-day rule exists to expose.
+    """
+    clock = Clock()
+    day = clock.working_day_seconds
+
+    # Just handed back to them: the stage clock is near zero.
+    assert clock.breach_level(60, "insurer") == "green"
+    # ...but they have already had this ticket for four working days in total.
+    assert (
+        clock.breach_level(60, "insurer", cumulative_working_seconds=int(day * 4)) == "red"
+    )
+
+
+def test_history_alone_never_pushes_a_healthy_ticket_to_amber():
+    """Cumulative time may only raise the level to red, never to amber."""
+    clock = Clock()
+    day = clock.working_day_seconds
+
+    # Well inside both thresholds cumulatively, so nothing changes.
+    assert clock.breach_level(60, "insurer", cumulative_working_seconds=int(day * 1.5)) == "green"
+    # And a genuinely aged stage still reports amber on its own merit.
+    assert clock.breach_level(int(day * 1.2), "insurer") == "amber"

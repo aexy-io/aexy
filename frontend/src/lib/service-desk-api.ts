@@ -142,11 +142,62 @@ export interface TicketTAT {
   stakeholder_seconds: Record<string, number>;
 }
 
+export interface CorrespondenceEntry {
+  id: string;
+  author_email: string | null;
+  /** The internal person who sent it. Only set on outgoing mail. */
+  author_name: string | null;
+  content: string;
+  created_at: string;
+  /** "outgoing" was sent from the ticket by a KAM or manager; "incoming" is a
+   *  stakeholder reply matched onto it by the mailbox sync. */
+  direction: "incoming" | "outgoing";
+}
+
+/** An address the ticket may be emailed — the server rejects anything else. */
+export interface TicketEmailRecipient {
+  email: string;
+  label: string;
+  /** Stage the ticket moves to when this recipient is written to; null when
+   *  writing to them says nothing about who now has to act. */
+  stage: PendingWith | null;
+}
+
+/** A file that arrived on the ticket's original email. */
+export interface TicketAttachment {
+  filename: string;
+  content_type: string | null;
+  size_bytes: number | null;
+  /** False when the original message gave us no handle for the bytes, so it
+   *  cannot be forwarded and must not be offered. */
+  can_forward: boolean;
+}
+
+export interface DetectedIssue {
+  summary: string;
+  request_type: RequestType;
+  lob: string | null;
+  confidence: number;
+  split_reason: string | null;
+}
+
+export interface HumanSplitResponse {
+  created_ticket_ids: string[];
+  created_ticket_display_ids: string[];
+}
+
 export interface ServiceDeskTicketDetail extends ServiceDeskTicket {
   body: string | null;
   linked_task_id: string | null;
+  detected_issues: DetectedIssue[];
+  split_done_indexes: number[];
   segments: Segment[];
+  correspondence: CorrespondenceEntry[];
+  email_recipients: TicketEmailRecipient[];
+  attachments: TicketAttachment[];
   tat: TicketTAT;
+  /** Server-computed write authority for the requesting caller. */
+  can_edit: boolean;
 }
 
 export interface StakeholderBucket {
@@ -182,9 +233,14 @@ export interface ServiceDeskDashboard {
 
 export interface ServiceDeskSettings {
   ai_classification_enabled: boolean;
+  /** Whether intake may open a second ticket when one email carries two clearly
+   *  different, high-confidence requests. Off by default — everything else
+   *  stays a single ticket flagged for triage. */
+  auto_split_enabled: boolean;
   /** Whether the current user holds can_manage_service_desk. The server enforces
    *  this regardless; the UI uses it to avoid offering actions that would 403. */
   can_manage: boolean;
+<<<<<<< ours
   /** How wide the caller's ticket view is. "none" means they belong to no
    *  department, so no ticket can ever match — an empty list is a
    *  misconfiguration, not a quiet day. */
@@ -208,13 +264,41 @@ export interface ServiceDeskSettings {
   terminology: Record<string, string>;
   /** Name used in outbound email copy; defaults to the workspace name. */
   desk_name: string | null;
+=======
+  /** How wide the caller's ticket view is. "assigned" means an Ops KAM, who only
+   *  ever sees their own tickets; "none" means they belong to no department, so
+   *  no ticket can ever match — an empty list is a misconfiguration, not a quiet
+   *  day. The server filters the rows either way; this only makes the empty
+   *  state honest about which case it is. */
+  scope: "all" | "assigned" | "function" | "none";
+  /** The shift the breach clock runs on, IST, as "HH:MM". Always populated —
+   *  the API reports the defaults when nothing has been set. */
+  working_hours_start: string;
+  working_hours_end: string;
+  /** A short-lived, manager-controlled override for manual SLA testing only. */
+  test_sla: TestSLAOverride | null;
+}
+
+export interface TestStageSLA {
+  amber_minutes: number;
+  red_minutes: number;
+}
+
+export interface TestSLAOverride {
+  expires_at: string;
+  kam: TestStageSLA;
+  insurer: TestStageSLA;
+  partner: TestStageSLA;
+>>>>>>> theirs
 }
 
 /** Only the fields being changed; the API leaves the rest alone. */
 export interface ServiceDeskSettingsPatch {
   ai_classification_enabled?: boolean;
+  auto_split_enabled?: boolean;
   working_hours_start?: string;
   working_hours_end?: string;
+<<<<<<< ours
   ticket_prefix?: string;
   timezone?: string;
   breach_red_days?: number;
@@ -223,6 +307,10 @@ export interface ServiceDeskSettingsPatch {
   /** Merged into the stored map — send only the nouns being relabelled. */
   terminology?: Record<string, string>;
   desk_name?: string;
+=======
+  test_sla?: TestSLAOverride;
+  clear_test_sla?: boolean;
+>>>>>>> theirs
 }
 
 export interface ServiceDeskTemplate {
@@ -254,6 +342,10 @@ export const serviceDeskApi = {
     (await api.get(`${base(ws)}/tickets`)).data,
   getTicket: async (ws: string, id: string): Promise<ServiceDeskTicketDetail> =>
     (await api.get(`${base(ws)}/tickets/${id}`)).data,
+  splitDetectedIssues: async (
+    ws: string, id: string, issue_indexes: number[],
+  ): Promise<HumanSplitResponse> =>
+    (await api.post(`${base(ws)}/tickets/${id}/split`, { issue_indexes })).data,
   changePendingWith: async (
     ws: string, id: string, pending_with: PendingWith, note?: string,
   ): Promise<ServiceDeskTicketDetail> =>
@@ -266,6 +358,11 @@ export const serviceDeskApi = {
     ws: string, data: { subject: string; body?: string; requester_email?: string; requester_name?: string; request_type?: RequestType; product_id?: string; account_id?: string },
   ): Promise<{ ticket_id: string }> =>
     (await api.post(`${base(ws)}/tickets/manual`, data)).data,
+  emailStakeholder: async (
+    ws: string, id: string,
+    data: { to: string; subject: string; body: string; attachment_filenames?: string[]; move_ticket?: boolean },
+  ): Promise<ServiceDeskTicketDetail> =>
+    (await api.post(`${base(ws)}/tickets/${id}/email`, data)).data,
   convertToTask: async (
     ws: string, ticketId: string, data: { project_id: string; sprint_id?: string; title?: string; priority?: string },
   ): Promise<{ task_id: string; task_title: string; linked: boolean }> =>

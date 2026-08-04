@@ -3874,6 +3874,9 @@ class SyncWorkflowActionHandler:
     def _assign_ticket(self, data: dict, context: dict, execution: WorkflowExecution) -> dict:
         """Assign a ticket."""
         from aexy.models.ticketing import Ticket
+        from aexy.services.service_desk_ticket_service import (
+            reassign_service_desk_ticket_family_sync,
+        )
 
         ticket_id = data.get("ticket_id") or context.get("trigger_data", {}).get("ticket_id")
         if not ticket_id:
@@ -3886,7 +3889,12 @@ class SyncWorkflowActionHandler:
             if not ticket:
                 return {"status": "failed", "error": f"Ticket {ticket_id} not found"}
             if data.get("assignee_id"):
-                ticket.assignee_id = data["assignee_id"]
+                reassign_service_desk_ticket_family_sync(
+                    self.db,
+                    str(ticket.workspace_id),
+                    str(ticket.id),
+                    data["assignee_id"],
+                )
             if data.get("team_id"):
                 ticket.team_id = data["team_id"]
             self.db.commit()

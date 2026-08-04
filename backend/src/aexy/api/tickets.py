@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, UploadFile, status
 from fastapi.responses import StreamingResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.core.config import settings
@@ -231,12 +232,20 @@ async def list_tickets(
         sla_breached=sla_breached,
     )
 
+    # The source-based exclusion below opts Service Desk tickets back IN when a
+    # form_id is given, and the desk's own form has a guessable slug — so the
+    # row scope has to be applied here too, not just relied upon.
+    from aexy.services.service_desk_service import generic_ticket_scope_clause
+
     ticket_service = TicketService(db)
     tickets, total = await ticket_service.list_tickets(
         workspace_id=workspace_id,
         filters=filters,
         limit=limit,
         offset=offset,
+        visibility_clause=await generic_ticket_scope_clause(
+            db, workspace_id, str(current_user.id)
+        ),
     )
 
     return {
@@ -271,14 +280,9 @@ async def get_ticket(
     await check_workspace_permission(workspace_id, current_user, db)
 
     ticket_service = TicketService(db)
-    ticket = await ticket_service.get_ticket(ticket_id)
-
-    if not ticket or str(ticket.workspace_id) != workspace_id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ticket not found",
-        )
-
+    ticket = await _get_owned_ticket(
+        workspace_id, ticket_id, ticket_service, db, str(current_user.id)
+    )
     return ticket_to_response(ticket)
 
 
@@ -300,7 +304,10 @@ async def get_ticket_by_number(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Ticket not found",
         )
-
+    # Same row scope as the by-id path — a ticket number is just as guessable.
+    ticket = await _get_owned_ticket(
+        workspace_id, str(ticket.id), ticket_service, db, str(current_user.id)
+    )
     return ticket_to_response(ticket)
 
 
@@ -316,13 +323,9 @@ async def update_ticket(
     await check_workspace_permission(workspace_id, current_user, db)
 
     ticket_service = TicketService(db)
-    ticket = await ticket_service.get_ticket(ticket_id)
-
-    if not ticket or str(ticket.workspace_id) != workspace_id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ticket not found",
-        )
+    await _get_owned_ticket(
+        workspace_id, ticket_id, ticket_service, db, str(current_user.id), for_edit=True
+    )
 
     updated = await ticket_service.update_ticket(
         ticket_id=ticket_id,
@@ -344,13 +347,9 @@ async def assign_ticket(
     await check_workspace_permission(workspace_id, current_user, db)
 
     ticket_service = TicketService(db)
-    ticket = await ticket_service.get_ticket(ticket_id)
-
-    if not ticket or str(ticket.workspace_id) != workspace_id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ticket not found",
-        )
+    await _get_owned_ticket(
+        workspace_id, ticket_id, ticket_service, db, str(current_user.id), for_edit=True
+    )
 
     updated = await ticket_service.assign_ticket(
         ticket_id=ticket_id,
@@ -372,27 +371,65 @@ async def delete_ticket(
     await check_workspace_permission(workspace_id, current_user, db, "admin")
 
     ticket_service = TicketService(db)
-    ticket = await ticket_service.get_ticket(ticket_id)
-
-    if not ticket or str(ticket.workspace_id) != workspace_id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ticket not found",
-        )
+    await _get_owned_ticket(
+        workspace_id, ticket_id, ticket_service, db, str(current_user.id), for_edit=True
+    )
 
     await ticket_service.delete_ticket(ticket_id)
 
 
 # ==================== Public Share Link Endpoints ====================
 
-async def _get_owned_ticket(workspace_id, ticket_id, ticket_service):
-    """Fetch a ticket and confirm it belongs to the workspace (or 404)."""
+async def _get_owned_ticket(
+    workspace_id, ticket_id, ticket_service, db, developer_id, for_edit: bool = False
+):
+    """Fetch a ticket and confirm this caller may reach it (or 404).
+
+    Service Desk tickets are rows in this same table, and the generic module has
+    no notion of the desk's row scope — so without this check a KAM restricted to
+    their own queue could read, mutate, download attachments from, comment on or
+    convert *any* Service Desk ticket by id here, whatever the Service Desk API
+    refuses them. 404 rather than 403 so ids outside scope stay unenumerable.
+    """
+    from aexy.services.service_desk_service import (
+        can_edit_ticket,
+        is_service_desk_ticket_visible,
+    )
+
     ticket = await ticket_service.get_ticket(ticket_id)
-    if not ticket or str(ticket.workspace_id) != workspace_id:
+    if (
+        not ticket
+        or str(ticket.workspace_id) != workspace_id
+        or not await is_service_desk_ticket_visible(
+            db, workspace_id, str(ticket.id), developer_id
+        )
+    ):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Ticket not found",
         )
+    if for_edit:
+        from aexy.models.service_desk import ServiceDeskTicket
+
+        sd = (
+            await db.execute(
+                select(ServiceDeskTicket).where(
+                    ServiceDeskTicket.ticket_id == ticket_id,
+                    ServiceDeskTicket.workspace_id == workspace_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if sd is not None and not await can_edit_ticket(
+            db,
+            workspace_id,
+            developer_id,
+            assignee_id=ticket.assignee_id,
+            pending_with=sd.pending_with,
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can view this Service Desk ticket but not change it",
+            )
     return ticket
 
 
@@ -406,7 +443,9 @@ async def get_ticket_share(
     """Get the current share link for a ticket, or null if not shared."""
     await check_workspace_permission(workspace_id, current_user, db)
     ticket_service = TicketService(db)
-    await _get_owned_ticket(workspace_id, ticket_id, ticket_service)
+    await _get_owned_ticket(
+        workspace_id, ticket_id, ticket_service, db, str(current_user.id)
+    )
 
     link = await ticket_service.get_share_link(ticket_id)
     return share_to_response(link) if link else None
@@ -423,7 +462,9 @@ async def create_ticket_share(
     """Create or enable a public share link for a ticket."""
     await check_workspace_permission(workspace_id, current_user, db)
     ticket_service = TicketService(db)
-    ticket = await _get_owned_ticket(workspace_id, ticket_id, ticket_service)
+    ticket = await _get_owned_ticket(
+        workspace_id, ticket_id, ticket_service, db, str(current_user.id), for_edit=True
+    )
 
     link = await ticket_service.create_or_enable_share_link(
         ticket,
@@ -446,7 +487,9 @@ async def update_ticket_share(
     """Update a ticket's share link (toggle, expiry, password, regenerate)."""
     await check_workspace_permission(workspace_id, current_user, db)
     ticket_service = TicketService(db)
-    await _get_owned_ticket(workspace_id, ticket_id, ticket_service)
+    await _get_owned_ticket(
+        workspace_id, ticket_id, ticket_service, db, str(current_user.id), for_edit=True
+    )
 
     link = await ticket_service.update_share_link(
         ticket_id,
@@ -474,7 +517,9 @@ async def revoke_ticket_share(
     """Revoke (delete) a ticket's public share link."""
     await check_workspace_permission(workspace_id, current_user, db)
     ticket_service = TicketService(db)
-    await _get_owned_ticket(workspace_id, ticket_id, ticket_service)
+    await _get_owned_ticket(
+        workspace_id, ticket_id, ticket_service, db, str(current_user.id), for_edit=True
+    )
     await ticket_service.revoke_share_link(ticket_id)
 
 
@@ -495,7 +540,9 @@ async def upload_ticket_attachments(
     """
     await check_workspace_permission(workspace_id, current_user, db)
     ticket_service = TicketService(db)
-    ticket = await _get_owned_ticket(workspace_id, ticket_id, ticket_service)
+    ticket = await _get_owned_ticket(
+        workspace_id, ticket_id, ticket_service, db, str(current_user.id), for_edit=True
+    )
 
     def _size(f: UploadFile) -> int:
         if f.size is not None:
@@ -539,7 +586,9 @@ async def download_ticket_attachment(
     """Stream a ticket attachment (workspace members; includes internal notes)."""
     await check_workspace_permission(workspace_id, current_user, db)
     ticket_service = TicketService(db)
-    ticket = await _get_owned_ticket(workspace_id, ticket_id, ticket_service)
+    ticket = await _get_owned_ticket(
+        workspace_id, ticket_id, ticket_service, db, str(current_user.id)
+    )
 
     meta = ticket_service.find_ticket_attachment(ticket, attachment_id, include_internal=True)
     if meta is None:
@@ -558,7 +607,9 @@ async def delete_ticket_attachment(
     """Delete a ticket-level attachment."""
     await check_workspace_permission(workspace_id, current_user, db)
     ticket_service = TicketService(db)
-    ticket = await _get_owned_ticket(workspace_id, ticket_id, ticket_service)
+    ticket = await _get_owned_ticket(
+        workspace_id, ticket_id, ticket_service, db, str(current_user.id), for_edit=True
+    )
 
     if not await ticket_service.remove_ticket_attachment(ticket, attachment_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attachment not found")
@@ -578,13 +629,7 @@ async def list_responses(
     await check_workspace_permission(workspace_id, current_user, db)
 
     ticket_service = TicketService(db)
-    ticket = await ticket_service.get_ticket(ticket_id)
-
-    if not ticket or str(ticket.workspace_id) != workspace_id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ticket not found",
-        )
+    await _get_owned_ticket(workspace_id, ticket_id, ticket_service, db, str(current_user.id))
 
     responses = await ticket_service.list_responses(
         ticket_id=ticket_id,
@@ -605,13 +650,9 @@ async def add_response(
     await check_workspace_permission(workspace_id, current_user, db)
 
     ticket_service = TicketService(db)
-    ticket = await ticket_service.get_ticket(ticket_id)
-
-    if not ticket or str(ticket.workspace_id) != workspace_id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ticket not found",
-        )
+    await _get_owned_ticket(
+        workspace_id, ticket_id, ticket_service, db, str(current_user.id), for_edit=True
+    )
 
     try:
         response = await ticket_service.add_response(
@@ -677,13 +718,9 @@ async def create_task_from_ticket(
     await check_workspace_permission(workspace_id, current_user, db)
 
     ticket_service = TicketService(db)
-    ticket = await ticket_service.get_ticket(ticket_id)
-
-    if not ticket or str(ticket.workspace_id) != workspace_id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ticket not found",
-        )
+    ticket = await _get_owned_ticket(
+        workspace_id, ticket_id, ticket_service, db, str(current_user.id), for_edit=True
+    )
 
     # Check if ticket already has a linked task
     if ticket.linked_task_id:

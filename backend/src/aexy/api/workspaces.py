@@ -30,7 +30,7 @@ from aexy.schemas.workspace import (
     MyInvitationResponse,
     MyWorkspacePermissionsResponse,
 )
-from aexy.services.workspace_service import WorkspaceService
+from aexy.services.workspace_service import UNSET as _UNSET, WorkspaceService
 from aexy.services.developer_service import DeveloperService
 
 router = APIRouter(prefix="/workspaces", tags=["Workspaces"])
@@ -67,6 +67,7 @@ def member_to_response(member) -> WorkspaceMemberResponse:
         developer_email=developer.email if developer else None,
         developer_avatar_url=developer.avatar_url if developer else None,
         role=member.role,
+        role_id=str(member.role_id) if member.role_id else None,
         status=member.status,
         is_billable=member.is_billable,
         app_permissions=member.app_permissions,
@@ -762,7 +763,7 @@ async def update_member_role(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Update a member's role."""
+    """Update a member's legacy role and/or their custom role."""
     service = WorkspaceService(db)
 
     if not await service.check_permission(workspace_id, str(current_user.id), "admin"):
@@ -776,6 +777,9 @@ async def update_member_role(
             workspace_id=workspace_id,
             developer_id=developer_id,
             new_role=data.role,
+            # Distinguish "not sent" from an explicit null, which revokes the
+            # custom role and falls back to the legacy template.
+            new_role_id=data.role_id if "role_id" in data.model_fields_set else _UNSET,
         )
         if not member:
             raise HTTPException(
