@@ -44,6 +44,7 @@ class RoutingService:
         identity_id: str | None = None,
         prefer_warming_complete: bool = True,
         min_health_score: int = 50,
+        strategy: str | None = None,
     ) -> RoutingDecision | None:
         """
         Determine the best domain/identity to send an email from.
@@ -74,14 +75,17 @@ class RoutingService:
                         fallback_domains=[],
                     )
 
-        # Get candidate domains
+        # Get candidate domains. `strategy` lets a caller override the pool's own
+        # choice — `RoutingConfigUpdate` offers a per-campaign `routing_strategy`,
+        # so a transactional campaign can insist on failover while the pool's
+        # default stays health-based.
         if pool_id:
             domains = await self._get_pool_domains(pool_id, workspace_id)
             pool = await self._get_pool(pool_id, workspace_id)
-            routing_strategy = pool.routing_strategy if pool else "health_based"
+            routing_strategy = strategy or (pool.routing_strategy if pool else "health_based")
         else:
             domains = await self._get_active_domains(workspace_id)
-            routing_strategy = "health_based"
+            routing_strategy = strategy or "health_based"
 
         if not domains:
             logger.warning(f"No active domains found for workspace {workspace_id}")
@@ -148,6 +152,7 @@ class RoutingService:
         exclude_domain_ids: list[str],
         recipient_email: str | None = None,
         min_health_score: int = 50,
+        pool_id: str | None = None,
     ) -> RoutingDecision | None:
         """
         Get a fallback domain when the primary domain is unavailable.
@@ -157,11 +162,19 @@ class RoutingService:
             exclude_domain_ids: Domain IDs to exclude (already tried)
             recipient_email: Optional recipient for ISP-aware selection
             min_health_score: Minimum health score requirement
+            pool_id: Confine the fallback to this pool's members
 
         Returns:
             RoutingDecision or None if no fallback available
         """
-        domains = await self._get_active_domains(workspace_id)
+        # A pool is a statement about which domains a campaign may send from, so a
+        # fallback that ignored it would send from a domain the user excluded —
+        # which for a pool built to separate transactional from marketing traffic
+        # is the whole thing it was built to prevent.
+        if pool_id:
+            domains = await self._get_pool_domains(pool_id, workspace_id)
+        else:
+            domains = await self._get_active_domains(workspace_id)
 
         # Filter out excluded domains
         available_domains = [
@@ -403,6 +416,18 @@ class RoutingService:
             ).order_by(SendingDomain.health_score.desc())
         )
         return list(result.scalars().all())
+
+    async def list_pool_domains(
+        self,
+        pool_id: str,
+        workspace_id: str,
+    ) -> list[SendingDomain]:
+        """Public alias: the domains a pool may send from, in priority order.
+
+        `CampaignService` needs this to answer "can this pooled campaign send?"
+        without reaching into a private method.
+        """
+        return await self._get_pool_domains(pool_id, workspace_id)
 
     async def _get_pool_domains(
         self,

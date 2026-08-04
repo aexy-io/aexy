@@ -638,7 +638,11 @@ class RoutingDecision(BaseModel):
     """Schema for routing decision response."""
     domain_id: str
     domain: str
-    provider_id: str
+    # `SendingDomain.provider_id` is nullable and `SendingDomainCreate.provider_id`
+    # is optional, so a routable domain may legitimately have no provider of its
+    # own — the caller falls back to the workspace default. Declaring this `str`
+    # made constructing a decision for such a domain a validation error.
+    provider_id: str | None = None
     identity_id: str | None
     from_email: str
     reason: str

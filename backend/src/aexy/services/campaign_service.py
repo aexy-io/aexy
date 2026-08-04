@@ -20,13 +20,15 @@ from aexy.models.email_marketing import (
     SubscriberStatus,
 )
 from aexy.models.crm import CRMList, CRMRecord, CRMListEntry
-from aexy.models.email_infrastructure import SendingDomain
+from aexy.models.email_infrastructure import SendingDomain, SendingIdentity, SendingPool
+from aexy.schemas.email_infrastructure import RoutingConfigUpdate
 from aexy.schemas.email_marketing import (
     EmailCampaignCreate,
     EmailCampaignUpdate,
     FilterCondition,
 )
 from aexy.services.domain_service import DomainService
+from aexy.services.routing_service import RoutingService
 from aexy.services.template_service import TemplateService
 from aexy.services.automation_service import dispatch_automation_event
 
@@ -52,6 +54,9 @@ class CampaignService:
         created_by_id: str | None = None,
     ) -> EmailCampaign:
         """Create a new email campaign."""
+        await self._validate_routing(
+            workspace_id, data.sending_pool_id, data.sending_identity_id
+        )
         campaign = EmailCampaign(
             id=str(uuid4()),
             workspace_id=workspace_id,
@@ -68,6 +73,8 @@ class CampaignService:
             template_context=data.template_context,
             scheduled_at=data.scheduled_at,
             send_window=data.send_window.model_dump() if data.send_window else None,
+            sending_pool_id=data.sending_pool_id,
+            sending_identity_id=data.sending_identity_id,
             created_by_id=created_by_id,
         )
 
@@ -154,6 +161,16 @@ class CampaignService:
             raise ValueError(f"Cannot update campaign in {campaign.status} status")
 
         update_data = data.model_dump(exclude_unset=True)
+
+        # Validate routing against the *resulting* state, not the incoming patch:
+        # setting a pool on a campaign that already has an identity has to be
+        # caught, and a partial update sends only one of the two fields.
+        if "sending_pool_id" in update_data or "sending_identity_id" in update_data:
+            await self._validate_routing(
+                workspace_id,
+                update_data.get("sending_pool_id", campaign.sending_pool_id),
+                update_data.get("sending_identity_id", campaign.sending_identity_id),
+            )
 
         # Handle audience_filters conversion
         if "audience_filters" in update_data and update_data["audience_filters"] is not None:
@@ -258,7 +275,7 @@ class CampaignService:
         # Refuse at schedule time too, rather than letting the poller discover it
         # an hour later — when it did, `check_scheduled_campaigns` skipped the gate
         # entirely and the campaign reported `sent` having delivered nothing.
-        _, sender_problem = await self.resolve_sender(workspace_id, campaign.from_email)
+        _, sender_problem = await self.resolve_campaign_sender(campaign)
         if sender_problem:
             raise ValueError(sender_problem)
 
@@ -754,6 +771,128 @@ class CampaignService:
     # SENDING
     # =========================================================================
 
+    async def update_routing(
+        self,
+        campaign_id: str,
+        workspace_id: str,
+        data: RoutingConfigUpdate,
+    ) -> EmailCampaign | None:
+        """Set how a campaign chooses its sending domain."""
+        campaign = await self.get_campaign(campaign_id, workspace_id)
+        if not campaign:
+            return None
+
+        if campaign.status not in [CampaignStatus.DRAFT.value, CampaignStatus.PAUSED.value]:
+            raise ValueError(f"Cannot change routing on a {campaign.status} campaign")
+
+        await self._validate_routing(workspace_id, data.sending_pool_id, data.sending_identity_id)
+
+        campaign.sending_pool_id = data.sending_pool_id
+        campaign.sending_identity_id = data.sending_identity_id
+        # Merged rather than replaced: `fallback_enabled` is read from here by the
+        # send path and is not part of this schema, so overwriting would silently
+        # reset it.
+        campaign.routing_config = {
+            **(campaign.routing_config or {}),
+            "strategy": data.routing_strategy,
+            "prefer_warming_complete": data.prefer_warming_complete,
+            "min_health_score": data.min_health_score,
+        }
+
+        await self.db.commit()
+        await self.db.refresh(campaign)
+        logger.info(
+            "Campaign %s routing set to pool=%s identity=%s",
+            campaign_id,
+            data.sending_pool_id,
+            data.sending_identity_id,
+        )
+        return campaign
+
+    async def _validate_routing(
+        self,
+        workspace_id: str,
+        pool_id: str | None,
+        identity_id: str | None,
+    ) -> None:
+        """Refuse a pool or identity belonging to another workspace.
+
+        Both columns FK to their own tables, not to anything workspace-scoped, so
+        an id from another tenant would be accepted by the database and then used
+        to send — the same class of hole `_require_own_integration` closes for
+        service-desk mailboxes.
+        """
+        if pool_id and identity_id:
+            raise ValueError(
+                "Set either a sending pool or a sending identity, not both — "
+                "a pool chooses the domain per recipient, an identity pins one"
+            )
+
+        if pool_id:
+            pool = (
+                await self.db.execute(
+                    select(SendingPool).where(
+                        SendingPool.id == pool_id,
+                        SendingPool.workspace_id == workspace_id,
+                    )
+                )
+            ).scalar_one_or_none()
+            if pool is None:
+                raise ValueError("Sending pool not found in this workspace")
+            if not pool.is_active:
+                raise ValueError(f"Sending pool '{pool.name}' is not active")
+
+        if identity_id:
+            identity = (
+                await self.db.execute(
+                    select(SendingIdentity).where(
+                        SendingIdentity.id == identity_id,
+                        SendingIdentity.workspace_id == workspace_id,
+                    )
+                )
+            ).scalar_one_or_none()
+            if identity is None:
+                raise ValueError("Sending identity not found in this workspace")
+            if not identity.is_active:
+                raise ValueError(f"Sending identity {identity.email} is not active")
+
+    async def resolve_pool_sender(
+        self, workspace_id: str, pool_id: str
+    ) -> tuple[SendingDomain | None, str]:
+        """Whether a pool has any member domain able to send.
+
+        A pooled campaign's From address comes from whichever domain the router
+        picks per recipient, so asking whether `from_email` is verified is the
+        wrong question — the right one is whether the pool has a usable member.
+        """
+        pool = (
+            await self.db.execute(
+                select(SendingPool).where(
+                    SendingPool.id == pool_id,
+                    SendingPool.workspace_id == workspace_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if pool is None:
+            return None, "Sending pool not found in this workspace"
+        if not pool.is_active:
+            return None, f"Sending pool '{pool.name}' is not active"
+
+        domain_service = DomainService(self.db)
+        members = await RoutingService(self.db).list_pool_domains(pool_id, workspace_id)
+        if not members:
+            return None, f"Sending pool '{pool.name}' has no active domains"
+
+        for domain in members:
+            can_send, _ = await domain_service.can_send(domain.id, workspace_id)
+            if can_send:
+                return domain, ""
+
+        return None, (
+            f"No domain in '{pool.name}' can send right now — check verification, "
+            "daily limits and health"
+        )
+
     async def resolve_sender(
         self, workspace_id: str, from_email: str
     ) -> tuple[SendingDomain | None, str]:
@@ -783,7 +922,40 @@ class CampaignService:
 
         return domain, ""
 
-    async def sender_status(self, workspace_id: str, from_email: str) -> dict[str, Any]:
+    async def resolve_campaign_sender(
+        self, campaign: EmailCampaign
+    ) -> tuple[SendingDomain | None, str]:
+        """The sender check for a campaign, whichever routing mode it uses.
+
+        Three modes, and asking the wrong question of the wrong one is how this
+        went wrong before: a pooled campaign's From address is chosen per recipient
+        from the pool, so validating `from_email` against a domain would refuse a
+        perfectly sendable campaign.
+        """
+        if campaign.sending_pool_id:
+            return await self.resolve_pool_sender(
+                campaign.workspace_id, campaign.sending_pool_id
+            )
+
+        if campaign.sending_identity_id:
+            identity = (
+                await self.db.execute(
+                    select(SendingIdentity).where(
+                        SendingIdentity.id == campaign.sending_identity_id,
+                        SendingIdentity.workspace_id == campaign.workspace_id,
+                    )
+                )
+            ).scalar_one_or_none()
+            if identity is None:
+                return None, "Sending identity not found in this workspace"
+            if not identity.is_active:
+                return None, f"Sending identity {identity.email} is not active"
+            # The identity fixes the address, so check the domain behind it.
+            return await self.resolve_sender(campaign.workspace_id, identity.email)
+
+        return await self.resolve_sender(campaign.workspace_id, campaign.from_email)
+
+    async def sender_status(self, campaign: EmailCampaign) -> dict[str, Any]:
         """A compact, UI-shaped answer to "can this campaign send?".
 
         Returned on the campaign payload so the wizard and the detail page stop
@@ -791,9 +963,17 @@ class CampaignService:
         detail page's own copy tested statuses that its `DomainStatus` union did
         not even contain.
         """
-        domain, reason = await self.resolve_sender(workspace_id, from_email)
+        domain, reason = await self.resolve_campaign_sender(campaign)
+        mode = (
+            "pool"
+            if campaign.sending_pool_id
+            else "identity"
+            if campaign.sending_identity_id
+            else "from_email"
+        )
         return {
             "can_send": not reason,
+            "mode": mode,
             "domain": domain.domain if domain else None,
             "domain_id": domain.id if domain else None,
             "domain_status": domain.status if domain else None,
@@ -821,11 +1001,10 @@ class CampaignService:
         if not campaign.template:
             raise ValueError("Campaign must have a template")
 
-        # E2.6: refuse to send until *this campaign's* from_email belongs to a
-        # verified sending domain — sending from an unverified domain wrecks
-        # deliverability and enables spoofing. The UI mirrors this by disabling
-        # "Send" and by naming the same reason.
-        _, sender_problem = await self.resolve_sender(workspace_id, campaign.from_email)
+        # E2.6: refuse to send until this campaign has a sender that can actually
+        # send — an unverified domain wrecks deliverability and enables spoofing.
+        # The UI mirrors this by disabling "Send" and naming the same reason.
+        _, sender_problem = await self.resolve_campaign_sender(campaign)
         if sender_problem:
             raise ValueError(sender_problem)
 

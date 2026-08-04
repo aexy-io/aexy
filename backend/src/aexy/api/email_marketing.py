@@ -12,6 +12,7 @@ from aexy.services.campaign_service import CampaignService
 from aexy.services.provider_service import ProviderService
 from aexy.services.workspace_service import WorkspaceService
 from aexy.services.activity_logger import log_activity
+from aexy.schemas.email_infrastructure import RoutingConfigUpdate
 from aexy.schemas.email_marketing import (
     # Template schemas
     EmailTemplateCreate,
@@ -301,9 +302,7 @@ async def _with_sender(
     question the list does not ask.
     """
     payload = EmailCampaignResponse.model_validate(campaign)
-    payload.sender = SenderStatus(
-        **await service.sender_status(workspace_id, campaign.from_email)
-    )
+    payload.sender = SenderStatus(**await service.sender_status(campaign))
     return payload
 
 
@@ -378,6 +377,42 @@ async def get_campaign(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Campaign not found",
         )
+    return await _with_sender(service, workspace_id, campaign)
+
+
+@router.put("/campaigns/{campaign_id}/routing", response_model=EmailCampaignResponse)
+async def update_campaign_routing(
+    workspace_id: str,
+    campaign_id: str,
+    data: RoutingConfigUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: Developer = Depends(get_current_developer),
+):
+    """Choose how a campaign picks its sending domain.
+
+    `RoutingConfigUpdate` has existed since the multi-domain infrastructure landed
+    and was referenced by nothing, which is why `sending_pool_id` and
+    `sending_identity_id` were always NULL and the send path's two routing branches
+    were unreachable. This is the endpoint it was written for.
+
+    The strategy and thresholds go on `routing_config`, so a transactional campaign
+    can insist on a healthier domain than a newsletter; the pool's own
+    `routing_strategy` is the default when the campaign does not override it.
+    """
+    await check_workspace_permission(db, workspace_id, current_user.id, "member")
+
+    service = CampaignService(db)
+    try:
+        campaign = await service.update_routing(campaign_id, workspace_id, data)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    if not campaign:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Campaign not found",
+        )
+
     return await _with_sender(service, workspace_id, campaign)
 
 
@@ -727,9 +762,9 @@ async def send_test_email(
     # hand straight to the platform mailer, which meant a test could arrive from
     # the deployment's address and "prove" a sender that would be refused the
     # moment the real campaign ran.
-    sender_domain, sender_problem = await campaign_service.resolve_sender(
-        workspace_id, campaign.from_email
-    )
+    # Pool-routed campaigns resolve through the pool, so a test on one proves the
+    # pool has a usable member — which is the thing that would fail for real.
+    sender_domain, sender_problem = await campaign_service.resolve_campaign_sender(campaign)
     if sender_problem:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

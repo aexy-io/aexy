@@ -228,7 +228,10 @@ class EmailCampaignService:
             reputation_service = ReputationService(self.db)
 
             routing_config = campaign.routing_config or {}
-            strategy = routing_config.get("strategy", "health_based")
+            # None, not a default: absent means "use the pool's own strategy",
+            # which is what a pool's `routing_strategy` column is for. Defaulting
+            # to health_based here would override every pool's choice.
+            strategy = routing_config.get("strategy")
 
             from_email = campaign.from_email
             from_name = campaign.from_name
@@ -238,10 +241,6 @@ class EmailCampaignService:
             send_provider = None
 
             if campaign.sending_identity_id:
-                # Neither this branch nor the pool branch below can be reached
-                # today: `sending_identity_id` and `sending_pool_id` are on the
-                # model but on no schema and no endpoint, so both are always NULL.
-                # The `from_email` branch further down is the one that runs.
                 identity_result = await self.db.execute(
                     select(SendingIdentity).where(SendingIdentity.id == campaign.sending_identity_id)
                 )
@@ -259,21 +258,48 @@ class EmailCampaignService:
                     send_domain = domain_result.scalar_one_or_none()
 
             elif campaign.sending_pool_id:
-                # Unreachable, and broken if it ever were reached: `route_email`
-                # takes (workspace_id, recipient_email, pool_id=...) and returns a
-                # `RoutingDecision`, not a dict. Multi-domain pool routing is its
-                # own unfinished feature; left as-is rather than half-fixed here.
+                # Pool routing picks the healthiest domain in the pool per
+                # recipient, so the From address comes from the *chosen* domain's
+                # identity — not from `campaign.from_email`. Sending as an address
+                # on a domain other than the one delivering it is what the sender
+                # gate exists to prevent, so the decision's `from_email` wins here.
+                #
+                # `min_health_score` and `prefer_warming_complete` come from the
+                # campaign's own routing_config, so a transactional campaign can
+                # demand a healthier domain than a newsletter.
                 routing_decision = await routing_service.route_email(
-                    pool_id=campaign.sending_pool_id,
+                    workspace_id=campaign.workspace_id,
                     recipient_email=recipient.email,
+                    pool_id=campaign.sending_pool_id,
+                    prefer_warming_complete=routing_config.get("prefer_warming_complete", True),
+                    min_health_score=routing_config.get("min_health_score", 50),
                     strategy=strategy,
                 )
 
-                if routing_decision and routing_decision.get("domain_id"):
+                if routing_decision:
                     domain_result = await self.db.execute(
-                        select(SendingDomain).where(SendingDomain.id == routing_decision["domain_id"])
+                        select(SendingDomain).where(SendingDomain.id == routing_decision.domain_id)
                     )
                     send_domain = domain_result.scalar_one_or_none()
+                    from_email = routing_decision.from_email
+                    if routing_decision.identity_id:
+                        identity = (
+                            await self.db.execute(
+                                select(SendingIdentity).where(
+                                    SendingIdentity.id == routing_decision.identity_id
+                                )
+                            )
+                        ).scalar_one_or_none()
+                        if identity:
+                            from_name = identity.display_name or from_name
+                            reply_to = identity.reply_to or reply_to
+                else:
+                    logger.warning(
+                        "Campaign %s: pool %s had no domain able to send to %s",
+                        campaign.id,
+                        campaign.sending_pool_id,
+                        recipient.email,
+                    )
 
             else:
                 # The normal path. Resolve the sending domain from the address the
@@ -300,17 +326,27 @@ class EmailCampaignService:
                 if not can_send:
                     logger.warning(f"Domain {send_domain.domain} cannot send: {reason}")
                     if campaign.sending_pool_id and routing_config.get("fallback_enabled", True):
+                        # Fallback stays inside the pool. A pool is a deliberate
+                        # statement about which domains this campaign may send
+                        # from, so falling back to any active domain in the
+                        # workspace would send from a domain the user excluded.
                         fallback = await routing_service.get_fallback_domain(
-                            pool_id=campaign.sending_pool_id,
-                            exclude_domain_id=send_domain.id,
+                            workspace_id=campaign.workspace_id,
+                            exclude_domain_ids=[send_domain.id],
                             recipient_email=recipient.email,
+                            pool_id=campaign.sending_pool_id,
+                            min_health_score=routing_config.get("min_health_score", 50),
                         )
                         if fallback:
                             domain_result = await self.db.execute(
-                                select(SendingDomain).where(SendingDomain.id == fallback["domain_id"])
+                                select(SendingDomain).where(SendingDomain.id == fallback.domain_id)
                             )
                             send_domain = domain_result.scalar_one_or_none()
+                            from_email = fallback.from_email
                         else:
+                            domain_blocked_reason = (
+                                f"{reason}, and no other domain in the pool could send"
+                            )
                             send_domain = None
                     else:
                         # A domain that is over its daily limit or unhealthy is a
@@ -946,22 +982,36 @@ class EmailCampaignService:
             domain_service = DomainService(self.db)
 
             routing_decision = await routing_service.route_email(
-                pool_id=sending_pool_id,
+                workspace_id=workspace_id,
                 recipient_email=to_email,
-                strategy="health_based",
+                pool_id=sending_pool_id,
             )
 
-            if routing_decision and routing_decision.get("domain_id"):
-                domain_id = routing_decision["domain_id"]
-                provider_id = routing_decision.get("provider_id")
+            if routing_decision:
+                domain_id = routing_decision.domain_id
+                # A domain in a pool need not carry its own provider, so fall back
+                # to the workspace default before giving up on the pool.
+                provider_id = routing_decision.provider_id
+                if not provider_id:
+                    default_provider = await provider_service.get_default_provider(workspace_id)
+                    provider_id = default_provider.id if default_provider else None
 
                 can_send, reason = await domain_service.can_send(domain_id, workspace_id)
+                if not can_send:
+                    logger.warning(
+                        "Workflow email: pool %s selected %s, which cannot send: %s",
+                        sending_pool_id,
+                        routing_decision.domain,
+                        reason,
+                    )
                 if can_send and provider_id:
-                    resolved_from = from_email or routing_decision.get("from_email", f"no-reply@{routing_decision.get('domain')}")
+                    # The pool decides the domain, so it decides the From address:
+                    # keeping a caller-supplied `from_email` would send as one
+                    # domain through another.
                     result = await provider_service.send_email(
                         provider_id=provider_id,
                         to_email=to_email,
-                        from_email=resolved_from,
+                        from_email=routing_decision.from_email,
                         from_name=from_name or "Notifications",
                         subject=subject,
                         html_body=html_body,
@@ -973,7 +1023,13 @@ class EmailCampaignService:
                         send_success = True
                         message_id = result.get("message_id")
                         await domain_service.increment_daily_sent(domain_id)
-                        logger.info(f"Workflow email sent via domain {routing_decision.get('domain')}")
+                        logger.info(f"Workflow email sent via domain {routing_decision.domain}")
+                    else:
+                        logger.error(
+                            "Workflow email: provider send failed via %s: %s",
+                            routing_decision.domain,
+                            result.get("error"),
+                        )
 
         # Fallback to default email service
         if not send_success:

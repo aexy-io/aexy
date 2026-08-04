@@ -14599,6 +14599,13 @@ export interface EmailCampaign {
    */
   sender?: {
     can_send: boolean;
+    /**
+     * How the sender is chosen. `pool` routes each recipient to the healthiest
+     * domain in a sending pool and takes the From address from there, so the
+     * campaign's own `from_email` is not what gets validated — which is why the
+     * UI reads `can_send`/`reason` rather than deriving either itself.
+     */
+    mode: "from_email" | "identity" | "pool";
     domain: string | null;
     domain_id: string | null;
     domain_status: string | null;
@@ -14606,6 +14613,8 @@ export interface EmailCampaign {
   } | null;
   /** Why the last start attempt was refused, if it was. */
   last_error?: string | null;
+  sending_pool_id?: string | null;
+  sending_identity_id?: string | null;
 }
 
 export interface EmailCampaignCreate {

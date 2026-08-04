@@ -816,11 +816,18 @@ async def create_pool(
             priority=member_data.priority,
         )
 
-    # Refresh to get members
+    # Re-read with members eagerly loaded. Without `selectinload`, serializing
+    # `SendingPoolResponse.members` triggered a lazy load on an async session and
+    # raised MissingGreenlet — a 500 *after* the pool had been committed, so the
+    # obvious retry then failed on the unique name. Creating a pool through the API
+    # never once returned successfully.
     from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
     from aexy.models.email_infrastructure import SendingPool
     result = await db.execute(
-        select(SendingPool).where(SendingPool.id == pool.id)
+        select(SendingPool)
+        .options(selectinload(SendingPool.members))
+        .where(SendingPool.id == pool.id)
     )
     pool = result.scalar_one()
 

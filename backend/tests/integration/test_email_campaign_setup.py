@@ -18,12 +18,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.models.crm import CRMList, CRMListEntry, CRMObject, CRMRecord
 from aexy.models.developer import Developer
-from aexy.models.email_infrastructure import DomainStatus, SendingDomain
+from aexy.models.email_infrastructure import (
+    DomainStatus,
+    SendingDomain,
+    SendingIdentity,
+    SendingPool,
+    SendingPoolMember,
+)
 from aexy.models.email_marketing import CampaignStatus, EmailCampaign, EmailTemplate
 from aexy.models.workspace import Workspace
+from aexy.schemas.email_infrastructure import RoutingConfigUpdate
 from aexy.services.campaign_service import CampaignService
 from aexy.services.domain_service import DomainService
 from aexy.services.email_campaign_service import EmailCampaignService
+from aexy.services.routing_service import RoutingService
 
 
 @pytest_asyncio.fixture
@@ -206,18 +214,248 @@ async def test_start_sending_blocked_when_daily_limit_reached(db_session, ws):
 @pytest.mark.asyncio
 async def test_sender_status_shape(db_session, ws):
     db_session.add(_domain(ws.id, DomainStatus.VERIFIED.value, domain="acme.com"))
-    await db_session.commit()
+    good = await _campaign_with_template(db_session, ws.id, from_email="hello@acme.com")
+    bad = await _campaign_with_template(db_session, ws.id, from_email="hello@nope.com")
     svc = CampaignService(db_session)
 
-    ok = await svc.sender_status(ws.id, "hello@acme.com")
+    ok = await svc.sender_status(good)
     assert ok["can_send"] is True
+    assert ok["mode"] == "from_email"
     assert ok["domain"] == "acme.com"
     assert ok["reason"] is None
 
-    bad = await svc.sender_status(ws.id, "hello@nope.com")
-    assert bad["can_send"] is False
-    assert bad["domain"] is None
-    assert "No sending domain" in bad["reason"]
+    nope = await svc.sender_status(bad)
+    assert nope["can_send"] is False
+    assert nope["domain"] is None
+    assert "No sending domain" in nope["reason"]
+
+
+# --- sending pools --------------------------------------------------------
+#
+# Pool routing existed from the start and could never run: `sending_pool_id` was
+# on the model but on no schema and no endpoint, so it was always NULL — and the
+# branch behind it called `route_email` and `get_fallback_domain` with wrong
+# signatures and treated a Pydantic `RoutingDecision` as a dict.
+
+
+def _pool(ws_id, name="Marketing", strategy="health_based", **kw):
+    return SendingPool(
+        id=str(uuid4()), workspace_id=ws_id, name=name, routing_strategy=strategy, **kw
+    )
+
+
+def _member(pool_id, domain_id, **kw):
+    return SendingPoolMember(id=str(uuid4()), pool_id=pool_id, domain_id=domain_id, **kw)
+
+
+@pytest.mark.asyncio
+async def test_route_email_picks_a_pool_member(db_session, ws):
+    d1 = _domain(ws.id, DomainStatus.VERIFIED.value, domain="one.com", health_score=90)
+    d2 = _domain(ws.id, DomainStatus.VERIFIED.value, domain="two.com", health_score=40)
+    outside = _domain(ws.id, DomainStatus.VERIFIED.value, domain="outside.com", health_score=99)
+    pool = _pool(ws.id)
+    db_session.add_all([d1, d2, outside, pool])
+    await db_session.flush()
+    db_session.add_all([_member(pool.id, d1.id), _member(pool.id, d2.id)])
+    await db_session.commit()
+
+    decision = await RoutingService(db_session).route_email(
+        workspace_id=ws.id, recipient_email="someone@gmail.com", pool_id=pool.id
+    )
+    assert decision is not None
+    # A `RoutingDecision`, not a dict — the caller used to do `.get("domain_id")`.
+    assert decision.domain_id in {d1.id, d2.id}
+    # The healthiest *member*, never the healthier domain outside the pool.
+    assert decision.domain != "outside.com"
+    # No identity exists, so the From address falls back to the chosen domain.
+    assert decision.from_email.endswith(f"@{decision.domain}")
+
+
+@pytest.mark.asyncio
+async def test_route_email_tolerates_a_member_without_a_provider(db_session, ws):
+    """`RoutingDecision.provider_id` was non-optional but the column is nullable."""
+    d = _domain(ws.id, DomainStatus.VERIFIED.value, domain="one.com")
+    pool = _pool(ws.id)
+    db_session.add_all([d, pool])
+    await db_session.flush()
+    db_session.add(_member(pool.id, d.id))
+    await db_session.commit()
+
+    decision = await RoutingService(db_session).route_email(
+        workspace_id=ws.id, recipient_email="x@gmail.com", pool_id=pool.id
+    )
+    assert decision is not None and decision.provider_id is None
+
+
+@pytest.mark.asyncio
+async def test_fallback_stays_inside_the_pool(db_session, ws):
+    """A pool says which domains a campaign may use; fallback must respect it."""
+    exhausted = _domain(
+        ws.id, DomainStatus.VERIFIED.value, domain="one.com", daily_limit=5, daily_sent=5
+    )
+    spare = _domain(ws.id, DomainStatus.VERIFIED.value, domain="two.com")
+    outside = _domain(ws.id, DomainStatus.VERIFIED.value, domain="outside.com")
+    pool = _pool(ws.id)
+    db_session.add_all([exhausted, spare, outside, pool])
+    await db_session.flush()
+    db_session.add_all([_member(pool.id, exhausted.id), _member(pool.id, spare.id)])
+    await db_session.commit()
+
+    svc = RoutingService(db_session)
+    fallback = await svc.get_fallback_domain(
+        workspace_id=ws.id, exclude_domain_ids=[exhausted.id], pool_id=pool.id
+    )
+    assert fallback is not None and fallback.domain == "two.com"
+
+    # With every pool member excluded there is no fallback — it must not escape
+    # to `outside.com`, which is what omitting pool_id would have done.
+    none_left = await svc.get_fallback_domain(
+        workspace_id=ws.id,
+        exclude_domain_ids=[exhausted.id, spare.id],
+        pool_id=pool.id,
+    )
+    assert none_left is None
+
+
+@pytest.mark.asyncio
+async def test_pooled_campaign_gate_checks_the_pool_not_from_email(db_session, ws):
+    """A pooled campaign's From comes from the pool, so from_email is not the test."""
+    d = _domain(ws.id, DomainStatus.VERIFIED.value, domain="one.com")
+    pool = _pool(ws.id)
+    db_session.add_all([d, pool])
+    await db_session.flush()
+    db_session.add(_member(pool.id, d.id))
+    c = await _campaign_with_template(
+        db_session,
+        ws.id,
+        # Deliberately an address no domain in the workspace covers.
+        from_email="hello@unrelated.com",
+        sending_pool_id=pool.id,
+    )
+
+    status = await CampaignService(db_session).sender_status(c)
+    assert status["mode"] == "pool"
+    assert status["can_send"] is True, status["reason"]
+
+    # Past the sender gate → the next refusal is the empty audience.
+    with pytest.raises(ValueError, match="recipients"):
+        await CampaignService(db_session).start_sending(c.id, ws.id)
+
+
+@pytest.mark.asyncio
+async def test_pooled_campaign_is_refused_when_no_member_can_send(db_session, ws):
+    pending = _domain(ws.id, DomainStatus.PENDING.value, domain="one.com")
+    pool = _pool(ws.id, name="Cold")
+    db_session.add_all([pending, pool])
+    await db_session.flush()
+    db_session.add(_member(pool.id, pending.id))
+    c = await _campaign_with_template(db_session, ws.id, sending_pool_id=pool.id)
+
+    with pytest.raises(ValueError, match="No domain in 'Cold' can send"):
+        await CampaignService(db_session).start_sending(c.id, ws.id)
+
+
+@pytest.mark.asyncio
+async def test_empty_pool_is_refused(db_session, ws):
+    pool = _pool(ws.id, name="Empty")
+    db_session.add(pool)
+    c = await _campaign_with_template(db_session, ws.id, sending_pool_id=pool.id)
+
+    with pytest.raises(ValueError, match="has no active domains"):
+        await CampaignService(db_session).start_sending(c.id, ws.id)
+
+
+@pytest.mark.asyncio
+async def test_routing_refuses_a_pool_from_another_workspace(db_session, ws):
+    """Both columns FK to their own table, not to anything workspace-scoped."""
+    other_dev = Developer(id=str(uuid4()), email=f"o-{uuid4().hex[:6]}@t.com", name="O")
+    db_session.add(other_dev)
+    await db_session.flush()
+    other = Workspace(
+        id=str(uuid4()), name="Other", slug=f"o-{uuid4().hex[:6]}", owner_id=other_dev.id
+    )
+    db_session.add(other)
+    await db_session.flush()
+    foreign_pool = _pool(other.id, name="Theirs")
+    db_session.add(foreign_pool)
+    await db_session.commit()
+
+    svc = CampaignService(db_session)
+    with pytest.raises(ValueError, match="not found in this workspace"):
+        await svc.update_routing(
+            (await _campaign_with_template(db_session, ws.id)).id,
+            ws.id,
+            RoutingConfigUpdate(sending_pool_id=foreign_pool.id),
+        )
+
+
+@pytest.mark.asyncio
+async def test_routing_refuses_both_a_pool_and_an_identity(db_session, ws):
+    d = _domain(ws.id, DomainStatus.VERIFIED.value, domain="one.com")
+    pool = _pool(ws.id)
+    db_session.add_all([d, pool])
+    await db_session.flush()
+    identity = SendingIdentity(
+        id=str(uuid4()),
+        workspace_id=ws.id,
+        domain_id=d.id,
+        email="hi@one.com",
+        display_name="Acme",
+    )
+    db_session.add(identity)
+    c = await _campaign_with_template(db_session, ws.id)
+    await db_session.commit()
+
+    with pytest.raises(ValueError, match="not both"):
+        await CampaignService(db_session).update_routing(
+            c.id,
+            ws.id,
+            RoutingConfigUpdate(sending_pool_id=pool.id, sending_identity_id=identity.id),
+        )
+
+
+@pytest.mark.asyncio
+async def test_identity_mode_checks_the_identity_not_from_email(db_session, ws):
+    """An identity pins the address, so that address is what must be sendable."""
+    d = _domain(ws.id, DomainStatus.VERIFIED.value, domain="one.com")
+    db_session.add(d)
+    await db_session.flush()
+    identity = SendingIdentity(
+        id=str(uuid4()),
+        workspace_id=ws.id,
+        domain_id=d.id,
+        email="hi@one.com",
+        display_name="Acme",
+    )
+    db_session.add(identity)
+    c = await _campaign_with_template(
+        db_session,
+        ws.id,
+        from_email="hello@unrelated.com",
+        sending_identity_id=identity.id,
+    )
+
+    status = await CampaignService(db_session).sender_status(c)
+    assert status["mode"] == "identity"
+    assert status["can_send"] is True, status["reason"]
+    assert status["domain"] == "one.com"
+
+
+@pytest.mark.asyncio
+async def test_update_routing_preserves_unrelated_routing_config(db_session, ws):
+    """`fallback_enabled` is read by the send path and is not in this schema."""
+    pool = _pool(ws.id)
+    db_session.add(pool)
+    c = await _campaign_with_template(db_session, ws.id)
+    c.routing_config = {"fallback_enabled": False}
+    await db_session.commit()
+
+    updated = await CampaignService(db_session).update_routing(
+        c.id, ws.id, RoutingConfigUpdate(sending_pool_id=pool.id, min_health_score=80)
+    )
+    assert updated.sending_pool_id == pool.id
+    assert updated.routing_config["min_health_score"] == 80
+    assert updated.routing_config["fallback_enabled"] is False
 
 
 # --- the scheduled path ---------------------------------------------------

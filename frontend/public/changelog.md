@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.14.0] - 2026-08-04
 
+### Fix: sending-pool routing, which could never have run
+
+A sending pool spreads a campaign across several domains, picking the healthiest
+per recipient — which is how you keep one domain's reputation from sinking a whole
+send, and how transactional mail is kept off the marketing domain. It shipped with
+the multi-domain infrastructure and had never executed once.
+
+**Nothing could set a pool.** `EmailCampaign.sending_pool_id` and
+`sending_identity_id` existed as columns and the send path branched on both, but
+neither was on any schema or endpoint, so both were always NULL and both branches
+were dead. `RoutingConfigUpdate` — the schema written to set them — was referenced
+by nothing at all. They are now on campaign create/update and behind
+`PUT /campaigns/{id}/routing`, validated against the caller's workspace, because
+both columns FK to their own tables rather than to anything workspace-scoped.
+
+**And it would have crashed if it had run.** `route_email` was called with
+`pool_id`/`strategy` and no `workspace_id` (a `TypeError`), its `RoutingDecision`
+return was read as a dict, and `get_fallback_domain` was called with
+`exclude_domain_id` where it takes `exclude_domain_ids` — the same three mistakes
+in both call sites. `RoutingDecision.provider_id` was also non-optional while the
+column is nullable, so a pool member without its own provider raised a validation
+error instead of falling back to the workspace default.
+
+**Fallback escaped the pool.** `get_fallback_domain` selected from every active
+domain in the workspace, so a campaign whose pooled domain hit its daily limit
+would have sent from a domain the pool deliberately excluded — defeating the
+separation the pool was built for. It now takes `pool_id` and stays inside.
+
+**The From address follows the domain.** Pool routing picks the domain per
+recipient, so the decision's `from_email` (from that domain's identity) now wins
+over `campaign.from_email`. Sending as an address on one domain through another is
+precisely what the sender gate exists to prevent.
+
+**And the gate asks the right question per mode.** A pooled campaign's From is
+chosen from the pool, so validating `from_email` against a verified domain would
+refuse a perfectly sendable campaign. `sender_status` now reports its `mode`
+(`from_email` / `identity` / `pool`) and checks accordingly — for a pool, whether
+any member can send; the reason names the pool.
+
+**Creating a pool through the API had never returned successfully.**
+`POST /pools` committed the pool and then 500'd serializing the response, because
+`SendingPoolResponse.members` lazy-loaded on an async session
+(`MissingGreenlet`) — so the natural retry then failed on the unique name.
+`GET /pools/{id}` had always eager-loaded correctly; create had not.
+
 ### Fix: campaigns sent from the platform's address, and scheduled ones sent to nobody
 
 The Email Marketing empty state promised a four-step setup starting with *"Configure
