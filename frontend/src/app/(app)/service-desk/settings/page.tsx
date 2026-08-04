@@ -11,12 +11,14 @@ import {
   useAccounts,
   useServiceDeskMutations,
   useServiceDeskSettings,
+  useServiceDeskTaxonomy,
   useServiceDeskTemplates,
 } from "@/hooks/useServiceDesk";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import {
   ServiceDeskSettingsPatch,
   ServiceDeskTemplate,
+  Stakeholder,
   TestSLAOverride,
   TestStageSLA,
 } from "@/lib/service-desk-api";
@@ -341,12 +343,14 @@ function localDateTime(value?: string): string {
 
 function TestSLAEditor({
   value,
+  stakeholders,
   canManage,
   saving,
   onSave,
   onClear,
 }: {
   value: TestSLAOverride | null | undefined;
+  stakeholders: Stakeholder[];
   canManage: boolean;
   saving: boolean;
   onSave: (value: TestSLAOverride) => void;
@@ -354,36 +358,39 @@ function TestSLAEditor({
 }) {
   const t = useTranslations("serviceDesk");
   const [expiresAt, setExpiresAt] = useState(() => localDateTime(value?.expires_at));
-  const [kamAmber, setKamAmber] = useState(value?.kam.amber_minutes ?? 8);
-  const [kamRed, setKamRed] = useState(value?.kam.red_minutes ?? 15);
-  const [insurerAmber, setInsurerAmber] = useState(value?.insurer.amber_minutes ?? 10);
-  const [insurerRed, setInsurerRed] = useState(value?.insurer.red_minutes ?? 20);
-  const [partnerAmber, setPartnerAmber] = useState(value?.partner.amber_minutes ?? 8);
-  const [partnerRed, setPartnerRed] = useState(value?.partner.red_minutes ?? 15);
+  // One row per bucket the workspace actually has, rather than three fields named
+  // after insurance ones. A stage the test does not name keeps the normal target.
+  const [rules, setRules] = useState<Record<string, TestStageSLA>>(() => value?.stages ?? {});
 
   useEffect(() => {
     if (!value) return;
     setExpiresAt(localDateTime(value.expires_at));
-    setKamAmber(value.kam.amber_minutes);
-    setKamRed(value.kam.red_minutes);
-    setInsurerAmber(value.insurer.amber_minutes);
-    setInsurerRed(value.insurer.red_minutes);
-    setPartnerAmber(value.partner.amber_minutes);
-    setPartnerRed(value.partner.red_minutes);
+    setRules(value.stages ?? {});
   }, [value]);
 
-  const validRule = (amber: number, red: number) => amber >= 1 && red > amber && red <= 240;
+  // Terminal buckets are excluded: the clock has already stopped there, so a
+  // minute rule against one could never fire.
+  const rows = stakeholders.filter((s) => s.semantics !== "closed");
+  const setRule = (slug: string, patch: Partial<TestStageSLA>) =>
+    setRules((prev) => {
+      const current = prev[slug] ?? { amber_minutes: 8, red_minutes: 15 };
+      return { ...prev, [slug]: { ...current, ...patch } };
+    });
+  const clearRule = (slug: string) =>
+    setRules((prev) => {
+      const next = { ...prev };
+      delete next[slug];
+      return next;
+    });
+
+  const named = Object.entries(rules);
+  const validRule = (rule: TestStageSLA) =>
+    rule.amber_minutes >= 1 && rule.red_minutes > rule.amber_minutes && rule.red_minutes <= 240;
   const valid =
     Number.isFinite(Date.parse(expiresAt)) &&
     new Date(expiresAt).getTime() > Date.now() &&
-    validRule(kamAmber, kamRed) &&
-    validRule(insurerAmber, insurerRed) &&
-    validRule(partnerAmber, partnerRed);
-  const stageRows: Array<[string, TestStageSLA, (value: number) => void, (value: number) => void]> = [
-    [t("testSla.kam"), { amber_minutes: kamAmber, red_minutes: kamRed }, setKamAmber, setKamRed],
-    [t("testSla.insurer"), { amber_minutes: insurerAmber, red_minutes: insurerRed }, setInsurerAmber, setInsurerRed],
-    [t("testSla.partner"), { amber_minutes: partnerAmber, red_minutes: partnerRed }, setPartnerAmber, setPartnerRed],
-  ];
+    named.length > 0 &&
+    named.every(([, rule]) => validRule(rule));
 
   return (
     <div className="space-y-3">
@@ -392,27 +399,46 @@ function TestSLAEditor({
         <span className="text-xs text-muted-foreground">{t("testSla.stage")}</span>
         <span className="text-xs text-muted-foreground">{t("testSla.amber")}</span>
         <span className="text-xs text-muted-foreground">{t("testSla.red")}</span>
-        {stageRows.map(([label, rule, setAmber, setRed]) => (
-          <div className="contents" key={label}>
-            <span className="self-center text-sm font-medium">{label}</span>
-            <Input
-              type="number"
-              min={1}
-              max={240}
-              value={rule.amber_minutes}
-              disabled={!canManage}
-              onChange={(event) => setAmber(Number(event.target.value))}
-            />
-            <Input
-              type="number"
-              min={2}
-              max={240}
-              value={rule.red_minutes}
-              disabled={!canManage}
-              onChange={(event) => setRed(Number(event.target.value))}
-            />
-          </div>
-        ))}
+        {rows.map((stakeholder) => {
+          const rule = rules[stakeholder.slug];
+          return (
+            <div className="contents" key={stakeholder.slug}>
+              <label className="flex items-center gap-2 self-center text-sm font-medium">
+                <input
+                  type="checkbox"
+                  checked={rule !== undefined}
+                  disabled={!canManage}
+                  onChange={(event) =>
+                    event.target.checked
+                      ? setRule(stakeholder.slug, {})
+                      : clearRule(stakeholder.slug)
+                  }
+                />
+                {stakeholder.label}
+              </label>
+              <Input
+                type="number"
+                min={1}
+                max={240}
+                value={rule?.amber_minutes ?? ""}
+                disabled={!canManage || rule === undefined}
+                onChange={(event) =>
+                  setRule(stakeholder.slug, { amber_minutes: Number(event.target.value) })
+                }
+              />
+              <Input
+                type="number"
+                min={2}
+                max={240}
+                value={rule?.red_minutes ?? ""}
+                disabled={!canManage || rule === undefined}
+                onChange={(event) =>
+                  setRule(stakeholder.slug, { red_minutes: Number(event.target.value) })
+                }
+              />
+            </div>
+          );
+        })}
       </div>
       <div className="flex flex-wrap items-end gap-3">
         <div>
@@ -429,12 +455,9 @@ function TestSLAEditor({
           <Button
             size="sm"
             disabled={!valid || saving}
-            onClick={() => onSave({
-              expires_at: new Date(expiresAt).toISOString(),
-              kam: { amber_minutes: kamAmber, red_minutes: kamRed },
-              insurer: { amber_minutes: insurerAmber, red_minutes: insurerRed },
-              partner: { amber_minutes: partnerAmber, red_minutes: partnerRed },
-            })}
+            onClick={() =>
+              onSave({ expires_at: new Date(expiresAt).toISOString(), stages: rules })
+            }
           >
             {saving ? t("testSla.saving") : t("testSla.save")}
           </Button>
@@ -458,6 +481,9 @@ export default function ServiceDeskSettingsPage() {
   const products = useProducts();
   const mailboxes = useMailboxes();
   const settings = useServiceDeskSettings();
+  // The buckets this desk actually has, so the test-SLA rows are its own rather
+  // than three fixed insurance stage names.
+  const { stakeholders } = useServiceDeskTaxonomy();
   const templates = useServiceDeskTemplates();
   const m = useServiceDeskMutations();
   // The workspace's own nouns for the three master-data tables. An insurance
@@ -563,6 +589,7 @@ export default function ServiceDeskSettingsPage() {
       <Section title={t("testSla.title")}>
         <TestSLAEditor
           value={settings.data?.test_sla}
+          stakeholders={stakeholders}
           canManage={canManage}
           saving={m.updateSettings.isPending}
           onSave={(test_sla) => m.updateSettings.mutate({ test_sla })}

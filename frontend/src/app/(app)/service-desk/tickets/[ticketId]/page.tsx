@@ -341,7 +341,7 @@ export default function ServiceDeskTicketDetailPage() {
               />
               <span>
                 {t("detail.emailMoveStage", {
-                  stage: SERVICE_DESK_PENDING_WITH_LABELS[mailStage] ?? mailStage,
+                  stage: stakeholderLabel(mailStage),
                 })}
               </span>
             </label>
@@ -361,7 +361,7 @@ export default function ServiceDeskTicketDetailPage() {
                 {mailStage && mailMoves && (
                   <div>
                     <span className="text-muted-foreground">{t("detail.changeTo")}: </span>
-                    {SERVICE_DESK_PENDING_WITH_LABELS[mailStage] ?? mailStage}
+                    {stakeholderLabel(mailStage)}
                   </div>
                 )}
               </div>
@@ -423,8 +423,8 @@ export default function ServiceDeskTicketDetailPage() {
                       {isDone && <Badge variant="secondary">{t("detail.alreadySplit")}</Badge>}
                     </span>
                     <span className="mt-1 block text-xs text-muted-foreground">
-                      {SERVICE_DESK_REQUEST_TYPE_LABELS[issue.request_type] ?? issue.request_type}
-                      {issue.lob ? ` · ${issue.lob}` : ""}
+                      {requestTypeLabel(issue.request_type)}
+                      {issue.product ? ` · ${issue.product}` : ""}
                       {` · ${Math.round(issue.confidence * 100)}% ${t("detail.confidence")}`}
                     </span>
                     {issue.split_reason && (

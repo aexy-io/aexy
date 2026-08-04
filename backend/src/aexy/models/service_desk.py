@@ -94,6 +94,14 @@ class ServiceDeskStakeholder(Base):
     # member of that department can see.
     function_key: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
 
+    # Which master-data table an EXTERNAL bucket speaks for: "account", "vendor",
+    # or NULL for one that has records of neither kind (a loss adjuster, say).
+    # Without it the desk had to guess from the bucket's label, which silently
+    # did the wrong thing for any workspace that renamed its nouns. Decides
+    # which table a reply's sender is matched against when the ticket is handed
+    # back, and which stage writing to an address implies.
+    links_to: Mapped[str | None] = mapped_column(String(16), nullable=True)
+
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 

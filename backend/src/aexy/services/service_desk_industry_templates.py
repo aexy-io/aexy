@@ -83,6 +83,9 @@ class StakeholderSpec:
     # `Department.function_key`. Only meaningful for internal stakeholders —
     # it's what decides whose tickets a Finance user can see.
     function_key: str | None = None
+    # Which master-data table an external bucket speaks for: "account", "vendor",
+    # or None. Only meaningful for external stakeholders.
+    links_to: str | None = None
 
 
 @dataclass(frozen=True)
@@ -157,8 +160,8 @@ INSURANCE_BROKING = IndustryTemplate(
     },
     stakeholders=(
         StakeholderSpec("kam", "KAM", SEMANTIC_INTERNAL, "ops_kam"),
-        StakeholderSpec("insurer", "Insurer", SEMANTIC_EXTERNAL),
-        StakeholderSpec("partner", "Partner", SEMANTIC_EXTERNAL),
+        StakeholderSpec("insurer", "Insurer", SEMANTIC_EXTERNAL, links_to="vendor"),
+        StakeholderSpec("partner", "Partner", SEMANTIC_EXTERNAL, links_to="account"),
         StakeholderSpec("sales", "Sales", SEMANTIC_INTERNAL, "sales"),
         StakeholderSpec("third_party", "Third Party", SEMANTIC_EXTERNAL),
         StakeholderSpec("finance", "Finance", SEMANTIC_INTERNAL, "finance"),

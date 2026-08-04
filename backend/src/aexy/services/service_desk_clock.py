@@ -49,7 +49,9 @@ DEFAULT_WORK_END = time(18, 30)
 # workspace — a 2-business-day target is one company's SLA, not everyone's.
 BREACH_RED_DAYS = 2.0
 BREACH_AMBER_DAYS = 1.0
-TEST_SLA_STAGES = frozenset({"kam", "insurer", "partner"})
+# Where the three fixed insurance stages lived before the override became a
+# per-workspace map. Read only to keep a test started under the old shape running.
+_LEGACY_TEST_SLA_STAGES = ("kam", "insurer", "partner")
 
 
 def _active_test_stage_slas(value: object) -> dict[str, tuple[int, int]]:
@@ -71,15 +73,22 @@ def _active_test_stage_slas(value: object) -> dict[str, tuple[int, int]]:
     except ValueError:
         return {}
 
+    raw_stages = value.get("stages")
+    if not isinstance(raw_stages, dict):
+        # Written before the override became a map: the stage names sat at the
+        # top level. Honour them so a test already running keeps running.
+        raw_stages = {k: value[k] for k in _LEGACY_TEST_SLA_STAGES if isinstance(value.get(k), dict)}
+
     stages: dict[str, tuple[int, int]] = {}
-    for stage in TEST_SLA_STAGES:
-        rule = value.get(stage)
+    for stage, rule in raw_stages.items():
         if not isinstance(rule, dict):
-            return {}
+            continue
         amber, red = rule.get("amber_minutes"), rule.get("red_minutes")
+        # One malformed stage is skipped rather than voiding the whole override:
+        # the others are still a deliberate, expiring, manager-set instruction.
         if not isinstance(amber, int) or not isinstance(red, int) or amber < 1 or red <= amber:
-            return {}
-        stages[stage] = (amber, red)
+            continue
+        stages[str(stage)] = (amber, red)
     return stages
 
 # Local hours at which the open-ticket digest goes out. Per workspace, in its own

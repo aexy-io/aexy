@@ -571,3 +571,78 @@ async def test_inbound_mail_still_seeds_rather_than_being_dropped(db_session: As
     taxonomy = await load_taxonomy(db_session, ws.id, seed=True)
     assert taxonomy.default_stakeholder_slug is not None
     assert taxonomy.default_request_type_slug is not None
+
+
+# ------------------------------------------------- master-data links (links_to)
+
+
+@pytest.mark.asyncio
+async def test_external_buckets_declare_which_master_data_table_they_speak_for(
+    db_session: AsyncSession,
+):
+    """The link is declared, not guessed from the bucket's label.
+
+    It used to be inferred by matching a stakeholder's label against the
+    workspace's noun for accounts or vendors, which resolved to nothing the
+    moment a desk renamed one noun and not the other — so a reply from a known
+    counterparty silently stopped handing the ticket back.
+    """
+    from aexy.services.service_desk_taxonomy import external_slug_for
+
+    ws = await _ws(db_session, "links")
+    await seed_taxonomy(db_session, ws.id, get_template("insurance_broking"))
+    await db_session.flush()
+    taxonomy = await load_taxonomy(db_session, ws.id, seed=False)
+
+    assert external_slug_for(taxonomy, "vendor") == "insurer"
+    assert external_slug_for(taxonomy, "account") == "partner"
+
+    # Renaming the bucket must not change which table it speaks for.
+    row = (
+        await db_session.execute(
+            select(ServiceDeskStakeholder).where(
+                ServiceDeskStakeholder.workspace_id == ws.id,
+                ServiceDeskStakeholder.slug == "insurer",
+            )
+        )
+    ).scalar_one()
+    row.label = "Underwriter"
+    await db_session.flush()
+
+    renamed = await load_taxonomy(db_session, ws.id, seed=False)
+    assert external_slug_for(renamed, "vendor") == "insurer"
+
+
+@pytest.mark.asyncio
+async def test_a_desk_seeded_before_links_to_still_resolves(db_session: AsyncSession):
+    """Rows written before the column exists carry NULL, and must still work."""
+    from aexy.services.service_desk_taxonomy import external_slug_for
+
+    ws = await _ws(db_session, "links-legacy")
+    await seed_taxonomy(db_session, ws.id, get_template("insurance_broking"))
+    await db_session.flush()
+    for row in (
+        await db_session.execute(
+            select(ServiceDeskStakeholder).where(ServiceDeskStakeholder.workspace_id == ws.id)
+        )
+    ).scalars().all():
+        row.links_to = None
+    await db_session.flush()
+
+    taxonomy = await load_taxonomy(db_session, ws.id, seed=False)
+    assert external_slug_for(taxonomy, "vendor") == "insurer"
+    assert external_slug_for(taxonomy, "account") == "partner"
+
+
+@pytest.mark.asyncio
+async def test_a_generic_desk_claims_neither_table(db_session: AsyncSession):
+    """No bucket claims a table, so callers get None rather than a wrong guess."""
+    from aexy.services.service_desk_taxonomy import external_slug_for
+
+    ws = await _ws(db_session, "links-generic")
+    await seed_taxonomy(db_session, ws.id, get_template("generic"))
+    await db_session.flush()
+    taxonomy = await load_taxonomy(db_session, ws.id, seed=False)
+
+    assert external_slug_for(taxonomy, "vendor") is None
+    assert external_slug_for(taxonomy, "account") is None

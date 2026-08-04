@@ -56,6 +56,9 @@ vi.mock("@/hooks/useServiceDesk", () => ({
       assigned_owner_id: "kam-1",
       request_type: "query",
       pending_with: "kam",
+      // The panel is gated on server-computed write authority, so a mock without
+      // it renders nothing and the test passes vacuously.
+      can_edit: true,
       origin: "email",
       needs_triage: true,
       ai_confidence: 0.91,
@@ -116,6 +119,16 @@ vi.mock("@/hooks/useServiceDesk", () => ({
     emailStakeholder: { mutateAsync: vi.fn(), isPending: false, isError: false },
   }),
   useServiceDeskSettings: () => ({ data: { can_manage: false } }),
+  useServiceDeskTaxonomy: () => ({
+    stakeholders: [],
+    requestTypes: [],
+    openStakeholders: [],
+    closedSlug: null,
+    stakeholderLabel: (slug: string | null | undefined) => slug ?? "—",
+    requestTypeLabel: (slug: string | null | undefined) => slug ?? "—",
+    isLoading: false,
+    isConfigured: true,
+  }),
   useProducts: () => ({ data: [] }),
   useAccounts: () => ({ data: [] }),
 }));

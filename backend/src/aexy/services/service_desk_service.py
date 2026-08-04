@@ -799,8 +799,21 @@ class ServiceDeskService:
                 workspace_id, developer_id or "unknown", removed,
             )
         elif test_sla is not None:
-            # Pydantic has already enforced a timezone-aware future expiry of
-            # no more than 24 hours, plus a red threshold after amber.
+            # Pydantic has already enforced a timezone-aware future expiry of no
+            # more than 24 hours, plus a red threshold after amber. What it
+            # cannot know is whether these stages exist here — the buckets are
+            # per-workspace rows, so a typo would otherwise store a rule the
+            # clock silently never applies and the test would look broken.
+            taxonomy = await load_taxonomy(self.db, workspace_id, seed=False)
+            known = {s.slug for s in taxonomy.stakeholders}
+            if unknown := sorted(set(test_sla.stages) - known):
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Unknown stakeholder(s) {unknown} for this workspace "
+                        f"(known: {', '.join(sorted(known)) or 'none configured'})"
+                    ),
+                )
             sd["test_sla"] = test_sla.model_dump(mode="json")
             logger.info(
                 "Service desk test SLA enabled for workspace %s until %s by %s",
@@ -834,6 +847,7 @@ class ServiceDeskService:
                         "label": s.label,
                         "semantics": s.semantics,
                         "function_key": s.function_key,
+                        "links_to": s.links_to,
                     }
                     for s in t.stakeholders
                 ],
@@ -981,6 +995,7 @@ class ServiceDeskService:
                         "A second one would make 'closed' ambiguous for the breach clock."
                     ),
                 )
+        await self._require_unclaimed_link(workspace_id, data.links_to)
         row = ServiceDeskStakeholder(
             id=str(uuid4()),
             workspace_id=workspace_id,
@@ -988,6 +1003,7 @@ class ServiceDeskService:
             label=data.label,
             semantics=data.semantics,
             function_key=data.function_key,
+            links_to=data.links_to,
             position=data.position,
             is_active=data.is_active,
         )
@@ -1018,10 +1034,38 @@ class ServiceDeskService:
                 status_code=409,
                 detail="The terminal stakeholder cannot be deactivated — tickets could never be closed.",
             )
+        if "links_to" in payload:
+            await self._require_unclaimed_link(workspace_id, payload["links_to"], exclude_id=row.id)
         for k, v in payload.items():
             setattr(row, k, v)
         await self.db.flush()
         return row
+
+    async def _require_unclaimed_link(
+        self, workspace_id: str, links_to: str | None, exclude_id: str | None = None
+    ) -> None:
+        """At most one stakeholder may speak for each master-data table.
+
+        Two claimants would make "which bucket does writing to a vendor imply"
+        ambiguous, and the resolver would pick whichever row came back first.
+        """
+        if links_to is None:
+            return
+        query = select(ServiceDeskStakeholder.slug).where(
+            ServiceDeskStakeholder.workspace_id == workspace_id,
+            ServiceDeskStakeholder.links_to == links_to,
+        )
+        if exclude_id is not None:
+            query = query.where(ServiceDeskStakeholder.id != exclude_id)
+        clash = (await self.db.execute(query)).scalars().first()
+        if clash is not None:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Stakeholder {clash!r} already speaks for {links_to!r}. "
+                    "Clear its link before assigning the same table to another bucket."
+                ),
+            )
 
     async def delete_stakeholder(self, workspace_id: str, stakeholder_id: str) -> None:
         """Refuses while tickets or ledger history still reference the slug.

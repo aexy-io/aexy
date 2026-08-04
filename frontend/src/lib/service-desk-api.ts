@@ -29,6 +29,9 @@ export interface Stakeholder {
   semantics: StakeholderSemantics;
   /** The department that owns this queue — only meaningful when internal. */
   function_key: string | null;
+  /** Which master-data table an external bucket speaks for. Declared, not
+   *  inferred from the label, so renaming a bucket changes nothing. */
+  links_to: "account" | "vendor" | null;
   position: number;
   is_active: boolean;
 }
@@ -176,7 +179,8 @@ export interface TicketAttachment {
 export interface DetectedIssue {
   summary: string;
   request_type: RequestType;
-  lob: string | null;
+  /** The workspace's product noun, not "line of business". */
+  product: string | null;
   confidence: number;
   split_reason: string | null;
 }
@@ -276,9 +280,9 @@ export interface TestStageSLA {
 
 export interface TestSLAOverride {
   expires_at: string;
-  kam: TestStageSLA;
-  insurer: TestStageSLA;
-  partner: TestStageSLA;
+  /** Keyed by the workspace's own stakeholder slugs. Was three fixed fields
+   *  named after insurance buckets, so no other desk could run a timed test. */
+  stages: Record<string, TestStageSLA>;
 }
 
 /** Only the fields being changed; the API leaves the rest alone. */

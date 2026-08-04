@@ -176,18 +176,15 @@
     },
     "testSla": {
       "title": "Temporary minute SLA test",
-      "description": "Use only for a controlled test. These are working-minute thresholds for the current KAM, insurer, and partner stages. They automatically stop at the expiry, and End test removes them immediately.",
+      "description": "Use only for a controlled test. These are working-minute thresholds for whichever stages you tick below. They automatically stop at the expiry, and End test removes them immediately.",
       "stage": "Stage",
       "amber": "Amber minutes",
       "red": "Red minutes",
-      "kam": "KAM",
-      "insurer": "Insurer",
-      "partner": "Partner",
       "expires": "Stop test at",
       "save": "Start / update test",
       "saving": "Saving…",
       "clear": "End test and remove rules",
-      "invalid": "Use a future expiry within 24 hours, and a red value greater than amber for every stage.",
+      "invalid": "Tick at least one stage, use a future expiry within 24 hours, and give every ticked stage a red value greater than its amber.",
       "active": "Test mode is active. It is ignored automatically after its expiry."
     }
   }

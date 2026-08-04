@@ -23,6 +23,16 @@ vi.mock("next-intl", () => ({
 vi.mock("@/hooks/useServiceDesk", () => ({
   useServiceDeskTickets: () => ({ data: mocks.tickets, isLoading: false }),
   useServiceDeskSettings: () => ({ data: { scope: mocks.scope, can_manage: false } }),
+  useServiceDeskTaxonomy: () => ({
+    stakeholders: [],
+    requestTypes: [],
+    openStakeholders: [],
+    closedSlug: null,
+    stakeholderLabel: (slug: string | null | undefined) => slug ?? "—",
+    requestTypeLabel: (slug: string | null | undefined) => slug ?? "—",
+    isLoading: false,
+    isConfigured: true,
+  }),
   useProducts: () => ({ data: [] }),
   useAccounts: () => ({ data: [] }),
   useServiceDeskMutations: () => ({ createManual: { mutateAsync: vi.fn() } }),

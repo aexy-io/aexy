@@ -18,6 +18,8 @@ _SLUG_FIELD = Field(..., min_length=1, max_length=64)
 TicketOrigin = Literal["email", "manual", "internal"]
 MailboxChannel = Literal["webhook", "gmail_sync"]
 StakeholderSemantics = Literal["internal", "external", "closed"]
+# Which master-data table an external stakeholder speaks for.
+MasterDataLink = Literal["account", "vendor"]
 
 
 # ==================== Taxonomy: stakeholders ====================
@@ -27,6 +29,9 @@ class StakeholderCreate(BaseModel):
     label: str = Field(..., min_length=1, max_length=100)
     semantics: StakeholderSemantics = "internal"
     function_key: str | None = Field(None, max_length=64)
+    # Which master-data table an external bucket speaks for. Only meaningful
+    # when semantics == "external"; see ``ServiceDeskStakeholder.links_to``.
+    links_to: MasterDataLink | None = None
     position: int = 0
     is_active: bool = True
 
@@ -37,6 +42,7 @@ class StakeholderUpdate(BaseModel):
     label: str | None = Field(None, min_length=1, max_length=100)
     semantics: StakeholderSemantics | None = None
     function_key: str | None = Field(None, max_length=64)
+    links_to: MasterDataLink | None = None
     position: int | None = None
     is_active: bool | None = None
 
@@ -50,6 +56,7 @@ class StakeholderResponse(BaseModel):
     label: str
     semantics: StakeholderSemantics
     function_key: str | None = None
+    links_to: MasterDataLink | None = None
     position: int = 0
     is_active: bool = True
 
@@ -90,6 +97,7 @@ class IndustryTemplateStakeholder(BaseModel):
     label: str
     semantics: StakeholderSemantics
     function_key: str | None = None
+    links_to: MasterDataLink | None = None
 
 
 class IndustryTemplateRequestType(BaseModel):
@@ -504,17 +512,43 @@ class TestStageSLA(BaseModel):
 
 
 class TestSLAOverride(BaseModel):
-    """Temporary minute rules for the three externally visible desk stages.
+    """Temporary minute rules, keyed by the workspace's own stakeholder slugs.
+
+    Was three fixed fields named after insurance buckets (``kam``, ``insurer``,
+    ``partner``), so a desk using any other vocabulary could not run a timed test
+    at all. ``stages`` takes whichever buckets the workspace actually has; an
+    insurance desk sending those same three slugs behaves exactly as before.
 
     The short expiry is an intentional safety rail: these values exist only to
-    make a controlled test observable, never to replace the two-business-day
+    make a controlled test observable, never to replace the workspace's own
     operating target.
     """
 
     expires_at: datetime
-    kam: TestStageSLA
-    insurer: TestStageSLA
-    partner: TestStageSLA
+    stages: dict[TaxonomySlug, TestStageSLA] = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _accept_legacy_stage_fields(cls, data):
+        """Lift pre-``stages`` payloads and stored JSON into the map.
+
+        Settings rows written before this change carry the three slugs at the top
+        level. Reading one must not raise, or an in-flight test would break the
+        settings page rather than simply expiring.
+        """
+        if not isinstance(data, dict) or data.get("stages") is not None:
+            return data
+        legacy = {k: data[k] for k in ("kam", "insurer", "partner") if isinstance(data.get(k), dict)}
+        if legacy:
+            data = {k: v for k, v in data.items() if k not in legacy}
+            data["stages"] = legacy
+        return data
+
+    @model_validator(mode="after")
+    def _needs_at_least_one_stage(self):
+        if not self.stages:
+            raise ValueError("test_sla must name at least one stage")
+        return self
 
     @field_validator("expires_at")
     @classmethod

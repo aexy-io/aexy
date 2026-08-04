@@ -284,11 +284,15 @@ async def test_manager_can_run_and_clear_a_short_test_sla_but_member_cannot(clie
     ws = tenants["ws_a"]
     b = _sd(ws)
     admin, plain = tenants["admin"], tenants["plain"]
+    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()
+    # Stages are the workspace's own stakeholder slugs, so a desk that calls its
+    # buckets anything else can still run a timed test.
     test_sla = {
-        "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat(),
-        "kam": {"amber_minutes": 5, "red_minutes": 10},
-        "insurer": {"amber_minutes": 6, "red_minutes": 12},
-        "partner": {"amber_minutes": 7, "red_minutes": 14},
+        "expires_at": expires_at,
+        "stages": {
+            "kam": {"amber_minutes": 5, "red_minutes": 10},
+            "insurer": {"amber_minutes": 6, "red_minutes": 12},
+        },
     }
 
     denied = await client.patch(f"{b}/settings", headers=plain, json={"test_sla": test_sla})
@@ -296,7 +300,24 @@ async def test_manager_can_run_and_clear_a_short_test_sla_but_member_cannot(clie
 
     started = await client.patch(f"{b}/settings", headers=admin, json={"test_sla": test_sla})
     assert started.status_code == 200, started.text
-    assert started.json()["test_sla"]["kam"] == {"amber_minutes": 5, "red_minutes": 10}
+    assert started.json()["test_sla"]["stages"]["kam"] == {"amber_minutes": 5, "red_minutes": 10}
+
+    # A slug this workspace does not have is refused rather than stored as a rule
+    # the clock would silently never apply.
+    bogus = await client.patch(f"{b}/settings", headers=admin, json={"test_sla": {
+        "expires_at": expires_at,
+        "stages": {"underwriter": {"amber_minutes": 5, "red_minutes": 10}},
+    }})
+    assert bogus.status_code == 400, bogus.text
+
+    # The pre-`stages` payload shape is still accepted and normalised, so a test
+    # started before this change keeps working instead of erroring on read.
+    legacy = await client.patch(f"{b}/settings", headers=admin, json={"test_sla": {
+        "expires_at": expires_at,
+        "kam": {"amber_minutes": 3, "red_minutes": 9},
+    }})
+    assert legacy.status_code == 200, legacy.text
+    assert legacy.json()["test_sla"]["stages"]["kam"] == {"amber_minutes": 3, "red_minutes": 9}
 
     cleared = await client.patch(f"{b}/settings", headers=admin, json={"clear_test_sla": True})
     assert cleared.status_code == 200, cleared.text

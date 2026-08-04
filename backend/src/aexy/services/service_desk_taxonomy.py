@@ -40,6 +40,9 @@ class StakeholderView:
     semantics: str
     function_key: str | None
     position: int
+    # "account" | "vendor" | None — which master-data table an external bucket
+    # speaks for. See ``ServiceDeskStakeholder.links_to``.
+    links_to: str | None = None
 
 
 @dataclass(frozen=True)
@@ -158,7 +161,9 @@ def _views(
 ) -> Taxonomy:
     return Taxonomy(
         stakeholders=tuple(
-            StakeholderView(s.slug, s.label, s.semantics, s.function_key, s.position)
+            StakeholderView(
+                s.slug, s.label, s.semantics, s.function_key, s.position, s.links_to
+            )
             for s in sorted(stakeholders, key=lambda r: (r.position, r.slug))
         ),
         request_types=tuple(
@@ -205,28 +210,29 @@ async def _settings(db: AsyncSession, workspace_id: str) -> dict:
     return ((ws.settings or {}).get("service_desk") or {}) if ws else {}
 
 
-# The insurance template's frozen external slugs. Used only as a fallback when a
-# workspace has not stored its own terminology (applying an industry template does
-# not copy the nouns by default), so the label match below has nothing to compare.
+# What the insurance template's external buckets meant before ``links_to``
+# existed. Used only for rows seeded before that column, which have it NULL.
 _LEGACY_EXTERNAL_SLUGS = {"account": "partner", "vendor": "insurer"}
 
 
 def external_slug_for(taxonomy: Taxonomy, term_key: str) -> str | None:
     """The external bucket that speaks for the ``account`` or ``vendor`` table.
 
-    There is no explicit link between an external stakeholder and a master-data
-    table, so it is inferred from the bucket's label matching the workspace's own
-    noun for that table. Insurance broking labels them "Partner" and "Insurer",
-    which is exactly what the old fixed ``partner`` / ``insurer`` slugs meant, so
-    existing desks keep behaving identically. Returns None when a workspace has
-    renamed one without the other, in which case callers must not guess.
+    Read from ``ServiceDeskStakeholder.links_to``, which the workspace declares
+    explicitly. It was previously inferred from the bucket's label matching the
+    workspace's noun for that table, which quietly resolved to nothing for any
+    desk that had renamed one noun and not the other. Returns None when no
+    bucket claims that table, and callers must not guess in that case.
     """
     externals = {s.slug: s for s in taxonomy.stakeholders if s.semantics == SEMANTIC_EXTERNAL}
-    want = (taxonomy.term(term_key) or "").strip().lower()
-    if want:
-        for slug, s in externals.items():
-            if (s.label or "").strip().lower() == want:
-                return slug
+    for slug, s in externals.items():
+        if s.links_to == term_key:
+            return slug
+    # Nothing declared it. Only rows seeded before ``links_to`` existed can be in
+    # that state, and for those the insurance slugs are what the link would have
+    # said, so honouring them keeps an existing desk behaving identically.
+    if any(s.links_to for s in externals.values()):
+        return None
     legacy = _LEGACY_EXTERNAL_SLUGS.get(term_key)
     return legacy if legacy in externals else None
 
@@ -318,6 +324,7 @@ async def seed_taxonomy(
                 label=spec.label,
                 semantics=spec.semantics,
                 function_key=spec.function_key,
+                links_to=spec.links_to,
                 position=position,
                 is_active=True,
             )

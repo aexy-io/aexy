@@ -501,10 +501,10 @@ class ServiceDeskIntakeService:
         its own work, and pulling the ticket out of an internal queue would lose
         it from that team's list.
 
-        Which master-data table an external bucket speaks for is inferred from
-        its label matching the workspace's own noun for accounts or vendors.
-        The taxonomy carries no explicit link between the two, and this was a
-        fixed insurer/partner/third-party dict before.
+        Which master-data table an external bucket speaks for is declared on the
+        stakeholder itself (``links_to``), so renaming a bucket cannot change
+        which table its senders are matched against. This was a fixed
+        insurer/partner/third-party dict before.
         """
         taxonomy = await load_taxonomy(self.db, workspace_id, seed=False)
         stakeholder = taxonomy.stakeholder(pending_with)
