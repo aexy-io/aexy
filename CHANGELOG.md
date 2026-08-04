@@ -59,6 +59,18 @@ opening the desk pre-empted the first-run picker and left an eleven-stakeholder
 mixture of two templates. Of the thirteen call sites, only ticket creation still
 seeds — inbound mail must never be dropped for want of configuration.
 
+**`migrate_service_desk.sql` creates the current shape.** It was still building
+the insurance-named tables for the agnostic migration to rename moments later in
+the same run, which was churn on a fresh install and a hard stop on a
+Docker-first one: `create_all` had already made `service_desk_tickets` with
+`account_id`, so `CREATE TABLE IF NOT EXISTS` no-oped and
+`CREATE INDEX … (partner_id)` failed with *column "partner_id" does not exist* —
+taking the whole run down with it, since the runner stops at the first failure.
+Corrected in place, which is safe because a changed checksum is a warning the
+runner will not act on without `--force`. Verified on all three shapes — nothing,
+`create_all`-built, and legacy-migrated — which now converge on identical
+columns, constraint names and foreign keys.
+
 #### Upgrade notes
 
 ```bash
