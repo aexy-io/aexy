@@ -36,6 +36,17 @@ from aexy.schemas.email_infrastructure import (
 
 logger = logging.getLogger(__name__)
 
+# Domain states that imply DNS has been verified and the domain may send.
+#
+# Lives here rather than on CampaignService, where it was originally written: the
+# campaign layer asking "can this domain send?" is asking a question about a
+# domain. `can_send` below adds the per-domain limits on top of the status.
+SENDABLE_DOMAIN_STATUSES: tuple[str, ...] = (
+    DomainStatus.VERIFIED.value,
+    DomainStatus.ACTIVE.value,
+    DomainStatus.WARMING.value,
+)
+
 
 class DomainService:
     """Service for managing sending domains and DNS verification."""
@@ -461,6 +472,69 @@ class DomainService:
         logger.info(f"Resumed sending domain: {domain.id}")
         return domain
 
+    @staticmethod
+    def email_matches_domain(email: str, domain: SendingDomain) -> bool:
+        """Whether ``email`` may be sent from ``domain``.
+
+        A domain row can carry a subdomain (``mail`` + ``example.com``), in which
+        case both ``user@mail.example.com`` and ``user@example.com`` are accepted —
+        the apex is what the DNS records are published against.
+        """
+        _, _, email_domain = email.rpartition("@")
+        if not email_domain:
+            return False
+        email_domain = email_domain.lower()
+
+        apex = (domain.domain or "").lower()
+        full = f"{domain.subdomain.lower()}.{apex}" if domain.subdomain else apex
+        return email_domain in (full, apex)
+
+    async def resolve_domain_for_email(
+        self,
+        workspace_id: str,
+        email: str,
+    ) -> SendingDomain | None:
+        """The workspace's sending domain that owns ``email``, if any.
+
+        One rule, two callers: identity creation validates against it
+        (``create_identity``) and the campaign send path resolves the sending
+        domain through it. They used to be unrelated — identity creation checked
+        the match while campaigns never looked at ``from_email`` at all — so a
+        campaign could claim any address it liked.
+
+        Says nothing about whether the domain may *send*; that is ``can_send``.
+        """
+        result = await self.db.execute(
+            select(SendingDomain).where(SendingDomain.workspace_id == workspace_id)
+        )
+        candidates = list(result.scalars().all())
+
+        matches = [d for d in candidates if self.email_matches_domain(email, d)]
+        if not matches:
+            return None
+
+        # More than one row can legitimately match. `(workspace_id, domain)` is
+        # unique, so there are no duplicates of the same domain — but a row for
+        # `acme.com` with subdomain `mail` and a separate row for `mail.acme.com`
+        # both match `hi@mail.acme.com`. Prefer the exact one (it is the row whose
+        # DNS was actually verified for that name), then one that can send, then
+        # the workspace default.
+        _, _, email_domain = email.rpartition("@")
+        email_domain = email_domain.lower()
+
+        def rank(d: SendingDomain) -> tuple[bool, bool, bool]:
+            # A row whose own `domain` *is* the address's domain owns that name
+            # outright; a parent row only covers it through its `subdomain` field,
+            # and its DNS verification was published against the apex.
+            return (
+                d.domain.lower() != email_domain,
+                d.status not in SENDABLE_DOMAIN_STATUSES,
+                not d.is_default,
+            )
+
+        matches.sort(key=rank)
+        return matches[0]
+
     async def can_send(
         self,
         domain_id: str,
@@ -477,11 +551,7 @@ class DomainService:
             return False, "Domain not found"
 
         # Check status
-        if domain.status not in [
-            DomainStatus.VERIFIED.value,
-            DomainStatus.WARMING.value,
-            DomainStatus.ACTIVE.value,
-        ]:
+        if domain.status not in SENDABLE_DOMAIN_STATUSES:
             return False, f"Domain status is {domain.status}"
 
         # Check daily limit
@@ -548,13 +618,12 @@ class DomainService:
         if not domain:
             raise ValueError("Domain not found")
 
-        # Verify email matches domain
-        email_domain = data.email.split("@")[1]
-        full_domain = domain.domain
-        if domain.subdomain:
-            full_domain = f"{domain.subdomain}.{domain.domain}"
-
-        if email_domain != full_domain and email_domain != domain.domain:
+        # Verify email matches domain — same rule the campaign send path resolves
+        # through, so the two cannot disagree about what "matches".
+        if not self.email_matches_domain(data.email, domain):
+            full_domain = (
+                f"{domain.subdomain}.{domain.domain}" if domain.subdomain else domain.domain
+            )
             raise ValueError(f"Email domain must match {full_domain}")
 
         identity = SendingIdentity(

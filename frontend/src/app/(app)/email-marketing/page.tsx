@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { DataTable, DataTableColumn } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/EmptyState";
+import { EmailMarketingSetup } from "@/components/email-marketing/EmailMarketingSetup";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { UpgradeBanner } from "@/components/UpgradeBanner";
 import { ModuleAutomationsPanel } from "@/components/ModuleAutomationsPanel";
@@ -274,15 +275,10 @@ export default function EmailMarketingPage() {
                 <p className="text-red-400">Failed to load campaigns</p>
               </div>
             ) : !campaignsLoading && campaigns.length === 0 ? (
-              <EmptyState
-                icon={Mail}
-                title="No campaigns yet"
-                description="Create email campaigns to engage your audience with targeted messaging."
-                actions={[
-                  { label: "Create Campaign", href: "/email-marketing/campaigns/new" },
-                ]}
-                compact
-              />
+              /* The same panel /email-marketing/campaigns shows. The two pages
+                 used to carry different copy for the same empty state, so "View
+                 all" changed the pitch for the same nonexistent thing. */
+              <EmailMarketingSetup workspaceId={workspaceId} />
             ) : (
               <DataTable
                 columns={campaignColumns}
@@ -468,7 +464,13 @@ export default function EmailMarketingPage() {
                     <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
                   </div>
                 ) : domains.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">No sending domains configured</p>
+                  <p className="text-muted-foreground text-sm">
+                    No sending domains configured.{" "}
+                    <Link href="/settings/email-marketing" className="text-primary hover:underline">
+                      Add one
+                    </Link>{" "}
+                    before your first campaign.
+                  </p>
                 ) : (
                   <div className="space-y-3">
                     {domains.map((domain) => (
@@ -499,7 +501,13 @@ export default function EmailMarketingPage() {
                     <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
                   </div>
                 ) : providers.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">No email providers configured</p>
+                  <p className="text-muted-foreground text-sm">
+                    No email providers configured.{" "}
+                    <Link href="/settings/email-marketing" className="text-primary hover:underline">
+                      Connect one
+                    </Link>{" "}
+                    to send from your own domain.
+                  </p>
                 ) : (
                   <div className="space-y-3">
                     {providers.map((provider) => (

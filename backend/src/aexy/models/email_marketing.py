@@ -264,6 +264,13 @@ class EmailCampaign(Base):
     # {"start": "09:00", "end": "17:00", "timezone": "America/New_York"}
     send_window: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
+    # Why a start was last refused — an unverified sender, an exhausted daily
+    # limit, no recipients. A scheduled campaign that cannot start stays scheduled
+    # and keeps this, so it goes out by itself once the cause is fixed and the
+    # owner can see what the cause was. Without it the poller's only record was a
+    # log line on a worker.
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     # Sender info
     from_name: Mapped[str] = mapped_column(String(255), nullable=False)
     from_email: Mapped[str] = mapped_column(String(255), nullable=False)

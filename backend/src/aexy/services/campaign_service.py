@@ -20,12 +20,13 @@ from aexy.models.email_marketing import (
     SubscriberStatus,
 )
 from aexy.models.crm import CRMList, CRMRecord, CRMListEntry
-from aexy.models.email_infrastructure import DomainStatus, SendingDomain
+from aexy.models.email_infrastructure import SendingDomain
 from aexy.schemas.email_marketing import (
     EmailCampaignCreate,
     EmailCampaignUpdate,
     FilterCondition,
 )
+from aexy.services.domain_service import DomainService
 from aexy.services.template_service import TemplateService
 from aexy.services.automation_service import dispatch_automation_event
 
@@ -253,6 +254,13 @@ class CampaignService:
 
         if not campaign.template_id:
             raise ValueError("Campaign must have a template to be scheduled")
+
+        # Refuse at schedule time too, rather than letting the poller discover it
+        # an hour later — when it did, `check_scheduled_campaigns` skipped the gate
+        # entirely and the campaign reported `sent` having delivered nothing.
+        _, sender_problem = await self.resolve_sender(workspace_id, campaign.from_email)
+        if sender_problem:
+            raise ValueError(sender_problem)
 
         # Calculate recipients before scheduling
         recipient_count = await self.calculate_audience(campaign)
@@ -746,22 +754,51 @@ class CampaignService:
     # SENDING
     # =========================================================================
 
-    # Domain states that imply DNS has been verified and the domain may send.
-    _SENDABLE_DOMAIN_STATUSES = (
-        DomainStatus.VERIFIED.value,
-        DomainStatus.ACTIVE.value,
-        DomainStatus.WARMING.value,
-    )
+    async def resolve_sender(
+        self, workspace_id: str, from_email: str
+    ) -> tuple[SendingDomain | None, str]:
+        """The sending domain that owns ``from_email``, and why it can't send.
 
-    async def _has_verified_sender(self, workspace_id: str) -> bool:
-        """True if the workspace has at least one verified sending domain."""
-        result = await self.db.execute(
-            select(func.count(SendingDomain.id)).where(
-                SendingDomain.workspace_id == workspace_id,
-                SendingDomain.status.in_(self._SENDABLE_DOMAIN_STATUSES),
+        Returns ``(domain, reason)`` where an empty reason means it can send.
+
+        This replaced a workspace-wide "does *any* verified domain exist" count.
+        That check let a campaign send as ``sender@somewhere-else.com`` as long as
+        the workspace had verified some unrelated domain — and it was the only
+        sender validation anywhere, since nothing compared ``from_email`` to a
+        domain. The send path resolves the provider through the same domain
+        (``EmailCampaignService.send_campaign_email``), so agreeing here is what
+        makes the answer meaningful rather than decorative.
+        """
+        domain_service = DomainService(self.db)
+        domain = await domain_service.resolve_domain_for_email(workspace_id, from_email)
+        if domain is None:
+            return None, (
+                f"No sending domain in this workspace covers {from_email} — "
+                "add and verify its domain before sending"
             )
-        )
-        return (result.scalar() or 0) > 0
+
+        can_send, reason = await domain_service.can_send(domain.id, workspace_id)
+        if not can_send:
+            return domain, f"{domain.domain} cannot send: {reason}"
+
+        return domain, ""
+
+    async def sender_status(self, workspace_id: str, from_email: str) -> dict[str, Any]:
+        """A compact, UI-shaped answer to "can this campaign send?".
+
+        Returned on the campaign payload so the wizard and the detail page stop
+        each deriving it from the domain list in slightly different ways — the
+        detail page's own copy tested statuses that its `DomainStatus` union did
+        not even contain.
+        """
+        domain, reason = await self.resolve_sender(workspace_id, from_email)
+        return {
+            "can_send": not reason,
+            "domain": domain.domain if domain else None,
+            "domain_id": domain.id if domain else None,
+            "domain_status": domain.status if domain else None,
+            "reason": reason or None,
+        }
 
     async def start_sending(
         self,
@@ -784,13 +821,13 @@ class CampaignService:
         if not campaign.template:
             raise ValueError("Campaign must have a template")
 
-        # E2.6: refuse to send until the workspace has a verified sending
-        # domain — sending from an unverified domain wrecks deliverability
-        # and enables spoofing. The UI mirrors this by disabling "Send".
-        if not await self._has_verified_sender(workspace_id):
-            raise ValueError(
-                "No verified sending domain — verify a domain before sending"
-            )
+        # E2.6: refuse to send until *this campaign's* from_email belongs to a
+        # verified sending domain — sending from an unverified domain wrecks
+        # deliverability and enables spoofing. The UI mirrors this by disabling
+        # "Send" and by naming the same reason.
+        _, sender_problem = await self.resolve_sender(workspace_id, campaign.from_email)
+        if sender_problem:
+            raise ValueError(sender_problem)
 
         # Populate recipients
         recipient_count = await self.populate_recipients(campaign_id, workspace_id)
@@ -801,6 +838,8 @@ class CampaignService:
         campaign.status = CampaignStatus.SENDING.value
         campaign.started_at = datetime.now(timezone.utc)
         campaign.total_recipients = recipient_count
+        # Whatever last blocked it no longer applies.
+        campaign.last_error = None
 
         await self.db.commit()
         await self.db.refresh(campaign)

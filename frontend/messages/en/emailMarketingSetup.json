@@ -1,0 +1,42 @@
+{
+  "emailMarketingSetup": {
+    "title": "Before your first campaign",
+    "subtitleBlocked": "Email needs a domain you've proved you own. Until then a campaign can be written, but not sent.",
+    "subtitleReady": "You're set up to send. Everything below is optional polish.",
+    "primaryBlocked": "Set up a sending domain",
+    "secondaryBlocked": "Write a draft in the meantime",
+    "primaryReady": "Create a campaign",
+    "steps": {
+      "domain": {
+        "title": "Configure a sending domain",
+        "description": "Add the domain you send from and publish its DNS records, so mailboxes can tell your mail is really yours.",
+        "pending": "{domain} is added but not verified yet — its DNS records still need to resolve.",
+        "cta": "Add domain",
+        "verify": "Verify"
+      },
+      "provider": {
+        "title": "Connect an email provider",
+        "description": "SES, SendGrid, Mailgun, Postmark or plain SMTP — the service that actually delivers your mail.",
+        "pending": "Added, but not tested yet. A provider only goes live once a test send succeeds.",
+        "cta": "Add provider",
+        "test": "Test it"
+      },
+      "template": {
+        "title": "Create an email template",
+        "description": "A reusable layout for your subject line and body, so every campaign starts from something.",
+        "cta": "New template"
+      },
+      "audience": {
+        "title": "Build your audience",
+        "description": "Campaigns send to your CRM records. Import contacts or grow the list first.",
+        "cta": "Add contacts"
+      }
+    },
+    "banner": {
+      "title": "This campaign can't send yet",
+      "pendingTitle": "{domain} isn't verified yet",
+      "detail": "Sending needs a verified domain that covers the From address. You can keep working — this will save as a draft.",
+      "cta": "Set it up"
+    }
+  }
+}

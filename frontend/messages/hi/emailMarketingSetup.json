@@ -1,0 +1,42 @@
+{
+  "emailMarketingSetup": {
+    "title": "पहले campaign से पहले",
+    "subtitleBlocked": "ईमेल के लिए ऐसा domain चाहिए जिसका स्वामित्व आपने सिद्ध किया हो। तब तक campaign लिखा जा सकता है, भेजा नहीं।",
+    "subtitleReady": "आप भेजने के लिए तैयार हैं। नीचे बाकी सब वैकल्पिक है।",
+    "primaryBlocked": "Sending domain सेट करें",
+    "secondaryBlocked": "तब तक draft लिखें",
+    "primaryReady": "Campaign बनाएँ",
+    "steps": {
+      "domain": {
+        "title": "Sending domain कॉन्फ़िगर करें",
+        "description": "जिस domain से आप भेजते हैं उसे जोड़ें और उसके DNS रिकॉर्ड प्रकाशित करें, ताकि मेलबॉक्स पहचान सकें कि मेल वाकई आपका है।",
+        "pending": "{domain} जुड़ गया है लेकिन अभी सत्यापित नहीं — इसके DNS रिकॉर्ड अभी resolve होने बाकी हैं।",
+        "cta": "Domain जोड़ें",
+        "verify": "सत्यापित करें"
+      },
+      "provider": {
+        "title": "ईमेल provider जोड़ें",
+        "description": "SES, SendGrid, Mailgun, Postmark या सादा SMTP — वह सेवा जो वास्तव में आपका मेल पहुँचाती है।",
+        "pending": "जुड़ गया है, पर अभी परीक्षण नहीं हुआ। Provider तभी सक्रिय होता है जब test send सफल हो।",
+        "cta": "Provider जोड़ें",
+        "test": "परीक्षण करें"
+      },
+      "template": {
+        "title": "ईमेल template बनाएँ",
+        "description": "विषय और मुख्य भाग के लिए दोबारा उपयोग होने वाला लेआउट, ताकि हर campaign किसी आधार से शुरू हो।",
+        "cta": "नया template"
+      },
+      "audience": {
+        "title": "अपना audience बनाएँ",
+        "description": "Campaigns आपके CRM रिकॉर्ड को भेजे जाते हैं। पहले संपर्क आयात करें या सूची बढ़ाएँ।",
+        "cta": "संपर्क जोड़ें"
+      }
+    },
+    "banner": {
+      "title": "यह campaign अभी भेजा नहीं जा सकता",
+      "pendingTitle": "{domain} अभी सत्यापित नहीं है",
+      "detail": "भेजने के लिए ऐसा सत्यापित domain चाहिए जो From पते को कवर करे। आप काम जारी रख सकते हैं — यह draft के रूप में सहेजा जाएगा।",
+      "cta": "सेट करें"
+    }
+  }
+}

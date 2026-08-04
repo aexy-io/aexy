@@ -19,10 +19,20 @@ import {
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAuth } from "@/hooks/useAuth";
-import { useEmailTemplates, useEmailCampaigns, useSubscriptionCategories, useImportSubscribers } from "@/hooks/useEmailMarketing";
+import { useEmailTemplates, useEmailCampaigns, useSubscriptionCategories } from "@/hooks/useEmailMarketing";
+import { useEmailMarketingSetup } from "@/hooks/useEmailMarketingSetup";
+import { SenderNotReadyBanner } from "@/components/email-marketing/EmailMarketingSetup";
 import { EmailCampaignCreate, CampaignType, FilterCondition } from "@/lib/api";
 
 type Step = "details" | "content" | "audience" | "review";
+
+/**
+ * The From address has to be a real address, and it used to be checked only for
+ * being non-empty. The `type="email"` input is not inside a `<form>` and there is
+ * no `onSubmit`, so the browser's own constraint validation never runs — "hello
+ * world" passed Continue and became a campaign.
+ */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function NewCampaignPage() {
   const router = useRouter();
@@ -51,7 +61,13 @@ export default function NewCampaignPage() {
   const { templates, isLoading: templatesLoading } = useEmailTemplates(workspaceId);
   const { createCampaign } = useEmailCampaigns(workspaceId);
   const { categories, isLoading: categoriesLoading } = useSubscriptionCategories(workspaceId);
-  const importSubscribers = useImportSubscribers(workspaceId);
+  const setup = useEmailMarketingSetup(workspaceId);
+
+  // Addresses that can actually send: the backend resolves the campaign's
+  // from_email to one of these domains and refuses the send if it can't, so
+  // offering a free-text field was offering a way to fail later.
+  const senderDomains = setup.domain.sendable;
+  const canSend = setup.isReadyToSend;
 
   // Parse email list from textarea
   const parsedEmails = useMemo(() => {
@@ -123,7 +139,7 @@ export default function NewCampaignPage() {
   const canProceed = () => {
     switch (currentStep) {
       case "details":
-        return name && subject && fromName && fromEmail;
+        return Boolean(name && subject && fromName && EMAIL_RE.test(fromEmail.trim()));
       case "content":
         return templateId || htmlContent;
       case "audience":
@@ -232,6 +248,11 @@ export default function NewCampaignPage() {
               <div className="space-y-6">
                 <h2 className="text-lg font-medium text-foreground">Campaign Details</h2>
 
+                {/* Say up front what will happen. The prerequisite used to surface
+                    only after the campaign had been created, on the detail page,
+                    as a disabled button with no way to act on it. */}
+                <SenderNotReadyBanner workspaceId={workspaceId} />
+
                 <div>
                   <label className="block text-sm text-muted-foreground mb-2">Campaign Name *</label>
                   <input
@@ -282,9 +303,40 @@ export default function NewCampaignPage() {
                       type="email"
                       value={fromEmail}
                       onChange={(e) => setFromEmail(e.target.value)}
-                      placeholder="hello@example.com"
+                      placeholder={
+                        senderDomains.length > 0
+                          ? `hello@${senderDomains[0].domain}`
+                          : "hello@example.com"
+                      }
+                      list={senderDomains.length > 0 ? "sender-suggestions" : undefined}
                       className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-sky-500"
                     />
+                    {/* A datalist rather than a select: the local part is the
+                        user's to choose (hello@, support@, no-reply@), only the
+                        domain has to be one we can send from. */}
+                    {senderDomains.length > 0 && (
+                      <datalist id="sender-suggestions">
+                        {senderDomains.flatMap((d) =>
+                          ["hello", "no-reply", "support"].map((local) => (
+                            <option key={`${d.id}-${local}`} value={`${local}@${d.domain}`} />
+                          ))
+                        )}
+                      </datalist>
+                    )}
+                    {fromEmail.trim() !== "" && !EMAIL_RE.test(fromEmail.trim()) ? (
+                      <p className="mt-1.5 text-xs text-amber-400">
+                        That isn&apos;t a valid email address.
+                      </p>
+                    ) : senderDomains.length > 0 &&
+                      EMAIL_RE.test(fromEmail.trim()) &&
+                      !senderDomains.some((d) =>
+                        fromEmail.trim().toLowerCase().endsWith(`@${d.domain.toLowerCase()}`)
+                      ) ? (
+                      <p className="mt-1.5 text-xs text-amber-400">
+                        Sending needs a verified domain:{" "}
+                        {senderDomains.map((d) => d.domain).join(", ")}. This will save as a draft.
+                      </p>
+                    ) : null}
                   </div>
                 </div>
 
@@ -528,6 +580,10 @@ export default function NewCampaignPage() {
               <div className="space-y-6">
                 <h2 className="text-lg font-medium text-foreground">Review Campaign</h2>
 
+                {/* Repeated here rather than assumed remembered from step 1: this
+                    is the screen where someone decides to press send. */}
+                <SenderNotReadyBanner workspaceId={workspaceId} />
+
                 <div className="space-y-4">
                   <div className="p-4 bg-muted/50 rounded-lg">
                     <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Campaign Name</p>
@@ -616,7 +672,11 @@ export default function NewCampaignPage() {
                   <button
                     onClick={() => handleSubmit(false)}
                     disabled={isSubmitting}
-                    className="px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-accent transition disabled:opacity-50"
+                    className={
+                      canSend
+                        ? "px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-accent transition disabled:opacity-50"
+                        : "flex items-center gap-2 px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition disabled:opacity-50"
+                    }
                   >
                     {isSubmitting ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -624,20 +684,26 @@ export default function NewCampaignPage() {
                       "Save as Draft"
                     )}
                   </button>
-                  <button
-                    onClick={() => handleSubmit(true)}
-                    disabled={isSubmitting}
-                    className="flex items-center gap-2 px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition disabled:opacity-50"
-                  >
-                    {isSubmitting ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <>
-                        <Send className="h-4 w-4" />
-                        {scheduledAt ? "Schedule Campaign" : "Send Now"}
-                      </>
-                    )}
-                  </button>
+                  {/* Offered only when it can succeed. Previously this always
+                      showed, created the campaign, and dropped the user on a
+                      detail page whose Send button was disabled — the refusal
+                      arrived after the record existed, with nothing to click. */}
+                  {canSend && (
+                    <button
+                      onClick={() => handleSubmit(true)}
+                      disabled={isSubmitting}
+                      className="flex items-center gap-2 px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition disabled:opacity-50"
+                    >
+                      {isSubmitting ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Send className="h-4 w-4" />
+                          {scheduledAt ? "Schedule Campaign" : "Send Now"}
+                        </>
+                      )}
+                    </button>
+                  )}
                 </>
               ) : (
                 <button

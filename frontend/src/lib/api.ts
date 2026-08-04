@@ -14591,6 +14591,21 @@ export interface EmailCampaign {
   complaint_count?: number;
   created_at: string;
   updated_at?: string;
+  /**
+   * Whether this campaign's `from_email` can actually send, resolved server-side
+   * against the workspace's sending domains. Present on single-campaign reads,
+   * absent on the list (one domain lookup per row, for a question the list does
+   * not ask).
+   */
+  sender?: {
+    can_send: boolean;
+    domain: string | null;
+    domain_id: string | null;
+    domain_status: string | null;
+    reason: string | null;
+  } | null;
+  /** Why the last start attempt was refused, if it was. */
+  last_error?: string | null;
 }
 
 export interface EmailCampaignCreate {

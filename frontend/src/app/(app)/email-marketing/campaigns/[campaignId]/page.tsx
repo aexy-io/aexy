@@ -41,7 +41,6 @@ import {
   useSendCampaign,
   useDuplicateCampaign,
   useDeleteCampaign,
-  useSendingDomains,
 } from "@/hooks/useEmailMarketing";
 import { CampaignRecipient } from "@/lib/api";
 import { CAMPAIGN_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
@@ -75,13 +74,17 @@ export default function CampaignDetailPage() {
   const duplicateCampaign = useDuplicateCampaign(workspaceId);
   const deleteCampaign = useDeleteCampaign(workspaceId);
 
-  // E2.6: mirror the backend send-gate — can't send until the workspace has a
-  // verified sending domain. The backend enforces this too (start_sending
-  // raises), this just disables the button and explains why.
-  const { data: sendingDomains } = useSendingDomains(workspaceId);
-  const hasVerifiedSender = (sendingDomains ?? []).some((d) =>
-    ["verified", "active", "warming"].includes(d.status),
-  );
+  // E2.6: mirror the backend send-gate. The campaign payload now carries the
+  // backend's own answer for *this* campaign's from_email, so there is nothing
+  // left to re-derive here.
+  //
+  // Two bugs this replaces. `useSendingDomains` returns `{ domains }`, not
+  // `{ data }`, so the destructure produced `undefined` and the Send button was
+  // permanently disabled however many domains you had verified. And the status
+  // list it tested included "active" and "warming", which the frontend
+  // `DomainStatus` union does not contain — two of the three arms were dead.
+  const hasVerifiedSender = campaign?.sender?.can_send ?? false;
+  const senderProblem = campaign?.sender?.reason ?? null;
 
   const getRecipientStatusColor = (status: string) => {
     switch (status) {
@@ -274,11 +277,9 @@ export default function CampaignDetailPage() {
                   <button
                     onClick={handleSend}
                     disabled={sendCampaign.isPending || !hasVerifiedSender}
-                    title={
-                      hasVerifiedSender
-                        ? undefined
-                        : "Verify a sending domain before sending"
-                    }
+                    // The backend's own reason, naming this campaign's From
+                    // address, rather than a generic "verify a domain".
+                    title={senderProblem ?? undefined}
                     className="flex items-center gap-2 px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {sendCampaign.isPending ? (

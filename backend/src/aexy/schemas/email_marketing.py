@@ -184,6 +184,22 @@ class EmailCampaignUpdate(BaseModel):
     send_window: SendWindow | None = None
 
 
+class SenderStatus(BaseModel):
+    """Whether a campaign's `from_email` is actually able to send.
+
+    On the campaign payload so the wizard, the list and the detail page all read
+    one answer. They used to each derive it from the domain list, and the detail
+    page's copy tested domain statuses its own TypeScript union did not contain,
+    so a warming domain read as unable to send.
+    """
+
+    can_send: bool = False
+    domain: str | None = None
+    domain_id: str | None = None
+    domain_status: str | None = None
+    reason: str | None = None
+
+
 class EmailCampaignResponse(BaseModel):
     """Schema for email campaign response."""
     model_config = ConfigDict(from_attributes=True)
@@ -218,6 +234,12 @@ class EmailCampaignResponse(BaseModel):
     created_by_id: str | None
     created_at: datetime
     updated_at: datetime
+    # Why the last start attempt was refused, if it was. A scheduled campaign that
+    # cannot start keeps this and stays scheduled.
+    last_error: str | None = None
+    # Resolved per request rather than stored: a domain verifying is what changes
+    # the answer, and that happens outside the campaign entirely.
+    sender: SenderStatus | None = None
 
 
 class EmailCampaignListResponse(BaseModel):

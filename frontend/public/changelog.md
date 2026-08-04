@@ -5,6 +5,89 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] - 2026-08-04
+
+### Fix: campaigns sent from the platform's address, and scheduled ones sent to nobody
+
+The Email Marketing empty state promised a four-step setup starting with *"Configure
+a sending domain"* — and then offered one button, which skipped all four into the
+campaign wizard. Following the instructions was the slower path. Underneath, the
+domain it told you to configure was never read.
+
+**A campaign never used the workspace's own domain or provider.** The send path
+resolved a sending domain only through `campaign.sending_identity_id` or
+`sending_pool_id`, and neither field exists on any schema or is set by any
+endpoint — so both were always NULL, every campaign fell through to the
+platform-global mailer, and mail went out from the deployment's own address
+(`noreply@yourdomain.com` on an unconfigured install) rather than the From address
+the user chose. `ProviderService.get_default_provider` had never been called by
+anything. The path now resolves the domain from `from_email`, checks it with the
+existing `can_send`, and sends through that domain's provider or the workspace
+default. The platform mailer remains, but only for a workspace that has configured
+no provider at all — and a provider that *is* configured and fails now fails the
+recipient instead of quietly re-sending from the platform address.
+
+**The sender gate was workspace-wide, so it checked the wrong thing.** It asked
+"does this workspace have any verified domain?", which let a campaign send as
+`sender@somewhere-else.com` on the strength of an unrelated verified domain — and
+it was the only sender validation anywhere, since nothing compared `from_email` to
+a domain. It now resolves *this campaign's* `from_email`, using the same rule
+identity creation already used (extracted, so the two cannot disagree). Sending,
+scheduling and test-sending all refuse with the same message, which names the
+address and what to do about it.
+
+**A scheduled campaign reported success having delivered nothing.** The poller
+flipped a due campaign to `sending` and dispatched by hand rather than calling
+`start_sending`, so it skipped both the sender gate *and* `populate_recipients`.
+With no recipient rows the send activity found nothing pending and marked the
+campaign `sent`. It now goes through `start_sending`; a refusal leaves the campaign
+`scheduled` with the reason in a new `email_campaigns.last_error`, so it sends
+itself once the domain verifies instead of needing to be rescheduled by hand.
+
+**The test send proved nothing.** `POST /campaigns/{id}/test` bypassed every check
+and used the platform mailer, so a test could arrive from the deployment's address
+and appear to validate a sender that a real send would refuse. It now resolves the
+sender the same way and reports which path delivered it.
+
+**And the Send button on the campaign detail page was disabled forever.**
+`useSendingDomains` returns `{ domains }`, but the page destructured `{ data }`, so
+the value was always `undefined` — no number of verified domains could enable it.
+Its status list also tested `active` and `warming`, which the frontend
+`DomainStatus` union does not contain, leaving two of three arms dead. The campaign
+payload now carries the backend's own `sender` verdict, so there is nothing left to
+re-derive.
+
+**Setup comes first, and the steps know whether they are done.** A panel derived
+from live rows replaces the inert list: each step shows todo / pending / done —
+"added but not verified yet" is a state worth distinguishing — and links to where
+it is actually done. The primary action is *Set up a sending domain* until one
+exists, with drafting still available beside it, because DNS propagation can take a
+day. The wizard now warns on the Details and Review steps rather than after the
+record is written, validates the From address for real (the `type="email"` input is
+not inside a `<form>`, so the browser never checked it and `hello world` passed),
+and offers addresses on verified domains. `/email-marketing` and
+`/email-marketing/campaigns` show the same panel — they previously carried
+different copy for the same empty state.
+
+#### Upgrade notes
+
+```bash
+docker exec aexy-backend python scripts/run_migrations.py --file migrate_campaign_last_error.sql
+```
+
+### Feature: the org chart shows the member hierarchy
+
+It drew departments and nothing else, so a one-department workspace rendered as a
+single row reading "3 members" and the reporting lines on
+`workspace_members.manager_id` — which `set_manager` validates and rejects cycles
+for — were visible nowhere. `GET /organization/org-chart` now returns each
+department's members with their manager, and the chart nests people under whoever
+they report to. Three queries for the whole chart rather than one per department.
+
+Someone whose manager sits in a different department, or who has no manager set,
+appears at the department's top level: most workspaces start with no reporting
+lines, and a chart that only rendered nested people would show them nothing.
+
 ## [0.13.0] - 2026-08-04
 
 ### Feature: the Service Desk is industry-agnostic — vocabulary and taxonomy per workspace

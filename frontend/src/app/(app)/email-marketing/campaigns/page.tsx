@@ -35,6 +35,7 @@ import {
 } from "@/hooks/useEmailMarketing";
 import { EmailCampaign } from "@/lib/api";
 import { EmptyState } from "@/components/EmptyState";
+import { EmailMarketingSetup } from "@/components/email-marketing/EmailMarketingSetup";
 import { SearchInput } from "@/components/ui/search-input";
 import { CAMPAIGN_STATUS_COLORS, getStatusColor } from "@/lib/statusColors";
 
@@ -370,20 +371,10 @@ export default function CampaignsPage() {
                 compact
               />
             ) : (
-              <EmptyState
-                icon={Mail}
-                title="No campaigns yet"
-                description="Create your first email campaign to start engaging with your audience."
-                actions={[
-                  { label: "Create Campaign", href: "/email-marketing/campaigns/new" },
-                ]}
-                steps={[
-                  { label: "Configure a sending domain", description: "Verify your domain for email delivery" },
-                  { label: "Create an email template", description: "Design reusable email layouts" },
-                  { label: "Build your audience", description: "Import or grow your subscriber list" },
-                  { label: "Launch your first campaign", description: "Send or schedule your email" },
-                ]}
-              />
+              /* The four steps here used to be inert prose with no completion
+                 state, next to a button that skipped all of them. This panel
+                 derives each step from real rows and links to where it is done. */
+              <EmailMarketingSetup workspaceId={workspaceId} />
             )
           ) : (
             <div className="space-y-4">
