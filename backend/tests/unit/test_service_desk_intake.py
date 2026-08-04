@@ -31,19 +31,14 @@ from aexy.models.service_desk import (
 )
 from aexy.models.ticketing import Ticket, TicketResponse
 from aexy.models.workspace import Workspace, WorkspaceMember
-<<<<<<< ours
-from aexy.schemas.service_desk import InboundEmail
-from aexy.services.service_desk_intake_service import ServiceDeskIntakeService
-from tests.conftest import seed_service_desk_taxonomy
-=======
 from aexy.schemas.service_desk import InboundAttachment, InboundEmail, MailboxCreate
 from aexy.services import service_desk_intake_service as sd_mod
 from aexy.services.service_desk_intake_service import ServiceDeskIntakeService
 from aexy.services.service_desk_service import ServiceDeskService
+from tests.conftest import seed_service_desk_taxonomy
 
 _REAL_CLASSIFY = ServiceDeskIntakeService._classify
 _REAL_SEND_RECEIPT = ServiceDeskIntakeService._send_receipt
->>>>>>> theirs
 
 
 @pytest.fixture(autouse=True)
@@ -604,7 +599,7 @@ async def test_child_failure_rolls_back_and_leaves_one_intact_triage_ticket(
         raise RuntimeError("child creation failed")
 
     monkeypatch.setattr(ServiceDeskIntakeService, "_classify", _REAL_CLASSIFY)
-    monkeypatch.setattr(ServiceDeskIntakeService, "_lob_id", explode)
+    monkeypatch.setattr(ServiceDeskIntakeService, "_product_id", explode)
     monkeypatch.setattr("aexy.llm.gateway.get_llm_gateway", _two_issue_gateway)
 
     primary = await ServiceDeskIntakeService(db_session).ingest(

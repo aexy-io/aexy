@@ -141,12 +141,8 @@
       "mailboxes": "Mailboxes",
       "name": "Name",
       "domains": "Domains (comma-separated)",
-<<<<<<< ours
       "assignedOwner": "Assigned owner",
-=======
-      "assignedKam": "Assigned KAM",
-      "noAssignedKam": "No assigned KAM",
->>>>>>> theirs
+      "noAssignedOwner": "No assigned owner",
       "address": "Address",
       "channel": "Channel",
       "add": "Add",
@@ -167,7 +163,6 @@
       "save": "Save hours",
       "saving": "Saving…"
     },
-<<<<<<< ours
     "deskIdentity": {
       "title": "Desk identity & targets",
       "description": "Ticket id prefix, the timezone day boundaries resolve in, and the breach thresholds. These were fixed in code; the values shown are the defaults still in force if you never change them.",
@@ -178,7 +173,7 @@
       "prefixInvalid": "1–10 letters or digits, starting with a letter.",
       "thresholdsInvalid": "Amber must be a smaller number of days than red, and both above zero.",
       "prefixWarning": "Saving relabels every existing ticket as {prefix}-<number>. Replies quoting the old prefix will still thread correctly."
-=======
+    },
     "testSla": {
       "title": "Temporary minute SLA test",
       "description": "Use only for a controlled test. These are working-minute thresholds for the current KAM, insurer, and partner stages. They automatically stop at the expiry, and End test removes them immediately.",
@@ -194,7 +189,6 @@
       "clear": "End test and remove rules",
       "invalid": "Use a future expiry within 24 hours, and a red value greater than amber for every stage.",
       "active": "Test mode is active. It is ignored automatically after its expiry."
->>>>>>> theirs
     }
   }
 }

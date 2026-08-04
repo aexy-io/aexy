@@ -17,8 +17,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from aexy.models.developer import Developer
 from aexy.models.organization import Department, DepartmentMember
 from aexy.models.service_desk import (
-    PendingWith,
-    RequestType,
     ServiceDeskMailbox,
     ServiceDeskAccount,
     ServiceDeskAccountDomain,
@@ -127,8 +125,8 @@ async def test_known_partner_domain_assigns_its_mapped_kam_without_ai(db_session
 
     sd = await _sd(db_session, ticket.id)
     assert sd.account_id == partner.id, "partner is filled from the sender's domain"
-    assert sd.pending_with == PendingWith.KAM.value
-    assert sd.request_type == RequestType.QUERY.value
+    assert sd.pending_with == "kam"
+    assert sd.request_type == "query"
     assert sd.ai_confidence is None, "nothing was inferred, so no confidence exists"
     assert sd.product_id is None, "the LOB is the KAM's to set by hand in free mode"
     assert sd.needs_triage is True, "free-mode tickets are queued for a human to complete"
@@ -182,7 +180,7 @@ async def test_the_clock_starts_on_creation_without_ai(db_session: AsyncSession)
         )
     ).scalars().all()
     assert len(segments) == 1
-    assert segments[0].pending_with == PendingWith.KAM.value
+    assert segments[0].pending_with == "kam"
     assert segments[0].exited_at is None, "the first stage is still running"
     assert segments[0].entered_at is not None
 

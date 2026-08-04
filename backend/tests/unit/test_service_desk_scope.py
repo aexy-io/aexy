@@ -15,7 +15,7 @@ from sqlalchemy import select
 from aexy.models.developer import Developer
 from aexy.models.organization import Department, DepartmentMember
 from aexy.models.role import CustomRole
-from aexy.models.service_desk import PendingWith, ServiceDeskTicket
+from aexy.models.service_desk import ServiceDeskTicket
 from aexy.models.ticketing import Ticket, TicketForm
 from aexy.models.workspace import Workspace, WorkspaceMember
 from aexy.services.service_desk_service import (
@@ -102,9 +102,9 @@ async def desk(db_session):
     ids = {}
     for n, (label, assignee, pending) in enumerate(
         [
-            ("a", kam_a, PendingWith.KAM.value),
-            ("b", kam_b, PendingWith.KAM.value),
-            ("fin", kam_a, PendingWith.FINANCE.value),
+            ("a", kam_a, "kam"),
+            ("b", kam_b, "kam"),
+            ("fin", kam_a, "finance"),
         ],
         start=1,
     ):

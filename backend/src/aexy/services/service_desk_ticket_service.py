@@ -69,7 +69,7 @@ from aexy.services.service_desk_config import (  # noqa: E402
     ticket_prefix,
     ticket_prefix_display,
 )
-from aexy.services.service_desk_taxonomy import load_taxonomy  # noqa: E402
+from aexy.services.service_desk_taxonomy import external_slug_for, load_taxonomy  # noqa: E402
 
 
 async def reassign_service_desk_ticket_family(
@@ -522,7 +522,8 @@ class ServiceDeskTicketService:
         )
         actor = await self.db.get(Developer, split_by_id)
         actor_label = (actor.name or actor.email or split_by_id) if actor else split_by_id
-        primary_display_id = f"{TICKET_PREFIX}-{primary.ticket_number}"
+        prefix = await ticket_prefix(self.db, workspace_id)
+        primary_display_id = render_display_id(prefix, primary.ticket_number)
         intake = ServiceDeskIntakeService(self.db)
 
         try:
@@ -551,7 +552,7 @@ class ServiceDeskTicketService:
                     children.append(child)
 
                 created = [
-                    {"ticket_id": child.id, "display_id": f"{TICKET_PREFIX}-{child.ticket_number}"}
+                    {"ticket_id": child.id, "display_id": render_display_id(prefix, child.ticket_number)}
                     for child in children
                 ]
                 updated_values = dict(primary.field_values or {})
@@ -586,7 +587,7 @@ class ServiceDeskTicketService:
         return {
             "created_ticket_ids": [child.id for child in children],
             "created_ticket_display_ids": [
-                f"{TICKET_PREFIX}-{child.ticket_number}" for child in children
+                render_display_id(prefix, child.ticket_number) for child in children
             ],
         }
 
@@ -614,6 +615,12 @@ class ServiceDeskTicketService:
             ServiceDeskAccountDomain,
         )
 
+        # Which external bucket an address belongs to comes from the workspace's
+        # own taxonomy, not the fixed partner/insurer slugs this used to assume.
+        taxonomy = await load_taxonomy(self.db, workspace_id, seed=False)
+        account_slug = external_slug_for(taxonomy, "account")
+        vendor_slug = external_slug_for(taxonomy, "vendor")
+
         out: list[TicketEmailRecipient] = []
         seen: set[str] = set()
 
@@ -640,7 +647,7 @@ class ServiceDeskTicketService:
                 )
             ).all()
             for name, domain in rows:
-                add(domain, f"{name} (partner)", PendingWith.PARTNER.value)
+                add(domain, f"{name} ({taxonomy.term('account')})", account_slug)
 
         rows = (
             await self.db.execute(
@@ -657,7 +664,7 @@ class ServiceDeskTicketService:
             )
         ).all()
         for name, domain in rows:
-            add(domain, f"{name} (insurer)", PendingWith.INSURER.value)
+            add(domain, f"{name} ({taxonomy.term('vendor')})", vendor_slug)
 
         add(ticket.submitter_email, ticket.submitter_name or "Requester")
 
@@ -798,7 +805,10 @@ class ServiceDeskTicketService:
                 ),
             )
 
-        if chosen.stage == PendingWith.INSURER.value:
+        vendor_slug = external_slug_for(
+            await load_taxonomy(self.db, workspace_id, seed=False), "vendor"
+        )
+        if vendor_slug is not None and chosen.stage == vendor_slug:
             from aexy.models.service_desk import ServiceDeskVendorDomain
 
             sd.vendor_id = (
@@ -810,7 +820,9 @@ class ServiceDeskTicketService:
                 )
             ).scalar_one_or_none()
 
-        display_id = f"{TICKET_PREFIX}-{ticket.ticket_number}"
+        display_id = render_display_id(
+            await ticket_prefix(self.db, workspace_id), ticket.ticket_number
+        )
         match = _BSD_RE.search(subject)
         if match is None or int(match.group(1)) != ticket.ticket_number:
             subject = f"[{display_id}] {subject}"
@@ -976,9 +988,6 @@ class ServiceDeskTicketService:
         if ticket is None:
             raise HTTPException(status_code=404, detail="Ticket not found")
 
-<<<<<<< ours
-        account_name = None
-=======
         can_edit = False
         if scope_developer_id is not None:
             from aexy.services.service_desk_service import can_edit_ticket
@@ -991,8 +1000,7 @@ class ServiceDeskTicketService:
                 pending_with=sd.pending_with,
             )
 
-        partner_name = None
->>>>>>> theirs
+        account_name = None
         if sd.account_id:
             account_name = (
                 await self.db.execute(
@@ -1231,16 +1239,13 @@ class ServiceDeskTicketService:
         now = datetime.now(timezone.utc)
         # One read each for the whole dashboard rather than per ticket.
         clock = await load_clock(self.db, workspace_id)
-<<<<<<< ours
         prefix = await ticket_prefix(self.db, workspace_id)
-=======
         cumulative: dict[tuple[str, str], int] = defaultdict(int)
         for tid, stage, entered, exited in all_segs:
             if entered is None:
                 continue
             ends = _aware(exited) if exited is not None else now
             cumulative[(tid, stage)] += clock.seconds_between(_aware(entered), ends)
->>>>>>> theirs
         buckets: dict[str, StakeholderBucket] = {}
         tickets: list[DashboardTicket] = []
         breaching = 0

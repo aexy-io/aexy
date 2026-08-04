@@ -127,17 +127,14 @@ class Clock:
     work_start: time = DEFAULT_WORK_START
     work_end: time = DEFAULT_WORK_END
     holidays: frozenset[date] = field(default_factory=frozenset)
-<<<<<<< ours
     # Day boundaries and the working window resolve here. Whether an instant
     # falls inside Tuesday's shift depends on the timezone you ask in.
     tz: ZoneInfo = IST
     breach_red_days: float = BREACH_RED_DAYS
     breach_amber_days: float = BREACH_AMBER_DAYS
-=======
     # These rules exist only for a short, explicitly configured test window.
     # Missing, malformed, or expired data falls back to the normal day targets.
     test_stage_slas: Mapping[str, tuple[int, int]] = field(default_factory=dict)
->>>>>>> theirs
 
     @property
     def working_day_seconds(self) -> float:
@@ -211,17 +208,11 @@ class Clock:
         days = stage_working_seconds / self.working_day_seconds
         if days > self.breach_red_days:
             return "red"
-<<<<<<< ours
-        if days >= self.breach_amber_days:
-            return "amber"
-        return "green"
-
-    def is_breaching(self, stage_working_seconds: int) -> bool:
-        return stage_working_seconds / self.working_day_seconds > self.breach_red_days
-=======
-        if (cumulative_working_seconds or 0) / self.working_day_seconds > BREACH_RED_DAYS:
+        # A ticket that has been handed round and round can breach on its total
+        # even when no single stage did.
+        if (cumulative_working_seconds or 0) / self.working_day_seconds > self.breach_red_days:
             return "red"
-        if days >= BREACH_AMBER_DAYS:
+        if days >= self.breach_amber_days:
             return "amber"
         return "green"
 
@@ -229,8 +220,7 @@ class Clock:
         if pending_with in self.test_stage_slas:
             _, red_minutes = self.test_stage_slas[pending_with]
             return stage_working_seconds > red_minutes * 60
-        return stage_working_seconds / self.working_day_seconds > BREACH_RED_DAYS
->>>>>>> theirs
+        return stage_working_seconds / self.working_day_seconds > self.breach_red_days
 
 
 async def load_clock(db: AsyncSession, workspace_id: str) -> Clock:
@@ -257,22 +247,14 @@ async def load_clock(db: AsyncSession, workspace_id: str) -> Clock:
     )
 
     ws = await db.get(Workspace, workspace_id)
-<<<<<<< ours
     sd = ((ws.settings or {}).get("service_desk") or {}) if ws else {}
     hours = sd.get("working_hours") or {}
-=======
-    service_desk = ((ws.settings or {}).get("service_desk") or {}) if ws else {}
-    hours = service_desk.get("working_hours") or {}
->>>>>>> theirs
     return Clock(
         work_start=_parse_hhmm(hours.get("start"), DEFAULT_WORK_START),
         work_end=_parse_hhmm(hours.get("end"), DEFAULT_WORK_END),
         holidays=holidays,
-<<<<<<< ours
         tz=_parse_zone(sd.get("timezone")),
         breach_red_days=_parse_threshold(sd.get("breach_red_days"), BREACH_RED_DAYS),
         breach_amber_days=_parse_threshold(sd.get("breach_amber_days"), BREACH_AMBER_DAYS),
-=======
-        test_stage_slas=_active_test_stage_slas(service_desk.get("test_sla")),
->>>>>>> theirs
+        test_stage_slas=_active_test_stage_slas(sd.get("test_sla")),
     )

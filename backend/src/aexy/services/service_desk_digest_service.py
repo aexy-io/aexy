@@ -28,14 +28,10 @@ from aexy.models.service_desk import (
 )
 from aexy.models.ticketing import Ticket
 from aexy.models.workspace import Workspace, WorkspaceMember
-<<<<<<< ours
 from aexy.services.service_desk_clock import DEFAULT_DIGEST_HOURS, load_clock
 from aexy.services.service_desk_config import display_id, ticket_prefix
-from aexy.services.service_desk_taxonomy import load_taxonomy
-=======
-from aexy.services.service_desk_clock import load_clock
 from aexy.services.service_desk_service import has_full_service_desk_view
->>>>>>> theirs
+from aexy.services.service_desk_taxonomy import load_taxonomy
 
 logger = logging.getLogger(__name__)
 
@@ -166,17 +162,12 @@ class ServiceDeskDigestService:
         digests: list[Digest] = []
         owner_ids: list[str] = []
         if dept is not None:
-<<<<<<< ours
             # Only people still on the team. Department rows are not removed when
             # someone leaves the workspace (which is exactly why intake's
             # `_random_owner` joins WorkspaceMember), so without this a departed
             # employee keeps receiving the desk's open-ticket list three times a
-            # day — including ticket subjects and account names.
-=======
-            # Department rows survive someone leaving the workspace, so join
-            # WorkspaceMember: a departed KAM must not keep receiving ticket
-            # details by email after losing API access to the same rows.
->>>>>>> theirs
+            # day — including ticket subjects and account names, after they have
+            # already lost API access to the same rows.
             member_ids = (
                 await self.db.execute(
                     select(DepartmentMember.developer_id)

@@ -240,11 +240,12 @@ export interface ServiceDeskSettings {
   /** Whether the current user holds can_manage_service_desk. The server enforces
    *  this regardless; the UI uses it to avoid offering actions that would 403. */
   can_manage: boolean;
-<<<<<<< ours
-  /** How wide the caller's ticket view is. "none" means they belong to no
-   *  department, so no ticket can ever match — an empty list is a
-   *  misconfiguration, not a quiet day. */
-  scope: "all" | "function" | "none";
+  /** How wide the caller's ticket view is. "assigned" means an owner who only
+   *  ever sees their own tickets; "none" means they belong to no department, so
+   *  no ticket can ever match — an empty list is a misconfiguration, not a quiet
+   *  day. The server filters the rows either way; this only makes the empty
+   *  state honest about which case it is. */
+  scope: "all" | "assigned" | "function" | "none";
   /** The shift the breach clock runs on, in `timezone`, as "HH:MM". Always
    *  populated — the API reports the defaults when nothing has been set. */
   working_hours_start: string;
@@ -264,17 +265,6 @@ export interface ServiceDeskSettings {
   terminology: Record<string, string>;
   /** Name used in outbound email copy; defaults to the workspace name. */
   desk_name: string | null;
-=======
-  /** How wide the caller's ticket view is. "assigned" means an Ops KAM, who only
-   *  ever sees their own tickets; "none" means they belong to no department, so
-   *  no ticket can ever match — an empty list is a misconfiguration, not a quiet
-   *  day. The server filters the rows either way; this only makes the empty
-   *  state honest about which case it is. */
-  scope: "all" | "assigned" | "function" | "none";
-  /** The shift the breach clock runs on, IST, as "HH:MM". Always populated —
-   *  the API reports the defaults when nothing has been set. */
-  working_hours_start: string;
-  working_hours_end: string;
   /** A short-lived, manager-controlled override for manual SLA testing only. */
   test_sla: TestSLAOverride | null;
 }
@@ -289,7 +279,6 @@ export interface TestSLAOverride {
   kam: TestStageSLA;
   insurer: TestStageSLA;
   partner: TestStageSLA;
->>>>>>> theirs
 }
 
 /** Only the fields being changed; the API leaves the rest alone. */
@@ -298,7 +287,6 @@ export interface ServiceDeskSettingsPatch {
   auto_split_enabled?: boolean;
   working_hours_start?: string;
   working_hours_end?: string;
-<<<<<<< ours
   ticket_prefix?: string;
   timezone?: string;
   breach_red_days?: number;
@@ -307,10 +295,8 @@ export interface ServiceDeskSettingsPatch {
   /** Merged into the stored map — send only the nouns being relabelled. */
   terminology?: Record<string, string>;
   desk_name?: string;
-=======
   test_sla?: TestSLAOverride;
   clear_test_sla?: boolean;
->>>>>>> theirs
 }
 
 export interface ServiceDeskTemplate {

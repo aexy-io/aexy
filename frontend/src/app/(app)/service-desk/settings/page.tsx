@@ -13,12 +13,13 @@ import {
   useServiceDeskSettings,
   useServiceDeskTemplates,
 } from "@/hooks/useServiceDesk";
-<<<<<<< ours
-import { ServiceDeskSettingsPatch, ServiceDeskTemplate } from "@/lib/service-desk-api";
-=======
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
-import { ServiceDeskTemplate, TestSLAOverride, TestStageSLA } from "@/lib/service-desk-api";
->>>>>>> theirs
+import {
+  ServiceDeskSettingsPatch,
+  ServiceDeskTemplate,
+  TestSLAOverride,
+  TestStageSLA,
+} from "@/lib/service-desk-api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -459,15 +460,12 @@ export default function ServiceDeskSettingsPage() {
   const settings = useServiceDeskSettings();
   const templates = useServiceDeskTemplates();
   const m = useServiceDeskMutations();
-<<<<<<< ours
   // The workspace's own nouns for the three master-data tables. An insurance
   // desk still reads "Partners"/"Insurers"/"Lines of Business"; a software desk
   // reads "Customers"/"Vendors"/"Products".
   const terms = settings.data?.terminology ?? {};
-=======
   const { currentWorkspace } = useWorkspace();
   const { members, isLoading: membersLoading } = useWorkspaceMembers(currentWorkspace?.id ?? null);
->>>>>>> theirs
 
   const [pName, setPName] = useState("");
   const [pDomains, setPDomains] = useState("");
@@ -546,7 +544,6 @@ export default function ServiceDeskSettingsPage() {
         />
       </Section>
 
-<<<<<<< ours
       {/* Desk identity + SLA — previously code constants fixed to one customer */}
       <Section title={t("deskIdentity.title")}>
         <p className="max-w-2xl text-sm text-muted-foreground">{t("deskIdentity.description")}</p>
@@ -558,7 +555,11 @@ export default function ServiceDeskSettingsPage() {
           canManage={canManage}
           saving={m.updateSettings.isPending}
           onSave={(patch) => m.updateSettings.mutate(patch)}
-=======
+        />
+      </Section>
+
+      {/* An additional section, not a replacement: the test SLA is a temporary
+          manual-testing override that sits alongside the real targets above. */}
       <Section title={t("testSla.title")}>
         <TestSLAEditor
           value={settings.data?.test_sla}
@@ -566,7 +567,6 @@ export default function ServiceDeskSettingsPage() {
           saving={m.updateSettings.isPending}
           onSave={(test_sla) => m.updateSettings.mutate({ test_sla })}
           onClear={() => m.updateSettings.mutate({ clear_test_sla: true })}
->>>>>>> theirs
         />
       </Section>
 
@@ -594,16 +594,13 @@ export default function ServiceDeskSettingsPage() {
           <div className="flex flex-wrap items-end gap-2">
             <Input value={pName} onChange={(e) => setPName(e.target.value)} placeholder={t("settings.name")} className="max-w-[180px]" />
             <Input value={pDomains} onChange={(e) => setPDomains(e.target.value)} placeholder={t("settings.domainsHint")} className="max-w-[220px]" />
-<<<<<<< ours
-            <Input value={pOwner} onChange={(e) => setPOwner(e.target.value)} placeholder={t("settings.assignedOwner")} className="max-w-[200px]" />
-=======
             <select
-              value={pKam}
-              onChange={(e) => setPKam(e.target.value)}
-              aria-label={t("settings.assignedKam")}
+              value={pOwner}
+              onChange={(e) => setPOwner(e.target.value)}
+              aria-label={t("settings.assignedOwner")}
               className="h-10 max-w-[240px] rounded-md border border-input bg-background px-3 py-2 text-sm"
             >
-              <option value="">{t("settings.noAssignedKam")}</option>
+              <option value="">{t("settings.noAssignedOwner")}</option>
               {members
                 .filter((member) => member.status === "active")
                 .map((member) => (
@@ -613,7 +610,6 @@ export default function ServiceDeskSettingsPage() {
                 ))}
             </select>
             {membersLoading && <Spinner size="sm" />}
->>>>>>> theirs
             <Button
               disabled={!pName.trim() || m.createAccount.isPending}
               onClick={async () => {

@@ -37,29 +37,20 @@ export default function ServiceDeskTicketsPage() {
   const t = useTranslations("serviceDesk");
   const router = useRouter();
   const { data: tickets, isLoading } = useServiceDeskTickets();
-<<<<<<< ours
   const { stakeholders, requestTypes, stakeholderLabel, requestTypeLabel } = useServiceDeskTaxonomy();
-  // scope === "none" means the caller is in no department, so the row filter can
-  // never match anything. Without this the page would show a plain "no tickets"
-  // and a KAM who was never added to Operations would read it as a quiet day.
+  // An empty list means different things to different people, and the generic
+  // "no tickets yet" is misleading for two of them: scope "none" is someone
+  // who was never added to a department (nothing can ever match), and scope
+  // "assigned" is an owner who sees only their own tickets (the desk may be
+  // busy; none of it is theirs). The server does the filtering either way.
   const settings = useServiceDeskSettings();
-  const outOfScope = settings.data?.scope === "none";
+  const scope = settings.data?.scope;
+  const outOfScope = scope === "none";
+  const emptyDescription =
+    scope === "none" ? t("noDepartment") : scope === "assigned" ? t("assignedOnly") : t("dashboard.empty");
   const products = useProducts();
   const accounts = useAccounts();
   const terms = settings.data?.terminology ?? {};
-=======
-  // An empty list means different things to different people, and the generic
-  // "no tickets yet" is misleading for two of them: scope "none" is a KAM who
-  // was never added to Operations (nothing can ever match), and scope "assigned"
-  // is a KAM who sees only their own tickets (the desk may be busy; none of it
-  // is theirs). The server does the filtering either way.
-  const settings = useServiceDeskSettings();
-  const scope = settings.data?.scope;
-  const emptyDescription =
-    scope === "none" ? t("noDepartment") : scope === "assigned" ? t("assignedOnly") : t("dashboard.empty");
-  const lobs = useLobs();
-  const partners = usePartners();
->>>>>>> theirs
   const { createManual } = useServiceDeskMutations();
 
   const [open, setOpen] = useState(false);

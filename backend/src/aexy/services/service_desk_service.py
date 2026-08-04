@@ -10,10 +10,10 @@ from uuid import uuid4
 
 from fastapi import HTTPException, status
 from sqlalchemy import delete, false, func, or_, select
-<<<<<<< ours
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from aexy.models.google_integration import GoogleIntegration
 from aexy.models.organization import Department, DepartmentMember
 from aexy.services.service_desk_clock import (
     BREACH_AMBER_DAYS,
@@ -30,14 +30,7 @@ from aexy.services.service_desk_config import (
     ticket_prefix,
 )
 from aexy.services.service_desk_industry_templates import get_template, list_templates
-from aexy.services.service_desk_taxonomy import load_taxonomy, seed_taxonomy
-=======
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from aexy.models.organization import Department, DepartmentMember
-from aexy.models.google_integration import GoogleIntegration
-from aexy.services.service_desk_clock import DEFAULT_WORK_END, DEFAULT_WORK_START
->>>>>>> theirs
+from aexy.services.service_desk_taxonomy import Taxonomy, load_taxonomy, seed_taxonomy
 from aexy.models.service_desk import (
     ServiceDeskRequestType,
     ServiceDeskStakeholder,
@@ -91,26 +84,16 @@ async def _caller_functions(db: AsyncSession, workspace_id: str, developer_id: s
     )
 
 
-<<<<<<< ours
-async def resolve_scope_clause(db: AsyncSession, workspace_id: str, developer_id: str):
-    """Row-level visibility for the caller.
+def _assignment_only_function(taxonomy: Taxonomy) -> str | None:
+    """The one function whose queue is by assignment rather than by bucket.
 
-    Returns None when the caller may see everything (a desk manager, or anyone
-    with ``can_manage_service_desk``). Otherwise returns a SQLAlchemy clause
-    restricting to: tickets pending with a stakeholder whose department the
-    caller belongs to, plus tickets assigned to them. A caller in no relevant
-    department sees nothing.
-
-    The stakeholder → department mapping comes from the workspace's own taxonomy
-    (``ServiceDeskStakeholder.function_key``). It used to be a module dict keyed
-    on one company's department names, so a workspace that called its operations
-    team anything else got an empty queue with no explanation.
-=======
-# The Ops/KAM queue is deliberately excluded from the pending-with function
-# queues below. Every unassigned-to-you ticket sits "pending with KAM", so
-# honouring that value as a queue would show each KAM every other KAM's work —
-# the exact leak this scope exists to prevent. Ops visibility is by assignment.
-_ASSIGNMENT_ONLY_FUNCTION = "ops_kam"
+    Every ticket nobody has picked up parks on the workspace's default
+    stakeholder, so honouring that bucket as a shared queue would show each
+    member of that team everyone else's work — the exact leak this scope exists
+    to prevent. Was the literal ``"ops_kam"``, which silently did nothing for a
+    workspace whose operations team was called anything else.
+    """
+    return taxonomy.internal_function_keys.get(taxonomy.default_stakeholder_slug or "")
 
 
 async def has_full_service_desk_view(db: AsyncSession, workspace_id: str, developer_id: str) -> bool:
@@ -154,10 +137,9 @@ async def can_edit_ticket(
     * the ticket is parked in a *non-Ops* function queue the caller belongs to —
       Finance handed a payout query has to be able to answer and hand it back.
 
-    ``ops_kam`` is excluded from the queue rule for the same reason it is
-    excluded from the view scope: every unhandled ticket sits pending with KAM,
-    so honouring it as a queue would hand every KAM every other KAM's ticket.
->>>>>>> theirs
+    The default bucket is excluded from the queue rule for the same reason it is
+    excluded from the view scope: every unhandled ticket sits there, so honouring
+    it as a queue would hand each of that team's members everyone else's ticket.
     """
     from aexy.services.permission_service import PermissionService
 
@@ -167,8 +149,9 @@ async def can_edit_ticket(
         return True
     if assignee_id is not None and str(assignee_id) == str(developer_id):
         return True
-    function_key = INTERNAL_PENDING_WITH.get(pending_with)
-    if function_key is None or function_key == _ASSIGNMENT_ONLY_FUNCTION:
+    taxonomy = await load_taxonomy(db, workspace_id, seed=False)
+    function_key = taxonomy.internal_function_keys.get(pending_with)
+    if function_key is None or function_key == _assignment_only_function(taxonomy):
         return False
     return function_key in await _caller_functions(db, workspace_id, developer_id)
 
@@ -187,7 +170,11 @@ async def can_create_manual_ticket(db: AsyncSession, workspace_id: str, develope
         workspace_id, developer_id, "can_manage_service_desk"
     ):
         return True
-    return _ASSIGNMENT_ONLY_FUNCTION in await _caller_functions(db, workspace_id, developer_id)
+    taxonomy = await load_taxonomy(db, workspace_id, seed=False)
+    owner_function = _assignment_only_function(taxonomy)
+    if owner_function is None:
+        return False
+    return owner_function in await _caller_functions(db, workspace_id, developer_id)
 
 
 async def resolve_scope_clause(db: AsyncSession, workspace_id: str, developer_id: str):
@@ -208,26 +195,19 @@ async def resolve_scope_clause(db: AsyncSession, workspace_id: str, developer_id
 
     taxonomy = await load_taxonomy(db, workspace_id, seed=False)
     functions = await _caller_functions(db, workspace_id, developer_id)
+    owner_function = _assignment_only_function(taxonomy)
     pending_values = {
-<<<<<<< ours
-        slug for slug, fk in taxonomy.internal_function_keys.items() if fk in functions
-=======
-        pw
-        for pw, fk in INTERNAL_PENDING_WITH.items()
-        if fk in functions and fk != _ASSIGNMENT_ONLY_FUNCTION
->>>>>>> theirs
+        slug
+        for slug, fk in taxonomy.internal_function_keys.items()
+        if fk in functions and fk != owner_function
     }
 
     clauses = []
     if pending_values:
         clauses.append(ServiceDeskTicket.pending_with.in_(pending_values))
-<<<<<<< ours
     # Anyone who owns a stakeholder queue also sees what is assigned to them
     # personally — previously gated on the literal "ops_kam" function key.
     if functions & set(taxonomy.internal_function_keys.values()):
-=======
-    if _ASSIGNMENT_ONLY_FUNCTION in functions:
->>>>>>> theirs
         clauses.append(Ticket.assignee_id == developer_id)
     if not clauses:
         return false()
@@ -238,39 +218,27 @@ async def describe_scope(db: AsyncSession, workspace_id: str, developer_id: str)
     """``"all"`` | ``"assigned"`` | ``"function"`` | ``"none"`` — how wide the view is.
 
     The clause returned by ``resolve_scope_clause`` can't be introspected by the
-<<<<<<< ours
-    UI, and an empty ticket list is ambiguous: someone who was never added to the
-    operations department sees exactly what they'd see on a quiet day. Naming the
-    scope lets the page say "you are in no department yet" instead of implying
-    there is no work.
-=======
-    UI, and an empty ticket list is ambiguous three ways: a KAM who was never
-    added to the Operations department, a KAM with nothing assigned today, and a
-    quiet workspace all look identical. Naming the scope lets the page say which
-    one it is instead of implying there is no work.
->>>>>>> theirs
+    UI, and an empty ticket list is ambiguous three ways: someone who was never
+    added to a department, someone in the default bucket with nothing assigned
+    today, and a genuinely quiet workspace all look identical. Naming the scope
+    lets the page say which one it is instead of implying there is no work.
     """
     if await has_full_service_desk_view(db, workspace_id, developer_id):
         return "all"
     taxonomy = await load_taxonomy(db, workspace_id, seed=False)
     functions = await _caller_functions(db, workspace_id, developer_id)
-<<<<<<< ours
-    if functions & set(taxonomy.internal_function_keys.values()):
-=======
+    owner_function = _assignment_only_function(taxonomy)
     if any(
         fk in functions
-        for fk in INTERNAL_PENDING_WITH.values()
-        if fk != _ASSIGNMENT_ONLY_FUNCTION
+        for fk in taxonomy.internal_function_keys.values()
+        if fk != owner_function
     ):
->>>>>>> theirs
         return "function"
-    if _ASSIGNMENT_ONLY_FUNCTION in functions:
+    if owner_function is not None and owner_function in functions:
         return "assigned"
     return "none"
 
 
-<<<<<<< ours
-=======
 async def generic_ticket_scope_clause(db: AsyncSession, workspace_id: str, developer_id: str):
     """The same authority, expressed for queries over the shared ``Ticket`` table.
 
@@ -323,10 +291,6 @@ async def is_service_desk_ticket_visible(
     ).scalar_one_or_none() is not None
 
 
-TICKET_PREFIX = "BSD"
-
-
->>>>>>> theirs
 def _norm_domain(d: str) -> str:
     return d.strip().lower().lstrip("@")
 
@@ -583,11 +547,7 @@ class ServiceDeskService:
             )
 
     async def create_mailbox(self, workspace_id: str, data: MailboxCreate) -> MailboxResponse:
-<<<<<<< ours
         await self._require_unclaimed_address(workspace_id, data.address)
-        if data.integration_id:
-            await self._require_own_integration(workspace_id, data.integration_id)
-=======
         integration_id = data.integration_id
         if data.channel == "gmail_sync" and integration_id is None:
             integration_id = (
@@ -605,7 +565,10 @@ class ServiceDeskService:
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail="Connect and enable Gmail sync for this mailbox address first",
                 )
->>>>>>> theirs
+        # Ownership is re-checked on the resolved id, not just the supplied one,
+        # so the lookup above can never hand back another workspace's integration.
+        if integration_id:
+            await self._require_own_integration(workspace_id, integration_id)
         mailbox = ServiceDeskMailbox(
             id=str(uuid4()),
             workspace_id=workspace_id,
@@ -661,9 +624,7 @@ class ServiceDeskService:
             )
             scope = await describe_scope(self.db, workspace_id, developer_id)
         hours = sd.get("working_hours") or {}
-<<<<<<< ours
         taxonomy = await load_taxonomy(self.db, workspace_id, seed=False)
-=======
         # Do not revive a forgotten test run merely because its JSON is still
         # present. The clock has the same defensive expiry check.
         test_sla = None
@@ -672,7 +633,6 @@ class ServiceDeskService:
                 test_sla = TestSLAOverride.model_validate(sd["test_sla"])
             except ValueError:
                 pass
->>>>>>> theirs
         return {
             "ai_classification_enabled": bool(sd.get("ai_classification_enabled", False)),
             "auto_split_enabled": bool(sd.get("auto_split_enabled", False)),
@@ -682,7 +642,6 @@ class ServiceDeskService:
             # never shows a blank field for a clock that is definitely running.
             "working_hours_start": hours.get("start") or DEFAULT_WORK_START.strftime("%H:%M"),
             "working_hours_end": hours.get("end") or DEFAULT_WORK_END.strftime("%H:%M"),
-<<<<<<< ours
             "ticket_prefix": normalise_prefix(sd.get("ticket_prefix")) or DEFAULT_TICKET_PREFIX,
             "timezone": sd.get("timezone") or DEFAULT_TIMEZONE,
             "breach_red_days": float(sd.get("breach_red_days") or BREACH_RED_DAYS),
@@ -695,9 +654,7 @@ class ServiceDeskService:
             # Falls back to the workspace's own name — outbound email copy used to
             # carry a hardcoded company name for every tenant.
             "desk_name": sd.get("desk_name") or (ws.name if ws else None),
-=======
             "test_sla": test_sla,
->>>>>>> theirs
         }
 
     async def update_settings(
@@ -765,7 +722,6 @@ class ServiceDeskService:
                 developer_id or "unknown",
             )
 
-<<<<<<< ours
         if ticket_prefix is not None:
             normalised = normalise_prefix(ticket_prefix)
             if normalised is None:
@@ -835,7 +791,7 @@ class ServiceDeskService:
                 sd["desk_name"] = cleaned
             else:
                 sd.pop("desk_name", None)
-=======
+
         if clear_test_sla:
             removed = sd.pop("test_sla", None) is not None
             logger.info(
@@ -850,7 +806,6 @@ class ServiceDeskService:
                 "Service desk test SLA enabled for workspace %s until %s by %s",
                 workspace_id, test_sla.expires_at.isoformat(), developer_id or "unknown",
             )
->>>>>>> theirs
 
         settings["service_desk"] = sd
         ws.settings = settings  # reassign so SQLAlchemy tracks the JSONB change

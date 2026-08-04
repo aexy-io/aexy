@@ -40,15 +40,15 @@ from aexy.models.service_desk import (
 from aexy.models.ticketing import Ticket, TicketForm, TicketResponse, TicketStatus
 from aexy.models.workspace import Workspace, WorkspaceMember
 from aexy.schemas.service_desk import InboundEmail
-<<<<<<< ours
 from aexy.services.service_desk_config import (
+    display_id as render_display_id,
     ticket_number_in_subject,
+    ticket_prefix,
     ticket_prefix_display,
 )
-from aexy.services.service_desk_taxonomy import load_taxonomy
-=======
 from aexy.services.service_desk_mailer import OUTBOUND_MARKER_HEADER
->>>>>>> theirs
+from aexy.services.service_desk_industry_templates import SEMANTIC_EXTERNAL
+from aexy.services.service_desk_taxonomy import external_slug_for, load_taxonomy
 
 logger = logging.getLogger(__name__)
 
@@ -67,16 +67,6 @@ _SPLIT_MIN_CONFIDENCE = 0.85
 _LOW_CONFIDENCE = 0.6
 _AI_MATCH_MIN_CONFIDENCE = 0.85
 _AI_MATCH_MAX_CANDIDATES = 20
-
-# Stages a reply can hand back from. Deliberately only the external ones: an
-# outside stakeholder answering says nothing about whether Finance, Sales or
-# Marketing have finished their own work, and pulling the ticket out of an
-# internal queue would lose it from that team's list.
-_HANDBACK_STAGES = {
-    PendingWith.INSURER.value: "insurer",
-    PendingWith.PARTNER.value: "partner",
-    PendingWith.THIRD_PARTY.value: "third_party",
-}
 
 # Headers that mean "a machine sent this". The X-Auto* ones only ever appear on
 # auto-responders, so their presence is enough; Precedence needs a value check
@@ -222,13 +212,9 @@ class ServiceDeskIntakeService:
             return existing
 
         # 3) New ticket
-<<<<<<< ours
-        ticket = await self.create_ticket(workspace_id, email, mailbox, source)
-=======
-        ticket = await self._create_ticket(
+        ticket = await self.create_ticket(
             workspace_id, email, mailbox, source, automatic=automatic, suggestion=suggestion
         )
->>>>>>> theirs
         await self._link_message(workspace_id, email.message_id, ticket.id)
         return ticket
 
@@ -312,15 +298,17 @@ class ServiceDeskIntakeService:
         near-miss, ``suggestion`` carries it so a human is asked to decide.
 
         Two hard limits make this safe enough to run unattended. The sender must
-        already be a partner or insurer in master data, so an unknown address can
+        already be an account or vendor in master data, so an unknown address can
         never be merged into someone's claim. And the candidate list is scoped to
         that same company's open tickets, so the model is never choosing between
-        two different partners' claims in the first place.
+        two different accounts' claims in the first place.
         """
+        taxonomy = await load_taxonomy(self.db, workspace_id, seed=False)
+        prefix = await ticket_prefix(self.db, workspace_id)
         address = _address_of(email.from_email)
         domain = _domain_of(email.from_email)
-        partner = await self._match_account(workspace_id, domain, address)
-        insurer = None if partner else await self._match_vendor(workspace_id, domain, address)
+        account = await self._match_account(workspace_id, domain, address)
+        vendor = None if account else await self._match_vendor(workspace_id, domain, address)
         if partner is None and insurer is None:
             return None, None, None
 
@@ -330,7 +318,11 @@ class ServiceDeskIntakeService:
             .where(
                 Ticket.workspace_id == workspace_id,
                 ServiceDeskTicket.workspace_id == workspace_id,
-                ServiceDeskTicket.pending_with != PendingWith.CLOSED.value,
+                *(
+                    [ServiceDeskTicket.pending_with != taxonomy.closed_slug]
+                    if taxonomy.closed_slug
+                    else []
+                ),
             )
             .order_by(Ticket.created_at.desc())
             .limit(_AI_MATCH_MAX_CANDIDATES)
@@ -347,7 +339,7 @@ class ServiceDeskIntakeService:
 
         by_number = {ticket.ticket_number: ticket for ticket, _ in rows}
         catalogue = "\n".join(
-            f"- {TICKET_PREFIX}-{ticket.ticket_number}: "
+            f"- {render_display_id(prefix, ticket.ticket_number)}: "
             f"{(ticket.field_values or {}).get('subject') or '(no subject)'} "
             f"[{sd.request_type}, pending with {sd.pending_with}]"
             for ticket, sd in rows
@@ -410,7 +402,7 @@ class ServiceDeskIntakeService:
                 )
             return None, None, None
 
-        display = f"{TICKET_PREFIX}-{candidate.ticket_number}"
+        display = render_display_id(prefix, candidate.ticket_number)
         if confidence >= _AI_MATCH_MIN_CONFIDENCE:
             return (
                 candidate,
@@ -456,12 +448,13 @@ class ServiceDeskIntakeService:
                 )
             )
         ).scalar_one_or_none()
-<<<<<<< ours
-        taxonomy = await load_taxonomy(self.db, workspace_id, seed=False)
-        if sd is not None and taxonomy.is_closed(sd.pending_with):
-            from aexy.services.service_desk_ticket_service import ServiceDeskTicketService
+        if sd is None:
+            return
+        from aexy.services.service_desk_ticket_service import ServiceDeskTicketService
 
-            reopen_to = taxonomy.default_stakeholder_slug
+        taxonomy = await load_taxonomy(self.db, workspace_id, seed=False)
+        reopen_to = taxonomy.default_stakeholder_slug
+        if taxonomy.is_closed(sd.pending_with):
             if reopen_to is None:
                 # No taxonomy at all: leave it closed rather than invent a bucket.
                 # The reply is still recorded on the ticket above.
@@ -471,13 +464,6 @@ class ServiceDeskIntakeService:
                     workspace_id,
                 )
                 return
-=======
-        if sd is None:
-            return
-        from aexy.services.service_desk_ticket_service import ServiceDeskTicketService
-
-        if sd.pending_with == PendingWith.CLOSED.value:
->>>>>>> theirs
             await ServiceDeskTicketService(self.db).change_pending_with(
                 workspace_id,
                 ticket.id,
@@ -487,16 +473,17 @@ class ServiceDeskIntakeService:
             return
 
         # The stakeholder we were waiting on has answered, so the ball is back
-        # with the KAM: somebody has to read it and decide, whether the reply
-        # resolves the request or only promises an update tomorrow. Mirrors the
-        # outbound side, and goes through the same transition, so the segment,
-        # the timeline entry and the clock are identical to a Move to click.
+        # with the team that fields incoming mail: somebody has to read it and
+        # decide, whether the reply resolves the request or only promises an
+        # update tomorrow. Mirrors the outbound side, and goes through the same
+        # transition, so the segment, the timeline entry and the clock are
+        # identical to a Move to click.
         sender = await self._handback_sender(workspace_id, sd.pending_with, email)
-        if sender is not None:
+        if sender is not None and reopen_to is not None:
             await ServiceDeskTicketService(self.db).change_pending_with(
                 workspace_id,
                 ticket.id,
-                PendingWith.KAM.value,
+                reopen_to,
                 note=f"Reply received from {sender}",
             )
 
@@ -505,22 +492,32 @@ class ServiceDeskIntakeService:
     ) -> str | None:
         """Name the stakeholder if this reply came from the one we are waiting on.
 
-        Someone else chasing the ticket while the insurer still owes an answer
-        does not mean the insurer is done, so only the party actually holding the
-        ticket hands it back.
+        Someone else chasing the ticket while the vendor still owes an answer
+        does not mean the vendor is done, so only the party actually holding the
+        ticket hands it back. Deliberately only external buckets: an outside
+        party answering says nothing about whether an internal team has finished
+        its own work, and pulling the ticket out of an internal queue would lose
+        it from that team's list.
+
+        Which master-data table an external bucket speaks for is inferred from
+        its label matching the workspace's own noun for accounts or vendors.
+        The taxonomy carries no explicit link between the two, and this was a
+        fixed insurer/partner/third-party dict before.
         """
-        if pending_with not in _HANDBACK_STAGES:
+        taxonomy = await load_taxonomy(self.db, workspace_id, seed=False)
+        stakeholder = taxonomy.stakeholder(pending_with)
+        if stakeholder is None or stakeholder.semantics != SEMANTIC_EXTERNAL:
             return None
         address = _address_of(email.from_email)
         domain = _domain_of(email.from_email)
-        if pending_with == PendingWith.INSURER.value:
-            insurer = await self._match_vendor(workspace_id, domain, address)
-            return insurer.name if insurer else None
-        if pending_with == PendingWith.PARTNER.value:
-            partner = await self._match_account(workspace_id, domain, address)
-            return partner.name if partner else None
-        # Third party has no master data of its own, so any external sender who
-        # is not a known partner or insurer is taken to be that vendor.
+        if pending_with == external_slug_for(taxonomy, "vendor"):
+            vendor = await self._match_vendor(workspace_id, domain, address)
+            return vendor.name if vendor else None
+        if pending_with == external_slug_for(taxonomy, "account"):
+            account = await self._match_account(workspace_id, domain, address)
+            return account.name if account else None
+        # An external bucket with no master data of its own, so any external
+        # sender who is not a known account or vendor is taken to be that party.
         if await self._match_account(workspace_id, domain, address) is not None:
             return None
         if await self._match_vendor(workspace_id, domain, address) is not None:
@@ -557,11 +554,7 @@ class ServiceDeskIntakeService:
 
     # ------------------------------------------------------------- new ticket
 
-<<<<<<< ours
     async def create_ticket(
-        self, workspace_id: str, email: InboundEmail, mailbox: ServiceDeskMailbox | None, source: str
-=======
-    async def _create_ticket(
         self,
         workspace_id: str,
         email: InboundEmail,
@@ -569,7 +562,6 @@ class ServiceDeskIntakeService:
         source: str,
         automatic: bool = False,
         suggestion: str | None = None,
->>>>>>> theirs
     ) -> Ticket:
         """Create a ticket from a normalised message. Public: manual logging
         (phone/WhatsApp) goes through the same path with ``mailbox=None``, and
@@ -595,21 +587,12 @@ class ServiceDeskIntakeService:
             needs_triage = True
             assigned_owner_id = await self._random_owner(workspace_id)
         else:
-<<<<<<< ours
-            account = await self._match_account(workspace_id, domain)
+            account = await self._match_account(workspace_id, domain, address)
             if account is not None:
                 assigned_owner_id = account.assigned_owner_id or await self._random_owner(workspace_id)
             else:
-                vendor = await self._match_vendor(workspace_id, domain)
+                vendor = await self._match_vendor(workspace_id, domain, address)
                 # vendor-originated or wholly unknown → triage + an arbitrary owner
-=======
-            partner = await self._match_account(workspace_id, domain, address)
-            if partner is not None:
-                assigned_owner_id = partner.assigned_owner_id or await self._random_owner(workspace_id)
-            else:
-                insurer = await self._match_vendor(workspace_id, domain, address)
-                # insurer-originated or wholly unknown → triage + random KAM
->>>>>>> theirs
                 needs_triage = True
                 assigned_owner_id = await self._random_owner(workspace_id)
 
@@ -620,43 +603,8 @@ class ServiceDeskIntakeService:
 
         form_id = await self._ensure_form(workspace_id)
 
-<<<<<<< ours
-        # ticket_number is max()+1 against a real uq_ticket_number constraint, so
-        # concurrent intake (two emails arriving together) collides. Retry inside
-        # a savepoint instead of letting the IntegrityError escape — in the
-        # webhook path it was swallowed by the caller and the email was dropped.
-        ticket: Ticket | None = None
-        for attempt in range(_TICKET_NUMBER_ATTEMPTS):
-            candidate = Ticket(
-                id=str(uuid4()),
-                form_id=form_id,
-                workspace_id=workspace_id,
-                ticket_number=await self._next_ticket_number(workspace_id),
-                submitter_email=email.from_email,
-                submitter_name=email.from_name,
-                email_verified=False,
-                field_values={
-                    "subject": email.subject,
-                    "body": email.body_text,
-                    "account": account.name if account else None,
-                    "vendor": vendor.name if vendor else None,
-                },
-                status=TicketStatus.NEW.value,
-                assignee_id=assigned_owner_id,
-                source=source,
-            )
-            try:
-                async with self.db.begin_nested():
-                    self.db.add(candidate)
-                ticket = candidate
-                break
-            except IntegrityError:
-                # The savepoint rollback already detached `candidate`; do not try
-                # to expunge it (that raises "not present in this Session").
-                if attempt == _TICKET_NUMBER_ATTEMPTS - 1:
-                    raise
-        assert ticket is not None  # loop either breaks with a ticket or raises
-=======
+        # The ticket-number retry against concurrent intake lives in
+        # ``_insert_ticket``, so every creation path gets it, not just this one.
         ticket = await self._insert_ticket(
             workspace_id,
             form_id=form_id,
@@ -666,8 +614,8 @@ class ServiceDeskIntakeService:
             field_values={
                 "subject": email.subject,
                 "body": email.body_text,
-                "partner": partner.name if partner else None,
-                "insurer": insurer.name if insurer else None,
+                "account": account.name if account else None,
+                "vendor": vendor.name if vendor else None,
                 # The owning message is stamped on each file because the handle
                 # is only valid against the message it arrived on. A ticket
                 # accumulates files from replies too, each from a different one.
@@ -680,7 +628,6 @@ class ServiceDeskIntakeService:
             assignee_id=assigned_owner_id,
             source=source,
         )
->>>>>>> theirs
         await self.db.flush()
 
         # Where a new ticket starts and what it is triaged as both come from the
@@ -863,15 +810,17 @@ class ServiceDeskIntakeService:
             logger.warning("Service desk: auto-split rolled back (%s)", exc)
             return []
 
+        prefix = await ticket_prefix(self.db, workspace_id)
         primary_values = dict(primary.field_values or {})
         primary_values["split_children"] = [
-            {"ticket_id": child.id, "display_id": f"{TICKET_PREFIX}-{child_number}"}
+            {"ticket_id": child.id, "display_id": render_display_id(prefix, child_number)}
         ]
         primary.field_values = primary_values
         await self.db.flush()
         logger.info(
-            "Service desk: auto-split %s-%s into child %s-%s",
-            TICKET_PREFIX, primary.ticket_number, TICKET_PREFIX, child_number,
+            "Service desk: auto-split %s into child %s",
+            render_display_id(prefix, primary.ticket_number),
+            render_display_id(prefix, child_number),
         )
         return [child]
 
@@ -894,6 +843,11 @@ class ServiceDeskIntakeService:
         carrying it over asks them to confirm work they just did. An auto-split
         child keeps inheriting, because there nobody has looked at all.
         """
+        # A child starts where a fresh ticket starts: the workspace's own default
+        # bucket. Falls back to the parent's bucket for a desk with no taxonomy,
+        # which is still better than inventing a slug nothing recognises.
+        taxonomy = await load_taxonomy(self.db, workspace_id, seed=False)
+        child_pending_with = taxonomy.default_stakeholder_slug or sd.pending_with
         primary_values = primary.field_values or {}
         child = await self._insert_ticket(
             workspace_id,
@@ -904,14 +858,14 @@ class ServiceDeskIntakeService:
             field_values={
                 "subject": issue["summary"],
                 "body": primary_values.get("body"),
-                "partner": primary_values.get("partner"),
-                "insurer": primary_values.get("insurer"),
+                "account": primary_values.get("account"),
+                "vendor": primary_values.get("vendor"),
                 "attachments": primary_values.get("attachments") or [],
                 "email_subject": primary_values.get("subject"),
                 "split_from_ticket_id": primary.id,
             },
             status=TicketStatus.NEW.value,
-            # Same KAM as the primary: one email, one owner, and the child lands
+            # Same owner as the primary: one email, one owner, and the child lands
             # in exactly the queue the requester's own ticket landed in.
             assignee_id=primary.assignee_id,
             source=primary.source,
@@ -926,9 +880,9 @@ class ServiceDeskIntakeService:
                 split_parent_ticket_id=primary.id,
                 account_id=sd.account_id,
                 vendor_id=sd.vendor_id,
-                product_id=await self._lob_id(workspace_id, issue.get("lob")),
+                product_id=await self._product_id(workspace_id, issue.get("product")),
                 request_type=issue["request_type"],
-                pending_with=PendingWith.KAM.value,
+                pending_with=child_pending_with,
                 origin=sd.origin,
                 # A human-split child is judged on its own classification.
                 needs_triage=(
@@ -947,7 +901,7 @@ class ServiceDeskIntakeService:
                 id=str(uuid4()),
                 workspace_id=workspace_id,
                 ticket_id=child.id,
-                pending_with=PendingWith.KAM.value,
+                pending_with=child_pending_with,
                 entered_at=datetime.now(timezone.utc),
                 changed_by_id=child.assignee_id,
                 note="Created by auto-split",
@@ -956,7 +910,7 @@ class ServiceDeskIntakeService:
         await self.db.flush()
         return child
 
-    async def _lob_id(self, workspace_id: str, name: str | None) -> str | None:
+    async def _product_id(self, workspace_id: str, name: str | None) -> str | None:
         if not name:
             return None
         return (
@@ -1114,14 +1068,6 @@ class ServiceDeskIntakeService:
             return False
         return bool(((ws.settings or {}).get("service_desk") or {}).get("auto_split_enabled", False))
 
-<<<<<<< ours
-    async def _classify(self, workspace_id: str, sd: ServiceDeskTicket, email: InboundEmail) -> None:
-        """Best-effort AI classification of request_type + product. Never raises."""
-        try:
-            from aexy.llm.gateway import get_llm_gateway
-
-            products = (
-=======
     async def _classify(
         self, workspace_id: str, sd: ServiceDeskTicket, email: InboundEmail
     ) -> tuple[list[dict], bool]:
@@ -1133,17 +1079,18 @@ class ServiceDeskIntakeService:
         try:
             from aexy.llm.gateway import get_llm_gateway
 
-            lob_rows = (
->>>>>>> theirs
+            product_rows = (
                 await self.db.execute(
                     select(ServiceDeskProduct.name, ServiceDeskProduct.id).where(
                         ServiceDeskProduct.workspace_id == workspace_id,
                         ServiceDeskProduct.is_active.is_(True),
                     )
                 )
-<<<<<<< ours
-            ).scalars().all()
-            product_list = ", ".join(products) if products else "(none configured)"
+            ).all()
+            product_ids = {str(name).lower(): pid for name, pid in product_rows}
+            product_list = (
+                ", ".join(name for name, _ in product_rows) if product_rows else "(none configured)"
+            )
 
             # The prompt used to say "You classify insurance operations emails"
             # and name the four insurance request types inline, so a software
@@ -1153,32 +1100,21 @@ class ServiceDeskIntakeService:
             taxonomy = await load_taxonomy(self.db, workspace_id, seed=False)
             allowed = {r.slug for r in taxonomy.request_types}
             if not allowed:
-                return
+                return [], False
+            default_type = taxonomy.default_request_type_slug or sorted(allowed)[0]
             # Labels alongside slugs: `access_request` is a token, "Access
             # Request" is what the model can actually reason about.
             options = ", ".join(f"{r.slug} ({r.label})" for r in taxonomy.request_types)
             product_term = taxonomy.term("products")
             system = (
-                "You classify incoming service desk emails. Reply with a compact JSON object "
-                f'{{"request_type": one of [{", ".join(sorted(allowed))}], '
-                f'"product": one of the provided {product_term} or null, "confidence": 0..1}}. '
-                "JSON only."
-            )
-            user = (
-                f"Request types: {options}\n"
-                f"{product_term}: {product_list}\n"
-                f"Subject: {email.subject}\n\n{(email.body_text or '')[:2000]}"
-=======
-            ).all()
-            lob_ids = {str(name).lower(): product_id for name, product_id in lob_rows}
-            lob_list = ", ".join(name for name, _ in lob_rows) if lob_rows else "(none configured)"
-            system = (
-                "You classify insurance operations emails and detect independently actionable issues. "
-                "Return one issue for a batch of rows requiring the same workflow. Split candidates "
-                "only when requests need materially different workflows or outcomes. Reply with "
-                'compact JSON: {"issues":[{"summary":"short action", "request_type": one of '
-                '[query, policy_issuance, claims, payout], "lob": one provided LOB or null, '
-                '"confidence":0..1, "split_reason":"why independent or null"}]}. '
+                "You classify incoming service desk emails and detect independently "
+                "actionable issues. Return one issue for a batch of rows requiring the "
+                "same workflow. Split candidates only when requests need materially "
+                "different workflows or outcomes. Reply with compact JSON: "
+                '{"issues":[{"summary":"short action", "request_type": one of '
+                f'[{", ".join(sorted(allowed))}], "product": one of the provided '
+                f'{product_term} or null, "confidence":0..1, '
+                '"split_reason":"why independent or null"}]}. '
                 f"Return between one and {_MAX_ISSUES_PER_EMAIL} issues. JSON only."
             )
             attachment_context = "\n".join(
@@ -1190,11 +1126,11 @@ class ServiceDeskIntakeService:
                 for attachment in email.attachments[:3]
             ) or "(none)"
             user = (
-                f"LOBs: {lob_list}\nSubject: {email.subject}\n\n"
-                f"{(email.body_text or '')[:2000]}\n\n"
+                f"Request types: {options}\n"
+                f"{product_term}: {product_list}\n"
+                f"Subject: {email.subject}\n\n{(email.body_text or '')[:2000]}\n\n"
                 "Attachment context (metadata and deliberately limited previews):\n"
                 f"{attachment_context}"
->>>>>>> theirs
             )
             gateway = get_llm_gateway()
             text, *_ = await gateway.call_llm(
@@ -1208,28 +1144,6 @@ class ServiceDeskIntakeService:
             if not match:
                 raise ValueError("classification response did not contain JSON")
             data = json.loads(match.group(0))
-<<<<<<< ours
-            rt = str(data.get("request_type", "")).lower()
-            if rt in allowed:
-                sd.request_type = rt
-            conf = data.get("confidence")
-            if isinstance(conf, (int, float)):
-                sd.ai_confidence = float(conf)
-                if conf < 0.6:
-                    sd.needs_triage = True
-            product_name = data.get("product")
-            if product_name:
-                product_id = (
-                    await self.db.execute(
-                        select(ServiceDeskProduct.id).where(
-                            ServiceDeskProduct.workspace_id == workspace_id,
-                            func.lower(ServiceDeskProduct.name) == str(product_name).lower(),
-                        )
-                    )
-                ).scalar_one_or_none()
-                if product_id:
-                    sd.product_id = product_id
-=======
             raw_issues = data.get("issues")
             if not isinstance(raw_issues, list):
                 raw_issues = [data]
@@ -1243,14 +1157,13 @@ class ServiceDeskIntakeService:
                 primary_values["issues_overflow"] = True
                 primary_ticket.field_values = primary_values
 
-            issues = self._normalise_issues(raw_issues)
+            issues = self._normalise_issues(raw_issues, allowed, default_type)
             if not issues:
                 raise ValueError("classification response contained no valid issues")
 
-            self._apply_issue(sd, issues[0], lob_ids)
+            self._apply_issue(sd, issues[0], product_ids)
             primary_values["detected_issues"] = issues
             primary_ticket.field_values = primary_values
->>>>>>> theirs
             await self.db.flush()
             return issues, issues_overflow
         except Exception as exc:  # noqa: BLE001 — classification is best-effort
@@ -1259,9 +1172,14 @@ class ServiceDeskIntakeService:
             return [], False
 
     @staticmethod
-    def _normalise_issues(raw_issues: list[object]) -> list[dict]:
-        """Validate, deduplicate, and hard-cap model-proposed issue candidates."""
-        valid_types = {item.value for item in RequestType}
+    def _normalise_issues(
+        raw_issues: list[object], valid_types: set[str], default_type: str
+    ) -> list[dict]:
+        """Validate, deduplicate, and hard-cap model-proposed issue candidates.
+
+        The allowed types are the workspace's own request types, not a fixed
+        enum, so a desk that never had a ``query`` type can't be handed one.
+        """
         issues: list[dict] = []
         seen: set[tuple[str, str, str]] = set()
         for raw in raw_issues[:_MAX_ISSUES_PER_EMAIL]:
@@ -1270,10 +1188,10 @@ class ServiceDeskIntakeService:
             summary = " ".join(str(raw.get("summary") or "").split())[:240]
             if not summary:
                 continue
-            request_type = str(raw.get("request_type") or "query").lower()
+            request_type = str(raw.get("request_type") or default_type).lower()
             if request_type not in valid_types:
-                request_type = RequestType.QUERY.value
-            lob = str(raw["lob"]).strip()[:255] if raw.get("lob") else None
+                request_type = default_type
+            product = str(raw["product"]).strip()[:255] if raw.get("product") else None
             try:
                 confidence = max(0.0, min(1.0, float(raw.get("confidence", 0))))
             except (TypeError, ValueError):
@@ -1286,7 +1204,7 @@ class ServiceDeskIntakeService:
                 {
                     "summary": summary,
                     "request_type": request_type,
-                    "lob": lob,
+                    "product": product,
                     "confidence": confidence,
                     "split_reason": str(raw.get("split_reason") or "")[:300] or None,
                 }
@@ -1294,14 +1212,14 @@ class ServiceDeskIntakeService:
         return issues
 
     @staticmethod
-    def _apply_issue(sd: ServiceDeskTicket, issue: dict, lob_ids: dict[str, str]) -> None:
+    def _apply_issue(sd: ServiceDeskTicket, issue: dict, product_ids: dict[str, str]) -> None:
         """Apply only configured classification values to the primary ticket."""
         sd.request_type = issue["request_type"]
         sd.ai_confidence = issue["confidence"]
         if issue["confidence"] < _LOW_CONFIDENCE:
             sd.needs_triage = True
-        if issue.get("lob"):
-            sd.product_id = lob_ids.get(str(issue["lob"]).lower())
+        if issue.get("product"):
+            sd.product_id = product_ids.get(str(issue["product"]).lower())
 
     async def _send_receipt(
         self,
@@ -1318,7 +1236,10 @@ class ServiceDeskIntakeService:
         """
         if not ticket.submitter_email:
             return
-        child_ids = [f"{TICKET_PREFIX}-{child.ticket_number}" for child in (children or [])]
+        prefix = await ticket_prefix(self.db, workspace_id)
+        child_ids = [
+            render_display_id(prefix, child.ticket_number) for child in (children or [])
+        ]
         additional = ""
         if child_ids:
             additional = (
@@ -1403,7 +1324,6 @@ class ServiceDeskIntakeService:
         ).scalars().first()
 
     @staticmethod
-<<<<<<< ours
     async def find_mailbox_by_integration(
         db: AsyncSession, integration_id: str, workspace_id: str | None = None
     ) -> ServiceDeskMailbox | None:
@@ -1423,12 +1343,7 @@ class ServiceDeskIntakeService:
         )
         if workspace_id is not None:
             query = query.where(ServiceDeskMailbox.workspace_id == workspace_id)
-        return (
-=======
-    async def find_mailbox_by_integration(db: AsyncSession, integration_id: str) -> ServiceDeskMailbox | None:
-        """Lookup used by the Gmail sync fan-out (integration → mailbox)."""
         mailbox = (
->>>>>>> theirs
             await db.execute(
                 query.order_by(ServiceDeskMailbox.created_at, ServiceDeskMailbox.id)
             )
@@ -1439,19 +1354,25 @@ class ServiceDeskIntakeService:
         # Older gmail_sync mailbox records were created before the integration
         # link was populated. Recover only when the mailbox address is exactly
         # the connected Google account, then persist the link for later syncs.
+        # The join keeps the recovery inside the integration's own workspace,
+        # and the caller's workspace_id narrows it further when supplied.
         from aexy.models.google_integration import GoogleIntegration
 
+        recovery = (
+            select(ServiceDeskMailbox)
+            .join(GoogleIntegration, GoogleIntegration.workspace_id == ServiceDeskMailbox.workspace_id)
+            .where(
+                GoogleIntegration.id == integration_id,
+                func.lower(ServiceDeskMailbox.address) == func.lower(GoogleIntegration.google_email),
+                ServiceDeskMailbox.channel == MailboxChannel.GMAIL_SYNC.value,
+                ServiceDeskMailbox.is_active.is_(True),
+            )
+        )
+        if workspace_id is not None:
+            recovery = recovery.where(ServiceDeskMailbox.workspace_id == workspace_id)
         mailbox = (
             await db.execute(
-                select(ServiceDeskMailbox)
-                .join(GoogleIntegration, GoogleIntegration.workspace_id == ServiceDeskMailbox.workspace_id)
-                .where(
-                    GoogleIntegration.id == integration_id,
-                    func.lower(ServiceDeskMailbox.address) == func.lower(GoogleIntegration.google_email),
-                    ServiceDeskMailbox.channel == MailboxChannel.GMAIL_SYNC.value,
-                    ServiceDeskMailbox.is_active.is_(True),
-                )
-                .order_by(ServiceDeskMailbox.created_at, ServiceDeskMailbox.id)
+                recovery.order_by(ServiceDeskMailbox.created_at, ServiceDeskMailbox.id)
             )
         ).scalars().first()
         if mailbox is not None:

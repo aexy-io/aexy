@@ -346,19 +346,14 @@ class ServiceDeskTicket(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
-<<<<<<< ours
-    ticket: Mapped["Ticket"] = relationship("Ticket", lazy="selectin")
-    account: Mapped["ServiceDeskAccount"] = relationship("ServiceDeskAccount", lazy="selectin")
-    product: Mapped["ServiceDeskProduct"] = relationship("ServiceDeskProduct", lazy="selectin")
-    vendor: Mapped["ServiceDeskVendor"] = relationship("ServiceDeskVendor", lazy="selectin")
-=======
+    # ``split_parent_ticket_id`` is a second FK to tickets, so this relationship
+    # has to say which one it travels — otherwise mapper configuration fails.
     ticket: Mapped["Ticket"] = relationship(
         "Ticket", foreign_keys=[ticket_id], lazy="selectin"
     )
-    partner: Mapped["ServiceDeskAccount"] = relationship("ServiceDeskAccount", lazy="selectin")
-    lob: Mapped["ServiceDeskProduct"] = relationship("ServiceDeskProduct", lazy="selectin")
-    insurer: Mapped["ServiceDeskVendor"] = relationship("ServiceDeskVendor", lazy="selectin")
->>>>>>> theirs
+    account: Mapped["ServiceDeskAccount"] = relationship("ServiceDeskAccount", lazy="selectin")
+    product: Mapped["ServiceDeskProduct"] = relationship("ServiceDeskProduct", lazy="selectin")
+    vendor: Mapped["ServiceDeskVendor"] = relationship("ServiceDeskVendor", lazy="selectin")
 
 
 class TicketPendingSegment(Base):

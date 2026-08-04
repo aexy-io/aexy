@@ -8,11 +8,7 @@ resolution-markers = [
 
 [[package]]
 name = "aexy"
-<<<<<<< ours
 version = "0.12.0"
-=======
-version = "0.11.0"
->>>>>>> theirs
 source = { editable = "." }
 dependencies = [
     { name = "aiosmtplib" },

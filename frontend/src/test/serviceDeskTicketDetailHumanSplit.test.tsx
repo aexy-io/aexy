@@ -116,8 +116,8 @@ vi.mock("@/hooks/useServiceDesk", () => ({
     emailStakeholder: { mutateAsync: vi.fn(), isPending: false, isError: false },
   }),
   useServiceDeskSettings: () => ({ data: { can_manage: false } }),
-  useLobs: () => ({ data: [] }),
-  usePartners: () => ({ data: [] }),
+  useProducts: () => ({ data: [] }),
+  useAccounts: () => ({ data: [] }),
 }));
 
 describe("Service Desk detected issues panel", () => {

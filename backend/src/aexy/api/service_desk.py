@@ -12,7 +12,6 @@ from aexy.api.developers import get_current_developer
 from aexy.core.database import get_db
 from aexy.models.developer import Developer
 from aexy.schemas.service_desk import (
-<<<<<<< ours
     ApplyIndustryTemplateRequest,
     ApplyIndustryTemplateResponse,
     IndustryTemplateResponse,
@@ -27,15 +26,8 @@ from aexy.schemas.service_desk import (
     VendorUpdate,
     ProductCreate,
     ProductResponse,
-=======
-    InsurerCreate,
-    InsurerResponse,
-    InsurerUpdate,
     HumanSplitRequest,
     HumanSplitResponse,
-    LOBCreate,
-    LOBResponse,
->>>>>>> theirs
     MailboxCreate,
     MailboxResponse,
     ConvertToTaskRequest,
@@ -101,7 +93,6 @@ async def update_settings(workspace_id: str, data: ServiceDeskSettingsUpdate, db
         auto_split_enabled=data.auto_split_enabled,
         working_hours_start=data.working_hours_start,
         working_hours_end=data.working_hours_end,
-<<<<<<< ours
         ticket_prefix=data.ticket_prefix,
         timezone=data.timezone,
         breach_red_days=data.breach_red_days,
@@ -109,10 +100,8 @@ async def update_settings(workspace_id: str, data: ServiceDeskSettingsUpdate, db
         digest_hours=data.digest_hours,
         terminology=data.terminology,
         desk_name=data.desk_name,
-=======
         test_sla=data.test_sla,
         clear_test_sla=data.clear_test_sla,
->>>>>>> theirs
         developer_id=str(current.id),
     )
 

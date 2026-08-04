@@ -24,6 +24,7 @@ from aexy.services.service_desk_industry_templates import (
     DEFAULT_TEMPLATE_SLUG,
     DEFAULT_TERMINOLOGY,
     SEMANTIC_CLOSED,
+    SEMANTIC_EXTERNAL,
     SEMANTIC_INTERNAL,
     IndustryTemplate,
     get_template,
@@ -202,6 +203,25 @@ async def _settings(db: AsyncSession, workspace_id: str) -> dict:
 
     ws = await db.get(Workspace, workspace_id)
     return ((ws.settings or {}).get("service_desk") or {}) if ws else {}
+
+
+def external_slug_for(taxonomy: Taxonomy, term_key: str) -> str | None:
+    """The external bucket that speaks for the ``account`` or ``vendor`` table.
+
+    There is no explicit link between an external stakeholder and a master-data
+    table, so it is inferred from the bucket's label matching the workspace's own
+    noun for that table. Insurance broking labels them "Partner" and "Insurer",
+    which is exactly what the old fixed ``partner`` / ``insurer`` slugs meant, so
+    existing desks keep behaving identically. Returns None when a workspace has
+    renamed one without the other, in which case callers must not guess.
+    """
+    want = (taxonomy.term(term_key) or "").strip().lower()
+    if not want:
+        return None
+    for s in taxonomy.stakeholders:
+        if s.semantics == SEMANTIC_EXTERNAL and (s.label or "").strip().lower() == want:
+            return s.slug
+    return None
 
 
 async def load_taxonomy(db: AsyncSession, workspace_id: str, *, seed: bool = True) -> Taxonomy:

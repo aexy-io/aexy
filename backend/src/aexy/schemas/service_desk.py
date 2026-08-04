@@ -542,13 +542,14 @@ class ServiceDeskSettings(BaseModel):
     # controls it would only get a 403 from; the server-side gate is still the
     # authority (api/service_desk.py::require_manage).
     can_manage: bool = False
-<<<<<<< ours
-    # How wide the caller's ticket view is: "all" (manager), "function" (scoped
-    # to their department's queue) or "none" (in no department, so no ticket can
-    # ever match). Lets the tickets page distinguish "nothing to do" from
-    # "nobody has placed you in a department yet". Defaults to "all" so a
-    # response from an older server can never raise a false alarm.
-    scope: Literal["all", "function", "none"] = "all"
+    # How wide the caller's ticket view is: "all" (full-view or manager),
+    # "function" (their department's pending-with queue), "assigned" (an owner
+    # who sees only their own tickets) or "none" (in no department, so no ticket
+    # can ever match). Lets the tickets page distinguish "nothing to do" from
+    # "you only ever see your own" and from "nobody has placed you in a
+    # department yet". Defaults to "all" so a response from an older server can
+    # never raise a false alarm.
+    scope: Literal["all", "assigned", "function", "none"] = "all"
     # The working window the breach clock runs on, as "HH:MM" in `timezone`.
     # Returned so the Master Data page can show and edit it — the clock reads the
     # same values (services/service_desk_clock.py::load_clock).
@@ -572,24 +573,9 @@ class ServiceDeskSettings(BaseModel):
     # The desk's own name, used in outbound email copy. Defaults to the
     # workspace name rather than a hardcoded company.
     desk_name: str | None = None
-=======
-    # How wide the caller's ticket view is: "all" (full-view or manager),
-    # "function" (their department's pending-with queue), "assigned" (an Ops KAM,
-    # who sees only their own tickets) or "none" (in no department, so no ticket
-    # can ever match). Lets the tickets page distinguish "nothing to do" from
-    # "you only ever see your own" and from "nobody has placed you in a
-    # department yet". Defaults to "all" so a response from an older server can
-    # never raise a false alarm.
-    scope: Literal["all", "assigned", "function", "none"] = "all"
-    # The working window the breach clock runs on, IST, as "HH:MM". Returned so
-    # the Master Data page can show and edit it — the clock reads the same values
-    # (services/service_desk_clock.py::load_clock).
-    working_hours_start: str = "09:30"
-    working_hours_end: str = "18:30"
-    # ``None`` means the normal two-business-day target is in force. Expired
+    # ``None`` means the workspace's own breach target is in force. Expired
     # values are deliberately omitted by the service and ignored by the clock.
     test_sla: TestSLAOverride | None = None
->>>>>>> theirs
 
 
 _HHMM = r"^([01]\d|2[0-3]):[0-5]\d$"
@@ -602,7 +588,6 @@ class ServiceDeskSettingsUpdate(BaseModel):
     auto_split_enabled: bool | None = None
     working_hours_start: str | None = Field(None, pattern=_HHMM)
     working_hours_end: str | None = Field(None, pattern=_HHMM)
-<<<<<<< ours
     # Everything below was a module constant baked to one customer's operation:
     # "BSD" ticket ids, Asia/Kolkata day boundaries, a 2-business-day target.
     ticket_prefix: str | None = Field(None, pattern=r"^[A-Za-z][A-Za-z0-9]{0,9}$")
@@ -612,12 +597,10 @@ class ServiceDeskSettingsUpdate(BaseModel):
     digest_hours: list[int] | None = None
     terminology: dict[str, str] | None = None
     desk_name: str | None = Field(None, max_length=120)
-=======
     # Send a complete replacement when starting or changing a test. Send only
     # ``clear_test_sla`` to remove it immediately after the test is complete.
     test_sla: TestSLAOverride | None = None
     clear_test_sla: bool = False
->>>>>>> theirs
 
     @model_validator(mode="after")
     def _window_must_be_forward(self):
@@ -631,7 +614,6 @@ class ServiceDeskSettingsUpdate(BaseModel):
         if self.working_hours_start and self.working_hours_end:
             if self.working_hours_end <= self.working_hours_start:  # "HH:MM" sorts correctly
                 raise ValueError("working_hours_end must be later than working_hours_start")
-<<<<<<< ours
         # Amber is the warning *before* red; inverted, the dashboard would show
         # red tickets that had never been amber and the colours would mean
         # nothing.
@@ -663,10 +645,8 @@ class ServiceDeskSettingsUpdate(BaseModel):
                 )
             if any(not v.strip() for v in self.terminology.values()):
                 raise ValueError("terminology labels must not be blank")
-=======
         if self.clear_test_sla and self.test_sla is not None:
             raise ValueError("send either test_sla or clear_test_sla, not both")
->>>>>>> theirs
         return self
 
 

@@ -8,13 +8,10 @@ import { useTranslations } from "next-intl";
 import {
   useServiceDeskTicket,
   useServiceDeskMutations,
-<<<<<<< ours
   useServiceDeskSettings,
   useServiceDeskTaxonomy,
-=======
-  useLobs,
-  usePartners,
->>>>>>> theirs
+  useAccounts,
+  useProducts,
 } from "@/hooks/useServiceDesk";
 import { useProjects } from "@/hooks/useProjects";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
@@ -29,15 +26,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 
-<<<<<<< ours
-=======
-const PENDING_OPTIONS: PendingWith[] = [
-  "kam", "insurer", "partner", "sales", "third_party", "finance", "marketing", "closed",
-];
-
-const REQUEST_TYPE_OPTIONS: RequestType[] = ["query", "policy_issuance", "claims", "payout"];
-
->>>>>>> theirs
 function fmtDays(seconds: number): string {
   const d = seconds / 86400;
   if (d >= 1) return `${d.toFixed(1)}d`;
@@ -57,15 +45,12 @@ export default function ServiceDeskTicketDetailPage() {
     useServiceDeskMutations();
   const { currentWorkspace } = useWorkspace();
   const { projects } = useProjects(currentWorkspace?.id ?? null);
-<<<<<<< ours
   const { data: settings } = useServiceDeskSettings();
-  const { stakeholders, stakeholderLabel, requestTypeLabel } = useServiceDeskTaxonomy();
+  const { stakeholders, requestTypes, stakeholderLabel, requestTypeLabel } = useServiceDeskTaxonomy();
   const terms = settings?.terminology ?? {};
-=======
-  const { data: lobs } = useLobs();
-  const { data: partners } = usePartners();
+  const { data: products } = useProducts();
+  const { data: accounts } = useAccounts();
   const { members } = useWorkspaceMembers(currentWorkspace?.id ?? null);
->>>>>>> theirs
 
   const [target, setTarget] = useState<PendingWith | "">("");
   const [note, setNote] = useState("");
@@ -87,24 +72,20 @@ export default function ServiceDeskTicketDetailPage() {
   if (isLoading) return <div className="flex justify-center py-16"><Spinner /></div>;
   if (!ticket) return <div className="p-6 text-muted-foreground">Not found.</div>;
 
-<<<<<<< ours
-  const currentSh = stakeholders.find((x) => x.slug === ticket.pending_with);
-  const pc = serviceDeskStakeholderColor(ticket.pending_with, {
-    position: currentSh?.position,
-    semantics: currentSh?.semantics,
-  });
-=======
   // Write authority as the server computed it for this caller — manager, the
-  // assigned KAM, or a member of the queue the ticket is pending with. The rule
-  // lives only in the backend (can_edit_ticket); the UI must not re-derive it.
+  // assigned owner, or a member of the queue the ticket is pending with. The
+  // rule lives only in the backend (can_edit_ticket); the UI must not re-derive it.
   const canEdit = ticket.can_edit;
 
   const mailStageRaw = ticket.email_recipients.find((r) => r.email === mailTo)?.stage ?? null;
   // Already there? Then there is nothing to move and no choice to offer.
   const mailStage = mailStageRaw && mailStageRaw !== ticket.pending_with ? mailStageRaw : null;
 
-  const pc = SERVICE_DESK_PENDING_WITH_COLORS[ticket.pending_with];
->>>>>>> theirs
+  const currentSh = stakeholders.find((x) => x.slug === ticket.pending_with);
+  const pc = serviceDeskStakeholderColor(ticket.pending_with, {
+    position: currentSh?.position,
+    semantics: currentSh?.semantics,
+  });
   const bc = SERVICE_DESK_BREACH_COLORS[ticket.tat.breach_level];
   const detectedIssues = ticket.detected_issues ?? [];
   const splitDoneIndexes = new Set(ticket.split_done_indexes ?? []);
@@ -183,19 +164,8 @@ export default function ServiceDeskTicketDetailPage() {
         <p className="text-muted-foreground">{ticket.subject ?? "—"}</p>
       </div>
 
-<<<<<<< ours
-      {/* Fields */}
-      <Card className="grid grid-cols-2 gap-4 p-4 sm:grid-cols-3">
-        <Field label={t("detail.requester")} value={ticket.requester_name || ticket.requester_email || "—"} />
-        <Field label={t("detail.requestType")} value={requestTypeLabel(ticket.request_type)} />
-        <Field label={terms.account ?? t("detail.account")} value={ticket.account_name ?? "—"} />
-        <Field
-          label={t("detail.pendingWith")}
-          value={<span className={`inline-flex rounded px-1.5 py-0.5 text-xs ${pc?.bg} ${pc?.text}`}>{stakeholderLabel(ticket.pending_with)}</span>}
-        />
-=======
-      {/* The request itself. Without this a KAM cannot see what they are being
-          asked to pass on to an insurer, which is the desk's core job. */}
+      {/* The request itself. Without this an owner cannot see what they are
+          being asked to pass on to a vendor, which is the desk's core job. */}
       {(ticket.body || ticket.attachments.length > 0) && (
         <Card className="space-y-3 p-4">
           <div className="text-sm font-semibold">{t("detail.request")}</div>
@@ -229,7 +199,7 @@ export default function ServiceDeskTicketDetailPage() {
           <Field label={t("detail.requester")} value={ticket.requester_name || ticket.requester_email || "—"} />
           <Field
             label={t("detail.pendingWith")}
-            value={<span className={`inline-flex rounded px-1.5 py-0.5 text-xs ${pc?.bg} ${pc?.text}`}>{SERVICE_DESK_PENDING_WITH_LABELS[ticket.pending_with] ?? ticket.pending_with}</span>}
+            value={<span className={`inline-flex rounded px-1.5 py-0.5 text-xs ${pc?.bg} ${pc?.text}`}>{stakeholderLabel(ticket.pending_with)}</span>}
           />
         </div>
 
@@ -239,29 +209,26 @@ export default function ServiceDeskTicketDetailPage() {
             value={pick("request_type", ticket.request_type)}
             onChange={(v) => setDraft((d) => ({ ...d, request_type: v }))}
             disabled={!canEdit}
-            options={REQUEST_TYPE_OPTIONS.map((o) => ({
-              value: o,
-              label: SERVICE_DESK_REQUEST_TYPE_LABELS[o] ?? o,
-            }))}
+            options={requestTypes.map((o) => ({ value: o.slug, label: o.label }))}
           />
           <Picker
-            label={t("detail.lob")}
+            label={terms.product ?? t("detail.product")}
             value={pick("product_id", ticket.product_id)}
             onChange={(v) => setDraft((d) => ({ ...d, product_id: v }))}
             placeholder={t("manual.none")}
             disabled={!canEdit}
-            options={(lobs ?? []).map((l) => ({ value: l.id, label: l.name }))}
+            options={(products ?? []).map((x) => ({ value: x.id, label: x.name }))}
           />
           <Picker
-            label={t("detail.partner")}
+            label={terms.account ?? t("detail.account")}
             value={pick("account_id", ticket.account_id)}
             onChange={(v) => setDraft((d) => ({ ...d, account_id: v }))}
             placeholder={t("manual.none")}
             disabled={!canEdit}
-            options={(partners ?? []).map((p) => ({ value: p.id, label: p.name }))}
+            options={(accounts ?? []).map((a) => ({ value: a.id, label: a.name }))}
           />
           <Picker
-            label={t("detail.assignedKam")}
+            label={terms.owner ?? t("detail.assignedOwner")}
             value={pick("assigned_owner_id", ticket.assigned_owner_id)}
             onChange={(v) => setDraft((d) => ({ ...d, assigned_owner_id: v }))}
             placeholder={t("manual.none")}
@@ -278,7 +245,7 @@ export default function ServiceDeskTicketDetailPage() {
         {canEdit && (
           <div className="flex items-center gap-2">
             {/* Saving IS the triage, so a flagged ticket must be savable even with
-                nothing edited. When the model already got everything right the KAM
+                nothing edited. When the model already got everything right the owner
                 has nothing to change, and without this there is no way to confirm
                 it and the flag stays on forever. */}
             <Button
@@ -300,7 +267,6 @@ export default function ServiceDeskTicketDetailPage() {
             )}
           </div>
         )}
->>>>>>> theirs
       </Card>
 
       {/* Outbound stakeholder email — sent as the watched mailbox, never a KAM's own inbox */}

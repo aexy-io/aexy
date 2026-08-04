@@ -23,8 +23,8 @@ vi.mock("next-intl", () => ({
 vi.mock("@/hooks/useServiceDesk", () => ({
   useServiceDeskTickets: () => ({ data: mocks.tickets, isLoading: false }),
   useServiceDeskSettings: () => ({ data: { scope: mocks.scope, can_manage: false } }),
-  useLobs: () => ({ data: [] }),
-  usePartners: () => ({ data: [] }),
+  useProducts: () => ({ data: [] }),
+  useAccounts: () => ({ data: [] }),
   useServiceDeskMutations: () => ({ createManual: { mutateAsync: vi.fn() } }),
 }));
 
