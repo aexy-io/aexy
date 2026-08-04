@@ -66,6 +66,10 @@ api.interceptors.response.use(
           // into the same workspace surface.
           const next = encodeURIComponent(path + window.location.search);
           setTimeout(() => {
+            // A hard navigation on purpose: this runs in an axios interceptor,
+            // outside React, and an expired session should drop all client
+            // state rather than soft-navigate with it intact.
+            // eslint-disable-next-line @next/next/no-location-assign-relative-destination
             window.location.href = `/?next=${next}`;
           }, 600);
         }
@@ -4924,6 +4928,44 @@ export const epicApi = {
 };
 
 // Billing API
+// Mirrors backend `EffectivePlanResponse` (schemas/billing.py): a plan with
+// workspace overrides applied.
+export interface EffectivePlan {
+  plan_id: string;
+  plan_name: string;
+  tier: string;
+  billing_model: string;
+  has_overrides: boolean;
+  discount_percent: number;
+  // Limits
+  max_repos: number;
+  max_commits_per_repo: number;
+  max_prs_per_repo: number;
+  sync_history_days: number;
+  llm_requests_per_day: number;
+  llm_requests_per_minute: number;
+  llm_tokens_per_minute: number;
+  llm_provider_access: string[];
+  free_llm_tokens_per_month: number;
+  llm_input_cost_per_1k_cents: number;
+  llm_output_cost_per_1k_cents: number;
+  enable_overage_billing: boolean;
+  // Features
+  enable_real_time_sync: boolean;
+  enable_advanced_analytics: boolean;
+  enable_exports: boolean;
+  enable_webhooks: boolean;
+  enable_team_features: boolean;
+  // Pricing
+  price_monthly_cents: number;
+  base_fee_monthly_cents: number;
+  per_seat_price_monthly_cents: number;
+  min_seats: number;
+  included_seats: number;
+  payment_timing: string;
+  requires_payment_method: boolean;
+}
+
 export const billingApi = {
   getSubscriptionStatus: async (workspaceId?: string): Promise<SubscriptionStatus> => {
     const response = await api.get("/billing/status", {
@@ -4949,7 +4991,7 @@ export const billingApi = {
     return response.data;
   },
 
-  getEffectivePlan: async (workspaceId?: string): Promise<any> => {
+  getEffectivePlan: async (workspaceId?: string): Promise<EffectivePlan> => {
     const response = await api.get("/billing/effective-plan", {
       params: workspaceId ? { workspace_id: workspaceId } : {},
     });
@@ -5049,7 +5091,7 @@ export interface BillingLineItem {
   included_quantity: number | null;
   billable_quantity: number;
   subtotal_cents: number;
-  metadata: Record<string, any> | null;
+  metadata: Record<string, unknown> | null;
 }
 
 export interface BillingBreakdown {
@@ -5069,7 +5111,7 @@ export interface BillingBreakdown {
   delta_cents: number | null;
   delta_pct: number | null;
   invoices: Invoice[];
-  info_counters: Record<string, any>;
+  info_counters: Record<string, unknown>;
   computation_notes: string[];
   margin: {
     base_cost_cents: number;
@@ -10283,7 +10325,7 @@ export const crmApi = {
     },
 
     seed: async (workspaceId: string): Promise<CRMObject[]> => {
-      const response = await api.post(`/workspaces/${workspaceId}/crm/objects/seed`);
+      const response = await api.post(`/workspaces/${workspaceId}/crm/objects/seed-standard`);
       return response.data;
     },
 
@@ -11131,6 +11173,17 @@ export const automationsApi = {
   },
 
   // Registry endpoints
+  // The modules an automation can be created for. Server-driven so the
+  // builder's module picker can never offer a module whose palette is empty.
+  getModuleRegistry: async (
+    workspaceId: string,
+  ): Promise<{
+    modules: Array<{ module: AutomationModule; trigger_count: number; action_count: number }>;
+  }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/automations/registry/modules`);
+    return response.data;
+  },
+
   getTriggerRegistry: async (workspaceId: string): Promise<{ triggers: Record<string, string[]> }> => {
     const response = await api.get(`/workspaces/${workspaceId}/automations/registry/triggers`);
     return response.data;
@@ -11538,6 +11591,17 @@ export interface WorkingHoursConfig {
   days?: number[]; // 0-6 (Sunday-Saturday)
 }
 
+// Must match backend `AgentCreate.llm_provider` in schemas/agent.py. Several
+// copies of this union had gone stale at four providers while the backend grew
+// to six, so a DeepSeek or LM Studio agent could not be typed at all.
+export type LLMProviderId =
+  | "claude"
+  | "gemini"
+  | "ollama"
+  | "openrouter"
+  | "deepseek"
+  | "lmstudio";
+
 export interface CRMAgent {
   id: string;
   workspace_id: string;
@@ -11548,7 +11612,7 @@ export interface CRMAgent {
   is_system: boolean;
 
   // LLM Configuration (optional for backwards compatibility)
-  llm_provider?: "claude" | "gemini" | "ollama" | "openrouter";
+  llm_provider?: LLMProviderId;
   llm_model?: string;
   temperature?: number;
   max_tokens?: number;
@@ -11942,7 +12006,7 @@ export interface AgentCreateData {
   description?: string;
   agent_type?: AgentType;
   mention_handle?: string;
-  llm_provider?: "claude" | "gemini" | "ollama" | "openrouter";
+  llm_provider?: LLMProviderId;
   llm_model?: string;
   temperature?: number;
   max_tokens?: number;
@@ -18171,7 +18235,7 @@ export interface DeveloperInsightsResponse {
   sustainability: SustainabilityMetrics;
   collaboration: CollaborationMetrics;
   sprint?: SprintProductivityMetrics | null;
-  raw_counts?: Record<string, any>;
+  raw_counts?: Record<string, unknown>;
   computed_at?: string;
   previous?: DeveloperInsightsResponse | null;
 }

@@ -65,24 +65,92 @@ class TestSlackAPI:
 
     @pytest.mark.asyncio
     async def test_get_installation_url(
-        self, client: AsyncClient, sample_developer
+        self, client: AsyncClient, db_session, sample_developer
     ):
-        """Test GET /slack/install endpoint.
+        """GET /slack/install redirects a workspace admin to Slack.
 
-        Requires auth and an organization_id; returns a 302 redirect to Slack.
+        The workspace and the active owner membership are the whole point:
+        `_require_workspace_admin` refuses anyone who is not an active
+        owner/admin of `organization_id`. This test used to pass a bare
+        "org-123" with no workspace behind it and assert a redirect, i.e. the
+        opposite of the endpoint's contract — it 403'd under SQLite, and under
+        Postgres the id was rejected as an invalid UUID before that.
         """
+        from uuid import uuid4
+
+        from aexy.models.workspace import Workspace, WorkspaceMember
+
+        workspace = Workspace(
+            id=str(uuid4()),
+            name="Slack Install Co",
+            slug=f"slack-install-{uuid4().hex[:8]}",
+            owner_id=sample_developer.id,
+            next_task_key=1,
+        )
+        db_session.add(workspace)
+        db_session.add(
+            WorkspaceMember(
+                id=str(uuid4()),
+                workspace_id=workspace.id,
+                developer_id=sample_developer.id,
+                role="owner",
+                status="active",
+            )
+        )
+        await db_session.flush()
+
         response = await client.get(
             "/api/v1/slack/install",
             headers=_auth(sample_developer.id),
-            params={"organization_id": "org-123"},
+            params={"organization_id": workspace.id},
         )
 
-        assert response.status_code in [200, 302, 307]
-        if response.status_code in [302, 307]:
-            assert "slack.com/oauth" in response.headers.get("location", "")
-        else:
-            data = response.json()
-            assert "url" in data or "install_url" in data
+        # The endpoint checks its own configuration before anything else, so an
+        # environment with no Slack app cannot reach the redirect at all.
+        if response.status_code == 500 and "not configured" in response.text:
+            pytest.skip("SLACK_CLIENT_ID / SLACK_CLIENT_SECRET are not set")
+
+        assert response.status_code in (302, 307), response.text
+        assert "slack.com/oauth" in response.headers.get("location", "")
+
+    @pytest.mark.asyncio
+    async def test_installation_url_refuses_non_admins(
+        self, client: AsyncClient, db_session, sample_developer
+    ):
+        """A member who is not owner/admin of the workspace gets a 403."""
+        from uuid import uuid4
+
+        from aexy.models.workspace import Workspace, WorkspaceMember
+
+        workspace = Workspace(
+            id=str(uuid4()),
+            name="Someone Else Co",
+            slug=f"other-{uuid4().hex[:8]}",
+            owner_id=sample_developer.id,
+            next_task_key=1,
+        )
+        db_session.add(workspace)
+        db_session.add(
+            WorkspaceMember(
+                id=str(uuid4()),
+                workspace_id=workspace.id,
+                developer_id=sample_developer.id,
+                role="member",
+                status="active",
+            )
+        )
+        await db_session.flush()
+
+        response = await client.get(
+            "/api/v1/slack/install",
+            headers=_auth(sample_developer.id),
+            params={"organization_id": workspace.id},
+        )
+
+        if response.status_code == 500 and "not configured" in response.text:
+            pytest.skip("SLACK_CLIENT_ID / SLACK_CLIENT_SECRET are not set")
+
+        assert response.status_code == 403
 
     @pytest.mark.asyncio
     async def test_oauth_callback_invalid_code(self, client: AsyncClient):

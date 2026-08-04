@@ -82,6 +82,8 @@
     "builder": {
       "namePlaceholder": "Name this automation",
       "descriptionPlaceholder": "Add a description...",
+      "moduleLabel": "Module",
+      "moduleLocked": "The module is fixed once the automation is created",
       "addTriggerHint": "Pick a trigger to get started",
       "addActionHint": "Drop an action next to the trigger",
       "testRun": "Test run",

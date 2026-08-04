@@ -3,7 +3,6 @@
 import { getApiErrorMessage } from "@/lib/utils";
 import * as React from "react";
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { useTranslations } from "next-intl";
 import {
   ArrowRight,
@@ -73,7 +72,9 @@ export function TemplateGallery({
 
   const [search, setSearch] = useState("");
   const [moduleFilter, setModuleFilter] = useState<AutomationModule | "all">(
-    initialModule === "crm" ? initialModule : "crm",
+    // Honour whichever module the caller arrived with; the gallery used to
+    // force CRM because the other modules' templates were unusable.
+    initialModule ?? "all",
   );
 
   // UX-DEF-004: prompt-to-workflow state. Lives in this component

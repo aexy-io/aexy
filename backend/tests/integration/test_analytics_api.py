@@ -34,6 +34,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from aexy.core.config import get_settings
 from aexy.models.developer import Developer
 from aexy.models.workspace import Workspace, WorkspaceMember
+from tests.conftest import requires_postgres
 
 settings = get_settings()
 
@@ -148,6 +149,8 @@ class TestAnalyticsAPI:
 
     # Productivity Trends Tests
 
+    @requires_postgres
+
     @pytest.mark.asyncio
     async def test_get_productivity_trends(
         self, client: AsyncClient, workspace_devs
@@ -171,6 +174,8 @@ class TestAnalyticsAPI:
         data = response.json()
         assert "data" in data
         assert "summary" in data
+
+    @requires_postgres
 
     @pytest.mark.asyncio
     async def test_get_productivity_trends_with_grouping(
@@ -340,6 +345,8 @@ class TestAnalyticsAPIValidation:
         )
 
         assert response.status_code == 422
+
+    @requires_postgres
 
     @pytest.mark.asyncio
     async def test_productivity_end_before_start(

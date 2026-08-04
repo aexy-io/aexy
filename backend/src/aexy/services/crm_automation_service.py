@@ -53,6 +53,10 @@ from aexy.models.crm import (
     CRMList,
     CRMSequenceEnrollmentStatus,
 )
+from aexy.services.automation_module_actions import (
+    MODULE_ACTION_ADAPTERS,
+    run_module_action,
+)
 from aexy.services.crm_service import CRMRecordService, CRMActivityService
 from aexy.services.slack_integration import SlackIntegrationService
 from aexy.schemas.integrations import SlackMessage, SlackNotificationType
@@ -108,6 +112,15 @@ def selected_values(trigger_config: dict, setting: str) -> list[str]:
         values = raw if isinstance(raw, (list, tuple, set)) else [raw]
         return [str(v) for v in values if v not in (None, "")]
     return []
+
+
+def _split_addresses(value: Any) -> list[str]:
+    """Accept a list, or a newline/comma separated string of addresses."""
+    if not value:
+        return []
+    if isinstance(value, (list, tuple, set)):
+        return [str(v).strip() for v in value if str(v).strip()]
+    return [part.strip() for part in re.split(r"[\n,;]+", str(value)) if part.strip()]
 
 
 def trigger_matches(
@@ -245,7 +258,12 @@ class CRMAutomationService:
             "confirm_booking",
             "cancel_booking",
             "reschedule_booking",
+            "send_reminder",
         }
+        # Everything in the shared module-action table runs on this path too, by
+        # construction — listing them by hand is how add_tag and friends ended up
+        # canvas-only and therefore hidden from the palette.
+        | set(MODULE_ACTION_ADAPTERS)
     )
 
     def __init__(self, db: AsyncSession):
@@ -489,12 +507,22 @@ class CRMAutomationService:
         module = automation.module or "crm"
         effective_record_id = record_id if module == "crm" else None
 
+        run_id = str(uuid4())
         run = CRMAutomationRun(
-            id=str(uuid4()),
+            id=run_id,
             automation_id=automation_id,
             module=module,
             record_id=effective_record_id,
-            trigger_data=trigger_data or {},
+            # execution_id is carried on the payload, as the canvas path does,
+            # so {{trigger.execution_id}} and {{system.execution_id}} mean the
+            # same thing whichever executor ends up running the steps. For
+            # non-CRM modules the entity id also lives here, since record_id is
+            # CRM-only (foreign key).
+            trigger_data={
+                **(trigger_data or {}),
+                "execution_id": run_id,
+                **({} if module == "crm" or not record_id else {"entity_id": record_id}),
+            },
             status="pending",
             steps_executed=[],
         )
@@ -869,22 +897,37 @@ class CRMAutomationService:
         conditions: list[dict],
         record: CRMRecord | None,
     ) -> bool:
-        """Evaluate automation-level conditions (AND).
+        """Evaluate automation-level conditions.
 
         Accepts both `attribute` (API schema) and `field` (builder) keys so a
         condition that is true on the record actually takes the true path.
         Unknown operators raise — the run fails loudly rather than lying.
+
+        `conjunction` is honoured. AutomationCondition declares it and the API
+        stores it, but this used to be a hard AND, so an automation created with
+        `conjunction: "or"` was gated on ALL of its conditions instead of any —
+        silently the opposite of what the caller asked for. One "or" anywhere in
+        the group makes the group OR, which is how the canvas condition node's
+        single group-level setting behaves.
         """
         from aexy.services.condition_eval import evaluate_condition_dict
 
         if not record:
             return True
 
-        for condition in conditions:
-            if not evaluate_condition_dict(condition, record.values):
-                return False
+        if not conditions:
+            return True
 
-        return True
+        any_match = any(
+            str(condition.get("conjunction") or "and").lower() == "or"
+            for condition in conditions
+        )
+
+        results = [
+            evaluate_condition_dict(condition, record.values)
+            for condition in conditions
+        ]
+        return any(results) if any_match else all(results)
 
     def _check_condition(self, record_value: Any, operator: str, value: Any) -> bool:
         """Check a single condition (shared evaluator)."""
@@ -967,7 +1010,9 @@ class CRMAutomationService:
                 action_index,
             )
         elif action_type == "notify_team":
-            return await self._action_notify_team(config, record, workspace_id, trigger_data)
+            return await self._action_notify_team(
+                config, record, workspace_id, trigger_data, run_id, action_index
+            )
         # Sprint module actions
         elif action_type == "update_task":
             return await self._action_update_task(config, trigger_data)
@@ -1000,9 +1045,28 @@ class CRMAutomationService:
             return await self._action_cancel_booking(config, trigger_data)
         elif action_type == "reschedule_booking":
             return await self._action_reschedule_booking(config, trigger_data)
+        elif action_type == "send_reminder":
+            return await self._action_send_reminder(
+                config, record, workspace_id, trigger_data, run_id, action_index
+            )
         # AI Agent actions
         elif action_type == "run_agent":
             return await self._action_run_agent(config, record, workspace_id, trigger_data, run_id)
+        elif action_type in MODULE_ACTION_ADAPTERS:
+            # Module actions (ticket tags, campaign recipients, sprint moves, …)
+            # live in automation_module_actions so this path and the canvas path
+            # run exactly the same code. An action implemented on one path only
+            # cannot be offered at all — the registry requires both.
+            return await run_module_action(
+                action_type,
+                self.db,
+                config=config,
+                workspace_id=workspace_id,
+                trigger_data=trigger_data,
+                render=lambda value: self._replace_placeholders(
+                    value, record, trigger_data
+                ),
+            )
         else:
             # "error", not "message": the executor only fails a step on an
             # "error" key, so a step type this build cannot run was recorded as
@@ -2574,22 +2638,73 @@ class CRMAutomationService:
         record: CRMRecord | None,
         workspace_id: str,
         trigger_data: dict | None = None,
+        run_id: str | None = None,
+        action_index: int | None = None,
     ) -> dict:
         """Send notification to an entire team via Slack channel.
 
-        Config options:
+        Config options (the builder's panel writes the `team_*` spellings):
         - team_id: Team ID to notify
-        - channel_id: Slack channel to use (optional - falls back to workspace default)
-        - message: Message content
+        - channel_id / slack_channel_id / team_channel_id: Slack channel to use
+          (optional — falls back to the team's channel, then the workspace default)
+        - message / team_notify_message: Message content
+        - team_notify_title: Optional bold heading prepended to the message
+
+        Only `channel_id` and `message` were read before, and the panel writes
+        neither: a step configured with a channel ignored it and fell through to
+        the workspace default, and the title was dropped.
         """
         from aexy.models.team import Team
 
         team_id = config.get("team_id")
-        channel_id = config.get("channel_id")
-        message_template = config.get("message", "")
+        channel_id = (
+            config.get("channel_id")
+            or config.get("slack_channel_id")
+            or config.get("team_channel_id")
+        )
+        message_template = config.get("message") or config.get("team_notify_message") or ""
 
         # Replace placeholders in message
         message = self._replace_placeholders(message_template, record, trigger_data)
+
+        title = self._replace_placeholders(
+            str(config.get("team_notify_title") or ""), record, trigger_data
+        )
+        if title:
+            message = f"*{title}*\n{message}" if message else f"*{title}*"
+
+        # The panel offers Slack / Email Group / In-app. Email goes through the
+        # same outbox as every other automation email, once per address, so each
+        # recipient's outcome is accounted for separately.
+        channel = str(config.get("notify_channel") or "slack").lower()
+        if channel == "email":
+            recipients = _split_addresses(config.get("team_emails"))
+            if not recipients:
+                return {"error": "No email addresses specified for the team notification"}
+            delivered: list[str] = []
+            errors: list[str] = []
+            for offset, address in enumerate(recipients):
+                result = await self._action_send_email(
+                    {
+                        "to": address,
+                        "email_subject": title or "Team notification",
+                        "email_body": message,
+                    },
+                    record,
+                    workspace_id,
+                    trigger_data,
+                    run_id,
+                    # Each recipient gets its own step order so one address
+                    # failing cannot close the run the others are still in.
+                    (action_index or 0) + offset if action_index is not None else None,
+                )
+                if result.get("error"):
+                    errors.append(f"{address}: {result['error']}")
+                else:
+                    delivered.append(address)
+            if not delivered:
+                return {"error": "; ".join(errors) or "No notification could be delivered"}
+            return {"channel": "email", "delivered_to": delivered, "errors": errors}
 
         if not team_id and not channel_id:
             return {"error": "No team_id or channel_id specified"}
@@ -2623,6 +2738,84 @@ class CRMAutomationService:
             workspace_id,
             trigger_data,
         )
+
+    async def _action_send_reminder(
+        self,
+        config: dict,
+        record: CRMRecord | None,
+        workspace_id: str,
+        trigger_data: dict | None = None,
+        run_id: str | None = None,
+        action_index: int | None = None,
+    ) -> dict:
+        """Send a booking reminder over email or Slack.
+
+        Delivery is whatever this path already does well, so the reminder is a
+        thin wrapper over send_email / send_slack rather than a third sender.
+
+        Config options:
+        - channel: "email" (default) or "slack"
+        - to / email: recipient for the email channel (falls back to the record's
+          email, then the booking's attendee_email from the trigger)
+        - channel_id / user_email: Slack target
+        - subject, message / message_template
+        """
+        message = self._replace_placeholders(
+            str(
+                config.get("message")
+                or config.get("message_template")
+                or "Reminder: you have an upcoming booking."
+            ),
+            record,
+            trigger_data,
+        )
+
+        if str(config.get("channel") or "email").lower() == "slack":
+            return await self._action_send_slack(
+                {
+                    "message": message,
+                    "channel_id": config.get("channel_id"),
+                    "user_email": config.get("user_email"),
+                },
+                record,
+                workspace_id,
+                trigger_data,
+            )
+
+        email_to = self._replace_placeholders(
+            str(config.get("to") or config.get("email") or ""), record, trigger_data
+        ).strip()
+        if not email_to and record:
+            email_to = str(record.values.get("email") or "")
+        if not email_to:
+            email_to = str((trigger_data or {}).get("attendee_email") or "")
+        if not email_to:
+            return {"error": "No email address for reminder"}
+
+        return await self._action_send_email(
+            {
+                "to": email_to,
+                "email_subject": config.get("subject") or "Booking reminder",
+                "email_body": message,
+            },
+            record,
+            workspace_id,
+            trigger_data,
+            run_id,
+            action_index,
+        )
+
+    @staticmethod
+    def _system_value(name: str, trigger_data: dict | None = None) -> Any:
+        """Resolve a `system.*` variable. Mirrors WorkflowActionHandler._system_value."""
+        now = datetime.now(timezone.utc)
+        if name == "now":
+            return now.isoformat()
+        if name == "today":
+            return now.date().isoformat()
+        if name == "execution_id":
+            return (trigger_data or {}).get("execution_id")
+        return None
 
     def _replace_placeholders(
         self,
@@ -2671,6 +2864,21 @@ class CRMAutomationService:
                 value = lookup(record_values, path.removeprefix("record.values."))
             elif path.startswith("trigger."):
                 value = lookup(trigger_data, path.removeprefix("trigger."))
+            elif path.startswith("system."):
+                # The field picker offers these; nothing resolved them, so a
+                # step configured with {{system.now}} shipped the literal
+                # braces. Same values as the canvas path's _system_value.
+                value = self._system_value(path.removeprefix("system."), trigger_data)
+            elif path.startswith("variables."):
+                # Prior-node outputs only exist in a canvas graph run. Reaching
+                # here means the step is running inline, where there are no node
+                # outputs — fail the step rather than posting the raw braces into
+                # an email or a webhook body.
+                raise ValueError(
+                    f"'{{{{{path}}}}}' refers to another node's output, which is "
+                    "only available when the workflow runs as a graph. Use "
+                    "record./trigger./system. values in this step."
+                )
             else:
                 return match.group(0)
 

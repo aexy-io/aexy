@@ -19,6 +19,7 @@ from aexy.models.workflow import (
     WorkflowExecutionStep,
     WorkflowExecutionStatus,
 )
+from aexy.services.automation_trigger_schema import trigger_fields_for
 from aexy.services.workflow_service import WorkflowService, WorkflowExecutor
 from aexy.services.workspace_service import WorkspaceService
 from aexy.services.crm_automation_service import CRMAutomationService
@@ -38,6 +39,8 @@ from aexy.schemas.workflow import (
 )
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/crm/automations/{automation_id}/workflow")
+
+
 
 
 async def check_workspace_permission(
@@ -61,8 +64,12 @@ async def check_automation_exists(
     db: AsyncSession,
     automation_id: str,
     workspace_id: str,
-) -> None:
-    """Check if automation exists and belongs to workspace."""
+):
+    """Check if automation exists and belongs to workspace.
+
+    Returns the automation so callers that need a field off it — the module its
+    graph must validate against, above all — don't re-query for it.
+    """
     service = CRMAutomationService(db)
     automation = await service.get_automation(automation_id)
     if not automation:
@@ -75,6 +82,7 @@ async def check_automation_exists(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Automation does not belong to this workspace",
         )
+    return automation
 
 
 def sync_workflow_to_automation(
@@ -190,7 +198,8 @@ async def update_workflow(
     user_id = current_user.id
 
     await check_workspace_permission(db, workspace_id, user_id, "admin")
-    await check_automation_exists(db, automation_id, workspace_id)
+    automation = await check_automation_exists(db, automation_id, workspace_id)
+    automation_module = automation.module or "crm"
 
     service = WorkflowService(db)
 
@@ -202,7 +211,7 @@ async def update_workflow(
     # Validate if nodes and edges are provided
     if nodes_data is not None and edges_data is not None:
         validation = await service.validate_workflow_for_workspace(
-            nodes_data, edges_data, workspace_id
+            nodes_data, edges_data, workspace_id, automation_module
         )
         if not validation.is_valid:
             raise HTTPException(
@@ -286,11 +295,14 @@ async def validate_workflow(
 ):
     """Validate a workflow definition without saving."""
     await check_workspace_permission(db, workspace_id, current_user.id, "member")
+    automation = await check_automation_exists(db, automation_id, workspace_id)
 
     service = WorkflowService(db)
     nodes = [n.model_dump() for n in data.nodes]
     edges = [e.model_dump(by_alias=True) for e in data.edges]
-    return await service.validate_workflow_for_workspace(nodes, edges, workspace_id)
+    return await service.validate_workflow_for_workspace(
+        nodes, edges, workspace_id, automation.module or "crm"
+    )
 
 
 @router.post("/publish", response_model=WorkflowDefinitionResponse)
@@ -302,7 +314,7 @@ async def publish_workflow(
 ):
     """Publish a workflow (make it live)."""
     await check_workspace_permission(db, workspace_id, current_user.id, "admin")
-    await check_automation_exists(db, automation_id, workspace_id)
+    automation = await check_automation_exists(db, automation_id, workspace_id)
 
     service = WorkflowService(db)
     workflow = await service.get_workflow_by_automation(automation_id)
@@ -315,7 +327,10 @@ async def publish_workflow(
 
     # Validate before publishing
     validation = await service.validate_workflow_for_workspace(
-        workflow.nodes, workflow.edges, workspace_id
+        workflow.nodes,
+        workflow.edges,
+        workspace_id,
+        automation.module or "crm",
     )
     if not validation.is_valid:
         raise HTTPException(
@@ -328,13 +343,11 @@ async def publish_workflow(
 
     # Sync workflow nodes to automation's actions array
     # This ensures the automation executor can run the workflow actions
-    automation_service = CRMAutomationService(db)
-    automation = await automation_service.get_automation(automation_id)
-    if automation:
-        sync_workflow_to_automation(
-            automation, workflow.nodes, workflow.edges or [], service
-        )
-        await db.flush()
+    # (`automation` is the row check_automation_exists already loaded above).
+    sync_workflow_to_automation(
+        automation, workflow.nodes, workflow.edges or [], service
+    )
+    await db.flush()
 
     workflow = await service.publish_workflow(workflow.id)
     await log_activity(
@@ -1133,17 +1146,18 @@ async def get_field_schema(
     """
     Get field schema for the workflow builder field picker.
 
-    Returns the schema of available fields including:
-    - Record fields from the automation's target object
-    - Trigger data fields
-    - Previous node output placeholders
+    Every path offered here must resolve at execution time. An unknown path is
+    not a cosmetic problem: the canvas/Temporal path fails the step with
+    "Dynamic value '{{...}}' is missing", and the inline path renders the
+    literal braces into the email or webhook body. So the trigger fields come
+    from automation_trigger_schema, which is keyed off what the dispatching
+    services actually put in trigger_data — for every module, not just CRM.
     """
     await check_workspace_permission(db, workspace_id, current_user.id, "member")
-    await check_automation_exists(db, automation_id, workspace_id)
+    automation = await check_automation_exists(db, automation_id, workspace_id)
 
-    # Get automation to find target object
-    service = CRMAutomationService(db)
-    automation = await service.get_automation(automation_id)
+    module = (automation.module if automation else None) or "crm"
+    trigger_type = automation.trigger_type if automation else None
 
     schema = {
         "record": {"label": "Record Fields", "fields": []},
@@ -1151,147 +1165,106 @@ async def get_field_schema(
         "system": {"label": "System Variables", "fields": []},
     }
 
-    # Get object fields if automation has a target object
-    if automation and automation.object_id:
-        from aexy.models.crm import CRMObject, CRMAttribute
+    # ---- Record fields -----------------------------------------------------
+    # Only the CRM module runs with a CRMRecord in context; for every other
+    # module `record` is absent, so offering record.* there would hand the user
+    # a set of paths that cannot resolve.
+    if module == "crm":
+        from aexy.models.crm import CRMObject
 
-        stmt = (
-            select(CRMObject)
-            .options(selectinload(CRMObject.attributes))
-            .where(CRMObject.id == automation.object_id)
-        )
-        result = await db.execute(stmt)
-        crm_object = result.scalar_one_or_none()
-
-        if crm_object:
-            # Add record.id as a standard field
-            schema["record"]["fields"].append({
+        # record.id and record.name resolve for any CRM record, object or not.
+        schema["record"]["fields"].extend([
+            {
                 "path": "record.id",
                 "name": "Record ID",
                 "type": "text",
-                "description": "Unique identifier for the record",
-            })
-
-            # Add all object attributes
-            for attr in crm_object.attributes:
-                schema["record"]["fields"].append({
-                    "path": f"record.values.{attr.slug}",
-                    "name": attr.name,
-                    "type": attr.attribute_type,
-                    "description": attr.description,
-                    "config": attr.config,
-                    "required": attr.is_required,
-                })
-
-            # Add computed/system fields
-            schema["record"]["fields"].append({
-                "path": "record.owner_id",
-                "name": "Owner ID",
+                "description": "Unique identifier for the triggering record",
+            },
+            {
+                "path": "record.name",
+                "name": "Record Name",
                 "type": "text",
-                "description": "ID of the record owner",
-            })
-            schema["record"]["fields"].append({
-                "path": "record.object_id",
-                "name": "Object Type ID",
-                "type": "text",
-                "description": "ID of the CRM object type",
-            })
+                "description": "Display name of the triggering record",
+            },
+        ])
 
-    # Add trigger data fields based on automation trigger type
-    if automation:
-        trigger_type = automation.trigger_type
+        # An automation bound to one object gets that object's attributes. One
+        # with no object fires for every object in the workspace (a NULL
+        # object_id is the builder's default), and record.values.<slug>
+        # resolves whenever the triggering record carries that slug — so offer
+        # the union instead of the empty list this used to return, naming the
+        # objects each slug comes from.
+        stmt = (
+            select(CRMObject)
+            .options(selectinload(CRMObject.attributes))
+            .where(CRMObject.workspace_id == workspace_id, CRMObject.is_active == True)  # noqa: E712
+        )
+        if automation and automation.object_id:
+            stmt = stmt.where(CRMObject.id == automation.object_id)
 
-        # Common trigger fields
-        schema["trigger"]["fields"].append({
-            "path": "trigger.workspace_id",
-            "name": "Workspace ID",
-            "type": "text",
-            "description": "ID of the workspace",
-        })
-        schema["trigger"]["fields"].append({
-            "path": "trigger.triggered_by",
-            "name": "Triggered By",
-            "type": "text",
-            "description": "ID of the user who triggered the workflow",
-        })
-        schema["trigger"]["fields"].append({
-            "path": "trigger.triggered_at",
-            "name": "Triggered At",
-            "type": "timestamp",
-            "description": "Timestamp when the workflow was triggered",
-        })
+        crm_objects = list((await db.execute(stmt)).scalars().all())
+        scoped_to_one = bool(automation and automation.object_id)
 
-        # Trigger-specific fields
-        if trigger_type == "field.changed":
-            schema["trigger"]["fields"].extend([
-                {
-                    "path": "trigger.field_slug",
-                    "name": "Changed Field",
-                    "type": "text",
-                    "description": "The field that was changed",
-                },
-                {
-                    "path": "trigger.old_value",
-                    "name": "Old Value",
-                    "type": "text",
-                    "description": "Previous value of the field",
-                },
-                {
-                    "path": "trigger.new_value",
-                    "name": "New Value",
-                    "type": "text",
-                    "description": "New value of the field",
-                },
-            ])
-        elif trigger_type == "webhook.received":
-            schema["trigger"]["fields"].append({
-                "path": "trigger.payload",
-                "name": "Webhook Payload",
-                "type": "object",
-                "description": "The incoming webhook payload",
-            })
-        elif trigger_type in ["email.opened", "email.clicked"]:
-            schema["trigger"]["fields"].extend([
-                {
-                    "path": "trigger.email_id",
-                    "name": "Email ID",
-                    "type": "text",
-                    "description": "ID of the email",
-                },
-                {
-                    "path": "trigger.recipient_email",
-                    "name": "Recipient Email",
-                    "type": "email",
-                    "description": "Email address of the recipient",
-                },
-            ])
-            if trigger_type == "email.clicked":
-                schema["trigger"]["fields"].append({
-                    "path": "trigger.link_url",
-                    "name": "Clicked Link URL",
-                    "type": "url",
-                    "description": "URL of the link that was clicked",
-                })
+        seen: dict[str, dict] = {}
+        for crm_object in crm_objects:
+            for attr in crm_object.attributes or []:
+                entry = seen.get(attr.slug)
+                if entry is None:
+                    seen[attr.slug] = {
+                        "path": f"record.values.{attr.slug}",
+                        "name": attr.name,
+                        "type": attr.attribute_type,
+                        "description": attr.description,
+                        "config": attr.config,
+                        "required": attr.is_required if scoped_to_one else False,
+                        "objects": [crm_object.name],
+                    }
+                elif crm_object.name not in entry["objects"]:
+                    entry["objects"].append(crm_object.name)
 
-    # Add system variables
+        for entry in seen.values():
+            objects = entry.pop("objects")
+            if not scoped_to_one:
+                # Which objects actually carry this field decides whether it
+                # resolves for a given event, so say so rather than implying
+                # every record has it.
+                suffix = f"On: {', '.join(objects)}"
+                entry["description"] = (
+                    f"{entry['description']} — {suffix}" if entry["description"] else suffix
+                )
+            schema["record"]["fields"].append(entry)
+
+    # ---- Trigger fields ----------------------------------------------------
+    # Every module, keyed off what its dispatchers actually send. An unmapped
+    # pair yields an empty list rather than invented paths; the picker's
+    # custom-path input still accepts {{trigger.<key>}}.
+    schema["trigger"]["fields"] = [
+        {
+            "path": path,
+            "name": name,
+            "type": type_,
+            **({"description": description} if description else {}),
+        }
+        for path, name, type_, description in trigger_fields_for(module, trigger_type)
+    ]
+
+    # ---- System variables --------------------------------------------------
+    # Both executors resolve these (WorkflowActionHandler._system_value and
+    # CRMAutomationService._system_value). system.execution_id is deliberately
+    # absent: only the canvas path knows a run id, so offering it would break
+    # any automation that ends up running inline.
     schema["system"]["fields"] = [
         {
             "path": "system.now",
             "name": "Current Timestamp",
             "type": "timestamp",
-            "description": "Current date and time",
+            "description": "Current date and time in UTC (ISO 8601)",
         },
         {
             "path": "system.today",
             "name": "Today's Date",
             "type": "date",
-            "description": "Current date",
-        },
-        {
-            "path": "system.execution_id",
-            "name": "Execution ID",
-            "type": "text",
-            "description": "Unique ID of this workflow execution",
+            "description": "Current UTC date (YYYY-MM-DD)",
         },
     ]
 

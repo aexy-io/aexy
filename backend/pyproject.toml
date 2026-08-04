@@ -86,6 +86,9 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
 addopts = "-v --cov=src/aexy --cov-report=term-missing"
+markers = [
+    "local_llm: needs a local LLM server (LM Studio)",
+]
 
 [tool.ruff]
 line-length = 100

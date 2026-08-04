@@ -17,6 +17,7 @@ from aexy.models.activity import Commit, PullRequest, CodeReview
 from aexy.models.developer import Developer
 from aexy.models.workspace import Workspace, WorkspaceMember
 from aexy.models.team import Team, TeamMember
+from tests.conftest import requires_postgres
 
 settings = get_settings()
 
@@ -370,6 +371,8 @@ class TestSnapshotGenerateEndpoint:
 # ---------------------------------------------------------------------------
 
 class TestE2ESmokeTests:
+
+    @requires_postgres
 
     @pytest.mark.asyncio
     async def test_full_flow(self, client, db_session):

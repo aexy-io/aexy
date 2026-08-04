@@ -24,6 +24,8 @@ from sqlalchemy.pool import StaticPool
 from sqlalchemy import Column, MetaData, String, Table
 
 from aexy.models.agent_inbox import AgentInboxMessage
+from aexy.models.developer import Developer
+from aexy.models.workspace import Workspace
 from aexy.services.agent_email_service import AgentEmailService
 
 # Side-effect import: registers the JSONB→TEXT compile hook so
@@ -31,43 +33,31 @@ from aexy.services.agent_email_service import AgentEmailService
 from tests.unit import test_inbox_thread_chain  # noqa: F401
 
 
-# Stub `workspaces` + `developers` tables so the selectin eager
-# loaders on AgentInboxMessage can issue their SELECTs. They return
-# no rows, but the tables must exist.
+# Stub `workspaces` + `developers` tables so the selectin eager loaders on
+# AgentInboxMessage can issue their SELECTs. They return no rows, but the tables
+# must exist — and must carry every column the loader names.
+#
+# The column lists used to be written out by hand, which meant every new column
+# on Developer or Workspace broke this test with "no such column" (it was
+# `developers.account_type` that finally did it). Deriving the names from the
+# models keeps the stub honest: types collapse to String because the point is
+# only that SQLite can compile the SELECT.
 _stub_meta = MetaData()
-Table(
-    "workspaces",
-    _stub_meta,
-    Column("id", String, primary_key=True),
-    *(Column(c, String) for c in (
-        "name", "slug", "type", "description", "avatar_url",
-        "github_org_id", "owner_id", "plan_id", "settings",
-        "next_task_key", "llm_tokens_used_this_month",
-        "llm_input_tokens_this_month", "llm_output_tokens_this_month",
-        "llm_requests_this_month", "llm_tokens_reset_at",
-        "llm_provider_breakdown", "llm_overage_cost_cents", "is_active",
-        "created_at", "updated_at",
-    )),
-)
-Table(
-    "developers",
-    _stub_meta,
-    Column("id", String, primary_key=True),
-    # Developers has a lot of columns the selectin loader expects;
-    # stub them all as String so the SELECT compiles.
-    *(Column(c, String) for c in (
-        "email", "name", "avatar_url", "plan_id",
-        "repos_synced_count", "llm_requests_today",
-        "llm_requests_reset_at", "llm_tokens_used_this_month",
-        "llm_input_tokens_this_month", "llm_output_tokens_this_month",
-        "llm_tokens_reset_at", "llm_overage_cost_cents",
-        "skill_fingerprint", "work_patterns", "growth_trajectory",
-        "has_completed_onboarding", "repo_sync_settings",
-        "last_llm_analysis_at", "expertise_confidence",
-        "burnout_indicators", "last_intelligence_analysis_at",
-        "created_at", "updated_at",
-    )),
-)
+
+
+def _stub_table(model) -> Table:
+    return Table(
+        model.__tablename__,
+        _stub_meta,
+        *(
+            Column(column.name, String, primary_key=column.primary_key)
+            for column in model.__table__.columns
+        ),
+    )
+
+
+_stub_table(Workspace)
+_stub_table(Developer)
 
 
 @pytest_asyncio.fixture

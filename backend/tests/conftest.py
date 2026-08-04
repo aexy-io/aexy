@@ -36,6 +36,17 @@ if not _IS_SQLITE and "test" not in TEST_DATABASE_URL.rsplit("/", 1)[-1].lower()
     )
 
 
+# Some queries are PostgreSQL-only — date_trunc above all — so the tests that
+# exercise them cannot pass against the SQLite default. Marking them keeps a
+# SQLite run green and honest instead of reporting failures the code does not
+# have; a Postgres run (TEST_DATABASE_URL=...aexy_test) still covers them.
+requires_postgres = pytest.mark.skipif(
+    _IS_SQLITE,
+    reason="needs PostgreSQL (date_trunc and other server-side SQL); "
+    "set TEST_DATABASE_URL to a Postgres DSN ending in a name containing 'test'",
+)
+
+
 @pytest.fixture(scope="session")
 def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
     """Create an event loop for the test session."""

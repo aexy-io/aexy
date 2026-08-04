@@ -15,8 +15,6 @@ import {
   Automation,
   AutomationRun,
   AutomationModule,
-  AutomationTriggerType,
-  AutomationActionType,
 } from "@/lib/api";
 
 // Re-export types for convenience
@@ -256,6 +254,33 @@ export function useAutomation(workspaceId: string | null, automationId: string |
     error,
     refetch,
   };
+}
+
+/**
+ * Hook for the enabled-module list.
+ *
+ * The builder's module picker uses this rather than a local constant: a module
+ * is offerable only while the server registry has triggers and actions for it,
+ * and that gate lives in the backend (ENABLED_MODULES).
+ *
+ * @param workspaceId - The workspace ID
+ * @returns The enabled module ids, in registry order
+ */
+export function useAutomationModuleRegistry(workspaceId: string | null) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["automationModules", workspaceId],
+    queryFn: () => automationsApi.getModuleRegistry(workspaceId!),
+    enabled: !!workspaceId,
+    // The registry only changes on deploy.
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const modules = useMemo<AutomationModule[]>(
+    () => (data?.modules || []).map((entry) => entry.module),
+    [data],
+  );
+
+  return { modules, isLoading, error };
 }
 
 /**

@@ -7,6 +7,7 @@ import {
   ToolBadges,
   LLMConfigDisplay,
   WorkingHoursDisplay,
+  type LLMProvider,
 } from "@/components/agents/shared";
 import { AgentType, WorkingHoursConfig } from "@/lib/api";
 
@@ -15,7 +16,7 @@ interface AgentConfig {
   name: string;
   description: string;
   mentionHandle: string;
-  llmProvider: "claude" | "gemini" | "ollama" | "openrouter";
+  llmProvider: LLMProvider;
   llmModel: string;
   temperature: number;
   maxTokens: number;

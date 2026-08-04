@@ -60,37 +60,43 @@ const categoryIcons: Record<string, React.ReactNode> = {
   nodes: <Layers className="h-4 w-4" />,
 };
 
-// Default fields available for new automations before saving
+// Fallback for an automation that has not been saved yet, when there is no
+// automation row for GET field-schema to describe.
+//
+// Every path here resolves in both executors. The list it replaces was
+// invented — record.email, record.phone, record.company, record.title,
+// record.stage, record.status, record.owner, record.created_at,
+// record.updated_at, trigger.type, trigger.timestamp, system.current_date,
+// system.current_time — and none of them resolve: record fields live under
+// record.values.<slug>, the trigger key is trigger_type, and the system
+// variables are now/today. Picking one produced a step that failed its run with
+// "Dynamic value is missing" (canvas path) or shipped literal {{braces}}
+// (inline path).
+//
+// Real record fields need the object's attributes, which arrive either from
+// `objectId` below or from the server schema after the first save.
 const defaultSchema: Record<string, SchemaCategory> = {
   record: {
     label: "Record Fields",
     fields: [
       { path: "record.id", name: "Record ID", type: "text" },
-      { path: "record.name", name: "Name", type: "text" },
-      { path: "record.email", name: "Email", type: "email" },
-      { path: "record.phone", name: "Phone", type: "phone" },
-      { path: "record.company", name: "Company", type: "text" },
-      { path: "record.title", name: "Title", type: "text" },
-      { path: "record.stage", name: "Stage", type: "select" },
-      { path: "record.status", name: "Status", type: "select" },
-      { path: "record.owner", name: "Owner", type: "text" },
-      { path: "record.created_at", name: "Created At", type: "timestamp" },
-      { path: "record.updated_at", name: "Updated At", type: "timestamp" },
+      { path: "record.name", name: "Record Name", type: "text" },
     ],
   },
   trigger: {
     label: "Trigger Data",
     fields: [
-      { path: "trigger.type", name: "Trigger Type", type: "text" },
-      { path: "trigger.timestamp", name: "Trigger Time", type: "timestamp" },
-      { path: "trigger.payload", name: "Payload", type: "object" },
+      { path: "trigger.trigger_type", name: "Trigger Type", type: "text" },
+      { path: "trigger.workspace_id", name: "Workspace ID", type: "text" },
+      { path: "trigger.object_id", name: "Object Type ID", type: "text" },
+      { path: "trigger.record_id", name: "Record ID", type: "text" },
     ],
   },
   system: {
-    label: "System",
+    label: "System Variables",
     fields: [
-      { path: "system.current_date", name: "Current Date", type: "date" },
-      { path: "system.current_time", name: "Current Time", type: "timestamp" },
+      { path: "system.now", name: "Current Timestamp", type: "timestamp" },
+      { path: "system.today", name: "Today's Date", type: "date" },
     ],
   },
 };
@@ -326,9 +332,14 @@ export function FieldPicker({
         />
       </div>
 
-      {/* Dropdown */}
+      {/* Dropdown. Its width is its own, not the trigger's: `left-0 right-0`
+          made the panel exactly as wide as whatever opened it, and from the
+          small "Insert field…" button that is ~130px — so every field name
+          truncated to one or two characters. Anchored right so it stays inside
+          the config panel whether the trigger is full-width (condition rows) or
+          a narrow button at the panel's edge. */}
       {isOpen && (
-        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-muted border border-border rounded-lg shadow-xl max-h-[400px] overflow-hidden flex flex-col">
+        <div className="absolute z-50 top-full right-0 mt-1 w-80 max-w-[calc(100vw-2rem)] bg-muted border border-border rounded-lg shadow-xl max-h-[400px] overflow-hidden flex flex-col">
           {/* Search input */}
           <div className="p-2 border-b border-border">
             <div className="flex items-center gap-2 bg-accent rounded-lg px-3 py-2">
@@ -375,15 +386,23 @@ export function FieldPicker({
                             className="flex items-center gap-2 w-full px-2 py-1.5 text-left text-sm text-foreground hover:bg-accent rounded group"
                             onClick={() => selectField(field.path)}
                           >
-                            <span className="w-5 h-5 flex items-center justify-center text-xs text-muted-foreground bg-accent/50 rounded">
+                            <span className="w-5 h-5 shrink-0 flex items-center justify-center text-xs text-muted-foreground bg-accent/50 rounded">
                               {typeIcons[field.type] || "?"}
                             </span>
-                            <span className="flex-1 truncate">{field.name}</span>
-                            {field.required && (
-                              <span className="text-amber-400 text-xs">*</span>
-                            )}
-                            <span className="text-muted-foreground text-xs opacity-0 group-hover:opacity-100 truncate max-w-[100px]">
-                              {field.path}
+                            {/* Name and path stacked. Side by side, the path was
+                                clipped to 100px and only appeared on hover, so
+                                the one thing that says what a field resolves to
+                                was the first thing to disappear. */}
+                            <span className="flex-1 min-w-0">
+                              <span className="flex items-center gap-1">
+                                <span className="truncate">{field.name}</span>
+                                {field.required && (
+                                  <span className="text-amber-400 text-xs shrink-0">*</span>
+                                )}
+                              </span>
+                              <span className="block text-muted-foreground text-xs font-mono truncate">
+                                {field.path}
+                              </span>
                             </span>
                           </button>
                         ))}
@@ -425,10 +444,15 @@ export function FieldPicker({
                                   className="flex items-center gap-2 w-full px-2 py-1.5 text-left text-sm text-foreground hover:bg-accent rounded group"
                                   onClick={() => selectField(output.path)}
                                 >
-                                  <span className="w-5 h-5 flex items-center justify-center text-xs text-muted-foreground bg-accent/50 rounded">
+                                  <span className="w-5 h-5 shrink-0 flex items-center justify-center text-xs text-muted-foreground bg-accent/50 rounded">
                                     {typeIcons[output.type] || "?"}
                                   </span>
-                                  <span className="flex-1 truncate">{output.name}</span>
+                                  <span className="flex-1 min-w-0">
+                                    <span className="block truncate">{output.name}</span>
+                                    <span className="block text-muted-foreground text-xs font-mono truncate">
+                                      {output.path}
+                                    </span>
+                                  </span>
                                 </button>
                               ))}
                             </div>

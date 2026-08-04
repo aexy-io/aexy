@@ -1,11 +1,14 @@
-"""Phase-2 palette honesty trim (US-1.5): the automation registry is CRM-only.
+"""Phase-2 palette honesty trim (US-1.5), now across every enabled module.
 
-Non-CRM modules are descoped (see prds/automations-noncrm-deferred.md) and
-orphan/unwired CRM capabilities are hidden until wired/built. The registry
-accessors are the source of truth the frontend palette consumes.
+The registry accessors are the source of truth the frontend palette consumes.
+Orphan/unwired capabilities stay hidden until wired/built — that rule is what
+this file pins. The CRM-only module scope it also used to pin was lifted once
+every module in the registry had a live trigger dispatch; the per-module
+contract lives in test_automation_module_registry.py.
 """
 
 from aexy.schemas.automation import (
+    ENABLED_MODULES,
     get_action_ids,
     get_actions_for_module,
     get_all_actions,
@@ -49,26 +52,30 @@ WITHHELD_ACTIONS = ["add_to_list", "remove_from_list"]
 
 # --- module scoping -------------------------------------------------------
 
-def test_all_triggers_only_crm():
-    modules = set(get_all_triggers().keys())
-    assert modules == {"crm"}
+def test_all_triggers_cover_every_enabled_module():
+    assert set(get_all_triggers().keys()) == set(ENABLED_MODULES)
 
 
-def test_all_actions_only_crm_and_common():
-    modules = set(get_all_actions().keys())
-    assert modules == {"common", "crm"}
+def test_all_actions_cover_every_enabled_module_plus_common():
+    assert set(get_all_actions().keys()) == {"common", *ENABLED_MODULES}
 
 
-def test_non_crm_module_triggers_empty():
+def test_non_crm_modules_are_offered():
+    """Was "…_empty": each of these now dispatches, so each is offered."""
     for module in NON_CRM_MODULES:
-        assert get_triggers_for_module(module) == [], module
-        assert get_trigger_ids(module) == [], module
+        assert module in ENABLED_MODULES, module
+        assert get_triggers_for_module(module), module
+        assert get_trigger_ids(module), module
+        assert get_actions_for_module(module), module
+        assert get_action_ids(module), module
 
 
-def test_non_crm_module_actions_empty():
-    for module in NON_CRM_MODULES:
-        assert get_actions_for_module(module) == [], module
-        assert get_action_ids(module) == [], module
+def test_unknown_module_registries_stay_empty():
+    """ENABLED_MODULES remains the gate, so anything outside it is empty."""
+    assert get_triggers_for_module("not_a_module") == []
+    assert get_trigger_ids("not_a_module") == []
+    assert get_actions_for_module("not_a_module") == []
+    assert get_action_ids("not_a_module") == []
 
 
 # --- hidden CRM capabilities ---------------------------------------------

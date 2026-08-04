@@ -39,6 +39,7 @@ import { TestResultsPanel } from "./TestResultsPanel";
 import { VersionHistory } from "./VersionHistory";
 import { useWorkflowValidation } from "@/hooks/useWorkflowValidation";
 import { api } from "@/lib/api";
+import { useThemeStore } from "@/stores/themeStore";
 import { toast } from "sonner";
 
 interface NodeResult {
@@ -144,6 +145,15 @@ function WorkflowCanvasInner({
   // dotgrid stays legible across light + dark without overpowering
   // either. Defaults to a slate mid-tone for first paint.
   const [backgroundColor, setBackgroundColor] = useState("#94a3b8");
+
+  // React Flow ships its own light/dark token sets and picks between them from
+  // `colorMode`, which defaults to "light". Left unset, the zoom Controls kept
+  // their light tokens — #fefefe buttons whose icons are `fill: currentColor`,
+  // so in the dark theme they were near-white glyphs on a near-white button
+  // (invisible), and the MiniMap painted itself #fff over the dark canvas.
+  // Neither is reachable with a Tailwind class: the button colors come from CSS
+  // variables and the MiniMap fills its own SVG.
+  const resolvedTheme = useThemeStore((state) => state.resolvedTheme);
   useEffect(() => {
     const readColor = () => {
       if (typeof window === "undefined") return;
@@ -175,7 +185,7 @@ function WorkflowCanvasInner({
   const { getViewport, fitView, setViewport, screenToFlowPosition } = useReactFlow();
 
   // Workflow validation
-  const { validationResult, getNodeErrors, hasNodeErrors } = useWorkflowValidation(nodes, edges);
+  const { validationResult, getNodeErrors } = useWorkflowValidation(nodes, edges);
 
   // Build a map of node results for quick lookup
   const nodeResultsMap = useMemo(() => {
@@ -373,8 +383,10 @@ function WorkflowCanvasInner({
   // Track if initial viewport has been applied
   const viewportInitialized = useRef(false);
 
-  // Apply initial viewport only once on mount
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Apply the saved viewport once, on mount. Deliberately not reactive: adding
+  // `initialViewport`/`setViewport` to the deps would re-run this whenever the
+  // saved workflow refetches and yank the canvas back from wherever the user
+  // had panned to. The ref guard makes the one-shot explicit.
   useEffect(() => {
     if (initialViewport && !viewportInitialized.current) {
       viewportInitialized.current = true;
@@ -383,7 +395,8 @@ function WorkflowCanvasInner({
         setViewport(initialViewport);
       });
     }
-  }, []); // Intentionally empty - only run on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Load initial version number
   useEffect(() => {
@@ -931,6 +944,7 @@ function WorkflowCanvasInner({
           fitView
           snapToGrid
           snapGrid={[15, 15]}
+          colorMode={resolvedTheme}
           className="bg-background"
         >
           <Background color={backgroundColor} gap={15} bgColor="transparent" />

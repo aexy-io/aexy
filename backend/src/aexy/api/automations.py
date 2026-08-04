@@ -33,10 +33,14 @@ from aexy.schemas.automation import (
     ActionRegistryResponse,
     ModuleTriggersResponse,
     ModuleActionsResponse,
+    EnabledModule,
+    ModuleRegistryResponse,
     get_all_triggers,
     get_all_actions,
+    get_enabled_modules,
     get_triggers_for_module,
     get_actions_for_module,
+    get_action_ids,
     get_trigger_ids,
 )
 
@@ -65,6 +69,31 @@ async def check_workspace_permission(
 # =============================================================================
 # REGISTRY ENDPOINTS (for frontend to discover available triggers/actions)
 # =============================================================================
+
+@router.get("/registry/modules", response_model=ModuleRegistryResponse)
+async def get_module_registry(
+    workspace_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: Developer = Depends(get_current_developer),
+):
+    """List the modules an automation can be created for.
+
+    The builder's module picker is driven by this, so it offers exactly the
+    modules whose triggers dispatch and whose palette is non-empty. Counts are
+    the post-visibility numbers — what the palette will actually show.
+    """
+    await check_workspace_permission(db, workspace_id, current_user.id, "member")
+    return ModuleRegistryResponse(
+        modules=[
+            EnabledModule(
+                module=module,
+                trigger_count=len(get_trigger_ids(module)),
+                action_count=len(get_action_ids(module)),
+            )
+            for module in get_enabled_modules()
+        ]
+    )
+
 
 @router.get("/registry/triggers", response_model=TriggerRegistryResponse)
 async def get_trigger_registry(

@@ -97,7 +97,12 @@ _EMAIL_LITERAL_FIELDS = ("to", "email_to", "email", "notify_email")
 _EXECUTABLE_NODE_TYPES = ("trigger", "action", "wait", "condition", "branch", "agent")
 
 # Namespaces a {{variable}} reference may resolve against at execution time.
-_VARIABLE_NAMESPACES = {"record", "trigger", "variables", "secrets"}
+# `system` was missing while the builder's field picker offered
+# system.now/system.today, so a step configured from the picker failed to save
+# at all ("must start with one of: record, secrets, trigger, variables"). Both
+# executors resolve it now (WorkflowActionHandler._system_value and
+# CRMAutomationService._system_value), so it belongs here.
+_VARIABLE_NAMESPACES = {"record", "trigger", "variables", "secrets", "system"}
 
 # Condition operators that require a numeric comparison value.
 _NUMERIC_OPERATORS = {"gt", "gte", "lt", "lte"}
@@ -715,9 +720,16 @@ class WorkflowService:
     # =========================================================================
 
     def validate_workflow(
-        self, nodes: list[dict], edges: list[dict]
+        self, nodes: list[dict], edges: list[dict], module: str = "crm"
     ) -> WorkflowValidationResult:
-        """Validate a workflow definition."""
+        """Validate a workflow definition.
+
+        `module` selects the registry the trigger/action nodes are checked
+        against. It defaults to "crm" for the many callers that only ever build
+        CRM graphs, but the API passes the automation's own module — a hiring
+        automation's candidate.created trigger is not in the CRM registry, and
+        checking it there rejected every non-CRM canvas save.
+        """
         errors: list[WorkflowValidationError] = []
         warnings: list[WorkflowValidationError] = []
 
@@ -818,7 +830,7 @@ class WorkflowService:
 
         # Validate node configurations
         for node in nodes:
-            errors.extend(self._validate_node(node))
+            errors.extend(self._validate_node(node, module))
             errors.extend(_literal_secret_errors(node))
 
         return WorkflowValidationResult(
@@ -828,7 +840,11 @@ class WorkflowService:
         )
 
     async def validate_workflow_for_workspace(
-        self, nodes: list[dict], edges: list[dict], workspace_id: str
+        self,
+        nodes: list[dict],
+        edges: list[dict],
+        workspace_id: str,
+        module: str = "crm",
     ) -> WorkflowValidationResult:
         """Full validation: the static rules plus the checks that need the database.
 
@@ -838,7 +854,7 @@ class WorkflowService:
         forgotten line away from a publish path that skips them, so the two
         halves are joined here instead of at each call site.
         """
-        validation = self.validate_workflow(nodes, edges)
+        validation = self.validate_workflow(nodes, edges, module)
         validation.errors.extend(
             await self.validate_agent_references(nodes, workspace_id)
         )
@@ -891,8 +907,8 @@ class WorkflowService:
                 )
         return errors
 
-    def _validate_node(self, node: dict) -> list[WorkflowValidationError]:
-        """Validate a single node's configuration."""
+    def _validate_node(self, node: dict, module: str = "crm") -> list[WorkflowValidationError]:
+        """Validate a single node's configuration against `module`'s registry."""
         errors = []
         node_type = node.get("type")
         data = node.get("data", {})
@@ -906,7 +922,7 @@ class WorkflowService:
                         message="Trigger node must specify a trigger type",
                     )
                 )
-            elif data.get("trigger_type") not in get_trigger_ids("crm"):
+            elif data.get("trigger_type") not in get_trigger_ids(module):
                 errors.append(
                     WorkflowValidationError(
                         node_id=node["id"],
@@ -928,7 +944,7 @@ class WorkflowService:
                     )
                 )
             action_type = data.get("action_type")
-            if action_type and action_type not in get_action_ids("crm"):
+            if action_type and action_type not in get_action_ids(module):
                 errors.append(
                     WorkflowValidationError(
                         node_id=node["id"],

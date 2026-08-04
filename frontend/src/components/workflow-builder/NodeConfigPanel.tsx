@@ -2,10 +2,16 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Node } from "@xyflow/react";
-import { X, Trash2, ChevronDown, Plus, Database, Copy, Check, ExternalLink, Code, Save, Loader2 } from "lucide-react";
+import { X, Trash2, ChevronDown, Plus, Copy, Check, Code, Save, Loader2 } from "lucide-react";
 import { FieldPicker, InlineFieldPicker } from "./FieldPicker";
 import { SecretPicker } from "./SecretPicker";
-import { api, CRMAttribute, CRMObject } from "@/lib/api";
+import {
+  MODULE_ACTION_FIELDS,
+  MODULE_ACTION_TYPES,
+  type ModuleActionField,
+  type ModuleActionSpec,
+} from "./moduleActionFields";
+import { api, CRMObject } from "@/lib/api";
 import { HelpTooltip } from "@/components/ui/tooltip";
 import { FieldEditor } from "@/components/fields/FieldRenderer";
 import { useAgents } from "@/hooks/useAgents";
@@ -236,6 +242,105 @@ function getTriggerDescription(module: string, triggerType: string): string | un
     return moduleDescs[triggerType];
   }
   return undefined;
+}
+
+/**
+ * Renders a module action's config from its declaration.
+ *
+ * One renderer for every module action, because the alternative — a bespoke JSX
+ * block per action — is what left ~38 of them with no panel at all.
+ */
+function ModuleActionConfig({
+  spec,
+  data,
+  onUpdate,
+}: {
+  spec: ModuleActionSpec;
+  data: Record<string, unknown>;
+  onUpdate: (updates: Record<string, unknown>) => void;
+}) {
+  const inputClass =
+    "w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm";
+
+  const renderField = (field: ModuleActionField) => {
+    const value = data[field.key];
+
+    if (field.type === "checkbox") {
+      return (
+        <label className="flex items-start gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={value === undefined ? true : Boolean(value)}
+            onChange={(e) => onUpdate({ [field.key]: e.target.checked })}
+            className="mt-0.5 rounded bg-accent border-border"
+          />
+          <span className="text-sm text-foreground">{field.label}</span>
+        </label>
+      );
+    }
+
+    return (
+      <>
+        <label className="block text-sm text-muted-foreground mb-1">
+          {field.label}
+          {field.required && <span className="text-amber-400 ml-1">*</span>}
+        </label>
+        {field.type === "select" ? (
+          <select
+            value={(value as string) ?? ""}
+            onChange={(e) => onUpdate({ [field.key]: e.target.value })}
+            className={inputClass}
+          >
+            <option value="">Select…</option>
+            {(field.options ?? []).map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        ) : field.type === "textarea" ? (
+          <textarea
+            value={(value as string) ?? ""}
+            onChange={(e) => onUpdate({ [field.key]: e.target.value })}
+            placeholder={field.placeholder}
+            rows={3}
+            className={inputClass}
+          />
+        ) : (
+          <input
+            type={field.type === "number" ? "number" : "text"}
+            value={(value as string | number) ?? ""}
+            onChange={(e) =>
+              onUpdate({
+                [field.key]:
+                  field.type === "number"
+                    ? e.target.value === ""
+                      ? ""
+                      : Number(e.target.value)
+                    : e.target.value,
+              })
+            }
+            placeholder={field.placeholder}
+            className={inputClass}
+          />
+        )}
+      </>
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">{spec.summary}</p>
+      {spec.fields.map((field) => (
+        <div key={field.key}>
+          {renderField(field)}
+          {field.help && (
+            <p className="mt-1 text-xs text-muted-foreground">{field.help}</p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
 }
 
 const conditionOperators = [
@@ -1834,7 +1939,14 @@ export function NodeConfigPanel({
               >
                 <option value="slack">Slack Channel</option>
                 <option value="email">Email Group</option>
-                <option value="in_app">In-App Notification</option>
+                {/* In-app delivery to a whole team needs a member roster to
+                    resolve, which teams do not expose yet; both executors read
+                    only the Slack and email channels, so this one stays
+                    disabled rather than silently sending somewhere else. Use
+                    Notify User for in-app. */}
+                <option value="in_app" disabled>
+                  In-App Notification (use Notify User)
+                </option>
               </select>
             </div>
             {((node.data.notify_channel as string) || "slack") === "slack" && (
@@ -2409,8 +2521,22 @@ export function NodeConfigPanel({
           </>
         )}
 
+        {/* Module actions (tickets, hiring, uptime, sprints, campaigns,
+            bookings, forms, tracking, compliance). Declared in
+            moduleActionFields.ts and rendered generically: each key is the key
+            its executor reads, so the step can actually be configured instead of
+            landing on the "will be applied when the workflow runs" placeholder
+            with no fields at all. */}
+        {actionType && MODULE_ACTION_FIELDS[actionType] && (
+          <ModuleActionConfig
+            spec={MODULE_ACTION_FIELDS[actionType]}
+            data={node.data}
+            onUpdate={onUpdate}
+          />
+        )}
+
         {/* Fallback for unhandled action types */}
-        {actionType && ![
+        {actionType && !MODULE_ACTION_TYPES.has(actionType) && ![
           "send_email", "send_sms", "send_slack", "webhook_call",
           "update_record", "create_record", "create_task", "notify_user", "notify_team",
           "assign_owner", "add_to_list", "remove_from_list",
@@ -2466,7 +2592,7 @@ export function NodeConfigPanel({
         <div className="space-y-3">
           <div className="flex items-center gap-1.5">
             <label className="block text-sm text-muted-foreground">Conditions</label>
-            <HelpTooltip content="Rules that must all be true for the automation to execute. Uses AND logic between conditions" />
+            <HelpTooltip content="Rules that decide which path the workflow takes. The Match setting above chooses whether all of them must be true (AND) or any one of them (OR)" />
           </div>
           {conditions.map((condition, index) => (
             <div key={index} className="bg-accent/50 rounded-lg p-3 space-y-2">
@@ -2788,8 +2914,13 @@ export function NodeConfigPanel({
   };
 
   const renderAgentConfig = () => {
-    const agentType: string = "existing";
-
+    // The node runs an agent that already exists in the workspace. The
+    // per-agent-type preset sections that used to live here (lead_scoring,
+    // email_drafter, sales_outreach, data_enrichment, custom) were unreachable —
+    // this was a hardcoded "existing" — and the config they collected
+    // (scoring_model, email_tone, target_persona, max_iterations, …) was read by
+    // no executor. Wiring presets means passing them to the prebuilt agents in
+    // aexy/agents/prebuilt, which is a separate piece of work.
     return (
       <div className="space-y-4">
         <div>
@@ -2818,380 +2949,19 @@ export function NodeConfigPanel({
         </div>
 
         {/* Sales Outreach Configuration */}
-        {agentType === "sales_outreach" && (
-          <>
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1">Outreach Channel</label>
-              <select
-                value={(node.data.outreach_channel as string) || "email"}
-                onChange={(e) => onUpdate({ outreach_channel: e.target.value })}
-                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
-              >
-                <option value="email">Email</option>
-                <option value="linkedin">LinkedIn</option>
-                <option value="phone">Phone Script</option>
-                <option value="multi">Multi-channel Sequence</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1">Tone</label>
-              <select
-                value={(node.data.outreach_tone as string) || "professional"}
-                onChange={(e) => onUpdate({ outreach_tone: e.target.value })}
-                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
-              >
-                <option value="professional">Professional</option>
-                <option value="friendly">Friendly & Casual</option>
-                <option value="formal">Formal</option>
-                <option value="consultative">Consultative</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1">Target Persona</label>
-              <input
-                type="text"
-                value={(node.data.target_persona as string) || ""}
-                onChange={(e) => onUpdate({ target_persona: e.target.value })}
-                placeholder="e.g., VP of Engineering, IT Decision Maker"
-                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1">Value Proposition</label>
-              <textarea
-                value={(node.data.value_proposition as string) || ""}
-                onChange={(e) => onUpdate({ value_proposition: e.target.value })}
-                placeholder="Key benefits to highlight..."
-                rows={2}
-                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="research-company"
-                checked={(node.data.research_company as boolean) ?? true}
-                onChange={(e) => onUpdate({ research_company: e.target.checked })}
-                className="rounded bg-accent border-border"
-              />
-              <label htmlFor="research-company" className="text-sm text-foreground">
-                Research company before outreach
-              </label>
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="personalize-pain-points"
-                checked={(node.data.personalize_pain_points as boolean) ?? true}
-                onChange={(e) => onUpdate({ personalize_pain_points: e.target.checked })}
-                className="rounded bg-accent border-border"
-              />
-              <label htmlFor="personalize-pain-points" className="text-sm text-foreground">
-                Identify and address pain points
-              </label>
-            </div>
-          </>
-        )}
+        
 
         {/* Lead Scoring Configuration */}
-        {agentType === "lead_scoring" && (
-          <>
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1">Scoring Model</label>
-              <select
-                value={(node.data.scoring_model as string) || "balanced"}
-                onChange={(e) => onUpdate({ scoring_model: e.target.value })}
-                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
-              >
-                <option value="balanced">Balanced (Fit + Engagement)</option>
-                <option value="fit_focused">Fit-Focused (Demographics)</option>
-                <option value="engagement_focused">Engagement-Focused (Behavior)</option>
-                <option value="custom">Custom Criteria</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1">Ideal Customer Profile</label>
-              <textarea
-                value={(node.data.ideal_customer_profile as string) || ""}
-                onChange={(e) => onUpdate({ ideal_customer_profile: e.target.value })}
-                placeholder="Describe your ideal customer: company size, industry, tech stack..."
-                rows={3}
-                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1">Score Threshold for Hot Lead</label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                value={(node.data.hot_lead_threshold as number) || 70}
-                onChange={(e) => onUpdate({ hot_lead_threshold: parseInt(e.target.value) || 70 })}
-                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Leads scoring above this will be marked as hot
-              </p>
-            </div>
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1">Save Score To</label>
-              <FieldPicker
-                workspaceId={workspaceId}
-                automationId={automationId}
-                objectId={triggerObjectId}
-                nodeId={node.id}
-                value={(node.data.score_field as string) || ""}
-                onChange={(value) => {
-                  const match = value.match(/\{\{(.+?)\}\}/);
-                  onUpdate({ score_field: match ? match[1] : value });
-                }}
-                placeholder="Select field to store score..."
-                allowCustom={true}
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="include-reasoning"
-                checked={(node.data.include_scoring_reasoning as boolean) ?? true}
-                onChange={(e) => onUpdate({ include_scoring_reasoning: e.target.checked })}
-                className="rounded bg-accent border-border"
-              />
-              <label htmlFor="include-reasoning" className="text-sm text-foreground">
-                Include scoring reasoning in notes
-              </label>
-            </div>
-          </>
-        )}
+        
 
         {/* Email Drafter Configuration */}
-        {agentType === "email_drafter" && (
-          <>
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1">Email Type</label>
-              <select
-                value={(node.data.email_type as string) || "outreach"}
-                onChange={(e) => onUpdate({ email_type: e.target.value })}
-                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
-              >
-                <option value="outreach">Cold Outreach</option>
-                <option value="follow_up">Follow-up</option>
-                <option value="nurture">Nurture</option>
-                <option value="proposal">Proposal</option>
-                <option value="thank_you">Thank You</option>
-                <option value="re_engagement">Re-engagement</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1">Tone</label>
-              <select
-                value={(node.data.email_tone as string) || "professional"}
-                onChange={(e) => onUpdate({ email_tone: e.target.value })}
-                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
-              >
-                <option value="professional">Professional</option>
-                <option value="friendly">Friendly</option>
-                <option value="formal">Formal</option>
-                <option value="urgent">Urgent</option>
-                <option value="casual">Casual</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1">Length</label>
-              <select
-                value={(node.data.email_length as string) || "medium"}
-                onChange={(e) => onUpdate({ email_length: e.target.value })}
-                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
-              >
-                <option value="short">Short (2-3 sentences)</option>
-                <option value="medium">Medium (1 paragraph)</option>
-                <option value="long">Long (2-3 paragraphs)</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1">Key Points to Include</label>
-              <textarea
-                value={(node.data.email_key_points as string) || ""}
-                onChange={(e) => onUpdate({ email_key_points: e.target.value })}
-                placeholder="Main points or call-to-action to include..."
-                rows={2}
-                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1">Writing Sample (Optional)</label>
-              <textarea
-                value={(node.data.writing_sample as string) || ""}
-                onChange={(e) => onUpdate({ writing_sample: e.target.value })}
-                placeholder="Paste an example email to match your style..."
-                rows={3}
-                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="include-signature"
-                checked={(node.data.include_signature as boolean) ?? true}
-                onChange={(e) => onUpdate({ include_signature: e.target.checked })}
-                className="rounded bg-accent border-border"
-              />
-              <label htmlFor="include-signature" className="text-sm text-foreground">
-                Include email signature
-              </label>
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="personalize-email"
-                checked={(node.data.personalize_email as boolean) ?? true}
-                onChange={(e) => onUpdate({ personalize_email: e.target.checked })}
-                className="rounded bg-accent border-border"
-              />
-              <label htmlFor="personalize-email" className="text-sm text-foreground">
-                Personalize based on record data
-              </label>
-            </div>
-          </>
-        )}
+        
 
         {/* Data Enrichment Configuration */}
-        {agentType === "data_enrichment" && (
-          <>
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1">Enrichment Sources</label>
-              <div className="space-y-2">
-                {[
-                  { value: "linkedin", label: "LinkedIn" },
-                  { value: "company_website", label: "Company Website" },
-                  { value: "news", label: "Recent News" },
-                  { value: "social_media", label: "Social Media" },
-                  // { value: "clearbit", label: "Clearbit" },
-                  // { value: "apollo", label: "Apollo" },
-                ].map((source) => (
-                  <label key={source.value} className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={((node.data.enrichment_sources as string[]) || ["linkedin", "company_website"]).includes(source.value)}
-                      onChange={(e) => {
-                        const current = (node.data.enrichment_sources as string[]) || ["linkedin", "company_website"];
-                        const updated = e.target.checked
-                          ? [...current, source.value]
-                          : current.filter((s) => s !== source.value);
-                        onUpdate({ enrichment_sources: updated });
-                      }}
-                      className="rounded bg-accent border-border"
-                    />
-                    <span className="text-sm text-foreground">{source.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1">Fields to Enrich</label>
-              <div className="space-y-2">
-                {[
-                  { value: "company_info", label: "Company Info (size, industry, revenue)" },
-                  { value: "contact_info", label: "Contact Info (title, phone, email)" },
-                  { value: "social_profiles", label: "Social Profiles" },
-                  { value: "tech_stack", label: "Technology Stack" },
-                  { value: "funding", label: "Funding & Investors" },
-                  { value: "recent_news", label: "Recent News & Events" },
-                ].map((field) => (
-                  <label key={field.value} className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={((node.data.enrich_field_types as string[]) || ["company_info", "contact_info"]).includes(field.value)}
-                      onChange={(e) => {
-                        const current = (node.data.enrich_field_types as string[]) || ["company_info", "contact_info"];
-                        const updated = e.target.checked
-                          ? [...current, field.value]
-                          : current.filter((f) => f !== field.value);
-                        onUpdate({ enrich_field_types: updated });
-                      }}
-                      className="rounded bg-accent border-border"
-                    />
-                    <span className="text-sm text-foreground">{field.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="overwrite-enrichment"
-                checked={(node.data.overwrite_enriched as boolean) || false}
-                onChange={(e) => onUpdate({ overwrite_enriched: e.target.checked })}
-                className="rounded bg-accent border-border"
-              />
-              <label htmlFor="overwrite-enrichment" className="text-sm text-foreground">
-                Overwrite existing field values
-              </label>
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="add-enrichment-note"
-                checked={(node.data.add_enrichment_note as boolean) ?? true}
-                onChange={(e) => onUpdate({ add_enrichment_note: e.target.checked })}
-                className="rounded bg-accent border-border"
-              />
-              <label htmlFor="add-enrichment-note" className="text-sm text-foreground">
-                Add note with enrichment summary
-              </label>
-            </div>
-          </>
-        )}
+        
 
         {/* Custom Agent Configuration */}
-        {agentType === "custom" && (
-          <>
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1">Agent ID</label>
-              <input
-                type="text"
-                value={(node.data.agent_id as string) || ""}
-                onChange={(e) => onUpdate({ agent_id: e.target.value })}
-                placeholder="Select or enter agent ID"
-                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1">Custom Goal</label>
-              <textarea
-                value={(node.data.custom_goal as string) || ""}
-                onChange={(e) => onUpdate({ custom_goal: e.target.value })}
-                placeholder="What should this agent accomplish?"
-                rows={3}
-                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1">Additional Context</label>
-              <textarea
-                value={(node.data.custom_context as string) || ""}
-                onChange={(e) => onUpdate({ custom_context: e.target.value })}
-                placeholder="Any additional instructions or context..."
-                rows={2}
-                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1">Max Iterations</label>
-              <input
-                type="number"
-                min="1"
-                max="50"
-                value={(node.data.max_iterations as number) || 10}
-                onChange={(e) => onUpdate({ max_iterations: parseInt(e.target.value) || 10 })}
-                className="w-full bg-accent border border-border rounded-lg px-3 py-2 text-foreground text-sm"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Maximum reasoning steps before stopping
-              </p>
-            </div>
-          </>
-        )}
+        
 
         <div className="border-t border-border pt-4">
           <label className="block text-sm text-muted-foreground mb-2">
@@ -3283,26 +3053,9 @@ export function NodeConfigPanel({
         {/* Description */}
         <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
           <p className="font-medium text-muted-foreground mb-1">How it works</p>
-          {agentType === "sales_outreach" && (
-            <p>Researches the prospect, identifies pain points based on their company and role, then crafts personalized outreach messages designed to start conversations.</p>
-          )}
-          {agentType === "lead_scoring" && (
-            <p>Analyzes lead data against your ideal customer profile, evaluates engagement signals, and assigns a score from 0-100 with detailed reasoning.</p>
-          )}
-          {agentType === "email_drafter" && (
-            <p>Generates contextual emails based on record data and your specifications. Can match your writing style if provided with samples.</p>
-          )}
-          {agentType === "data_enrichment" && (
-            <p>Searches multiple sources to fill in missing record data like company info, contact details, and recent news.</p>
-          )}
-          {agentType === "custom" && (
-            <p>Executes a custom agent you&apos;ve configured with specific goals, tools, and behaviors.</p>
-          )}
-          {agentType === "existing" && (
-            <p>
-              Runs the selected active agent with the CRM record, trigger data, and prior workflow outputs, then records its observed result.
-            </p>
-          )}
+          <p>
+            Runs the selected active agent with the CRM record, trigger data, and prior workflow outputs, then records its observed result.
+          </p>
         </div>
       </div>
     );

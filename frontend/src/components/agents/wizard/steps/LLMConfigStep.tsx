@@ -2,14 +2,14 @@
 
 import { Info } from "lucide-react";
 import { HelpTooltip } from "@/components/ui/tooltip";
-import { LLMProviderSelector } from "@/components/agents/shared";
+import { LLMProviderSelector, type LLMProvider } from "@/components/agents/shared";
 
 interface LLMConfigStepProps {
-  provider: "claude" | "gemini" | "ollama" | "openrouter";
+  provider: LLMProvider;
   model: string;
   temperature: number;
   maxTokens: number;
-  onProviderChange: (provider: "claude" | "gemini" | "ollama" | "openrouter") => void;
+  onProviderChange: (provider: LLMProvider) => void;
   onModelChange: (model: string) => void;
   onTemperatureChange: (temp: number) => void;
   onMaxTokensChange: (tokens: number) => void;

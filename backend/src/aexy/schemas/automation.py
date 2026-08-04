@@ -272,6 +272,8 @@ ACTION_REGISTRY: dict[str, list[dict[str, str]]] = {
         {"id": "update_compliance_status", "description": "Update compliance status for a team member"},
         {"id": "restrict_permissions", "description": "Restrict permissions due to non-compliance"},
         {"id": "send_compliance_digest", "description": "Send a compliance status digest to managers"},
+        # The one compliance status change the module actually models.
+        {"id": "waive_training", "description": "Waive a training assignment, with a recorded reason"},
     ],
 }
 
@@ -282,16 +284,37 @@ ACTION_REGISTRY: dict[str, list[dict[str, str]]] = {
 # =============================================================================
 
 # =============================================================================
-# CRM-ONLY SCOPE (descope decision 2026-07-15)
-# Automations are scoped to CRM. Non-CRM modules are hidden from the registry
-# the palette consumes (inventory preserved in prds/automations-noncrm-deferred.md).
-# Orphan/unwired capabilities are hidden until wired/built
-# (see prds/crm-automations-user-stories.md). To re-activate a module, add it to
-# ENABLED_MODULES and wire its trigger dispatch; to surface a hidden capability,
-# remove it from HIDDEN_TRIGGERS / HIDDEN_ACTIONS.
+# MODULE SCOPE
+# Automations were CRM-only from 2026-07-15 because no other module dispatched
+# trigger events — the condition the descope note set for re-activation was
+# "add it to ENABLED_MODULES and wire its trigger dispatch". Every module in
+# TRIGGER_REGISTRY now dispatches: crm through CRMEventService.process_trigger,
+# the other nine through dispatch_automation_event() (tickets in ticket_service
+# + alert_ingestion_service, hiring in hiring/api + hiring_intelligence +
+# assessment_take, email_marketing in campaign_service + email_tracking, uptime
+# in uptime_service, sprints in sprint_service/sprint_task_service/epic_service/
+# sprint_analytics_service, forms in form_submission_handler, booking in
+# booking_service + activities/booking, tracking in tracking_events, compliance
+# in compliance_service + activities/compliance_automation), so all ten are
+# offered again.
+#
+# Enabling a module does NOT mean every entry in its registry is live. Triggers
+# nothing emits, and actions with no executor on both run paths, stay withheld
+# per module below — the palette must never offer a step that cannot run.
 # =============================================================================
 
-ENABLED_MODULES: tuple[str, ...] = ("crm",)
+ENABLED_MODULES: tuple[str, ...] = (
+    "crm",
+    "tickets",
+    "hiring",
+    "email_marketing",
+    "uptime",
+    "sprints",
+    "forms",
+    "booking",
+    "tracking",
+    "compliance",
+)
 
 UNAVAILABLE_TRIGGER_REASONS: dict[str, str] = {
     # schedule.daily/weekly, date.approaching/passed un-hidden 2026-07-23:
@@ -332,6 +355,97 @@ UNAVAILABLE_ACTION_REASONS: dict[str, str] = {
 HIDDEN_TRIGGERS: frozenset[str] = frozenset(UNAVAILABLE_TRIGGER_REASONS)
 HIDDEN_ACTIONS: frozenset[str] = frozenset(UNAVAILABLE_ACTION_REASONS)
 
+# Per-module withholding. The flat maps above hide an id everywhere, which
+# cannot express a capability that is live in one module and dead in another:
+# tracking emits blocker.created/blocker.resolved, sprints declares the same two
+# ids and emits neither. Ids listed here are hidden only for the named module.
+UNAVAILABLE_TRIGGER_REASONS_BY_MODULE: dict[str, dict[str, str]] = {
+    "tickets": {
+        # sla.breached dispatches from the breach clock; the warning threshold
+        # ahead of it has no emitter.
+        "sla.warning": "Nothing emits an SLA warning ahead of sla.breached.",
+    },
+    "hiring": {
+        # The offer lifecycle is stage text on the candidate ("offer_accepted"
+        # is compared as a stage in api/hiring.py), not a dispatched event.
+        "offer.sent": "Offer state is candidate stage text; no event is dispatched.",
+        "offer.accepted": "Offer state is candidate stage text; no event is dispatched.",
+        "offer.declined": "Offer state is candidate stage text; no event is dispatched.",
+    },
+    "email_marketing": {
+        # email.opened/clicked/unsubscribed dispatch from email_tracking; these
+        # three have no provider-webhook path into automations. email.bounced
+        # exists as a CRM activity type and a workflow-trigger catalog entry,
+        # neither of which reaches process_module_trigger.
+        "email.bounced": "No provider bounce webhook dispatches an automation event.",
+        "email.complained": "No provider complaint webhook dispatches an automation event.",
+        "recipient.removed": "Only recipient.added is dispatched by campaign_service.",
+    },
+    "sprints": {
+        # Both ids belong to tracking, which does emit them under module
+        # "tracking". Nothing emits them under "sprints".
+        "blocker.created": "Blocker events are dispatched under the tracking module.",
+        "blocker.resolved": "Blocker events are dispatched under the tracking module.",
+    },
+    "forms": {
+        # form_submission_handler dispatches form.submitted only; partial-fill
+        # telemetry is not collected.
+        "form.started": "Partial form fills are not tracked, so nothing emits this.",
+        "form.abandoned": "Partial form fills are not tracked, so nothing emits this.",
+    },
+    "booking": {
+        "event_type.created": "Event-type CRUD does not dispatch automation events.",
+    },
+}
+
+# Same idea for actions. An action is offered only when BOTH run paths can
+# execute it — the canvas/Temporal path (WorkflowActionHandler) and the inline
+# path (CRMAutomationService). Several ids below are implemented on the canvas
+# path only; offering them would fail any automation that runs inline, so they
+# stay hidden until they are added to CRMAutomationService.INLINE_ACTION_TYPES.
+UNAVAILABLE_ACTION_REASONS_BY_MODULE: dict[str, dict[str, str]] = {
+    "uptime": {
+        # An on-call rota does not exist as a concept anywhere in the product —
+        # there is no schedule, no escalation ladder and no paging integration to
+        # route to, so this cannot be more than a notification with a misleading
+        # name. Offer notify_user/send_slack until one exists.
+        "page_on_call": "No on-call rota or paging integration exists to route to.",
+    },
+    "tracking": {
+        # "Activity pattern" is not a stored thing: the tracking module records
+        # standups, work logs, time entries and blockers, and derives patterns at
+        # read time. There is nothing to update.
+        "update_activity_pattern": "No stored activity pattern exists to update.",
+        # Both are notifications whose audience is the standup participants; the
+        # module has no participant roster to resolve, so notify_user/notify_team
+        # with an explicit target is the honest way to send these today.
+        "send_standup_reminder": "No standup roster to resolve recipients from; use notify_user/notify_team.",
+        "celebrate_streak": "No standup roster to resolve recipients from; use notify_user/notify_team.",
+    },
+    "forms": {
+        # A confirmation is an email to the submitter. send_email already owns
+        # delivery, and the submission's email is in the trigger payload
+        # ({{trigger.data.email}}), so a dedicated action would only duplicate it.
+        "send_confirmation": "Compose from the form trigger plus send_email.",
+    },
+    "compliance": {
+        # Compliance status is per training assignment, not per member: there is
+        # no member-level status column to write. waive_training changes the
+        # status that does exist.
+        "update_compliance_status": "Compliance status is per assignment; use waive_training.",
+        # Revoking app access from an automation would need an explicit,
+        # auditable restriction model (what is restricted, by whom, until when,
+        # and how it is restored). Writing app-access grants without that is how
+        # people get locked out with no trail.
+        "restrict_permissions": "Needs an auditable, reversible access-restriction model first.",
+        # Both are deliveries, not state changes. They read overdue assignments
+        # and then send, which send_email / notify_user already do properly
+        # (outbox, retries, per-recipient step accounting).
+        "send_training_reminder": "Compose from a compliance trigger plus send_email/notify_user.",
+        "send_compliance_digest": "Compose from a compliance trigger plus send_email.",
+    },
+}
+
 # Structural palette capabilities share the registry transport with actions,
 # but the frontend creates their real canvas node type instead of an action
 # node. This keeps the server as the sole visibility source without duplicating
@@ -351,28 +465,47 @@ INTEGRATION_GATED_ACTIONS: dict[str, str] = {
 }
 
 
-def _visible_triggers(entries: list[dict[str, str]]) -> list[dict[str, str]]:
-    return [e for e in entries if e["id"] not in HIDDEN_TRIGGERS]
+def hidden_triggers_for_module(module: str) -> frozenset[str]:
+    """Trigger ids withheld for this module: hidden everywhere, or just here."""
+    return HIDDEN_TRIGGERS | frozenset(
+        UNAVAILABLE_TRIGGER_REASONS_BY_MODULE.get(module, {})
+    )
 
 
-def _visible_actions(entries: list[dict[str, str]]) -> list[dict[str, str]]:
-    return [e for e in entries if e["id"] not in HIDDEN_ACTIONS]
+def hidden_actions_for_module(module: str) -> frozenset[str]:
+    """Action ids withheld for this module: hidden everywhere, or just here."""
+    return HIDDEN_ACTIONS | frozenset(
+        UNAVAILABLE_ACTION_REASONS_BY_MODULE.get(module, {})
+    )
+
+
+def _visible_triggers(module: str, entries: list[dict[str, str]]) -> list[dict[str, str]]:
+    hidden = hidden_triggers_for_module(module)
+    return [e for e in entries if e["id"] not in hidden]
+
+
+def _visible_actions(module: str, entries: list[dict[str, str]]) -> list[dict[str, str]]:
+    hidden = hidden_actions_for_module(module)
+    return [e for e in entries if e["id"] not in hidden]
+
+
+def get_enabled_modules() -> list[str]:
+    """Modules the builder may offer, in registry order."""
+    return list(ENABLED_MODULES)
 
 
 def get_trigger_ids(module: str) -> list[str]:
     """Get visible trigger IDs for an enabled module (empty for descoped modules)."""
     if module not in ENABLED_MODULES:
         return []
-    return [entry["id"] for entry in _visible_triggers(TRIGGER_REGISTRY.get(module, []))]
+    return [
+        entry["id"] for entry in _visible_triggers(module, TRIGGER_REGISTRY.get(module, []))
+    ]
 
 
 def get_action_ids(module: str) -> list[str]:
     """Get visible action IDs for an enabled module (common + module-specific)."""
-    if module not in ENABLED_MODULES:
-        return []
-    common = _visible_actions(ACTION_REGISTRY.get("common", []))
-    module_specific = _visible_actions(ACTION_REGISTRY.get(module, []))
-    return [entry["id"] for entry in common] + [entry["id"] for entry in module_specific]
+    return [entry["id"] for entry in get_actions_for_module(module)]
 
 
 def get_all_trigger_ids() -> dict[str, list[str]]:
@@ -393,16 +526,26 @@ def get_triggers_for_module(module: str) -> list[dict[str, str]]:
     """Get visible trigger types with descriptions for an enabled module."""
     if module not in ENABLED_MODULES:
         return []
-    return _visible_triggers(TRIGGER_REGISTRY.get(module, []))
+    return _visible_triggers(module, TRIGGER_REGISTRY.get(module, []))
 
 
 def get_actions_for_module(module: str) -> list[dict[str, str]]:
-    """Get visible action types with descriptions for an enabled module (common + module-specific)."""
+    """Get visible action types with descriptions for an enabled module (common + module-specific).
+
+    An id declared in both scopes is returned once, keeping the common set's
+    position but the module's description — sprints redeclares `create_task`
+    ("Create a new task in a sprint"), which is the more useful wording there,
+    and returning it twice made the registry double-count its own palette.
+    """
     if module not in ENABLED_MODULES:
         return []
-    common = _visible_actions(ACTION_REGISTRY.get("common", []))
-    module_specific = _visible_actions(ACTION_REGISTRY.get(module, []))
-    return common + module_specific
+    merged = {
+        entry["id"]: entry
+        for entry in _visible_actions(module, ACTION_REGISTRY.get("common", []))
+    }
+    for entry in _visible_actions(module, ACTION_REGISTRY.get(module, [])):
+        merged[entry["id"]] = entry
+    return list(merged.values())
 
 
 def get_all_triggers() -> dict[str, list[dict[str, str]]]:
@@ -412,9 +555,11 @@ def get_all_triggers() -> dict[str, list[dict[str, str]]]:
 
 def get_all_actions() -> dict[str, list[dict[str, str]]]:
     """Get visible actions organized by enabled module (plus the shared 'common' set)."""
-    result = {"common": _visible_actions(ACTION_REGISTRY.get("common", []))}
+    # "common" is not a module, so only the flat HIDDEN_ACTIONS apply to it —
+    # per-module withholding is keyed by the module that declares the action.
+    result = {"common": _visible_actions("common", ACTION_REGISTRY.get("common", []))}
     for module in ENABLED_MODULES:
-        result[module] = _visible_actions(ACTION_REGISTRY.get(module, []))
+        result[module] = _visible_actions(module, ACTION_REGISTRY.get(module, []))
     return result
 
 
@@ -554,3 +699,19 @@ class ModuleActionsResponse(BaseModel):
     """Response schema for module-specific actions."""
     module: str
     actions: list[RegistryEntry]
+
+
+class EnabledModule(BaseModel):
+    """One module the builder may create automations for."""
+    module: str
+    trigger_count: int
+    action_count: int
+
+
+class ModuleRegistryResponse(BaseModel):
+    """Response schema for the enabled-module list.
+
+    The builder's module picker reads this instead of hardcoding a list, so a
+    module can never be offered in the UI while its registry is empty.
+    """
+    modules: list[EnabledModule]
