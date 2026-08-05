@@ -87,11 +87,42 @@ async def test_no_department_claims_the_function_resolves_to_nobody(
     db_session: AsyncSession,
 ):
     """Not an error — but it is the state where every ticket arrives unassigned,
-    which is why the settings page says so instead of showing a blank."""
+    which is why the settings page says so instead of showing a blank. Two
+    departments and no function match is a genuine ambiguity: picking either
+    would silently route one team's mail to the other."""
     ws, _owner = await _workspace(db_session, "intake-nobody")
     await _department(db_session, ws, "Marketing", "marketing")
+    await _department(db_session, ws, "Sales", "sales")
 
     assert await resolve_desk_department(db_session, ws.id) is None
+
+
+@pytest.mark.asyncio
+async def test_a_lone_department_receives_tickets_even_without_a_function_match(
+    db_session: AsyncSession,
+):
+    """A workspace whose only department is Tech (function key or not) has
+    nothing to disambiguate — resolving to nobody just meant every ticket
+    arrived unassigned while a perfectly good team existed."""
+    ws, _owner = await _workspace(db_session, "intake-lone")
+    tech = await _department(db_session, ws, "Tech", "engineering")
+
+    resolved = await resolve_desk_department(db_session, ws.id)
+    assert resolved is not None and resolved.id == tech.id
+
+
+@pytest.mark.asyncio
+async def test_the_lone_department_fallback_ignores_inactive_departments(
+    db_session: AsyncSession,
+):
+    ws, _owner = await _workspace(db_session, "intake-lone-inactive")
+    tech = await _department(db_session, ws, "Tech", "engineering")
+    ghost = await _department(db_session, ws, "Old Ops", None)
+    ghost.is_active = False
+    await db_session.commit()
+
+    resolved = await resolve_desk_department(db_session, ws.id)
+    assert resolved is not None and resolved.id == tech.id
 
 
 # ==================== the explicit choice ====================

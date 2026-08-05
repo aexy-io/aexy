@@ -315,6 +315,10 @@ async def resolve_desk_department(db: AsyncSession, workspace_id: str):
     setting left behind by a restore — falls through to the inference rather than
     resolving to nobody. Losing auto-assignment silently is the failure this
     whole area keeps producing, so the fallback stays live and says so in the log.
+
+    Last resort: a workspace with exactly one active department resolves to it
+    even when no function key matches — one department means there is nothing
+    to disambiguate, and "nobody" is never the right answer to who fields mail.
     """
     from aexy.services.organization_service import department_for_function
 
@@ -334,11 +338,45 @@ async def resolve_desk_department(db: AsyncSession, workspace_id: str):
 
     taxonomy = await load_taxonomy(db, workspace_id, seed=False)
     default_slug = taxonomy.default_stakeholder_slug
-    if default_slug is None:
-        return None
-    return await department_for_function(
-        db, workspace_id, taxonomy.internal_function_keys.get(default_slug)
+    inferred = (
+        await department_for_function(
+            db, workspace_id, taxonomy.internal_function_keys.get(default_slug)
+        )
+        if default_slug is not None
+        else None
     )
+    if inferred is not None:
+        return inferred
+
+    # The inference is a function-key join, and a workspace whose departments
+    # predate the function vocabulary (or simply use a different key than the
+    # desk's first queue) matches nothing. With exactly one active department
+    # there is no ambiguity to protect against — routing the desk to it is the
+    # only possible answer, and resolving to nobody just makes every ticket
+    # arrive unassigned with no symptom. Two or more still require a choice.
+    departments = (
+        (
+            await db.execute(
+                select(Department)
+                .where(
+                    Department.workspace_id == workspace_id,
+                    Department.is_active.is_(True),
+                )
+                .limit(2)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if len(departments) == 1:
+        logger.info(
+            "Service desk for workspace %s inferred no department by function; "
+            "using %s, the workspace's only department",
+            workspace_id,
+            departments[0].name,
+        )
+        return departments[0]
+    return None
 
 
 def _norm_domain(d: str) -> str:
