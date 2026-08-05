@@ -92,7 +92,7 @@
       "title": "पद",
       "none": "कोई पद तय नहीं है।",
       "add": "जोड़ें",
-      "placeholder": "जैसे Senior KAM",
+      "placeholder": "जैसे Senior Engineer",
       "status": {
         "open": "खुला",
         "filled": "भरा"

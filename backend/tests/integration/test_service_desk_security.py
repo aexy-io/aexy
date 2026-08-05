@@ -86,7 +86,16 @@ async def tenants(db_session: AsyncSession):
         id=str(uuid4()), workspace_id=ws_a.id, name="Sales", slug="sales",
         function_key="sales", path="/sales/", depth=0,
     )
-    db_session.add(dept)
+    # A second department, so Sales is not the workspace's only one. With a
+    # single department the desk deliberately routes ALL intake to it
+    # (resolve_desk_department's lone-department fallback), which would
+    # auto-assign the seeded ticket to the sales member — visible through
+    # assignment, and these tests are about visibility WITHOUT assignment.
+    marketing = Department(
+        id=str(uuid4()), workspace_id=ws_a.id, name="Marketing", slug="marketing",
+        function_key="marketing", path="/marketing/", depth=0,
+    )
+    db_session.add_all([dept, marketing])
     await db_session.flush()
     db_session.add(
         DepartmentMember(id=str(uuid4()), workspace_id=ws_a.id, department_id=dept.id, developer_id=sales.id)

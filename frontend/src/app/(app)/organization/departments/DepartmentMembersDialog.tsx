@@ -23,17 +23,27 @@ const selectClass =
   "rounded-md border border-border bg-background px-2 py-1 text-xs disabled:opacity-60";
 
 /**
- * What one member's seat dropdown may offer: the open seats, plus the seat they
- * are currently in — which is not open precisely because they hold it, and would
- * otherwise be missing from its own select and render blank.
+ * What one member's seat dropdown may offer: one entry per distinct TITLE, not
+ * per seat row. Titles are shareable — the server reuses an open same-title
+ * seat or creates another — so listing every row would show "SDE I" once per
+ * holder. The member's own seat represents their title so the select never
+ * renders blank; otherwise an open seat is preferred (its id is filled
+ * directly) over a held one (whose id the server treats as "this title too").
  */
-function seatChoicesFor(
+function titleChoicesFor(
   held: string | null,
-  open: DepartmentPosition[],
   all: DepartmentPosition[],
 ): DepartmentPosition[] {
-  const mine = held ? all.find((p) => p.id === held) : undefined;
-  return mine ? [mine, ...open.filter((p) => p.id !== mine.id)] : open;
+  const byTitle = new Map<string, DepartmentPosition>();
+  for (const p of all) {
+    const current = byTitle.get(p.title);
+    if (!current) {
+      byTitle.set(p.title, p);
+    } else if (current.id !== held && (p.id === held || (current.filled_by_id && !p.filled_by_id))) {
+      byTitle.set(p.title, p);
+    }
+  }
+  return [...byTitle.values()];
 }
 
 interface Props {
@@ -79,12 +89,10 @@ export function DepartmentMembersDialog({
   }, [people, detail?.members]);
 
   const positions = useMemo(() => detail?.positions ?? [], [detail?.positions]);
-  // A seat someone already holds is not on offer — the API answers 409 — so the
-  // picker lists the open ones, plus (per row) whichever seat that person is in.
-  const openPositions = useMemo(
-    () => positions.filter((p) => !p.filled_by_id),
-    [positions],
-  );
+  // Titles are shareable: pointing at a held seat gives this person the same
+  // title too (the server reuses an open twin or creates one). So the pickers
+  // offer every distinct title, preferring an open seat's id where one exists.
+  const titleChoices = useMemo(() => titleChoicesFor(null, positions), [positions]);
 
   const handleAdd = async () => {
     if (!pick) return;
@@ -165,7 +173,7 @@ export function DepartmentMembersDialog({
                             aria-label={t("members.position")}
                           >
                             <option value="">{t("members.noPosition")}</option>
-                            {seatChoicesFor(m.position_id, openPositions, positions).map((p) => (
+                            {titleChoicesFor(m.position_id, positions).map((p) => (
                               <option key={p.id} value={p.id}>
                                 {p.title}
                               </option>
@@ -235,7 +243,7 @@ export function DepartmentMembersDialog({
                         </option>
                       ))}
                     </select>
-                    {openPositions.length > 0 && (
+                    {titleChoices.length > 0 && (
                       <select
                         value={pickPosition}
                         onChange={(e) => setPickPosition(e.target.value)}
@@ -243,7 +251,7 @@ export function DepartmentMembersDialog({
                         aria-label={t("members.position")}
                       >
                         <option value="">{t("members.noPosition")}</option>
-                        {openPositions.map((p) => (
+                        {titleChoices.map((p) => (
                           <option key={p.id} value={p.id}>
                             {p.title}
                           </option>

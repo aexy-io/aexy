@@ -160,13 +160,21 @@ function DeskDepartmentEditor({
           </option>
         ))}
       </select>
-      {!currentName && (
+      {!currentName &&
         // No department resolves at all: every ticket arrives unassigned and
-        // nobody receives the digest. Worth saying, because the symptom is silence.
-        <p className="text-xs text-amber-600 dark:text-amber-500">
-          {t("deskDepartment.nobody")}
-        </p>
-      )}
+        // nobody receives the digest. Worth saying, because the symptom is
+        // silence — and saying WHICH fix applies: an empty dropdown means there
+        // is nothing to pick, so the pointer goes to creating a department, not
+        // to a function-key setting the workspace cannot have yet.
+        (departments !== undefined && departments.length === 0 ? (
+          <p className="text-xs text-amber-600 dark:text-amber-500">
+            {t("deskDepartment.noneExist")}
+          </p>
+        ) : (
+          <p className="text-xs text-amber-600 dark:text-amber-500">
+            {t("deskDepartment.nobody")}
+          </p>
+        ))}
     </div>
   );
 }

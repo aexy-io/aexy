@@ -92,7 +92,7 @@
       "title": "Positions",
       "none": "No positions defined.",
       "add": "Add",
-      "placeholder": "e.g. Senior KAM",
+      "placeholder": "e.g. Senior Engineer",
       "status": {
         "open": "Open",
         "filled": "Filled"
