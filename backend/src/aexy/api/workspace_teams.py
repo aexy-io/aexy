@@ -113,6 +113,32 @@ async def create_team(
     return team_to_response(team, member_count=1)
 
 
+@router.post("/mirror-departments", response_model=list[TeamResponse])
+async def mirror_departments(
+    workspace_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create one team per department, for the departments that have none.
+
+    The same action onboarding offers, available afterwards — otherwise choosing
+    "no teams yet" during setup, or adding a department later, left the workspace
+    with people who can see the right things and no team to chase them through:
+    standup prompts, review digests, sprint boards and leave approvals all resolve
+    through team membership.
+
+    Idempotent by department: a department that already has a team is skipped, so
+    running this twice adds nothing and running it after adding one department adds
+    exactly one team.
+    """
+    await verify_workspace_access(workspace_id, current_user, db, "admin")
+
+    service = TeamManagementService(db)
+    teams = await service.mirror_departments_as_teams(workspace_id, str(current_user.id))
+    await db.commit()
+    return [team_to_response(team, member_count=1) for team in teams]
+
+
 @router.get("", response_model=list[TeamListResponse])
 async def list_teams(
     workspace_id: str,

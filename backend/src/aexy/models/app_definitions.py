@@ -667,6 +667,15 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
             "agents": {"enabled": True, "modules": {}},
             "mcp": {"enabled": True, "modules": {}},
             "chat": {"enabled": True, "modules": {}},
+            # In every bundle because the frontend's copy of these bundles has
+            # always granted it, and the two are one decision: a department put on
+            # this profile could not reach the desk while its own "Start from
+            # Engineering" grid said it could. `can_view_service_desk` and the
+            # workspace toggle are the real gates.
+            "service_desk": {
+                "enabled": True,
+                "modules": {"dashboard": True, "tickets": True, "settings": True},
+            },
             "tables": {"enabled": True, "modules": {}},
             # Catalogued late (see APP_CATALOG): enabled everywhere so that
             # making them configurable doesn't remove them from anyone.
@@ -731,6 +740,15 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
             "agents": {"enabled": True, "modules": {}},
             "mcp": {"enabled": True, "modules": {}},
             "chat": {"enabled": True, "modules": {}},
+            # In every bundle because the frontend's copy of these bundles has
+            # always granted it, and the two are one decision: a department put on
+            # this profile could not reach the desk while its own "Start from
+            # Engineering" grid said it could. `can_view_service_desk` and the
+            # workspace toggle are the real gates.
+            "service_desk": {
+                "enabled": True,
+                "modules": {"dashboard": True, "tickets": True, "settings": True},
+            },
             "tables": {"enabled": False},
             # Catalogued late (see APP_CATALOG): enabled everywhere so that
             # making them configurable doesn't remove them from anyone.
@@ -786,6 +804,15 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
             "agents": {"enabled": True, "modules": {}},
             "mcp": {"enabled": True, "modules": {}},
             "chat": {"enabled": True, "modules": {}},
+            # In every bundle because the frontend's copy of these bundles has
+            # always granted it, and the two are one decision: a department put on
+            # this profile could not reach the desk while its own "Start from
+            # Engineering" grid said it could. `can_view_service_desk` and the
+            # workspace toggle are the real gates.
+            "service_desk": {
+                "enabled": True,
+                "modules": {"dashboard": True, "tickets": True, "settings": True},
+            },
             "tables": {"enabled": True, "modules": {}},
             # Catalogued late (see APP_CATALOG): enabled everywhere so that
             # making them configurable doesn't remove them from anyone.
@@ -880,6 +907,15 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
             "agents": {"enabled": True, "modules": {}},
             "mcp": {"enabled": True, "modules": {}},
             "chat": {"enabled": True, "modules": {}},
+            # In every bundle because the frontend's copy of these bundles has
+            # always granted it, and the two are one decision: a department put on
+            # this profile could not reach the desk while its own "Start from
+            # Engineering" grid said it could. `can_view_service_desk` and the
+            # workspace toggle are the real gates.
+            "service_desk": {
+                "enabled": True,
+                "modules": {"dashboard": True, "tickets": True, "settings": True},
+            },
             "tables": {"enabled": True, "modules": {}},
             # Catalogued late (see APP_CATALOG): enabled everywhere so that
             # making them configurable doesn't remove them from anyone.

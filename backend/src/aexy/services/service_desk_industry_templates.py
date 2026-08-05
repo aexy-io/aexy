@@ -34,6 +34,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from aexy.services.org_functions import canonical_function_key
+
 # ---------------------------------------------------------------------------
 # Stakeholder semantics — the stable contract every consumer branches on.
 # ---------------------------------------------------------------------------
@@ -135,9 +137,15 @@ class IndustryTemplate:
 # The catalogue
 # ---------------------------------------------------------------------------
 
-# Insurance broking. Slugs are the legacy enum values on purpose — see the
-# module docstring. `ops_kam` likewise stays as the operations function key,
-# because existing Department rows use it.
+# Insurance broking. Stakeholder *slugs* are the legacy enum values on purpose —
+# see the module docstring; `service_desk_tickets.pending_with` holds them.
+#
+# The function key does NOT get that treatment. It used to be `ops_kam`, which
+# made this the one template that named Operations differently from every other,
+# and since the key is unique per workspace the spelling you got depended on
+# which template your desk started from. It is `operations` here now;
+# `org_functions` keeps `ops_kam` as a retired spelling that still resolves, and
+# migrate_org_function_keys.sql moves existing rows forward.
 INSURANCE_BROKING = IndustryTemplate(
     slug="insurance_broking",
     name="Insurance Broking",
@@ -156,7 +164,7 @@ INSURANCE_BROKING = IndustryTemplate(
         "owners": "KAMs",
     },
     stakeholders=(
-        StakeholderSpec("kam", "KAM", SEMANTIC_INTERNAL, "ops_kam"),
+        StakeholderSpec("kam", "KAM", SEMANTIC_INTERNAL, "operations"),
         StakeholderSpec("insurer", "Insurer", SEMANTIC_EXTERNAL),
         StakeholderSpec("partner", "Partner", SEMANTIC_EXTERNAL),
         StakeholderSpec("sales", "Sales", SEMANTIC_INTERNAL, "sales"),
@@ -172,7 +180,7 @@ INSURANCE_BROKING = IndustryTemplate(
         RequestTypeSpec("payout", "Payout"),
     ),
     departments=(
-        DepartmentSpec("Operations", "ops_kam"),
+        DepartmentSpec("Operations", "operations"),
         DepartmentSpec("Sales", "sales"),
         DepartmentSpec("Finance", "finance"),
         DepartmentSpec("Marketing", "marketing"),
@@ -345,6 +353,20 @@ def _validate() -> None:
             if s.semantics == SEMANTIC_INTERNAL and s.function_key not in provided
         }:
             raise ValueError(f"{t.slug}: no department for function keys {sorted(missing)}")
+        # Every key a template ships has to be one the registry knows, in its
+        # canonical spelling. Two templates naming the same function differently
+        # is exactly how `ops_kam` and `operations` came to coexist, and the
+        # symptom — a queue that silently shows nothing — points nowhere near
+        # this file.
+        for key in sorted(provided | {s.function_key for s in t.stakeholders if s.function_key}):
+            canonical = canonical_function_key(key)
+            if canonical is None:
+                raise ValueError(f"{t.slug}: '{key}' is not a declared function (see org_functions)")
+            if canonical != key:
+                raise ValueError(
+                    f"{t.slug}: '{key}' is a retired spelling of '{canonical}' — templates "
+                    "must ship the canonical key"
+                )
 
         rt_slugs = [r.slug for r in t.request_types]
         if not rt_slugs:

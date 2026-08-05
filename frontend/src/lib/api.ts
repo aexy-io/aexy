@@ -2955,6 +2955,9 @@ export const workspaceApi = {
   applyOnboardingUseCases: async (
     workspaceId: string,
     useCases: string[],
+    /** How to create the workspace's first teams. The server defaults to
+     *  "per_department" if omitted, so an older caller keeps working. */
+    teamStrategy?: "per_department" | "single" | "none",
   ): Promise<{
     enabled_app_ids: string[];
     disabled_app_ids: string[];
@@ -2965,9 +2968,18 @@ export const workspaceApi = {
       access_profile_slug: string | null;
       default_persona: string | null;
     }>;
+    teams: Array<{
+      id: string;
+      name: string;
+      department_id: string | null;
+    }>;
+    /** True when the workspace already had teams so none were seeded — a
+     *  different thing from "we made none", and only one is worth acting on. */
+    teams_already_existed: boolean;
   }> => {
     const response = await api.post(`/workspaces/${workspaceId}/onboarding/use-cases`, {
       use_cases: useCases,
+      ...(teamStrategy ? { team_strategy: teamStrategy } : {}),
     });
     return response.data;
   },

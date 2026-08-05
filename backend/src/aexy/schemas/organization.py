@@ -256,6 +256,47 @@ class ManagerAssign(BaseModel):
     manager_id: str | None = None
 
 
+# ==================== Functions ====================
+
+class FunctionOption(BaseModel):
+    """One choice in the department "function" picker.
+
+    The picker replaced a free-text box. A function key is a routing key —
+    Service Desk visibility, digests and ticket auto-assignment all resolve it —
+    so a typo produced an empty queue and no error, and there was nothing on
+    screen to say the field mattered.
+    """
+
+    key: str
+    label: str
+    description: str
+    # True for a workspace-specific `x_` key. Custom keys are first-class; they
+    # simply have no registry description, and the UI says so rather than
+    # inventing one.
+    is_custom: bool = False
+    # The department already holding this function in this workspace, if any.
+    # `function_key` is unique per workspace, so an already-claimed option has to
+    # say who has it instead of failing on save.
+    claimed_by_department_id: str | None = None
+    claimed_by_department_name: str | None = None
+    # Service Desk stakeholder buckets in THIS workspace that route to this
+    # function. Computed per workspace rather than declared in the registry: it
+    # depends on the workspace's own taxonomy, which admins edit.
+    routes_stakeholders: list[str] = Field(default_factory=list)
+
+
+class FunctionCatalog(BaseModel):
+    """Every function a department in this workspace may claim."""
+
+    options: list[FunctionOption] = Field(default_factory=list)
+    # Prefix a workspace-specific key must carry, so the UI doesn't hardcode it.
+    custom_prefix: str = "x_"
+    # Internal stakeholders whose function no active department claims — queues
+    # whose members can currently see nothing. The one state this whole mapping
+    # has no natural symptom for.
+    unclaimed_stakeholder_functions: list[str] = Field(default_factory=list)
+
+
 # ==================== Caller capabilities ====================
 
 class OrganizationPermissions(BaseModel):

@@ -424,6 +424,19 @@ class ServiceDeskSettings(BaseModel):
     # The desk's own name, used in outbound email copy. Defaults to the
     # workspace name rather than a hardcoded company.
     desk_name: str | None = None
+    # WHICH DEPARTMENT RUNS THIS DESK — the people incoming tickets are
+    # auto-assigned to, and whose head receives the digest of everything open.
+    #
+    # Reported as resolved rather than raw, so the page shows who is actually
+    # receiving work. `is_explicit` distinguishes a deliberate choice from the
+    # fallback: with no setting the desk infers the department behind its first
+    # internal queue, which is a reasonable guess and was previously the only
+    # behaviour available — before that it was the literal function key
+    # `ops_kam`, so every workspace that had not been set up from the insurance
+    # template auto-assigned nothing at all.
+    desk_department_id: str | None = None
+    desk_department_name: str | None = None
+    desk_department_is_explicit: bool = False
 
 
 _HHMM = r"^([01]\d|2[0-3]):[0-5]\d$"
@@ -444,6 +457,11 @@ class ServiceDeskSettingsUpdate(BaseModel):
     digest_hours: list[int] | None = None
     terminology: dict[str, str] | None = None
     desk_name: str | None = Field(None, max_length=120)
+    # The department to receive incoming tickets. An empty string clears it and
+    # puts the desk back on inferring one from its first internal queue — the
+    # same convention `desk_name` uses for "go back to the default", since a JSON
+    # null is indistinguishable from an absent field once it reaches the service.
+    desk_department_id: str | None = Field(None, max_length=64)
 
     @model_validator(mode="after")
     def _window_must_be_forward(self):

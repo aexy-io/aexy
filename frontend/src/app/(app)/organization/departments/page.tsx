@@ -1,16 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, Plus, Trash2, Users } from "lucide-react";
+import { Building2, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { DepartmentMembersDialog } from "./DepartmentMembersDialog";
 
 import {
+  FunctionPicker,
+  UnclaimedFunctionsNotice,
+} from "@/components/organization/FunctionPicker";
+
+import {
   useDepartments,
+  useFunctionCatalog,
   useOrganizationMutations,
   useOrganizationPermissions,
 } from "@/hooks/useOrganization";
+import { Department, DepartmentUpdate } from "@/lib/organization-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -28,25 +35,31 @@ import {
 export default function DepartmentsPage() {
   const t = useTranslations("organization");
   const { data: departments, isLoading } = useDepartments();
-  const { createDepartment, deleteDepartment } = useOrganizationMutations();
+  const { createDepartment, updateDepartment, deleteDepartment } = useOrganizationMutations();
   // Editing needs can_manage_org. The API enforces it (403); hiding the controls
   // keeps us from offering actions that cannot succeed. Read-only until known.
   const perms = useOrganizationPermissions();
+  const functionLabel = useFunctionLabel();
   const canManage = perms.data?.can_manage === true;
 
   const [open, setOpen] = useState(false);
   // Which department's roster is open. Read-only callers can open it too — they
   // just get the list without the add/remove controls.
   const [managing, setManaging] = useState<{ id: string; name: string } | null>(null);
+  // Which department is being edited. `updateDepartment` existed in the API and
+  // the hooks with no caller at all, so a department's name and — the one that
+  // matters — its function key were create-only: a department made before the
+  // function registry, or made without one, could never be pointed at anything.
+  const [editing, setEditing] = useState<Department | null>(null);
   const [name, setName] = useState("");
-  const [functionKey, setFunctionKey] = useState("");
+  const [functionKey, setFunctionKey] = useState<string | null>(null);
   const [parentId, setParentId] = useState("");
   const [costCenter, setCostCenter] = useState("");
   const [plannedHeadcount, setPlannedHeadcount] = useState("");
 
   const resetForm = () => {
     setName("");
-    setFunctionKey("");
+    setFunctionKey(null);
     setParentId("");
     setCostCenter("");
     setPlannedHeadcount("");
@@ -56,7 +69,7 @@ export default function DepartmentsPage() {
     if (!name.trim()) return;
     await createDepartment.mutateAsync({
       name: name.trim(),
-      function_key: functionKey.trim() || null,
+      function_key: functionKey,
       parent_id: parentId || null,
       cost_center: costCenter.trim() || null,
       headcount_planned: plannedHeadcount ? Number(plannedHeadcount) : 0,
@@ -90,6 +103,10 @@ export default function DepartmentsPage() {
           <p className="text-sm text-muted-foreground">{t("readOnly")}</p>
         </Card>
       )}
+
+      {/* The one failure in this mapping with no natural symptom: a desk queue
+          routing to a function nobody claims shows its people an empty list. */}
+      <UnclaimedFunctionsNotice />
 
       {isLoading ? (
         <div className="flex justify-center py-10">
@@ -128,10 +145,19 @@ export default function DepartmentsPage() {
                   <td className="px-4 py-2">
                     {d.function_key ? (
                       <Badge variant="secondary" className="text-[10px] uppercase">
-                        {d.function_key}
+                        {functionLabel(d.function_key)}
                       </Badge>
                     ) : (
-                      <span className="text-muted-foreground">—</span>
+                      // Not merely blank: a department with no function is invisible
+                      // to every desk queue, digest and auto-assignment, so it says
+                      // so and offers the fix.
+                      <button
+                        onClick={() => canManage && setEditing(d)}
+                        disabled={!canManage}
+                        className="text-xs text-muted-foreground hover:text-foreground hover:underline disabled:hover:no-underline"
+                      >
+                        {canManage ? t("functions.setOne") : "—"}
+                      </button>
                     )}
                   </td>
                   <td className="px-4 py-2">
@@ -150,13 +176,22 @@ export default function DepartmentsPage() {
                   <td className="px-4 py-2 text-muted-foreground">{d.cost_center || "—"}</td>
                   <td className="px-4 py-2 text-right">
                     {canManage && (
-                      <button
-                        onClick={() => handleDelete(d.id)}
-                        className="text-muted-foreground hover:text-destructive"
-                        aria-label="delete"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => setEditing(d)}
+                          className="text-muted-foreground hover:text-foreground"
+                          aria-label={t("departments.edit")}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(d.id)}
+                          className="text-muted-foreground hover:text-destructive"
+                          aria-label="delete"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -176,6 +211,18 @@ export default function DepartmentsPage() {
         />
       )}
 
+      {editing && canManage && (
+        <EditDepartmentDialog
+          department={editing}
+          onClose={() => setEditing(null)}
+          onSave={async (data) => {
+            await updateDepartment.mutateAsync({ id: editing.id, data });
+            setEditing(null);
+          }}
+          saving={updateDepartment.isPending}
+        />
+      )}
+
       <Dialog open={open && canManage} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
@@ -188,11 +235,10 @@ export default function DepartmentsPage() {
             </div>
             <div>
               <label className="mb-1 block text-xs text-muted-foreground">{t("departments.function")}</label>
-              <Input
-                value={functionKey}
-                onChange={(e) => setFunctionKey(e.target.value)}
-                placeholder="sales, finance, ops_kam…"
-              />
+              {/* A picker, not a text box: the value routes Service Desk queues,
+                  digests and auto-assignment, and a typo produced an empty queue
+                  with no error rather than a validation message. */}
+              <FunctionPicker value={functionKey} onChange={setFunctionKey} />
             </div>
             <div>
               <label className="mb-1 block text-xs text-muted-foreground">{t("departments.parent")}</label>
@@ -238,5 +284,102 @@ export default function DepartmentsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+/** Registry label for a stored key, falling back to the key itself.
+ *
+ *  Custom keys deliberately show the raw key. The catalogue labels them with the
+ *  department that defined them — right for the dropdown, where "Underwriting"
+ *  beats "x_underwriting" — but in this table that would print the department's
+ *  own name back at it in the column beside its name, saying nothing. A
+ *  pre-registry value falls through here too, which is the same answer. */
+function useFunctionLabel() {
+  const { data: catalog } = useFunctionCatalog();
+  return (key: string) => {
+    const option = catalog?.options.find((o) => o.key === key);
+    return option && !option.is_custom ? option.label : key;
+  };
+}
+
+interface EditProps {
+  department: Department;
+  onClose: () => void;
+  onSave: (data: DepartmentUpdate) => Promise<void>;
+  saving: boolean;
+}
+
+/**
+ * Edit a department's name, function and org attributes.
+ *
+ * Deliberately does not offer the parent: re-parenting rewrites the materialised
+ * paths of a whole subtree through its own endpoint, and mixing it into a
+ * general-purpose save would make an accidental drag as cheap as a typo.
+ */
+function EditDepartmentDialog({ department, onClose, onSave, saving }: EditProps) {
+  const t = useTranslations("organization");
+  const tc = useTranslations("common");
+  const [name, setName] = useState(department.name);
+  const [functionKey, setFunctionKey] = useState<string | null>(department.function_key);
+  const [costCenter, setCostCenter] = useState(department.cost_center ?? "");
+  const [planned, setPlanned] = useState(String(department.headcount_planned || ""));
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t("departments.editTitle", { department: department.name })}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">{t("departments.name")}</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">{t("departments.function")}</label>
+            <FunctionPicker
+              value={functionKey}
+              onChange={setFunctionKey}
+              currentDepartmentId={department.id}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs text-muted-foreground">{t("departments.costCenter")}</label>
+              <Input value={costCenter} onChange={(e) => setCostCenter(e.target.value)} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted-foreground">
+                {t("departments.headcount")} ({t("departments.planned")})
+              </label>
+              <Input
+                type="number"
+                min={0}
+                value={planned}
+                onChange={(e) => setPlanned(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            {tc("cancel")}
+          </Button>
+          <Button
+            onClick={() =>
+              onSave({
+                name: name.trim(),
+                function_key: functionKey,
+                cost_center: costCenter.trim() || null,
+                headcount_planned: planned ? Number(planned) : 0,
+              })
+            }
+            disabled={!name.trim() || saving}
+          >
+            {tc("save")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
