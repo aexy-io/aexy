@@ -20,6 +20,7 @@ from aexy.models.google_integration import GoogleIntegration
 from aexy.models.organization import Department, DepartmentMember
 from aexy.models.service_desk import (
     ServiceDeskIngestedMessage,
+    ServiceDeskStakeholder,
     ServiceDeskVendor,
     ServiceDeskVendorDomain,
     ServiceDeskProduct,
@@ -873,6 +874,98 @@ async def test_no_match_random_fallback(db_session: AsyncSession):
     sd = await _sd_for(db_session, ticket.id)
     assert sd.needs_triage is True
     assert sd.account_id is None
+    assert ticket.assignee_id in kams
+
+
+@pytest.mark.asyncio
+async def test_auto_assignment_follows_the_workspace_taxonomy_not_a_literal(
+    db_session: AsyncSession,
+):
+    """A desk whose own vocabulary routes elsewhere still gets an owner.
+
+    `_random_owner` compared `Department.function_key` to the literal "ops_kam" —
+    a key only workspaces set up from the insurance-broking template ever had. Any
+    other workspace had every piece of incoming mail arrive unassigned, with
+    nothing on screen to say why. It now resolves the department behind the desk's
+    own default stakeholder.
+    """
+    ws = await _workspace(db_session, "sd-taxonomy")
+    mb = await _mailbox(db_session, ws)
+
+    # This workspace calls its front line Support, and its first internal bucket
+    # routes there rather than to an insurance KAM desk.
+    kam = (
+        await db_session.execute(
+            select(ServiceDeskStakeholder).where(
+                ServiceDeskStakeholder.workspace_id == ws.id,
+                ServiceDeskStakeholder.slug == "kam",
+            )
+        )
+    ).scalar_one()
+    kam.function_key = "support"
+    dept = Department(
+        workspace_id=ws.id,
+        name="Support",
+        slug="support",
+        function_key="support",
+        path="/support/",
+        depth=0,
+    )
+    db_session.add(dept)
+    await db_session.flush()
+    agent = Developer(email=f"agent-{ws.slug}@example.com", name="Agent")
+    db_session.add(agent)
+    await db_session.flush()
+    db_session.add(
+        DepartmentMember(workspace_id=ws.id, department_id=dept.id, developer_id=agent.id)
+    )
+    db_session.add(
+        WorkspaceMember(
+            workspace_id=ws.id, developer_id=agent.id, role="member", status="active"
+        )
+    )
+    await db_session.commit()
+
+    ticket = await ServiceDeskIntakeService(db_session).ingest(
+        _email(from_email="someone@newcustomer.io", message_id="m-taxonomy"),
+        mb,
+        "service_desk_webhook",
+    )
+    await db_session.commit()
+
+    assert ticket.assignee_id == agent.id
+
+
+@pytest.mark.asyncio
+async def test_a_retired_function_key_still_resolves(db_session: AsyncSession):
+    """A workspace part-way through the key migration must not lose assignment.
+
+    The department row still says `ops_kam` while the stakeholder has moved to
+    `operations`; the two are edited on different screens, so this state is normal
+    for a while rather than exceptional.
+    """
+    ws = await _workspace(db_session, "sd-retired")
+    mb = await _mailbox(db_session, ws)
+    kams = await _ops_kam(db_session, ws)  # department carries "ops_kam"
+
+    kam = (
+        await db_session.execute(
+            select(ServiceDeskStakeholder).where(
+                ServiceDeskStakeholder.workspace_id == ws.id,
+                ServiceDeskStakeholder.slug == "kam",
+            )
+        )
+    ).scalar_one()
+    kam.function_key = "operations"
+    await db_session.commit()
+
+    ticket = await ServiceDeskIntakeService(db_session).ingest(
+        _email(from_email="someone@newcustomer.io", message_id="m-retired"),
+        mb,
+        "service_desk_webhook",
+    )
+    await db_session.commit()
+
     assert ticket.assignee_id in kams
 
 

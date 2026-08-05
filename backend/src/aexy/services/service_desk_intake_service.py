@@ -23,7 +23,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from aexy.models.organization import Department, DepartmentMember
+from aexy.models.organization import DepartmentMember
 from aexy.models.service_desk import (
     MailboxChannel,
     ServiceDeskIngestedMessage,
@@ -979,25 +979,35 @@ class ServiceDeskIntakeService:
         return row
 
     async def _random_owner(self, workspace_id: str) -> str | None:
-        """Pick a random Ops/KAM department member who is still on the team.
+        """Pick a random member of the department that runs this desk.
+
+        Which department that is, is now the workspace's own answer: the one named
+        in Service Desk settings, or — with none named — the department behind the
+        desk's first internal queue. It used to be the literal
+        ``function_key == "ops_kam"``, a key only workspaces set up from the
+        insurance-broking template ever had, so everybody else's incoming mail
+        arrived unassigned with nothing to say why.
 
         Department membership alone isn't enough: rows are not removed when
         someone leaves the workspace, so joining WorkspaceMember keeps tickets
         from being auto-assigned to a departed employee's dead queue.
         """
+        from aexy.services.service_desk_service import resolve_desk_department
+
+        dept = await resolve_desk_department(self.db, workspace_id)
+        if dept is None:
+            return None
+
         rows = (
             await self.db.execute(
                 select(DepartmentMember.developer_id)
-                .join(Department, Department.id == DepartmentMember.department_id)
                 .join(
                     WorkspaceMember,
                     (WorkspaceMember.developer_id == DepartmentMember.developer_id)
                     & (WorkspaceMember.workspace_id == workspace_id),
                 )
                 .where(
-                    Department.workspace_id == workspace_id,
-                    Department.function_key == "ops_kam",
-                    Department.is_active.is_(True),
+                    DepartmentMember.department_id == dept.id,
                     WorkspaceMember.status == "active",
                 )
                 .distinct()

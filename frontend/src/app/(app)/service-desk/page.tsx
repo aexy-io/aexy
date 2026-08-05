@@ -6,6 +6,7 @@ import { AlertTriangle, Download, Inbox, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { useServiceDeskDashboard, useServiceDeskSettings, useServiceDeskTaxonomy } from "@/hooks/useServiceDesk";
+import { useFunctionCatalog } from "@/hooks/useOrganization";
 import { DashboardTicket, StakeholderBucket } from "@/lib/service-desk-api";
 import {
   SERVICE_DESK_BREACH_COLORS,
@@ -58,6 +59,7 @@ export default function ServiceDeskDashboardPage() {
   const { data: settings } = useServiceDeskSettings();
   const { stakeholders, stakeholderLabel, requestTypeLabel, isConfigured, isLoading: taxonomyLoading } =
     useServiceDeskTaxonomy();
+  const { data: functionCatalog } = useFunctionCatalog();
   const terms = settings?.terminology ?? {};
   // The age columns used to read "0–1 day / 1–2 days / >2 days", which was one
   // customer's SLA written into the UI. Both thresholds are per workspace.
@@ -73,6 +75,15 @@ export default function ServiceDeskDashboardPage() {
   // silently dropped any stakeholder it hadn't heard of.
   const rows = (data?.stakeholders ?? []).map((s) => s.pending_with);
   const positionOf = (slug: string) => stakeholders.find((s) => s.slug === slug)?.position;
+  // Which department owns each queue. The matrix showed how much work was waiting
+  // in a bucket but never who it was waiting on, and that mapping is what decides
+  // who can see the tickets at all — an internal bucket routed to a function no
+  // department claims shows its people an empty list and no reason why.
+  const departmentOf = (slug: string) => {
+    const fk = stakeholders.find((s) => s.slug === slug)?.function_key;
+    if (!fk) return null;
+    return functionCatalog?.options.find((o) => o.key === fk) ?? null;
+  };
   const semanticsOf = (slug: string) => stakeholders.find((s) => s.slug === slug)?.semantics;
 
   // See the `justSetUp` note below where the setup screen is rendered.
@@ -135,6 +146,7 @@ export default function ServiceDeskDashboardPage() {
               <thead className="text-left text-xs uppercase text-muted-foreground">
                 <tr>
                   <th className="px-3 py-2">{t("dashboard.stakeholder")}</th>
+                  <th className="px-3 py-2">{t("dashboard.routesTo")}</th>
                   <th className="px-3 py-2 text-center">{t("dashboard.col01", thresholds)}</th>
                   <th className="px-3 py-2 text-center">{t("dashboard.col12", thresholds)}</th>
                   <th className="px-3 py-2 text-center">{t("dashboard.colGt2", thresholds)}</th>
@@ -152,6 +164,21 @@ export default function ServiceDeskDashboardPage() {
                           <span className={`h-2 w-2 rounded-full ${c?.dot ?? "bg-muted-foreground"}`} />
                           {stakeholderLabel(k)}
                         </span>
+                      </td>
+                      <td className="px-3 py-2">
+                        {semanticsOf(k) !== "internal" ? (
+                          // An external counterparty owes the next action; no
+                          // department owns it, and saying "none" would read as a
+                          // misconfiguration rather than the design.
+                          <span className="text-xs text-muted-foreground">{t("dashboard.external")}</span>
+                        ) : departmentOf(k)?.claimed_by_department_name ? (
+                          <span className="text-xs">{departmentOf(k)!.claimed_by_department_name}</span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-500">
+                            <AlertTriangle className="h-3 w-3" />
+                            {t("dashboard.noDepartment")}
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-2 text-center">{ageCell(b.green, "green")}</td>
                       <td className="px-3 py-2 text-center">{ageCell(b.amber, "amber")}</td>

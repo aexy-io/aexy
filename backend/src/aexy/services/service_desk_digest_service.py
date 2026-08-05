@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.models.developer import Developer
-from aexy.models.organization import Department, DepartmentMember
+from aexy.models.organization import DepartmentMember
 from aexy.models.service_desk import (
     ServiceDeskProduct,
     ServiceDeskMailbox,
@@ -133,31 +133,18 @@ class ServiceDeskDigestService:
     async def build_digests(self, workspace_id: str) -> list[Digest]:
         all_rows = await self._open_rows(workspace_id)
 
-        # The desk team: the department behind the workspace's first internal
-        # stakeholder. Its members get a personal digest, its head gets the lot.
+        # The desk team: its members get a personal digest, its head gets the lot.
+        # The department named in Service Desk settings, or — with none named — the
+        # one behind the desk's first internal queue. Deliberately the same
+        # resolution intake uses to pick an owner: a workspace where the digest and
+        # auto-assignment disagreed about who runs the desk would be worse than
+        # either answer on its own.
+        #
         # Was pinned to `function_key == "ops_kam"`, so any workspace that didn't
         # happen to name a department that way got no per-person digests at all.
-        taxonomy = await load_taxonomy(self.db, workspace_id, seed=False)
-        desk_function = None
-        if (default_slug := taxonomy.default_stakeholder_slug) is not None:
-            desk_function = taxonomy.internal_function_keys.get(default_slug)
+        from aexy.services.service_desk_service import resolve_desk_department
 
-        # `.first()` rather than `scalar_one_or_none()`: the unique index makes
-        # two impossible in Postgres, but a raising digest would silently drop
-        # every workspace after this one in the schedule, and the schema is not
-        # the place to find that out.
-        dept = None
-        if desk_function:
-            dept = (
-                await self.db.execute(
-                    select(Department)
-                    .where(
-                        Department.workspace_id == workspace_id,
-                        Department.function_key == desk_function,
-                    )
-                    .order_by(Department.created_at, Department.id)
-                )
-            ).scalars().first()
+        dept = await resolve_desk_department(self.db, workspace_id)
 
         digests: list[Digest] = []
         owner_ids: list[str] = []

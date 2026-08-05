@@ -10,6 +10,7 @@ import {
   DepartmentDetail,
   DepartmentNode,
   DepartmentUpdate,
+  FunctionCatalog,
   MembershipCreate,
   MembershipUpdate,
   OrganizationPermissions,
@@ -23,6 +24,7 @@ const orgKeys = {
   department: (ws: string, id: string) => ["organization", "department", ws, id] as const,
   people: (ws: string) => ["organization", "people", ws] as const,
   myPermissions: (ws: string) => ["organization", "my-permissions", ws] as const,
+  functions: (ws: string) => ["organization", "functions", ws] as const,
 };
 
 /** Whether the caller may edit the org structure (can_manage_org). The API
@@ -33,6 +35,21 @@ export function useOrganizationPermissions() {
   return useQuery<OrganizationPermissions>({
     queryKey: orgKeys.myPermissions(ws ?? ""),
     queryFn: () => organizationApi.getMyPermissions(ws!),
+    enabled: !!ws,
+  });
+}
+
+/** What a department's function may be set to, and what each one drives here.
+ *
+ *  Workspace-scoped rather than static: which functions actually route anything
+ *  depends on this workspace's own Service Desk taxonomy, and which are already
+ *  claimed depends on its departments. */
+export function useFunctionCatalog() {
+  const { currentWorkspace } = useWorkspace();
+  const ws = currentWorkspace?.id;
+  return useQuery<FunctionCatalog>({
+    queryKey: orgKeys.functions(ws ?? ""),
+    queryFn: () => organizationApi.getFunctionCatalog(ws!),
     enabled: !!ws,
   });
 }
@@ -90,6 +107,9 @@ export function useOrganizationMutations() {
     qc.invalidateQueries({ queryKey: orgKeys.departments(ws) });
     // People carry their departments and manager, so any org write can change it.
     qc.invalidateQueries({ queryKey: orgKeys.people(ws) });
+    // Creating, renaming or deleting a department changes which functions are
+    // claimed and by whom, so a stale catalogue would offer a key that is taken.
+    qc.invalidateQueries({ queryKey: orgKeys.functions(ws) });
     if (departmentId) qc.invalidateQueries({ queryKey: orgKeys.department(ws, departmentId) });
   };
 

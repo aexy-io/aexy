@@ -38,6 +38,7 @@ from aexy.schemas.service_desk import (
     StakeholderCreate,
     StakeholderUpdate,
 )
+from aexy.services.org_functions import canonical_function_key
 from aexy.services.service_desk_digest_service import ServiceDeskDigestService
 from aexy.services.service_desk_industry_templates import (
     DEFAULT_TERMINOLOGY,
@@ -121,10 +122,18 @@ def test_insurance_template_reproduces_the_legacy_enums_exactly():
     }
     assert {r.slug for r in t.request_types} == {"query", "policy_issuance", "claims", "payout"}
     assert t.default_request_type.slug == "query"
-    # The old INTERNAL_PENDING_WITH dict, verbatim.
+    # The old INTERNAL_PENDING_WITH dict — with one deliberate change. `kam` used
+    # to route to `ops_kam`, which made this the only template naming Operations
+    # differently from every other, and since `function_key` is unique per
+    # workspace the spelling you got depended on which template your desk started
+    # from. The *slugs* above are the compatibility contract (they are what
+    # `pending_with` holds); a function key is a pointer, nothing stores it but the
+    # department row, and `org_functions` keeps `ops_kam` resolving to `operations`
+    # for anyone mid-migration.
     assert {
         s.slug: s.function_key for s in t.stakeholders if s.semantics == SEMANTIC_INTERNAL
-    } == {"kam": "ops_kam", "sales": "sales", "finance": "finance", "marketing": "marketing"}
+    } == {"kam": "operations", "sales": "sales", "finance": "finance", "marketing": "marketing"}
+    assert canonical_function_key("ops_kam") == "operations"
 
 
 # ------------------------------------------------------------------- seeding

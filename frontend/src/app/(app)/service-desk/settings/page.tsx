@@ -22,6 +22,7 @@ import {
   TestSLAOverride,
   TestStageSLA,
 } from "@/lib/service-desk-api";
+import { useDepartments } from "@/hooks/useOrganization";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -102,6 +103,70 @@ function ToggleRow({
       >
         <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${checked ? "translate-x-5" : "translate-x-0.5"}`} />
       </button>
+    </div>
+  );
+}
+
+/**
+ * Which department receives incoming tickets.
+ *
+ * Previously not a choice at all. The desk auto-assigned to whichever department
+ * held the function key `ops_kam` — a key only workspaces set up from the
+ * insurance-broking template ever had, so everybody else's mail arrived
+ * unassigned. That became "the department behind the desk's first internal
+ * queue", a fair guess but still a guess: a desk whose first queue is Support
+ * while its intake team is Operations had no way to say so.
+ *
+ * The inferred department stays the default and is named in the placeholder, so
+ * choosing nothing is an informed choice rather than a blank.
+ */
+function DeskDepartmentEditor({
+  currentId,
+  currentName,
+  isExplicit,
+  canManage,
+  saving,
+  onSave,
+}: {
+  currentId: string | null;
+  currentName: string | null;
+  isExplicit: boolean;
+  canManage: boolean;
+  saving: boolean;
+  onSave: (departmentId: string) => void;
+}) {
+  const t = useTranslations("serviceDesk");
+  const { data: departments } = useDepartments();
+
+  return (
+    <div className="space-y-2">
+      <select
+        value={isExplicit ? currentId ?? "" : ""}
+        disabled={!canManage || saving}
+        onChange={(e) => onSave(e.target.value)}
+        className="w-full max-w-sm rounded-md border border-border bg-background px-3 py-2 text-sm disabled:opacity-60"
+        aria-label={t("deskDepartment.title")}
+      >
+        <option value="">
+          {/* Names the department that would be used anyway, so "automatic" is
+              not a mystery. */}
+          {currentName
+            ? t("deskDepartment.automaticNamed", { department: currentName })
+            : t("deskDepartment.automaticNone")}
+        </option>
+        {(departments ?? []).map((d) => (
+          <option key={d.id} value={d.id}>
+            {d.name}
+          </option>
+        ))}
+      </select>
+      {!currentName && (
+        // No department resolves at all: every ticket arrives unassigned and
+        // nobody receives the digest. Worth saying, because the symptom is silence.
+        <p className="text-xs text-amber-600 dark:text-amber-500">
+          {t("deskDepartment.nobody")}
+        </p>
+      )}
     </div>
   );
 }
@@ -566,6 +631,23 @@ export default function ServiceDeskSettingsPage() {
           saving={m.updateSettings.isPending}
           onSave={(start, end) =>
             m.updateSettings.mutate({ working_hours_start: start, working_hours_end: end })
+          }
+        />
+      </Section>
+
+      {/* Who the desk hands work to */}
+      <Section title={t("deskDepartment.title")}>
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          {t("deskDepartment.description")}
+        </p>
+        <DeskDepartmentEditor
+          currentId={settings.data?.desk_department_id ?? null}
+          currentName={settings.data?.desk_department_name ?? null}
+          isExplicit={settings.data?.desk_department_is_explicit ?? false}
+          canManage={canManage}
+          saving={m.updateSettings.isPending}
+          onSave={(departmentId) =>
+            m.updateSettings.mutate({ desk_department_id: departmentId })
           }
         />
       </Section>

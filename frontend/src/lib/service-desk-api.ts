@@ -271,6 +271,16 @@ export interface ServiceDeskSettings {
   desk_name: string | null;
   /** A short-lived, manager-controlled override for manual SLA testing only. */
   test_sla: TestSLAOverride | null;
+  /** The department that runs this desk: incoming tickets are auto-assigned to
+   *  its members and its head receives the digest of everything open.
+   *
+   *  Resolved, not raw — with nothing chosen the server infers the department
+   *  behind the desk's first internal queue, so this names whoever is actually
+   *  receiving work. `is_explicit` separates a deliberate choice from that
+   *  fallback (and is false for a stale choice that no longer resolves). */
+  desk_department_id: string | null;
+  desk_department_name: string | null;
+  desk_department_is_explicit: boolean;
 }
 
 export interface TestStageSLA {
@@ -280,8 +290,8 @@ export interface TestStageSLA {
 
 export interface TestSLAOverride {
   expires_at: string;
-  /** Keyed by the workspace's own stakeholder slugs. Was three fixed fields
-   *  named after insurance buckets, so no other desk could run a timed test. */
+  /** Keyed by the workspace's own stakeholder slugs. Was fixed fields, so a
+   *  desk using any other bucket names could not run a timed test. */
   stages: Record<string, TestStageSLA>;
 }
 
@@ -301,6 +311,8 @@ export interface ServiceDeskSettingsPatch {
   desk_name?: string;
   test_sla?: TestSLAOverride;
   clear_test_sla?: boolean;
+  /** Empty string clears it, putting the desk back on inferring a department. */
+  desk_department_id?: string;
 }
 
 export interface ServiceDeskTemplate {

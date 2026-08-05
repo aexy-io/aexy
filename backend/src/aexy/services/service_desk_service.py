@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.models.google_integration import GoogleIntegration
 from aexy.models.organization import Department, DepartmentMember
+from aexy.services.org_functions import canonical_function_key
 from aexy.services.service_desk_clock import (
     BREACH_AMBER_DAYS,
     BREACH_RED_DAYS,
@@ -68,20 +69,26 @@ logger = logging.getLogger(__name__)
 
 
 async def _caller_functions(db: AsyncSession, workspace_id: str, developer_id: str) -> set[str]:
-    """The ``function_key``s of every department the caller belongs to."""
-    return set(
-        (
-            await db.execute(
-                select(Department.function_key)
-                .join(DepartmentMember, DepartmentMember.department_id == Department.id)
-                .where(
-                    Department.workspace_id == workspace_id,
-                    DepartmentMember.developer_id == developer_id,
-                    Department.function_key.isnot(None),
-                )
+    """The ``function_key``s of every department the caller belongs to.
+
+    Canonicalised, because the two sides of this comparison are written by
+    different people at different times: the department key by an admin in the
+    org chart, the stakeholder key by whoever set up the desk. While a workspace
+    is part-migrated one side can say ``ops_kam`` and the other ``operations``,
+    and a raw string compare would quietly show that person nothing.
+    """
+    stored = (
+        await db.execute(
+            select(Department.function_key)
+            .join(DepartmentMember, DepartmentMember.department_id == Department.id)
+            .where(
+                Department.workspace_id == workspace_id,
+                DepartmentMember.developer_id == developer_id,
+                Department.function_key.isnot(None),
             )
-        ).scalars().all()
-    )
+        )
+    ).scalars().all()
+    return {key for key in (canonical_function_key(raw) for raw in stored) if key}
 
 
 def _assignment_only_function(taxonomy: Taxonomy) -> str | None:
@@ -289,6 +296,49 @@ async def is_service_desk_ticket_visible(
     return (
         await db.execute(select(Ticket.id).where(Ticket.id == ticket_id, clause))
     ).scalar_one_or_none() is not None
+
+
+async def resolve_desk_department(db: AsyncSession, workspace_id: str):
+    """The department that runs this desk, or None.
+
+    Two questions this answers for every caller: who does incoming mail get
+    auto-assigned to, and whose head receives the digest of everything open.
+
+    Explicit setting first. Failing that it infers the department behind the
+    desk's first internal queue, which is a fair guess — the bucket a new ticket
+    starts in is by definition the team that fields it — but only a guess, and a
+    desk whose first queue is Support while its intake team is Operations had no
+    way to say so. (Before that it was hardcoded to the function key ``ops_kam``,
+    so a workspace not set up from the insurance template auto-assigned nothing.)
+
+    A stale explicit setting — the department deleted, deactivated, or the whole
+    setting left behind by a restore — falls through to the inference rather than
+    resolving to nobody. Losing auto-assignment silently is the failure this
+    whole area keeps producing, so the fallback stays live and says so in the log.
+    """
+    from aexy.services.organization_service import department_for_function
+
+    ws = await db.get(Workspace, workspace_id)
+    sd = ((ws.settings or {}).get("service_desk") or {}) if ws else {}
+
+    if chosen := sd.get("desk_department_id"):
+        dept = await db.get(Department, chosen)
+        if dept is not None and dept.workspace_id == workspace_id and dept.is_active:
+            return dept
+        logger.warning(
+            "Service desk for workspace %s names department %s, which is missing or "
+            "inactive; falling back to the department behind the first queue",
+            workspace_id,
+            chosen,
+        )
+
+    taxonomy = await load_taxonomy(db, workspace_id, seed=False)
+    default_slug = taxonomy.default_stakeholder_slug
+    if default_slug is None:
+        return None
+    return await department_for_function(
+        db, workspace_id, taxonomy.internal_function_keys.get(default_slug)
+    )
 
 
 def _norm_domain(d: str) -> str:
@@ -633,6 +683,7 @@ class ServiceDeskService:
                 test_sla = TestSLAOverride.model_validate(sd["test_sla"])
             except ValueError:
                 pass
+        desk_department = await resolve_desk_department(self.db, workspace_id)
         return {
             "ai_classification_enabled": bool(sd.get("ai_classification_enabled", False)),
             "auto_split_enabled": bool(sd.get("auto_split_enabled", False)),
@@ -655,6 +706,19 @@ class ServiceDeskService:
             # carry a hardcoded company name for every tenant.
             "desk_name": sd.get("desk_name") or (ws.name if ws else None),
             "test_sla": test_sla,
+            # Resolved, so the page shows the department actually receiving work
+            # rather than a blank field on every desk that never named one.
+            "desk_department_id": desk_department.id if desk_department else None,
+            "desk_department_name": desk_department.name if desk_department else None,
+            # True only when the resolved department is the one the workspace
+            # named. A stale setting resolves to the inferred department instead,
+            # and calling that "explicit" would hide the fact that the choice is
+            # no longer being honoured.
+            "desk_department_is_explicit": bool(
+                sd.get("desk_department_id")
+                and desk_department is not None
+                and desk_department.id == sd.get("desk_department_id")
+            ),
         }
 
     async def update_settings(
@@ -674,6 +738,7 @@ class ServiceDeskService:
         digest_hours: list[int] | None = None,
         terminology: dict[str, str] | None = None,
         desk_name: str | None = None,
+        desk_department_id: str | None = None,
     ) -> dict:
         """Patch semantics: only the fields supplied are touched.
 
@@ -819,6 +884,29 @@ class ServiceDeskService:
                 "Service desk test SLA enabled for workspace %s until %s by %s",
                 workspace_id, test_sla.expires_at.isoformat(), developer_id or "unknown",
             )
+
+        if desk_department_id is not None:
+            # Empty means "stop naming one" — back to inferring the department
+            # behind the desk's first queue, the same convention `desk_name` uses.
+            chosen = desk_department_id.strip()
+            if chosen:
+                dept = await self.db.get(Department, chosen)
+                if dept is None or dept.workspace_id != workspace_id or not dept.is_active:
+                    # Checked rather than trusted: this decides who receives every
+                    # incoming ticket, and a bad id would resolve to nobody — which
+                    # looks exactly like a quiet inbox.
+                    raise HTTPException(
+                        status_code=400,
+                        detail="That department does not exist in this workspace",
+                    )
+                logger.info(
+                    "Service desk for workspace %s now receives tickets as department "
+                    "%s (%s), set by %s",
+                    workspace_id, dept.name, dept.id, developer_id or "unknown",
+                )
+                sd["desk_department_id"] = dept.id
+            else:
+                sd.pop("desk_department_id", None)
 
         settings["service_desk"] = sd
         ws.settings = settings  # reassign so SQLAlchemy tracks the JSONB change

@@ -190,7 +190,14 @@ export default function OnboardingComplete() {
         // would pin them out of every later change.
         const workspaceId = data.workspace.id || localStorage.getItem("current_workspace_id");
         if (workspaceId && data.useCases.length > 0) {
-          await workspaceApi.applyOnboardingUseCases(workspaceId, data.useCases);
+          // Teams answer a different question from departments — who chases
+          // someone, rather than what they can see — so the founder's choice is
+          // passed through rather than inferred from the use cases.
+          await workspaceApi.applyOnboardingUseCases(
+            workspaceId,
+            data.useCases,
+            data.teamStrategy,
+          );
         }
       } catch (err) {
         console.error("Failed to mark onboarding as complete:", err);

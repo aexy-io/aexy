@@ -8,7 +8,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from aexy.models.team import TEAM_MEMBER_ROLES, Team, TeamMember
+from aexy.models.team import TEAM_MEMBER_ROLES, Team, TeamMember, TeamMemberRole
 from aexy.models.workspace import WorkspaceMember
 from aexy.models.developer import Developer
 from aexy.models.activity import Commit
@@ -83,6 +83,136 @@ class TeamManagementService:
         await self.db.refresh(team)
 
         return team
+
+    async def seed_teams_for_onboarding(
+        self,
+        workspace_id: str,
+        owner_id: str,
+        strategy: str,
+        departments: list[tuple[str, str]],
+    ) -> tuple[list[Team], bool]:
+        """Give a new workspace its first team(s). Returns ``(teams, skipped)``.
+
+        Onboarding seeded departments and no teams, which left every workspace one
+        step short of working: a *department* decides what somebody can see, but a
+        *team* decides who chases them — standup prompts, blocker escalation,
+        review digests, sprint boards and leave approvals all resolve through team
+        membership. So a founder finished setup with everyone navigating correctly
+        and nobody enrolled in any of it, and the team field on an invite offered
+        an empty dropdown.
+
+        ``strategy`` is the founder's answer, not our guess: ``per_department``
+        mirrors the org (and sets ``Team.department_id``, the rollup that already
+        existed for it), ``single`` is honest for a company that is one team, and
+        ``none`` opts out.
+
+        **Skips entirely when the workspace already has teams**, returning
+        ``skipped=True``. The repos step can create ``repo_based`` teams before
+        this runs, and those reflect how work is actually split — seeding beside
+        them would produce a plausible-looking duplicate of each.
+
+        The founder joins as ``lead``, not as a bare member: ``review_service`` and
+        ``leave_request_service`` both look for exactly ``role == "lead"`` when
+        they need someone accountable, so a team with no lead sends its approvals
+        to "any workspace manager".
+        """
+        if strategy == "none":
+            return [], False
+
+        existing = (
+            await self.db.execute(
+                select(Team.id).where(Team.workspace_id == workspace_id).limit(1)
+            )
+        ).first()
+        if existing is not None:
+            return [], True
+
+        wanted: list[tuple[str, str | None]] = []
+        if strategy == "per_department" and departments:
+            wanted = [(name, dept_id) for dept_id, name in departments]
+        else:
+            # Either the founder asked for one team, or they asked for one per
+            # department and no department was seeded ("AI & Agents" alone seeds
+            # none). Falling through to a single team is better than none at all,
+            # which would leave the invite dropdown empty — the state this exists
+            # to fix.
+            wanted = [("Everyone", None)]
+
+        created: list[Team] = []
+        for name, department_id in wanted:
+            team = await self.create_team(workspace_id, name=name, type="manual")
+            team.department_id = department_id
+            # Provenance, so a later repo sync can offer to merge rather than
+            # having to guess whether a team was deliberate.
+            team.settings = {**(team.settings or {}), "seeded_from": "onboarding"}
+            await self.db.flush()
+            await self.add_team_member(
+                team.id, owner_id, role=TeamMemberRole.LEAD.value, source="onboarding"
+            )
+            created.append(team)
+
+        return created, False
+
+    async def mirror_departments_as_teams(
+        self, workspace_id: str, owner_id: str
+    ) -> list[Team]:
+        """One team per department that hasn't got one. Idempotent per department.
+
+        The post-onboarding form of ``seed_teams_for_onboarding``: choosing "no
+        teams yet" during setup, or adding a department months later, otherwise
+        leaves people who can see the right things with no team to reach them
+        through.
+
+        Unlike the onboarding path this does *not* bail out when the workspace
+        already has teams — that guard exists to avoid duplicating repo-based teams
+        during setup, whereas here the caller has asked for this deliberately. It
+        skips per department instead, which is the check that actually prevents
+        duplicates.
+        """
+        from aexy.models.organization import Department
+
+        departments = (
+            await self.db.execute(
+                select(Department)
+                .where(
+                    Department.workspace_id == workspace_id,
+                    Department.is_active.is_(True),
+                )
+                .order_by(Department.depth, Department.position, Department.name)
+            )
+        ).scalars().all()
+
+        taken = set(
+            (
+                await self.db.execute(
+                    select(Team.department_id).where(
+                        Team.workspace_id == workspace_id,
+                        Team.department_id.isnot(None),
+                    )
+                )
+            ).scalars().all()
+        )
+
+        created: list[Team] = []
+        for department in departments:
+            if department.id in taken:
+                continue
+            team = await self.create_team(workspace_id, name=department.name, type="manual")
+            team.department_id = department.id
+            team.settings = {**(team.settings or {}), "seeded_from": "mirror_departments"}
+            await self.db.flush()
+            # Tolerated rather than fatal: the caller may already be on the team
+            # (they created it by hand and only the rollup was missing), and the
+            # point of the action is the team, not the membership.
+            try:
+                await self.add_team_member(
+                    team.id, owner_id, role=TeamMemberRole.LEAD.value, source="manual"
+                )
+            except ValueError:
+                pass
+            created.append(team)
+
+        return created
 
     async def get_team(self, team_id: str) -> Team | None:
         """Get a team by ID."""
