@@ -531,6 +531,14 @@ export const SYSTEM_BUNDLES: AppBundleTemplate[] = [
       dashboard: { enabled: true },
       organization: { enabled: true, modules: { chart: true, departments: true, directory: true } },
       service_desk: { enabled: true, modules: { dashboard: true, tickets: true, settings: true } },
+      // Catalogued after these bundles were written, and enabled everywhere on
+      // the backend for the stated reason that making an app configurable must
+      // not remove it from anyone. Omitting them here meant "Start from
+      // Engineering" in the department editor silently revoked all four.
+      chat: { enabled: true },
+      gtm: { enabled: true },
+      leave: { enabled: true },
+      community: { enabled: true },
       tracking: { enabled: true, modules: { standups: true, blockers: true, time: true } },
       sprints: { enabled: true, modules: { board: true, epics: true, tasks: true, backlog: true } },
       tickets: { enabled: true },
@@ -563,6 +571,14 @@ export const SYSTEM_BUNDLES: AppBundleTemplate[] = [
       dashboard: { enabled: true },
       organization: { enabled: true, modules: { chart: true, departments: true, directory: true } },
       service_desk: { enabled: true, modules: { dashboard: true, tickets: true, settings: true } },
+      // Catalogued after these bundles were written, and enabled everywhere on
+      // the backend for the stated reason that making an app configurable must
+      // not remove it from anyone. Omitting them here meant "Start from
+      // Engineering" in the department editor silently revoked all four.
+      chat: { enabled: true },
+      gtm: { enabled: true },
+      leave: { enabled: true },
+      community: { enabled: true },
       reviews: { enabled: true, modules: { cycles: true, goals: true, peer_requests: true, manage: true } },
       hiring: {
         enabled: true,
@@ -598,6 +614,14 @@ export const SYSTEM_BUNDLES: AppBundleTemplate[] = [
       dashboard: { enabled: true },
       organization: { enabled: true, modules: { chart: true, departments: true, directory: true } },
       service_desk: { enabled: true, modules: { dashboard: true, tickets: true, settings: true } },
+      // Catalogued after these bundles were written, and enabled everywhere on
+      // the backend for the stated reason that making an app configurable must
+      // not remove it from anyone. Omitting them here meant "Start from
+      // Engineering" in the department editor silently revoked all four.
+      chat: { enabled: true },
+      gtm: { enabled: true },
+      leave: { enabled: true },
+      community: { enabled: true },
       crm: {
         enabled: true,
         modules: { overview: true, inbox: true, agents: true, activities: true, automations: true, calendar: true },
@@ -633,6 +657,14 @@ export const SYSTEM_BUNDLES: AppBundleTemplate[] = [
       dashboard: { enabled: true },
       organization: { enabled: true, modules: { chart: true, departments: true, directory: true } },
       service_desk: { enabled: true, modules: { dashboard: true, tickets: true, settings: true } },
+      // Catalogued after these bundles were written, and enabled everywhere on
+      // the backend for the stated reason that making an app configurable must
+      // not remove it from anyone. Omitting them here meant "Start from
+      // Engineering" in the department editor silently revoked all four.
+      chat: { enabled: true },
+      gtm: { enabled: true },
+      leave: { enabled: true },
+      community: { enabled: true },
       tracking: { enabled: true, modules: { standups: true, blockers: true, time: true } },
       sprints: { enabled: true, modules: { board: true, epics: true, tasks: true, backlog: true } },
       tickets: { enabled: true },

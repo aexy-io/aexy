@@ -96,6 +96,7 @@ async def update_settings(workspace_id: str, data: ServiceDeskSettingsUpdate, db
         digest_hours=data.digest_hours,
         terminology=data.terminology,
         desk_name=data.desk_name,
+        desk_department_id=data.desk_department_id,
         developer_id=str(current.id),
     )
 

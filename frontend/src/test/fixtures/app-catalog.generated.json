@@ -1,0 +1,658 @@
+{
+  "_meta": {
+    "source": "backend/src/aexy/models/app_definitions.py",
+    "generator": "backend/scripts/dump_app_catalog.py",
+    "mirror": "frontend/src/config/appDefinitions.ts"
+  },
+  "apps": {
+    "agents": {
+      "name": "AI Agents",
+      "category": "productivity",
+      "base_route": "/agents",
+      "required_permission": "can_view_agents",
+      "modules": []
+    },
+    "automations": {
+      "name": "Automations",
+      "category": "productivity",
+      "base_route": "/automations",
+      "required_permission": "can_view_automations",
+      "modules": []
+    },
+    "booking": {
+      "name": "Booking",
+      "category": "business",
+      "base_route": "/booking",
+      "required_permission": "can_view_booking",
+      "modules": [
+        "availability",
+        "calendars",
+        "event_types"
+      ]
+    },
+    "chat": {
+      "name": "Chat",
+      "category": "productivity",
+      "base_route": "/chat",
+      "required_permission": null,
+      "modules": []
+    },
+    "community": {
+      "name": "Community",
+      "category": "productivity",
+      "base_route": "/community",
+      "required_permission": null,
+      "modules": []
+    },
+    "compliance": {
+      "name": "Compliance",
+      "category": "people",
+      "base_route": "/compliance",
+      "required_permission": "can_view_compliance",
+      "modules": [
+        "certifications",
+        "document_center",
+        "reminders",
+        "training"
+      ]
+    },
+    "crm": {
+      "name": "CRM",
+      "category": "business",
+      "base_route": "/crm",
+      "required_permission": "can_view_crm",
+      "modules": [
+        "activities",
+        "agents",
+        "automations",
+        "calendar",
+        "inbox",
+        "overview"
+      ]
+    },
+    "dashboard": {
+      "name": "Dashboard",
+      "category": "productivity",
+      "base_route": "/dashboard",
+      "required_permission": null,
+      "modules": []
+    },
+    "docs": {
+      "name": "Docs",
+      "category": "productivity",
+      "base_route": "/docs",
+      "required_permission": "can_view_docs",
+      "modules": []
+    },
+    "drive": {
+      "name": "Drive",
+      "category": "productivity",
+      "base_route": "/docs/drive",
+      "required_permission": "can_view_drive",
+      "modules": [
+        "files",
+        "search",
+        "smart_views"
+      ]
+    },
+    "email_marketing": {
+      "name": "Email Marketing",
+      "category": "business",
+      "base_route": "/email-marketing",
+      "required_permission": "can_view_crm",
+      "modules": [
+        "campaigns",
+        "settings",
+        "templates"
+      ]
+    },
+    "forms": {
+      "name": "Forms",
+      "category": "productivity",
+      "base_route": "/forms",
+      "required_permission": "can_view_forms",
+      "modules": []
+    },
+    "gtm": {
+      "name": "GTM Intelligence",
+      "category": "business",
+      "base_route": "/gtm",
+      "required_permission": "can_view_crm",
+      "modules": [
+        "abm",
+        "analytics",
+        "competitors",
+        "health",
+        "intent",
+        "routing",
+        "scoring",
+        "sequences",
+        "visitors"
+      ]
+    },
+    "hiring": {
+      "name": "Hiring",
+      "category": "people",
+      "base_route": "/hiring",
+      "required_permission": "can_view_hiring",
+      "modules": [
+        "analytics",
+        "assessments",
+        "candidates",
+        "dashboard",
+        "questions",
+        "templates"
+      ]
+    },
+    "insights": {
+      "name": "Insights",
+      "category": "engineering",
+      "base_route": "/insights",
+      "required_permission": "can_view_insights",
+      "modules": [
+        "developer_drilldown",
+        "leaderboard",
+        "team_overview"
+      ]
+    },
+    "learning": {
+      "name": "Learning",
+      "category": "people",
+      "base_route": "/learning",
+      "required_permission": "can_view_learning",
+      "modules": []
+    },
+    "leave": {
+      "name": "Leave",
+      "category": "people",
+      "base_route": "/leave",
+      "required_permission": null,
+      "modules": []
+    },
+    "mcp": {
+      "name": "MCP",
+      "category": "productivity",
+      "base_route": "/mcp",
+      "required_permission": "can_view_agents",
+      "modules": []
+    },
+    "oncall": {
+      "name": "On-Call",
+      "category": "engineering",
+      "base_route": "/oncall",
+      "required_permission": "can_view_oncall",
+      "modules": []
+    },
+    "organization": {
+      "name": "Organization",
+      "category": "people",
+      "base_route": "/organization",
+      "required_permission": "can_view_org",
+      "modules": [
+        "chart",
+        "departments",
+        "directory"
+      ]
+    },
+    "reports": {
+      "name": "Reports",
+      "category": "engineering",
+      "base_route": "/reports",
+      "required_permission": null,
+      "modules": [
+        "custom_reports",
+        "exports"
+      ]
+    },
+    "reviews": {
+      "name": "Reviews",
+      "category": "people",
+      "base_route": "/reviews",
+      "required_permission": "can_view_reviews",
+      "modules": [
+        "cycles",
+        "goals",
+        "manage",
+        "peer_requests"
+      ]
+    },
+    "service_desk": {
+      "name": "Service Desk",
+      "category": "business",
+      "base_route": "/service-desk",
+      "required_permission": "can_view_service_desk",
+      "modules": [
+        "dashboard",
+        "settings",
+        "tickets"
+      ]
+    },
+    "sprints": {
+      "name": "Sprints",
+      "category": "engineering",
+      "base_route": "/sprints",
+      "required_permission": "can_view_sprints",
+      "modules": [
+        "backlog",
+        "board",
+        "epics",
+        "tasks"
+      ]
+    },
+    "tables": {
+      "name": "Tables",
+      "category": "productivity",
+      "base_route": "/tables",
+      "required_permission": "can_view_tables",
+      "modules": []
+    },
+    "tickets": {
+      "name": "Tickets",
+      "category": "business",
+      "base_route": "/tickets",
+      "required_permission": "can_view_tickets",
+      "modules": []
+    },
+    "tracking": {
+      "name": "Tracking",
+      "category": "engineering",
+      "base_route": "/tracking",
+      "required_permission": "can_view_tracking",
+      "modules": [
+        "blockers",
+        "standups",
+        "time"
+      ]
+    },
+    "uptime": {
+      "name": "Uptime",
+      "category": "engineering",
+      "base_route": "/uptime",
+      "required_permission": "can_view_uptime",
+      "modules": [
+        "history",
+        "incidents",
+        "monitors"
+      ]
+    }
+  },
+  "bundles": {
+    "business": {
+      "name": "Business",
+      "apps": {
+        "agents": {
+          "modules": []
+        },
+        "automations": {
+          "modules": []
+        },
+        "booking": {
+          "modules": [
+            "availability",
+            "calendars",
+            "event_types"
+          ]
+        },
+        "chat": {
+          "modules": []
+        },
+        "community": {
+          "modules": []
+        },
+        "crm": {
+          "modules": [
+            "activities",
+            "agents",
+            "automations",
+            "calendar",
+            "inbox",
+            "overview"
+          ]
+        },
+        "dashboard": {
+          "modules": []
+        },
+        "docs": {
+          "modules": []
+        },
+        "email_marketing": {
+          "modules": [
+            "campaigns",
+            "settings",
+            "templates"
+          ]
+        },
+        "forms": {
+          "modules": []
+        },
+        "gtm": {
+          "modules": []
+        },
+        "leave": {
+          "modules": []
+        },
+        "mcp": {
+          "modules": []
+        },
+        "organization": {
+          "modules": [
+            "chart",
+            "departments",
+            "directory"
+          ]
+        },
+        "service_desk": {
+          "modules": [
+            "dashboard",
+            "settings",
+            "tickets"
+          ]
+        },
+        "tables": {
+          "modules": []
+        },
+        "tickets": {
+          "modules": []
+        }
+      }
+    },
+    "engineering": {
+      "name": "Engineering",
+      "apps": {
+        "agents": {
+          "modules": []
+        },
+        "automations": {
+          "modules": []
+        },
+        "chat": {
+          "modules": []
+        },
+        "community": {
+          "modules": []
+        },
+        "dashboard": {
+          "modules": []
+        },
+        "docs": {
+          "modules": []
+        },
+        "gtm": {
+          "modules": []
+        },
+        "learning": {
+          "modules": []
+        },
+        "leave": {
+          "modules": []
+        },
+        "mcp": {
+          "modules": []
+        },
+        "oncall": {
+          "modules": []
+        },
+        "organization": {
+          "modules": [
+            "chart",
+            "departments",
+            "directory"
+          ]
+        },
+        "service_desk": {
+          "modules": [
+            "dashboard",
+            "settings",
+            "tickets"
+          ]
+        },
+        "sprints": {
+          "modules": [
+            "backlog",
+            "board",
+            "epics",
+            "tasks"
+          ]
+        },
+        "tables": {
+          "modules": []
+        },
+        "tickets": {
+          "modules": []
+        },
+        "tracking": {
+          "modules": [
+            "blockers",
+            "standups",
+            "time"
+          ]
+        },
+        "uptime": {
+          "modules": [
+            "history",
+            "incidents",
+            "monitors"
+          ]
+        }
+      }
+    },
+    "full_access": {
+      "name": "Full Access",
+      "apps": {
+        "agents": {
+          "modules": []
+        },
+        "automations": {
+          "modules": []
+        },
+        "booking": {
+          "modules": [
+            "availability",
+            "calendars",
+            "event_types"
+          ]
+        },
+        "chat": {
+          "modules": []
+        },
+        "community": {
+          "modules": []
+        },
+        "compliance": {
+          "modules": [
+            "certifications",
+            "document_center",
+            "reminders",
+            "training"
+          ]
+        },
+        "crm": {
+          "modules": [
+            "activities",
+            "agents",
+            "automations",
+            "calendar",
+            "inbox",
+            "overview"
+          ]
+        },
+        "dashboard": {
+          "modules": []
+        },
+        "docs": {
+          "modules": []
+        },
+        "email_marketing": {
+          "modules": [
+            "campaigns",
+            "settings",
+            "templates"
+          ]
+        },
+        "forms": {
+          "modules": []
+        },
+        "gtm": {
+          "modules": []
+        },
+        "hiring": {
+          "modules": [
+            "analytics",
+            "assessments",
+            "candidates",
+            "dashboard",
+            "questions",
+            "templates"
+          ]
+        },
+        "insights": {
+          "modules": [
+            "developer_drilldown",
+            "leaderboard",
+            "team_overview"
+          ]
+        },
+        "learning": {
+          "modules": []
+        },
+        "leave": {
+          "modules": []
+        },
+        "mcp": {
+          "modules": []
+        },
+        "oncall": {
+          "modules": []
+        },
+        "organization": {
+          "modules": [
+            "chart",
+            "departments",
+            "directory"
+          ]
+        },
+        "reviews": {
+          "modules": [
+            "cycles",
+            "goals",
+            "manage",
+            "peer_requests"
+          ]
+        },
+        "service_desk": {
+          "modules": [
+            "dashboard",
+            "settings",
+            "tickets"
+          ]
+        },
+        "sprints": {
+          "modules": [
+            "backlog",
+            "board",
+            "epics",
+            "tasks"
+          ]
+        },
+        "tables": {
+          "modules": []
+        },
+        "tickets": {
+          "modules": []
+        },
+        "tracking": {
+          "modules": [
+            "blockers",
+            "standups",
+            "time"
+          ]
+        },
+        "uptime": {
+          "modules": [
+            "history",
+            "incidents",
+            "monitors"
+          ]
+        }
+      }
+    },
+    "people": {
+      "name": "People",
+      "apps": {
+        "agents": {
+          "modules": []
+        },
+        "automations": {
+          "modules": []
+        },
+        "chat": {
+          "modules": []
+        },
+        "community": {
+          "modules": []
+        },
+        "compliance": {
+          "modules": [
+            "certifications",
+            "document_center",
+            "reminders",
+            "training"
+          ]
+        },
+        "dashboard": {
+          "modules": []
+        },
+        "docs": {
+          "modules": []
+        },
+        "forms": {
+          "modules": []
+        },
+        "gtm": {
+          "modules": []
+        },
+        "hiring": {
+          "modules": [
+            "analytics",
+            "assessments",
+            "candidates",
+            "dashboard",
+            "questions",
+            "templates"
+          ]
+        },
+        "learning": {
+          "modules": []
+        },
+        "leave": {
+          "modules": []
+        },
+        "mcp": {
+          "modules": []
+        },
+        "organization": {
+          "modules": [
+            "chart",
+            "departments",
+            "directory"
+          ]
+        },
+        "reviews": {
+          "modules": [
+            "cycles",
+            "goals",
+            "manage",
+            "peer_requests"
+          ]
+        },
+        "service_desk": {
+          "modules": [
+            "dashboard",
+            "settings",
+            "tickets"
+          ]
+        }
+      }
+    }
+  }
+}

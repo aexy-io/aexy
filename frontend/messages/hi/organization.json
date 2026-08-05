@@ -24,6 +24,8 @@
       "new": "नया विभाग",
       "name": "नाम",
       "function": "फ़ंक्शन",
+      "edit": "विभाग संपादित करें",
+      "editTitle": "{department} संपादित करें",
       "parent": "मूल विभाग",
       "head": "प्रमुख",
       "members": "सदस्य",
@@ -65,12 +67,26 @@
       "everyoneAdded": "वर्कस्पेस के सभी लोग पहले से इस विभाग में हैं।",
       "primary": "प्राथमिक",
       "role": "भूमिका",
+      "position": "पद",
+      "noPosition": "कोई पद नहीं",
       "remove": "विभाग से हटाएँ",
       "roles": {
         "head": "प्रमुख",
         "manager": "मैनेजर",
         "member": "सदस्य"
       }
+    },
+    "functions": {
+      "none": "कोई फ़ंक्शन नहीं",
+      "custom": "कस्टम…",
+      "customPlaceholder": "underwriting",
+      "customHint": "{prefix}your-key के रूप में सेव होगा। कस्टम फ़ंक्शन मानक फ़ंक्शन की तरह ही काम करते हैं।",
+      "setOne": "फ़ंक्शन सेट करें",
+      "takenBy": "{department} के पास है",
+      "takenWarning": "{department} पहले से यह फ़ंक्शन निभाता है। सेव नहीं होगा — एक फ़ंक्शन एक ही विभाग का होता है।",
+      "routes": "यहाँ रूट होने वाली Service Desk कतारें: {buckets}",
+      "unclaimedTitle": "कुछ Service Desk कतारों का कोई विभाग नहीं है",
+      "unclaimedBody": "इन पर प्रतीक्षारत टिकट कोई नहीं देख सकता: {functions}। किसी विभाग को मिलता-जुलता फ़ंक्शन दें।"
     },
     "positions": {
       "title": "पद",

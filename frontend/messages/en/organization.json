@@ -24,6 +24,8 @@
       "new": "New Department",
       "name": "Name",
       "function": "Function",
+      "edit": "Edit department",
+      "editTitle": "Edit {department}",
       "parent": "Parent department",
       "head": "Head",
       "members": "Members",
@@ -65,12 +67,26 @@
       "everyoneAdded": "Everyone in the workspace is already in this department.",
       "primary": "Primary",
       "role": "Role",
+      "position": "Position",
+      "noPosition": "No position",
       "remove": "Remove from department",
       "roles": {
         "head": "Head",
         "manager": "Manager",
         "member": "Member"
       }
+    },
+    "functions": {
+      "none": "No function",
+      "custom": "Custom…",
+      "customPlaceholder": "underwriting",
+      "customHint": "Saved as {prefix}your-key. Custom functions work exactly like the standard ones.",
+      "setOne": "Set a function",
+      "takenBy": "taken by {department}",
+      "takenWarning": "{department} already performs this function. Saving will fail — a function belongs to one department.",
+      "routes": "Service Desk queues routed here: {buckets}",
+      "unclaimedTitle": "Some Service Desk queues have no department",
+      "unclaimedBody": "Nobody can see tickets waiting on: {functions}. Give a department the matching function to fix it."
     },
     "positions": {
       "title": "Positions",

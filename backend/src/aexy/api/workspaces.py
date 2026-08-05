@@ -26,6 +26,7 @@ from aexy.schemas.workspace import (
     OnboardingUseCasesApply,
     OnboardingUseCasesResult,
     OnboardingSeededDepartment,
+    OnboardingSeededTeam,
     WorkspaceBillingStatus,
     GitHubOrgLink,
     InviteInfoResponse,
@@ -1531,6 +1532,18 @@ async def apply_onboarding_use_cases(
         workspace_id, data.use_cases
     )
 
+    # Teams are a separate question from departments and answered separately: a
+    # department decides what someone can see, a team decides who chases them.
+    # Seeded after the departments so `per_department` has them to mirror.
+    from aexy.services.team_management_service import TeamManagementService
+
+    teams, teams_already_existed = await TeamManagementService(db).seed_teams_for_onboarding(
+        workspace_id,
+        owner_id=str(current_user.id),
+        strategy=data.team_strategy,
+        departments=[(d.id, d.name) for d in departments],
+    )
+
     await db.commit()
 
     return OnboardingUseCasesResult(
@@ -1546,6 +1559,11 @@ async def apply_onboarding_use_cases(
             )
             for d in departments
         ],
+        teams=[
+            OnboardingSeededTeam(id=team.id, name=team.name, department_id=team.department_id)
+            for team in teams
+        ],
+        teams_already_existed=teams_already_existed,
     )
 
 

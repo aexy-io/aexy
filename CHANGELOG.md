@@ -5,6 +5,165 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.2] - 2026-08-05
+
+### Added: departments decide access, and say what they are for
+
+0.14.0 made a department's access profile the thing that decides what its people
+see. Two things were missing from that: a department's *function* was a free-text
+box, and its profile could only be set to a whole bundle.
+
+**A department's function is now picked from a declared list.** `function_key` is a
+routing key, not a label — Service Desk row-level visibility resolves it (a queue
+names the function that owes the next action, and only that department's people can
+see those tickets), the digest resolves it to find a head to send an entire desk's
+open list to, and ticket auto-assignment resolves it to pick an owner. Nothing
+declared the vocabulary, so two modules invented their own and disagreed: the
+Service Desk templates shipped `ops_kam` for Operations in insurance-broking and
+`operations` in financial-services, for the same concept. Since the key is unique
+per workspace, which spelling you got depended on which template your desk started
+from — and a mismatch raises nothing at all. That department's people open the
+queue and see an empty list, indistinguishable from a quiet day.
+
+`services/org_functions.py` is now the single registry — ten functions with labels
+and descriptions, `ops_kam` recorded as a retired spelling that still resolves. The
+set stays **open**: anything not covered is `x_<name>` and every consumer treats it
+identically. Both seeders import from it and assert their keys at import time,
+which is the check that would have caught the divergence when it was written.
+
+The picker names what each function does *in your workspace* — "Service Desk queues
+routed here: kam" — computed from your own taxonomy rather than declared statically,
+because a hardcoded list would start lying the first time an admin edited theirs.
+Taking a function another department already holds warns before saving instead of
+409-ing after, and the Departments page now flags the one failure this mapping has
+no natural symptom for: a queue routed to a function **no department claims**, whose
+people can currently see nothing.
+
+Departments also became editable at all. `updateDepartment` existed in the API and
+the hooks with no caller, so a department's name and function were create-only.
+
+**A department's access can now be set app by app and module by module.** The
+backend has stored per-module department profiles all along and the resolver has
+always read them, but the only UI could assign a whole bundle — so "Business" was
+as specific as a department could get, and *CRM without the Inbox* could not be
+expressed anywhere. The app × module grid moved out of the member editor into a
+shared component rather than being written twice; the two describe the same shape
+and are read by one resolver, which is exactly how the member editor came to have
+module toggles the department editor never got.
+
+The two levels now link to each other. An override is often the wrong tool: if the
+whole department needs the change, editing the profile fixes it for everyone
+instead of pinning one person out of every future change to it.
+
+### Added: onboarding gives a workspace its first teams
+
+A *department* decides what someone can see. A *team* decides who chases them —
+standups, blocker escalation, review digests, sprint boards and leave approvals all
+resolve through team membership. Onboarding seeded departments and no teams, so a
+founder finished setup with everyone navigating correctly, nobody enrolled in any of
+that, and the team field on an invite opening onto an empty dropdown.
+
+Now asked rather than assumed: one team per department, one team for everyone, or
+none. Seeded teams carry `department_id` (the rollup that already existed for this
+and was never written), record the founder as `lead` — `review_service` and
+`leave_request_service` both look for exactly that string, so a team without one
+sends its approvals to "any workspace manager" — and note their provenance so a
+later repo sync can offer to merge rather than guess. Skipped entirely when the
+workspace already has teams, since the repos step may have created repo-based ones
+that reflect how work is actually split.
+
+`POST /teams/mirror-departments` offers the same action afterwards, so choosing
+"none" and adding a department in March are both recoverable.
+
+### Added: choose which department receives incoming tickets
+
+Which department runs the desk decides who incoming mail is auto-assigned to and
+whose head receives the digest. It had never been a choice. It began as the literal
+`function_key == "ops_kam"` — a key only workspaces set up from the
+insurance-broking template ever had, so everybody else's mail arrived unassigned
+with nothing on screen to say why — and then became "the department behind the
+desk's first internal queue", a fair inference but still an inference. A desk whose
+first queue is Support while its intake team is Operations had no way to say so.
+
+It is a setting now, with that inference as the documented fallback, and the picker
+names the department it would use anyway ("Automatic — Support (from the first
+queue)") so choosing nothing is informed rather than blank. One setting for both
+consumers: auto-assignment and the digest resolve it through the same function,
+because a workspace where those two disagreed about who runs the desk would be
+worse off than with either answer alone.
+
+A stale choice — department deleted or deactivated — degrades to the inference and
+says so in the log rather than stopping intake, and is not reported as explicit, so
+the page cannot show "Support, chosen" while mail goes to Operations.
+
+### Added: headcount seats can be filled
+
+`department_positions` carried a `filled_by_id` column that nothing ever wrote.
+Creating a seat was the only thing the product could do with one: every position
+read "Open" for ever and no member could be connected to the seat they occupy, so
+the titles an admin typed in were decoration. The seat now owns the link — no new
+column, no migration. Vacating reopens it, and so does removing someone from the
+department, because a seat left "filled" by someone who has left reads as taken and
+could never be offered again.
+
+### Fixed: the two app catalogues disagreed about five apps
+
+`backend/src/aexy/models/app_definitions.py` and
+`frontend/src/config/appDefinitions.ts` are two hand-written copies of one
+decision. CLAUDE.md says to keep them in sync; nothing checked, so every one of the
+four system bundles disagreed about `chat`, `community`, `gtm`, `leave` (granted on
+the backend, absent from the frontend) and `service_desk` (the reverse). Twenty
+divergences, none of which raised anything — which apps a role or department profile
+granted simply depended on which file the code path read.
+
+Both directions had already bitten. A department on the Engineering profile could
+not reach the Service Desk while the department editor's own "Start from
+Engineering" grid said it could; and filling that same grid from a bundle silently
+revoked Chat, Community, GTM and Leave from everyone in the department.
+
+Resolved in the granting direction on both sides — these bundles are starting points
+and role defaults, and the workspace toggle plus each app's `required_permission`
+are the real gates. The catalogues themselves turned out identical, so only the
+bundles needed touching.
+
+More usefully, they now check each other: `scripts/dump_app_catalog.py` writes the
+backend's answer to a committed fixture, a frontend test asserts the TypeScript
+matches it, and a backend test asserts the fixture still matches the Python.
+Without that last half, adding an app and forgetting to regenerate would leave both
+sides passing while the files disagreed — the exact failure the fixture exists to
+catch.
+
+### Fixed
+
+- **Member access was never enforced past the sidebar** for module-level toggles,
+  and a stale `ops_kam` comparison meant several reads silently resolved to nobody.
+  Every `Department.function_key` comparison now goes through one resolver that also
+  matches retired spellings.
+- **`deskIdentity.prefixWarning` threw on every render** of the Service Desk
+  settings page: it contained `{prefix}-<number>`, which ICU parses as an unclosed
+  tag, so the user saw nothing where the warning should be. Found while verifying
+  the intake setting; every message in both locales was then parsed to confirm it
+  was the only one — 8458 checked, 0 malformed.
+- **The function picker could rewrite a valid key as a custom one.** It seeded its
+  custom/standard mode in a `useState` initialiser while the catalogue is fetched, so
+  on first render every stored key looked unknown and the field opened in custom mode
+  holding the real key — one Save from turning `engineering` into `x_engineering`.
+
+### Migrations
+
+```
+python scripts/run_migrations.py --file migrate_org_function_keys.sql
+```
+
+Additive and idempotent. Moves `departments.function_key` and
+`service_desk_stakeholders.function_key` off the retired `ops_kam` spelling
+together, in one transaction, because they point at each other.
+`service_desk_tickets.pending_with` holds stakeholder *slugs*, not function keys,
+and is deliberately untouched. Until it runs, reads resolve either spelling. A
+workspace holding both spellings has its Operations department left alone and listed
+for inspection — merging two departments means deciding what happens to their
+members, which is not a migration's call.
+
 ## [0.14.1] - 2026-08-04
 
 ### Fixed: nine things a review of 0.14.0 turned up

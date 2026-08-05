@@ -1,6 +1,8 @@
 """Workspace-related Pydantic schemas."""
 
 from datetime import datetime
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from aexy.schemas.team import TeamMemberRoleName
@@ -224,10 +226,26 @@ class WorkspaceAppSettingsUpdate(BaseModel):
     apps: dict[str, bool]  # {"hiring": true, "tracking": false}
 
 
+# How teams should start life in a new workspace.
+#
+# A *department* decides what a person can see; a *team* decides who chases them —
+# standup prompts, blocker escalation, review digests, sprint boards and leave
+# approvals all resolve through team membership. Onboarding seeded departments and
+# no teams, so a founder finished setup with everybody navigating correctly and
+# nobody wired into any of that, and the team field on an invite opened onto an
+# empty dropdown.
+#
+# Asked rather than assumed, because a team boundary is a real decision: one team
+# per department suits an org that already works that way, and a single team is
+# honest for the ten-person company that does not.
+TeamStrategy = Literal["per_department", "single", "none"]
+
+
 class OnboardingUseCasesApply(BaseModel):
     """The use cases picked during onboarding."""
 
     use_cases: list[str] = Field(default_factory=list)
+    team_strategy: TeamStrategy = "per_department"
 
 
 class OnboardingSeededDepartment(BaseModel):
@@ -238,6 +256,14 @@ class OnboardingSeededDepartment(BaseModel):
     function_key: str | None = None
     access_profile_slug: str | None = None
     default_persona: str | None = None
+
+
+class OnboardingSeededTeam(BaseModel):
+    """A delivery team onboarding created."""
+
+    id: str
+    name: str
+    department_id: str | None = None
 
 
 class OnboardingUseCasesResult(BaseModel):
@@ -251,6 +277,11 @@ class OnboardingUseCasesResult(BaseModel):
     enabled_app_ids: list[str] = Field(default_factory=list)
     disabled_app_ids: list[str] = Field(default_factory=list)
     departments: list[OnboardingSeededDepartment] = Field(default_factory=list)
+    teams: list[OnboardingSeededTeam] = Field(default_factory=list)
+    # True when the workspace already had teams, so none were seeded. Reported
+    # rather than silent: "we made you no teams" and "you already had teams" look
+    # identical in an empty list, and only one of them is worth acting on.
+    teams_already_existed: bool = False
 
 
 # Billing Schemas

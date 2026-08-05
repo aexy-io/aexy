@@ -19,6 +19,7 @@ from aexy.schemas.organization import (
     DepartmentCreate,
     MembershipCreate,
     MembershipUpdate,
+    PositionCreate,
 )
 from aexy.services.organization_service import OrganizationService
 
@@ -298,3 +299,190 @@ async def test_list_people_includes_those_in_no_department(db_session: AsyncSess
     assert people["placed"].departments[0].name == "Sales"
     assert people["placed"].departments[0].is_primary is True
     assert people["stranded"].departments == []
+
+
+# ==================== headcount seats (positions) ====================
+#
+# A department position is a headcount seat. Creating one was the only thing the
+# product could do with it: it had a `filled_by_id` column that nothing ever
+# wrote, so every seat read "Open" for ever and no member could be connected to
+# the seat they occupy. These tests pin the seat down as the owner of that link.
+
+
+async def _dept_with_seats(db: AsyncSession, slug: str, *titles: str):
+    ws = await _make_workspace(db, slug)
+    svc = OrganizationService(db)
+    dept = await svc.create_department(ws.id, DepartmentCreate(name="Tech"))
+    await db.commit()
+    seats = [await svc.add_position(ws.id, dept.id, PositionCreate(title=t)) for t in titles]
+    await db.commit()
+    return ws, svc, dept, seats
+
+
+@pytest.mark.asyncio
+async def test_member_can_be_placed_in_a_seat_on_add(db_session: AsyncSession):
+    ws, svc, dept, (seat,) = await _dept_with_seats(db_session, "seat-add", "Tech Lead")
+    dev = await _make_developer(db_session, "lead", ws)
+
+    member = await svc.add_member(
+        ws.id, dept.id, MembershipCreate(developer_id=dev.id, position_id=seat.id)
+    )
+    await db_session.commit()
+
+    assert member.position_id == seat.id
+    assert member.position_title == "Tech Lead"
+
+    detail = await svc.get_department(ws.id, dept.id)
+    assert detail.positions[0].status == "filled"
+    assert detail.positions[0].filled_by_id == dev.id
+    assert detail.positions[0].filled_by_name == "lead"
+    assert detail.members[0].position_title == "Tech Lead"
+
+
+@pytest.mark.asyncio
+async def test_omitting_the_seat_leaves_every_seat_open(db_session: AsyncSession):
+    """The pre-existing call shape must keep behaving exactly as it did."""
+    ws, svc, dept, _ = await _dept_with_seats(db_session, "seat-omit", "Tech Lead")
+    dev = await _make_developer(db_session, "nobody", ws)
+
+    member = await svc.add_member(ws.id, dept.id, MembershipCreate(developer_id=dev.id))
+    await db_session.commit()
+
+    assert member.position_id is None
+    detail = await svc.get_department(ws.id, dept.id)
+    assert detail.positions[0].status == "open"
+    assert detail.positions[0].filled_by_id is None
+
+
+@pytest.mark.asyncio
+async def test_seat_can_be_assigned_and_vacated_after_the_fact(db_session: AsyncSession):
+    ws, svc, dept, (seat,) = await _dept_with_seats(db_session, "seat-later", "Tech Lead")
+    dev = await _make_developer(db_session, "later", ws)
+    member = await svc.add_member(ws.id, dept.id, MembershipCreate(developer_id=dev.id))
+    await db_session.commit()
+
+    filled = await svc.update_member(
+        ws.id, dept.id, member.id, MembershipUpdate(position_id=seat.id)
+    )
+    await db_session.commit()
+    assert filled.position_id == seat.id
+
+    # Explicit null vacates it, and the seat has to become available again —
+    # a seat that can never be refilled is not a headcount seat.
+    vacated = await svc.update_member(
+        ws.id, dept.id, member.id, MembershipUpdate(position_id=None)
+    )
+    await db_session.commit()
+    assert vacated.position_id is None
+    detail = await svc.get_department(ws.id, dept.id)
+    assert detail.positions[0].status == "open"
+
+
+@pytest.mark.asyncio
+async def test_unrelated_edit_does_not_vacate_the_seat(db_session: AsyncSession):
+    """`position_id` unset means "don't touch"; only an explicit null clears it."""
+    ws, svc, dept, (seat,) = await _dept_with_seats(db_session, "seat-keep", "Tech Lead")
+    dev = await _make_developer(db_session, "keeper", ws)
+    member = await svc.add_member(
+        ws.id, dept.id, MembershipCreate(developer_id=dev.id, position_id=seat.id)
+    )
+    await db_session.commit()
+
+    updated = await svc.update_member(
+        ws.id, dept.id, member.id, MembershipUpdate(role_in_department="manager")
+    )
+    await db_session.commit()
+
+    assert updated.role_in_department == "manager"
+    assert updated.position_id == seat.id
+
+
+@pytest.mark.asyncio
+async def test_moving_seats_frees_the_previous_one(db_session: AsyncSession):
+    ws, svc, dept, (lead, ic) = await _dept_with_seats(
+        db_session, "seat-move", "Tech Lead", "Engineer"
+    )
+    dev = await _make_developer(db_session, "mover", ws)
+    member = await svc.add_member(
+        ws.id, dept.id, MembershipCreate(developer_id=dev.id, position_id=lead.id)
+    )
+    await db_session.commit()
+
+    await svc.update_member(ws.id, dept.id, member.id, MembershipUpdate(position_id=ic.id))
+    await db_session.commit()
+
+    by_id = {p.id: p for p in (await svc.get_department(ws.id, dept.id)).positions}
+    assert by_id[lead.id].status == "open" and by_id[lead.id].filled_by_id is None
+    assert by_id[ic.id].filled_by_id == dev.id
+
+
+@pytest.mark.asyncio
+async def test_an_occupied_seat_cannot_be_taken(db_session: AsyncSession):
+    ws, svc, dept, (seat,) = await _dept_with_seats(db_session, "seat-taken", "Tech Lead")
+    first = await _make_developer(db_session, "first", ws)
+    second = await _make_developer(db_session, "second", ws)
+    await svc.add_member(
+        ws.id, dept.id, MembershipCreate(developer_id=first.id, position_id=seat.id)
+    )
+    await db_session.commit()
+
+    with pytest.raises(HTTPException) as ei:
+        await svc.add_member(
+            ws.id, dept.id, MembershipCreate(developer_id=second.id, position_id=seat.id)
+        )
+    assert ei.value.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_a_seat_from_another_department_is_rejected(db_session: AsyncSession):
+    """A seat belongs to one department, so accepting a foreign id would place
+    someone in a seat that is not on the roster they are being added to."""
+    ws, svc, dept, _ = await _dept_with_seats(db_session, "seat-foreign", "Tech Lead")
+    other = await svc.create_department(ws.id, DepartmentCreate(name="Sales"))
+    await db_session.commit()
+    elsewhere = await svc.add_position(ws.id, other.id, PositionCreate(title="AE"))
+    await db_session.commit()
+    dev = await _make_developer(db_session, "wrongseat", ws)
+
+    with pytest.raises(HTTPException) as ei:
+        await svc.add_member(
+            ws.id, dept.id, MembershipCreate(developer_id=dev.id, position_id=elsewhere.id)
+        )
+    assert ei.value.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_removing_a_member_reopens_their_seat(db_session: AsyncSession):
+    """Otherwise the seat reads as taken by someone who has left, and is
+    permanently unofferable."""
+    ws, svc, dept, (seat,) = await _dept_with_seats(db_session, "seat-leaver", "Tech Lead")
+    dev = await _make_developer(db_session, "leaver", ws)
+    member = await svc.add_member(
+        ws.id, dept.id, MembershipCreate(developer_id=dev.id, position_id=seat.id)
+    )
+    await db_session.commit()
+
+    await svc.remove_member(ws.id, dept.id, member.id)
+    await db_session.commit()
+
+    detail = await svc.get_department(ws.id, dept.id)
+    assert detail.positions[0].status == "open"
+    assert detail.positions[0].filled_by_id is None
+
+
+@pytest.mark.asyncio
+async def test_a_seat_created_with_a_holder_is_filled(db_session: AsyncSession):
+    """`status` defaults to "open", which would advertise an occupied seat."""
+    ws = await _make_workspace(db_session, "seat-born-filled")
+    svc = OrganizationService(db_session)
+    dept = await svc.create_department(ws.id, DepartmentCreate(name="Tech"))
+    await db_session.commit()
+    dev = await _make_developer(db_session, "holder", ws)
+
+    seat = await svc.add_position(
+        ws.id, dept.id, PositionCreate(title="Tech Lead", filled_by_id=dev.id)
+    )
+    await db_session.commit()
+
+    assert seat.status == "filled"
+    assert seat.filled_by_name == "holder"

@@ -2,8 +2,17 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
+/** How the workspace's first teams should be created.
+ *
+ *  A department decides what someone can see; a team decides who chases them —
+ *  standups, blockers, review digests, sprint boards and leave approvals all
+ *  resolve through team membership. Asked rather than assumed because a team
+ *  boundary is a real decision, and a wrong team silently routes approvals. */
+export type TeamStrategy = "per_department" | "single" | "none";
+
 export interface OnboardingData {
   useCases: string[];
+  teamStrategy: TeamStrategy;
   role: string | null;
   teamSize: string | null;
   // Workspace info
@@ -45,6 +54,7 @@ interface OnboardingContextType {
 
 const defaultData: OnboardingData = {
   useCases: [],
+  teamStrategy: "per_department",
   role: null,
   teamSize: null,
   workspace: {
