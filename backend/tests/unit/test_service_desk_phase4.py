@@ -304,6 +304,10 @@ async def test_editable_templates_default_and_override(db_session: AsyncSession)
     tmpls = await list_sd_templates(db_session, ws.id)
     assert {t["key"] for t in tmpls} == {"receipt", "closure", "digest"}
     assert all(t["customised"] is False for t in tmpls)
+    # Placeholders carry their fallback, not just a name — the settings page
+    # shows editors what a send renders when a value is missing.
+    receipt_vars = next(t for t in tmpls if t["key"] == "receipt")["variables"]
+    assert {"name": "requester_name", "default": "there"} in receipt_vars
 
     # Ops customises the receipt copy
     await upsert_sd_template(db_session, ws.id, "receipt", "Ticket {{display_id}} logged", "Namaste {{requester_name}}!", None)

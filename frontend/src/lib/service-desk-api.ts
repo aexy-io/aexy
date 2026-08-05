@@ -315,12 +315,18 @@ export interface ServiceDeskSettingsPatch {
   desk_department_id?: string;
 }
 
+/** One placeholder and what a send renders when its value is missing. */
+export interface ServiceDeskTemplateVariable {
+  name: string;
+  default: string;
+}
+
 export interface ServiceDeskTemplate {
   key: string;
   name: string;
   subject: string;
   body: string;
-  variables: string[];
+  variables: ServiceDeskTemplateVariable[];
   customised: boolean;
 }
 

@@ -65,10 +65,27 @@ function TemplateEditor({
           className="w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-xs"
         />
       </div>
-      <div className="flex items-center justify-between">
-        <span className="text-[11px] text-muted-foreground">
-          {t("templates.variables")}: {tpl.variables.map((v) => `{{${v}}}`).join(" ")}
-        </span>
+      <div>
+        <p className="mb-1 text-[11px] font-medium text-muted-foreground">{t("templates.variables")}</p>
+        <dl className="space-y-0.5">
+          {tpl.variables.map((v) => (
+            <div key={v.name} className="flex flex-wrap items-baseline gap-x-2 text-[11px] text-muted-foreground">
+              <dt>
+                <code className="rounded bg-muted px-1 py-0.5">{`{{${v.name}}}`}</code>
+              </dt>
+              <dd className="min-w-0 flex-1">
+                {/* Descriptions are i18n'd by variable name; an unknown future
+                    variable degrades to its token and fallback, not a broken key. */}
+                {t.has(`templates.varDesc.${v.name}`) && t(`templates.varDesc.${v.name}`)}
+                {v.default && (
+                  <span className="italic"> {t("templates.varDefault", { value: v.default })}</span>
+                )}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+      <div className="flex justify-end">
         {canManage && (
           <Button size="sm" disabled={!dirty || saving} onClick={() => onSave(subject, body)}>
             {saving ? t("templates.saving") : t("templates.save")}

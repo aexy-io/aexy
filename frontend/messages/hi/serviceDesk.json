@@ -133,6 +133,23 @@
       "subject": "विषय",
       "body": "मुख्य भाग",
       "variables": "प्लेसहोल्डर",
+      "varDefault": "— मान न होने पर \"{value}\" दिखेगा",
+      "varDesc": {
+        "requester_name": "आने वाले ईमेल से भेजने वाले का नाम।",
+        "display_id": "आपके workspace prefix के साथ टिकट id, जैसे TKT-000123।",
+        "subject": "आने वाले ईमेल की subject line।",
+        "desk_name": "डेस्क अपनी मेल पर जो नाम लिखता है — desk settings में बदले बिना यह आपके workspace का नाम होता है।",
+        "additional_tickets": "केवल तब भरा जाता है जब एक ईमेल से एक से अधिक टिकट बने; अन्यथा खाली।",
+        "closure_note": "टिकट resolve करते समय लिखा गया resolution सारांश।",
+        "overall_days": "टिकट कुल कितने working days खुला रहा।",
+        "recipient_name": "digest पाने वाले का नाम।",
+        "scope": "यह digest टिकटों के किस हिस्से को कवर करता है (जैसे एक विभाग); पूरे डेस्क के लिए खाली।",
+        "total_open": "digest में खुले टिकटों की संख्या।",
+        "breaching": "red threshold पार कर चुके टिकटों की संख्या।",
+        "tickets_block": "खुले टिकटों की अपने आप बनी सूची — इसे body में रहने दें।",
+        "date": "जिस दिन digest बना, वह तारीख।",
+        "breach_days": "आपके workspace का red threshold, working days में।"
+      },
       "save": "सहेजें",
       "saving": "सहेजा जा रहा है…",
       "customised": "अनुकूलित"

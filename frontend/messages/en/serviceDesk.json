@@ -133,6 +133,23 @@
       "subject": "Subject",
       "body": "Body",
       "variables": "Placeholders",
+      "varDefault": "— if missing, shows \"{value}\"",
+      "varDesc": {
+        "requester_name": "The sender's name from the incoming email.",
+        "display_id": "The ticket id with your workspace prefix, e.g. TKT-000123.",
+        "subject": "The subject line of the incoming email.",
+        "desk_name": "How the desk signs its mail — your workspace name, unless overridden in desk settings.",
+        "additional_tickets": "Filled only when one email was split into more than one ticket; empty otherwise.",
+        "closure_note": "The resolution summary written when the ticket was resolved.",
+        "overall_days": "Total working days the ticket was open.",
+        "recipient_name": "The digest recipient's name.",
+        "scope": "Which slice of tickets this digest covers (e.g. one department); empty for the whole desk.",
+        "total_open": "Count of open tickets in the digest.",
+        "breaching": "Count of tickets past the red threshold.",
+        "tickets_block": "The generated list of open tickets — keep this in the body.",
+        "date": "The date the digest was generated.",
+        "breach_days": "Your workspace's red threshold, in working days."
+      },
       "save": "Save",
       "saving": "Saving…",
       "customised": "Customised"
