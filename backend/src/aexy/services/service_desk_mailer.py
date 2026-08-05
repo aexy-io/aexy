@@ -30,6 +30,13 @@ logger = logging.getLogger(__name__)
 OUTBOUND_MARKER_HEADER = "X-Aexy-Service-Desk"
 
 
+def _header_safe(value: str) -> str:
+    """Collapse CR/LF so a value can never smuggle extra headers into the raw
+    MIME. The API layer already rejects line breaks in caller-supplied fields;
+    this keeps every other caller of the mailer safe by construction."""
+    return " ".join(str(value).splitlines())
+
+
 async def _send_via_gmail(
     db: AsyncSession,
     integration_id: str,
@@ -63,18 +70,18 @@ async def _send_via_gmail(
             part = MIMEBase(maintype or "application", subtype or "octet-stream")
             part.set_payload(raw_bytes)
             encoders.encode_base64(part)
-            part.add_header("Content-Disposition", "attachment", filename=filename)
+            part.add_header("Content-Disposition", "attachment", filename=_header_safe(filename))
             mime.attach(part)
     else:
         mime = MIMEText(body_text)
 
-    mime["To"] = to_email
+    mime["To"] = _header_safe(to_email)
     mime["From"] = from_address
     # Keep the watched mailbox in the reply path explicitly. Gmail already sends
     # as the connected account, but a stakeholder replying to a display name or
     # a forwarded copy can otherwise answer somewhere the desk never sees.
     mime["Reply-To"] = from_address
-    mime["Subject"] = subject
+    mime["Subject"] = _header_safe(subject)
     mime[OUTBOUND_MARKER_HEADER] = "1"
     raw = base64.urlsafe_b64encode(mime.as_bytes()).decode()
 
@@ -97,7 +104,7 @@ async def send_stakeholder_email(
     thread_id: str | None = None,
     attachments: list[tuple[str, str | None, bytes]] | None = None,
 ) -> str | None:
-    """Send a KAM-composed ticket email AS the watched mailbox. Raises on failure.
+    """Send a person-composed ticket email AS the watched mailbox. Raises on failure.
 
     Deliberately not best-effort, unlike the automatic receipts. This is a
     person clicking Send, and the transactional fallback would deliver from a

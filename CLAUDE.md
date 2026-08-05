@@ -33,24 +33,20 @@ cd backend && uvicorn aexy.main:app --reload
 # Run Temporal worker
 cd backend && python -m aexy.temporal.worker
 
-# Run tests (uses SQLite in-memory). ALWAYS use `.venv/bin/pytest`, never bare
-# `pytest` — the system Python lacks the app deps and the Docker image lacks
-# pytest. One-time setup if backend/.venv is missing:
-#   brew install uv
-#   cd backend && uv sync --extra dev --python 3.13 --locked
-cd backend && .venv/bin/pytest
+# Run tests (uses SQLite in-memory)
+cd backend && pytest
 
 # Run a single test file
-cd backend && .venv/bin/pytest tests/unit/test_something.py
+cd backend && pytest tests/unit/test_something.py
 
 # Run a single test
-cd backend && .venv/bin/pytest tests/unit/test_something.py::test_function_name -v
+cd backend && pytest tests/unit/test_something.py::test_function_name -v
 
 # Lint
-cd backend && .venv/bin/ruff check src/
+cd backend && ruff check src/
 
 # Type check
-cd backend && .venv/bin/mypy src/
+cd backend && mypy src/
 ```
 
 #### AI test suite (`tests/ai/`)
@@ -65,19 +61,19 @@ budget.
 #         (download via LM Studio app, then "Start Server" on :1234)
 
 # Fast unit tier (no LLM required) — skips everything marked local_llm
-cd backend && .venv/bin/pytest -m "not local_llm"
+cd backend && pytest -m "not local_llm"
 
 # Full AI suite against the local LM Studio
-cd backend && .venv/bin/pytest tests/ai -m local_llm -v
+cd backend && pytest tests/ai -m local_llm -v
 
 # Single AI test file
-cd backend && .venv/bin/pytest tests/ai/services/test_code_analyzer.py -v
+cd backend && pytest tests/ai/services/test_code_analyzer.py -v
 
 # Refresh golden JSON outputs in tests/ai/goldens/
-cd backend && UPDATE_GOLDENS=1 .venv/bin/pytest tests/ai -m local_llm
+cd backend && UPDATE_GOLDENS=1 pytest tests/ai -m local_llm
 
 # Print per-test recorder summary
-cd backend && .venv/bin/pytest tests/ai -m local_llm --ai-verbose
+cd backend && pytest tests/ai -m local_llm --ai-verbose
 ```
 
 Per-test LLM transcripts land in `backend/tests/ai/.logs/<nodeid>.jsonl`

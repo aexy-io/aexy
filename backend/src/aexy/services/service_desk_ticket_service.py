@@ -293,8 +293,8 @@ class ServiceDeskTicketService:
             status_code=status.HTTP_403_FORBIDDEN,
             detail=(
                 "You can view this Service Desk ticket but not change it. Only the "
-                "assigned KAM, the queue it is currently with, or a Service Desk "
-                "manager can."
+                "assigned owner, the team whose queue it is currently with, or a "
+                "Service Desk manager can."
             ),
         )
 
@@ -531,7 +531,7 @@ class ServiceDeskTicketService:
             async with self.db.begin_nested():
                 children: list[Ticket] = []
                 for _, issue in selected:
-                    child = await intake._create_child_ticket(
+                    child = await intake.create_child_ticket(
                         workspace_id,
                         primary,
                         sd,
@@ -693,7 +693,7 @@ class ServiceDeskTicketService:
             return []
         from aexy.models.service_desk import ServiceDeskMailbox
         from aexy.services.gmail_sync_service import (
-            _SERVICE_DESK_ATTACHMENT_FORWARD_BYTE_LIMIT,
+            SERVICE_DESK_ATTACHMENT_FORWARD_BYTE_LIMIT,
             GmailSyncService,
         )
 
@@ -732,11 +732,11 @@ class ServiceDeskTicketService:
                     detail=f"'{filename}' has no source message, so it cannot be attached",
                 )
             try:
-                raw = await service._gmail_attachment_bytes(
+                raw = await service.gmail_attachment_bytes(
                     integration,
                     owning_message_id,
                     {"attachmentId": item["attachment_id"], "size": item.get("size_bytes")},
-                    max_bytes=_SERVICE_DESK_ATTACHMENT_FORWARD_BYTE_LIMIT,
+                    max_bytes=SERVICE_DESK_ATTACHMENT_FORWARD_BYTE_LIMIT,
                     filename=filename,
                     content_type=item.get("content_type"),
                 )
@@ -749,7 +749,7 @@ class ServiceDeskTicketService:
                     detail=f"'{filename}' could not be retrieved, so nothing was sent: {exc}",
                 ) from exc
             total += len(raw)
-            if total > _SERVICE_DESK_ATTACHMENT_FORWARD_BYTE_LIMIT:
+            if total > SERVICE_DESK_ATTACHMENT_FORWARD_BYTE_LIMIT:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="The chosen files are too large to send together",
@@ -795,19 +795,21 @@ class ServiceDeskTicketService:
             option.email: option
             for option in await self._email_recipients(workspace_id, sd, ticket)
         }
+        taxonomy = await load_taxonomy(self.db, workspace_id, seed=False)
         chosen = options.get(recipient)
         if chosen is None:
+            # Named in the workspace's own nouns — this desk may call them
+            # partner/insurer, client/carrier, or anything else.
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
                     "Recipient must be an exact address configured for this ticket's "
-                    "partner or an insurer, or the ticket's requester"
+                    f"{taxonomy.term('account').lower()} or a {taxonomy.term('vendor').lower()}, "
+                    "or the ticket's requester"
                 ),
             )
 
-        vendor_slug = external_slug_for(
-            await load_taxonomy(self.db, workspace_id, seed=False), "vendor"
-        )
+        vendor_slug = external_slug_for(taxonomy, "vendor")
         if vendor_slug is not None and chosen.stage == vendor_slug:
             from aexy.models.service_desk import ServiceDeskVendorDomain
 

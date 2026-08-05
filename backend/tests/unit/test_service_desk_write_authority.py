@@ -505,7 +505,7 @@ async def test_a_chosen_file_is_refetched_and_attached(db_session, with_attachme
         assert body["attachmentId"] == "att-1"
         return b"row1,row2"
 
-    monkeypatch.setattr(GmailSyncService, "_gmail_attachment_bytes", _bytes)
+    monkeypatch.setattr(GmailSyncService, "gmail_attachment_bytes", _bytes)
 
     await ServiceDeskTicketService(db_session).email_stakeholder(
         with_attachment["ws"],
@@ -557,7 +557,7 @@ async def test_a_failed_fetch_sends_nothing_rather_than_an_empty_promise(
     ):
         raise ValueError("attachment exceeds the Service Desk raw-byte limit")
 
-    monkeypatch.setattr(GmailSyncService, "_gmail_attachment_bytes", _boom)
+    monkeypatch.setattr(GmailSyncService, "gmail_attachment_bytes", _boom)
 
     with pytest.raises(HTTPException) as exc:
         await ServiceDeskTicketService(db_session).email_stakeholder(
@@ -752,3 +752,30 @@ async def test_the_breach_clock_restarts_on_the_stage_the_email_moved_it_to(
     assert detail.tat.stakeholder_seconds["kam"] > 0
     # Overall wall-clock keeps running across the hand-off.
     assert detail.tat.overall_seconds >= breached.overall_seconds
+
+
+# ---------------------------------------------------------------- header safety
+
+
+def test_email_request_rejects_line_breaks_in_headers():
+    """A CR or LF in `to` or `subject` would let the sender append raw MIME
+    headers (a Bcc, say) to the message handed to Gmail, quietly defeating the
+    recipient allowlist. The schema is the first line of defence."""
+    from pydantic import ValidationError as PydanticValidationError
+
+    from aexy.schemas.service_desk import StakeholderEmailRequest
+
+    StakeholderEmailRequest(to="a@b.example", subject="Fine subject", body="Body")
+
+    for bad in ("Evil\r\nBcc: attacker@evil.example", "Evil\nX-Injected: 1"):
+        with pytest.raises(PydanticValidationError):
+            StakeholderEmailRequest(to="a@b.example", subject=bad, body="Body")
+        with pytest.raises(PydanticValidationError):
+            StakeholderEmailRequest(to=f"a@b.example{bad}", subject="Fine", body="Body")
+
+
+def test_mailer_header_safe_collapses_line_breaks():
+    from aexy.services.service_desk_mailer import _header_safe
+
+    assert _header_safe("report\r\nBcc: x@y.example.csv") == "report Bcc: x@y.example.csv"
+    assert _header_safe("plain.csv") == "plain.csv"

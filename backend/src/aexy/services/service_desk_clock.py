@@ -225,11 +225,21 @@ class Clock:
             return "amber"
         return "green"
 
-    def is_breaching(self, stage_working_seconds: int, pending_with: str | None = None) -> bool:
-        if pending_with in self.test_stage_slas:
-            _, red_minutes = self.test_stage_slas[pending_with]
-            return stage_working_seconds > red_minutes * 60
-        return stage_working_seconds / self.working_day_seconds > self.breach_red_days
+    def is_breaching(
+        self,
+        stage_working_seconds: int,
+        pending_with: str | None = None,
+        cumulative_working_seconds: int | None = None,
+    ) -> bool:
+        """Delegates to ``breach_level`` so the two can never disagree on red."""
+        return (
+            self.breach_level(
+                stage_working_seconds,
+                pending_with,
+                cumulative_working_seconds=cumulative_working_seconds,
+            )
+            == "red"
+        )
 
 
 async def load_clock(db: AsyncSession, workspace_id: str) -> Clock:

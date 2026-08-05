@@ -283,7 +283,7 @@ async def test_matcher_failure_marks_the_new_partner_ticket_for_human_review(
 
     class Gateway:
         async def call_llm(self, system, user, **kwargs):
-            if "match an incoming insurance email" in system:
+            if "match an incoming service desk email" in system:
                 raise RuntimeError("matcher unavailable")
             return (
                 '{"issues":[{"summary":"Check status","request_type":"claims",'

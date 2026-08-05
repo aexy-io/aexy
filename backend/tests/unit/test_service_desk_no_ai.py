@@ -229,14 +229,14 @@ async def test_attachments_are_listed_but_never_opened_without_ai():
         ]
     }
 
-    original = GmailSyncService._gmail_attachment_bytes
-    GmailSyncService._gmail_attachment_bytes = _forbidden_fetch
+    original = GmailSyncService.gmail_attachment_bytes
+    GmailSyncService.gmail_attachment_bytes = _forbidden_fetch
     try:
         context = await service._service_desk_attachment_context(
             integration=None, message_id="m-1", payload=payload, with_previews=False
         )
     finally:
-        GmailSyncService._gmail_attachment_bytes = original
+        GmailSyncService.gmail_attachment_bytes = original
 
     assert len(context) == 1
     assert context[0]["filename"] == "claims.xlsx"

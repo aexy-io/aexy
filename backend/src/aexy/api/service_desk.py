@@ -303,7 +303,7 @@ async def create_manual_ticket(workspace_id: str, data: ManualTicketCreate, db: 
     if not await can_create_manual_ticket(db, workspace_id, str(current.id)):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only a KAM or a Service Desk manager can log a manual ticket",
+            detail="Only a member of the desk's owning team or a Service Desk manager can log a manual ticket",
         )
     ticket_id = await ServiceDeskService(db).create_manual_ticket(workspace_id, data)
     return {"ticket_id": ticket_id}
@@ -367,7 +367,12 @@ async def email_stakeholder(
     db: AsyncSession = Depends(get_db),
     current: Developer = Depends(get_current_developer),
 ):
-    """Send a ticket email from the watched mailbox (assigned KAM or manager only)."""
+    """Send a ticket email from the watched mailbox.
+
+    Requires write authority on the ticket (``can_edit_ticket``): the assigned
+    owner, a member of the non-default queue the ticket is currently with, or a
+    Service Desk manager.
+    """
     return await ServiceDeskTicketService(db).email_stakeholder(
         workspace_id,
         ticket_id,

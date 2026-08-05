@@ -79,7 +79,7 @@
       "incoming": "Received",
       "outgoing": "Sent",
       "emailStakeholder": "Email stakeholder",
-      "emailStakeholderHint": "Sent from the desk's watched mailbox, so the reply comes back to this ticket. Only addresses configured in Master Data for this ticket's partner or an insurer, and the requester, can be chosen.",
+      "emailStakeholderHint": "Sent from the desk's watched mailbox, so the reply comes back to this ticket. Only addresses configured in Master Data for this ticket's stakeholders, and the requester, can be chosen.",
       "emailTo": "To",
       "emailSelectRecipient": "Select a recipient…",
       "emailSubject": "Subject",
@@ -104,12 +104,12 @@
     },
     "ai": {
       "title": "AI email categorisation",
-      "description": "Let AI read incoming emails and suggest the Request Type and LOB. When off, KAMs classify tickets manually.",
+      "description": "Let AI read incoming emails and suggest the Request Type and Product. When off, ticket owners classify tickets manually.",
       "enabled": "Enabled"
     },
     "autoSplit": {
       "title": "Automatic ticket split",
-      "description": "When AI reads an email and finds exactly two clearly different requests, and is confident about both, log the second one as its own ticket. Everything else stays a single ticket flagged for triage, so a KAM decides.",
+      "description": "When AI reads an email and finds exactly two clearly different requests, and is confident about both, log the second one as its own ticket. Everything else stays a single ticket flagged for triage, so a person decides.",
       "requiresAi": "Turn on AI email categorisation first. Nothing is split without it."
     },
     "manual": {

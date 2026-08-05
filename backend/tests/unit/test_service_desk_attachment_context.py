@@ -86,7 +86,7 @@ async def test_raw_byte_ceiling_rejects_attachment_before_download(monkeypatch):
     monkeypatch.setattr(service, "_make_gmail_request", fake_request)
 
     with pytest.raises(ValueError, match="raw-byte limit"):
-        await service._gmail_attachment_bytes(
+        await service.gmail_attachment_bytes(
             object(),
             "gmail-message-1",
             {"attachmentId": "attachment-1", "size": 9},
@@ -108,7 +108,7 @@ async def test_missing_size_rejects_external_attachment_before_download(monkeypa
     monkeypatch.setattr(service, "_make_gmail_request", fake_request)
 
     with pytest.raises(ValueError, match="unavailable before download"):
-        await service._gmail_attachment_bytes(
+        await service.gmail_attachment_bytes(
             object(),
             "gmail-message-without-size",
             {"attachmentId": "attachment-without-size"},
@@ -131,7 +131,7 @@ async def test_encoded_ceiling_rejects_attachment_before_decoding(monkeypatch):
     monkeypatch.setattr(gmail_sync.base64, "urlsafe_b64decode", fake_decode)
 
     with pytest.raises(ValueError, match="raw-byte limit"):
-        await service._gmail_attachment_bytes(
+        await service.gmail_attachment_bytes(
             object(),
             "gmail-message-2",
             {"data": "A" * 16},
@@ -172,7 +172,7 @@ async def test_preview_failure_preserves_attachment_metadata(monkeypatch):
     async def fail_preview(*args, **kwargs):
         raise ValueError("preview unavailable")
 
-    monkeypatch.setattr(service, "_gmail_attachment_bytes", fail_preview)
+    monkeypatch.setattr(service, "gmail_attachment_bytes", fail_preview)
     context = await service._service_desk_attachment_context(
         object(),
         "gmail-message-3",
@@ -319,7 +319,7 @@ async def test_forwarding_ceiling_is_used_after_gmail_transfer_decode(monkeypatc
 
     monkeypatch.setattr(gmail_sync, "_SERVICE_DESK_ATTACHMENT_RAW_BYTE_LIMIT", 8)
 
-    loaded = await service._gmail_attachment_bytes(
+    loaded = await service.gmail_attachment_bytes(
         object(),
         "gmail-message-forward",
         {"data": base64.urlsafe_b64encode(raw).decode(), "size": len(raw)},

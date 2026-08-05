@@ -42,7 +42,7 @@ _SERVICE_DESK_ATTACHMENT_PREVIEW_CHAR_LIMIT = 600
 # Forwarding a file to an insurer is a different job from sampling it for the
 # classifier, so it gets its own ceiling. Gmail itself rejects much above this,
 # and holding the bytes in memory is what actually costs us.
-_SERVICE_DESK_ATTACHMENT_FORWARD_BYTE_LIMIT = 10 * 1024 * 1024
+SERVICE_DESK_ATTACHMENT_FORWARD_BYTE_LIMIT = 10 * 1024 * 1024
 
 
 # Default deal creation settings
@@ -1096,7 +1096,7 @@ class GmailSyncService:
                 and self._supports_service_desk_preview(filename, content_type)
             ):
                 try:
-                    raw = await self._gmail_attachment_bytes(
+                    raw = await self.gmail_attachment_bytes(
                         integration,
                         message_id,
                         body,
@@ -1121,7 +1121,7 @@ class GmailSyncService:
             context.append(item)
         return context
 
-    async def _gmail_attachment_bytes(
+    async def gmail_attachment_bytes(
         self,
         integration: GoogleIntegration,
         message_id: str,

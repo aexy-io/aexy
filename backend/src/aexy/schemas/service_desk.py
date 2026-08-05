@@ -436,6 +436,16 @@ class StakeholderEmailRequest(BaseModel):
     to: str = Field(..., min_length=3, max_length=255)
     subject: str = Field(..., min_length=1, max_length=255)
     body: str = Field(..., min_length=1, max_length=20000)
+
+    @field_validator("to", "subject")
+    @classmethod
+    def _no_header_injection(cls, value: str) -> str:
+        """A CR or LF in a header field would let the sender append headers of
+        their own (a Bcc, say) to the raw MIME handed to Gmail — quietly
+        defeating the recipient allowlist this endpoint is built around."""
+        if "\r" in value or "\n" in value:
+            raise ValueError("must not contain line breaks")
+        return value
     # Filenames chosen from the ticket's own attachments. Never a client-supplied
     # payload: the bytes are re-fetched from the original email, so a caller
     # cannot use the desk to send a file that never arrived on the ticket.

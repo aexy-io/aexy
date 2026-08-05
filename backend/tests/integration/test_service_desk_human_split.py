@@ -234,7 +234,7 @@ async def test_child_failure_rolls_back_every_attempted_child(
 ):
     workspace = split_context["workspace"]
     ticket_id = split_context["ticket_id"]
-    original = ServiceDeskIntakeService._create_child_ticket
+    original = ServiceDeskIntakeService.create_child_ticket
     calls = 0
 
     async def fail_after_second_child(self, *args, **kwargs):
@@ -246,7 +246,7 @@ async def test_child_failure_rolls_back_every_attempted_child(
         return child
 
     monkeypatch.setattr(
-        ServiceDeskIntakeService, "_create_child_ticket", fail_after_second_child
+        ServiceDeskIntakeService, "create_child_ticket", fail_after_second_child
     )
     response = await client.post(
         f"{_base(workspace.id)}/tickets/{ticket_id}/split",

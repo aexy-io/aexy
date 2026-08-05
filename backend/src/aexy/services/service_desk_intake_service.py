@@ -59,10 +59,11 @@ _MAX_ISSUES_PER_EMAIL = 5
 # this sure about both halves. Anything less certain stays one triage ticket —
 # a human merging two tickets costs more than a human splitting one.
 _SPLIT_MIN_CONFIDENCE = 0.85
-# Attaching an insurer's mail to the wrong claim is worse than opening one extra
-# ticket, because insurance correspondence about different claims reads almost
-# identically. So a content match must be both confident and unambiguous, and it
-# is only ever attempted for a sender already known to master data.
+# Attaching a stakeholder's mail to the wrong ticket is worse than opening one
+# extra ticket, because one company's correspondence about different requests
+# often reads almost identically. So a content match must be both confident and
+# unambiguous, and it is only ever attempted for a sender already known to
+# master data.
 # Below this the model is guessing, so a human is asked to confirm the fields.
 _LOW_CONFIDENCE = 0.6
 _AI_MATCH_MIN_CONFIDENCE = 0.85
@@ -89,7 +90,7 @@ def _domain_of(email: str | None) -> str | None:
 def _address_of(email: str | None) -> str | None:
     """The bare sender address, lower-cased, display name and brackets stripped.
 
-    Partner/insurer records may be keyed on a whole address as well as a domain,
+    Account/vendor records may be keyed on a whole address as well as a domain,
     so several distinct companies can be tested from one real mailbox using
     plus-suffixes (`me+abcfinance@gmail.com`). A shared-domain provider like
     gmail.com cannot otherwise represent more than one company.
@@ -349,12 +350,16 @@ class ServiceDeskIntakeService:
         try:
             from aexy.llm.gateway import get_llm_gateway
 
+            # Vocabulary-neutral on purpose: this desk may be tracking claims,
+            # shipments or support cases, and the example id uses the
+            # workspace's own prefix so the model answers in ids we can parse.
             system = (
-                "You match an incoming insurance email to an existing open ticket. "
+                "You match an incoming service desk email to an existing open ticket. "
                 "Only match when the email clearly continues that specific ticket's "
-                "request. Different claims often use near-identical wording, so "
-                "answer null unless you are certain. Reply with compact JSON: "
-                '{"ticket": "BSD-12" or null, "confidence": 0..1, "reason": "one short sentence"}. '
+                "request. Different tickets from one company often use near-identical "
+                "wording, so answer null unless you are certain. Reply with compact JSON: "
+                f'{{"ticket": "{render_display_id(prefix, 12)}" or null, '
+                '"confidence": 0..1, "reason": "one short sentence"}. '
                 "JSON only."
             )
             user = (
@@ -804,7 +809,7 @@ class ServiceDeskIntakeService:
 
         try:
             async with self.db.begin_nested():
-                child = await self._create_child_ticket(
+                child = await self.create_child_ticket(
                     workspace_id, primary, sd, email, issues[1], mailbox
                 )
                 child_number = child.ticket_number
@@ -826,7 +831,7 @@ class ServiceDeskIntakeService:
         )
         return [child]
 
-    async def _create_child_ticket(
+    async def create_child_ticket(
         self,
         workspace_id: str,
         primary: Ticket,
