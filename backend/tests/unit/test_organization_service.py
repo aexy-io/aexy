@@ -417,7 +417,11 @@ async def test_moving_seats_frees_the_previous_one(db_session: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_an_occupied_seat_cannot_be_taken(db_session: AsyncSession):
+async def test_two_people_can_hold_the_same_title(db_session: AsyncSession):
+    """Naming an occupied seat means "this title for me too": a fresh seat with
+    the same title is created and filled, and the first holder is untouched.
+    This used to 409, which made a shared title like "SDE I" impossible to hand
+    out twice without pre-creating a second seat by hand."""
     ws, svc, dept, (seat,) = await _dept_with_seats(db_session, "seat-taken", "Tech Lead")
     first = await _make_developer(db_session, "first", ws)
     second = await _make_developer(db_session, "second", ws)
@@ -426,11 +430,42 @@ async def test_an_occupied_seat_cannot_be_taken(db_session: AsyncSession):
     )
     await db_session.commit()
 
-    with pytest.raises(HTTPException) as ei:
-        await svc.add_member(
-            ws.id, dept.id, MembershipCreate(developer_id=second.id, position_id=seat.id)
-        )
-    assert ei.value.status_code == 409
+    member = await svc.add_member(
+        ws.id, dept.id, MembershipCreate(developer_id=second.id, position_id=seat.id)
+    )
+    await db_session.commit()
+
+    assert member.position_title == "Tech Lead"
+    assert member.position_id != seat.id
+    detail = await svc.get_department(ws.id, dept.id)
+    holders = {p.filled_by_id for p in detail.positions if p.title == "Tech Lead"}
+    assert holders == {first.id, second.id}
+
+
+@pytest.mark.asyncio
+async def test_an_open_seat_with_the_same_title_is_reused_before_creating_one(
+    db_session: AsyncSession,
+):
+    """Headcount only grows when every seat with that title is actually held."""
+    ws, svc, dept, (taken, spare) = await _dept_with_seats(
+        db_session, "seat-reuse", "SDE I", "SDE I"
+    )
+    first = await _make_developer(db_session, "first-sde", ws)
+    second = await _make_developer(db_session, "second-sde", ws)
+    await svc.add_member(
+        ws.id, dept.id, MembershipCreate(developer_id=first.id, position_id=taken.id)
+    )
+    await db_session.commit()
+
+    # Pointing at the *occupied* seat lands the person in the open twin instead.
+    member = await svc.add_member(
+        ws.id, dept.id, MembershipCreate(developer_id=second.id, position_id=taken.id)
+    )
+    await db_session.commit()
+
+    assert member.position_id == spare.id
+    detail = await svc.get_department(ws.id, dept.id)
+    assert len([p for p in detail.positions if p.title == "SDE I"]) == 2
 
 
 @pytest.mark.asyncio

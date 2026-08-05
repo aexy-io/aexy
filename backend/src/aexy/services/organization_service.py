@@ -740,6 +740,13 @@ class OrganizationService:
         the seat back to ``open`` — the point of a headcount seat is that it can
         be refilled, and a seat left ``filled`` by someone who has moved on is
         both wrong and permanently unusable.
+
+        A title is not exclusive: naming a seat someone else already holds means
+        "the same title for this person too". An open seat with that title is
+        reused first; failing that a new seat is created, so headcount only
+        grows when a person actually holds the extra seat. (This used to 409,
+        which made a shared title like "SDE I" impossible to hand out twice
+        without pre-creating a second seat by hand.)
         """
         held = (
             await self.db.execute(
@@ -767,7 +774,28 @@ class OrganizationService:
                 # someone in a seat that isn't on the roster they're being added to.
                 raise HTTPException(status_code=404, detail="Position not found in this department")
             if target.filled_by_id and target.filled_by_id != developer_id:
-                raise HTTPException(status_code=409, detail="That position is already filled")
+                open_same_title = (
+                    await self.db.execute(
+                        select(DepartmentPosition)
+                        .where(
+                            DepartmentPosition.department_id == dept_id,
+                            DepartmentPosition.workspace_id == workspace_id,
+                            DepartmentPosition.title == target.title,
+                            DepartmentPosition.filled_by_id.is_(None),
+                        )
+                        .order_by(DepartmentPosition.created_at, DepartmentPosition.id)
+                    )
+                ).scalars().first()
+                if open_same_title is not None:
+                    target = open_same_title
+                else:
+                    target = DepartmentPosition(
+                        id=str(uuid4()),
+                        workspace_id=workspace_id,
+                        department_id=dept_id,
+                        title=target.title,
+                    )
+                    self.db.add(target)
 
         for seat in held:
             if target is not None and seat.id == target.id:
