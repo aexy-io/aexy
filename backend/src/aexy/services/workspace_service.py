@@ -19,6 +19,9 @@ from aexy.services.document_space_service import DocumentSpaceService
 
 logger = logging.getLogger(__name__)
 
+# Sentinel for "this field was not sent", so an explicit null can mean "clear it".
+UNSET = object()
+
 
 def generate_slug(name: str) -> str:
     """Generate a URL-safe slug from a name."""
@@ -286,17 +289,44 @@ class WorkspaceService:
         self,
         workspace_id: str,
         developer_id: str,
-        new_role: str,
+        new_role: str | None = None,
+        new_role_id: str | None | object = UNSET,
     ) -> WorkspaceMember | None:
-        """Update a member's role."""
+        """Update a member's legacy role and/or the custom role assigned to them.
+
+        ``new_role_id`` is what makes capabilities that no legacy template
+        carries — full Service Desk visibility, for one — grantable and
+        revocable natively: the permission resolver reads the custom role's
+        permission list in place of the template. ``UNSET`` leaves it alone,
+        ``None`` clears it.
+        """
         member = await self.get_member(workspace_id, developer_id)
         if not member:
             return None
 
-        if member.role == "owner" and new_role != "owner":
-            raise ValueError("Cannot change the owner's role")
+        if new_role is not None:
+            if member.role == "owner" and new_role != "owner":
+                raise ValueError("Cannot change the owner's role")
+            member.role = new_role
 
-        member.role = new_role
+        if new_role_id is not UNSET:
+            if new_role_id is not None:
+                # A role id from another workspace would silently import that
+                # workspace's permission set.
+                from aexy.models.role import CustomRole
+
+                found = (
+                    await self.db.execute(
+                        select(CustomRole.id).where(
+                            CustomRole.id == new_role_id,
+                            CustomRole.workspace_id == workspace_id,
+                        )
+                    )
+                ).scalar_one_or_none()
+                if found is None:
+                    raise ValueError("Role not found in this workspace")
+            member.role_id = new_role_id
+
         await self.db.flush()
         await self.db.refresh(member)
         # Role is the access baseline for anyone whose departments carry no

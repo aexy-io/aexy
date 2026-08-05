@@ -149,6 +149,9 @@ export const PERMISSIONS = {
 
   // Service Desk
   CAN_VIEW_SERVICE_DESK: "can_view_service_desk",
+  // Every ticket in the workspace, read-only. Deliberately separate from
+  // managing the desk: an Ops Lead watches everything without reconfiguring it.
+  CAN_VIEW_ALL_SERVICE_DESK: "can_view_all_service_desk",
   CAN_MANAGE_SERVICE_DESK: "can_manage_service_desk",
 
   // Crm

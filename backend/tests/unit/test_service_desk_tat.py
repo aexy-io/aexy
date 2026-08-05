@@ -99,6 +99,28 @@ async def test_transition_closes_and_opens_segment(db_session: AsyncSession):
 
 
 @pytest.mark.asyncio
+async def test_ticket_detail_exposes_external_email_correspondence(db_session: AsyncSession):
+    ws = await _ws(db_session, "tat-correspondence")
+    ticket = await _ticket(db_session, ws)
+    db_session.add_all([
+        TicketResponse(
+            id=str(uuid4()), ticket_id=ticket.id, author_email="claims@insurer.example",
+            content="The claim is under review.", is_internal=False,
+        ),
+        TicketResponse(
+            id=str(uuid4()), ticket_id=ticket.id, content="Pending With changed", is_internal=True,
+        ),
+    ])
+    await db_session.commit()
+
+    detail = await ServiceDeskTicketService(db_session).get_detail(ws.id, ticket.id)
+
+    assert [(entry.author_email, entry.content) for entry in detail.correspondence] == [
+        ("claims@insurer.example", "The claim is under review."),
+    ]
+
+
+@pytest.mark.asyncio
 async def test_close_and_reopen(db_session: AsyncSession):
     ws = await _ws(db_session, "tat-b")
     ticket = await _ticket(db_session, ws)

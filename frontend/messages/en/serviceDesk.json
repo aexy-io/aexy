@@ -53,6 +53,8 @@
       "overallTat": "Overall TAT (elapsed)",
       "currentStage": "Current stage (working days)",
       "stakeholderTat": "Time per stakeholder",
+      "correspondence": "Email correspondence",
+      "unknownSender": "Unknown sender",
       "timeline": "Handoff timeline",
       "days": "{days} days",
       "open": "open",
@@ -61,12 +63,54 @@
       "selectProject": "Select a project…",
       "convert": "Convert",
       "converting": "Converting…",
-      "linkedToTask": "Linked to a project task"
+      "linkedToTask": "Linked to a project task",
+      "detectedIssues": "Detected issues",
+      "detectedIssuesHint": "The first issue stays on this ticket. Select any remaining issue that should become its own ticket.",
+      "selectIssue": "Select issue",
+      "primaryIssue": "Primary ticket",
+      "alreadySplit": "Already split",
+      "confidence": "confidence",
+      "splitIntoTickets": "Split into tickets",
+      "splitting": "Splitting…",
+      "splitFailed": "The issues could not be split. No partial tickets were created.",
+      "createdTickets": "Created tickets:",
+      "saveFailed": "Those changes could not be saved.",
+      "readOnly": "Read-only",
+      "incoming": "Received",
+      "outgoing": "Sent",
+      "emailStakeholder": "Email stakeholder",
+      "emailStakeholderHint": "Sent from the desk's watched mailbox, so the reply comes back to this ticket. Only addresses configured in Master Data for this ticket's stakeholders, and the requester, can be chosen.",
+      "emailTo": "To",
+      "emailSelectRecipient": "Select a recipient…",
+      "emailSubject": "Subject",
+      "emailBody": "Write the message…",
+      "emailSend": "Send email",
+      "emailSending": "Sending…",
+      "emailFailed": "The email could not be sent. Nothing was logged on the ticket.",
+      "request": "Request",
+      "attachments": "Attachments",
+      "notForwardable": "Cannot be forwarded",
+      "emailQuoteRequest": "Quote the original request",
+      "emailAttach": "Attach files from this ticket",
+      "emailNoAttachments": "none",
+      "emailReview": "Review before sending",
+      "emailConfirmTitle": "Check before this leaves",
+      "emailConfirmHint": "This sends from the desk mailbox and cannot be recalled.",
+      "emailConfirmSend": "Confirm and send",
+      "emailCancel": "Cancel",
+      "sentBy": "Sent by {name}",
+      "emailMoveStage": "Move this ticket to {stage} when sent",
+      "confirmTriage": "Confirm as correct"
     },
     "ai": {
       "title": "AI email categorisation",
-      "description": "Let AI read incoming emails and suggest the Request Type and LOB. When off, KAMs classify tickets manually.",
+      "description": "Let AI read incoming emails and suggest the Request Type and Product. When off, ticket owners classify tickets manually.",
       "enabled": "Enabled"
+    },
+    "autoSplit": {
+      "title": "Automatic ticket split",
+      "description": "When AI reads an email and finds exactly two clearly different requests, and is confident about both, log the second one as its own ticket. Everything else stays a single ticket flagged for triage, so a person decides.",
+      "requiresAi": "Turn on AI email categorisation first. Nothing is split without it."
     },
     "manual": {
       "logTicket": "Log ticket",
@@ -101,6 +145,7 @@
       "name": "Name",
       "domains": "Domains (comma-separated)",
       "assignedOwner": "Assigned owner",
+      "noAssignedOwner": "No assigned owner",
       "address": "Address",
       "channel": "Channel",
       "add": "Add",
@@ -110,6 +155,7 @@
       "domainsHint": "e.g. acme.com, acme.co"
     },
     "noDepartment": "You're not in a department yet, so no tickets can be routed to you. Ask an admin to add you from Organization → Departments.",
+    "assignedOnly": "You see the tickets assigned to you, and none are open right now. Other tickets on the desk are handled by their own owners.",
     "workingHours": {
       "title": "Working hours",
       "description": "The breach clock only runs during these hours, IST. It stops overnight, at weekends, and on company holidays — so \"2 business days\" means two of these shifts, not 48 hours. Holidays come from the Leave module.",
@@ -137,6 +183,19 @@
       "automaticNamed": "Automatic — {department} (from the first queue)",
       "automaticNone": "Automatic — no department resolves yet",
       "nobody": "No department is receiving tickets, so every request arrives unassigned and nobody gets the digest. Choose one, or give a department the function your first queue routes to."
+    },
+    "testSla": {
+      "title": "Temporary minute SLA test",
+      "description": "Use only for a controlled test. These are working-minute thresholds for whichever stages you tick below. They automatically stop at the expiry, and End test removes them immediately.",
+      "stage": "Stage",
+      "amber": "Amber minutes",
+      "red": "Red minutes",
+      "expires": "Stop test at",
+      "save": "Start / update test",
+      "saving": "Saving…",
+      "clear": "End test and remove rules",
+      "invalid": "Tick at least one stage, use a future expiry within 24 hours, and give every ticked stage a red value greater than its amber.",
+      "active": "Test mode is active. It is ignored automatically after its expiry."
     }
   }
 }

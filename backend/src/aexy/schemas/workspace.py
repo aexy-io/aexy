@@ -100,9 +100,17 @@ class WorkspaceMemberAdd(BaseModel):
 
 
 class WorkspaceMemberUpdate(BaseModel):
-    """Schema for updating a member's role."""
+    """Schema for updating a member's role.
 
-    role: str  # "admin" | "member" | "viewer"
+    Either field may be sent on its own. ``role_id`` points at a custom role
+    (Organization → Roles) and, when set, is what the permission resolver reads
+    instead of the legacy template — that is how a capability like full Service
+    Desk visibility is granted; sending ``role_id: null`` revokes it and falls
+    back to the legacy role.
+    """
+
+    role: str | None = None  # "admin" | "member" | "viewer"
+    role_id: str | None = None
 
 
 class WorkspaceMemberStatusUpdate(BaseModel):
@@ -128,6 +136,9 @@ class WorkspaceMemberResponse(BaseModel):
     developer_email: str | None = None
     developer_avatar_url: str | None = None
     role: str
+    # The custom role assigned to this member, if any. Returned so the members
+    # page can show which one is in force and offer to change it.
+    role_id: str | None = None
     status: str
     is_billable: bool = True
     app_permissions: dict | None = None

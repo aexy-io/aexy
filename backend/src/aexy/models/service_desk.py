@@ -94,6 +94,14 @@ class ServiceDeskStakeholder(Base):
     # member of that department can see.
     function_key: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
 
+    # Which master-data table an EXTERNAL bucket speaks for: "account", "vendor",
+    # or NULL for one that has records of neither kind (a loss adjuster, say).
+    # Without it the desk had to guess from the bucket's label, which silently
+    # did the wrong thing for any workspace that renamed its nouns. Decides
+    # which table a reply's sender is matched against when the ticket is handed
+    # back, and which stage writing to an address implies.
+    links_to: Mapped[str | None] = mapped_column(String(16), nullable=True)
+
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
@@ -299,6 +307,14 @@ class ServiceDeskTicket(Base):
     workspace_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    # Canonical split-family relationship. ``Ticket.field_values`` still keeps
+    # display metadata, but assignment and authorization must never trust JSON.
+    split_parent_ticket_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("tickets.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     product_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False), ForeignKey("service_desk_products.id", ondelete="SET NULL"), nullable=True
@@ -338,7 +354,11 @@ class ServiceDeskTicket(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
-    ticket: Mapped["Ticket"] = relationship("Ticket", lazy="selectin")
+    # ``split_parent_ticket_id`` is a second FK to tickets, so this relationship
+    # has to say which one it travels — otherwise mapper configuration fails.
+    ticket: Mapped["Ticket"] = relationship(
+        "Ticket", foreign_keys=[ticket_id], lazy="selectin"
+    )
     account: Mapped["ServiceDeskAccount"] = relationship("ServiceDeskAccount", lazy="selectin")
     product: Mapped["ServiceDeskProduct"] = relationship("ServiceDeskProduct", lazy="selectin")
     vendor: Mapped["ServiceDeskVendor"] = relationship("ServiceDeskVendor", lazy="selectin")

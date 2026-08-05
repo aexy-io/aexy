@@ -9,6 +9,10 @@ webhook mailbox (or if Gmail send fails), it falls back to the transactional
 
 import base64
 import logging
+from email import encoders
+from email.message import Message
+from email.mime.base import MIMEBase
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +21,20 @@ from aexy.models.google_integration import GoogleIntegration
 from aexy.models.service_desk import MailboxChannel, ServiceDeskMailbox
 
 logger = logging.getLogger(__name__)
+
+# Stamped on every service-desk email we send through Gmail, and checked by
+# intake before a ticket is created. The synced mailbox is the same Google
+# account these receipts are sent from, so our own sent mail comes back through
+# the sync — without a deterministic marker every acknowledgement would be
+# ingested as a fresh ticket, which would then be acknowledged in turn.
+OUTBOUND_MARKER_HEADER = "X-Aexy-Service-Desk"
+
+
+def _header_safe(value: str) -> str:
+    """Collapse CR/LF so a value can never smuggle extra headers into the raw
+    MIME. The API layer already rejects line breaks in caller-supplied fields;
+    this keeps every other caller of the mailer safe by construction."""
+    return " ".join(str(value).splitlines())
 
 
 async def _send_via_gmail(
@@ -28,7 +46,9 @@ async def _send_via_gmail(
     subject: str,
     body_text: str,
     thread_id: str | None,
-) -> None:
+    attachments: list[tuple[str, str | None, bytes]] | None = None,
+) -> str | None:
+    """Send through the connected account. Returns Gmail's thread id, if given."""
     from aexy.services.gmail_sync_service import GmailSyncService
 
     integration = await db.get(GoogleIntegration, integration_id)
@@ -42,18 +62,74 @@ async def _send_via_gmail(
             f"Gmail integration {integration_id} does not belong to workspace {workspace_id}"
         )
 
-    mime = MIMEText(body_text)
-    mime["To"] = to_email
+    if attachments:
+        mime: Message = MIMEMultipart()
+        mime.attach(MIMEText(body_text))
+        for filename, content_type, raw_bytes in attachments:
+            maintype, _, subtype = (content_type or "application/octet-stream").partition("/")
+            part = MIMEBase(maintype or "application", subtype or "octet-stream")
+            part.set_payload(raw_bytes)
+            encoders.encode_base64(part)
+            part.add_header("Content-Disposition", "attachment", filename=_header_safe(filename))
+            mime.attach(part)
+    else:
+        mime = MIMEText(body_text)
+
+    mime["To"] = _header_safe(to_email)
     mime["From"] = from_address
-    mime["Subject"] = subject
+    # Keep the watched mailbox in the reply path explicitly. Gmail already sends
+    # as the connected account, but a stakeholder replying to a display name or
+    # a forwarded copy can otherwise answer somewhere the desk never sees.
+    mime["Reply-To"] = from_address
+    mime["Subject"] = _header_safe(subject)
+    mime[OUTBOUND_MARKER_HEADER] = "1"
     raw = base64.urlsafe_b64encode(mime.as_bytes()).decode()
 
     payload: dict = {"raw": raw}
     if thread_id:
         payload["threadId"] = thread_id
 
-    await GmailSyncService(db)._make_gmail_request(
+    response = await GmailSyncService(db)._make_gmail_request(
         integration, "POST", "/users/me/messages/send", json=payload
+    )
+    return (response or {}).get("threadId")
+
+
+async def send_stakeholder_email(
+    db: AsyncSession,
+    mailbox: ServiceDeskMailbox | None,
+    to_email: str,
+    subject: str,
+    body_text: str,
+    thread_id: str | None = None,
+    attachments: list[tuple[str, str | None, bytes]] | None = None,
+) -> str | None:
+    """Send a person-composed ticket email AS the watched mailbox. Raises on failure.
+
+    Deliberately not best-effort, unlike the automatic receipts. This is a
+    person clicking Send, and the transactional fallback would deliver from a
+    system address the stakeholder cannot reply to — their answer would never
+    reach the watched mailbox and so never reach the ticket. Failing loudly
+    lets the UI say so instead of logging an outbound message that never left.
+    """
+    if (
+        mailbox is None
+        or mailbox.channel != MailboxChannel.GMAIL_SYNC.value
+        or not mailbox.integration_id
+    ):
+        raise RuntimeError(
+            "This ticket's mailbox is not linked to a connected Gmail account, "
+            "so outbound stakeholder email cannot be sent from it"
+        )
+    return await _send_via_gmail(
+        db,
+        mailbox.integration_id,
+        mailbox.address,
+        to_email,
+        subject,
+        body_text,
+        thread_id,
+        attachments,
     )
 
 

@@ -879,6 +879,7 @@ async def _maybe_handle_service_desk(email_data: dict) -> bool:
                     message_id=email_data.get("message_id"),
                     thread_id=email_data.get("thread_id"),
                     in_reply_to=email_data.get("in_reply_to_message_id"),
+                    headers=email_data.get("headers") or {},
                 ),
                 mailbox,
                 source="service_desk_webhook",

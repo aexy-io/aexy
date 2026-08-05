@@ -28,6 +28,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta, timezone
+from typing import Mapping
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
@@ -48,6 +49,47 @@ DEFAULT_WORK_END = time(18, 30)
 # workspace — a 2-business-day target is one company's SLA, not everyone's.
 BREACH_RED_DAYS = 2.0
 BREACH_AMBER_DAYS = 1.0
+# Where the three fixed insurance stages lived before the override became a
+# per-workspace map. Read only to keep a test started under the old shape running.
+_LEGACY_TEST_SLA_STAGES = ("kam", "insurer", "partner")
+
+
+def _active_test_stage_slas(value: object) -> dict[str, tuple[int, int]]:
+    """Read a safely ignorable test override from persisted workspace settings.
+
+    Validation occurs at the API boundary. This defensive reader means a stale
+    or hand-edited JSON setting cannot break ticket listing, and expiry alone is
+    enough for the regular SLA to become active again.
+    """
+    if not isinstance(value, dict):
+        return {}
+    raw_expiry = value.get("expires_at")
+    if not isinstance(raw_expiry, str):
+        return {}
+    try:
+        expires_at = datetime.fromisoformat(raw_expiry.replace("Z", "+00:00"))
+        if expires_at.tzinfo is None or expires_at <= datetime.now(timezone.utc):
+            return {}
+    except ValueError:
+        return {}
+
+    raw_stages = value.get("stages")
+    if not isinstance(raw_stages, dict):
+        # Written before the override became a map: the stage names sat at the
+        # top level. Honour them so a test already running keeps running.
+        raw_stages = {k: value[k] for k in _LEGACY_TEST_SLA_STAGES if isinstance(value.get(k), dict)}
+
+    stages: dict[str, tuple[int, int]] = {}
+    for stage, rule in raw_stages.items():
+        if not isinstance(rule, dict):
+            continue
+        amber, red = rule.get("amber_minutes"), rule.get("red_minutes")
+        # One malformed stage is skipped rather than voiding the whole override:
+        # the others are still a deliberate, expiring, manager-set instruction.
+        if not isinstance(amber, int) or not isinstance(red, int) or amber < 1 or red <= amber:
+            continue
+        stages[str(stage)] = (amber, red)
+    return stages
 
 # Local hours at which the open-ticket digest goes out. Per workspace, in its own
 # `timezone`: this was a single deployment-wide cron pinned to Asia/Kolkata, so a
@@ -99,6 +141,9 @@ class Clock:
     tz: ZoneInfo = IST
     breach_red_days: float = BREACH_RED_DAYS
     breach_amber_days: float = BREACH_AMBER_DAYS
+    # These rules exist only for a short, explicitly configured test window.
+    # Missing, malformed, or expired data falls back to the normal day targets.
+    test_stage_slas: Mapping[str, tuple[int, int]] = field(default_factory=dict)
 
     @property
     def working_day_seconds(self) -> float:
@@ -141,16 +186,60 @@ class Clock:
         """Working seconds as working days — 1.0 means one full shift went by."""
         return round(working_seconds / self.working_day_seconds, 2)
 
-    def breach_level(self, stage_working_seconds: int) -> str:
+    def breach_level(
+        self,
+        stage_working_seconds: int,
+        pending_with: str | None = None,
+        cumulative_working_seconds: int | None = None,
+    ) -> str:
+        """How late this ticket is with its current stakeholder.
+
+        ``stage_working_seconds`` is the open segment's age and drives amber and
+        red exactly as the BRD specifies.
+
+        ``cumulative_working_seconds`` is everything this stakeholder has held the
+        ticket for, across every hand-off, and can only ever raise the result to
+        red. It exists because a stakeholder who answers "still checking" hands
+        the ticket back, which restarts the stage clock: without this, a daily
+        holding reply would keep a chronically late insurer permanently green.
+        It never triggers amber, so a ticket that is healthy today cannot be
+        pushed to amber by history alone.
+        """
+        if pending_with in self.test_stage_slas:
+            amber_minutes, red_minutes = self.test_stage_slas[pending_with]
+            if stage_working_seconds > red_minutes * 60:
+                return "red"
+            if (cumulative_working_seconds or 0) > red_minutes * 60:
+                return "red"
+            if stage_working_seconds >= amber_minutes * 60:
+                return "amber"
+            return "green"
         days = stage_working_seconds / self.working_day_seconds
         if days > self.breach_red_days:
+            return "red"
+        # A ticket that has been handed round and round can breach on its total
+        # even when no single stage did.
+        if (cumulative_working_seconds or 0) / self.working_day_seconds > self.breach_red_days:
             return "red"
         if days >= self.breach_amber_days:
             return "amber"
         return "green"
 
-    def is_breaching(self, stage_working_seconds: int) -> bool:
-        return stage_working_seconds / self.working_day_seconds > self.breach_red_days
+    def is_breaching(
+        self,
+        stage_working_seconds: int,
+        pending_with: str | None = None,
+        cumulative_working_seconds: int | None = None,
+    ) -> bool:
+        """Delegates to ``breach_level`` so the two can never disagree on red."""
+        return (
+            self.breach_level(
+                stage_working_seconds,
+                pending_with,
+                cumulative_working_seconds=cumulative_working_seconds,
+            )
+            == "red"
+        )
 
 
 async def load_clock(db: AsyncSession, workspace_id: str) -> Clock:
@@ -186,4 +275,5 @@ async def load_clock(db: AsyncSession, workspace_id: str) -> Clock:
         tz=_parse_zone(sd.get("timezone")),
         breach_red_days=_parse_threshold(sd.get("breach_red_days"), BREACH_RED_DAYS),
         breach_amber_days=_parse_threshold(sd.get("breach_amber_days"), BREACH_AMBER_DAYS),
+        test_stage_slas=_active_test_stage_slas(sd.get("test_sla")),
     )

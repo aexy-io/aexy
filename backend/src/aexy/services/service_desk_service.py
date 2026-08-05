@@ -13,6 +13,7 @@ from sqlalchemy import delete, false, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from aexy.models.google_integration import GoogleIntegration
 from aexy.models.organization import Department, DepartmentMember
 from aexy.services.org_functions import canonical_function_key
 from aexy.services.service_desk_clock import (
@@ -30,7 +31,7 @@ from aexy.services.service_desk_config import (
     ticket_prefix,
 )
 from aexy.services.service_desk_industry_templates import get_template, list_templates
-from aexy.services.service_desk_taxonomy import load_taxonomy, seed_taxonomy
+from aexy.services.service_desk_taxonomy import Taxonomy, load_taxonomy, seed_taxonomy
 from aexy.models.service_desk import (
     ServiceDeskRequestType,
     ServiceDeskStakeholder,
@@ -60,6 +61,7 @@ from aexy.schemas.service_desk import (
     AccountResponse,
     AccountUpdate,
     ServiceDeskTicketResponse,
+    TestSLAOverride,
 )
 
 
@@ -89,29 +91,122 @@ async def _caller_functions(db: AsyncSession, workspace_id: str, developer_id: s
     return {key for key in (canonical_function_key(raw) for raw in stored) if key}
 
 
-async def resolve_scope_clause(db: AsyncSession, workspace_id: str, developer_id: str):
-    """Row-level visibility for the caller.
+def _assignment_only_function(taxonomy: Taxonomy) -> str | None:
+    """The one function whose queue is by assignment rather than by bucket.
 
-    Returns None when the caller may see everything (a desk manager, or anyone
-    with ``can_manage_service_desk``). Otherwise returns a SQLAlchemy clause
-    restricting to: tickets pending with a stakeholder whose department the
-    caller belongs to, plus tickets assigned to them. A caller in no relevant
-    department sees nothing.
+    Every ticket nobody has picked up parks on the workspace's default
+    stakeholder, so honouring that bucket as a shared queue would show each
+    member of that team everyone else's work — the exact leak this scope exists
+    to prevent. Was the literal ``"ops_kam"``, which silently did nothing for a
+    workspace whose operations team was called anything else.
+    """
+    return taxonomy.internal_function_keys.get(taxonomy.default_stakeholder_slug or "")
 
-    The stakeholder → department mapping comes from the workspace's own taxonomy
-    (``ServiceDeskStakeholder.function_key``). It used to be a module dict keyed
-    on one company's department names, so a workspace that called its operations
-    team anything else got an empty queue with no explanation.
+
+async def has_full_service_desk_view(db: AsyncSession, workspace_id: str, developer_id: str) -> bool:
+    """Whether the caller may see every Service Desk ticket in the workspace.
+
+    Two separate capabilities grant it, which is the whole point of the split:
+    an Ops Lead needs to see everything without being able to reconfigure the
+    desk, so full visibility is its own permission rather than a side effect of
+    the management one.
     """
     from aexy.services.permission_service import PermissionService
 
-    if await PermissionService(db).check_permission(workspace_id, developer_id, "can_manage_service_desk"):
+    perms = PermissionService(db)
+    return await perms.check_permission(
+        workspace_id, developer_id, "can_view_all_service_desk"
+    ) or await perms.check_permission(
+        workspace_id, developer_id, "can_manage_service_desk"
+    )
+
+
+async def can_edit_ticket(
+    db: AsyncSession,
+    workspace_id: str,
+    developer_id: str,
+    *,
+    assignee_id: str | None,
+    pending_with: str,
+) -> bool:
+    """Whether the caller may *change* this ticket, as opposed to read it.
+
+    The companion to ``resolve_scope_clause``, and deliberately a separate
+    question: an Ops Lead holds ``can_view_all_service_desk`` so every row is
+    visible to them, but watching the desk is not owning the work, so seeing a
+    ticket must never imply being allowed to reclassify or hand it off.
+
+    Three ways to hold write authority:
+
+    * ``can_manage_service_desk`` — the desk manager acts on anything.
+    * assignment — the KAM who owns this ticket triages and hands it off,
+      without needing workspace-wide management.
+    * the ticket is parked in a *non-Ops* function queue the caller belongs to —
+      Finance handed a payout query has to be able to answer and hand it back.
+
+    The default bucket is excluded from the queue rule for the same reason it is
+    excluded from the view scope: every unhandled ticket sits there, so honouring
+    it as a queue would hand each of that team's members everyone else's ticket.
+    """
+    from aexy.services.permission_service import PermissionService
+
+    if await PermissionService(db).check_permission(
+        workspace_id, developer_id, "can_manage_service_desk"
+    ):
+        return True
+    if assignee_id is not None and str(assignee_id) == str(developer_id):
+        return True
+    taxonomy = await load_taxonomy(db, workspace_id, seed=False)
+    function_key = taxonomy.internal_function_keys.get(pending_with)
+    if function_key is None or function_key == _assignment_only_function(taxonomy):
+        return False
+    return function_key in await _caller_functions(db, workspace_id, developer_id)
+
+
+async def can_create_manual_ticket(db: AsyncSession, workspace_id: str, developer_id: str) -> bool:
+    """Whether the caller may log a phone/WhatsApp request as a ticket.
+
+    Manual logging is KAM/manager work. The same visibility-is-not-authority
+    split as ``can_edit_ticket``: an Ops Lead's ``can_view_all_service_desk``
+    is deliberately read-only, and plain module-view is weaker still, so
+    neither may create tickets.
+    """
+    from aexy.services.permission_service import PermissionService
+
+    if await PermissionService(db).check_permission(
+        workspace_id, developer_id, "can_manage_service_desk"
+    ):
+        return True
+    taxonomy = await load_taxonomy(db, workspace_id, seed=False)
+    owner_function = _assignment_only_function(taxonomy)
+    if owner_function is None:
+        return False
+    return owner_function in await _caller_functions(db, workspace_id, developer_id)
+
+
+async def resolve_scope_clause(db: AsyncSession, workspace_id: str, developer_id: str):
+    """Row-level visibility for the caller (BRD §11 / plan §10).
+
+    The single server-side authority for which Service Desk rows a caller may
+    see: list, dashboard, detail, every by-id mutation, the split endpoint and
+    the generic ticket paths all resolve through here, so visibility can only be
+    changed in one place.
+
+    Returns None when the caller may see everything. Otherwise a SQLAlchemy
+    clause restricting to tickets pending with a *non-Ops* function the caller
+    belongs to (Finance, Sales, Marketing keep their queues), plus tickets
+    assigned to them personally. A caller with no relevant function sees nothing.
+    """
+    if await has_full_service_desk_view(db, workspace_id, developer_id):
         return None
 
     taxonomy = await load_taxonomy(db, workspace_id, seed=False)
     functions = await _caller_functions(db, workspace_id, developer_id)
+    owner_function = _assignment_only_function(taxonomy)
     pending_values = {
-        slug for slug, fk in taxonomy.internal_function_keys.items() if fk in functions
+        slug
+        for slug, fk in taxonomy.internal_function_keys.items()
+        if fk in functions and fk != owner_function
     }
 
     clauses = []
@@ -127,23 +222,80 @@ async def resolve_scope_clause(db: AsyncSession, workspace_id: str, developer_id
 
 
 async def describe_scope(db: AsyncSession, workspace_id: str, developer_id: str) -> str:
-    """``"all"`` | ``"function"`` | ``"none"`` — how wide the caller's view is.
+    """``"all"`` | ``"assigned"`` | ``"function"`` | ``"none"`` — how wide the view is.
 
     The clause returned by ``resolve_scope_clause`` can't be introspected by the
-    UI, and an empty ticket list is ambiguous: someone who was never added to the
-    operations department sees exactly what they'd see on a quiet day. Naming the
-    scope lets the page say "you are in no department yet" instead of implying
-    there is no work.
+    UI, and an empty ticket list is ambiguous three ways: someone who was never
+    added to a department, someone in the default bucket with nothing assigned
+    today, and a genuinely quiet workspace all look identical. Naming the scope
+    lets the page say which one it is instead of implying there is no work.
     """
-    from aexy.services.permission_service import PermissionService
-
-    if await PermissionService(db).check_permission(workspace_id, developer_id, "can_manage_service_desk"):
+    if await has_full_service_desk_view(db, workspace_id, developer_id):
         return "all"
     taxonomy = await load_taxonomy(db, workspace_id, seed=False)
     functions = await _caller_functions(db, workspace_id, developer_id)
-    if functions & set(taxonomy.internal_function_keys.values()):
+    owner_function = _assignment_only_function(taxonomy)
+    if any(
+        fk in functions
+        for fk in taxonomy.internal_function_keys.values()
+        if fk != owner_function
+    ):
         return "function"
+    if owner_function is not None and owner_function in functions:
+        return "assigned"
     return "none"
+
+
+async def generic_ticket_scope_clause(db: AsyncSession, workspace_id: str, developer_id: str):
+    """The same authority, expressed for queries over the shared ``Ticket`` table.
+
+    Service Desk tickets are rows in the generic ticketing table, so the generic
+    Tickets module, Ask AI and anything else querying ``Ticket`` would otherwise
+    hand a KAM every ticket the Service Desk scope denies them. Returns None when
+    nothing needs restricting, else a clause admitting non-Service-Desk rows plus
+    the Service Desk rows this caller may see.
+    """
+    from aexy.services.permission_service import PermissionService
+
+    if await PermissionService(db).check_permission(
+        workspace_id, developer_id, "can_view_service_desk"
+    ):
+        clause = await resolve_scope_clause(db, workspace_id, developer_id)
+        if clause is None:
+            return None
+    else:
+        # No module access at all: Service Desk rows are invisible here too,
+        # otherwise revoking the module would only hide its own pages.
+        clause = false()
+
+    in_scope = (
+        select(ServiceDeskTicket.ticket_id)
+        .where(ServiceDeskTicket.ticket_id == Ticket.id, clause)
+        .exists()
+    )
+    is_sd = (
+        select(ServiceDeskTicket.ticket_id)
+        .where(ServiceDeskTicket.ticket_id == Ticket.id)
+        .exists()
+    )
+    return or_(~is_sd, in_scope)
+
+
+async def is_service_desk_ticket_visible(
+    db: AsyncSession, workspace_id: str, ticket_id: str, developer_id: str
+) -> bool:
+    """Whether a single ``Ticket`` row is reachable by this caller.
+
+    For the by-id generic paths, which fetch one ticket and then act on it.
+    Non-Service-Desk tickets are always visible here — this guard only speaks
+    for the Service Desk.
+    """
+    clause = await generic_ticket_scope_clause(db, workspace_id, developer_id)
+    if clause is None:
+        return True
+    return (
+        await db.execute(select(Ticket.id).where(Ticket.id == ticket_id, clause))
+    ).scalar_one_or_none() is not None
 
 
 async def resolve_desk_department(db: AsyncSession, workspace_id: str):
@@ -446,14 +598,33 @@ class ServiceDeskService:
 
     async def create_mailbox(self, workspace_id: str, data: MailboxCreate) -> MailboxResponse:
         await self._require_unclaimed_address(workspace_id, data.address)
-        if data.integration_id:
-            await self._require_own_integration(workspace_id, data.integration_id)
+        integration_id = data.integration_id
+        if data.channel == "gmail_sync" and integration_id is None:
+            integration_id = (
+                await self.db.execute(
+                    select(GoogleIntegration.id).where(
+                        GoogleIntegration.workspace_id == workspace_id,
+                        GoogleIntegration.gmail_sync_enabled.is_(True),
+                        GoogleIntegration.is_active.is_(True),
+                        func.lower(GoogleIntegration.google_email) == data.address.lower(),
+                    )
+                )
+            ).scalar_one_or_none()
+            if integration_id is None:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Connect and enable Gmail sync for this mailbox address first",
+                )
+        # Ownership is re-checked on the resolved id, not just the supplied one,
+        # so the lookup above can never hand back another workspace's integration.
+        if integration_id:
+            await self._require_own_integration(workspace_id, integration_id)
         mailbox = ServiceDeskMailbox(
             id=str(uuid4()),
             workspace_id=workspace_id,
             address=data.address.lower(),
             channel=data.channel,
-            integration_id=data.integration_id,
+            integration_id=integration_id,
             is_active=data.is_active,
         )
         self.db.add(mailbox)
@@ -504,9 +675,18 @@ class ServiceDeskService:
             scope = await describe_scope(self.db, workspace_id, developer_id)
         hours = sd.get("working_hours") or {}
         taxonomy = await load_taxonomy(self.db, workspace_id, seed=False)
+        # Do not revive a forgotten test run merely because its JSON is still
+        # present. The clock has the same defensive expiry check.
+        test_sla = None
+        if isinstance(sd.get("test_sla"), dict):
+            try:
+                test_sla = TestSLAOverride.model_validate(sd["test_sla"])
+            except ValueError:
+                pass
         desk_department = await resolve_desk_department(self.db, workspace_id)
         return {
             "ai_classification_enabled": bool(sd.get("ai_classification_enabled", False)),
+            "auto_split_enabled": bool(sd.get("auto_split_enabled", False)),
             "can_manage": bool(can_manage),
             "scope": scope,
             # Report the values actually in force, defaults included, so the page
@@ -525,6 +705,7 @@ class ServiceDeskService:
             # Falls back to the workspace's own name — outbound email copy used to
             # carry a hardcoded company name for every tenant.
             "desk_name": sd.get("desk_name") or (ws.name if ws else None),
+            "test_sla": test_sla,
             # Resolved, so the page shows the department actually receiving work
             # rather than a blank field on every desk that never named one.
             "desk_department_id": desk_department.id if desk_department else None,
@@ -544,8 +725,11 @@ class ServiceDeskService:
         self,
         workspace_id: str,
         ai_classification_enabled: bool | None = None,
+        auto_split_enabled: bool | None = None,
         working_hours_start: str | None = None,
         working_hours_end: str | None = None,
+        test_sla: TestSLAOverride | None = None,
+        clear_test_sla: bool = False,
         developer_id: str | None = None,
         ticket_prefix: str | None = None,
         timezone: str | None = None,
@@ -569,6 +753,15 @@ class ServiceDeskService:
 
         if ai_classification_enabled is not None:
             sd["ai_classification_enabled"] = bool(ai_classification_enabled)
+
+        if auto_split_enabled is not None:
+            # Worth an audit line: turning this on lets intake create a ticket
+            # nobody asked for by hand, so "who enabled it and when" matters.
+            sd["auto_split_enabled"] = bool(auto_split_enabled)
+            logger.info(
+                "Service desk auto-split for workspace %s set to %s by %s",
+                workspace_id, bool(auto_split_enabled), developer_id or "unknown",
+            )
 
         if working_hours_start or working_hours_end:
             hours = dict(sd.get("working_hours") or {})
@@ -664,6 +857,34 @@ class ServiceDeskService:
             else:
                 sd.pop("desk_name", None)
 
+        if clear_test_sla:
+            removed = sd.pop("test_sla", None) is not None
+            logger.info(
+                "Service desk test SLA removed for workspace %s by %s (was_present=%s)",
+                workspace_id, developer_id or "unknown", removed,
+            )
+        elif test_sla is not None:
+            # Pydantic has already enforced a timezone-aware future expiry of no
+            # more than 24 hours, plus a red threshold after amber. What it
+            # cannot know is whether these stages exist here — the buckets are
+            # per-workspace rows, so a typo would otherwise store a rule the
+            # clock silently never applies and the test would look broken.
+            taxonomy = await load_taxonomy(self.db, workspace_id, seed=False)
+            known = {s.slug for s in taxonomy.stakeholders}
+            if unknown := sorted(set(test_sla.stages) - known):
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Unknown stakeholder(s) {unknown} for this workspace "
+                        f"(known: {', '.join(sorted(known)) or 'none configured'})"
+                    ),
+                )
+            sd["test_sla"] = test_sla.model_dump(mode="json")
+            logger.info(
+                "Service desk test SLA enabled for workspace %s until %s by %s",
+                workspace_id, test_sla.expires_at.isoformat(), developer_id or "unknown",
+            )
+
         if desk_department_id is not None:
             # Empty means "stop naming one" — back to inferring the department
             # behind the desk's first queue, the same convention `desk_name` uses.
@@ -714,6 +935,7 @@ class ServiceDeskService:
                         "label": s.label,
                         "semantics": s.semantics,
                         "function_key": s.function_key,
+                        "links_to": s.links_to,
                     }
                     for s in t.stakeholders
                 ],
@@ -861,6 +1083,7 @@ class ServiceDeskService:
                         "A second one would make 'closed' ambiguous for the breach clock."
                     ),
                 )
+        await self._require_unclaimed_link(workspace_id, data.links_to)
         row = ServiceDeskStakeholder(
             id=str(uuid4()),
             workspace_id=workspace_id,
@@ -868,6 +1091,7 @@ class ServiceDeskService:
             label=data.label,
             semantics=data.semantics,
             function_key=data.function_key,
+            links_to=data.links_to,
             position=data.position,
             is_active=data.is_active,
         )
@@ -898,10 +1122,38 @@ class ServiceDeskService:
                 status_code=409,
                 detail="The terminal stakeholder cannot be deactivated — tickets could never be closed.",
             )
+        if "links_to" in payload:
+            await self._require_unclaimed_link(workspace_id, payload["links_to"], exclude_id=row.id)
         for k, v in payload.items():
             setattr(row, k, v)
         await self.db.flush()
         return row
+
+    async def _require_unclaimed_link(
+        self, workspace_id: str, links_to: str | None, exclude_id: str | None = None
+    ) -> None:
+        """At most one stakeholder may speak for each master-data table.
+
+        Two claimants would make "which bucket does writing to a vendor imply"
+        ambiguous, and the resolver would pick whichever row came back first.
+        """
+        if links_to is None:
+            return
+        query = select(ServiceDeskStakeholder.slug).where(
+            ServiceDeskStakeholder.workspace_id == workspace_id,
+            ServiceDeskStakeholder.links_to == links_to,
+        )
+        if exclude_id is not None:
+            query = query.where(ServiceDeskStakeholder.id != exclude_id)
+        clash = (await self.db.execute(query)).scalars().first()
+        if clash is not None:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Stakeholder {clash!r} already speaks for {links_to!r}. "
+                    "Clear its link before assigning the same table to another bucket."
+                ),
+            )
 
     async def delete_stakeholder(self, workspace_id: str, stakeholder_id: str) -> None:
         """Refuses while tickets or ledger history still reference the slug.

@@ -144,6 +144,15 @@ PERMISSIONS: dict[str, dict] = {
         # limits each caller to their own department's tickets.
         "default_for": ["admin", "manager", "support", "sales", "developer"],
     },
+    "can_view_all_service_desk": {
+        "category": PermissionCategory.SERVICE_DESK,
+        "description": "See every service desk ticket, not only the ones assigned to you",
+        # Nobody by default. This is the Ops Lead capability: full visibility
+        # without the authority to change partners, mailboxes, templates or the
+        # AI settings, which stays on can_manage_service_desk. Granted through a
+        # custom role (Organization → Roles) assigned on the members page.
+        "default_for": [],
+    },
     "can_manage_service_desk": {
         "category": PermissionCategory.SERVICE_DESK,
         "description": "Manage tickets, pending-with, and master data (partners/insurers/LOBs/mailboxes)",

@@ -26,6 +26,8 @@ from aexy.schemas.service_desk import (
     VendorUpdate,
     ProductCreate,
     ProductResponse,
+    HumanSplitRequest,
+    HumanSplitResponse,
     MailboxCreate,
     MailboxResponse,
     ConvertToTaskRequest,
@@ -42,6 +44,7 @@ from aexy.schemas.service_desk import (
     ServiceDeskTemplate,
     ServiceDeskTemplateUpdate,
     ServiceDeskTicketDetail,
+    StakeholderEmailRequest,
     ServiceDeskTicketResponse,
     TicketFieldsUpdate,
 )
@@ -87,6 +90,7 @@ async def update_settings(workspace_id: str, data: ServiceDeskSettingsUpdate, db
     return await ServiceDeskService(db).update_settings(
         workspace_id,
         ai_classification_enabled=data.ai_classification_enabled,
+        auto_split_enabled=data.auto_split_enabled,
         working_hours_start=data.working_hours_start,
         working_hours_end=data.working_hours_end,
         ticket_prefix=data.ticket_prefix,
@@ -96,6 +100,8 @@ async def update_settings(workspace_id: str, data: ServiceDeskSettingsUpdate, db
         digest_hours=data.digest_hours,
         terminology=data.terminology,
         desk_name=data.desk_name,
+        test_sla=data.test_sla,
+        clear_test_sla=data.clear_test_sla,
         desk_department_id=data.desk_department_id,
         developer_id=str(current.id),
     )
@@ -291,7 +297,14 @@ async def list_tickets(workspace_id: str, db: AsyncSession = Depends(get_db), cu
 
 
 @router.post("/tickets/manual", status_code=status.HTTP_201_CREATED)
-async def create_manual_ticket(workspace_id: str, data: ManualTicketCreate, db: AsyncSession = Depends(get_db), _: Developer = Depends(get_current_developer)):
+async def create_manual_ticket(workspace_id: str, data: ManualTicketCreate, db: AsyncSession = Depends(get_db), current: Developer = Depends(get_current_developer)):
+    from aexy.services.service_desk_service import can_create_manual_ticket
+
+    if not await can_create_manual_ticket(db, workspace_id, str(current.id)):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only a member of the desk's owning team or a Service Desk manager can log a manual ticket",
+        )
     ticket_id = await ServiceDeskService(db).create_manual_ticket(workspace_id, data)
     return {"ticket_id": ticket_id}
 
@@ -300,6 +313,23 @@ async def create_manual_ticket(workspace_id: str, data: ManualTicketCreate, db: 
 async def get_ticket(workspace_id: str, ticket_id: str, db: AsyncSession = Depends(get_db), current: Developer = Depends(get_current_developer)):
     return await ServiceDeskTicketService(db).get_detail(
         workspace_id, ticket_id, scope_developer_id=current.id
+    )
+
+
+@router.post("/tickets/{ticket_id}/split", response_model=HumanSplitResponse)
+async def split_detected_issues(
+    workspace_id: str,
+    ticket_id: str,
+    data: HumanSplitRequest,
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    return await ServiceDeskTicketService(db).split_detected_issues(
+        workspace_id,
+        ticket_id,
+        data.issue_indexes,
+        split_by_id=current.id,
+        scope_developer_id=current.id,
     )
 
 
@@ -327,6 +357,33 @@ async def change_pending_with(
     await db.commit()
     await service.flush_notifications()
     return detail
+
+
+@router.post("/tickets/{ticket_id}/email", response_model=ServiceDeskTicketDetail)
+async def email_stakeholder(
+    workspace_id: str,
+    ticket_id: str,
+    data: StakeholderEmailRequest,
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """Send a ticket email from the watched mailbox.
+
+    Requires write authority on the ticket (``can_edit_ticket``): the assigned
+    owner, a member of the non-default queue the ticket is currently with, or a
+    Service Desk manager.
+    """
+    return await ServiceDeskTicketService(db).email_stakeholder(
+        workspace_id,
+        ticket_id,
+        data.to,
+        data.subject,
+        data.body,
+        sender_id=str(current.id),
+        attachment_filenames=data.attachment_filenames,
+        move_ticket=data.move_ticket,
+        scope_developer_id=current.id,
+    )
 
 
 @router.post("/tickets/{ticket_id}/convert-to-task", response_model=ConvertToTaskResponse)
