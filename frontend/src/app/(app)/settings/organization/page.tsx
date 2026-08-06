@@ -736,26 +736,30 @@ function CreateWorkspaceModal({ onClose, onCreate, isCreating, organizations }: 
 }
 
 function SeatUsageBar({ used, total }: { used: number; total: number }) {
-  const percentage = Math.min((used / total) * 100, 100);
-  const isNearLimit = percentage >= 80;
-  const isAtLimit = percentage >= 100;
+  // A total of -1 means the plan has no seat cap (Plan.included_seats = -1).
+  const unlimited = total < 0;
+  const percentage = unlimited ? 0 : Math.min((used / total) * 100, 100);
+  const isNearLimit = !unlimited && percentage >= 80;
+  const isAtLimit = !unlimited && percentage >= 100;
 
   return (
     <div className="mt-2">
       <div className="flex justify-between text-sm mb-1">
         <span className="text-muted-foreground">Seats Used</span>
         <span className={isAtLimit ? "text-red-400" : isNearLimit ? "text-yellow-400" : "text-muted-foreground"}>
-          {used} / {total}
+          {unlimited ? `${used} / Unlimited` : `${used} / ${total}`}
         </span>
       </div>
-      <div className="h-2 bg-muted rounded-full overflow-hidden">
-        <div
-          className={`h-full transition-all ${
-            isAtLimit ? "bg-red-500" : isNearLimit ? "bg-yellow-500" : "bg-primary-500"
-          }`}
-          style={{ width: `${percentage}%` }}
-        />
-      </div>
+      {!unlimited && (
+        <div className="h-2 bg-muted rounded-full overflow-hidden">
+          <div
+            className={`h-full transition-all ${
+              isAtLimit ? "bg-red-500" : isNearLimit ? "bg-yellow-500" : "bg-primary-500"
+            }`}
+            style={{ width: `${percentage}%` }}
+          />
+        </div>
+      )}
     </div>
   );
 }

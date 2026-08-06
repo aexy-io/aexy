@@ -303,10 +303,11 @@ class WorkspaceBillingStatus(BaseModel):
     has_subscription: bool = False
     current_plan: str | None = None
     status: str | None = None
-    total_seats: int = 5
+    # Seat counts of -1 mean unlimited (mirrors Plan.included_seats).
+    total_seats: int = 0
     used_seats: int = 0
-    available_seats: int = 5
-    price_per_seat_cents: int = 1000
+    available_seats: int = 0
+    price_per_seat_cents: int = 0
     next_billing_date: datetime | None = None
 
 

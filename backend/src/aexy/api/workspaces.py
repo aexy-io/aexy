@@ -1254,19 +1254,30 @@ async def get_billing_status(
     used_seats = await service.get_billable_seat_count(workspace_id)
     subscription = workspace.subscription
 
+    # The plan name and seat allowance come from the workspace's actual Plan
+    # row (Free by default), not from whether a subscription row happens to
+    # exist — this endpoint used to say "Free, 5 seats" regardless of what
+    # the plan system defined.
+    from aexy.services.limits_service import LimitsService
+
+    plan = await LimitsService(db).get_workspace_plan(workspace_id)
+
+    if subscription:
+        total_seats = subscription.base_seats + subscription.additional_seats
+        price_per_seat_cents = subscription.price_per_additional_seat_cents
+    else:
+        total_seats = plan.included_seats  # -1 = unlimited
+        price_per_seat_cents = plan.per_seat_price_monthly_cents
+
     return WorkspaceBillingStatus(
         workspace_id=workspace_id,
         has_subscription=subscription is not None,
-        current_plan="Pro" if subscription else "Free",
+        current_plan=plan.plan_name,
         status=subscription.status if subscription else None,
-        total_seats=(subscription.base_seats + subscription.additional_seats) if subscription else 5,
+        total_seats=total_seats,
         used_seats=used_seats,
-        available_seats=(
-            (subscription.base_seats + subscription.additional_seats) - used_seats
-            if subscription
-            else 5 - used_seats
-        ),
-        price_per_seat_cents=subscription.price_per_additional_seat_cents if subscription else 1000,
+        available_seats=total_seats - used_seats if total_seats >= 0 else -1,
+        price_per_seat_cents=price_per_seat_cents,
         next_billing_date=subscription.current_period_end if subscription else None,
     )
 
@@ -1297,16 +1308,21 @@ async def get_seat_usage(
     billable_seats = await service.get_billable_seat_count(workspace_id)
     subscription = workspace.subscription
 
+    # Same source of truth as /billing: the workspace's Plan row, not a
+    # hardcoded 5-seat free tier. included_seats of -1 means unlimited.
+    from aexy.services.limits_service import LimitsService
+
+    plan = await LimitsService(db).get_workspace_plan(workspace_id)
+    base_seats = subscription.base_seats if subscription else plan.included_seats
+    additional_seats = subscription.additional_seats if subscription else 0
+    total_seats = base_seats + additional_seats if base_seats >= 0 else -1
+
     return {
         "total_members": total_members,
         "billable_seats": billable_seats,
-        "base_seats": subscription.base_seats if subscription else 5,
-        "additional_seats": subscription.additional_seats if subscription else 0,
-        "seats_available": (
-            (subscription.base_seats + subscription.additional_seats) - billable_seats
-            if subscription
-            else 5 - billable_seats
-        ),
+        "base_seats": base_seats,
+        "additional_seats": additional_seats,
+        "seats_available": total_seats - billable_seats if total_seats >= 0 else -1,
     }
 
 
