@@ -326,7 +326,8 @@ export interface ServiceDeskTemplate {
   name: string;
   subject: string;
   body: string;
-  variables: ServiceDeskTemplateVariable[];
+  /** Bare names from backends that predate the {name, default} shape. */
+  variables: (ServiceDeskTemplateVariable | string)[];
   customised: boolean;
 }
 

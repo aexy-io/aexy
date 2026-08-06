@@ -44,6 +44,11 @@ function TemplateEditor({
   const [subject, setSubject] = useState(tpl.subject);
   const [body, setBody] = useState(tpl.body);
   const dirty = subject !== tpl.subject || body !== tpl.body;
+  // A backend that predates the {name, default} shape sends bare names —
+  // degrade to tokens without fallbacks rather than "{{undefined}}".
+  const variables = tpl.variables.map((v) =>
+    typeof v === "string" ? { name: v, default: "" } : v,
+  );
 
   return (
     <div className="space-y-2 rounded-md border border-border p-3">
@@ -68,7 +73,7 @@ function TemplateEditor({
       <div>
         <p className="mb-1 text-[11px] font-medium text-muted-foreground">{t("templates.variables")}</p>
         <dl className="space-y-0.5">
-          {tpl.variables.map((v) => (
+          {variables.map((v) => (
             <div key={v.name} className="flex flex-wrap items-baseline gap-x-2 text-[11px] text-muted-foreground">
               <dt>
                 <code className="rounded bg-muted px-1 py-0.5">{`{{${v.name}}}`}</code>
