@@ -8,7 +8,14 @@ from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from aexy.models.sprint import Sprint, SprintTask, TaskActivity, TaskAttachment, WorkspaceTaskStatus
+from aexy.models.sprint import (
+    Sprint,
+    SprintTask,
+    TaskActivity,
+    TaskAssignee,
+    TaskAttachment,
+    WorkspaceTaskStatus,
+)
 from aexy.services.task_sources.base import TaskItem, TaskSourceConfig, TaskStatus
 from aexy.services.task_sources.github_issues import GitHubIssuesSource
 from aexy.services.task_sources.jira import JiraSource
@@ -34,6 +41,36 @@ _STATUS_ALIASES: dict[str, tuple[str, ...]] = {
     "review": ("in_review",),
     "in_review": ("review",),
 }
+
+
+def _assigned_to(developer_id: str):
+    """Tasks where this developer is the primary *or* a collaborator.
+
+    Every assignee filter goes through this. Matching only
+    ``SprintTask.assignee_id`` would answer "nothing assigned to them" for
+    someone genuinely working on a task as a collaborator, which is a worse
+    failure than having no filter at all.
+    """
+    return or_(
+        SprintTask.assignee_id == developer_id,
+        SprintTask.id.in_(
+            select(TaskAssignee.task_id).where(
+                TaskAssignee.developer_id == developer_id
+            )
+        ),
+    )
+
+
+def _assigned_to_any(developer_ids: list[str]):
+    """Multi-developer form of :func:`_assigned_to`."""
+    return or_(
+        SprintTask.assignee_id.in_(developer_ids),
+        SprintTask.id.in_(
+            select(TaskAssignee.task_id).where(
+                TaskAssignee.developer_id.in_(developer_ids)
+            )
+        ),
+    )
 
 
 class TaskValidationError(Exception):
@@ -188,6 +225,10 @@ class SprintTaskService:
         )
         self.db.add(task)
         await self.db.flush()
+        # A task created already assigned needs its primary row, or it would
+        # show an assignee in the column and an empty assignee list.
+        if task.assignee_id:
+            await self.sync_assignee_rows_from_column(task, actor_id=actor_id)
         await GitHubTaskSyncService(self.db).auto_link_issue_references(task)
 
         # Re-fetch with relationships loaded to avoid lazy loading issues
@@ -291,7 +332,7 @@ class SprintTaskService:
         if status:
             stmt = stmt.where(SprintTask.status == status)
         if assignee_id:
-            stmt = stmt.where(SprintTask.assignee_id == assignee_id)
+            stmt = stmt.where(_assigned_to(assignee_id))
 
         stmt = stmt.order_by(SprintTask.priority.desc(), SprintTask.created_at)
         result = await self.db.execute(stmt)
@@ -341,7 +382,7 @@ class SprintTaskService:
         if status_id:
             stmt = stmt.where(SprintTask.status_id.in_(status_id))
         if assignee_ids:
-            stmt = stmt.where(SprintTask.assignee_id.in_(assignee_ids))
+            stmt = stmt.where(_assigned_to_any(assignee_ids))
         if priorities:
             stmt = stmt.where(SprintTask.priority.in_(priorities))
         if team_ids:
@@ -395,7 +436,7 @@ class SprintTaskService:
         """
         stmt = (
             select(SprintTask)
-            .where(SprintTask.assignee_id == assignee_id)
+            .where(_assigned_to(assignee_id))
             .where(SprintTask.is_archived == False)
             .options(
                 selectinload(SprintTask.assignee),
@@ -532,6 +573,13 @@ class SprintTaskService:
         # is performed through PATCH /sprint-tasks/{id} rather than the
         # dedicated /assign endpoint.
         if assignee_changed:
+            # `assignee_id` was written directly above, so the join table is now
+            # stale. Reconcile it here rather than at each of the many callers
+            # that can reach this path — otherwise the primary badge and the
+            # column disagree, and the assignee list silently omits whoever was
+            # just assigned.
+            await self.sync_assignee_rows_from_column(task, actor_id=actor_id)
+
             # Per-task activity stream (rendered by the History tab).
             await self.log_activity(
                 task_id=task_id,
@@ -567,7 +615,9 @@ class SprintTaskService:
                 )
 
         # Re-fetch with relationships loaded (assignee may have changed).
-        refreshed = await self.get_task(task_id)
+        # `assignees` may have just been reconciled above, so reload it rather
+        # than returning the collection this instance loaded earlier.
+        refreshed = await self._reload_with_assignees(task_id)
 
         # Dispatch task.assigned automation trigger so PATCH-based reassignments
         # fire automations the same way the dedicated /assign endpoint does.
@@ -690,9 +740,15 @@ class SprintTaskService:
         task.assignment_confidence = confidence
 
         await self.db.flush()
+        # Keep the assignee rows in step with the column. The previous primary
+        # stays on as a collaborator — reassigning rarely means the last person
+        # is no longer involved.
+        await self.sync_assignee_rows_from_column(task, actor_id=actor_id)
 
-        # Re-fetch with relationships loaded
-        updated_task = await self.get_task(task_id)
+        # Re-fetch with relationships loaded, `assignees` included — the rows
+        # just changed and the identity-mapped instance still holds the old
+        # collection.
+        updated_task = await self._reload_with_assignees(task_id)
 
         # Per-task activity stream consumed by the History tab.
         await self.log_activity(
@@ -764,6 +820,10 @@ class SprintTaskService:
         task.assignment_confidence = None
 
         await self.db.flush()
+        # Takes the owner off the task, exactly as this endpoint always did.
+        # Deliberately-added collaborators stay; `set_assignees(task_id, [])`
+        # clears the task entirely.
+        await self.sync_assignee_rows_from_column(task, actor_id=actor_id)
 
         if prior_assignee_id:
             await self.log_activity(
@@ -795,7 +855,7 @@ class SprintTaskService:
                 )
 
         # Re-fetch with relationships loaded
-        return await self.get_task(task_id)
+        return await self._reload_with_assignees(task_id)
 
     async def bulk_assign_tasks(
         self,
@@ -1463,6 +1523,330 @@ class SprintTaskService:
                 )
 
         return updated_task
+
+    # ==================== Assignees (primary + collaborators) ============
+    #
+    # `SprintTask.assignee_id` remains the primary and the single source of
+    # truth for everything that must resolve to one developer. `task_assignees`
+    # holds everyone. These two representations are kept equal here and nowhere
+    # else — every path that can change either one funnels through
+    # `_mirror_primary_to_task` / `set_assignees`.
+
+    async def _assert_workspace_members(
+        self, workspace_id: str | None, developer_ids: list[str]
+    ) -> None:
+        """Reject assignees who aren't members of the task's workspace.
+
+        Without this an id from any workspace can be dropped onto a task: the
+        person then shows in the assignee list, gets notified, and is counted in
+        that team's workload, having no access to the task itself.
+        """
+        if not workspace_id or not developer_ids:
+            return
+        from aexy.models.workspace import WorkspaceMember
+
+        rows = await self.db.execute(
+            select(WorkspaceMember.developer_id).where(
+                WorkspaceMember.workspace_id == workspace_id,
+                WorkspaceMember.developer_id.in_(developer_ids),
+            )
+        )
+        members = {str(r) for r in rows.scalars().all()}
+        outsiders = [d for d in developer_ids if str(d) not in members]
+        if outsiders:
+            raise TaskValidationError(
+                "assignee_not_member",
+                f"Not members of this workspace: {', '.join(sorted(outsiders))}",
+            )
+
+    async def _reload_with_assignees(self, task_id: str) -> SprintTask | None:
+        """Re-read a task with a fresh ``assignees`` collection.
+
+        ``get_task`` issues a new SELECT but SQLAlchemy hands back the
+        identity-mapped instance, and a re-query does not overwrite a collection
+        that was already loaded on it. So immediately after a successful write
+        the response would carry the assignee list as it was *before* the change
+        — usually empty, which reads as "that didn't save".
+        """
+        task = await self.get_task(task_id)
+        if task is not None:
+            await self.db.refresh(task, ["assignees"])
+        return task
+
+    async def _load_assignee_rows(self, task_id: str) -> list[TaskAssignee]:
+        rows = await self.db.execute(
+            select(TaskAssignee)
+            .where(TaskAssignee.task_id == task_id)
+            .order_by(TaskAssignee.created_at)
+        )
+        return list(rows.scalars().all())
+
+    async def _mirror_primary_to_task(self, task: SprintTask) -> None:
+        """Make ``task.assignee_id`` equal the row flagged primary.
+
+        Called after any change to the rows. A task with collaborators but no
+        primary is legitimate — that is the "everyone equal" arrangement — and
+        mirrors to a NULL ``assignee_id``.
+        """
+        rows = await self._load_assignee_rows(str(task.id))
+        primary = next((r for r in rows if r.is_primary), None)
+        task.assignee_id = str(primary.developer_id) if primary else None
+
+    async def sync_assignee_rows_from_column(
+        self, task: SprintTask, actor_id: str | None = None
+    ) -> None:
+        """Bring the rows in line with a directly-assigned ``assignee_id``.
+
+        The dedicated `/assign` endpoint, the generic PATCH, automations and
+        auto-assignment all write ``assignee_id`` straight onto the task. Rather
+        than rewrite those, they stay authoritative for the *primary slot only*
+        and this reconciles the join table afterwards.
+
+        The old primary row is **removed**, not demoted, so these paths keep
+        behaving exactly as they did before collaborators existed:
+
+        * reassign A → B leaves B alone on the task, as it always did. Demoting
+          A to collaborator instead would quietly accumulate everyone who had
+          ever held the task, and tell A they were still on work they had
+          handed over.
+        * unassigning removes the owner outright. Leaving them as a collaborator
+          would show the task as assigned in the new UI while ``assignee_id``
+          said otherwise.
+
+        Collaborators added deliberately are never touched by either case — they
+        are additive to this slot, not part of it.
+        """
+        rows = await self._load_assignee_rows(str(task.id))
+        target = str(task.assignee_id) if task.assignee_id else None
+
+        for row in rows:
+            if row.is_primary and str(row.developer_id) != target:
+                await self.db.delete(row)
+
+        if target is not None:
+            existing = next(
+                (r for r in rows if str(r.developer_id) == target), None
+            )
+            if existing is not None:
+                # Already a collaborator — promote in place rather than adding a
+                # second row, which the (task_id, developer_id) unique
+                # constraint would reject anyway.
+                existing.is_primary = True
+            else:
+                self.db.add(
+                    TaskAssignee(
+                        id=str(uuid4()),
+                        task_id=str(task.id),
+                        developer_id=target,
+                        is_primary=True,
+                        added_by_id=actor_id,
+                    )
+                )
+        await self.db.flush()
+
+    async def set_assignees(
+        self,
+        task_id: str,
+        developer_ids: list[str],
+        primary_id: str | None = None,
+        actor_id: str | None = None,
+    ) -> SprintTask | None:
+        """Replace the whole assignee set in one call.
+
+        ``primary_id`` names the accountable owner and must be one of
+        ``developer_ids``. Passing ``None`` means nobody is designated — the
+        "all assignees equal" arrangement — and leaves ``assignee_id`` NULL.
+        """
+        task = await self.get_task(task_id)
+        if task is None:
+            return None
+
+        # De-duplicate while preserving the caller's order, which becomes the
+        # display order.
+        wanted: list[str] = []
+        for dev_id in developer_ids:
+            if str(dev_id) not in wanted:
+                wanted.append(str(dev_id))
+
+        if primary_id is not None and str(primary_id) not in wanted:
+            raise TaskValidationError(
+                "primary_not_assigned",
+                "The primary assignee must also be one of the assignees",
+            )
+
+        await self._assert_workspace_members(
+            str(task.workspace_id) if task.workspace_id else None, wanted
+        )
+
+        rows = await self._load_assignee_rows(task_id)
+        by_dev = {str(r.developer_id): r for r in rows}
+        before = sorted(by_dev)
+
+        for dev_id, row in by_dev.items():
+            if dev_id not in wanted:
+                await self.db.delete(row)
+
+        for dev_id in wanted:
+            is_primary = primary_id is not None and str(primary_id) == dev_id
+            row = by_dev.get(dev_id)
+            if row is None:
+                self.db.add(
+                    TaskAssignee(
+                        id=str(uuid4()),
+                        task_id=task_id,
+                        developer_id=dev_id,
+                        is_primary=is_primary,
+                        added_by_id=actor_id,
+                    )
+                )
+            else:
+                row.is_primary = is_primary
+
+        await self.db.flush()
+
+        prior_primary = str(task.assignee_id) if task.assignee_id else None
+        await self._mirror_primary_to_task(task)
+        await self.db.flush()
+
+        after = sorted(wanted)
+        if before != after or prior_primary != (
+            str(task.assignee_id) if task.assignee_id else None
+        ):
+            await self.log_activity(
+                task_id=task_id,
+                action="assignees_changed",
+                actor_id=actor_id,
+                field_name="assignees",
+                old_value=",".join(before) or None,
+                new_value=",".join(after) or None,
+                metadata={
+                    "assignee_ids": after,
+                    "primary_id": str(primary_id) if primary_id else None,
+                    "from_assignee_id": prior_primary,
+                    "to_assignee_id": str(task.assignee_id) if task.assignee_id else None,
+                },
+            )
+
+        return await self._reload_with_assignees(task_id)
+
+    async def add_assignee(
+        self,
+        task_id: str,
+        developer_id: str,
+        make_primary: bool = False,
+        actor_id: str | None = None,
+    ) -> SprintTask | None:
+        """Add one person without disturbing the others."""
+        task = await self.get_task(task_id)
+        if task is None:
+            return None
+
+        await self._assert_workspace_members(
+            str(task.workspace_id) if task.workspace_id else None, [str(developer_id)]
+        )
+
+        rows = await self._load_assignee_rows(task_id)
+        existing = next(
+            (r for r in rows if str(r.developer_id) == str(developer_id)), None
+        )
+
+        if existing is None:
+            existing = TaskAssignee(
+                id=str(uuid4()),
+                task_id=task_id,
+                developer_id=str(developer_id),
+                is_primary=False,
+                added_by_id=actor_id,
+            )
+            self.db.add(existing)
+            await self.db.flush()
+            await self.log_activity(
+                task_id=task_id,
+                action="assignee_added",
+                actor_id=actor_id,
+                field_name="assignees",
+                new_value=str(developer_id),
+                metadata={"developer_id": str(developer_id)},
+            )
+
+        if make_primary:
+            for row in rows:
+                row.is_primary = False
+            existing.is_primary = True
+            await self.db.flush()
+            await self._mirror_primary_to_task(task)
+            await self.db.flush()
+
+        return await self._reload_with_assignees(task_id)
+
+    async def remove_assignee(
+        self, task_id: str, developer_id: str, actor_id: str | None = None
+    ) -> SprintTask | None:
+        """Take one person off, leaving the rest.
+
+        Removing the primary leaves the task with no designated owner rather
+        than silently promoting somebody — a promotion nobody asked for is how
+        work ends up assigned to a person who never agreed to it.
+        """
+        task = await self.get_task(task_id)
+        if task is None:
+            return None
+
+        rows = await self._load_assignee_rows(task_id)
+        target = next((r for r in rows if str(r.developer_id) == str(developer_id)), None)
+        if target is None:
+            return await self._reload_with_assignees(task_id)
+
+        await self.db.delete(target)
+        await self.db.flush()
+        await self._mirror_primary_to_task(task)
+        await self.db.flush()
+
+        await self.log_activity(
+            task_id=task_id,
+            action="assignee_removed",
+            actor_id=actor_id,
+            field_name="assignees",
+            old_value=str(developer_id),
+            metadata={"developer_id": str(developer_id)},
+        )
+        return await self._reload_with_assignees(task_id)
+
+    async def set_primary_assignee(
+        self, task_id: str, developer_id: str | None, actor_id: str | None = None
+    ) -> SprintTask | None:
+        """Move the badge, adding the person if they weren't on the task yet.
+
+        ``None`` clears it, which is how a team says "we're all equally on
+        this" without taking anyone off.
+        """
+        task = await self.get_task(task_id)
+        if task is None:
+            return None
+
+        if developer_id is not None:
+            return await self.add_assignee(
+                task_id, str(developer_id), make_primary=True, actor_id=actor_id
+            )
+
+        rows = await self._load_assignee_rows(task_id)
+        prior = next((r for r in rows if r.is_primary), None)
+        for row in rows:
+            row.is_primary = False
+        await self.db.flush()
+        await self._mirror_primary_to_task(task)
+        await self.db.flush()
+
+        if prior is not None:
+            await self.log_activity(
+                task_id=task_id,
+                action="primary_assignee_cleared",
+                actor_id=actor_id,
+                field_name="assignee_id",
+                old_value=str(prior.developer_id),
+                metadata={"from_assignee_id": str(prior.developer_id)},
+            )
+        return await self._reload_with_assignees(task_id)
 
     # Activity Logging
     async def log_activity(

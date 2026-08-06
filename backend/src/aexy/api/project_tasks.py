@@ -7,7 +7,7 @@ These tasks can be in the project backlog and optionally assigned to sprints lat
 from uuid import uuid4
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -15,7 +15,7 @@ from aexy.core.database import get_db
 from aexy.api.developers import get_current_developer
 from aexy.models.activity import PullRequest
 from aexy.models.developer import Developer
-from aexy.models.sprint import SprintTask, TaskGitHubLink
+from aexy.models.sprint import SprintTask, TaskAssignee, TaskGitHubLink
 from aexy.models.notification import NotificationEventType
 from aexy.schemas.sprint import (
     BulkMoveResponse,
@@ -26,13 +26,17 @@ from aexy.schemas.sprint import (
     TaskActivityCreate,
     TaskActivityListResponse,
     TaskActivityResponse,
+    TaskAssigneeAdd,
+    TaskAssigneesUpdate,
     TaskAttachmentListResponse,
     TaskBulkMoveToProjectRequest,
     TaskImportRequest,
     TaskImportResponse,
     TaskMoveToProjectRequest,
+    TaskPrimaryAssigneeUpdate,
     TaskStatus,
 )
+from aexy.api import task_assignee_ops
 from aexy.services.workspace_service import WorkspaceService
 from aexy.services.notification_service import NotificationService
 from aexy.services.activity_logger import log_activity
@@ -208,7 +212,19 @@ async def list_project_tasks(
         query = query.where(SprintTask.status == status_filter)
 
     if assignee_id:
-        query = query.where(SprintTask.assignee_id == assignee_id)
+        # Match collaborators too, not just the primary. Filtering to a person
+        # and not seeing work they are genuinely on is worse than no filter —
+        # it reads as "nothing assigned to them".
+        query = query.where(
+            or_(
+                SprintTask.assignee_id == assignee_id,
+                SprintTask.id.in_(
+                    select(TaskAssignee.task_id).where(
+                        TaskAssignee.developer_id == assignee_id
+                    )
+                ),
+            )
+        )
 
     query = query.order_by(SprintTask.created_at.desc())
 
@@ -260,6 +276,14 @@ async def create_project_task(
     # of an empty timeline. The sprint create path does this via
     # SprintTaskService.add_task; project create reproduces it here.
     task_service = SprintTaskService(db)
+    # Same reason this path has to reproduce the history row: it builds the
+    # SprintTask directly instead of going through add_task, so a project task
+    # created with an assignee would carry the column and no assignee row —
+    # showing nobody on it in the UI.
+    if task.assignee_id:
+        await task_service.sync_assignee_rows_from_column(
+            task, actor_id=str(current_user.id)
+        )
     await task_service.log_activity(
         task_id=str(task.id),
         action="created",
@@ -933,3 +957,69 @@ async def add_project_task_comment(
     await db.commit()
     await db.refresh(activity)
     return activity_to_response(activity)
+
+
+# Assignee set (primary + collaborators).
+#
+# This router previously had no assignment endpoints at all — the project board
+# could only reassign through the generic PATCH, which is part of why assignment
+# from the project view behaved differently from the sprint view. Bodies are
+# shared with the sprint router; see api/task_assignee_ops.py.
+@router.put("/{task_id}/assignees", response_model=SprintTaskResponse)
+async def set_task_assignees(
+    team_id: str,
+    task_id: str,
+    data: TaskAssigneesUpdate,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Replace the whole assignee set for a task."""
+    await get_team_and_check_permission(team_id, current_user, db, "member")
+    return await task_assignee_ops.set_assignees(
+        db, task_id, data, str(current_user.id), lambda t: t.team_id == team_id
+    )
+
+
+@router.post("/{task_id}/assignees", response_model=SprintTaskResponse)
+async def add_task_assignee(
+    team_id: str,
+    task_id: str,
+    data: TaskAssigneeAdd,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Add one person to a task without disturbing the others."""
+    await get_team_and_check_permission(team_id, current_user, db, "member")
+    return await task_assignee_ops.add_assignee(
+        db, task_id, data, str(current_user.id), lambda t: t.team_id == team_id
+    )
+
+
+@router.delete("/{task_id}/assignees/{developer_id}", response_model=SprintTaskResponse)
+async def remove_task_assignee(
+    team_id: str,
+    task_id: str,
+    developer_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Take one person off a task, leaving the rest."""
+    await get_team_and_check_permission(team_id, current_user, db, "member")
+    return await task_assignee_ops.remove_assignee(
+        db, task_id, developer_id, str(current_user.id), lambda t: t.team_id == team_id
+    )
+
+
+@router.put("/{task_id}/assignees/primary", response_model=SprintTaskResponse)
+async def set_task_primary_assignee(
+    team_id: str,
+    task_id: str,
+    data: TaskPrimaryAssigneeUpdate,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Move the primary badge, or clear it so all assignees are equal."""
+    await get_team_and_check_permission(team_id, current_user, db, "member")
+    return await task_assignee_ops.set_primary_assignee(
+        db, task_id, data, str(current_user.id), lambda t: t.team_id == team_id
+    )

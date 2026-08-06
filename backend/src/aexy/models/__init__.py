@@ -84,6 +84,7 @@ from aexy.models.sprint import (
     WorkspaceTaskStatus,
     WorkspaceStatusCategory,
     WorkspaceCustomField,
+    TaskAssignee,
     TaskGitHubLink,
     TaskActivity,
     TaskAttachment,
@@ -94,6 +95,7 @@ from aexy.models.story import UserStory, StoryActivity
 from aexy.models.release import Release, ReleaseSprint
 from aexy.models.goal import Goal, GoalProject, GoalEpic
 from aexy.models.entity_activity import EntityActivity
+from aexy.models.work_update import WorkUpdate, WORK_UPDATE_ENTITY_TYPES
 from aexy.models.bug import Bug, BugActivity
 from aexy.models.dependency import StoryDependency, TaskDependency
 from aexy.models.metrics import (
@@ -671,6 +673,7 @@ __all__ = [
     "WorkspaceTaskStatus",
     "WorkspaceStatusCategory",
     "WorkspaceCustomField",
+    "TaskAssignee",
     "TaskGitHubLink",
     "TaskActivity",
     "TaskAttachment",
@@ -688,6 +691,9 @@ __all__ = [
     "GoalEpic",
     # Entity Activity/Timeline
     "EntityActivity",
+    # Progress updates
+    "WorkUpdate",
+    "WORK_UPDATE_ENTITY_TYPES",
     # Bug
     "Bug",
     "BugActivity",

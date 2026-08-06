@@ -110,6 +110,7 @@ const baseTaskFields = {
   assignee_id: null,
   assignee_name: null,
   assignee_avatar_url: null,
+  assignees: [],
   assignment_reason: null,
   assignment_confidence: null,
   status_id: null,

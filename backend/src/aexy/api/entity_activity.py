@@ -399,6 +399,7 @@ def _entity_model(entity_type: str):
     from aexy.models.project import Project
     from aexy.models.forms import Form
     from aexy.models.leave import LeaveRequest
+    from aexy.models.ticketing import Ticket
     return {
         "task": SprintTask,
         "story": UserStory,
@@ -410,6 +411,7 @@ def _entity_model(entity_type: str):
         "sprint": Sprint,
         "form": Form,
         "leave_request": LeaveRequest,
+        "ticket": Ticket,
     }.get(entity_type)
 
 

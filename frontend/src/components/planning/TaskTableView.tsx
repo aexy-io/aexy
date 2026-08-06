@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { formatDistanceToNow } from "date-fns";
 
 import { SprintTask, TaskPriority, TaskStatus, TaskStatusConfig } from "@/lib/api";
+import { effectiveAssignees } from "@/components/planning/TaskAssigneeStack";
 import { PRIORITY_COLORS } from "@/lib/statusColors";
 import { cn } from "@/lib/utils";
 
@@ -140,25 +141,41 @@ export function TaskTableView({
                   </span>
                 </td>
                 <td className="px-3 py-2 text-foreground/90">
-                  {task.assignee_name ? (
-                    <span className="inline-flex items-center gap-2">
-                      {task.assignee_avatar_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={task.assignee_avatar_url}
-                          alt={task.assignee_name}
-                          className="h-5 w-5 rounded-full object-cover ring-1 ring-border/60"
-                        />
-                      ) : (
-                        <span className="h-5 w-5 rounded-full bg-muted text-[10px] text-muted-foreground inline-flex items-center justify-center">
-                          {task.assignee_name.slice(0, 1).toUpperCase()}
-                        </span>
-                      )}
-                      <span className="truncate">{task.assignee_name}</span>
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
+                  {/* All assignees, not just the primary — a task with several
+                      people and no designated owner would otherwise show "—". */}
+                  {(() => {
+                    const people = effectiveAssignees(task);
+                    if (people.length === 0) {
+                      return <span className="text-muted-foreground">—</span>;
+                    }
+                    const lead = people[0];
+                    const others = people.length - 1;
+                    return (
+                      <span
+                        className="inline-flex items-center gap-2"
+                        title={people.map((p) => p.name ?? "Unknown").join(", ")}
+                      >
+                        {lead.avatar_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={lead.avatar_url}
+                            alt={lead.name ?? "Assignee"}
+                            className="h-5 w-5 rounded-full object-cover ring-1 ring-border/60"
+                          />
+                        ) : (
+                          <span className="h-5 w-5 rounded-full bg-muted text-[10px] text-muted-foreground inline-flex items-center justify-center">
+                            {(lead.name ?? "?").slice(0, 1).toUpperCase()}
+                          </span>
+                        )}
+                        <span className="truncate">{lead.name ?? "Assigned"}</span>
+                        {others > 0 && (
+                          <span className="text-xs text-muted-foreground shrink-0">
+                            +{others}
+                          </span>
+                        )}
+                      </span>
+                    );
+                  })()}
                 </td>
                 {showSprintColumn && (
                   <td className="px-3 py-2 text-muted-foreground truncate">

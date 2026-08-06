@@ -602,6 +602,15 @@ class TicketService:
             title=f"Deleted ticket #{ticket.ticket_number}",
         )
 
+        # Progress updates hang off (entity_type, entity_id) with no FK to
+        # cascade from, so they would survive this hard delete and then attach
+        # themselves to whatever next holds this id.
+        from aexy.services.work_update_service import WorkUpdateService
+
+        await WorkUpdateService(self.db).delete_for_entity(
+            str(ticket.workspace_id), "ticket", str(ticket.id)
+        )
+
         await self.db.delete(ticket)
         await self.db.flush()
         return True
