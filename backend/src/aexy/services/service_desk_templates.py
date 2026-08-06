@@ -141,6 +141,16 @@ async def render_sd(
     return subject, (text or html)
 
 
+def _variables(defn: dict) -> list[dict]:
+    """The placeholders as {name, default} pairs, not bare names.
+
+    The default is what a send renders when the value is missing, and the
+    settings page shows it next to each token — an editor deciding whether to
+    keep ``{{requester_name}}`` needs to know a nameless sender reads "there".
+    """
+    return [{"name": v["name"], "default": v.get("default", "")} for v in defn["vars"]]
+
+
 async def list_sd_templates(db: AsyncSession, workspace_id: str) -> list[dict]:
     """Return the three templates (customised row if present, else default)."""
     ts = TemplateService(db)
@@ -153,7 +163,7 @@ async def list_sd_templates(db: AsyncSession, workspace_id: str) -> list[dict]:
                 "name": defn["name"],
                 "subject": row.subject_template if row else defn["subject"],
                 "body": (row.body_text or row.body_html) if row else defn["body"],
-                "variables": [v["name"] for v in defn["vars"]],
+                "variables": _variables(defn),
                 "customised": row is not None,
             }
         )
@@ -195,6 +205,6 @@ async def upsert_sd_template(
         "name": defn["name"],
         "subject": subject,
         "body": body,
-        "variables": [v["name"] for v in defn["vars"]],
+        "variables": _variables(defn),
         "customised": True,
     }

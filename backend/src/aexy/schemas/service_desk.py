@@ -712,12 +712,19 @@ class ServiceDeskSettingsUpdate(BaseModel):
         return self
 
 
+class ServiceDeskTemplateVariable(BaseModel):
+    """One placeholder and what a send renders when its value is missing."""
+
+    name: str
+    default: str = ""
+
+
 class ServiceDeskTemplate(BaseModel):
     key: str
     name: str
     subject: str
     body: str
-    variables: list[str] = Field(default_factory=list)
+    variables: list[ServiceDeskTemplateVariable] = Field(default_factory=list)
     customised: bool = False
 
 

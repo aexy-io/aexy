@@ -44,6 +44,11 @@ function TemplateEditor({
   const [subject, setSubject] = useState(tpl.subject);
   const [body, setBody] = useState(tpl.body);
   const dirty = subject !== tpl.subject || body !== tpl.body;
+  // A backend that predates the {name, default} shape sends bare names —
+  // degrade to tokens without fallbacks rather than "{{undefined}}".
+  const variables = tpl.variables.map((v) =>
+    typeof v === "string" ? { name: v, default: "" } : v,
+  );
 
   return (
     <div className="space-y-2 rounded-md border border-border p-3">
@@ -65,10 +70,27 @@ function TemplateEditor({
           className="w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-xs"
         />
       </div>
-      <div className="flex items-center justify-between">
-        <span className="text-[11px] text-muted-foreground">
-          {t("templates.variables")}: {tpl.variables.map((v) => `{{${v}}}`).join(" ")}
-        </span>
+      <div>
+        <p className="mb-1 text-[11px] font-medium text-muted-foreground">{t("templates.variables")}</p>
+        <dl className="space-y-0.5">
+          {variables.map((v) => (
+            <div key={v.name} className="flex flex-wrap items-baseline gap-x-2 text-[11px] text-muted-foreground">
+              <dt>
+                <code className="rounded bg-muted px-1 py-0.5">{`{{${v.name}}}`}</code>
+              </dt>
+              <dd className="min-w-0 flex-1">
+                {/* Descriptions are i18n'd by variable name; an unknown future
+                    variable degrades to its token and fallback, not a broken key. */}
+                {t.has(`templates.varDesc.${v.name}`) && t(`templates.varDesc.${v.name}`)}
+                {v.default && (
+                  <span className="italic"> {t("templates.varDefault", { value: v.default })}</span>
+                )}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+      <div className="flex justify-end">
         {canManage && (
           <Button size="sm" disabled={!dirty || saving} onClick={() => onSave(subject, body)}>
             {saving ? t("templates.saving") : t("templates.save")}
@@ -468,6 +490,7 @@ function TestSLAEditor({
   return (
     <div className="space-y-3">
       <p className="max-w-2xl text-sm text-muted-foreground">{t("testSla.description")}</p>
+      <p className="max-w-2xl text-xs text-muted-foreground">{t("testSla.example")}</p>
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem_8rem]">
         <span className="text-xs text-muted-foreground">{t("testSla.stage")}</span>
         <span className="text-xs text-muted-foreground">{t("testSla.amber")}</span>
@@ -788,15 +811,23 @@ export default function ServiceDeskSettingsPage() {
 
       {/* Mailboxes */}
       <Section title={t("settings.mailboxes")}>
+        <p className="max-w-2xl text-sm text-muted-foreground">{t("settings.mailboxesHint")}</p>
         {canManage && (
-          <div className="flex flex-wrap items-end gap-2">
-            <Input value={mAddr} onChange={(e) => setMAddr(e.target.value)} placeholder={t("settings.address")} className="max-w-[240px]" />
-            <select value={mChannel} onChange={(e) => setMChannel(e.target.value as "webhook" | "gmail_sync")} className="rounded-md border border-border bg-background px-3 py-2 text-sm">
-              <option value="webhook">webhook</option>
-              <option value="gmail_sync">gmail_sync</option>
-            </select>
-            <Button disabled={!mAddr.trim() || m.createMailbox.isPending} onClick={async () => { await m.createMailbox.mutateAsync({ address: mAddr.trim(), channel: mChannel }); setMAddr(""); }}>{t("settings.add")}</Button>
-          </div>
+          <>
+            <div className="flex flex-wrap items-end gap-2">
+              <Input value={mAddr} onChange={(e) => setMAddr(e.target.value)} placeholder={t("settings.address")} className="max-w-[240px]" />
+              <select value={mChannel} onChange={(e) => setMChannel(e.target.value as "webhook" | "gmail_sync")} className="rounded-md border border-border bg-background px-3 py-2 text-sm" aria-label={t("settings.channel")}>
+                <option value="webhook">{t("settings.channelWebhook")}</option>
+                <option value="gmail_sync">{t("settings.channelGmail")}</option>
+              </select>
+              <Button disabled={!mAddr.trim() || m.createMailbox.isPending} onClick={async () => { await m.createMailbox.mutateAsync({ address: mAddr.trim(), channel: mChannel }); setMAddr(""); }}>{t("settings.add")}</Button>
+            </div>
+            {/* Which prerequisite applies depends on the channel picked, and the
+                gmail_sync one is a hard 422 on Add — say so before, not after. */}
+            <p className="max-w-2xl text-xs text-muted-foreground">
+              {mChannel === "gmail_sync" ? t("settings.channelGmailHint") : t("settings.channelWebhookHint")}
+            </p>
+          </>
         )}
         {(mailboxes.data ?? []).map((mb) => (
           <Row key={mb.id} canManage={canManage} onDelete={() => m.deleteMailbox.mutate(mb.id)}>
