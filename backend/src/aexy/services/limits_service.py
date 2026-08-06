@@ -291,6 +291,43 @@ class LimitsService:
         self._effective_plan_cache[cache_key] = effective
         return effective
 
+    async def get_workspace_plan(self, workspace_id: str) -> EffectivePlan:
+        """The workspace's own effective plan, independent of who is asking.
+
+        Unlike ``get_effective_plan`` — which answers "what may this developer
+        do", inheriting the best plan across all their workspaces — this
+        resolves the plan of the workspace itself: its assigned ``Plan`` row
+        (falling back to the Free plan), with the workspace's override applied.
+        Use it for workspace-scoped surfaces like the billing card, where an
+        admin's personal plan from some other workspace must not leak in.
+        """
+        cache_key = f"ws:{workspace_id}"
+        if cache_key in self._effective_plan_cache:
+            return self._effective_plan_cache[cache_key]
+
+        from aexy.models.workspace import Workspace, WorkspacePlanOverride
+
+        workspace = await self.db.get(Workspace, workspace_id)
+        plan = None
+        if workspace is not None and workspace.plan_id:
+            plan = await self.db.get(Plan, workspace.plan_id)
+            if plan is not None and not plan.is_active:
+                plan = None
+        if plan is None:
+            plan = await self.get_or_create_free_plan()
+
+        override = (
+            await self.db.execute(
+                select(WorkspacePlanOverride).where(
+                    WorkspacePlanOverride.workspace_id == workspace_id
+                )
+            )
+        ).scalar_one_or_none()
+
+        effective = self._apply_overrides(plan, override)
+        self._effective_plan_cache[cache_key] = effective
+        return effective
+
     def _apply_overrides(
         self, plan: Plan, override: "WorkspacePlanOverride | None"
     ) -> EffectivePlan:
