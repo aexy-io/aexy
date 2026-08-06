@@ -1086,14 +1086,21 @@ export default function OrganizationSettingsPage() {
       )}
 
 
-      {members.length >= 3 && (
-        <UpgradeBanner
-          trigger="member_limit"
-          current={members.length}
-          limit={3}
-          compact
-        />
-      )}
+      {/* Shown when the plan's seat allowance is actually exhausted — the
+          same numbers the billing card reports. total_seats of -1 means
+          unlimited, so no banner. (The banner also hides itself for paid
+          tiers; it used to fire at a hardcoded 3 members, a limit no plan
+          defines.) */}
+      {billingStatus &&
+        billingStatus.total_seats >= 0 &&
+        billingStatus.used_seats >= billingStatus.total_seats && (
+          <UpgradeBanner
+            trigger="member_limit"
+            current={billingStatus.used_seats}
+            limit={billingStatus.total_seats}
+            compact
+          />
+        )}
 
       {/* AI workspace-wide review summary. Hides itself until data exists,
           so non-AI workspaces don't see clutter. */}
