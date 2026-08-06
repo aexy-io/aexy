@@ -5,6 +5,111 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] - 2026-08-06
+
+Three things the tech team asked for after using the ticketing and sprint
+features in anger. All three are cases where the data model admitted only one
+answer to a question that really has several.
+
+### Added: more than one person on a task
+
+A task had exactly one `assignee_id`, so work with two names on it — a pair, a
+dev plus the reviewer who owns the follow-up, an ops handover — had to either
+reassign, losing who else was involved, or write the second name into the
+description where no filter, board or report can see it.
+
+`task_assignees` now holds everyone. **`is_primary` marks the one accountable
+owner and is mirrored to `sprint_tasks.assignee_id`**, which stays the single
+source of truth for everything that must resolve to exactly one developer:
+board grouping, workload and velocity attribution, Slack and email
+notifications, auto-assignment, and roughly 250 call sites that read it. Not one
+of them changed. The mirror is maintained in one place —
+`SprintTaskService.sync_assignee_rows_from_column` — and every path that can
+write the column funnels through it, including the generic PATCH, the dedicated
+`/assign` endpoint, sprint and project task creation, and the automation action
+(which runs on a sync session and so carries its own copy, kept deliberately
+identical).
+
+The legacy single-assignee paths behave exactly as they did before. Reassigning
+A to B leaves B alone on the task rather than quietly demoting A to
+collaborator — accumulating everyone who ever held a task, and telling A they
+are still on work they handed over, is worse than the old behaviour. Unassigning
+removes the owner outright. Collaborators added deliberately are never touched
+by either.
+
+Both arrangements the team asked for are real states rather than a mode flag.
+"Primary plus collaborators" is one primary row and some others. "Everyone
+equally on this" is collaborators with **no** primary, and `assignee_id` is
+genuinely null, because nobody is individually accountable. The cost of being
+honest about that is that such a task groups under "no assignee" on
+assignee-grouped views; in exchange, the cards, the table and the picker all
+name the actual people instead of showing a single face that was never the whole
+story. Cards and rows read `assignees`, so a task with several people and no
+primary no longer renders as "Unassigned" — the opposite of the truth.
+
+Assignee filters now match collaborators too. Filtering to a person and not
+seeing work they are genuinely on reads as "nothing assigned to them", which is
+worse than having no filter at all.
+
+The project-scoped router had no assignment endpoints at all — the project board
+could only reassign through the generic PATCH, which is part of why assignment
+from the project view behaved differently from the sprint view. Both routers now
+expose the same four operations, with the bodies shared so they cannot drift.
+
+`migrate_task_assignees.sql` backfills every already-assigned task with its
+current assignee as primary. This is the load-bearing part: the new UI reads
+`assignees`, so without it every existing task in every workspace would render
+with nobody on it while `assignee_id` still held a name.
+
+### Added: progress updates, separate from the comment thread
+
+A task carried two kinds of writing and neither answered "where does this
+actually stand?". Comments are a conversation — the current state is buried
+somewhere in a thread, interleaved with questions and customer replies, and you
+have to hope the last relevant line is still true. The activity log is an audit
+trail of field changes: it records that status became `in_progress` on Tuesday,
+and cannot record why it is still `in_progress` on Friday. Standups were filling
+that gap verbally, with nothing written against the work itself.
+
+`work_updates` is that missing record — a short, author-owned statement of
+progress, on tasks and on tickets, with an **Updates** tab on both detail views.
+Its author can reword it, which a comment thread cannot do without becoming a
+thread of corrections; an edit is marked, and only the author may make one, since
+letting someone else rewrite a statement under that person's name is worse than
+leaving a wrong one standing. Admins can delete.
+
+Posting mirrors an event into the activity log so an update is visible in the
+History tab and the workspace feed rather than sitting in a silo. The body is
+deliberately not copied there: the update is editable and the log is not, so a
+copy would leave the feed quoting a version that no longer exists.
+
+The endpoints span two apps (a task belongs to `sprints`, a ticket to
+`tickets`), so the module gate is resolved per request from `entity_type`
+instead of at the router, and a test pins that every supported entity type has a
+gate — an unmapped one would otherwise skip the check.
+
+### Added: a History tab on tickets
+
+The ticket page showed "Activity & Responses", which was only
+`ticket_responses`: the conversation, plus the synthetic "Status changed from x
+to y" notes the service writes there. That is not an audit trail. A response row
+only exists when a developer was attached to the change, so anything done by an
+automation, an escalation or the alert ingest path left no trace on the ticket at
+all.
+
+The real record was already being written — `TicketService` has been logging to
+`entity_activities` on create, update, assign, response and delete all along,
+and a per-entity timeline endpoint already existed. Nothing read it back for a
+single ticket. The tab is that read, presented like the task's History tab, with
+developer ids in assignment changes resolved to names.
+
+Two things found while wiring it up. The generic activity endpoints did not
+validate a `ticket` entity against the workspace before stamping activity on it,
+unlike the other entity types; `ticket` is now in that map. And the ticket
+status, priority and severity labels lived in two copies, so History could say
+`waiting_on_submitter` while the picker directly above it said "Waiting on
+Submitter" — one shared vocabulary now, imported by both.
+
 ## [0.14.2] - 2026-08-05
 
 ### Added: departments decide access, and say what they are for

@@ -23,14 +23,18 @@ from aexy.schemas.sprint import (
     SprintTaskBulkMove,
     SprintTaskReorder,
     SprintTaskResponse,
+    TaskAssigneeAdd,
+    TaskAssigneesUpdate,
     TaskAttachmentListResponse,
     TaskImportRequest,
     TaskImportResponse,
     TaskActivityCreate,
     TaskActivityResponse,
     TaskActivityListResponse,
+    TaskPrimaryAssigneeUpdate,
     WipLimitsConfig,
 )
+from aexy.api import task_assignee_ops
 from aexy.services.sprint_service import SprintService
 from aexy.services.sprint_task_service import SprintTaskService, TaskValidationError
 from aexy.services.github_task_sync_service import GitHubTaskSyncService
@@ -1074,6 +1078,68 @@ async def unassign_task(
 
     await db.commit()
     return task_to_response(task)
+
+
+# Assignee set (primary + collaborators). `assign`/`unassign` above still own
+# the primary slot; these manage the wider set. See api/task_assignee_ops.py.
+@router.put("/{task_id}/assignees", response_model=SprintTaskResponse)
+async def set_task_assignees(
+    sprint_id: str,
+    task_id: str,
+    data: TaskAssigneesUpdate,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Replace the whole assignee set for a task."""
+    await get_sprint_and_check_permission(sprint_id, current_user, db, "member")
+    return await task_assignee_ops.set_assignees(
+        db, task_id, data, str(current_user.id), lambda t: t.sprint_id == sprint_id
+    )
+
+
+@router.post("/{task_id}/assignees", response_model=SprintTaskResponse)
+async def add_task_assignee(
+    sprint_id: str,
+    task_id: str,
+    data: TaskAssigneeAdd,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Add one person to a task without disturbing the others."""
+    await get_sprint_and_check_permission(sprint_id, current_user, db, "member")
+    return await task_assignee_ops.add_assignee(
+        db, task_id, data, str(current_user.id), lambda t: t.sprint_id == sprint_id
+    )
+
+
+@router.delete("/{task_id}/assignees/{developer_id}", response_model=SprintTaskResponse)
+async def remove_task_assignee(
+    sprint_id: str,
+    task_id: str,
+    developer_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Take one person off a task, leaving the rest."""
+    await get_sprint_and_check_permission(sprint_id, current_user, db, "member")
+    return await task_assignee_ops.remove_assignee(
+        db, task_id, developer_id, str(current_user.id), lambda t: t.sprint_id == sprint_id
+    )
+
+
+@router.put("/{task_id}/assignees/primary", response_model=SprintTaskResponse)
+async def set_task_primary_assignee(
+    sprint_id: str,
+    task_id: str,
+    data: TaskPrimaryAssigneeUpdate,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Move the primary badge, or clear it so all assignees are equal."""
+    await get_sprint_and_check_permission(sprint_id, current_user, db, "member")
+    return await task_assignee_ops.set_primary_assignee(
+        db, task_id, data, str(current_user.id), lambda t: t.sprint_id == sprint_id
+    )
 
 
 # Sync from source

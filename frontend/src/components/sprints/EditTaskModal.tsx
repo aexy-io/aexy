@@ -52,6 +52,8 @@ import {
   TaskAlignmentBadge,
 } from "@/components/code-insights";
 import { PRIORITY_CONFIG, STATUS_CONFIG } from "@/components/sprints/taskFieldConfig";
+import { WorkUpdatesPanel } from "@/components/work-updates/WorkUpdatesPanel";
+import { TaskCollaborators } from "@/components/sprints/TaskCollaborators";
 import { invalidateTaskCaches } from "@/hooks/invalidateTaskCaches";
 
 // Local helper type for the AI block on task attachments — the SprintTask
@@ -376,7 +378,7 @@ export function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, s
   const [estimatedHours, setEstimatedHours] = useState<string>(
     cachedState?.estimatedHours ?? task.estimated_hours?.toString() ?? "",
   );
-  const [activeTab, setActiveTab] = useState<"details" | "history">("details");
+  const [activeTab, setActiveTab] = useState<"details" | "updates" | "history">("details");
   const [newAttachmentFiles, setNewAttachmentFiles] = useState<File[]>([]);
   const [isUploadingAttachments, setIsUploadingAttachments] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -725,7 +727,7 @@ export function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, s
         <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_20rem]">
           {/* Main content */}
           <div className="space-y-5 p-5 sm:p-6">
-            {/* Tabs: Details / History */}
+            {/* Tabs: Details / Updates / History */}
             <div className="flex gap-2 border-b border-border" data-testid="task-tabs">
               <button
                 type="button"
@@ -742,6 +744,19 @@ export function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, s
               </button>
               <button
                 type="button"
+                data-testid="task-tab-updates"
+                onClick={() => setActiveTab("updates")}
+                className={cn(
+                  "px-3 py-2 text-sm font-medium transition border-b-2",
+                  activeTab === "updates"
+                    ? "text-foreground border-primary-500"
+                    : "text-muted-foreground border-transparent hover:text-foreground",
+                )}
+              >
+                Updates
+              </button>
+              <button
+                type="button"
                 data-testid="task-tab-history"
                 onClick={() => setActiveTab("history")}
                 className={cn(
@@ -754,6 +769,14 @@ export function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, s
                 History
               </button>
             </div>
+
+            {activeTab === "updates" && (
+              <WorkUpdatesPanel
+                workspaceId={task.workspace_id ?? null}
+                entityType="task"
+                entityId={task.id}
+              />
+            )}
 
             {activeTab === "history" && (
               <AssignmentHistoryPanel
@@ -1154,20 +1177,34 @@ export function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, s
               </div>
             )}
 
-            {/* Assignee */}
+            {/* Assignee — the primary, saved with the rest of the form.
+                Collaborators are managed separately and take effect
+                immediately; see TaskCollaborators. */}
             <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Assignee</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">
+                {(task.assignees?.length ?? 0) > 1 ? "Primary assignee" : "Assignee"}
+              </label>
               <select
                 value={assigneeId}
                 onChange={(e) => setAssigneeId(e.target.value)}
                 className="w-full px-2 py-1.5 bg-background/50 border border-border rounded text-sm text-foreground focus:outline-none focus:border-primary-500"
               >
-                <option value="">Unassigned</option>
+                {/* With other people on the task, clearing this doesn't mean
+                    nobody is on it — it means nobody is individually
+                    accountable. Say which. */}
+                <option value="">
+                  {(task.assignees?.length ?? 0) > 0
+                    ? "No primary — all equal"
+                    : "Unassigned"}
+                </option>
                 {users.map((user) => (
                   <option key={user.id} value={user.id}>{user.name}</option>
                 ))}
               </select>
             </div>
+
+            {/* Collaborators */}
+            <TaskCollaborators task={task} users={users} />
 
             {/* Sprint Goal Checkbox */}
             <div>

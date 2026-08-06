@@ -23,39 +23,25 @@ import {
   DollarSign,
   TrendingUp,
   Share2,
+  History,
+  ClipboardList,
 } from "lucide-react";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { ShareTicketDialog } from "@/components/tickets/ShareTicketDialog";
 import { TicketAttachments } from "@/components/tickets/TicketAttachments";
+import { TicketHistoryPanel } from "@/components/tickets/TicketHistoryPanel";
+import { WorkUpdatesPanel } from "@/components/work-updates/WorkUpdatesPanel";
+import {
+  STATUS_OPTIONS,
+  PRIORITY_OPTIONS,
+  SEVERITY_OPTIONS,
+} from "@/components/tickets/ticketLabels";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import { useTicket, useTicketResponses } from "@/hooks/useTicketing";
 import { useTeams } from "@/hooks/useTeams";
 import { useProjects } from "@/hooks/useProjects";
 import { TicketStatus, TicketPriority, TicketSeverity, ticketsApi } from "@/lib/api";
-
-const STATUS_OPTIONS: { value: TicketStatus; label: string; color: string }[] = [
-  { value: "new", label: "New", color: "text-blue-600 dark:text-blue-400" },
-  { value: "acknowledged", label: "Acknowledged", color: "text-purple-600 dark:text-purple-400" },
-  { value: "in_progress", label: "In Progress", color: "text-yellow-600 dark:text-yellow-400" },
-  { value: "waiting_on_submitter", label: "Waiting on Submitter", color: "text-orange-600 dark:text-orange-400" },
-  { value: "resolved", label: "Resolved", color: "text-green-600 dark:text-green-400" },
-  { value: "closed", label: "Closed", color: "text-muted-foreground" },
-];
-
-const PRIORITY_OPTIONS: { value: TicketPriority; label: string; color: string }[] = [
-  { value: "low", label: "Low", color: "text-muted-foreground" },
-  { value: "medium", label: "Medium", color: "text-blue-600 dark:text-blue-400" },
-  { value: "high", label: "High", color: "text-orange-600 dark:text-orange-400" },
-  { value: "urgent", label: "Urgent", color: "text-red-600 dark:text-red-400" },
-];
-
-const SEVERITY_OPTIONS: { value: TicketSeverity; label: string; color: string; description: string }[] = [
-  { value: "low", label: "Low", color: "text-muted-foreground", description: "Minor impact" },
-  { value: "medium", label: "Medium", color: "text-blue-600 dark:text-blue-400", description: "Moderate impact" },
-  { value: "high", label: "High", color: "text-orange-600 dark:text-orange-400", description: "Significant impact" },
-  { value: "critical", label: "Critical", color: "text-red-600 dark:text-red-400", description: "System down" },
-];
 
 export default function TicketDetailPage() {
   const router = useRouter();
@@ -75,6 +61,7 @@ export default function TicketDetailPage() {
   const [isInternal, setIsInternal] = useState(false);
   const [newStatus, setNewStatus] = useState<TicketStatus | undefined>();
   const [showShareModal, setShowShareModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<"responses" | "updates" | "history">("responses");
 
   // Create task modal state
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
@@ -267,13 +254,70 @@ export default function TicketDetailPage() {
               />
             )}
 
-            {/* Responses Timeline */}
+            {/* Responses + History */}
             <div className="bg-muted rounded-xl border border-border p-6">
-              <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                <MessageSquare className="h-5 w-5" />
-                Activity & Responses
-              </h2>
+              {/* Tabs: Responses / History. Responses is the conversation;
+                  History is the full audit trail from the activity log,
+                  including changes no response row was ever written for. */}
+              <div className="flex items-center gap-1 border-b border-border mb-4 -mt-1">
+                <button
+                  type="button"
+                  data-testid="ticket-tab-responses"
+                  onClick={() => setActiveTab("responses")}
+                  className={`flex items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 transition ${
+                    activeTab === "responses"
+                      ? "border-purple-500 text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  Responses
+                  {responses.length > 0 && (
+                    <span className="text-xs text-muted-foreground">({responses.length})</span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  data-testid="ticket-tab-updates"
+                  onClick={() => setActiveTab("updates")}
+                  className={`flex items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 transition ${
+                    activeTab === "updates"
+                      ? "border-purple-500 text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <ClipboardList className="h-4 w-4" />
+                  Updates
+                </button>
+                <button
+                  type="button"
+                  data-testid="ticket-tab-history"
+                  onClick={() => setActiveTab("history")}
+                  className={`flex items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 transition ${
+                    activeTab === "history"
+                      ? "border-purple-500 text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <History className="h-4 w-4" />
+                  History
+                </button>
+              </div>
 
+              {activeTab === "updates" && (
+                <WorkUpdatesPanel
+                  workspaceId={workspaceId}
+                  entityType="ticket"
+                  entityId={ticketId}
+                />
+              )}
+
+              {activeTab === "history" && (
+                <TicketHistoryPanel workspaceId={workspaceId} ticketId={ticketId} />
+              )}
+
+              {activeTab === "responses" && (
+              <>
               <div className="space-y-4 mb-6">
                 {responses.length === 0 ? (
                   <p className="text-muted-foreground text-center py-4">No responses yet</p>
@@ -358,6 +402,8 @@ export default function TicketDetailPage() {
                   </button>
                 </div>
               </div>
+              </>
+              )}
             </div>
           </div>
 

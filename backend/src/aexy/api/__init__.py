@@ -68,6 +68,8 @@ from aexy.api.releases import router as releases_router
 from aexy.api.goals import router as goals_router
 # Entity Activities (Timeline)
 from aexy.api.entity_activity import router as entity_activity_router
+# Progress updates (tasks + tickets)
+from aexy.api.work_updates import router as work_updates_router
 # Bugs
 from aexy.api.bugs import router as bugs_router
 # Dependencies
@@ -269,6 +271,10 @@ api_router.include_router(releases_router, tags=["releases"], dependencies=[Depe
 api_router.include_router(goals_router, tags=["goals"])
 # Entity Activities (Timeline)
 api_router.include_router(entity_activity_router, tags=["entity-activities"])
+# Progress updates. No router-level app guard: this router spans two apps
+# (task -> sprints, ticket -> tickets) so the gate is picked per request from
+# entity_type inside the module. See api/work_updates.py.
+api_router.include_router(work_updates_router, tags=["work-updates"])
 # Bugs
 api_router.include_router(bugs_router, tags=["bugs"], dependencies=[Depends(require_app_access("sprints"))])
 # Dependencies

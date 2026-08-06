@@ -3728,7 +3728,7 @@ class SyncWorkflowActionHandler:
 
     def _assign_task(self, data: dict, context: dict, execution: WorkflowExecution) -> dict:
         """Assign a sprint task."""
-        from aexy.models.sprint import SprintTask
+        from aexy.models.sprint import SprintTask, TaskAssignee
 
         task_id = data.get("task_id") or context.get("trigger_data", {}).get("task_id")
         developer_id = data.get("developer_id") or data.get("assignee_id")
@@ -3745,6 +3745,38 @@ class SyncWorkflowActionHandler:
             if not task:
                 return {"status": "failed", "error": f"Task {task_id} not found"}
             task.assignee_id = developer_id
+
+            # Keep task_assignees in step with the column, or an
+            # automation-assigned task shows an assignee in reports and an empty
+            # assignee list in the UI. Written out here rather than reused
+            # because this action runs on a *sync* session; the async twin is
+            # SprintTaskService.sync_assignee_rows_from_column, and the two
+            # must agree — promote the target in place, drop a stale primary,
+            # leave collaborators alone.
+            rows = (
+                self.db.execute(
+                    select(TaskAssignee).where(TaskAssignee.task_id == task_id)
+                )
+                .scalars()
+                .all()
+            )
+            existing = None
+            for row in rows:
+                if str(row.developer_id) == str(developer_id):
+                    existing = row
+                elif row.is_primary:
+                    self.db.delete(row)
+            if existing is not None:
+                existing.is_primary = True
+            else:
+                self.db.add(
+                    TaskAssignee(
+                        id=str(uuid4()),
+                        task_id=task_id,
+                        developer_id=developer_id,
+                        is_primary=True,
+                    )
+                )
             self.db.commit()
         except Exception as e:
             return {"status": "failed", "error": str(e)}

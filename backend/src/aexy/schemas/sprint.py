@@ -453,6 +453,44 @@ class TaskAttachmentListResponse(BaseModel):
     attachments: list[TaskAttachmentResponse]
 
 
+class TaskAssigneeResponse(BaseModel):
+    """One person assigned to a task.
+
+    ``is_primary`` marks the accountable owner, which is also what
+    ``SprintTaskResponse.assignee_id`` carries. A task may have several
+    assignees and no primary — that is the "everyone equally on this"
+    arrangement, and ``assignee_id`` is null for it.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    developer_id: str
+    name: str | None = None
+    email: str | None = None
+    avatar_url: str | None = None
+    is_primary: bool = False
+    added_by_id: str | None = None
+    created_at: datetime | None = None
+
+
+class TaskAssigneesUpdate(BaseModel):
+    """Replace a task's whole assignee set."""
+
+    developer_ids: list[str] = Field(default_factory=list, max_length=50)
+    # Must be one of `developer_ids`. Null means no designated owner.
+    primary_id: str | None = None
+
+
+class TaskAssigneeAdd(BaseModel):
+    developer_id: str
+    make_primary: bool = False
+
+
+class TaskPrimaryAssigneeUpdate(BaseModel):
+    # Null clears the badge without taking anyone off the task.
+    developer_id: str | None = None
+
+
 class SprintTaskResponse(BaseModel):
     """Schema for sprint task response."""
 
@@ -471,9 +509,12 @@ class SprintTaskResponse(BaseModel):
     story_points: int | None = None
     priority: TaskPriority
     labels: list[str] = Field(default_factory=list)
+    # The primary assignee, kept for every consumer that needs exactly one
+    # developer. `assignees` below is the full set, primary included.
     assignee_id: str | None = None
     assignee_name: str | None = None
     assignee_avatar_url: str | None = None
+    assignees: list["TaskAssigneeResponse"] = Field(default_factory=list)
     assignment_reason: str | None = None
     assignment_confidence: float | None = None
     status: TaskStatus

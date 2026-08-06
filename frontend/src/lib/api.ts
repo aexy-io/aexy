@@ -2525,6 +2525,24 @@ export interface BulkMoveResponse {
   results: BulkMoveResult[];
 }
 
+/**
+ * One person assigned to a task.
+ *
+ * `is_primary` marks the accountable owner, which is also what
+ * `SprintTask.assignee_id` carries. A task may have several assignees and no
+ * primary — that is the "everyone equally on this" arrangement, and
+ * `assignee_id` is null for it.
+ */
+export interface TaskAssignee {
+  developer_id: string;
+  name: string | null;
+  email: string | null;
+  avatar_url: string | null;
+  is_primary: boolean;
+  added_by_id: string | null;
+  created_at: string | null;
+}
+
 export interface SprintTask {
   id: string;
   sprint_id: string | null;  // Can be null for project-level tasks
@@ -2539,9 +2557,13 @@ export interface SprintTask {
   story_points: number | null;
   priority: TaskPriority;
   labels: string[];
+  // The *primary* assignee — the one accountable person. Every consumer that
+  // needs exactly one developer (board grouping, workload, notifications) reads
+  // this. `assignees` is the full set, primary included and listed first.
   assignee_id: string | null;
   assignee_name: string | null;
   assignee_avatar_url: string | null;
+  assignees: TaskAssignee[];
   assignment_reason: string | null;
   assignment_confidence: number | null;
   status: TaskStatus;
@@ -3846,6 +3868,80 @@ export const taskTemplatesApi = {
 // ============================================================================
 // Project Tasks API (project-level tasks without sprint)
 // ============================================================================
+
+/**
+ * Where a task's endpoints live. A task is either under a sprint or under a
+ * team, and the assignee endpoints exist on both routers with identical shapes,
+ * so callers pass the task and let this pick.
+ */
+export type TaskScope = { sprintId?: string | null; teamId?: string | null };
+
+function taskScopePath(scope: TaskScope): string {
+  if (scope.sprintId) return `/sprints/${scope.sprintId}/tasks`;
+  if (scope.teamId) return `/teams/${scope.teamId}/tasks`;
+  throw new Error("A task must belong to a sprint or a team");
+}
+
+/**
+ * Assignee set for a task: one primary plus any number of collaborators.
+ *
+ * `sprintApi.assignTask` / `unassignTask` still own the primary slot and behave
+ * exactly as before; these manage the wider set.
+ */
+export const taskAssigneesApi = {
+  /** Replace the whole set. `primaryId: null` means nobody is designated. */
+  set: async (
+    scope: TaskScope,
+    taskId: string,
+    developerIds: string[],
+    primaryId: string | null
+  ): Promise<SprintTask> => {
+    const response = await api.put(`${taskScopePath(scope)}/${taskId}/assignees`, {
+      developer_ids: developerIds,
+      primary_id: primaryId,
+    });
+    return response.data;
+  },
+
+  /** Add one person without disturbing the others. */
+  add: async (
+    scope: TaskScope,
+    taskId: string,
+    developerId: string,
+    makePrimary = false
+  ): Promise<SprintTask> => {
+    const response = await api.post(`${taskScopePath(scope)}/${taskId}/assignees`, {
+      developer_id: developerId,
+      make_primary: makePrimary,
+    });
+    return response.data;
+  },
+
+  /** Take one person off, leaving the rest. */
+  remove: async (
+    scope: TaskScope,
+    taskId: string,
+    developerId: string
+  ): Promise<SprintTask> => {
+    const response = await api.delete(
+      `${taskScopePath(scope)}/${taskId}/assignees/${developerId}`
+    );
+    return response.data;
+  },
+
+  /** Move the primary badge, or pass null to clear it so all are equal. */
+  setPrimary: async (
+    scope: TaskScope,
+    taskId: string,
+    developerId: string | null
+  ): Promise<SprintTask> => {
+    const response = await api.put(
+      `${taskScopePath(scope)}/${taskId}/assignees/primary`,
+      { developer_id: developerId }
+    );
+    return response.data;
+  },
+};
 
 export const projectTasksApi = {
   /**
@@ -14224,6 +14320,88 @@ export const entityActivityApi = {
   // Delete a comment (only own comments)
   deleteComment: async (workspaceId: string, activityId: string): Promise<void> => {
     await api.delete(`/workspaces/${workspaceId}/activities/${activityId}`);
+  },
+};
+
+// ============ Work Updates (progress updates on tasks and tickets) ============
+
+export type WorkUpdateEntityType = "task" | "ticket";
+
+export interface WorkUpdate {
+  id: string;
+  entity_type: WorkUpdateEntityType;
+  entity_id: string;
+  author_id: string | null;
+  author_name?: string | null;
+  author_email?: string | null;
+  author_avatar_url?: string | null;
+  body: string;
+  created_at: string;
+  edited_at?: string | null;
+}
+
+export interface WorkUpdateListResponse {
+  items: WorkUpdate[];
+  total: number;
+}
+
+export interface LatestWorkUpdate {
+  entity_id: string;
+  author_name?: string | null;
+  body: string;
+  created_at: string;
+}
+
+export const workUpdatesApi = {
+  list: async (
+    workspaceId: string,
+    entityType: WorkUpdateEntityType,
+    entityId: string
+  ): Promise<WorkUpdateListResponse> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/work-updates/${entityType}/${entityId}`
+    );
+    return response.data;
+  },
+
+  create: async (
+    workspaceId: string,
+    entityType: WorkUpdateEntityType,
+    entityId: string,
+    body: string
+  ): Promise<WorkUpdate> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/work-updates/${entityType}/${entityId}`,
+      { body }
+    );
+    return response.data;
+  },
+
+  edit: async (workspaceId: string, updateId: string, body: string): Promise<WorkUpdate> => {
+    const response = await api.patch(
+      `/workspaces/${workspaceId}/work-updates/${updateId}`,
+      { body }
+    );
+    return response.data;
+  },
+
+  remove: async (workspaceId: string, updateId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/work-updates/${updateId}`);
+  },
+
+  // Latest update per entity, for board staleness badges. Bulk to avoid one
+  // request per card.
+  latest: async (
+    workspaceId: string,
+    entityType: WorkUpdateEntityType,
+    entityIds: string[]
+  ): Promise<LatestWorkUpdate[]> => {
+    if (entityIds.length === 0) return [];
+    const response = await api.get(
+      `/workspaces/${workspaceId}/work-updates/${entityType}/latest`,
+      { params: { ids: entityIds.join(",") } }
+    );
+    return response.data;
   },
 };
 

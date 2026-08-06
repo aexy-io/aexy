@@ -1,11 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import Image from "next/image";
 import { motion } from "framer-motion";
 import {
   MoreVertical,
-  User,
   ExternalLink,
   Archive,
   Sparkles,
@@ -30,6 +28,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { SprintTask, TaskPriority, TaskStatus } from "@/lib/api";
 import { TASK_STATUS_COLORS } from "@/lib/statusColors";
+import { TaskAssigneeStack } from "@/components/planning/TaskAssigneeStack";
 import { Badge } from "@/components/ui/premium-card";
 import { cn } from "@/lib/utils";
 
@@ -402,32 +401,13 @@ export function TaskCardPremium({
 
       {/* Footer */}
       <div className="flex items-center justify-between mt-2">
-        {/* Assignee */}
-        {task.assignee_id ? (
-          <div className="flex items-center gap-1.5">
-            {task.assignee_avatar_url ? (
-              <Image
-                src={task.assignee_avatar_url}
-                alt={task.assignee_name || "Assignee"}
-                width={18}
-                height={18}
-                className="rounded-full ring-1 ring-border"
-              />
-            ) : (
-              <div className="w-[18px] h-[18px] rounded-full bg-muted flex items-center justify-center">
-                <User className="h-2.5 w-2.5 text-muted-foreground" />
-              </div>
-            )}
-            <span className="text-[11px] text-foreground truncate max-w-[80px]">
-              {task.assignee_name || "Assigned"}
-            </span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-            <User className="h-3 w-3" />
-            Unassigned
-          </div>
-        )}
+        {/* Assignees.
+            Reads `assignees` rather than `assignee_id` alone: a task can have
+            several people and no primary ("all equal"), and keying off the
+            single column would render that as "Unassigned" — the opposite of
+            the truth. Falls back to the primary columns so a cached response
+            from before `assignees` existed still shows a face. */}
+        <TaskAssigneeStack task={task} />
 
         {/* AI Suggestion indicator */}
         {suggestion && (

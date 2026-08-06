@@ -13,13 +13,35 @@ accessing `task.attachments` here doesn't trigger an extra round trip.
 
 from __future__ import annotations
 
-from aexy.schemas.sprint import SprintTaskResponse, TaskAttachmentResponse
+from aexy.schemas.sprint import (
+    SprintTaskResponse,
+    TaskAssigneeResponse,
+    TaskAttachmentResponse,
+)
 
 
 def task_to_response(task) -> SprintTaskResponse:
     """Convert a `SprintTask` ORM row into the response schema."""
     assignee = task.assignee
     subtasks_count = len(task.subtasks) if task.subtasks else 0
+    # `assignees` is lazy="selectin" on the model, so this costs no extra round
+    # trip. Primary first, then by when they were added, so the UI can render
+    # the list in a stable order without sorting.
+    assignees = [
+        TaskAssigneeResponse(
+            developer_id=str(a.developer_id),
+            name=a.developer.name if a.developer else None,
+            email=a.developer.email if a.developer else None,
+            avatar_url=a.developer.avatar_url if a.developer else None,
+            is_primary=a.is_primary,
+            added_by_id=str(a.added_by_id) if a.added_by_id else None,
+            created_at=a.created_at,
+        )
+        for a in sorted(
+            task.assignees or [],
+            key=lambda row: (not row.is_primary, row.created_at),
+        )
+    ]
     attachments = [
         TaskAttachmentResponse(
             id=str(a.id),
@@ -50,6 +72,7 @@ def task_to_response(task) -> SprintTaskResponse:
         assignee_id=str(task.assignee_id) if task.assignee_id else None,
         assignee_name=assignee.name if assignee else None,
         assignee_avatar_url=assignee.avatar_url if assignee else None,
+        assignees=assignees,
         assignment_reason=task.assignment_reason,
         assignment_confidence=task.assignment_confidence,
         status=task.status,

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from uuid import uuid4
 import re
 
-from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, event, func, update
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, event, func, update
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -374,7 +374,16 @@ class SprintTask(Base):
         JSONB, default=list, nullable=False
     )  # List of file paths mentioned with #
 
-    # Assignment
+    # Assignment.
+    #
+    # `assignee_id` is the *primary* assignee — the one person accountable for
+    # the task. It stays the single source of truth for everything that has to
+    # resolve to one developer: board grouping, workload and velocity
+    # attribution, Slack and email notifications, auto-assignment, and the
+    # ~250 call sites that read it. Additional people are collaborators, held
+    # in `task_assignees` and mirrored here by
+    # ``SprintTaskService.set_assignees``, which keeps this column equal to the
+    # row flagged ``is_primary``. Read `assignees` when you want everyone.
     assignee_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False),
         ForeignKey("developers.id", ondelete="SET NULL"),
@@ -511,6 +520,15 @@ class SprintTask(Base):
     assignee: Mapped["Developer | None"] = relationship(
         "Developer",
         lazy="selectin",
+    )
+    # Everyone on the task, primary included. Eager so the ~250 places that
+    # build a task response don't each need to remember a selectinload.
+    assignees: Mapped[list["TaskAssignee"]] = relationship(
+        "TaskAssignee",
+        back_populates="task",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        order_by="TaskAssignee.created_at",
     )
     carried_over_from: Mapped["Sprint | None"] = relationship(
         "Sprint",
@@ -802,6 +820,75 @@ class SprintRetrospective(Base):
         "Sprint",
         back_populates="retrospective",
         lazy="selectin",
+    )
+
+
+class TaskAssignee(Base):
+    """A person assigned to a task, beyond the single ``assignee_id`` column.
+
+    Real work has more than one name on it — a pair, a dev plus the reviewer who
+    owns the follow-up, an ops handover. The one-column model forced a choice:
+    either reassign (losing who else was involved) or write the second name in
+    the description where nothing can filter on it.
+
+    ``is_primary`` marks the accountable owner and is mirrored to
+    ``SprintTask.assignee_id`` so everything that needs exactly one developer
+    keeps working. Exactly one row per task carries it, enforced by a partial
+    unique index (see ``migrate_task_assignees.sql``) as well as in the service
+    — two primaries would make ``assignee_id`` ambiguous, and the mirror would
+    then depend on row order.
+
+    A team that wants "everyone equal" simply adds several people and ignores
+    the badge; the primary still exists so notifications and workload
+    attribution have somebody to point at.
+    """
+
+    __tablename__ = "task_assignees"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    task_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("sprint_tasks.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    developer_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    is_primary: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # Who put them on it — shown in the task history.
+    added_by_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    task: Mapped["SprintTask"] = relationship(
+        "SprintTask",
+        back_populates="assignees",
+    )
+    developer: Mapped["Developer"] = relationship(
+        "Developer",
+        foreign_keys=[developer_id],
+        lazy="selectin",
+    )
+
+    __table_args__ = (
+        UniqueConstraint("task_id", "developer_id", name="uq_task_assignee"),
+        Index("ix_task_assignees_developer", "developer_id"),
     )
 
 
