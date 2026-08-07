@@ -170,6 +170,7 @@ services:
       - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER}
       # Platform
       - PLATFORM_ORG_ID=${PLATFORM_ORG_ID:-}
+      - ADMIN_EMAILS=${ADMIN_EMAILS:-}
       # Object storage (RustFS, internal)
       - S3_ENDPOINT_URL=http://rustfs:9000
       - S3_ACCESS_KEY_ID=${RUSTFS_ROOT_USER}
