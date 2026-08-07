@@ -17,8 +17,8 @@ import {
 /**
  * Hook to check if the current user is a platform admin.
  *
- * Admin requires both: email in ADMIN_EMAILS + membership in platform org.
- * Returns platformOrgId so the frontend can enforce workspace context.
+ * Admin access is per-email (ADMIN_EMAILS) — no platform-org membership
+ * required. platformOrgId is still returned for workspace context.
  */
 export function useAdmin() {
   const { user, isLoading: isAuthLoading } = useAuth();
