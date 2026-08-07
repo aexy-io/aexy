@@ -213,32 +213,18 @@ async def get_current_developer(
 
 async def get_platform_admin(
     current_user: Developer = Depends(get_current_developer),
-    db: AsyncSession = Depends(get_db),
 ) -> Developer:
     """Verify user is a platform admin.
 
-    Double auth: user must have admin email AND be a member of the platform org.
+    Access is granted per-email via ADMIN_EMAILS. PLATFORM_ORG_ID is only
+    used for signup-side seeding (CRM contact, onboarding emails) and does
+    not gate admin access — admins don't need a seat in the platform org.
     """
     if current_user.email.lower() not in settings.admin_email_list:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Platform admin access required",
         )
-
-    # Double auth: verify membership in platform org
-    if settings.platform_org_id:
-        stmt = select(WorkspaceMember).where(
-            WorkspaceMember.workspace_id == settings.platform_org_id,
-            WorkspaceMember.developer_id == current_user.id,
-            WorkspaceMember.status == "active",
-        )
-        result = await db.execute(stmt)
-        membership = result.scalar_one_or_none()
-        if not membership:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Platform admin access required (not a member of platform org)",
-            )
 
     return current_user
 
@@ -251,30 +237,15 @@ async def get_platform_admin(
 @router.get("/check", response_model=AdminCheckResponse)
 async def check_admin_status(
     current_user: Developer = Depends(get_current_developer),
-    db: AsyncSession = Depends(get_db),
 ) -> AdminCheckResponse:
     """Check if the current user is a platform admin.
 
-    Returns admin status and the platform org ID for frontend routing.
+    Admin access is per-email (ADMIN_EMAILS); platform org membership is
+    not required. The org ID is still returned for frontend context.
     """
-    is_admin_email = current_user.email.lower() in settings.admin_email_list
-    is_in_platform_org = False
-    platform_org_id = settings.platform_org_id or None
-
-    if is_admin_email and platform_org_id:
-        stmt = select(WorkspaceMember).where(
-            WorkspaceMember.workspace_id == platform_org_id,
-            WorkspaceMember.developer_id == current_user.id,
-            WorkspaceMember.status == "active",
-        )
-        result = await db.execute(stmt)
-        is_in_platform_org = result.scalar_one_or_none() is not None
-
-    is_admin = is_admin_email and (not platform_org_id or is_in_platform_org)
-
     return AdminCheckResponse(
-        is_admin=is_admin,
-        platform_org_id=platform_org_id,
+        is_admin=current_user.email.lower() in settings.admin_email_list,
+        platform_org_id=settings.platform_org_id or None,
     )
 
 
