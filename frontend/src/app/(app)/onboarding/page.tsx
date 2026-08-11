@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useOnboarding } from "./OnboardingContext";
+import { useOnboardingRole } from "./useOnboardingRole";
 import { useEffect } from "react";
 
 const roles = [
@@ -75,10 +76,20 @@ const moduleGroups = [
 export default function OnboardingWelcome() {
   const router = useRouter();
   const { data, updateData, setCurrentStep } = useOnboarding();
+  const { isReady, setsUpWorkspace } = useOnboardingRole();
 
   useEffect(() => {
     setCurrentStep(1);
   }, [setCurrentStep]);
+
+  // Someone joining a workspace they do not own has nothing to answer on the
+  // use-case step — it configures the workspace, and its endpoint is owner-only.
+  // Send them to the step that is actually theirs: connecting their accounts.
+  // While the workspace list loads, keep the owner's route; a premature skip is
+  // the worse mistake, and the button is a click away either way.
+  const startRoute = isReady && !setsUpWorkspace
+    ? "/onboarding/connect"
+    : "/onboarding/use-case";
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-12">
@@ -151,7 +162,7 @@ export default function OnboardingWelcome() {
           </div>
 
           <button
-            onClick={() => router.push("/onboarding/use-case")}
+            onClick={() => router.push(startRoute)}
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 text-white font-medium hover:from-primary-600 hover:to-primary-700 transition-all shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40"
           >
             Get Started

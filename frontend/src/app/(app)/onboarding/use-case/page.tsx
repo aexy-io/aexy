@@ -18,6 +18,7 @@ import {
 import { motion } from "framer-motion";
 import { TeamStrategy, useOnboarding } from "../OnboardingContext";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { useOnboardingRole } from "../useOnboardingRole";
 
 const TEAM_STRATEGIES: {
   id: TeamStrategy;
@@ -132,11 +133,21 @@ export default function UseCaseSelection() {
   const router = useRouter();
   const { data, updateData, updateWorkspace, setCurrentStep } = useOnboarding();
   const { workspaces, currentWorkspaceId, switchWorkspace } = useWorkspace();
+  const { isReady, setsUpWorkspace } = useOnboardingRole();
   const [allSelected, setAllSelected] = useState(false);
 
   useEffect(() => {
     setCurrentStep(2);
   }, [setCurrentStep]);
+
+  // Step 1 already routes members past this, but the URL is reachable directly
+  // and by going back. Guarding here as well means the answer does not depend on
+  // which way somebody arrived.
+  useEffect(() => {
+    if (isReady && !setsUpWorkspace) {
+      router.replace("/onboarding/connect");
+    }
+  }, [isReady, setsUpWorkspace, router]);
 
   useEffect(() => {
     setAllSelected(useCases.every(uc => data.useCases.includes(uc.id)));
