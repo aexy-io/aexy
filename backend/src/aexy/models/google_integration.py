@@ -58,9 +58,20 @@ class GoogleIntegration(Base):
     gmail_sync_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     calendar_sync_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    # Auto-sync interval in minutes (0 = disabled, min 1 minute when enabled)
-    auto_sync_interval_minutes: Mapped[int] = mapped_column(default=0)
-    auto_sync_calendar_interval_minutes: Mapped[int] = mapped_column(default=0)
+    # Auto-sync interval in minutes. 0 means off — a real choice, offered as
+    # "Off" in the settings UI — which is why the default is not 0.
+    #
+    # It used to be. `check_auto_sync_integrations` only picks up integrations
+    # with an interval above zero, so a freshly connected account had
+    # `gmail_sync_enabled = True`, said "Connected", and then never synced.
+    # Nothing surfaced that; the person simply waited for mail that was not
+    # coming, and the only cure lived on an admin-gated settings page.
+    #
+    # 15 minutes matches a preset in that UI, so the choice reads as selected
+    # rather than as some custom value nobody picked. Reconnecting does not
+    # touch the column, so somebody who chose "Off" keeps it.
+    auto_sync_interval_minutes: Mapped[int] = mapped_column(default=15)
+    auto_sync_calendar_interval_minutes: Mapped[int] = mapped_column(default=15)
 
     # Sync settings (JSON) - labels to sync, calendars to sync, privacy options
     sync_settings: Mapped[dict] = mapped_column(JSONB, default=dict)

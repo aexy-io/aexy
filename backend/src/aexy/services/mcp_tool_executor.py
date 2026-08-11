@@ -19,7 +19,6 @@ from typing import Any
 
 import httpx
 
-from aexy.core.config import settings
 from aexy.services.mcp_catalog import CALL_TOOL, DISCOVER_TOOL
 
 # An operation is normally answered well under this. The ceiling exists so a
@@ -157,10 +156,14 @@ class McpToolExecutor:
         path = operation["path"]
         path_params = dict(arguments.get("path_params") or {})
 
-        # `workspace_id` is in almost every path. Filling it from the grant
-        # rather than the arguments is what keeps a session inside the workspace
-        # the person actually consented to.
-        path_params.setdefault("workspace_id", workspace_id)
+        # `workspace_id` comes from the grant and overwrites anything the caller
+        # sent. This was `setdefault`, which does the opposite — a caller-supplied
+        # value won, so a connector consented to one workspace could name another
+        # in `path_params` and be served. The developer's own membership still
+        # gated it, so it was never cross-tenant, but it defeated the per-workspace
+        # consent this whole flow is built on: the consent screen, Connected Apps
+        # and the docs all promise one workspace.
+        path_params["workspace_id"] = workspace_id
 
         try:
             path = path.format(**path_params)

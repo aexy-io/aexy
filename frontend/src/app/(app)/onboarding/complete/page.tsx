@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   CheckCircle2,
@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useOnboarding } from "../OnboardingContext";
+import { useOnboardingRole } from "../useOnboardingRole";
 import { repositoriesApi, workspaceApi } from "@/lib/api";
 import confetti from "canvas-confetti";
 import type { LucideIcon } from "lucide-react";
@@ -192,9 +193,23 @@ const alwaysShowLinks: QuickLink[] = [
 export default function OnboardingComplete() {
   const router = useRouter();
   const { data, setCurrentStep, resetOnboarding } = useOnboarding();
+  const { isReady, setsUpWorkspace } = useOnboardingRole();
+  // Ownership arrives a tick after mount. Running the completion effect on mount
+  // would read `setsUpWorkspace` as false while the workspace list is still in
+  // flight and silently skip the owner's own configuration — the exact bug the
+  // ownership check was added to prevent, inverted. So it waits for `isReady`,
+  // and this ref keeps it to a single run once that flips.
+  const hasCompleted = useRef(false);
 
+  // Progress and confetti belong to arriving on this page, not to knowing who
+  // the person is, so they stay on mount.
   useEffect(() => {
     setCurrentStep(7);
+  }, [setCurrentStep]);
+
+  useEffect(() => {
+    if (!isReady || hasCompleted.current) return;
+    hasCompleted.current = true;
 
     // Mark onboarding as complete and apply app access
     const markComplete = async () => {
@@ -208,7 +223,11 @@ export default function OnboardingComplete() {
         // as owner they resolve to full access anyway, and writing them one
         // would pin them out of every later change.
         const workspaceId = data.workspace.id || localStorage.getItem("current_workspace_id");
-        if (workspaceId && data.useCases.length > 0) {
+        // Owner-only endpoint. A member reaching here with stale picks — from a
+        // half-finished run before they were invited — would fire a request that
+        // 403s into the catch below and look like a silent failure. Not sending
+        // it is the same outcome, minus the mystery in the logs.
+        if (workspaceId && data.useCases.length > 0 && setsUpWorkspace) {
           // Teams answer a different question from departments — who chases
           // someone, rather than what they can see — so the founder's choice is
           // passed through rather than inferred from the use cases.
@@ -251,7 +270,7 @@ export default function OnboardingComplete() {
 
     frame();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setCurrentStep]);
+  }, [isReady]);
 
   const getQuickLinks = (): QuickLink[] => {
     const links: QuickLink[] = [];

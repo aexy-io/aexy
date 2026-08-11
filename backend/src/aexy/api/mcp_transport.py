@@ -104,6 +104,10 @@ async def mcp_endpoint(request: Request, db: AsyncSession = Depends(get_db)):
     # A batch is a list. Notifications inside it produce no reply, so a batch of
     # only notifications correctly yields no response body at all.
     if isinstance(message, list):
+        # An empty batch is malformed rather than "nothing to do" — answering 202
+        # would tell the client its work was accepted.
+        if not message:
+            return JSONResponse(content=_error(None, INVALID_REQUEST, "Empty batch"))
         replies = [r for r in [await _dispatch(m, request, db, grant) for m in message] if r]
         return JSONResponse(content=replies) if replies else JSONResponse(status_code=202, content=None)
 
@@ -127,6 +131,11 @@ async def _dispatch(
     is_notification = "id" not in message
 
     if method == "initialize":
+        # Honours `is_notification` like every other method: a message with no
+        # `id` gets no reply, and answering one with `"id": null` is a response
+        # the client never asked for and cannot match to anything.
+        if is_notification:
+            return None
         return _result(
             request_id,
             {
