@@ -752,9 +752,15 @@ export default function ServiceDeskSettingsPage() {
             {membersLoading && <Spinner size="sm" />}
             <Button
               disabled={!pName.trim() || m.createAccount.isPending}
-              onClick={async () => {
-                await m.createAccount.mutateAsync({ name: pName.trim(), assigned_owner_id: pOwner.trim() || null, domains: domains(pDomains) });
-                setPName(""); setPDomains(""); setPOwner("");
+              onClick={() => {
+                // `mutate` with an onSuccess, not `await mutateAsync` — a
+                // rejected mutateAsync here was an unhandled rejection that
+                // cleared nothing and said nothing. The inputs keep their text
+                // on failure so the fix is a correction, not a re-type.
+                m.createAccount.mutate(
+                  { name: pName.trim(), assigned_owner_id: pOwner.trim() || null, domains: domains(pDomains) },
+                  { onSuccess: () => { setPName(""); setPDomains(""); setPOwner(""); } },
+                );
               }}
             >{t("settings.add")}</Button>
           </div>
@@ -777,7 +783,10 @@ export default function ServiceDeskSettingsPage() {
             <Input value={iDomains} onChange={(e) => setIDomains(e.target.value)} placeholder={t("settings.domainsHint")} className="max-w-[220px]" />
             <Button
               disabled={!iName.trim() || m.createVendor.isPending}
-              onClick={async () => { await m.createVendor.mutateAsync({ name: iName.trim(), domains: domains(iDomains) }); setIName(""); setIDomains(""); }}
+              onClick={() => m.createVendor.mutate(
+                { name: iName.trim(), domains: domains(iDomains) },
+                { onSuccess: () => { setIName(""); setIDomains(""); } },
+              )}
             >{t("settings.add")}</Button>
           </div>
         )}
@@ -794,7 +803,7 @@ export default function ServiceDeskSettingsPage() {
         {canManage && (
           <div className="flex items-end gap-2">
             <Input value={lName} onChange={(e) => setLName(e.target.value)} placeholder={t("settings.name")} className="max-w-[220px]" />
-            <Button disabled={!lName.trim() || m.createProduct.isPending} onClick={async () => { await m.createProduct.mutateAsync({ name: lName.trim() }); setLName(""); }}>{t("settings.add")}</Button>
+            <Button disabled={!lName.trim() || m.createProduct.isPending} onClick={() => m.createProduct.mutate({ name: lName.trim() }, { onSuccess: () => setLName("") })}>{t("settings.add")}</Button>
           </div>
         )}
         <div className="flex flex-wrap gap-2">
@@ -820,7 +829,7 @@ export default function ServiceDeskSettingsPage() {
                 <option value="webhook">{t("settings.channelWebhook")}</option>
                 <option value="gmail_sync">{t("settings.channelGmail")}</option>
               </select>
-              <Button disabled={!mAddr.trim() || m.createMailbox.isPending} onClick={async () => { await m.createMailbox.mutateAsync({ address: mAddr.trim(), channel: mChannel }); setMAddr(""); }}>{t("settings.add")}</Button>
+              <Button disabled={!mAddr.trim() || m.createMailbox.isPending} onClick={() => m.createMailbox.mutate({ address: mAddr.trim(), channel: mChannel }, { onSuccess: () => setMAddr("") })}>{t("settings.add")}</Button>
             </div>
             {/* Which prerequisite applies depends on the channel picked, and the
                 gmail_sync one is a hard 422 on Add — say so before, not after. */}

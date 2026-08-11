@@ -131,16 +131,30 @@ def test_every_seeded_department_has_a_persona():
             assert department["persona"], f"{use_case}/{department['name']}"
 
 
+def test_persona_gated_apps_come_with_a_department_to_imply_the_persona():
+    """Turning an app on is half the job; the sidebar still has to show it.
+
+    `suggested_persona` reads the primary department's `default_persona`, and
+    with no department the sidebar falls back to "developer" — which filters out
+    the Business section that Service Desk and CRM live in. A use case whose
+    apps sit behind a persona has to seed a department carrying it, or the pick
+    turns the app on somewhere the person who chose it cannot see.
+    """
+    persona_gated = {"service_desk", "crm", "booking", "email_marketing"}
+    for use_case, config in USE_CASES.items():
+        if not persona_gated.intersection(config["apps"]):
+            continue
+        personas = [d["persona"] for d in config["departments"]]
+        assert personas, f"{use_case} turns on {persona_gated.intersection(config['apps'])} but seeds no department"
+        assert all(p in {"sales", "support", "admin"} for p in personas), (
+            f"{use_case} seeds {personas}, none of which can see the Business section"
+        )
+
+
 def test_capability_use_cases_seed_no_department():
     """"We want AI" describes something every department uses, not a group."""
     assert departments_for_use_cases(["ai"]) == []
     assert departments_for_use_cases(["knowledge"]) == []
-    # Operations seeds none for a different reason: no profile bundle grants
-    # Service Desk or Drive, and the Service Desk templates already seed the
-    # Operations department — whichever seeded it first would own the unique
-    # function key, and onboarding winning would give the desk's own people a
-    # baseline without their desk in it.
-    assert departments_for_use_cases(["operations"]) == []
 
 
 @pytest.mark.parametrize(
@@ -150,6 +164,7 @@ def test_capability_use_cases_seed_no_department():
         ("sales", "Sales", "sales"),
         ("people", "People", "hr"),
         ("gtm", "Marketing", "sales"),
+        ("operations", "Operations", "support"),
     ],
 )
 def test_use_case_seeds_the_expected_department(

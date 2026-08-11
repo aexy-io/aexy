@@ -634,6 +634,48 @@ class ServiceDeskService:
                 ),
             )
 
+    async def _gmail_sync_unavailable_detail(self, workspace_id: str, address: str) -> str:
+        """Say which of the three ways this failed actually happened.
+
+        The old message — "connect and enable Gmail sync for this mailbox
+        address first" — described an action that cannot succeed in the most
+        common case. ``google_integrations.workspace_id`` is unique, so a
+        workspace has exactly one Google account; when that account is someone
+        else's address there is no amount of connecting the requested address
+        that helps, and the person is sent to reconnect Google in a loop that
+        cannot terminate.
+        """
+        integration = (
+            await self.db.execute(
+                select(GoogleIntegration).where(
+                    GoogleIntegration.workspace_id == workspace_id
+                )
+            )
+        ).scalar_one_or_none()
+
+        if integration is None:
+            return (
+                "This workspace has no Google account connected yet. Connect one "
+                "under Settings → Integrations → Google, then add the mailbox."
+            )
+        if integration.google_email.lower() != address.lower():
+            return (
+                f"This workspace syncs Gmail as {integration.google_email}, and a "
+                f"workspace can only have one Google account — so {address} cannot "
+                "be synced. Either add it with the webhook channel instead, or "
+                "reconnect Google as that address (which stops syncing "
+                f"{integration.google_email})."
+            )
+        if not integration.is_active:
+            return (
+                f"The Google connection for {integration.google_email} is "
+                "disconnected. Reconnect it under Settings → Integrations → Google."
+            )
+        return (
+            f"Gmail sync is switched off for {integration.google_email}. Turn it "
+            "on under Settings → Integrations → Google, then add the mailbox."
+        )
+
     async def create_mailbox(self, workspace_id: str, data: MailboxCreate) -> MailboxResponse:
         await self._require_unclaimed_address(workspace_id, data.address)
         integration_id = data.integration_id
@@ -651,7 +693,7 @@ class ServiceDeskService:
             if integration_id is None:
                 raise HTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail="Connect and enable Gmail sync for this mailbox address first",
+                    detail=await self._gmail_sync_unavailable_detail(workspace_id, data.address),
                 )
         # Ownership is re-checked on the resolved id, not just the supplied one,
         # so the lookup above can never hand back another workspace's integration.
