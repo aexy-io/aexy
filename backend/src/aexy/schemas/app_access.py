@@ -11,7 +11,10 @@ class ModuleInfo(BaseModel):
     id: str
     name: str
     description: str
-    route: str
+    # Absent for modules that gate API capabilities rather than pages — the MCP
+    # ones have nothing to navigate to. Giving them the app's own route made
+    # `/mcp` resolve to one of them, so denying it hid the page from the sidebar.
+    route: str | None = None
 
 
 class AppInfo(BaseModel):

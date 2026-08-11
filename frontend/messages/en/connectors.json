@@ -1,0 +1,28 @@
+{
+  "connectors": {
+    "title": "Connected Apps",
+    "subtitle": "AI clients you have connected to Aexy over MCP. Each one was authorized by you at a consent screen and can only reach the workspace you picked.",
+    "footer": "Revoking takes effect immediately. The client is not told — it finds out on its next request, and has to ask for consent again to return.",
+    "table": {
+      "client": "Client",
+      "workspace": "Workspace",
+      "authorized": "Authorized",
+      "lastUsed": "Last used",
+      "status": "Status",
+      "never": "Never"
+    },
+    "status": {
+      "active": "Active",
+      "revoked": "Revoked"
+    },
+    "actions": {
+      "revoke": "Revoke",
+      "revokeTitle": "Revoke this connector"
+    },
+    "empty": {
+      "title": "No connected apps",
+      "description": "When you connect a client like ChatGPT to Aexy, it will appear here so you can see what it reaches and cut it off.",
+      "link": "How to connect a client"
+    }
+  }
+}

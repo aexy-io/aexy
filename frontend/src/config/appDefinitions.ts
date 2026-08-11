@@ -40,7 +40,14 @@ export interface AppModule {
   id: string;
   name: string;
   description: string;
-  route: string; // Relative route within the app
+  /** Relative route within the app.
+   *
+   *  Optional, because not every module is a page. The MCP modules gate groups
+   *  of API capabilities and have nothing to navigate to; giving them the app's
+   *  own base route made `/mcp` resolve to whichever of them sorted first, so
+   *  denying that one hid the app's landing page from the sidebar. A module
+   *  without a route is never matched against a path. */
+  route?: string;
 }
 
 export interface AppDefinition {
@@ -335,7 +342,37 @@ export const APP_CATALOG: Record<string, AppDefinition> = {
     category: "productivity",
     baseRoute: "/mcp",
     requiredPermission: "can_view_agents",
-    modules: [],
+    // An MCP tool is governed by the capability its operations carry, and most
+    // capabilities ARE an app — holding `sprints` is what grants `mcp.sprints`.
+    // Those need nothing here; the app grant is the MCP grant, so there is no
+    // second access model to keep in sync.
+    //
+    // These three are the surfaces that are not apps and never were, so they
+    // have nowhere else to be granted. See backend/scripts/dump_mcp_catalog.py,
+    // which fails if a tag maps to neither.
+    // No `route` on any of them: they gate API capabilities, not pages. They
+    // used to carry the app's own "/mcp", which made getModuleIdFromPath("/mcp")
+    // answer with whichever sorted first — so denying that module hid the MCP
+    // page itself from everyone who could still use MCP.
+    modules: [
+      {
+        id: "platform",
+        name: "Workspace & members",
+        description:
+          "Workspaces, teams, members, roles, invites and API tokens over MCP",
+      },
+      {
+        id: "integrations",
+        name: "Integrations",
+        description: "Slack, Google and provider webhooks over MCP",
+      },
+      {
+        id: "admin",
+        name: "Billing & system admin",
+        description:
+          "Billing, plans, rate limits and platform administration over MCP. Privileged — granted deliberately, never inherited.",
+      },
+    ],
   },
   insights: {
     id: "insights",
@@ -507,6 +544,7 @@ export function getModuleForRoute(
       // Not named `module`: that shadows the CommonJS global, which is what
       // `no-assign-module-variable` guards against.
       for (const mod of app.modules) {
+        if (!mod.route) continue; // gates a capability, not a page
         if (relativePath === mod.route || relativePath.startsWith(`${mod.route}/`)) {
           return { app, module: mod };
         }
@@ -554,7 +592,7 @@ export const SYSTEM_BUNDLES: AppBundleTemplate[] = [
       booking: { enabled: false },
       automations: { enabled: true },
       agents: { enabled: true },
-      mcp: { enabled: true },
+      mcp: { enabled: true, modules: { platform: false, integrations: false, admin: false } },
       tables: { enabled: true },
       insights: { enabled: false },
       compliance: { enabled: false },
@@ -597,7 +635,7 @@ export const SYSTEM_BUNDLES: AppBundleTemplate[] = [
       booking: { enabled: false },
       automations: { enabled: true },
       agents: { enabled: true },
-      mcp: { enabled: true },
+      mcp: { enabled: true, modules: { platform: false, integrations: false, admin: false } },
       tables: { enabled: false },
       insights: { enabled: false },
       compliance: { enabled: true, modules: { reminders: true, document_center: true, training: true, certifications: true } },
@@ -640,7 +678,7 @@ export const SYSTEM_BUNDLES: AppBundleTemplate[] = [
       booking: { enabled: true, modules: { event_types: true, availability: true, calendars: true } },
       automations: { enabled: true },
       agents: { enabled: true },
-      mcp: { enabled: true },
+      mcp: { enabled: true, modules: { platform: false, integrations: false, admin: false } },
       tables: { enabled: true },
       insights: { enabled: false },
       compliance: { enabled: false },
@@ -686,7 +724,7 @@ export const SYSTEM_BUNDLES: AppBundleTemplate[] = [
       booking: { enabled: true, modules: { event_types: true, availability: true, calendars: true } },
       automations: { enabled: true },
       agents: { enabled: true },
-      mcp: { enabled: true },
+      mcp: { enabled: true, modules: { platform: true, integrations: true, admin: true } },
       tables: { enabled: true },
       insights: { enabled: true, modules: { team_overview: true, leaderboard: true, developer_drilldown: true } },
       compliance: { enabled: true, modules: { reminders: true, document_center: true, training: true, certifications: true } },
@@ -807,7 +845,9 @@ export function getModuleIdFromPath(pathname: string): string | undefined {
 
   // Longest route first, so a module anchored at "" (the app's own landing page)
   // can't shadow the more specific ones.
-  const byLength = [...app.modules].sort((a, b) => b.route.length - a.route.length);
+  const byLength = [...app.modules].sort(
+    (a, b) => (b.route?.length ?? 0) - (a.route?.length ?? 0)
+  );
 
   for (const relative of candidates) {
     for (const mod of byLength) {

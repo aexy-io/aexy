@@ -433,7 +433,37 @@ APP_CATALOG: dict[str, AppConfig] = {
         "category": AppCategory.PRODUCTIVITY,
         "base_route": "/mcp",
         "required_permission": "can_view_agents",
-        "modules": {},
+        # An MCP tool is governed by the capability its operations carry, and
+        # most capabilities ARE an app — holding `sprints` is what grants
+        # `mcp.sprints`. Those need nothing here; the app grant is the MCP
+        # grant, so there is no second access model to keep in sync.
+        #
+        # These three are the surfaces that are not apps and never were, so
+        # they have nowhere else to be granted. See
+        # scripts/dump_mcp_catalog.py, which fails if a tag maps to neither.
+        "modules": {
+            # Named for what they reach, because they sit next to each other in
+            # the access editor and "Platform administration" beside "Billing &
+            # platform admin" gave an admin no way to tell which was which.
+            "platform": {
+                "name": "Workspace & members",
+                "description": (
+                    "Workspaces, teams, members, roles, invites and API tokens "
+                    "over MCP"
+                ),
+            },
+            "integrations": {
+                "name": "Integrations",
+                "description": "Slack, Google and provider webhooks over MCP",
+            },
+            "admin": {
+                "name": "Billing & system admin",
+                "description": (
+                    "Billing, plans, rate limits and platform administration "
+                    "over MCP. Privileged — granted deliberately, never inherited."
+                ),
+            },
+        },
     },
     "chat": {
         "name": "Chat",
@@ -629,6 +659,20 @@ class BundleConfig(TypedDict, total=False):
     apps: dict[str, dict]  # App ID -> {"enabled": bool, "modules": {module_id: bool}}
 
 
+# The `mcp` app's modules gate the surfaces that were never apps: workspace,
+# team, member, role, invite and API-token administration, and the provider
+# integrations. Every bundle below states them explicitly, and must keep doing
+# so, because the resolver treats an *absent* module as on — see
+# AppAccessService._resolve, where "a new module quietly disappearing for
+# everyone is worse than it quietly appearing". That default is right for an
+# ordinary sub-page and wrong here: left unlisted, the engineering bundle would
+# hand every developer and viewer 133 platform operations and 58 admin
+# operations over MCP, which is the opposite of why these modules exist.
+_MCP_ADMIN_MODULES = ("platform", "integrations", "admin")
+_MCP_MODULES_OFF: dict[str, bool] = dict.fromkeys(_MCP_ADMIN_MODULES, False)
+_MCP_MODULES_ON: dict[str, bool] = dict.fromkeys(_MCP_ADMIN_MODULES, True)
+
+
 # System app bundle templates
 SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
     "engineering": {
@@ -665,7 +709,7 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
             },
             "automations": {"enabled": True, "modules": {}},
             "agents": {"enabled": True, "modules": {}},
-            "mcp": {"enabled": True, "modules": {}},
+            "mcp": {"enabled": True, "modules": dict(_MCP_MODULES_OFF)},
             "chat": {"enabled": True, "modules": {}},
             # In every bundle because the frontend's copy of these bundles has
             # always granted it, and the two are one decision: a department put on
@@ -738,7 +782,7 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
             "forms": {"enabled": True, "modules": {}},
             "automations": {"enabled": True, "modules": {}},
             "agents": {"enabled": True, "modules": {}},
-            "mcp": {"enabled": True, "modules": {}},
+            "mcp": {"enabled": True, "modules": dict(_MCP_MODULES_OFF)},
             "chat": {"enabled": True, "modules": {}},
             # In every bundle because the frontend's copy of these bundles has
             # always granted it, and the two are one decision: a department put on
@@ -802,7 +846,7 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
             },
             "automations": {"enabled": True, "modules": {}},
             "agents": {"enabled": True, "modules": {}},
-            "mcp": {"enabled": True, "modules": {}},
+            "mcp": {"enabled": True, "modules": dict(_MCP_MODULES_OFF)},
             "chat": {"enabled": True, "modules": {}},
             # In every bundle because the frontend's copy of these bundles has
             # always granted it, and the two are one decision: a department put on
@@ -905,7 +949,7 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
             },
             "automations": {"enabled": True, "modules": {}},
             "agents": {"enabled": True, "modules": {}},
-            "mcp": {"enabled": True, "modules": {}},
+            "mcp": {"enabled": True, "modules": dict(_MCP_MODULES_ON)},
             "chat": {"enabled": True, "modules": {}},
             # In every bundle because the frontend's copy of these bundles has
             # always granted it, and the two are one decision: a department put on

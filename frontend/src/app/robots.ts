@@ -7,6 +7,10 @@ const disallow = [
   "/dashboard",
   "/admin",
   "/settings",
+  // The in-app MCP reference. Its auth gate is client-side, so the server still
+  // emits the full tool catalogue to a crawler — thin content that would compete
+  // with /products/mcp for the same query. The marketing page is the one to index.
+  "/mcp",
   "/crm",
   "/sprints",
   "/projects",

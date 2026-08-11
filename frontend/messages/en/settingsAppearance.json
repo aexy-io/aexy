@@ -14,9 +14,9 @@
       }
     },
     "workspaceView": {
-      "title": "Workspace view",
-      "description": "A role-based view that tailors both the sidebar and your dashboard widgets to the work that matters to you.",
-      "hint": "Applies to the sidebar immediately and resets your dashboard widgets to this view's defaults."
+      "title": "Dashboard widgets",
+      "description": "A role-based starting set of widgets for your dashboard. Your navigation is set separately, below.",
+      "hint": "Replaces your dashboard widgets with this view's defaults. Anything you've rearranged is reset."
     },
     "sidebarView": {
       "title": "Sidebar view",
@@ -24,7 +24,8 @@
       "followDepartment": "Follow my department ({view})",
       "followDepartmentUnset": "Follow my department",
       "derivedHint": "Your department sets this to {view}. Pick a view above to override it for yourself.",
-      "chosenHint": "You've chosen this view yourself, so it won't change if your department does."
+      "chosenHint": "You've chosen this view yourself, so it won't change if your department does.",
+      "followingUnsetHint": "Your department doesn't set a view, so you're on the default. Pick one above to fix it for yourself."
     },
     "sidebarLayout": {
       "title": "Sidebar layout",

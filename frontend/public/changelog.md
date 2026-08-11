@@ -5,6 +5,518 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0] - 2026-08-12
+
+ChatGPT can now use Aexy, and you can see and cut off everything that connects
+this way. Both halves matter: the first without the second is a door with no
+lock on your side of it.
+
+### Added: a remote MCP server, and the authorization server it needs
+
+The MCP page listed ChatGPT and told you to use something else. That was
+accurate — ChatGPT consumes *remote* MCP servers reached over HTTP with OAuth,
+and cannot launch a local stdio process the way Claude Code, Claude Desktop and
+Codex do. No arrangement of the existing setup guides would have made it work,
+because the gap was in the transport rather than the documentation.
+
+Aexy is now an OAuth 2.1 authorization server. A client discovers it through
+the two well-known documents, registers itself (RFC 7591 Dynamic Client
+Registration — there is no human to approve an install of ChatGPT in advance),
+and walks the authorization-code flow with PKCE, which OAuth 2.1 requires of
+every client rather than only public ones. ChatGPT gets a URL to paste instead
+of a config file, and a consent screen instead of an API token.
+
+Nothing replayable is stored. Client secrets, authorization codes, access
+tokens and refresh tokens are all kept as SHA-256 digests, so reading the schema
+yields nothing that can be used; only a prefix survives, and only so a person
+can recognise a credential in a list.
+
+Two behaviours look like bugs the first time you hit one, and are deliberate.
+Redeeming an authorization code twice does not merely fail — it revokes every
+token issued from that code. Presenting a retired refresh token does the same to
+its whole chain. A replayed secret means somebody other than the client is
+holding it, and refusing that one request would leave the tokens it already
+produced alive.
+
+A grant is scoped to one developer in one workspace, chosen by the person at
+consent. Capabilities resolve from the same app-access model that governs the
+web app: holding the `sprints` app is what grants `mcp.sprints`. There is no
+second permission model to configure, drift from, or forget to revoke when
+somebody changes teams. The tool list is built from those capabilities, so a
+tool the caller cannot use is absent rather than offered and then refused —
+carrying it would cost selection accuracy on every call they *can* make.
+
+The three MCP surfaces that were never apps — workspace and member
+administration, provider integrations, and billing — became modules on the
+`mcp` app rather than a parallel access model of their own. This also retires
+`AEXY_ENABLE_TEMPORAL`, which gated nothing: the caller set it on their own
+machine, so anyone holding an API token decided their own access to the
+Temporal tools. That decision is now made server-side.
+
+### Added: Settings → Connected Apps
+
+Every client you have authorized, in whichever workspace, with the workspace it
+reaches and when it last ran. Revoking kills every token on the grant at once —
+both the access token and the refresh token behind it — so a client cannot
+quietly mint a replacement; it has to ask for consent again. The client is not
+notified, and finds out on its next request.
+
+Revoked connectors stay listed rather than disappearing. Somebody auditing what
+reached their workspace needs to see that a connector existed and when it last
+ran; deleting the row would erase exactly the evidence they came for.
+
+A grant is several token rows — an access token, the refresh token that minted
+it, and every rotation before them — collapsed back into the one decision you
+actually made, so refreshing does not grow the list. "Active" is judged on the
+refresh token rather than the access token: an access token expiring hourly does
+not mean access ended, and showing "expired" beside a connector that still works
+would invite people to think they were safe.
+
+### Fixed: two handlers sharing one operation id
+
+`/integrations/google/calendar/calendars` and
+`/integrations/google-calendar/calendars` derived the same operation id once
+`-` and `/` both normalise to `_`. Both are reachable and they are different
+handlers backed by different services, so anything addressing an operation *by
+id* — the MCP catalogue, generated clients — could only ever reach whichever
+resolved first. The sync route now declares `list_google_sync_calendars`
+explicitly.
+
+### Fixed: the admin sidebar view is honoured only for admins
+
+Settings → Appearance offered the `admin` sidebar persona to everyone, and that
+persona is the one that switches curation off entirely. Removing the button
+would not have been enough: people who are not admins can already have it saved,
+and the preferences endpoint accepts any string. The stored value is now ignored
+for non-admins, who fall back to their derived persona.
+
+## [0.16.0] - 2026-08-11
+
+A workspace can hold more than one Google account, and a connected mailbox can
+keep parts of itself out of Aexy. Both are things the previous shape made
+impossible rather than merely awkward.
+
+### Added: several Google accounts in one workspace
+
+A workspace held exactly one Google account. Several people could not each sync
+their own mailbox, and a `gmail_sync` Service Desk mailbox could only ever be
+that one address.
+
+The cost was silent. `connect-from-developer` matched on the workspace and
+overwrote, so the second person to connect took over the first person's row and
+their mailbox stopped syncing with nothing said. Both OAuth callbacks did the
+same. The 0.15.1 notes describe a 422 message written around this limit —
+"a workspace has exactly one Google account, and when that account is a
+different address no amount of connecting the requested one changes the answer".
+That is no longer true, and the message now says you can add more than one.
+
+`workspace_id` is no longer unique; `(workspace_id, lower(google_email))` is.
+Case-insensitive because Gmail addresses are: two rows for one inbox would be
+two cursors fighting over it.
+
+`get_integration` ended in `scalar_one_or_none()`, which raises the moment a
+second row exists, so it had to be replaced before the constraint dropped rather
+than after. It now takes an explicit account, else prefers the caller's own,
+else the oldest — and every endpoint that reads a mailbox names which one.
+Two of those lookups hid a worse bug than arbitrary resolution: the "is a sync
+already running?" guard matched on workspace and job type but not the account,
+so syncing one mailbox returned another mailbox's job and returned early. The
+account you asked for never synced, and the job id you got back belonged to
+somebody else's inbox.
+
+The "is this our own email" check now tests every connected address. Before,
+mail from a colleague's connected mailbox was auto-enriched into a CRM contact.
+
+Connecting is member-level. Both connect paths only ever attach the caller's own
+mailbox, so requiring admin meant a new joiner could not put their own inbox on
+the desk without an admin sitting at Google's sign-in screen as them, which asks
+for a password nobody should share. Settings and sync follow the same rule —
+your own account, or admin for anybody else's. Disconnecting someone else stays
+admin-only: connecting affects yourself, disconnecting affects a colleague.
+
+The workspace-wide `/disconnect` no longer guesses. It resolved "the"
+integration through the same lookup, so with several accounts it deleted one
+arbitrary person's connection under a name promising something workspace-wide.
+One account and it goes; several and it refuses, naming them.
+
+### Added: what a connected mailbox never syncs
+
+Connecting a personal account to a shared workspace is only a reasonable thing
+to ask if some of it can stay private. Addresses and domains can now be excluded
+from a mailbox: the mail is never stored, and adding a rule removes what is
+already synced — a rule that applied only forwards is not what anyone means by
+"never sync", so the response says how much it took.
+
+Rules belong to whoever connected the mailbox, not to admins: a rule an admin
+could remove is not a rule the person relied on. They are visible to admins and
+notify a department head, and the UI says so before the choice rather than
+after, because that is what keeps "don't connect this mailbox" an option.
+Reading the admin list writes an audit entry — looking at an exclusion list is
+itself revealing.
+
+### Changed: Service Desk settings live in Settings
+
+The desk's own configuration was the one settings surface not reachable from
+Settings, while Escalation Matrix and Ticket Forms — which configure the same
+desk — were already there. The 849-line `/service-desk/settings` route is now
+six pages under `/settings/service-desk/*`: mailboxes, master data, working
+hours and SLA, ticket intake, desk identity, and AI. The old route redirects
+rather than 404s, since it is bookmarked and linked from the desk's nav.
+
+Master Data now explains itself. It described the app rather than the page, and
+Vendors and Products rendered nothing at all when empty, so those cards read as
+broken. Each table now says what intake does with it, and the empty states say
+the consequence: with no accounts, every incoming email lands in triage with an
+arbitrary owner. That is a desk quietly not working, and "Nothing here yet" gave
+no reason to act.
+
+### Fixed: form tickets are a filter, not a second tab
+
+Already on main and unreleased, so it belongs in these notes.
+
+### Fixed: the welcome step lists Operations & Support
+
+The welcome step keeps its own copy of the module list, separate from the
+use-case step, so adding the Operations card to the second left the first
+showing six. Someone arriving to run a support desk read the pitch, saw nothing
+describing their work, and found the option a screen later.
+
+## [0.15.1] - 2026-08-11
+
+Three fixes, all of them cases where the thing that was supposed to enforce a
+rule was not present where it mattered.
+
+### Fixed: reassigning a task
+
+Assigning work to somebody returned an error. Any task that already had an
+assignee failed to be reassigned; a task assigned for the first time worked,
+which is why it read as intermittent rather than total.
+
+`uq_task_assignees_one_primary` — at most one `is_primary` row per task — was
+declared only in `migrate_task_assignees.sql`, never in the model. The tests
+build their schema from the models, so production enforced the index and the
+suite did not, and the suite was green.
+
+What it was hiding: every path that moved the primary wrote the new one in the
+same flush that cleared the old one. SQLAlchemy emits saves before deletes
+within a flush, so the promote landed while the previous primary still held the
+flag, and a partial unique index is checked per statement and cannot be
+deferred. Three paths did this — the generic PATCH and `/assign`, the
+multi-assignee editor, and promoting a collaborator. Each now clears the
+outgoing primary and flushes before the incoming one is written.
+
+Declaring the index in `__table_args__`, for both dialects, is the part that
+keeps it from coming back: doing so turned three existing tests red before
+anything was fixed.
+
+### Fixed: the Operations use case seeds a department
+
+Picking "Operations & Support" during onboarding left the sidebar in Developer
+view, with Service Desk demoted to "available in Support, Sales view" — the app
+the pick exists to turn on, hidden from the person who chose it.
+
+`suggested_persona` reads the primary department's `default_persona`, and the
+pick seeded no department, so it resolved to null and the sidebar fell back to
+`developer`. The Business section that Service Desk lives in is gated on
+sales/support/admin, so it was filtered out of the navigation entirely.
+
+It seeded no department on the belief that no profile bundle granted Service
+Desk. Every bundle grants it, `business` included. Operations now seeds an
+Operations department on the business profile with the support persona, which is
+both the access its people need and the persona that shows it. It shares
+`function_key: "operations"` with the Service Desk industry templates on
+purpose: the key is unique per workspace, so whichever runs first creates it and
+the other finds it, and onboarding fills in the access profile the templates
+leave empty.
+
+A test now asserts the general rule rather than this one instance — a use case
+that turns on a persona-gated app has to seed a department carrying a persona
+that can see it.
+
+### Fixed: Service Desk settings say when something failed
+
+Adding a `gmail_sync` mailbox returned 422 and the screen showed nothing at all.
+
+Every mutation in `useServiceDesk` declared `onSuccess` and nothing else, the
+settings page drives them with bare `mutateAsync`, and there is no
+`MutationCache` handler — so a rejection became an unhandled promise rejection.
+No toast, no inline error, the input still holding its text as though nothing
+had been tried. That was every mutation on the page — accounts, vendors,
+products, mailboxes, stakeholders — not only the one that surfaced it.
+
+The message was wrong too. "Connect and enable Gmail sync for this mailbox
+address first" describes an action that cannot succeed in the case people
+actually hit: `google_integrations.workspace_id` is unique, so a workspace has
+exactly one Google account, and when that account is a different address no
+amount of connecting the requested one changes the answer. The four states are
+now told apart — nothing connected, connected as someone else, sync off,
+disconnected — and the second names the address in use and points at the webhook
+channel, which is the option that would actually work.
+
+## [0.15.0] - 2026-08-06
+
+Three things the tech team asked for after using the ticketing and sprint
+features in anger. All three are cases where the data model admitted only one
+answer to a question that really has several.
+
+### Added: more than one person on a task
+
+A task had exactly one `assignee_id`, so work with two names on it — a pair, a
+dev plus the reviewer who owns the follow-up, an ops handover — had to either
+reassign, losing who else was involved, or write the second name into the
+description where no filter, board or report can see it.
+
+`task_assignees` now holds everyone. **`is_primary` marks the one accountable
+owner and is mirrored to `sprint_tasks.assignee_id`**, which stays the single
+source of truth for everything that must resolve to exactly one developer:
+board grouping, workload and velocity attribution, Slack and email
+notifications, auto-assignment, and roughly 250 call sites that read it. Not one
+of them changed. The mirror is maintained in one place —
+`SprintTaskService.sync_assignee_rows_from_column` — and every path that can
+write the column funnels through it, including the generic PATCH, the dedicated
+`/assign` endpoint, sprint and project task creation, and the automation action
+(which runs on a sync session and so carries its own copy, kept deliberately
+identical).
+
+The legacy single-assignee paths behave exactly as they did before. Reassigning
+A to B leaves B alone on the task rather than quietly demoting A to
+collaborator — accumulating everyone who ever held a task, and telling A they
+are still on work they handed over, is worse than the old behaviour. Unassigning
+removes the owner outright. Collaborators added deliberately are never touched
+by either.
+
+Both arrangements the team asked for are real states rather than a mode flag.
+"Primary plus collaborators" is one primary row and some others. "Everyone
+equally on this" is collaborators with **no** primary, and `assignee_id` is
+genuinely null, because nobody is individually accountable. The cost of being
+honest about that is that such a task groups under "no assignee" on
+assignee-grouped views; in exchange, the cards, the table and the picker all
+name the actual people instead of showing a single face that was never the whole
+story. Cards and rows read `assignees`, so a task with several people and no
+primary no longer renders as "Unassigned" — the opposite of the truth.
+
+Assignee filters now match collaborators too. Filtering to a person and not
+seeing work they are genuinely on reads as "nothing assigned to them", which is
+worse than having no filter at all.
+
+The project-scoped router had no assignment endpoints at all — the project board
+could only reassign through the generic PATCH, which is part of why assignment
+from the project view behaved differently from the sprint view. Both routers now
+expose the same four operations, with the bodies shared so they cannot drift.
+
+`migrate_task_assignees.sql` backfills every already-assigned task with its
+current assignee as primary. This is the load-bearing part: the new UI reads
+`assignees`, so without it every existing task in every workspace would render
+with nobody on it while `assignee_id` still held a name.
+
+### Added: progress updates, separate from the comment thread
+
+A task carried two kinds of writing and neither answered "where does this
+actually stand?". Comments are a conversation — the current state is buried
+somewhere in a thread, interleaved with questions and customer replies, and you
+have to hope the last relevant line is still true. The activity log is an audit
+trail of field changes: it records that status became `in_progress` on Tuesday,
+and cannot record why it is still `in_progress` on Friday. Standups were filling
+that gap verbally, with nothing written against the work itself.
+
+`work_updates` is that missing record — a short, author-owned statement of
+progress, on tasks and on tickets, with an **Updates** tab on both detail views.
+Its author can reword it, which a comment thread cannot do without becoming a
+thread of corrections; an edit is marked, and only the author may make one, since
+letting someone else rewrite a statement under that person's name is worse than
+leaving a wrong one standing. Admins can delete.
+
+Posting mirrors an event into the activity log so an update is visible in the
+History tab and the workspace feed rather than sitting in a silo. The body is
+deliberately not copied there: the update is editable and the log is not, so a
+copy would leave the feed quoting a version that no longer exists.
+
+The endpoints span two apps (a task belongs to `sprints`, a ticket to
+`tickets`), so the module gate is resolved per request from `entity_type`
+instead of at the router, and a test pins that every supported entity type has a
+gate — an unmapped one would otherwise skip the check.
+
+### Added: a History tab on tickets
+
+The ticket page showed "Activity & Responses", which was only
+`ticket_responses`: the conversation, plus the synthetic "Status changed from x
+to y" notes the service writes there. That is not an audit trail. A response row
+only exists when a developer was attached to the change, so anything done by an
+automation, an escalation or the alert ingest path left no trace on the ticket at
+all.
+
+The real record was already being written — `TicketService` has been logging to
+`entity_activities` on create, update, assign, response and delete all along,
+and a per-entity timeline endpoint already existed. Nothing read it back for a
+single ticket. The tab is that read, presented like the task's History tab, with
+developer ids in assignment changes resolved to names.
+
+Two things found while wiring it up. The generic activity endpoints did not
+validate a `ticket` entity against the workspace before stamping activity on it,
+unlike the other entity types; `ticket` is now in that map. And the ticket
+status, priority and severity labels lived in two copies, so History could say
+`waiting_on_submitter` while the picker directly above it said "Waiting on
+Submitter" — one shared vocabulary now, imported by both.
+
+## [0.14.2] - 2026-08-05
+
+### Added: departments decide access, and say what they are for
+
+0.14.0 made a department's access profile the thing that decides what its people
+see. Two things were missing from that: a department's *function* was a free-text
+box, and its profile could only be set to a whole bundle.
+
+**A department's function is now picked from a declared list.** `function_key` is a
+routing key, not a label — Service Desk row-level visibility resolves it (a queue
+names the function that owes the next action, and only that department's people can
+see those tickets), the digest resolves it to find a head to send an entire desk's
+open list to, and ticket auto-assignment resolves it to pick an owner. Nothing
+declared the vocabulary, so two modules invented their own and disagreed: the
+Service Desk templates shipped `ops_kam` for Operations in insurance-broking and
+`operations` in financial-services, for the same concept. Since the key is unique
+per workspace, which spelling you got depended on which template your desk started
+from — and a mismatch raises nothing at all. That department's people open the
+queue and see an empty list, indistinguishable from a quiet day.
+
+`services/org_functions.py` is now the single registry — ten functions with labels
+and descriptions, `ops_kam` recorded as a retired spelling that still resolves. The
+set stays **open**: anything not covered is `x_<name>` and every consumer treats it
+identically. Both seeders import from it and assert their keys at import time,
+which is the check that would have caught the divergence when it was written.
+
+The picker names what each function does *in your workspace* — "Service Desk queues
+routed here: kam" — computed from your own taxonomy rather than declared statically,
+because a hardcoded list would start lying the first time an admin edited theirs.
+Taking a function another department already holds warns before saving instead of
+409-ing after, and the Departments page now flags the one failure this mapping has
+no natural symptom for: a queue routed to a function **no department claims**, whose
+people can currently see nothing.
+
+Departments also became editable at all. `updateDepartment` existed in the API and
+the hooks with no caller, so a department's name and function were create-only.
+
+**A department's access can now be set app by app and module by module.** The
+backend has stored per-module department profiles all along and the resolver has
+always read them, but the only UI could assign a whole bundle — so "Business" was
+as specific as a department could get, and *CRM without the Inbox* could not be
+expressed anywhere. The app × module grid moved out of the member editor into a
+shared component rather than being written twice; the two describe the same shape
+and are read by one resolver, which is exactly how the member editor came to have
+module toggles the department editor never got.
+
+The two levels now link to each other. An override is often the wrong tool: if the
+whole department needs the change, editing the profile fixes it for everyone
+instead of pinning one person out of every future change to it.
+
+### Added: onboarding gives a workspace its first teams
+
+A *department* decides what someone can see. A *team* decides who chases them —
+standups, blocker escalation, review digests, sprint boards and leave approvals all
+resolve through team membership. Onboarding seeded departments and no teams, so a
+founder finished setup with everyone navigating correctly, nobody enrolled in any of
+that, and the team field on an invite opening onto an empty dropdown.
+
+Now asked rather than assumed: one team per department, one team for everyone, or
+none. Seeded teams carry `department_id` (the rollup that already existed for this
+and was never written), record the founder as `lead` — `review_service` and
+`leave_request_service` both look for exactly that string, so a team without one
+sends its approvals to "any workspace manager" — and note their provenance so a
+later repo sync can offer to merge rather than guess. Skipped entirely when the
+workspace already has teams, since the repos step may have created repo-based ones
+that reflect how work is actually split.
+
+`POST /teams/mirror-departments` offers the same action afterwards, so choosing
+"none" and adding a department in March are both recoverable.
+
+### Added: choose which department receives incoming tickets
+
+Which department runs the desk decides who incoming mail is auto-assigned to and
+whose head receives the digest. It had never been a choice. It began as the literal
+`function_key == "ops_kam"` — a key only workspaces set up from the
+insurance-broking template ever had, so everybody else's mail arrived unassigned
+with nothing on screen to say why — and then became "the department behind the
+desk's first internal queue", a fair inference but still an inference. A desk whose
+first queue is Support while its intake team is Operations had no way to say so.
+
+It is a setting now, with that inference as the documented fallback, and the picker
+names the department it would use anyway ("Automatic — Support (from the first
+queue)") so choosing nothing is informed rather than blank. One setting for both
+consumers: auto-assignment and the digest resolve it through the same function,
+because a workspace where those two disagreed about who runs the desk would be
+worse off than with either answer alone.
+
+A stale choice — department deleted or deactivated — degrades to the inference and
+says so in the log rather than stopping intake, and is not reported as explicit, so
+the page cannot show "Support, chosen" while mail goes to Operations.
+
+### Added: headcount seats can be filled
+
+`department_positions` carried a `filled_by_id` column that nothing ever wrote.
+Creating a seat was the only thing the product could do with one: every position
+read "Open" for ever and no member could be connected to the seat they occupy, so
+the titles an admin typed in were decoration. The seat now owns the link — no new
+column, no migration. Vacating reopens it, and so does removing someone from the
+department, because a seat left "filled" by someone who has left reads as taken and
+could never be offered again.
+
+### Fixed: the two app catalogues disagreed about five apps
+
+`backend/src/aexy/models/app_definitions.py` and
+`frontend/src/config/appDefinitions.ts` are two hand-written copies of one
+decision. CLAUDE.md says to keep them in sync; nothing checked, so every one of the
+four system bundles disagreed about `chat`, `community`, `gtm`, `leave` (granted on
+the backend, absent from the frontend) and `service_desk` (the reverse). Twenty
+divergences, none of which raised anything — which apps a role or department profile
+granted simply depended on which file the code path read.
+
+Both directions had already bitten. A department on the Engineering profile could
+not reach the Service Desk while the department editor's own "Start from
+Engineering" grid said it could; and filling that same grid from a bundle silently
+revoked Chat, Community, GTM and Leave from everyone in the department.
+
+Resolved in the granting direction on both sides — these bundles are starting points
+and role defaults, and the workspace toggle plus each app's `required_permission`
+are the real gates. The catalogues themselves turned out identical, so only the
+bundles needed touching.
+
+More usefully, they now check each other: `scripts/dump_app_catalog.py` writes the
+backend's answer to a committed fixture, a frontend test asserts the TypeScript
+matches it, and a backend test asserts the fixture still matches the Python.
+Without that last half, adding an app and forgetting to regenerate would leave both
+sides passing while the files disagreed — the exact failure the fixture exists to
+catch.
+
+### Fixed
+
+- **Member access was never enforced past the sidebar** for module-level toggles,
+  and a stale `ops_kam` comparison meant several reads silently resolved to nobody.
+  Every `Department.function_key` comparison now goes through one resolver that also
+  matches retired spellings.
+- **`deskIdentity.prefixWarning` threw on every render** of the Service Desk
+  settings page: it contained `{prefix}-<number>`, which ICU parses as an unclosed
+  tag, so the user saw nothing where the warning should be. Found while verifying
+  the intake setting; every message in both locales was then parsed to confirm it
+  was the only one — 8458 checked, 0 malformed.
+- **The function picker could rewrite a valid key as a custom one.** It seeded its
+  custom/standard mode in a `useState` initialiser while the catalogue is fetched, so
+  on first render every stored key looked unknown and the field opened in custom mode
+  holding the real key — one Save from turning `engineering` into `x_engineering`.
+
+### Migrations
+
+```
+python scripts/run_migrations.py --file migrate_org_function_keys.sql
+```
+
+Additive and idempotent. Moves `departments.function_key` and
+`service_desk_stakeholders.function_key` off the retired `ops_kam` spelling
+together, in one transaction, because they point at each other.
+`service_desk_tickets.pending_with` holds stakeholder *slugs*, not function keys,
+and is deliberately untouched. Until it runs, reads resolve either spelling. A
+workspace holding both spellings has its Operations department left alone and listed
+for inspection — merging two departments means deciding what happens to their
+members, which is not a migration's call.
+
 ## [0.14.1] - 2026-08-04
 
 ### Fixed: nine things a review of 0.14.0 turned up

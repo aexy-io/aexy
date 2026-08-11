@@ -1,0 +1,1925 @@
+{
+  "manifest_version": 1,
+  "server_version": "0.1.0",
+  "server_name": "aexy",
+  "categories": [
+    {
+      "key": "sprintManagement",
+      "name": "Sprint Management",
+      "capability": "mcp.sprints",
+      "tools": [
+        {
+          "name": "aexy_bugs",
+          "description": "Track and manage bugs. Actions: list, get, create, update, stats, confirm, fix, verify, close, reopen, link_story, link_task, activity, comments.",
+          "capability": "mcp.sprints",
+          "mutating": true,
+          "input_schema": {
+            "properties": {
+              "action": {
+                "title": "Action",
+                "type": "string"
+              },
+              "workspace_id": {
+                "title": "Workspace Id",
+                "type": "string"
+              },
+              "bug_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Bug Id"
+              },
+              "data": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Data"
+              }
+            },
+            "required": [
+              "action",
+              "workspace_id"
+            ],
+            "title": "aexy_bugsArguments",
+            "type": "object"
+          }
+        },
+        {
+          "name": "aexy_epics",
+          "description": "Manage epics. Actions: list, get, create, update, delete, add_tasks, timeline, progress, burndown.",
+          "capability": "mcp.sprints",
+          "mutating": true,
+          "input_schema": {
+            "properties": {
+              "action": {
+                "title": "Action",
+                "type": "string"
+              },
+              "workspace_id": {
+                "title": "Workspace Id",
+                "type": "string"
+              },
+              "epic_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Epic Id"
+              },
+              "data": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Data"
+              }
+            },
+            "required": [
+              "action",
+              "workspace_id"
+            ],
+            "title": "aexy_epicsArguments",
+            "type": "object"
+          }
+        },
+        {
+          "name": "aexy_projects",
+          "description": "Manage projects. Actions: list, get, create, update, delete, members, teams.",
+          "capability": "mcp.sprints",
+          "mutating": true,
+          "input_schema": {
+            "properties": {
+              "action": {
+                "title": "Action",
+                "type": "string"
+              },
+              "workspace_id": {
+                "title": "Workspace Id",
+                "type": "string"
+              },
+              "project_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Project Id"
+              },
+              "data": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Data"
+              }
+            },
+            "required": [
+              "action",
+              "workspace_id"
+            ],
+            "title": "aexy_projectsArguments",
+            "type": "object"
+          }
+        },
+        {
+          "name": "aexy_sprint_analytics",
+          "description": "Sprint and team analytics. Actions: burndown, cycle_time, metrics, velocity, velocity_predict, carry_over, carry_over_chronic, health.",
+          "capability": "mcp.sprints",
+          "mutating": false,
+          "input_schema": {
+            "properties": {
+              "action": {
+                "title": "Action",
+                "type": "string"
+              },
+              "sprint_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Sprint Id"
+              },
+              "team_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Team Id"
+              }
+            },
+            "required": [
+              "action"
+            ],
+            "title": "aexy_sprint_analyticsArguments",
+            "type": "object"
+          }
+        },
+        {
+          "name": "aexy_sprint_tasks",
+          "description": "Manage sprint tasks. Actions: list, get, create, update, delete, assign, unassign, update_status, bulk_status, bulk_assign, suggest_assignments, subtasks, activities, comments, capacity, completion_prediction.",
+          "capability": "mcp.sprints",
+          "mutating": true,
+          "input_schema": {
+            "properties": {
+              "action": {
+                "title": "Action",
+                "type": "string"
+              },
+              "sprint_id": {
+                "title": "Sprint Id",
+                "type": "string"
+              },
+              "task_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Task Id"
+              },
+              "data": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Data"
+              },
+              "params": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Params"
+              }
+            },
+            "required": [
+              "action",
+              "sprint_id"
+            ],
+            "title": "aexy_sprint_tasksArguments",
+            "type": "object"
+          }
+        },
+        {
+          "name": "aexy_sprints",
+          "description": "Manage sprints in Aexy. Actions: list, get, get_active, create, update, delete, start, complete, review, retro, stats, carry_over.",
+          "capability": "mcp.sprints",
+          "mutating": true,
+          "input_schema": {
+            "properties": {
+              "action": {
+                "title": "Action",
+                "type": "string"
+              },
+              "workspace_id": {
+                "title": "Workspace Id",
+                "type": "string"
+              },
+              "team_id": {
+                "title": "Team Id",
+                "type": "string"
+              },
+              "sprint_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Sprint Id"
+              },
+              "target_sprint_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Target Sprint Id"
+              },
+              "data": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Data"
+              }
+            },
+            "required": [
+              "action",
+              "workspace_id",
+              "team_id"
+            ],
+            "title": "aexy_sprintsArguments",
+            "type": "object"
+          }
+        }
+      ]
+    },
+    {
+      "key": "crm",
+      "name": "CRM",
+      "capability": "mcp.crm",
+      "tools": [
+        {
+          "name": "aexy_crm_automations",
+          "description": "Manage CRM automations and sequences. Actions: list, get, create, update, delete, toggle, trigger, runs, list_sequences, get_sequence, create_sequence, toggle_sequence, enroll_sequence, sequence_enrollments.",
+          "capability": "mcp.crm",
+          "mutating": true,
+          "input_schema": {
+            "properties": {
+              "action": {
+                "title": "Action",
+                "type": "string"
+              },
+              "workspace_id": {
+                "title": "Workspace Id",
+                "type": "string"
+              },
+              "automation_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Automation Id"
+              },
+              "sequence_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Sequence Id"
+              },
+              "run_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Run Id"
+              },
+              "enrollment_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Enrollment Id"
+              },
+              "data": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Data"
+              }
+            },
+            "required": [
+              "action",
+              "workspace_id"
+            ],
+            "title": "aexy_crm_automationsArguments",
+            "type": "object"
+          }
+        },
+        {
+          "name": "aexy_crm_objects",
+          "description": "Manage CRM object types and their attributes. Actions: list, get, create, update, delete, list_attributes, create_attribute.",
+          "capability": "mcp.crm",
+          "mutating": true,
+          "input_schema": {
+            "properties": {
+              "action": {
+                "title": "Action",
+                "type": "string"
+              },
+              "workspace_id": {
+                "title": "Workspace Id",
+                "type": "string"
+              },
+              "object_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Object Id"
+              },
+              "data": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Data"
+              }
+            },
+            "required": [
+              "action",
+              "workspace_id"
+            ],
+            "title": "aexy_crm_objectsArguments",
+            "type": "object"
+          }
+        },
+        {
+          "name": "aexy_crm_records",
+          "description": "Manage CRM records (contacts, companies, deals, etc.). Actions: list, get, create, update, delete, bulk_create, search, notes, activities.",
+          "capability": "mcp.crm",
+          "mutating": true,
+          "input_schema": {
+            "properties": {
+              "action": {
+                "title": "Action",
+                "type": "string"
+              },
+              "workspace_id": {
+                "title": "Workspace Id",
+                "type": "string"
+              },
+              "object_id": {
+                "title": "Object Id",
+                "type": "string"
+              },
+              "record_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Record Id"
+              },
+              "data": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Data"
+              },
+              "params": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Params"
+              }
+            },
+            "required": [
+              "action",
+              "workspace_id",
+              "object_id"
+            ],
+            "title": "aexy_crm_recordsArguments",
+            "type": "object"
+          }
+        }
+      ]
+    },
+    {
+      "key": "aiAgents",
+      "name": "AI Agents",
+      "capability": "mcp.agents",
+      "tools": [
+        {
+          "name": "aexy_agent_policies",
+          "description": "Manage agent policies and audit logs. Actions: list, get, create, update, delete, policy_decisions, config_audit.",
+          "capability": "mcp.agents",
+          "mutating": true,
+          "input_schema": {
+            "properties": {
+              "action": {
+                "title": "Action",
+                "type": "string"
+              },
+              "workspace_id": {
+                "title": "Workspace Id",
+                "type": "string"
+              },
+              "policy_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Policy Id"
+              },
+              "agent_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Agent Id"
+              },
+              "data": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Data"
+              }
+            },
+            "required": [
+              "action",
+              "workspace_id"
+            ],
+            "title": "aexy_agent_policiesArguments",
+            "type": "object"
+          }
+        },
+        {
+          "name": "aexy_agents",
+          "description": "Manage AI agents. Actions: list, get, create, update, delete, execute, list_conversations, get_conversation, get_metrics, list_executions.",
+          "capability": "mcp.agents",
+          "mutating": true,
+          "input_schema": {
+            "properties": {
+              "action": {
+                "title": "Action",
+                "type": "string"
+              },
+              "workspace_id": {
+                "title": "Workspace Id",
+                "type": "string"
+              },
+              "agent_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Agent Id"
+              },
+              "conversation_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Conversation Id"
+              },
+              "data": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Data"
+              },
+              "params": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Params"
+              }
+            },
+            "required": [
+              "action",
+              "workspace_id"
+            ],
+            "title": "aexy_agentsArguments",
+            "type": "object"
+          }
+        },
+        {
+          "name": "aexy_workflows",
+          "description": "Manage CRM automation workflows (visual workflow builder). Actions: get, update, validate, publish, list_executions, get_execution.",
+          "capability": "mcp.agents",
+          "mutating": true,
+          "input_schema": {
+            "properties": {
+              "action": {
+                "title": "Action",
+                "type": "string"
+              },
+              "workspace_id": {
+                "title": "Workspace Id",
+                "type": "string"
+              },
+              "automation_id": {
+                "title": "Automation Id",
+                "type": "string"
+              },
+              "execution_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Execution Id"
+              },
+              "data": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Data"
+              }
+            },
+            "required": [
+              "action",
+              "workspace_id",
+              "automation_id"
+            ],
+            "title": "aexy_workflowsArguments",
+            "type": "object"
+          }
+        }
+      ]
+    },
+    {
+      "key": "emailGtm",
+      "name": "Email & GTM",
+      "capability": "mcp.email_gtm",
+      "tools": [
+        {
+          "name": "aexy_email_campaigns",
+          "description": "Manage email marketing campaigns. Actions: list, get, create, update, delete, duplicate, schedule, send, pause, resume, cancel, test, audience_count, recipients, analytics, analytics_timeline, analytics_links, analytics_overview, analytics_trends.",
+          "capability": "mcp.email_gtm",
+          "mutating": true,
+          "input_schema": {
+            "properties": {
+              "action": {
+                "title": "Action",
+                "type": "string"
+              },
+              "workspace_id": {
+                "title": "Workspace Id",
+                "type": "string"
+              },
+              "campaign_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Campaign Id"
+              },
+              "data": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Data"
+              },
+              "params": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Params"
+              }
+            },
+            "required": [
+              "action",
+              "workspace_id"
+            ],
+            "title": "aexy_email_campaignsArguments",
+            "type": "object"
+          }
+        },
+        {
+          "name": "aexy_email_infrastructure",
+          "description": "Manage email infrastructure \u2014 domains, providers, warming, health. Actions: list_domains, get_domain, verify_domain, domain_health, warming_status, warming_start, warming_pause, list_providers, get_provider, test_provider.",
+          "capability": "mcp.email_gtm",
+          "mutating": true,
+          "input_schema": {
+            "properties": {
+              "action": {
+                "title": "Action",
+                "type": "string"
+              },
+              "workspace_id": {
+                "title": "Workspace Id",
+                "type": "string"
+              },
+              "domain_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Domain Id"
+              },
+              "provider_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Provider Id"
+              },
+              "data": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Data"
+              }
+            },
+            "required": [
+              "action",
+              "workspace_id"
+            ],
+            "title": "aexy_email_infrastructureArguments",
+            "type": "object"
+          }
+        },
+        {
+          "name": "aexy_gtm_leads",
+          "description": "Manage GTM leads. Use the generic aexy_api tool for full GTM access. Actions: list, get, create, update, score, activities.",
+          "capability": "mcp.email_gtm",
+          "mutating": true,
+          "input_schema": {
+            "properties": {
+              "action": {
+                "title": "Action",
+                "type": "string"
+              },
+              "workspace_id": {
+                "title": "Workspace Id",
+                "type": "string"
+              },
+              "lead_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Lead Id"
+              },
+              "data": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Data"
+              },
+              "params": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Params"
+              }
+            },
+            "required": [
+              "action",
+              "workspace_id"
+            ],
+            "title": "aexy_gtm_leadsArguments",
+            "type": "object"
+          }
+        },
+        {
+          "name": "aexy_gtm_sequences",
+          "description": "Manage GTM outreach sequences. Actions: list, get, create, enroll, pause, stats.",
+          "capability": "mcp.email_gtm",
+          "mutating": true,
+          "input_schema": {
+            "properties": {
+              "action": {
+                "title": "Action",
+                "type": "string"
+              },
+              "workspace_id": {
+                "title": "Workspace Id",
+                "type": "string"
+              },
+              "sequence_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Sequence Id"
+              },
+              "data": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Data"
+              },
+              "params": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Params"
+              }
+            },
+            "required": [
+              "action",
+              "workspace_id"
+            ],
+            "title": "aexy_gtm_sequencesArguments",
+            "type": "object"
+          }
+        }
+      ]
+    },
+    {
+      "key": "analyticsInsights",
+      "name": "Analytics & Insights",
+      "capability": "mcp.analytics",
+      "tools": [
+        {
+          "name": "aexy_analytics",
+          "description": "Team and developer analytics. Actions: skills_heatmap, activity_heatmap, productivity, workload, collaboration.",
+          "capability": "mcp.analytics",
+          "mutating": false,
+          "input_schema": {
+            "properties": {
+              "action": {
+                "title": "Action",
+                "type": "string"
+              },
+              "developer_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Developer Id"
+              },
+              "data": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Data"
+              }
+            },
+            "required": [
+              "action"
+            ],
+            "title": "aexy_analyticsArguments",
+            "type": "object"
+          }
+        },
+        {
+          "name": "aexy_assessments",
+          "description": "Manage assessments. Actions: list, get, create, update, delete, publish, metrics.",
+          "capability": "mcp.analytics",
+          "mutating": false,
+          "input_schema": {
+            "properties": {
+              "action": {
+                "title": "Action",
+                "type": "string"
+              },
+              "assessment_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Assessment Id"
+              },
+              "data": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Data"
+              },
+              "params": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Params"
+              }
+            },
+            "required": [
+              "action"
+            ],
+            "title": "aexy_assessmentsArguments",
+            "type": "object"
+          }
+        },
+        {
+          "name": "aexy_compliance",
+          "description": "Compliance management \u2014 training, certifications, audit logs. Actions: list_training, get_training, create_training, list_certifications, overview, developer_compliance, expiring, overdue, audit_logs.",
+          "capability": "mcp.analytics",
+          "mutating": false,
+          "input_schema": {
+            "properties": {
+              "action": {
+                "title": "Action",
+                "type": "string"
+              },
+              "training_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Training Id"
+              },
+              "developer_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Developer Id"
+              },
+              "data": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Data"
+              }
+            },
+            "required": [
+              "action"
+            ],
+            "title": "aexy_complianceArguments",
+            "type": "object"
+          }
+        },
+        {
+          "name": "aexy_developer_insights",
+          "description": "Developer insights and snapshots. Actions: get_snapshot, get_trends, team_insights, leaderboard.",
+          "capability": "mcp.analytics",
+          "mutating": false,
+          "input_schema": {
+            "properties": {
+              "action": {
+                "title": "Action",
+                "type": "string"
+              },
+              "workspace_id": {
+                "title": "Workspace Id",
+                "type": "string"
+              },
+              "developer_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Developer Id"
+              },
+              "team_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Team Id"
+              },
+              "params": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Params"
+              }
+            },
+            "required": [
+              "action",
+              "workspace_id"
+            ],
+            "title": "aexy_developer_insightsArguments",
+            "type": "object"
+          }
+        }
+      ]
+    },
+    {
+      "key": "platform",
+      "name": "Platform",
+      "capability": "mcp.platform",
+      "tools": [
+        {
+          "name": "aexy_api",
+          "description": "Call any Aexy API endpoint directly. Use this for endpoints not covered by dedicated tools, or when you need full control over the request. The base URL already points to /api/v1, so paths should be relative (e.g., '/health', '/developers/me', '/workspaces/{id}/teams').",
+          "capability": "mcp.platform",
+          "mutating": true,
+          "input_schema": {
+            "properties": {
+              "method": {
+                "title": "Method",
+                "type": "string"
+              },
+              "path": {
+                "title": "Path",
+                "type": "string"
+              },
+              "body": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Body"
+              },
+              "query_params": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Query Params"
+              }
+            },
+            "required": [
+              "method",
+              "path"
+            ],
+            "title": "aexy_apiArguments",
+            "type": "object"
+          }
+        },
+        {
+          "name": "aexy_documents",
+          "description": "Manage documents. Actions: list, get, create, update, delete, search, versions.",
+          "capability": "mcp.platform",
+          "mutating": true,
+          "input_schema": {
+            "properties": {
+              "action": {
+                "title": "Action",
+                "type": "string"
+              },
+              "workspace_id": {
+                "title": "Workspace Id",
+                "type": "string"
+              },
+              "document_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Document Id"
+              },
+              "data": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Data"
+              },
+              "params": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Params"
+              }
+            },
+            "required": [
+              "action",
+              "workspace_id"
+            ],
+            "title": "aexy_documentsArguments",
+            "type": "object"
+          }
+        },
+        {
+          "name": "aexy_integrations",
+          "description": "Manage integrations (Jira, Linear). Actions: get_jira, connect_jira, test_jira, sync_jira, disconnect_jira, get_linear, connect_linear, test_linear, sync_linear, disconnect_linear.",
+          "capability": "mcp.platform",
+          "mutating": true,
+          "input_schema": {
+            "properties": {
+              "action": {
+                "title": "Action",
+                "type": "string"
+              },
+              "workspace_id": {
+                "title": "Workspace Id",
+                "type": "string"
+              },
+              "data": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Data"
+              }
+            },
+            "required": [
+              "action",
+              "workspace_id"
+            ],
+            "title": "aexy_integrationsArguments",
+            "type": "object"
+          }
+        },
+        {
+          "name": "aexy_notifications",
+          "description": "Manage notifications. Actions: list, get, count, poll, mark_read, mark_all_read, delete, get_preferences, update_preference.",
+          "capability": "mcp.platform",
+          "mutating": true,
+          "input_schema": {
+            "properties": {
+              "action": {
+                "title": "Action",
+                "type": "string"
+              },
+              "notification_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Notification Id"
+              },
+              "event_type": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Event Type"
+              },
+              "data": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Data"
+              },
+              "params": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Params"
+              }
+            },
+            "required": [
+              "action"
+            ],
+            "title": "aexy_notificationsArguments",
+            "type": "object"
+          }
+        },
+        {
+          "name": "aexy_tables",
+          "description": "Manage standalone tables (spreadsheet-like data). Actions: list, get, create, delete, list_rows, create_row, update_row, delete_row, query.",
+          "capability": "mcp.platform",
+          "mutating": true,
+          "input_schema": {
+            "properties": {
+              "action": {
+                "title": "Action",
+                "type": "string"
+              },
+              "workspace_id": {
+                "title": "Workspace Id",
+                "type": "string"
+              },
+              "table_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Table Id"
+              },
+              "row_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Row Id"
+              },
+              "data": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Data"
+              },
+              "params": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Params"
+              }
+            },
+            "required": [
+              "action",
+              "workspace_id"
+            ],
+            "title": "aexy_tablesArguments",
+            "type": "object"
+          }
+        },
+        {
+          "name": "aexy_tickets",
+          "description": "Manage support tickets. Actions: list, get, get_by_number, create, update, delete, assign, stats, responses, create_task.",
+          "capability": "mcp.platform",
+          "mutating": true,
+          "input_schema": {
+            "properties": {
+              "action": {
+                "title": "Action",
+                "type": "string"
+              },
+              "workspace_id": {
+                "title": "Workspace Id",
+                "type": "string"
+              },
+              "ticket_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Ticket Id"
+              },
+              "ticket_number": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Ticket Number"
+              },
+              "data": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Data"
+              },
+              "params": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Params"
+              }
+            },
+            "required": [
+              "action",
+              "workspace_id"
+            ],
+            "title": "aexy_ticketsArguments",
+            "type": "object"
+          }
+        },
+        {
+          "name": "aexy_workspaces",
+          "description": "Manage workspaces. Actions: list, get, get_my, create, update, members, get_member, teams, permissions.",
+          "capability": "mcp.platform",
+          "mutating": true,
+          "input_schema": {
+            "properties": {
+              "action": {
+                "title": "Action",
+                "type": "string"
+              },
+              "workspace_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Workspace Id"
+              },
+              "member_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Member Id"
+              },
+              "data": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Data"
+              }
+            },
+            "required": [
+              "action"
+            ],
+            "title": "aexy_workspacesArguments",
+            "type": "object"
+          }
+        }
+      ]
+    },
+    {
+      "key": "temporal",
+      "name": "Temporal Workflows",
+      "capability": "mcp.temporal",
+      "tools": [
+        {
+          "name": "temporal_cancel_workflow",
+          "description": "Cancel or terminate a workflow execution with a reason.",
+          "capability": "mcp.temporal",
+          "mutating": true,
+          "input_schema": {
+            "properties": {
+              "workflow_id": {
+                "title": "Workflow Id",
+                "type": "string"
+              },
+              "reason": {
+                "default": "",
+                "title": "Reason",
+                "type": "string"
+              },
+              "terminate": {
+                "default": false,
+                "title": "Terminate",
+                "type": "boolean"
+              },
+              "run_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Run Id"
+              }
+            },
+            "required": [
+              "workflow_id"
+            ],
+            "title": "temporal_cancel_workflowArguments",
+            "type": "object"
+          }
+        },
+        {
+          "name": "temporal_describe_workflow",
+          "description": "Get full description of a workflow execution \u2014 status, type, queue, start/close times, history length, pending activities.",
+          "capability": "mcp.temporal",
+          "mutating": false,
+          "input_schema": {
+            "properties": {
+              "workflow_id": {
+                "title": "Workflow Id",
+                "type": "string"
+              },
+              "run_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Run Id"
+              }
+            },
+            "required": [
+              "workflow_id"
+            ],
+            "title": "temporal_describe_workflowArguments",
+            "type": "object"
+          }
+        },
+        {
+          "name": "temporal_get_workflow_history",
+          "description": "Key debugging tool. Parse workflow event history into a readable timeline showing activity starts/completions, failures with details, retry counts, signals, timers, and child workflows.",
+          "capability": "mcp.temporal",
+          "mutating": false,
+          "input_schema": {
+            "properties": {
+              "workflow_id": {
+                "title": "Workflow Id",
+                "type": "string"
+              },
+              "run_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Run Id"
+              },
+              "max_events": {
+                "default": 100,
+                "title": "Max Events",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "workflow_id"
+            ],
+            "title": "temporal_get_workflow_historyArguments",
+            "type": "object"
+          }
+        },
+        {
+          "name": "temporal_list_schedules",
+          "description": "List all registered Temporal schedules with intervals, next run times, and paused status.",
+          "capability": "mcp.temporal",
+          "mutating": false,
+          "input_schema": {
+            "properties": {
+              "limit": {
+                "default": 100,
+                "title": "Limit",
+                "type": "integer"
+              }
+            },
+            "title": "temporal_list_schedulesArguments",
+            "type": "object"
+          }
+        },
+        {
+          "name": "temporal_list_workflows",
+          "description": "List Temporal workflow executions. Supports filtering by status, type, and time range using Temporal visibility queries.",
+          "capability": "mcp.temporal",
+          "mutating": false,
+          "input_schema": {
+            "properties": {
+              "query": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Query"
+              },
+              "status": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Status"
+              },
+              "workflow_type": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Workflow Type"
+              },
+              "limit": {
+                "default": 20,
+                "title": "Limit",
+                "type": "integer"
+              }
+            },
+            "title": "temporal_list_workflowsArguments",
+            "type": "object"
+          }
+        },
+        {
+          "name": "temporal_query_workflow",
+          "description": "Query a running workflow's state. For example, query 'get_status' on CRMAutomationWorkflow to see current node, or custom query handlers.",
+          "capability": "mcp.temporal",
+          "mutating": false,
+          "input_schema": {
+            "properties": {
+              "workflow_id": {
+                "title": "Workflow Id",
+                "type": "string"
+              },
+              "query_name": {
+                "title": "Query Name",
+                "type": "string"
+              },
+              "run_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Run Id"
+              }
+            },
+            "required": [
+              "workflow_id",
+              "query_name"
+            ],
+            "title": "temporal_query_workflowArguments",
+            "type": "object"
+          }
+        },
+        {
+          "name": "temporal_signal_workflow",
+          "description": "Send a signal to a running workflow. Examples: 'on_event' to CRMAutomationWorkflow, 'pause'/'resume' to OutreachSequenceWorkflow.",
+          "capability": "mcp.temporal",
+          "mutating": true,
+          "input_schema": {
+            "properties": {
+              "workflow_id": {
+                "title": "Workflow Id",
+                "type": "string"
+              },
+              "signal_name": {
+                "title": "Signal Name",
+                "type": "string"
+              },
+              "args": {
+                "anyOf": [
+                  {
+                    "items": {},
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Args"
+              },
+              "run_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Run Id"
+              }
+            },
+            "required": [
+              "workflow_id",
+              "signal_name"
+            ],
+            "title": "temporal_signal_workflowArguments",
+            "type": "object"
+          }
+        },
+        {
+          "name": "temporal_system_status",
+          "description": "Aggregate Temporal dashboard: workflow counts by status/type, recent failures, schedule health overview.",
+          "capability": "mcp.temporal",
+          "mutating": false,
+          "input_schema": {
+            "properties": {},
+            "title": "temporal_system_statusArguments",
+            "type": "object"
+          }
+        }
+      ]
+    }
+  ]
+}

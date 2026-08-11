@@ -19,6 +19,7 @@ import {
   GitBranch,
   Menu,
   Network,
+  Plug,
   Rocket,
   Shield,
   Sparkles,
@@ -27,6 +28,8 @@ import {
   X,
 } from "lucide-react";
 import { SiGithub } from "@icons-pack/react-simple-icons";
+import { useTranslations } from "next-intl";
+import { McpChatPreview } from "@/components/landing/McpChatPreview";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -119,8 +122,19 @@ const homepageFaqs = [
   },
 ];
 
+// Structure here, strings in messages/<locale>/marketingMcp.json — the same
+// split as MCP_ENV_VARS in config/mcpClients.ts. Keys are resolved with
+// `tMcp(\`home.cards.${key}.title\`)` at render.
+const MCP_HOME_CARDS = [
+  { key: "anyClient", icon: Bot },
+  { key: "realWork", icon: Workflow },
+  { key: "oauth", icon: Shield },
+  { key: "revoke", icon: CheckCircle2 },
+] as const;
+
 const platformLinks = [
   { title: "AI Agents", href: "/products/ai-agents", description: "Governed agents for CRM, email, workflows, and company context." },
+  { title: "MCP Server", href: "/products/mcp", description: "Run Aexy from ChatGPT, Claude, Cursor, or Codex over the Model Context Protocol." },
   { title: "GTM Intelligence", href: "/products/gtm-intelligence", description: "Visitor identification, lead scoring, routing, sequences, and expansion." },
   { title: "CRM", href: "/products/crm", description: "A flexible CRM that humans and AI agents can operate together." },
   { title: "Company OS", href: "/ai-company-os", description: "The category page for Aexy's operating-system approach." },
@@ -182,6 +196,19 @@ const comparisons = [
 export default function Home() {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  // The only translated copy on this page. The rest of the marketing surface is
+  // hardcoded English; new copy goes through i18n so translating marketing later
+  // is a copy pass rather than a refactor.
+  const tMcp = useTranslations("marketingMcp");
+
+  // Slotted in after the agents question so the two AI answers sit together.
+  // Feeds both the visible list and the FAQPage structured data from one source,
+  // so the two cannot disagree.
+  const faqs = [
+    ...homepageFaqs.slice(0, 4),
+    { question: tMcp("faq.question"), answer: tMcp("faq.answer") },
+    ...homepageFaqs.slice(4),
+  ];
 
   // The marketing content below is rendered unconditionally so it is present
   // in the server HTML (crawlable). Logged-in visitors are bounced to the app:
@@ -240,7 +267,7 @@ export default function Home() {
     <main className="min-h-screen bg-[#08090d] text-white overflow-hidden">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(homepageJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(buildHomepageJsonLd(faqs)) }}
       />
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(45,212,191,0.16),transparent_32%),radial-gradient(circle_at_72%_8%,rgba(168,85,247,0.14),transparent_30%),linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[auto,auto,72px_72px,72px_72px]" />
@@ -259,6 +286,7 @@ export default function Home() {
             <a href="#solutions" className="hover:text-white transition">Solutions</a>
             <a href="#platform" className="hover:text-white transition">Platform</a>
             <a href="#agents" className="hover:text-white transition">AI Agents</a>
+            <a href="#mcp" className="hover:text-white transition">{tMcp("nav.label")}</a>
             <a href="#compare" className="hover:text-white transition">Compare</a>
             <Link href="/pricing" className="hover:text-white transition">Pricing</Link>
             <Link href="/handbook" className="hover:text-white transition">Docs</Link>
@@ -293,6 +321,7 @@ export default function Home() {
               <a href="#solutions" onClick={() => setMobileOpen(false)}>Solutions</a>
               <a href="#platform" onClick={() => setMobileOpen(false)}>Platform</a>
               <a href="#agents" onClick={() => setMobileOpen(false)}>AI Agents</a>
+              <a href="#mcp" onClick={() => setMobileOpen(false)}>{tMcp("nav.label")}</a>
               <a href="#compare" onClick={() => setMobileOpen(false)}>Compare</a>
               <Link href="/pricing" onClick={() => setMobileOpen(false)}>Pricing</Link>
               <Link href="/handbook" onClick={() => setMobileOpen(false)}>Docs</Link>
@@ -314,13 +343,17 @@ export default function Home() {
           <div>
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white/70">
               <Sparkles className="h-4 w-4 text-cyan-300" />
-              AI company operating system
+              AI company OS — now in ChatGPT and Claude
             </div>
+            {/* The ChatGPT angle lives in the badge and subhead, not here. Appending
+                it to the h1 pushed this to five lines at lg and swamped the hero —
+                the CTAs fell below the fold. The h1 is not the SERP title either
+                (that comes from layout.tsx), so it loses nothing by staying put. */}
             <h1 className="max-w-4xl text-5xl font-semibold leading-[1.03] tracking-tight sm:text-6xl lg:text-7xl">
               CRM, engineering, and ops. One AI-native workspace.
             </h1>
             <p className="mt-7 max-w-2xl text-lg leading-8 text-white/62 sm:text-xl">
-              Your CRM can&apos;t see what engineering shipped. Your sprints can&apos;t see revenue. Aexy replaces the HubSpot + Jira + Notion sprawl with one open-source company OS where your team — and your AI agents — share the same context.
+              Your CRM can&apos;t see what engineering shipped. Your sprints can&apos;t see revenue. Aexy replaces the HubSpot + Jira + Notion sprawl with one open-source company OS — where your team, your AI agents, and the assistant you already use share the same context.
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <Link
@@ -340,6 +373,10 @@ export default function Home() {
             </div>
             <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/45">
               <span>Works with Google, GitHub, and Microsoft accounts</span>
+              <span className="text-white/20">/</span>
+              <Link href="/products/mcp" className="hover:text-white transition">
+                {tMcp("hero.linkLabel")} →
+              </Link>
               <span className="text-white/20">/</span>
               <a href="https://github.com/aexy-io/aexy" className="hover:text-white transition">View source</a>
             </div>
@@ -469,6 +506,48 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Sits after #agents on purpose: that section establishes governed tool
+          access inside the workspace, and this is the same claim turned outward —
+          the agent can be one the visitor already pays for. */}
+      <section id="mcp" className="relative px-4 py-20 sm:px-6">
+        <div className="mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-[0.9fr_1fr]">
+          <div>
+            <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500 to-cyan-500">
+              <Plug className="h-6 w-6" />
+            </div>
+            <div className="mb-4 text-sm font-medium uppercase tracking-wide text-teal-300/80">
+              {tMcp("home.eyebrow")}
+            </div>
+            <h2 className="text-4xl font-semibold tracking-tight sm:text-5xl">
+              {tMcp("home.heading")}
+            </h2>
+            <p className="mt-5 text-lg leading-8 text-white/58">{tMcp("home.body")}</p>
+            <div className="mt-7 grid gap-4 sm:grid-cols-2">
+              {MCP_HOME_CARDS.map(({ key, icon: Icon }) => (
+                <div key={key} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+                  <Icon className="mb-3 h-5 w-5 text-teal-300" />
+                  <h3 className="text-base font-semibold">
+                    {tMcp(`home.cards.${key}.title`)}
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-white/55">
+                    {tMcp(`home.cards.${key}.body`)}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <Link
+              href="/products/mcp"
+              className="mt-7 inline-flex items-center gap-2 text-sm font-semibold text-teal-300 transition hover:text-teal-200"
+            >
+              {tMcp("home.cta")}
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+
+          <McpChatPreview />
+        </div>
+      </section>
+
       <section id="use-cases" className="relative px-4 py-20 sm:px-6 sm:py-28">
         <div className="mx-auto max-w-7xl">
           <div className="grid gap-10 lg:grid-cols-[0.8fr_1fr]">
@@ -590,7 +669,7 @@ export default function Home() {
             </h2>
           </div>
           <div className="mt-10 space-y-4">
-            {homepageFaqs.map((faq) => (
+            {faqs.map((faq) => (
               <div key={faq.question} className="rounded-2xl border border-white/10 bg-white/[0.035] p-6">
                 <h3 className="text-lg font-semibold">{faq.question}</h3>
                 <p className="mt-3 text-sm leading-6 text-white/58">{faq.answer}</p>
@@ -625,7 +704,11 @@ export default function Home() {
   );
 }
 
-const homepageJsonLd = {
+// Takes the FAQ list rather than reading the module-scoped one: part of that
+// list is now translated, and structured data built at module scope would emit
+// English questions beside whatever the visitor is actually reading.
+function buildHomepageJsonLd(faqs: readonly { question: string; answer: string }[]) {
+  return {
   "@context": "https://schema.org",
   "@graph": [
     {
@@ -658,7 +741,7 @@ const homepageJsonLd = {
       applicationCategory: "BusinessApplication",
       operatingSystem: "Web",
       description:
-        "Aexy is an open-source, AI-native company operating system that replaces separate CRM, engineering, workflow, HR, and docs tools with one workspace shared by teams and AI agents. Alternative to Jira, Linear, HubSpot, Attio, and Notion.",
+        "Aexy is an open-source, AI-native company operating system that replaces separate CRM, engineering, workflow, HR, and docs tools with one workspace shared by teams and AI agents. It connects to ChatGPT, Claude, and Cursor over the Model Context Protocol. Alternative to Jira, Linear, HubSpot, Attio, and Notion.",
       offers: {
         "@type": "Offer",
         price: "0",
@@ -672,7 +755,7 @@ const homepageJsonLd = {
     {
       "@type": "FAQPage",
       "@id": "https://aexy.io/#faq",
-      mainEntity: homepageFaqs.map((faq) => ({
+      mainEntity: faqs.map((faq) => ({
         "@type": "Question",
         name: faq.question,
         acceptedAnswer: {
@@ -682,7 +765,8 @@ const homepageJsonLd = {
       })),
     },
   ],
-};
+  };
+}
 
 function CompanyOSPreview() {
   return (
@@ -764,7 +848,7 @@ function Footer() {
             The open-source AI company OS. One workspace for CRM, engineering, workflows, people, and AI agents.
           </p>
         </div>
-        <FooterColumn title="Platform" links={[["AI Agents", "/products/ai-agents"], ["GTM Intelligence", "/products/gtm-intelligence"], ["CRM", "/products/crm"], ["Planning", "/products/planning"]]} />
+        <FooterColumn title="Platform" links={[["AI Agents", "/products/ai-agents"], ["MCP Server", "/products/mcp"], ["GTM Intelligence", "/products/gtm-intelligence"], ["CRM", "/products/crm"], ["Planning", "/products/planning"]]} />
         <FooterColumn title="Solutions" links={[["Revenue teams", "/for/revenue-teams"], ["Engineering teams", "/for/engineering-managers"], ["Founders & ops", "/for/founders"], ["HR & people ops", "/for/people-ops"]]} />
         <FooterColumn title="Compare" links={[["Aexy vs Jira", "/compare/jira"], ["Aexy vs Linear", "/compare/linear"], ["Aexy vs HubSpot", "/compare/hubspot"], ["Aexy vs Notion", "/compare/notion"]]} />
         <div>
