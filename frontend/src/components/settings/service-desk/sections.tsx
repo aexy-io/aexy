@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 
 import {
   useVendors,
@@ -22,6 +23,8 @@ import {
   TestSLAOverride,
   TestStageSLA,
 } from "@/lib/service-desk-api";
+import { GoogleAccountSummary, googleIntegrationApi } from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/utils";
 import { useDepartments } from "@/hooks/useOrganization";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -891,9 +894,52 @@ export function MailboxesSection() {
   const settings = useServiceDeskSettings();
   const m = useServiceDeskMutations();
   const canManage = settings.data?.can_manage === true;
+  const { currentWorkspace } = useWorkspace();
+  const workspaceId = currentWorkspace?.id ?? null;
 
   const [mAddr, setMAddr] = useState("");
   const [mChannel, setMChannel] = useState<"webhook" | "gmail_sync">("webhook");
+  const [accounts, setAccounts] = useState<GoogleAccountSummary[]>([]);
+  const [isConnecting, setIsConnecting] = useState(false);
+
+  // Which addresses `gmail_sync` will actually accept. Fetched only when that
+  // channel is selected — a webhook mailbox has no use for it, and this is a
+  // page a desk manager may open with no Google account in sight.
+  useEffect(() => {
+    if (!workspaceId || mChannel !== "gmail_sync") return;
+    let cancelled = false;
+    googleIntegrationApi.accounts
+      .list(workspaceId)
+      .then((data) => {
+        if (!cancelled) setAccounts(data.accounts);
+      })
+      .catch(() => {
+        // A member without access to the integration settings still manages
+        // mailboxes. Falling back to the plain hint is the right degradation.
+        if (!cancelled) setAccounts([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [workspaceId, mChannel]);
+
+  const connect = async () => {
+    if (!workspaceId || isConnecting) return;
+    setIsConnecting(true);
+    try {
+      // Returns here rather than to the integrations page, so the account
+      // arrives back where it was needed and the mailbox can be added without
+      // navigating twice.
+      const { auth_url } = await googleIntegrationApi.getConnectUrl(
+        workspaceId,
+        window.location.href
+      );
+      window.location.href = auth_url;
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Could not start the Google connection"));
+      setIsConnecting(false);
+    }
+  };
 
   return (
     // No title or hint here: the Settings page header above already carries
@@ -914,6 +960,56 @@ export function MailboxesSection() {
           <p className="max-w-2xl text-xs text-muted-foreground">
             {mChannel === "gmail_sync" ? t("settings.channelGmailHint") : t("settings.channelWebhookHint")}
           </p>
+
+          {/*
+            The prerequisite, made actionable.
+
+            The hint above used to be the whole answer: go to another page,
+            connect, come back, and type the address again from memory. The 422
+            it warns about is almost always a typo or a near-miss — the desk
+            address is `support@`, the connected account is `support.team@` —
+            so listing the addresses that will be accepted, and letting one be
+            clicked into the field, removes the failure rather than explaining
+            it.
+          */}
+          {mChannel === "gmail_sync" && (
+            <div className="flex flex-wrap items-center gap-2" data-testid="gmail-connect">
+              {accounts.length > 0 && (
+                <>
+                  <span className="text-xs text-muted-foreground">
+                    {t("settings.useConnected")}
+                  </span>
+                  {accounts.map((account) => (
+                    <button
+                      key={account.id}
+                      type="button"
+                      onClick={() => setMAddr(account.google_email)}
+                      data-testid={`use-account-${account.google_email}`}
+                      className="rounded-full border border-border px-2.5 py-1 text-xs text-foreground transition-colors hover:bg-accent"
+                    >
+                      {account.google_email}
+                    </button>
+                  ))}
+                </>
+              )}
+              <button
+                type="button"
+                onClick={connect}
+                disabled={isConnecting}
+                data-testid="connect-google"
+                className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs text-foreground transition-colors hover:bg-accent disabled:opacity-50"
+              >
+                {isConnecting ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Plus className="h-3 w-3" />
+                )}
+                {accounts.length > 0
+                  ? t("settings.connectAnotherGoogle")
+                  : t("settings.connectGoogle")}
+              </button>
+            </div>
+          )}
         </>
       )}
       {(mailboxes.data ?? []).map((mb) => (
