@@ -42,7 +42,7 @@
       "intro": {
         "claudeCode": "Either run the CLI command, or commit the project file so everyone on the repo gets the server. Both are equivalent; the CLI writes to your user config, the file is shared.",
         "claudeDesktop": "Claude Desktop reads a single config file. Create it if it does not exist, then quit and reopen the app — it only loads this file at startup.",
-        "chatgpt": "ChatGPT connects to remote MCP servers over HTTP.",
+        "chatgpt": "ChatGPT reaches Aexy over HTTP instead of running a local process. In ChatGPT, open Settings → Connectors → Create, paste the URL below, and approve the workspace it asks for.",
         "codex": "Codex reads MCP servers from its TOML config. Add this table, then restart Codex.",
         "cursor": "Cursor and VS Code use the same stdio server with slightly different file shapes. Use whichever matches your editor.",
         "other": "Any MCP client that supports the stdio transport can run the server with this shape. Translate it into whatever format your client expects."
@@ -55,11 +55,11 @@
         "configToml": "Add to your Codex config",
         "cursorFile": "Cursor",
         "vscodeFile": "VS Code",
-        "genericStdio": "stdio server definition"
+        "genericStdio": "stdio server definition",
+        "remoteUrl": "MCP server URL"
       },
-      "remoteRequired": {
-        "heading": "Not available yet",
-        "body": "ChatGPT only supports remote MCP servers reached over HTTP with OAuth — it cannot launch a local stdio process the way Claude Code, Claude Desktop and Codex do. Aexy's hosted MCP endpoint is in progress; until it ships, use one of the other clients."
+      "remoteAuth": {
+        "body": "No API token needed. ChatGPT registers itself and sends you here to sign in, where you pick which workspace it may use. It sees exactly the apps you already have access to in that workspace — never more. Review or revoke it any time under Settings → Connected Apps."
       },
       "envReferenceLabel": "Environment variables:",
       "env": {

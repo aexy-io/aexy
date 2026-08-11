@@ -246,14 +246,19 @@ export default function McpPage() {
             {t(`clientSetup.intro.${active.tabKey}`)}
           </p>
 
-          {active.requiresRemote ? (
-            <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-4 space-y-2">
-              <p className="text-sm font-medium text-amber-300">
-                {t("clientSetup.remoteRequired.heading")}
-              </p>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                {t("clientSetup.remoteRequired.body")}
-              </p>
+          {active.remoteUrl ? (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <span className="text-sm font-medium">
+                  {t("clientSetup.snippet.remoteUrl")}
+                </span>
+                <CodeBlock code={active.remoteUrl} />
+              </div>
+              <div className="bg-accent/50 border border-border rounded-lg p-3">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {t("clientSetup.remoteAuth.body")}
+                </p>
+              </div>
             </div>
           ) : (
             active.snippets.map((snippet) => (
@@ -261,7 +266,7 @@ export default function McpPage() {
             ))
           )}
 
-          {!active.requiresRemote && (
+          {!active.remoteUrl && (
             <div className="bg-accent/50 border border-border rounded-lg p-3">
               <p className="text-xs text-muted-foreground">
                 <strong className="text-foreground">

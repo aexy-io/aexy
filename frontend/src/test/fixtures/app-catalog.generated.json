@@ -174,7 +174,11 @@
       "category": "productivity",
       "base_route": "/mcp",
       "required_permission": "can_view_agents",
-      "modules": []
+      "modules": [
+        "admin",
+        "integrations",
+        "platform"
+      ]
     },
     "oncall": {
       "name": "On-Call",
@@ -332,7 +336,11 @@
           "modules": []
         },
         "mcp": {
-          "modules": []
+          "modules": [
+            "admin",
+            "integrations",
+            "platform"
+          ]
         },
         "organization": {
           "modules": [
@@ -387,7 +395,11 @@
           "modules": []
         },
         "mcp": {
-          "modules": []
+          "modules": [
+            "admin",
+            "integrations",
+            "platform"
+          ]
         },
         "oncall": {
           "modules": []
@@ -519,7 +531,11 @@
           "modules": []
         },
         "mcp": {
-          "modules": []
+          "modules": [
+            "admin",
+            "integrations",
+            "platform"
+          ]
         },
         "oncall": {
           "modules": []
@@ -628,7 +644,11 @@
           "modules": []
         },
         "mcp": {
-          "modules": []
+          "modules": [
+            "admin",
+            "integrations",
+            "platform"
+          ]
         },
         "organization": {
           "modules": [

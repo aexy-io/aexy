@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from aexy.api import api_router
+from aexy.api.mcp_oauth import router as mcp_oauth_router
 from aexy.core.config import get_settings
 from aexy.core.database import engine, Base
 from aexy.middleware import CommunityIsolationMiddleware, UsageTrackingMiddleware
@@ -129,6 +130,14 @@ def create_app() -> FastAPI:
 
     # Include API routes
     app.include_router(api_router, prefix=settings.api_v1_prefix)
+
+    # OAuth for remote MCP clients, mounted at the ORIGIN rather than under
+    # /api/v1. RFC 8414 and RFC 9728 define /.well-known/* as origin-level URIs;
+    # a client that cannot find them there concludes the server does not do
+    # OAuth and stops. ChatGPT does precisely that, so the prefix would be a
+    # silent "not supported". The authorize/token/register endpoints join them
+    # so that everything the metadata advertises lives on one origin.
+    app.include_router(mcp_oauth_router)
 
     return app
 

@@ -94,21 +94,37 @@ describe("MCP capabilities line up with the app catalogue", () => {
   });
 
   /**
-   * Phase 1 turns each capability into a module on the `mcp` app, so access is
-   * resolved by AppAccessService instead of the client-side AEXY_ENABLE_TEMPORAL
-   * env var. Until those modules exist this cannot assert a mapping — but the
-   * moment the first one is added, this starts requiring all of them, so the
-   * capability set and the grant set cannot diverge on the way in.
+   * This manifest's capabilities are NOT the authoritative set, and the two
+   * vocabularies deliberately differ.
+   *
+   * The manifest describes the 35 hand-written tools the stdio server ships
+   * today, grouped the way that server groups them — `mcp.email_gtm` covers
+   * email and GTM together, `mcp.analytics` covers what the API calls insights,
+   * and `mcp.temporal` has no API surface at all because those tools bypass the
+   * backend and talk to Temporal directly.
+   *
+   * The authoritative capability set is generated from the API itself by
+   * `backend/scripts/dump_mcp_catalog.py` — 28 capabilities over all 1866
+   * operations — and grantability is asserted there, against APP_CATALOG and
+   * the `mcp` app's modules, in `backend/tests/unit/test_mcp_catalog.py`.
+   * Asserting it here too would force this transitional manifest to adopt names
+   * its tools do not use.
+   *
+   * These tools are superseded by the generated per-capability tools the
+   * `/mcp/tools` endpoint returns; this file guards the manifest until they are.
    */
-  it("maps every capability to an mcp module once modules exist", () => {
-    if (declaredModules.length === 0) {
-      expect(MCP_CAPABILITIES.length).toBeGreaterThan(0);
-      return;
-    }
+  it("declares capabilities in the expected namespace", () => {
+    expect(MCP_CAPABILITIES.length).toBeGreaterThan(0);
     for (const capability of MCP_CAPABILITIES) {
-      expect(declaredModules, `grant for ${capability}`).toContain(
-        capability.replace(/^mcp\./, "")
-      );
+      expect(capability).toMatch(/^mcp\.[a-z][a-z0-9_]*$/);
     }
+  });
+
+  it("keeps the appless capabilities as mcp modules", () => {
+    expect([...declaredModules].sort()).toEqual([
+      "admin",
+      "integrations",
+      "platform",
+    ]);
   });
 });

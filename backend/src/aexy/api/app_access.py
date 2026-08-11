@@ -126,7 +126,7 @@ async def get_app_catalog(
                 id=mod_id,
                 name=mod_config["name"],
                 description=mod_config["description"],
-                route=mod_config["route"],
+                route=mod_config.get("route"),
             )
             for mod_id, mod_config in config.get("modules", {}).items()
         ]
@@ -740,7 +740,7 @@ async def get_access_matrix(
                 id=mod_id,
                 name=mod_config["name"],
                 description=mod_config["description"],
-                route=mod_config["route"],
+                route=mod_config.get("route"),
             )
             for mod_id, mod_config in config.get("modules", {}).items()
         ]

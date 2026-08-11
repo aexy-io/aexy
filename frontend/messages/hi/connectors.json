@@ -1,0 +1,28 @@
+{
+  "connectors": {
+    "title": "जुड़े हुए Apps",
+    "subtitle": "वे AI clients जिन्हें आपने MCP के ज़रिए Aexy से जोड़ा है। हर एक को आपने consent screen पर मंज़ूरी दी थी, और वह केवल उसी workspace तक पहुंच सकता है जो आपने चुना था।",
+    "footer": "रद्द करना तुरंत लागू होता है। Client को बताया नहीं जाता — उसे अगली request पर पता चलता है, और वापस आने के लिए उसे दोबारा consent मांगनी पड़ती है।",
+    "table": {
+      "client": "Client",
+      "workspace": "Workspace",
+      "authorized": "मंज़ूरी दी",
+      "lastUsed": "आखिरी उपयोग",
+      "status": "स्थिति",
+      "never": "कभी नहीं"
+    },
+    "status": {
+      "active": "सक्रिय",
+      "revoked": "रद्द"
+    },
+    "actions": {
+      "revoke": "रद्द करें",
+      "revokeTitle": "इस connector को रद्द करें"
+    },
+    "empty": {
+      "title": "कोई जुड़ा हुआ app नहीं",
+      "description": "जब आप ChatGPT जैसे किसी client को Aexy से जोड़ेंगे, वह यहां दिखेगा — ताकि आप देख सकें कि उसकी पहुंच कहां तक है और उसे बंद कर सकें।",
+      "link": "Client कैसे जोड़ें"
+    }
+  }
+}

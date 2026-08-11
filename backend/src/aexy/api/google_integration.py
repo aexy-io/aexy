@@ -1070,7 +1070,20 @@ async def link_email_to_record(
 # =============================================================================
 
 
-@router.get("/calendar/calendars", response_model=CalendarListResponse)
+# Explicit operation_id: FastAPI derives one from the function name and path,
+# and this route's path collides with google_calendar.py's `/calendars` once
+# "-" and "/" both become "_" —
+#   .../integrations/google-calendar/calendars
+#   .../integrations/google/calendar/calendars
+# Both are reachable over HTTP, but they are two different handlers (this one
+# uses CalendarSyncService, that one GoogleCalendarService) sharing one id, so
+# anything addressing an operation BY id — the MCP catalogue, generated clients
+# — can only reach whichever it happens to resolve first.
+@router.get(
+    "/calendar/calendars",
+    response_model=CalendarListResponse,
+    operation_id="list_google_sync_calendars",
+)
 async def list_calendars(
     workspace_id: str,
     current_user: Developer = Depends(get_current_developer),

@@ -13,9 +13,11 @@
  *    binary, which no client consumes.
  *
  * Claude Desktop, Cursor and VS Code were absent entirely. ChatGPT was too, and
- * it is the one client that cannot be fixed with documentation: it consumes
- * remote MCP servers only, so it stays marked unavailable until the streamable
- * HTTP transport ships.
+ * it was the one client that could not be fixed with documentation: it consumes
+ * remote MCP servers only. That gap is now closed — the streamable HTTP
+ * transport and its OAuth 2.1 authorization server ship with the backend, so
+ * ChatGPT gets a URL instead of a config file, and a consent screen instead of
+ * an API token.
  *
  * Every recipe also drops `TEMPORAL_ADDRESS`, `TEMPORAL_NAMESPACE` and
  * `AEXY_ENABLE_TEMPORAL`. The first two only existed because the Temporal tools
@@ -45,10 +47,11 @@ export interface McpClientRecipe {
   /** i18n key under `mcp.clientSetup.tabs`. */
   tabKey: string;
   /**
-   * Set when the client cannot work with the stdio server at all. Renders a
-   * blocked notice instead of a broken recipe.
+   * Set for clients that speak the remote HTTP transport rather than stdio.
+   * These get a URL to paste, and authenticate through OAuth — so they never
+   * see an API token, and the environment-variable reference does not apply.
    */
-  requiresRemote?: boolean;
+  remoteUrl?: string;
   snippets: McpConfigSnippet[];
 }
 
@@ -115,7 +118,7 @@ export function getClientRecipes(apiUrl: string): McpClientRecipe[] {
     {
       id: "chatgpt",
       tabKey: "chatgpt",
-      requiresRemote: true,
+      remoteUrl: `${apiUrl}/mcp`,
       snippets: [],
     },
     {

@@ -81,6 +81,38 @@ def test_app_backed_capabilities_name_a_real_app(catalog):
         assert cap["capability"] == f"mcp.{cap['app']}"
 
 
+def test_every_capability_is_grantable(catalog):
+    """A capability has to be grantable somewhere, and there are two places.
+
+    Most ARE an app — holding `sprints` is what grants `mcp.sprints`, so the app
+    grant is the MCP grant and there is no second access model to keep in sync.
+    The rest were never apps, so they are modules on the `mcp` app.
+
+    A capability in neither place is reachable by everyone or by no one
+    depending on which way the resolver happens to default, which is exactly the
+    failure `AEXY_ENABLE_TEMPORAL` had — a gate that gated nothing.
+    """
+    mcp_modules = set((APP_CATALOG["mcp"].get("modules") or {}).keys())
+    for cap in _capabilities(catalog):
+        cap_id = cap["capability"].removeprefix("mcp.")
+        grantable = cap_id in APP_CATALOG or cap_id in mcp_modules
+        assert grantable, (
+            f"{cap['capability']} ({cap['operation_count']} operations) cannot be "
+            "granted: it is neither an app in APP_CATALOG nor a module on the "
+            "`mcp` app. Add it to one of them."
+        )
+
+
+def test_no_mcp_module_grants_a_capability_that_does_not_exist(catalog):
+    """The other direction: a module nothing maps to grants nothing, silently."""
+    known = {c["capability"].removeprefix("mcp.") for c in _capabilities(catalog)}
+    for module_id in (APP_CATALOG["mcp"].get("modules") or {}):
+        assert module_id in known, (
+            f"`mcp` app declares module {module_id!r}, but no capability by that "
+            "name exists, so granting it does nothing. Remove it or map tags to it."
+        )
+
+
 def test_platform_capabilities_are_the_only_appless_ones(catalog):
     appless = {c["capability"] for c in _capabilities(catalog) if c["app"] is None}
     assert appless == {"mcp.platform", "mcp.admin", "mcp.integrations"}, (
@@ -127,17 +159,22 @@ def test_public_and_system_surfaces_stay_out(catalog):
     assert catalog["excluded"], "nothing was excluded — the filter silently stopped working"
 
 
-def test_duplicate_operation_ids_do_not_grow(catalog):
-    """An id collision makes one of the two routes unaddressable.
+def test_no_duplicate_operation_ids(catalog):
+    """An id collision makes one of two distinct handlers unaddressable.
 
-    One pair exists today: `google-calendar/calendars` and `google/calendar/
-    calendars` are the same handler mounted twice. Pinning the count means a new
-    collision fails here instead of being a warning nobody reads.
+    One pair existed: `/integrations/google-calendar/calendars` and
+    `/integrations/google/calendar/calendars` are different handlers — one on
+    GoogleCalendarService, one on CalendarSyncService — whose paths collide once
+    "-" and "/" both normalise to "_". Both answer over HTTP, but anything
+    addressing an operation by id reaches only whichever resolves first. Fixed
+    by an explicit operation_id in google_integration.py; FastAPI only warns
+    about this, so assert it rather than trusting build output.
     """
     duplicates = catalog["duplicate_operation_ids"]
-    assert len(duplicates) <= 1, (
-        "New duplicate operation ids appeared, so those routes cannot be "
-        f"addressed by id: {json.dumps(duplicates, indent=2)}"
+    assert duplicates == {}, (
+        "Duplicate operation ids — these routes cannot be addressed by id. Give "
+        "one an explicit operation_id on its route decorator: "
+        f"{json.dumps(duplicates, indent=2)}"
     )
 
 

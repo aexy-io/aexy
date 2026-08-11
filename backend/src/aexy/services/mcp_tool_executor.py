@@ -1,0 +1,223 @@
+"""Turning a tool call into an API call.
+
+The executor deliberately does not talk to services directly. It re-enters the
+application over ASGI, carrying a short-lived token for the person whose grant
+this is, so every endpoint runs its own dependencies: auth, workspace
+membership, app access, the per-router permission checks. That is the difference
+between a tool layer and a second access model — and a second access model is a
+thing that drifts, quietly, in the permissive direction.
+
+The tool list is an ergonomic filter. This is the gate, and it is the same gate
+the web app goes through.
+"""
+
+from __future__ import annotations
+
+import json
+from dataclasses import dataclass
+from typing import Any
+
+import httpx
+
+from aexy.core.config import settings
+from aexy.services.mcp_catalog import CALL_TOOL, DISCOVER_TOOL
+
+# An operation is normally answered well under this. The ceiling exists so a
+# slow endpoint cannot pin an MCP session open indefinitely.
+REQUEST_TIMEOUT_SECONDS = 60.0
+
+# Discovery returns matches, not the whole catalogue: a client that asked to
+# search is trying to narrow, and 1866 operations is not narrowing.
+MAX_DISCOVER_RESULTS = 25
+
+
+@dataclass(frozen=True)
+class ToolResult:
+    content: str
+    is_error: bool = False
+
+
+class McpToolExecutor:
+    def __init__(self, app, catalog: dict[str, Any], granted: set[str]):
+        self._app = app
+        self._catalog = catalog
+        self._granted = granted
+
+    async def call(
+        self,
+        *,
+        tool_name: str,
+        arguments: dict[str, Any],
+        developer_id: str,
+        workspace_id: str,
+    ) -> ToolResult:
+        if tool_name == DISCOVER_TOOL:
+            return self._discover(arguments.get("query", ""), arguments.get("capability"))
+
+        if tool_name == CALL_TOOL:
+            action = arguments.get("action")
+        else:
+            capability = self._capability_for_tool(tool_name)
+            if capability is None:
+                return ToolResult(f"Unknown tool: {tool_name}", is_error=True)
+            if capability not in self._granted:
+                # Should be unreachable — an ungranted tool is never listed — but
+                # a client may call a name it cached from an earlier, wider grant.
+                return ToolResult(
+                    f"You do not have access to {capability} in this workspace.",
+                    is_error=True,
+                )
+            action = arguments.get("action")
+
+        if not action:
+            return ToolResult("`action` is required.", is_error=True)
+
+        operation = self._find_operation(action)
+        if operation is None:
+            return ToolResult(
+                f"Unknown action: {action}. Use {DISCOVER_TOOL} to find one.",
+                is_error=True,
+            )
+
+        capability = operation["_capability"]
+        if capability not in self._granted:
+            return ToolResult(
+                f"`{action}` belongs to {capability}, which you do not have in this "
+                "workspace.",
+                is_error=True,
+            )
+
+        return await self._perform(
+            operation=operation,
+            arguments=arguments,
+            developer_id=developer_id,
+            workspace_id=workspace_id,
+        )
+
+    # ------------------------------------------------------------------
+
+    def _capability_for_tool(self, tool_name: str) -> str | None:
+        for group in self._catalog["capabilities"]:
+            if tool_name == f"aexy_{group['capability'].removeprefix('mcp.')}":
+                return group["capability"]
+        return None
+
+    def _find_operation(self, action: str) -> dict[str, Any] | None:
+        for group in self._catalog["capabilities"]:
+            for op in group["operations"]:
+                if op["action"] == action:
+                    return {**op, "_capability": group["capability"]}
+        return None
+
+    def _discover(self, query: str, capability: str | None) -> ToolResult:
+        terms = [t for t in query.lower().split() if t]
+        matches: list[dict[str, Any]] = []
+
+        for group in self._catalog["capabilities"]:
+            if group["capability"] not in self._granted:
+                continue
+            if capability and group["capability"] != capability:
+                continue
+            for op in group["operations"]:
+                haystack = f"{op['action']} {op['summary']} {op['path']}".lower()
+                if all(term in haystack for term in terms):
+                    matches.append(
+                        {
+                            "action": op["action"],
+                            "capability": group["capability"],
+                            "method": op["method"],
+                            "path": op["path"],
+                            "summary": op["summary"],
+                            "mutating": op["mutating"],
+                        }
+                    )
+
+        truncated = len(matches) > MAX_DISCOVER_RESULTS
+        payload = {
+            "matches": matches[:MAX_DISCOVER_RESULTS],
+            "total_matches": len(matches),
+        }
+        if truncated:
+            # Say so rather than silently cutting: a client that thinks it saw
+            # everything will conclude the operation it wants does not exist.
+            payload["note"] = (
+                f"Showing {MAX_DISCOVER_RESULTS} of {len(matches)}. Narrow the query "
+                "or pass `capability` to see the rest."
+            )
+        return ToolResult(json.dumps(payload, indent=2))
+
+    async def _perform(
+        self,
+        *,
+        operation: dict[str, Any],
+        arguments: dict[str, Any],
+        developer_id: str,
+        workspace_id: str,
+    ) -> ToolResult:
+        path = operation["path"]
+        path_params = dict(arguments.get("path_params") or {})
+
+        # `workspace_id` is in almost every path. Filling it from the grant
+        # rather than the arguments is what keeps a session inside the workspace
+        # the person actually consented to.
+        path_params.setdefault("workspace_id", workspace_id)
+
+        try:
+            path = path.format(**path_params)
+        except KeyError as exc:
+            missing = str(exc).strip("'")
+            return ToolResult(
+                f"`{operation['action']}` needs path_params.{missing} — its path is "
+                f"{operation['path']}.",
+                is_error=True,
+            )
+
+        from aexy.api.auth import create_access_token
+
+        headers = {
+            "Authorization": f"Bearer {create_access_token(developer_id)}",
+            "Content-Type": "application/json",
+        }
+
+        transport = httpx.ASGITransport(app=self._app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://mcp.internal",
+            timeout=REQUEST_TIMEOUT_SECONDS,
+        ) as client:
+            try:
+                response = await client.request(
+                    operation["method"],
+                    path,
+                    params=arguments.get("query") or None,
+                    json=arguments.get("body") if arguments.get("body") else None,
+                    headers=headers,
+                )
+            except httpx.TimeoutException:
+                return ToolResult(
+                    f"`{operation['action']}` did not respond within "
+                    f"{int(REQUEST_TIMEOUT_SECONDS)}s.",
+                    is_error=True,
+                )
+
+        return _render(response, operation)
+
+
+def _render(response: httpx.Response, operation: dict[str, Any]) -> ToolResult:
+    try:
+        body = response.json()
+        rendered = json.dumps(body, indent=2, default=str)
+    except ValueError:
+        rendered = response.text
+
+    if response.is_success:
+        return ToolResult(rendered or f"{response.status_code} (no content)")
+
+    # Report the API's own refusal verbatim. Rewriting it would hide the real
+    # reason — "you do not have the CRM app" reads very differently from a
+    # generic failure, and the model relays it to a person who can act on it.
+    return ToolResult(
+        f"{operation['method']} {operation['path']} failed with "
+        f"{response.status_code}:\n{rendered}",
+        is_error=True,
+    )

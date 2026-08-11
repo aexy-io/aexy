@@ -44,7 +44,16 @@ function backendCatalogue(): { all: Set<string>; ownerOnly: Set<string> } {
  * other entry must be gated. Listed explicitly so adding an ungated page is a
  * deliberate edit to this test rather than an oversight.
  */
-const PERSONAL_PAGES = new Set(["appearance", "notifications", "identity", "api-tokens"]);
+const PERSONAL_PAGES = new Set([
+  "appearance",
+  "notifications",
+  "identity",
+  "api-tokens",
+  // A person's own OAuth grants: made by them at a consent screen, listing and
+  // revoking only what they authorised. Gating it behind a workspace permission
+  // would stop someone revoking their own connector.
+  "connectors",
+]);
 
 describe("settings permission catalogue", () => {
   it("only references permissions the backend actually defines", () => {

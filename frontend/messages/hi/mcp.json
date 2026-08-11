@@ -42,7 +42,7 @@
       "intro": {
         "claudeCode": "या तो CLI command चलाएं, या project file कमिट करें ताकि repo पर काम करने वाले सभी लोगों को server मिल जाए। दोनों बराबर हैं; CLI आपकी user config में लिखता है, जबकि file साझा होती है।",
         "claudeDesktop": "Claude Desktop एक ही config file पढ़ता है। न हो तो बनाएं, फिर ऐप को पूरी तरह बंद करके दोबारा खोलें — यह file केवल startup पर ही पढ़ी जाती है।",
-        "chatgpt": "ChatGPT remote MCP servers से HTTP पर जुड़ता है।",
+        "chatgpt": "ChatGPT लोकल process चलाने के बजाय Aexy से HTTP पर जुड़ता है। ChatGPT में Settings → Connectors → Create खोलें, नीचे दिया URL पेस्ट करें, और जो workspace यह मांगे उसे स्वीकृति दें।",
         "codex": "Codex अपने TOML config से MCP servers पढ़ता है। यह table जोड़ें, फिर Codex restart करें।",
         "cursor": "Cursor और VS Code वही stdio server इस्तेमाल करते हैं, बस file का आकार थोड़ा अलग होता है। जो आपके editor से मेल खाए, वही उपयोग करें।",
         "other": "stdio transport सपोर्ट करने वाला कोई भी MCP client इसी आकार में server चला सकता है। इसे अपने client के अपेक्षित format में बदल लें।"
@@ -55,11 +55,11 @@
         "configToml": "अपने Codex config में जोड़ें",
         "cursorFile": "Cursor",
         "vscodeFile": "VS Code",
-        "genericStdio": "stdio server definition"
+        "genericStdio": "stdio server definition",
+        "remoteUrl": "MCP server URL"
       },
-      "remoteRequired": {
-        "heading": "अभी उपलब्ध नहीं",
-        "body": "ChatGPT केवल OAuth के साथ HTTP पर पहुंचने वाले remote MCP servers सपोर्ट करता है — यह Claude Code, Claude Desktop और Codex की तरह लोकल stdio process शुरू नहीं कर सकता। Aexy का hosted MCP endpoint बन रहा है; तब तक किसी दूसरे client का उपयोग करें।"
+      "remoteAuth": {
+        "body": "किसी API token की ज़रूरत नहीं। ChatGPT खुद को रजिस्टर करता है और साइन इन के लिए आपको यहां भेजता है, जहां आप चुनते हैं कि वह कौन-सा workspace इस्तेमाल कर सकता है। उस workspace में आपके पास जिन apps की पहुंच है, उसे बस उन्हीं की पहुंच मिलती है — उससे ज़्यादा कभी नहीं। Settings → जुड़े हुए Apps में जाकर इसे कभी भी देख या रद्द कर सकते हैं।"
       },
       "envReferenceLabel": "Environment variables:",
       "env": {

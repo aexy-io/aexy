@@ -191,6 +191,9 @@ from aexy.api.tracker_qa import router as tracker_qa_router
 from aexy.api.tracker_admin import router as tracker_admin_router
 from aexy.api.tracker_target import router as tracker_target_router
 # Standalone Tables
+from aexy.api.mcp import connectors_router as mcp_connectors_router
+from aexy.api.mcp import router as mcp_router
+from aexy.api.mcp_transport import router as mcp_transport_router
 from aexy.api.tables import router as tables_router, custom_field_types_router
 from aexy.api.public_tables import router as public_tables_router
 # Saved Views (cross-module)
@@ -406,6 +409,20 @@ api_router.include_router(tracker_admin_router, tags=["tracker-admin"])
 api_router.include_router(tracker_target_router, tags=["tracker-target-hours"])
 # Standalone Tables
 api_router.include_router(tables_router, tags=["tables"], dependencies=[Depends(require_app_access("tables"))])
+# Tool discovery gates itself: it returns the caller's own capabilities, so
+# require_app_access("mcp") here would hide the very list that explains why
+# something is missing. Membership is still required.
+api_router.include_router(mcp_router, tags=["mcp"], dependencies=[Depends(require_workspace_member())])
+# The remote transport carries no workspace in its path — the OAuth grant names
+# it — so the membership dependency above cannot apply. It authenticates the
+# bearer token itself and must answer 401 with a WWW-Authenticate hint rather
+# than the API's usual error, because that header is what starts the OAuth
+# discovery a remote client depends on.
+api_router.include_router(mcp_transport_router)
+# Connector management is a person's own security surface, like API tokens: it
+# lists and revokes the grants they made themselves, in whichever workspace, so
+# it takes no workspace dependency and needs no app grant.
+api_router.include_router(mcp_connectors_router)
 api_router.include_router(custom_field_types_router, tags=["custom-field-types"])
 api_router.include_router(public_tables_router, tags=["tables-public"])
 # Saved Views (cross-module)

@@ -21,6 +21,7 @@ import {
   Webhook,
   KeyRound,
   Lock,
+  Plug,
   Activity,
   Siren,
   Bell,
@@ -366,6 +367,25 @@ export const settingsNavigation: SettingsNavCategory[] = [
         // Personal: tokens are minted against the caller's own identity and carry
         // only their own permissions, so this is not an escalation path.
         keywords: ["api", "token", "key", "mcp", "integration", "authentication"],
+      },
+      {
+        id: "connectors",
+        label: "Connected Apps",
+        href: "/settings/connectors",
+        icon: Plug,
+        description: "Review and revoke the AI clients you have connected over MCP",
+        // Personal: these are the caller's own OAuth grants, made by them at a
+        // consent screen and carrying only their own access.
+        keywords: [
+          "connector",
+          "connected",
+          "mcp",
+          "oauth",
+          "chatgpt",
+          "claude",
+          "revoke",
+          "authorize",
+        ],
       },
       {
         id: "workflow-secrets",

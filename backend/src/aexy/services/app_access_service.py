@@ -1286,10 +1286,14 @@ class AppAccessService:
                     total_count = len(app_access["modules"])
                     if enabled_count == total_count:
                         app_summary[app_id] = "full"
-                    elif enabled_count > 0:
-                        app_summary[app_id] = "partial"
                     else:
-                        app_summary[app_id] = "none"
+                        # Every module off is still not "none": the app itself is
+                        # granted, and what that reaches is not always the modules.
+                        # A member holding `mcp` with all three admin modules off
+                        # still reaches 25 of its 28 capabilities, because those
+                        # come from the *other* app grants — so "none" told an
+                        # admin the opposite of what the API would do.
+                        app_summary[app_id] = "partial"
 
             primary_department = next(
                 (d for d in access["departments"] if d["is_primary"]),
