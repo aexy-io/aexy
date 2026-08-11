@@ -184,6 +184,54 @@ Gmail directly, outside Aexy.
 That is a real gap but a narrow one, and it belongs to the personal-mailbox track.
 Fetching `SENT` is deferred, not forgotten.
 
+### D8 — Filter by client, not by domain string.
+
+"Everything from Acme" is the question people actually have. A raw domain box answers
+a narrower one, and answers it wrong whenever a client has more than one domain —
+which is most of them, once `acme.com` and `acme.co.uk` and the CEO's `gmail.com`
+address are all the same account.
+
+**`service_desk_account_domains` is the reliable source.** It already exists, already
+maps many domains to one account, and already accepts a whole address as well as a
+domain (the multi-account work made the whole-address form outrank the domain form,
+so a shared provider does not swallow every account keyed on it). Master Data is
+where clients are already defined, so the filter is reading a table people maintain
+rather than inventing a second place to say who Acme is.
+
+**CRM companies are best-effort.** `crm_records.values` is schemaless JSONB — a
+company's domain lives under whatever attribute the workspace defined, if any. So CRM
+resolution is opportunistic and must not be the primary path (Q10).
+
+**Unknown senders still need a raw filter.** A domain with no account behind it is
+exactly the case worth looking at — a prospect, or a client nobody has set up yet. So
+the control resolves to an account where it can and falls back to the literal domain
+where it cannot, and says which it did.
+
+**This is where the module earns its keep.** One filter spanning desk conversations
+*and* CRM threads is the answer to "show me everything from this client", and it is
+the thing no single existing surface can do: the desk knows the tickets, the CRM
+knows the correspondence, and neither knows the other.
+
+#### D8.1 — The filter must not become a way to read colleagues' mail
+
+The thread-sourced hosts read `synced_emails` across every connected Google account
+in the workspace. A client filter over that, applied naively, returns the personal
+mail of anybody who has ever corresponded with that domain — and returns it to
+whoever typed the domain.
+
+That is the same leak as `UNIFIED_EMAIL_PLAN` §1.2, arriving through a different
+door, and a filter makes it worse rather than better: the workspace-wide inbox at
+least buries a colleague's mail in a long list, whereas a filter surfaces exactly the
+correspondence somebody was looking for.
+
+So the filter is scoped before it is applied:
+
+- **Desk conversations** — visible to the desk, unchanged. A shared mailbox is shared.
+- **Thread-sourced results** — the caller's own accounts only, unless a Service Desk
+  mailbox reads the account, which makes it a team address rather than a personal one.
+
+Stated as a rule: *the filter narrows what you can already see. It never widens it.*
+
 ---
 
 ## 4. Open questions
@@ -199,7 +247,8 @@ Answerable while Phase 1 is built; none of them block starting.
 | Q5 | Volume per mailbox per day? | Under ~50/day, pagination and search barely matter; over ~500 they are the whole design | Assume low hundreds; revisit before Phase 4 |
 | ~~Q6~~ | ~~Readable-and-answerable, or read-only, in CRM?~~ | — | **Answered: read-only.** See D7. |
 | ~~Q7~~ | ~~Hosts beyond the three?~~ | — | **Answered: five.** `/crm/inbox` and `/crm/activities` are both hosts; both read-only. See D7. |
-| Q8 | Does `/crm/inbox` keep its message-shaped list, or become thread-shaped? | It is the one existing host with a working reader, and 1027 lines of it | Thread-shaped. A message list beside a thread reader is two answers to "what am I looking at" |
+| ~~Q8~~ | ~~Message-shaped or thread-shaped list in `/crm/inbox`?~~ | — | **Answered: thread-shaped.** |
+| Q10 | Is a "client" a Service Desk account, a CRM company, or both? | Decides what the filter resolves against — see D8 | Desk account first (it has real domains), CRM company where the workspace defines a domain attribute |
 | Q9 | Does the CRM activity feed open a conversation inline, or navigate to `/crm/inbox`? | Decides whether the module is embedded in three CRM surfaces or one | Navigate. Fewer embeddings until the contract has been proven twice |
 
 ---
@@ -244,22 +293,30 @@ is proven twice before the read-only half is started.
    entries rather than special cases (Q8).
 10. CRM record gains a conversations tab. Activity feed links through to
     `/crm/inbox` rather than embedding (Q9).
+11. **Client filter (D8)**, spanning both sources — resolving against
+    `service_desk_account_domains`, falling back to a literal domain, and scoped per
+    D8.1 so it narrows what the caller can already see rather than widening it.
 
 ### Phase 4 — The context panel
 
-11. Requester → CRM record → open deals, other open conversations, past tickets.
+12. Requester → CRM record → open deals, other open conversations, past tickets.
     This is the reason to answer mail here rather than in Gmail, and the piece Gmail
     structurally cannot show. A slot in the module, filled per host — the CRM record
     view already knows the company, so it fills it differently.
-12. Actions from a conversation: create sprint task, link/create CRM record.
+13. Actions from a conversation: create sprint task, link/create CRM record.
 
 ### Phase 5 — Volume tooling
 
-13. Search and filters (assignee, mailbox, unread, breaching).
-14. Bulk actions: assign, close, apply template.
-15. Keyboard shortcuts for the reading pane.
+14. Search and filters (assignee, mailbox, unread, breaching).
+15. Bulk actions: assign, close, apply template.
+16. Keyboard shortcuts for the reading pane.
 
 Gate on Q5. Below a few hundred a day it is polish; above it, it is the product.
+
+The **client filter (D8)** is deliberately not here. It is not volume tooling — it is
+the cross-source question the module exists to answer, so it ships with the thread
+adapter in Phase 3 where it first has both sources to span. Within Phase 1–2 it would
+only ever filter desk conversations, which the queue's existing filters already do.
 
 ### Phase 6 — Then reconsider personal mailboxes
 
@@ -281,6 +338,8 @@ history, deletes, push) goes first.
 | Ticket vocabulary leaks and confuses | Q2. Detail pane, not list row. |
 | **The shared module is over-abstracted** | D7: contract designed for three hosts, only one adapter built in Phase 1. The Service Desk page in Phase 2 is the cheap test — if the module cannot replace a timeline that already works, fix the contract before CRM. |
 | **Capabilities drift between hosts** | D7: the server returns what the caller may do. No host decides its own buttons. |
+| **The client filter exposes colleagues' personal mail** | D8.1: scoped before applied. Desk conversations are shared; thread results are the caller's own accounts, or accounts a desk mailbox reads. The filter narrows, never widens. |
+| **A client has several domains and the filter finds one** | D8: resolve against `service_desk_account_domains`, which already maps many domains — and whole addresses — to one account. |
 | **Replacing a working 653-line ticket page regresses it** | Phase 2 item 7 is a replacement, not a rewrite: the existing page keeps its layout and swaps its timeline. If parity is not reached, the module is not ready for CRM either. |
 
 ## 7. Non-goals
