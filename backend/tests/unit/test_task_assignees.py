@@ -533,3 +533,55 @@ async def test_response_lists_primary_first(db_session: AsyncSession) -> None:
         str(b.id),
         str(c.id),
     }
+
+
+@pytest.mark.asyncio
+async def test_handing_a_task_from_one_person_to_another(
+    db_session: AsyncSession,
+) -> None:
+    """The plain reassignment the team does all day.
+
+    `uq_task_assignees_one_primary` used to exist only in
+    migrate_task_assignees.sql, so production enforced it and this suite — which
+    builds its schema from the models — did not. Every path that set a new
+    primary wrote it in the same flush that cleared the old one, and SQLAlchemy
+    emits saves before deletes, so Postgres saw two primaries on one task and
+    refused. Reassigning any already-assigned task returned a 500.
+    """
+    owner = await _make_developer(db_session, "ta-hand-owner")
+    ws = await _make_workspace(db_session, "ta-hand", owner)
+    a = await _make_developer(db_session, "ta-hand-a", ws)
+    b = await _make_developer(db_session, "ta-hand-b", ws)
+    task = await _make_task(db_session, ws, "hand")
+    service = SprintTaskService(db_session)
+
+    await service.set_assignees(str(task.id), [str(a.id)], primary_id=str(a.id))
+    updated = await service.set_assignees(str(task.id), [str(b.id)], primary_id=str(b.id))
+
+    assert updated is not None
+    assert str(updated.assignee_id) == str(b.id)
+    rows = await _rows(db_session, str(task.id))
+    assert [str(r.developer_id) for r in rows] == [str(b.id)]
+    assert [r.is_primary for r in rows] == [True]
+
+
+@pytest.mark.asyncio
+async def test_promoting_a_collaborator_over_the_current_primary(
+    db_session: AsyncSession,
+) -> None:
+    """The other shape of the same fault: nobody leaves, the badge moves."""
+    owner = await _make_developer(db_session, "ta-promo-owner")
+    ws = await _make_workspace(db_session, "ta-promo", owner)
+    a = await _make_developer(db_session, "ta-promo-a", ws)
+    b = await _make_developer(db_session, "ta-promo-b", ws)
+    task = await _make_task(db_session, ws, "promo")
+    service = SprintTaskService(db_session)
+
+    await service.set_assignees(
+        str(task.id), [str(a.id), str(b.id)], primary_id=str(a.id)
+    )
+    await service.add_assignee(str(task.id), str(b.id), make_primary=True)
+
+    rows = await _rows(db_session, str(task.id))
+    assert {str(r.developer_id) for r in rows} == {str(a.id), str(b.id)}
+    assert [str(r.developer_id) for r in rows if r.is_primary] == [str(b.id)]

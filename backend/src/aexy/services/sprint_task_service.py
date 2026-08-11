@@ -1623,6 +1623,13 @@ class SprintTaskService:
             if row.is_primary and str(row.developer_id) != target:
                 await self.db.delete(row)
 
+        # Flush the departing primary before writing the new one. A single
+        # flush emits saves before deletes, so both rows would hold
+        # `is_primary` at once and `uq_task_assignees_one_primary` — a partial
+        # unique index, which Postgres checks per statement and cannot defer —
+        # rejects the reassignment.
+        await self.db.flush()
+
         if target is not None:
             existing = next(
                 (r for r in rows if str(r.developer_id) == target), None
@@ -1685,6 +1692,12 @@ class SprintTaskService:
         for dev_id, row in by_dev.items():
             if dev_id not in wanted:
                 await self.db.delete(row)
+            elif row.is_primary and str(primary_id or "") != dev_id:
+                # Demote before anyone is promoted, for the same reason as
+                # `_sync_primary_assignee`: two primaries in one flush is a
+                # state the partial unique index refuses to hold, even briefly.
+                row.is_primary = False
+        await self.db.flush()
 
         for dev_id in wanted:
             is_primary = primary_id is not None and str(primary_id) == dev_id
@@ -1771,7 +1784,11 @@ class SprintTaskService:
 
         if make_primary:
             for row in rows:
-                row.is_primary = False
+                if str(row.developer_id) != str(developer_id):
+                    row.is_primary = False
+            # Demoted and flushed before the promotion, so the task never holds
+            # two primaries in one statement.
+            await self.db.flush()
             existing.is_primary = True
             await self.db.flush()
             await self._mirror_primary_to_task(task)
