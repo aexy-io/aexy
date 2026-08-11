@@ -5,6 +5,121 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.0] - 2026-08-12
+
+Connecting your own mailbox stops being an admin favour, the setup questions
+only reach the person they belong to, and an MCP connector can no longer step
+outside the workspace it was granted.
+
+### Fixed: an MCP grant could reach another workspace
+
+A connector consented to one workspace could name a different one in a tool
+call's `path_params` and be served from it. The executor filled `workspace_id`
+from the grant with `setdefault`, which only fills a value that is *absent* — so
+a caller who supplied one won, and the comment above the line claimed the
+opposite.
+
+The developer's own membership still gated every call, so this was never
+cross-tenant: a connector could only reach workspaces that person already
+belongs to. But per-workspace consent is the guarantee the whole flow is built
+on. The consent screen asks you to pick one, Connected Apps shows one, and the
+docs say the grant is scoped to it. All three were overstating the case.
+
+The grant now overwrites whatever the caller sent, and the regression test
+inspects the URL the executor actually issues rather than whatever the
+downstream endpoint happened to return — so it fails on the routing, not on a
+symptom.
+
+Two smaller transport fixes alongside it: `initialize` replied to
+notifications, and an empty JSON-RPC batch answered 202 rather than reporting a
+malformed request.
+
+### Added: Settings → Connected Accounts
+
+Connecting your own Google account was already a *member* action on the server —
+`GET /integrations/google/connect` requires only workspace membership, and says
+why: requiring admin meant a new joiner could not put their own inbox on the
+Service Desk unless an admin sat at Google's sign-in screen as them.
+
+The UI never offered it anywhere a member could reach. Every surface with a
+connect button sat behind a workspace-admin gate — Integrations behind
+`can_manage_integrations`, the Service Desk pages behind `can_manage_tickets`,
+and the account list only inside CRM settings, which needs the CRM app. A
+support agent or a sales analyst with none of those had exactly one chance to
+connect Gmail, during onboarding, and no way back afterwards.
+
+So this page is ungated, like Appearance, Notifications, Identity, API Tokens
+and Connected Apps: it manages something that is yours. Sync switches itself on
+when you connect, so nothing further is needed from an admin. The asymmetry the
+API already encoded is preserved — connecting affects only you; removing
+somebody else's account still requires admin.
+
+### Changed: you no longer see every mailbox in the workspace
+
+The account list was readable by every member, which was reasonable while
+connecting was an admin act and the list held one or two shared addresses. Once
+any member can attach their own inbox, the same list becomes a roster of who has
+linked their personal mail.
+
+Owners and admins see everything. A department head sees their own plus their
+departments' — read from both places headship is recorded, because
+`Department.head_id` and a `role_in_department` of `head` do not always agree and
+reading one silently narrows the answer. Everyone else sees their own.
+
+Two things stay visible on purpose. **Service Desk mailboxes** are team
+addresses rather than personal ones, so they remain visible to whoever can
+manage tickets — the mailbox form has to be able to offer them, and hiding them
+would break the queue rather than protect anyone. **Accounts with no owner**
+predate `connected_by_id` and belong to the workspace; hiding them would empty
+the list for single-account workspaces that have worked for months, which reads
+as data loss rather than as a privacy fix.
+
+### Fixed: a connected mailbox that never synced
+
+Two defects sat between connecting an account and mail arriving, and neither
+announced itself. Both only bite a workspace with more than one Google account —
+the shape multi-account support introduced — which is why they went unnoticed.
+
+**The sync interval defaulted to 0.** The scheduler only picks up integrations
+whose interval is above zero, so a freshly connected account had
+`gmail_sync_enabled = true`, reported itself connected, and then did nothing.
+Nothing errored; the mail simply never came. The only cure lived on an
+admin-gated settings page most of the affected people cannot open — so the
+person who most needed it was the least able to reach it.
+
+0 stays meaningful: the settings UI offers it as "Off", and reconnecting does
+not touch the column, so anyone who chose that keeps it. New accounts now start
+at 15 minutes, which matches a preset in that UI rather than being a number
+nobody picked. `migrate_google_autosync_default.sql` gives the same start to
+accounts already stranded, identified by having never synced at all — an
+account that synced and was later set to 0 was somebody's decision and is left
+alone.
+
+**The "already syncing?" guard ignored the account.** It matched on workspace
+and job type, so one mailbox's in-flight sync suppressed every other mailbox in
+the workspace: the second person to connect could wait indefinitely. The same
+query used `scalar_one_or_none()`, which *raises* when an account genuinely has
+two live jobs — swallowed by the surrounding `except` and logged as a failure to
+trigger.
+
+The guard is now per-account, and extracted so it can be tested directly. A test
+that restated the query would have passed against the bug just as happily as
+against the fix.
+
+### Changed: onboarding's use-case step is for whoever sets the workspace up
+
+The "What will you use Aexy for?" step configures the *workspace* — which apps
+are on, which departments and teams get seeded — and the endpoint behind it has
+always been owner-only. An invited member answering it got a 403 that the
+completion step swallowed into a `console.error`: they filled in the form, saw
+no error, and nothing happened.
+
+It now runs for the person who owns the workspace or is about to create one, and
+members go straight to connecting their accounts. The ownership check waits for
+the workspace list to load rather than treating "not loaded yet" as "not the
+owner" — that inversion would have skipped owners past their own setup on a slow
+query, which is the same bug wearing the opposite mask.
+
 ## [0.17.0] - 2026-08-12
 
 ChatGPT can now use Aexy, and you can see and cut off everything that connects
