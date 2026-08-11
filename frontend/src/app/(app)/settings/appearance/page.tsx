@@ -4,6 +4,9 @@ import { LayoutGrid, List, Moon, Sun, Monitor } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { useSidebarLayout } from "@/hooks/useSidebarLayout";
+import { useAppAccess } from "@/hooks/useAppAccess";
+import { useAuth } from "@/hooks/useAuth";
+import { useWorkspace } from "@/hooks/useWorkspace";
 import { SidebarLayoutType } from "@/config/sidebarLayouts";
 import { useTheme, ThemeMode } from "@/hooks/useTheme";
 import { useDashboardPreferences } from "@/hooks/useDashboardPreferences";
@@ -19,15 +22,16 @@ import {
 
 // The sidebar views on offer. "custom" is absent on purpose: it means "I
 // rearranged my dashboard widgets", which says nothing about navigation.
-const SIDEBAR_VIEW_OPTIONS = [
-  "developer",
-  "manager",
-  "product",
-  "hr",
-  "support",
-  "sales",
-  "admin",
-];
+//
+// "admin" is absent for everyone else: it is the one view that turns *off*
+// curation rather than changing it (see useSidebarPersona.filterByPersona,
+// which returns the layout unfiltered), so offering it to a support or ops
+// person invited them to a navigation tree named after a role they do not
+// hold. App access still gated every destination, so this was misleading
+// rather than dangerous — but being shown "Admin" and picking it is a
+// reasonable thing to read as "I am allowed to administer".
+const SIDEBAR_VIEW_OPTIONS = ["developer", "manager", "product", "hr", "support", "sales"];
+const ADMIN_ONLY_VIEW = "admin";
 
 const THEME_OPTIONS: { id: ThemeMode; icon: React.ReactNode }[] = [
   { id: "dark", icon: <Moon className="h-5 w-5" /> },
@@ -97,6 +101,13 @@ export default function AppearanceSettingsPage() {
   const currentPreset: PresetType = (preferences?.preset_type as PresetType) || "developer";
   const { chosenPersona, suggestedPersona, isPersonaDerived, setPersona } =
     useSidebarPersona();
+  const { user } = useAuth();
+  const { currentWorkspace } = useWorkspace();
+  const { isAdmin } = useAppAccess(currentWorkspace?.id ?? null, user?.id ?? null);
+
+  const sidebarViewOptions = isAdmin
+    ? [...SIDEBAR_VIEW_OPTIONS, ADMIN_ONLY_VIEW]
+    : SIDEBAR_VIEW_OPTIONS;
 
   return (
     <SettingsPage title={t("title")} description={t("description")}>
@@ -132,6 +143,7 @@ export default function AppearanceSettingsPage() {
           currentPreset={currentPreset}
           onSelectPreset={(preset: PresetType) => setPreset(preset)}
           isLoading={isUpdating}
+          excludePresets={isAdmin ? undefined : ["admin"]}
         />
       </SettingsSection>
 
@@ -142,12 +154,18 @@ export default function AppearanceSettingsPage() {
       <SettingsSection
         title={t("sidebarView.title")}
         description={t("sidebarView.description")}
+        // Three states, not two. Someone following a department that implies
+        // nothing is following, not choosing — and was being told "you've
+        // chosen this view yourself" while "Follow my department" sat selected
+        // right above it.
         footer={
-          isPersonaDerived && suggestedPersona
-            ? t("sidebarView.derivedHint", {
-                view: PERSONA_LABELS[suggestedPersona] || suggestedPersona,
-              })
-            : t("sidebarView.chosenHint")
+          chosenPersona
+            ? t("sidebarView.chosenHint")
+            : isPersonaDerived && suggestedPersona
+              ? t("sidebarView.derivedHint", {
+                  view: PERSONA_LABELS[suggestedPersona] || suggestedPersona,
+                })
+              : t("sidebarView.followingUnsetHint")
         }
       >
         <div className="flex flex-wrap gap-2">
@@ -165,7 +183,7 @@ export default function AppearanceSettingsPage() {
                 })
               : t("sidebarView.followDepartmentUnset")}
           </button>
-          {SIDEBAR_VIEW_OPTIONS.map((option) => (
+          {sidebarViewOptions.map((option) => (
             <button
               key={option}
               onClick={() => setPersona(option)}

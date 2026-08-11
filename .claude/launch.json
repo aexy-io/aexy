@@ -7,6 +7,27 @@
       "runtimeArgs": ["run", "dev"],
       "cwd": "frontend",
       "port": 3000
+    },
+    {
+      "name": "mcp-frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "-p", "3003"],
+      "cwd": "frontend",
+      "port": 3003
+    },
+    {
+      "name": "adminfix-frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "/private/tmp/claude-501/-Users-bhanu-Documents-personal-aexy/c914effe-8df9-43d9-8eff-a8d20b58fe81/scratchpad/adminfix/frontend",
+        "run",
+        "dev",
+        "--",
+        "-p",
+        "3003"
+      ],
+      "port": 3003
     }
   ]
 }

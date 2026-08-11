@@ -8,6 +8,9 @@ import { WidgetToggleList } from "./WidgetToggleList";
 import { WidgetReorderList } from "./WidgetReorderList";
 import { useDashboardPreferences } from "@/hooks/useDashboardPreferences";
 import { useDashboardStore } from "@/stores/dashboardStore";
+import { useAppAccess } from "@/hooks/useAppAccess";
+import { useAuth } from "@/hooks/useAuth";
+import { useWorkspace } from "@/hooks/useWorkspace";
 import { PresetType } from "@/config/dashboardPresets";
 
 interface DashboardCustomizeModalProps {
@@ -67,6 +70,10 @@ export function DashboardCustomizeModal({
   const handleReset = useCallback(async () => {
     await resetToPreset("developer");
   }, [resetToPreset]);
+
+  const { user } = useAuth();
+  const { currentWorkspace } = useWorkspace();
+  const { isAdmin } = useAppAccess(currentWorkspace?.id ?? null, user?.id ?? null);
 
   const currentPreset = (preferences?.preset_type as PresetType) || "developer";
   const visibleWidgets = preferences?.visible_widgets || [];
@@ -144,6 +151,7 @@ export function DashboardCustomizeModal({
                   currentPreset={currentPreset}
                   onSelectPreset={handleSelectPreset}
                   isLoading={isUpdating}
+                  excludePresets={isAdmin ? undefined : ["admin"]}
                 />
               </div>
             ) : activeTab === "widgets" ? (

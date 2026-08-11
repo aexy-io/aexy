@@ -47,12 +47,19 @@ export function useSidebarPersona() {
   const { preferences, isLoading } = useDashboardPreferences();
   const { user } = useAuth();
   const { currentWorkspace } = useWorkspace();
-  const { suggestedPersona, isLoading: accessLoading } = useAppAccess(
+  const { suggestedPersona, isAdmin, isLoading: accessLoading } = useAppAccess(
     currentWorkspace?.id ?? null,
     user?.id ?? null
   );
 
-  const chosenPersona = preferences?.sidebar_persona || null;
+  // The stored preference is not the same as an honoured one. "admin" is the
+  // view that switches curation off entirely, and until recently Settings →
+  // Appearance offered it to everybody — so people who are not admins can
+  // already have it saved, and the preferences endpoint takes any string. Hiding
+  // the button does nothing for either case; ignoring the value does.
+  const storedPersona = preferences?.sidebar_persona || null;
+  const chosenPersona =
+    storedPersona === "admin" && !isAdmin ? null : storedPersona;
   const persona = chosenPersona || suggestedPersona || DEFAULT_PERSONA;
   /** True when the view comes from the department rather than a personal choice. */
   const isPersonaDerived = !chosenPersona && !!suggestedPersona;

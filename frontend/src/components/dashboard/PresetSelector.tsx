@@ -19,6 +19,12 @@ interface PresetSelectorProps {
   currentPreset: PresetType;
   onSelectPreset: (preset: PresetType) => void;
   isLoading?: boolean;
+  /** Presets to withhold — e.g. "admin" from someone who is not one.
+   *
+   *  The preset someone is already on is never withheld, whatever this says:
+   *  hiding it would leave the list with nothing selected and no way back to
+   *  what they picked. */
+  excludePresets?: PresetType[];
 }
 
 const PRESET_ICONS: Record<string, React.ElementType> = {
@@ -36,10 +42,14 @@ export function PresetSelector({
   currentPreset,
   onSelectPreset,
   isLoading,
+  excludePresets,
 }: PresetSelectorProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
-  const presets = Object.values(DASHBOARD_PRESETS);
+  const presets = Object.values(DASHBOARD_PRESETS).filter(
+    (preset) =>
+      preset.id === currentPreset || !excludePresets?.includes(preset.id as PresetType)
+  );
   const filteredPresets = presets.filter(
     (preset) =>
       preset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
