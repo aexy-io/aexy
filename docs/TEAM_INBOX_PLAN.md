@@ -106,19 +106,38 @@ record view. That is a constraint on the data contract, not a later refactor, be
 getting it wrong is expensive in a specific way: keying the module on `Ticket` works
 in two hosts and is unbuildable in the third.
 
-**The three hosts today are genuinely different:**
+**There are five hosts, not three, and they split cleanly by whether they write.**
 
-| Host | Renders now | Conversation identity |
-|---|---|---|
-| Team inbox (`/inbox`) | Does not exist | Desk ticket, `gmail_sync` or webhook |
-| Service Desk ticket page | 653 lines, ticket + `TicketResponse` timeline | Always a ticket; may have no Gmail thread (webhook mailbox) |
-| CRM record → Activity | `CRMActivity` summaries. **No email reading surface at all.** | A Gmail thread linked via `synced_email_record_links`; **often no ticket** |
+| Host | Renders now | Source | Writes? |
+|---|---|---|---|
+| Team inbox (`/inbox`) | Does not exist | ticket | **Yes** — reply, note, assign, status |
+| Service Desk ticket page | 653 lines, ticket + `TicketResponse` timeline | ticket | **Yes** |
+| CRM inbox (`/crm/inbox`) | 1027 lines. Message list + body reader, link-to-record, hide. **Message-shaped, not thread-shaped.** | thread | Read-only |
+| CRM record → Activity | `CRMActivity` summaries, no reader | thread | Read-only |
+| CRM activities feed (`/crm/activities`) | Workspace feed with an `email` type filter | thread | Read-only |
 
-So neither `ticket_id` nor `gmail_thread_id` alone identifies a conversation. A
-webhook-sourced desk conversation has no Gmail thread; a CRM-linked thread has no
-ticket. The module takes a **discriminated source** —
-`{kind: "ticket", id}` or `{kind: "thread", integration_id, gmail_thread_id}` — and
-resolves both to one shape: participants, messages, internal notes, attachments.
+Neither `ticket_id` nor `gmail_thread_id` alone identifies a conversation: a
+webhook-sourced desk conversation has no Gmail thread, a CRM-linked thread has no
+ticket. The module takes a **discriminated source** — `{kind: "ticket", id}` or
+`{kind: "thread", integration_id, gmail_thread_id}` — and resolves both to one shape:
+participants, messages, internal notes, attachments.
+
+**The write split falls entirely along the source.** Every writing host is
+ticket-sourced; every thread-sourced host is read-only (Q6). That is not a
+coincidence to design around, it is the shape of the domain: a shared desk address
+has an agreed owner and an agreed voice, and a thread in somebody's own mailbox has
+neither.
+
+It also disposes of a problem that would otherwise have needed solving. Replying to
+a CRM-linked thread means replying *from the mailbox that received it* — an
+individual's personal account — so the workspace would be sending mail as a person,
+from a page that person may not be looking at. Read-only in CRM means the question
+never arises. If it is ever wanted, it should be asked for deliberately.
+
+**Read-only is not featureless.** `/crm/inbox` already links a message to a record
+and hides it. Those act on the *relationship* and on the *sync*, not on the
+conversation, and both survive. So `capabilities` carries two families:
+`reply | note | assign | status` (desk) and `link | hide` (CRM).
 
 **Capabilities come from the server, never from the host page.** The response says
 what *this caller* may do on *this conversation* — reply, note, assign, change
@@ -130,9 +149,13 @@ who may answer a customer, which is a permissions bug wearing a UI costume.
 implemented in Phase 1. Writing three adapters before one host exists is how the
 abstraction ends up shaped like nothing in particular.
 
-*Reverses if:* the CRM host turns out to want a read-only transcript rather than a
-working conversation. Then it is a much smaller component and the contract can
-collapse back to the desk's shape.
+*Settled:* CRM is read-only (Q6), so the contract does **not** collapse — it
+simplifies in a better way. The module keeps one read shape across five hosts, and
+only the ticket source carries a write path. The thread adapter needs no send code
+at all.
+
+*Reverses if:* somebody asks to reply from CRM. That is not a UI change — it is the
+"as whom?" question above, and it needs answering before any button appears.
 
 ### D4 — Collision detection copies the collaboration pattern.
 
@@ -174,8 +197,10 @@ Answerable while Phase 1 is built; none of them block starting.
 | Q3 | Is "done" the same as the desk's closed state? | Two different notions of finished would split reporting | Same state. An inbox "Done" writes the desk's closed `pending_with` |
 | Q4 | Do internal notes need @mentions? | Notes exist; mentions are how teams actually use them | Ship without, add if asked — chat already has a mention pattern to copy |
 | Q5 | Volume per mailbox per day? | Under ~50/day, pagination and search barely matter; over ~500 they are the whole design | Assume low hundreds; revisit before Phase 4 |
-| Q6 | In CRM, is a conversation readable-and-answerable, or a read-only transcript? | Decides whether D7's contract stays full or collapses to the desk's shape | Readable and answerable, gated by `capabilities` — a CRM viewer without desk permission gets no reply box |
-| Q7 | Are there hosts beyond these three — deals, sprint tasks, the agent surface? | A fourth host found late is what turns a contract into a rewrite | Design for three, name a fourth before Phase 2 if one exists |
+| ~~Q6~~ | ~~Readable-and-answerable, or read-only, in CRM?~~ | — | **Answered: read-only.** See D7. |
+| ~~Q7~~ | ~~Hosts beyond the three?~~ | — | **Answered: five.** `/crm/inbox` and `/crm/activities` are both hosts; both read-only. See D7. |
+| Q8 | Does `/crm/inbox` keep its message-shaped list, or become thread-shaped? | It is the one existing host with a working reader, and 1027 lines of it | Thread-shaped. A message list beside a thread reader is two answers to "what am I looking at" |
+| Q9 | Does the CRM activity feed open a conversation inline, or navigate to `/crm/inbox`? | Decides whether the module is embedded in three CRM surfaces or one | Navigate. Fewer embeddings until the contract has been proven twice |
 
 ---
 
@@ -200,37 +225,47 @@ only one of the three with no existing surface to preserve.
 6. Presence (D4): who is viewing, who is replying. `ConnectionManager` pattern,
    heartbeat + TTL so a closed laptop clears.
 
-### Phase 2 — The other two hosts
+### Phase 2 — The second writing host
 
 7. Service Desk ticket page renders `<Conversation>` in place of its own timeline.
-   This is the test of the contract: if the module cannot replace 653 lines that
-   already work, the contract is wrong and it is cheaper to learn here than in CRM.
-8. CRM record gains a conversations tab using the **thread** source — the adapter
-   that has no ticket, and therefore the one that proves D7 was necessary.
-9. Capabilities differ per host by permission, not by page: a CRM viewer who is not a
-   desk agent sees the conversation and no reply box, because the server said so.
+   The test of the contract: if the module cannot replace 653 lines that already
+   work, the contract is wrong, and it is far cheaper to learn that here than in CRM.
 
-### Phase 3 — The context panel
+Both Phase 1 hosts are ticket-sourced, so the thread adapter is still unwritten at
+the end of this phase. That is deliberate — the write path is the harder half and it
+is proven twice before the read-only half is started.
 
-10. Requester → CRM record → open deals, other open conversations, past tickets.
+### Phase 3 — The thread adapter and the CRM hosts
+
+8. Thread source: resolve `synced_emails` by `gmail_thread_id` into the same shape.
+   Read-only, no send path (D7).
+9. `/crm/inbox` swaps its message list for a thread list and its body reader for
+   `<Conversation>`. Keeps link-to-record and hide, which are `capabilities`
+   entries rather than special cases (Q8).
+10. CRM record gains a conversations tab. Activity feed links through to
+    `/crm/inbox` rather than embedding (Q9).
+
+### Phase 4 — The context panel
+
+11. Requester → CRM record → open deals, other open conversations, past tickets.
     This is the reason to answer mail here rather than in Gmail, and the piece Gmail
     structurally cannot show. A slot in the module, filled per host — the CRM record
     view already knows the company, so it fills it differently.
-11. Actions from a conversation: create sprint task, link/create CRM record.
+12. Actions from a conversation: create sprint task, link/create CRM record.
 
-### Phase 4 — Volume tooling
+### Phase 5 — Volume tooling
 
-12. Search and filters (assignee, mailbox, unread, breaching).
-13. Bulk actions: assign, close, apply template.
-14. Keyboard shortcuts for the reading pane.
+13. Search and filters (assignee, mailbox, unread, breaching).
+14. Bulk actions: assign, close, apply template.
+15. Keyboard shortcuts for the reading pane.
 
 Gate on Q5. Below a few hundred a day it is polish; above it, it is the product.
 
-### Phase 5 — Then reconsider personal mailboxes
+### Phase 6 — Then reconsider personal mailboxes
 
-Only after the module has three hosts. If people ask for their own mail in here, that
-is the `UNIFIED_EMAIL_PLAN` track and the sync work (`SENT`, label history, deletes,
-push) goes first.
+Only after the module has hosts on both sources. If people ask for their own mail in
+here, that is the `UNIFIED_EMAIL_PLAN` track and the sync work (`SENT`, label
+history, deletes, push) goes first.
 
 ---
 
@@ -239,7 +274,7 @@ push) goes first.
 | Risk | Handling |
 |---|---|
 | Two views over one dataset diverge | D3: one state model. An inbox action writes the same fields the queue reads. |
-| Inbox becomes a worse Gmail | Phase 3 before Phase 4. If it does not show what Gmail cannot, it has failed regardless of polish. |
+| Inbox becomes a worse Gmail | Phase 4 before Phase 5. If it does not show what Gmail cannot, it has failed regardless of polish. |
 | Reporting splits | D3. Same ticket, same states, same analytics. |
 | Collision on a shared mailbox | Phase 1 item 6, not deferred. |
 | Webhook mailbox replies do not thread | D5: surface the channel rather than hide it. |
