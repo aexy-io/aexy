@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from uuid import uuid4
 import re
 
-from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, event, func, update
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, event, func, text, update
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -889,6 +889,19 @@ class TaskAssignee(Base):
     __table_args__ = (
         UniqueConstraint("task_id", "developer_id", name="uq_task_assignee"),
         Index("ix_task_assignees_developer", "developer_id"),
+        # At most one primary per task. This lived only in
+        # migrate_task_assignees.sql, so production had it and the tests — which
+        # build their schema from these models — did not. Reassignment wrote the
+        # new primary before clearing the old one and violated it on every
+        # Postgres deployment while the suite stayed green. Declared for both
+        # dialects so the tests run against the constraint production enforces.
+        Index(
+            "uq_task_assignees_one_primary",
+            "task_id",
+            unique=True,
+            postgresql_where=text("is_primary"),
+            sqlite_where=text("is_primary"),
+        ),
     )
 
 
