@@ -14,6 +14,36 @@ from aexy.core.database import async_session_maker
 logger = logging.getLogger(__name__)
 
 
+async def has_live_sync_job(db, integration, job_type: str) -> bool:
+    """Is a sync already pending or running for *this account*?
+
+    Pulled out of `check_auto_sync_integrations` so it can be tested without a
+    Temporal worker — the guard is where the defect was, and a test that
+    restates the query rather than calling it would pass against the bug.
+
+    It used to match on workspace and job type alone, so one mailbox's in-flight
+    sync suppressed every other mailbox in the workspace: the second person to
+    connect could wait indefinitely. It also used `scalar_one_or_none()`, which
+    raises when an account genuinely has two live jobs — swallowed by the
+    caller's broad `except` and reported as a failure to trigger.
+    """
+    from sqlalchemy import and_, select
+
+    from aexy.models.google_integration import GoogleSyncJob
+
+    result = await db.execute(
+        select(GoogleSyncJob).where(
+            and_(
+                GoogleSyncJob.workspace_id == integration.workspace_id,
+                GoogleSyncJob.integration_id == integration.id,
+                GoogleSyncJob.job_type == job_type,
+                GoogleSyncJob.status.in_(["pending", "running"]),
+            )
+        )
+    )
+    return result.scalars().first() is not None
+
+
 @dataclass
 class SyncGmailInput:
     job_id: str
@@ -150,16 +180,7 @@ async def check_auto_sync_integrations(input: CheckAutoSyncInput) -> dict[str, A
                 if last_sync and now < last_sync + timedelta(minutes=interval):
                     continue
 
-                existing = await db.execute(
-                    select(GoogleSyncJob).where(
-                        and_(
-                            GoogleSyncJob.workspace_id == integration.workspace_id,
-                            GoogleSyncJob.job_type == "gmail",
-                            GoogleSyncJob.status.in_(["pending", "running"]),
-                        )
-                    )
-                )
-                if existing.scalar_one_or_none():
+                if await has_live_sync_job(db, integration, "gmail"):
                     continue
 
                 job = GoogleSyncJob(
@@ -201,16 +222,7 @@ async def check_auto_sync_integrations(input: CheckAutoSyncInput) -> dict[str, A
                 if last_sync and now < last_sync + timedelta(minutes=interval):
                     continue
 
-                existing = await db.execute(
-                    select(GoogleSyncJob).where(
-                        and_(
-                            GoogleSyncJob.workspace_id == integration.workspace_id,
-                            GoogleSyncJob.job_type == "calendar",
-                            GoogleSyncJob.status.in_(["pending", "running"]),
-                        )
-                    )
-                )
-                if existing.scalar_one_or_none():
+                if await has_live_sync_job(db, integration, "calendar"):
                     continue
 
                 job = GoogleSyncJob(
