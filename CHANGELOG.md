@@ -5,6 +5,78 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.1] - 2026-08-11
+
+Three fixes, all of them cases where the thing that was supposed to enforce a
+rule was not present where it mattered.
+
+### Fixed: reassigning a task
+
+Assigning work to somebody returned an error. Any task that already had an
+assignee failed to be reassigned; a task assigned for the first time worked,
+which is why it read as intermittent rather than total.
+
+`uq_task_assignees_one_primary` — at most one `is_primary` row per task — was
+declared only in `migrate_task_assignees.sql`, never in the model. The tests
+build their schema from the models, so production enforced the index and the
+suite did not, and the suite was green.
+
+What it was hiding: every path that moved the primary wrote the new one in the
+same flush that cleared the old one. SQLAlchemy emits saves before deletes
+within a flush, so the promote landed while the previous primary still held the
+flag, and a partial unique index is checked per statement and cannot be
+deferred. Three paths did this — the generic PATCH and `/assign`, the
+multi-assignee editor, and promoting a collaborator. Each now clears the
+outgoing primary and flushes before the incoming one is written.
+
+Declaring the index in `__table_args__`, for both dialects, is the part that
+keeps it from coming back: doing so turned three existing tests red before
+anything was fixed.
+
+### Fixed: the Operations use case seeds a department
+
+Picking "Operations & Support" during onboarding left the sidebar in Developer
+view, with Service Desk demoted to "available in Support, Sales view" — the app
+the pick exists to turn on, hidden from the person who chose it.
+
+`suggested_persona` reads the primary department's `default_persona`, and the
+pick seeded no department, so it resolved to null and the sidebar fell back to
+`developer`. The Business section that Service Desk lives in is gated on
+sales/support/admin, so it was filtered out of the navigation entirely.
+
+It seeded no department on the belief that no profile bundle granted Service
+Desk. Every bundle grants it, `business` included. Operations now seeds an
+Operations department on the business profile with the support persona, which is
+both the access its people need and the persona that shows it. It shares
+`function_key: "operations"` with the Service Desk industry templates on
+purpose: the key is unique per workspace, so whichever runs first creates it and
+the other finds it, and onboarding fills in the access profile the templates
+leave empty.
+
+A test now asserts the general rule rather than this one instance — a use case
+that turns on a persona-gated app has to seed a department carrying a persona
+that can see it.
+
+### Fixed: Service Desk settings say when something failed
+
+Adding a `gmail_sync` mailbox returned 422 and the screen showed nothing at all.
+
+Every mutation in `useServiceDesk` declared `onSuccess` and nothing else, the
+settings page drives them with bare `mutateAsync`, and there is no
+`MutationCache` handler — so a rejection became an unhandled promise rejection.
+No toast, no inline error, the input still holding its text as though nothing
+had been tried. That was every mutation on the page — accounts, vendors,
+products, mailboxes, stakeholders — not only the one that surfaced it.
+
+The message was wrong too. "Connect and enable Gmail sync for this mailbox
+address first" describes an action that cannot succeed in the case people
+actually hit: `google_integrations.workspace_id` is unique, so a workspace has
+exactly one Google account, and when that account is a different address no
+amount of connecting the requested one changes the answer. The four states are
+now told apart — nothing connected, connected as someone else, sync off,
+disconnected — and the second names the address in use and points at the webhook
+channel, which is the option that would actually work.
+
 ## [0.15.0] - 2026-08-06
 
 Three things the tech team asked for after using the ticketing and sprint
