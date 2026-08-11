@@ -584,3 +584,57 @@ class GoogleSyncHiddenMessage(Base):
             "integration_id", "gmail_id", name="uq_google_sync_hidden_message"
         ),
     )
+
+
+class GoogleSyncExclusionAudit(Base):
+    """Who did what to a mailbox's exclusions, and who looked.
+
+    Exclusions are visible to workspace admins by policy, which makes the list
+    itself revealing: a set of hidden domains reads as a set of things somebody
+    would rather their manager not see. The symmetry is that looking is recorded
+    too — ``exclusions_viewed`` is written when an admin opens somebody's list.
+
+    The owner is not notified of a view. That is deliberate: the record exists so
+    the access can be reviewed later, not so it can be watched live.
+
+    Separate from ``app_access_logs`` despite the shared vocabulary — that table
+    is documented as Enterprise-only, and an audit trail that some workspaces
+    silently do not keep is not an audit trail.
+    """
+
+    __tablename__ = "google_sync_exclusion_audit"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    workspace_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    # No FK: the entry has to outlive the integration it describes, or
+    # disconnecting Google would erase the record of what was excluded.
+    integration_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False), nullable=True, index=True
+    )
+    actor_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    # exclusion_rule_created | exclusion_rule_deleted | message_hidden |
+    # exclusions_viewed
+    action: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    # The rule's value, or the Gmail id. Null for a view.
+    target: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    extra_data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        index=True,
+    )

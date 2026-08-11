@@ -268,6 +268,7 @@ from aexy.models.google_integration import (
     SyncedCalendarEventRecordLink,
     EmailSyncCursor,
     GoogleSyncExclusionRule,
+    GoogleSyncExclusionAudit,
     GoogleSyncHiddenMessage,
 )
 from aexy.models.workflow import WorkflowDefinition
@@ -856,6 +857,7 @@ __all__ = [
     "SyncedCalendarEventRecordLink",
     "EmailSyncCursor",
     "GoogleSyncExclusionRule",
+    "GoogleSyncExclusionAudit",
     "GoogleSyncHiddenMessage",
     # Workflow
     "WorkflowDefinition",

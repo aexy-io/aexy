@@ -330,3 +330,26 @@ class HideMessageResponse(BaseModel):
     # re-parsing headers it no longer has — the row is gone by then.
     suggested_address: str | None = None
     suggested_domain: str | None = None
+
+
+class ExclusionAuditEntry(BaseModel):
+    """One recorded action on a workspace's exclusions — including a read."""
+
+    id: str
+    actor_id: str | None = None
+    action: str
+    target: str | None = None
+    extra_data: dict[str, Any] | None = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class WorkspaceExclusionsResponse(BaseModel):
+    """What an admin sees, and the trail of who saw it before them."""
+
+    rules: list[ExclusionRuleResponse]
+    # A count, not the messages: an admin is entitled to know that mail was
+    # hidden, not to read the mail somebody hid.
+    hidden_message_count: int
+    audit: list[ExclusionAuditEntry]

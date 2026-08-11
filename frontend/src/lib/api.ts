@@ -11547,6 +11547,22 @@ export interface GmailExclusionCreated {
   purged: number;
 }
 
+export interface GmailExclusionAuditEntry {
+  id: string;
+  actor_id: string | null;
+  action: string;
+  target: string | null;
+  extra_data: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface WorkspaceExclusions {
+  rules: GmailExclusionRule[];
+  /** A count, not the messages — an admin may know mail was hidden, not read it. */
+  hidden_message_count: number;
+  audit: GmailExclusionAuditEntry[];
+}
+
 export interface GmailHideResult {
   hidden: boolean;
   /** What a follow-up rule could be built from. The synced row is deleted by
@@ -11785,6 +11801,18 @@ export const googleIntegrationApi = {
 
     remove: async (workspaceId: string, ruleId: string): Promise<void> => {
       await api.delete(`/workspaces/${workspaceId}/integrations/google/exclusions/${ruleId}`);
+    },
+
+    /**
+     * Every exclusion in the workspace — admin only.
+     *
+     * Reading this writes an `exclusions_viewed` audit entry server-side. That
+     * is the point rather than a side effect: an exclusion list is revealing,
+     * so looking at one is recorded.
+     */
+    forWorkspace: async (workspaceId: string): Promise<WorkspaceExclusions> => {
+      const response = await api.get(`/workspaces/${workspaceId}/integrations/google/exclusions/admin`);
+      return response.data;
     },
 
     hide: async (workspaceId: string, gmailId: string): Promise<GmailHideResult> => {

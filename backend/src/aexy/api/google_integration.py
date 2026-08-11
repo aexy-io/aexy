@@ -17,6 +17,8 @@ from aexy.core.config import get_settings
 from aexy.core.database import get_db
 from aexy.models.developer import Developer, GoogleConnection
 from aexy.models.google_integration import (
+    GoogleSyncExclusionRule,
+    GoogleSyncHiddenMessage,
     EmailSyncCursor,
     GoogleIntegration,
     GoogleSyncJob,
@@ -27,11 +29,13 @@ from aexy.models.google_integration import (
 )
 from aexy.schemas.google_integration import (
     CalendarInfo,
+    ExclusionAuditEntry,
     ExclusionRuleCreate,
     ExclusionRuleCreatedResponse,
     ExclusionRuleResponse,
     HideMessageRequest,
     HideMessageResponse,
+    WorkspaceExclusionsResponse,
     CalendarListResponse,
     CalendarSyncRequest,
     CalendarSyncResponse,
@@ -60,6 +64,13 @@ from aexy.schemas.google_integration import (
 from aexy.services.oauth_token_service import (
     RefreshTokenRevokedError,
     ensure_valid_google_token,
+)
+from aexy.services.gmail_exclusion_governance import (
+    ACTION_MESSAGE_HIDDEN,
+    ACTION_RULE_CREATED,
+    ACTION_RULE_DELETED,
+    ACTION_VIEWED,
+    GmailExclusionGovernance,
 )
 from aexy.services.gmail_sync_exclusions import (
     ExclusionValueError,
@@ -1452,6 +1463,21 @@ async def create_exclusion(
         rule=rule,
         actor_id=str(current_user.id),
     )
+
+    # Recorded and announced, as the disclosure on the way in said it would be.
+    governance = GmailExclusionGovernance(db)
+    await governance.record(
+        workspace_id=workspace_id,
+        action=ACTION_RULE_CREATED,
+        actor_id=str(current_user.id),
+        integration_id=str(integration.id),
+        target=rule.value,
+        extra_data={"kind": rule.kind, "match_scope": rule.match_scope, "purged": purged},
+    )
+    await governance.notify_head(
+        workspace_id, str(current_user.id), ACTION_RULE_CREATED, rule.value
+    )
+
     return ExclusionRuleCreatedResponse(
         rule=ExclusionRuleResponse.model_validate(rule), purged=purged
     )
@@ -1470,13 +1496,32 @@ async def delete_exclusion(
     rule, so deleting one does not silently pull months of mail back in.
     """
     integration = await _integration_for_exclusions(workspace_id, current_user, db)
-    removed = await GmailSyncExclusionService(db).delete_rule(
-        str(integration.id), rule_id
+    service = GmailSyncExclusionService(db)
+
+    # Read the value before deleting it — the audit entry is about which
+    # exclusion went away, and afterwards there is nothing left to name it.
+    doomed = next(
+        (r for r in await service.list_rules(str(integration.id)) if str(r.id) == rule_id),
+        None,
     )
-    if not removed:
+    removed = await service.delete_rule(str(integration.id), rule_id)
+    if not removed or doomed is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Exclusion rule not found"
         )
+
+    governance = GmailExclusionGovernance(db)
+    await governance.record(
+        workspace_id=workspace_id,
+        action=ACTION_RULE_DELETED,
+        actor_id=str(current_user.id),
+        integration_id=str(integration.id),
+        target=doomed.value,
+        extra_data={"kind": doomed.kind},
+    )
+    await governance.notify_head(
+        workspace_id, str(current_user.id), ACTION_RULE_DELETED, doomed.value
+    )
 
 
 def _counterparty_of(email: SyncedEmail | None, own_address: str | None) -> str | None:
@@ -1536,8 +1581,71 @@ async def hide_synced_message(
         gmail_id=data.gmail_id,
         actor_id=str(current_user.id),
     )
+    # Recorded so it appears in the admin list, but no notification: a head
+    # buried in one-off hides stops reading the standing rules that matter.
+    await GmailExclusionGovernance(db).record(
+        workspace_id=workspace_id,
+        action=ACTION_MESSAGE_HIDDEN,
+        actor_id=str(current_user.id),
+        integration_id=str(integration.id),
+        target=data.gmail_id,
+    )
+
     return HideMessageResponse(
         hidden=True,
         suggested_address=sender,
         suggested_domain=sender.rsplit("@", 1)[1] if sender and "@" in sender else None,
+    )
+
+
+@router.get("/exclusions/admin", response_model=WorkspaceExclusionsResponse)
+async def list_workspace_exclusions(
+    workspace_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Every exclusion in the workspace, for an admin.
+
+    The policy side of this feature: exclusions are not private, so that nobody
+    can quietly suppress business correspondence. Reading this writes an
+    ``exclusions_viewed`` entry — a list of hidden domains is itself revealing,
+    so whoever reads it is recorded.
+
+    The people whose lists were read are *not* notified. Decided, not
+    overlooked: the record exists so the access can be reviewed later, not so it
+    can be watched live.
+    """
+    await verify_workspace_access(workspace_id, current_user, db, "admin")
+
+    rules = (
+        await db.execute(
+            select(GoogleSyncExclusionRule)
+            .where(GoogleSyncExclusionRule.workspace_id == workspace_id)
+            .order_by(GoogleSyncExclusionRule.created_at.desc())
+        )
+    ).scalars().all()
+
+    hidden_count = (
+        await db.execute(
+            select(func.count(GoogleSyncHiddenMessage.id)).where(
+                GoogleSyncHiddenMessage.workspace_id == workspace_id
+            )
+        )
+    ).scalar() or 0
+
+    governance = GmailExclusionGovernance(db)
+    await governance.record(
+        workspace_id=workspace_id,
+        action=ACTION_VIEWED,
+        actor_id=str(current_user.id),
+        extra_data={"rules": len(rules), "hidden_messages": hidden_count},
+    )
+
+    return WorkspaceExclusionsResponse(
+        rules=[ExclusionRuleResponse.model_validate(r) for r in rules],
+        hidden_message_count=hidden_count,
+        audit=[
+            ExclusionAuditEntry.model_validate(e)
+            for e in await governance.list_audit(workspace_id)
+        ],
     )
