@@ -1479,6 +1479,27 @@ async def delete_exclusion(
         )
 
 
+def _counterparty_of(email: SyncedEmail | None, own_address: str | None) -> str | None:
+    """The other party on a message, for the "hide them in future?" follow-up.
+
+    The sender, unless the sender is the connected account itself — hiding one
+    of your own sent messages would otherwise offer to exclude your own address,
+    and accepting that would exclude every thread you ever take part in. On sent
+    mail the useful rule is about whoever you sent it to.
+    """
+    if email is None:
+        return None
+    own = (own_address or "").strip().lower()
+    sender = address_of(email.from_email)
+    if sender and sender != own:
+        return sender
+    for recipient in [*(email.to_emails or []), *(email.cc_emails or [])]:
+        candidate = address_of(recipient)
+        if candidate and candidate != own:
+            return candidate
+    return None
+
+
 @router.post("/exclusions/hide", response_model=HideMessageResponse)
 async def hide_synced_message(
     workspace_id: str,
@@ -1507,7 +1528,7 @@ async def hide_synced_message(
         )
     ).scalar_one_or_none()
 
-    sender = address_of(existing.from_email) if existing is not None else None
+    sender = _counterparty_of(existing, integration.google_email)
 
     await GmailSyncExclusionService(db).hide_message(
         integration_id=str(integration.id),

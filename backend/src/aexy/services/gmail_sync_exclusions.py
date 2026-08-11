@@ -73,14 +73,26 @@ def normalise_value(kind: str, value: str) -> str:
     return cleaned
 
 
-def address_of(raw: str | None) -> str | None:
+def address_of(raw: str | dict | None) -> str | None:
     """The bare address out of whatever Gmail put in the header.
 
-    Headers arrive as ``Bob <bob@acme.com>`` as often as ``bob@acme.com``, and a
-    rule that only matched the second form would look like it was working while
-    letting most mail through.
+    Two shapes, because the columns hold two. ``from_email`` is a plain string;
+    ``to_emails`` and ``cc_emails`` are lists of ``{"name", "email"}`` dicts,
+    built by ``_parse_email_list``. Handling only the string form raised
+    ``AttributeError`` on every real message that had a recipient — which, once
+    any rule existed, was every message.
+
+    Headers also arrive as ``Bob <bob@acme.com>`` as often as bare, and a rule
+    that only matched the bare form would look like it was working while letting
+    most mail through.
     """
     if not raw:
+        return None
+    if isinstance(raw, dict):
+        raw = raw.get("email") or ""
+        if not raw:
+            return None
+    if not isinstance(raw, str):
         return None
     candidate = raw.strip().lower()
     if "<" in candidate and ">" in candidate:
@@ -97,8 +109,8 @@ def _domain_of(address: str | None) -> str | None:
 
 def participants(
     from_email: str | None,
-    to_emails: list[str] | None,
-    cc_emails: list[str] | None,
+    to_emails: list[dict] | list[str] | None,
+    cc_emails: list[dict] | list[str] | None,
 ) -> set[str]:
     """Every address on a message, normalised.
 
@@ -118,8 +130,8 @@ def participants(
 def rule_matches(
     rule: GoogleSyncExclusionRule,
     from_email: str | None,
-    to_emails: list[str] | None,
-    cc_emails: list[str] | None,
+    to_emails: list[dict] | list[str] | None,
+    cc_emails: list[dict] | list[str] | None,
 ) -> bool:
     """Whether this rule covers this message."""
     if rule.match_scope == "sender":
@@ -139,8 +151,8 @@ def rule_matches(
 def matching_rule(
     rules: list[GoogleSyncExclusionRule],
     from_email: str | None,
-    to_emails: list[str] | None,
-    cc_emails: list[str] | None,
+    to_emails: list[dict] | list[str] | None,
+    cc_emails: list[dict] | list[str] | None,
 ) -> GoogleSyncExclusionRule | None:
     """The first rule covering this message, or None."""
     for rule in rules:

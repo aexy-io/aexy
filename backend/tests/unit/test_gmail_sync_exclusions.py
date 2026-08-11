@@ -37,6 +37,11 @@ def _uniq(tag: str) -> str:
     return f"{tag}-{uuid4().hex[:8]}"
 
 
+def _rcpt(address: str) -> dict:
+    """A recipient in the shape the column actually holds."""
+    return {"name": None, "email": address}
+
+
 async def _integration(db: AsyncSession) -> GoogleIntegration:
     owner = Developer(name="Owner", email=f"{_uniq('owner')}@example.test")
     db.add(owner)
@@ -75,14 +80,17 @@ async def _synced(
     to_emails: list[str] | None = None,
     cc_emails: list[str] | None = None,
 ) -> SyncedEmail:
+    """`to_emails`/`cc_emails` are stored as {"name", "email"} dicts, not bare
+    strings — `_parse_email_list` builds them. Seeding strings is what let a
+    crash on every real message pass this suite."""
     email = SyncedEmail(
         id=str(uuid4()),
         workspace_id=integration.workspace_id,
         integration_id=integration.id,
         gmail_id=gmail_id,
         from_email=from_email,
-        to_emails=to_emails,
-        cc_emails=cc_emails,
+        to_emails=[{"name": None, "email": a} for a in (to_emails or [])],
+        cc_emails=[{"name": None, "email": a} for a in (cc_emails or [])],
         subject="hello",
     )
     db.add(email)
@@ -131,8 +139,20 @@ def test_display_names_are_unwrapped():
 
 
 def test_participants_include_recipients():
-    found = participants("a@x.test", ["b@y.test"], ["c@z.test"])
+    """Recipients arrive as {"name", "email"} dicts, which is what the column
+    holds. Reading them as bare strings raised AttributeError on every real
+    message that had a recipient — so once any rule existed, every message."""
+    found = participants("a@x.test", [_rcpt("b@y.test")], [_rcpt("c@z.test")])
     assert found == {"a@x.test", "b@y.test", "c@z.test"}
+
+
+def test_recipients_are_read_in_either_shape():
+    """Bare strings still work, so a hand-written or older row cannot crash a
+    sync run."""
+    assert participants(None, ["b@y.test"], None) == {"b@y.test"}
+    assert participants(None, [_rcpt("b@y.test")], None) == {"b@y.test"}
+    assert participants(None, [{"name": "No Address"}], None) == set()
+    assert participants(None, [None], None) == set()
 
 
 # ── matching ─────────────────────────────────────────────────────────────
@@ -152,8 +172,8 @@ async def test_a_domain_rule_also_hides_your_own_replies(db_session: AsyncSessio
         str(integration.id), str(integration.workspace_id), "domain", "acme.com"
     )
 
-    inbound = matching_rule([rule], "bob@acme.com", ["me@example.test"], None)
-    outbound = matching_rule([rule], "me@example.test", ["bob@acme.com"], None)
+    inbound = matching_rule([rule], "bob@acme.com", [_rcpt("me@example.test")], None)
+    outbound = matching_rule([rule], "me@example.test", [_rcpt("bob@acme.com")], None)
 
     assert inbound is rule
     assert outbound is rule
@@ -173,7 +193,7 @@ async def test_sender_scope_is_the_narrower_deliberate_choice(
     )
 
     assert matching_rule([rule], "bob@acme.com", None, None) is rule
-    assert matching_rule([rule], "me@example.test", ["bob@acme.com"], None) is None
+    assert matching_rule([rule], "me@example.test", [_rcpt("bob@acme.com")], None) is None
 
 
 @pytest.mark.asyncio
@@ -528,3 +548,41 @@ async def test_a_service_desk_mailbox_ignores_personal_exclusions(
 
     stored = await service._sync_message(integration, "m4")
     assert stored is not None, "a desk mailbox must still receive its mail"
+
+
+# ── who the follow-up offers to exclude ──────────────────────────────────
+
+
+def test_the_follow_up_names_the_other_party_not_yourself():
+    """Hiding one of your own sent messages must not offer to exclude you.
+
+    The sender of sent mail *is* the connected account, and accepting a rule on
+    your own address would exclude every thread you ever take part in. On sent
+    mail the useful rule is about whoever you wrote to.
+    """
+    from aexy.api.google_integration import _counterparty_of
+
+    received = SyncedEmail(
+        gmail_id="r",
+        from_email="bob@acme.com",
+        to_emails=[_rcpt("me@example.test")],
+        cc_emails=[],
+    )
+    sent = SyncedEmail(
+        gmail_id="s",
+        from_email="me@example.test",
+        to_emails=[_rcpt("sue@acme.com")],
+        cc_emails=[],
+    )
+    to_self = SyncedEmail(
+        gmail_id="n",
+        from_email="me@example.test",
+        to_emails=[_rcpt("me@example.test")],
+        cc_emails=[],
+    )
+
+    assert _counterparty_of(received, "me@example.test") == "bob@acme.com"
+    assert _counterparty_of(sent, "me@example.test") == "sue@acme.com"
+    # A note to self has no other party — better to offer nothing than yourself.
+    assert _counterparty_of(to_self, "me@example.test") is None
+    assert _counterparty_of(None, "me@example.test") is None

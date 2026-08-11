@@ -45,6 +45,7 @@ import {
   GoogleIntegrationStatus,
 } from "@/lib/api";
 import { AppAccessGuard } from "@/components/guards/AppAccessGuard";
+import { GmailExclusions } from "@/components/settings/GmailExclusions";
 import {
   SettingsEmptyState,
   SettingsPage,
@@ -448,6 +449,16 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
                   </button>
                 </div>
               </div>
+
+              {/* What this mailbox keeps out. Directly under the Gmail Sync
+                  toggle because the moment somebody turns sync on is the
+                  moment they need to know they can keep parts of it out. */}
+              {status.gmail_sync_enabled && (
+                <GmailExclusions
+                  workspaceId={workspaceId}
+                  connectedEmail={status.google_email}
+                />
+              )}
 
               {/* Auto-Sync Interval */}
               {status.gmail_sync_enabled && (

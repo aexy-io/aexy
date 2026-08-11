@@ -5,7 +5,9 @@ import {
   SyncedEmail,
   SyncedCalendarEvent,
   GoogleCalendar,
+  GmailExclusionRule,
 } from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/utils";
 
 /**
  * Hook for Google integration connection status
@@ -280,4 +282,72 @@ export function useGoogleCalendarEvents(workspaceId: string | null) {
     createEvent,
     linkToRecord,
   };
+}
+
+/**
+ * What this mailbox keeps out of Aexy.
+ *
+ * Only the person who connected the Google account may manage these, so a 403
+ * is an expected answer rather than a failure: the UI hides the section instead
+ * of showing an error to somebody it was never meant for.
+ */
+export function useGmailExclusions(workspaceId: string | null) {
+  const [rules, setRules] = useState<GmailExclusionRule[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isManageable, setIsManageable] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    if (!workspaceId) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      setRules(await googleIntegrationApi.exclusions.list(workspaceId));
+      setIsManageable(true);
+    } catch (err) {
+      const statusCode = (err as { response?: { status?: number } })?.response?.status;
+      if (statusCode === 403) {
+        // Somebody else connected this mailbox. Their exclusions are theirs.
+        setIsManageable(false);
+        setRules([]);
+      } else if (statusCode === 404) {
+        // No Google account connected yet — nothing to exclude from.
+        setIsManageable(false);
+        setRules([]);
+      } else {
+        setError(getApiErrorMessage(err, "Failed to load exclusions"));
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [workspaceId]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  const addRule = useCallback(
+    async (kind: "address" | "domain", value: string, matchScope: "participants" | "sender" = "participants") => {
+      if (!workspaceId) return null;
+      const created = await googleIntegrationApi.exclusions.create(workspaceId, {
+        kind,
+        value,
+        match_scope: matchScope,
+      });
+      await refresh();
+      return created;
+    },
+    [workspaceId, refresh]
+  );
+
+  const removeRule = useCallback(
+    async (ruleId: string) => {
+      if (!workspaceId) return;
+      await googleIntegrationApi.exclusions.remove(workspaceId, ruleId);
+      await refresh();
+    },
+    [workspaceId, refresh]
+  );
+
+  return { rules, isLoading, isManageable, error, refresh, addRule, removeRule };
 }
