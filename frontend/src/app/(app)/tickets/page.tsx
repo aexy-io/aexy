@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -8,15 +8,14 @@ import {
   Filter,
   AlertTriangle,
   Clock,
-  CheckCircle2,
   User,
   ChevronRight,
-  FileText,
   Settings,
   ListTodo,
   Layers,
   Zap,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
 import { ModuleAutomationsPanel } from "@/components/ModuleAutomationsPanel";
 import { EmptyState } from "@/components/EmptyState";
@@ -24,7 +23,7 @@ import { SavedViewSwitcher } from "@/components/crm/SavedViewSwitcher";
 import { useSavedViews } from "@/hooks/useSavedViews";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
-import { useTickets, useTicketStats, useTicketForms } from "@/hooks/useTicketing";
+import { useTickets } from "@/hooks/useTicketing";
 import { TicketStatus, TicketPriority, developerApi, TableSavedView } from "@/lib/api";
 import {
   TICKET_STATUS_COLORS,
@@ -59,15 +58,85 @@ const TASK_STATUS_COLORS = Object.fromEntries(
   Object.entries(TASK_STATUS_COLORS_BASE).map(([k, v]) => [k, { ...v, label: TASK_STATUS_LABELS[k] ?? k }])
 ) as Record<string, { bg: string; text: string; label: string }>;
 
-type TabType = "tickets" | "my-tasks" | "automations";
+type TabType = "work" | "automations";
+
+/**
+ * Which kind of work to show.
+ *
+ * Tasks and form tickets were separate tabs, which made "what is on my plate?"
+ * two questions instead of one — and the answer to the second was buried behind
+ * a click most people never made.
+ */
+type WorkSource = "all" | "tasks" | "tickets";
+
+/** A task or a form ticket, reduced to what the shared list renders. */
+type WorkItem = {
+  kind: "task" | "ticket";
+  id: string;
+  title: string;
+  subtitle: string;
+  reference?: string;
+  status: string;
+  statusStyle?: { bg: string; text: string; label: string };
+  priority: string | null;
+  createdAt: string;
+  storyPoints?: number | null;
+  slaBreached?: boolean;
+  assigneeName?: string | null;
+  href: string | null;
+};
+
+const WORK_SOURCES: { id: WorkSource; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "tasks", label: "Tasks" },
+  { id: "tickets", label: "Form tickets" },
+];
+
+const STAT_TONES: Record<string, string> = {
+  purple: "bg-purple-100 dark:bg-purple-900/30 text-purple-400",
+  yellow: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-400",
+  blue: "bg-blue-100 dark:bg-blue-900/30 text-blue-400",
+  red: "bg-red-100 dark:bg-red-900/30 text-red-400",
+};
+
+function StatCard({
+  icon: Icon,
+  tone,
+  value,
+  label,
+}: {
+  icon: LucideIcon;
+  tone: keyof typeof STAT_TONES | string;
+  value: number;
+  label: string;
+}) {
+  return (
+    <div className="bg-muted rounded-xl p-4 border border-border">
+      <div className="flex items-center gap-3">
+        <div className={`p-2 rounded-lg ${STAT_TONES[tone] ?? STAT_TONES.purple}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div>
+          <p className="text-2xl font-bold text-foreground">{value}</p>
+          <p className="text-sm text-muted-foreground">{label}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function TicketsPage() {
   const router = useRouter();
-  useAuth(); // Ensure user is authenticated
+  const { user } = useAuth();
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || null;
 
-  const [activeTab, setActiveTab] = useState<TabType>("my-tasks");
+  const [activeTab, setActiveTab] = useState<TabType>("work");
+  const [source, setSource] = useState<WorkSource>("all");
+  // On by default: this page is "My Work". Turning it off gives back the
+  // workspace-wide triage queue the Form Tickets tab used to be, which some
+  // people do rely on — the filter replaced the tab, it did not remove the view.
+  const [onlyMine, setOnlyMine] = useState(true);
   const [statusFilter, setStatusFilter] = useState<TicketStatus[]>([]);
   const [priorityFilter] = useState<TicketPriority[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -113,10 +182,12 @@ export default function TicketsPage() {
   const { tickets, total, isLoading } = useTickets(workspaceId, {
     status: statusFilter.length > 0 ? statusFilter : undefined,
     priority: priorityFilter.length > 0 ? priorityFilter : undefined,
+    // Tasks are already scoped to the caller by their endpoint; tickets are
+    // not, so the scoping has to happen here or the two halves of one list
+    // would mean different things.
+    assignee_id: onlyMine && user?.id ? String(user.id) : undefined,
   });
 
-  const { stats } = useTicketStats(workspaceId);
-  const { forms } = useTicketForms(workspaceId);
 
   // Fetch my assigned sprint tasks. The endpoint now also returns bugs and
   // stories (item_type: "task" | "bug" | "story") — those live on /my-work,
@@ -138,6 +209,61 @@ export default function TicketsPage() {
       `TKT-${ticket.ticket_number}`.toLowerCase().includes(query)
     );
   });
+
+  /**
+   * Tasks and tickets as one stream.
+   *
+   * They were rendered as two lists under two tabs, so "what is on my plate?"
+   * had no single answer and nothing could be ordered across both. Normalising
+   * to a shared shape is what lets the source filter be a filter rather than a
+   * tab wearing a different hat.
+   */
+  const workItems = useMemo(() => {
+    const items: WorkItem[] = [];
+
+    if (source !== "tickets") {
+      for (const task of myTasks) {
+        items.push({
+          kind: "task",
+          id: task.id,
+          title: task.title,
+          subtitle: task.sprint_name || "No Sprint",
+          status: task.status,
+          statusStyle: TASK_STATUS_COLORS[task.status],
+          priority: task.priority,
+          createdAt: task.created_at,
+          storyPoints: task.story_points ?? null,
+          href: task.sprint_id ? "/sprints" : null,
+        });
+      }
+    }
+
+    if (source !== "tasks") {
+      for (const ticket of filteredTickets) {
+        items.push({
+          kind: "ticket",
+          id: ticket.id,
+          title: ticket.submitter_name || ticket.submitter_email || "Anonymous",
+          subtitle: ticket.form_name || "",
+          reference: `TKT-${ticket.ticket_number}`,
+          status: ticket.status,
+          statusStyle: STATUS_COLORS[ticket.status],
+          priority: ticket.priority ?? null,
+          createdAt: ticket.created_at,
+          slaBreached: !!ticket.sla_breached,
+          assigneeName: ticket.assignee_name ?? null,
+          href: `/tickets/${ticket.id}`,
+        });
+      }
+    }
+
+    // Newest first across both sources — the point of merging them.
+    return items.sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [source, myTasks, filteredTickets]);
+
+  const isLoadingWork = (source !== "tickets" && isLoadingTasks) || (source !== "tasks" && isLoading);
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -179,50 +305,35 @@ export default function TicketsPage() {
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-2 mb-6">
+        {/* Tabs. Automations stays one because it is configuration, not work —
+            it does not belong in a list of things on your plate. */}
+        <div className="flex gap-2 mb-4">
           <button
-            onClick={() => setActiveTab("my-tasks")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
-              activeTab === "my-tasks"
+            onClick={() => setActiveTab("work")}
+            data-testid="tab-work"
+            className={`px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 ${
+              activeTab === "work"
                 ? "bg-purple-600 text-white"
-                : "bg-muted text-muted-foreground hover:bg-accent border border-border"
+                : "bg-muted text-muted-foreground hover:text-foreground border border-border"
             }`}
           >
             <ListTodo className="h-4 w-4" />
-            My Assigned Tasks
-            {myTasks.length > 0 && (
-              <span className={`px-2 py-0.5 rounded-full text-xs ${
-                activeTab === "my-tasks" ? "bg-purple-500" : "bg-accent"
-              }`}>
-                {myTasks.length}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab("tickets")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
-              activeTab === "tickets"
-                ? "bg-purple-600 text-white"
-                : "bg-muted text-muted-foreground hover:bg-accent border border-border"
-            }`}
-          >
-            <Ticket className="h-4 w-4" />
-            Form Tickets
-            {(stats?.open_tickets || 0) > 0 && (
-              <span className={`px-2 py-0.5 rounded-full text-xs ${
-                activeTab === "tickets" ? "bg-purple-500" : "bg-accent"
-              }`}>
-                {stats?.open_tickets}
-              </span>
-            )}
+            My Work
+            <span
+              className={`px-1.5 py-0.5 rounded text-xs ${
+                activeTab === "work" ? "bg-purple-500" : "bg-accent"
+              }`}
+            >
+              {workItems.length}
+            </span>
           </button>
           <button
             onClick={() => setActiveTab("automations")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
+            data-testid="tab-automations"
+            className={`px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 ${
               activeTab === "automations"
                 ? "bg-purple-600 text-white"
-                : "bg-muted text-muted-foreground hover:bg-accent border border-border"
+                : "bg-muted text-muted-foreground hover:text-foreground border border-border"
             }`}
           >
             <Zap className="h-4 w-4" />
@@ -230,185 +341,85 @@ export default function TicketsPage() {
           </button>
         </div>
 
-        {/* My Assigned Tasks Tab */}
-        {activeTab === "my-tasks" && (
-          <>
-            {/* Tasks Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-              <div className="bg-muted rounded-xl p-4 border border-border">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
-                    <ListTodo className="h-5 w-5 text-purple-400" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-foreground">{myTasks.length}</p>
-                    <p className="text-sm text-muted-foreground">Assigned Tasks</p>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-muted rounded-xl p-4 border border-border">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
-                    <Clock className="h-5 w-5 text-yellow-400" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-foreground">
-                      {myTasks.filter(t => t.status === "in_progress").length}
-                    </p>
-                    <p className="text-sm text-muted-foreground">In Progress</p>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-muted rounded-xl p-4 border border-border">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                    <Layers className="h-5 w-5 text-blue-400" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-foreground">
-                      {myTasks.filter(t => t.status === "backlog" || t.status === "todo").length}
-                    </p>
-                    <p className="text-sm text-muted-foreground">To Do</p>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-muted rounded-xl p-4 border border-border">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
-                    <CheckCircle2 className="h-5 w-5 text-purple-400" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-foreground">
-                      {myTasks.filter(t => t.status === "in_review" || t.status === "review").length}
-                    </p>
-                    <p className="text-sm text-muted-foreground">In Review</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+        {/* Source filter. Was two tabs; the split meant "what is on my plate?"
+            took two looks and the second one was usually skipped. */}
+        {activeTab === "work" && (
+          <div className="flex flex-wrap items-center gap-2 mb-6" data-testid="work-filters">
+            {WORK_SOURCES.map((option) => (
+              <button
+                key={option.id}
+                onClick={() => setSource(option.id)}
+                data-testid={`work-source-${option.id}`}
+                aria-pressed={source === option.id}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition border ${
+                  source === option.id
+                    ? "bg-purple-600/15 border-purple-500/50 text-purple-600 dark:text-purple-300"
+                    : "bg-muted border-border text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
 
-            {/* Tasks List */}
-            <div className="bg-muted rounded-xl border border-border">
-              {isLoadingTasks ? (
-                <div className="p-4 space-y-3 animate-pulse">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="flex items-center gap-3 p-3">
-                      <div className="h-4 w-4 bg-accent rounded" />
-                      <div className="h-4 w-48 bg-accent rounded" />
-                      <div className="ml-auto h-5 w-16 bg-accent rounded-full" />
-                    </div>
-                  ))}
-                </div>
-              ) : myTasks.length === 0 ? (
-                <EmptyState
-                  icon={ListTodo}
-                  title="No tasks assigned to you"
-                  description="Tasks assigned to you from sprints will appear here. Ask your team lead to assign tasks or create a new sprint."
-                  compact
-                />
-              ) : (
-                <div className="divide-y divide-border">
-                  {myTasks.map((task) => (
-                    <button
-                      key={task.id}
-                      onClick={() => {
-                        if (task.sprint_id) {
-                          // Navigate to the sprint board - we need to find the project ID
-                          // For now, just show task details in a simple way
-                          router.push(`/sprints`);
-                        }
-                      }}
-                      className="w-full p-4 hover:bg-accent/50 transition flex items-center gap-4 text-left"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span
-                            className={`px-2 py-0.5 rounded text-xs font-medium ${
-                              TASK_STATUS_COLORS[task.status]?.bg || "bg-accent"
-                            } ${TASK_STATUS_COLORS[task.status]?.text || "text-foreground"}`}
-                          >
-                            {TASK_STATUS_COLORS[task.status]?.label || task.status}
-                          </span>
-                          <span
-                            className={`px-2 py-0.5 rounded text-xs font-medium ${
-                              PRIORITY_COLORS[task.priority as TicketPriority]?.bg || "bg-accent"
-                            } ${PRIORITY_COLORS[task.priority as TicketPriority]?.text || "text-foreground"}`}
-                          >
-                            {task.priority}
-                          </span>
-                          {task.story_points && (
-                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-accent text-foreground">
-                              {task.story_points} pts
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-foreground font-medium truncate">{task.title}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {task.sprint_name || "No Sprint"} • {formatDate(task.created_at)}
-                        </p>
-                      </div>
-                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </>
+            {source !== "tasks" && (
+              <button
+                onClick={() => setOnlyMine((v) => !v)}
+                data-testid="work-only-mine"
+                aria-pressed={onlyMine}
+                title="Tasks are always yours; this scopes the form tickets"
+                className={`ml-2 px-3 py-1.5 rounded-full text-sm font-medium transition border ${
+                  onlyMine
+                    ? "bg-purple-600/15 border-purple-500/50 text-purple-600 dark:text-purple-300"
+                    : "bg-muted border-border text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {onlyMine ? "Assigned to me" : "Everyone's tickets"}
+              </button>
+            )}
+          </div>
         )}
 
-        {/* Form Tickets Tab */}
-        {activeTab === "tickets" && (
+        {activeTab === "work" && (
           <>
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-              <div className="bg-muted rounded-xl p-4 border border-border">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
-                    <Ticket className="h-5 w-5 text-purple-400" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-foreground">{stats?.total_tickets || 0}</p>
-                    <p className="text-sm text-muted-foreground">Total Tickets</p>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-muted rounded-xl p-4 border border-border">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                    <Clock className="h-5 w-5 text-blue-400" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-foreground">{stats?.open_tickets || 0}</p>
-                    <p className="text-sm text-muted-foreground">Open Tickets</p>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-muted rounded-xl p-4 border border-border">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
-                    <AlertTriangle className="h-5 w-5 text-red-400" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-foreground">{stats?.sla_breached || 0}</p>
-                    <p className="text-sm text-muted-foreground">SLA Breached</p>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-muted rounded-xl p-4 border border-border">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
-                    <FileText className="h-5 w-5 text-green-400" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-foreground">{forms.length}</p>
-                    <p className="text-sm text-muted-foreground">Active Forms</p>
-                  </div>
-                </div>
-              </div>
+            {/* Counts follow the filter. Two fixed sets of cards, one per tab,
+                meant the numbers on screen described a list you were not
+                looking at. */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <StatCard
+                icon={ListTodo}
+                tone="purple"
+                value={workItems.length}
+                label={source === "tickets" ? "Tickets" : source === "tasks" ? "Tasks" : "Items"}
+              />
+              <StatCard
+                icon={Clock}
+                tone="yellow"
+                value={workItems.filter((i) => i.status === "in_progress").length}
+                label="In Progress"
+              />
+              <StatCard
+                icon={Layers}
+                tone="blue"
+                value={
+                  workItems.filter((i) =>
+                    ["backlog", "todo", "open", "new"].includes(i.status)
+                  ).length
+                }
+                label="To Do"
+              />
+              <StatCard
+                icon={AlertTriangle}
+                tone="red"
+                value={workItems.filter((i) => i.slaBreached).length}
+                label="SLA Breached"
+              />
             </div>
 
-            {/* Filters */}
-            <div className="bg-muted rounded-xl border border-border p-4 mb-6">
+            {/* Filters — search, saved views and status apply to the ticket
+                half, so they are hidden when only tasks are showing. Kept
+                verbatim from the old Form Tickets tab rather than rebuilt. */}
+            {source !== "tasks" && (
+              <div className="bg-muted rounded-xl border border-border p-4 mb-6">
               <div className="flex flex-wrap items-center gap-4">
                 <SavedViewSwitcher
                   views={savedViews}
@@ -454,12 +465,13 @@ export default function TicketsPage() {
                 </div>
               </div>
             </div>
+            )}
 
-            {/* Tickets List */}
-            <div className="bg-muted rounded-xl border border-border">
-              {isLoading ? (
+            {/* One list */}
+            <div className="bg-muted rounded-xl border border-border" data-testid="work-list">
+              {isLoadingWork ? (
                 <div className="p-4 space-y-3 animate-pulse">
-                  {[1, 2, 3, 4].map((i) => (
+                  {[1, 2, 3].map((i) => (
                     <div key={i} className="flex items-center gap-3 p-3">
                       <div className="h-4 w-4 bg-accent rounded" />
                       <div className="flex-1">
@@ -467,66 +479,84 @@ export default function TicketsPage() {
                         <div className="h-3 w-32 bg-accent rounded" />
                       </div>
                       <div className="h-5 w-16 bg-accent rounded-full" />
-                      <div className="h-3 w-20 bg-accent rounded" />
                     </div>
                   ))}
                 </div>
-              ) : filteredTickets.length === 0 ? (
+              ) : workItems.length === 0 ? (
                 <EmptyState
-                  icon={Ticket}
-                  title="No tickets found"
-                  description="Create a form to start receiving tickets from your users."
-                  actions={[
-                    { label: "Manage Forms", href: "/settings/ticket-forms", variant: "secondary" },
-                  ]}
+                  icon={ListTodo}
+                  title={onlyMine ? "Nothing on your plate" : "No work found"}
+                  description={
+                    onlyMine
+                      ? "Tasks assigned to you and tickets routed to you both appear here."
+                      : "Create a form to start receiving tickets from your users."
+                  }
                   compact
                 />
               ) : (
                 <div className="divide-y divide-border">
-                  {filteredTickets.map((ticket) => (
+                  {workItems.map((item) => (
                     <button
-                      key={ticket.id}
-                      onClick={() => router.push(`/tickets/${ticket.id}`)}
+                      key={`${item.kind}-${item.id}`}
+                      onClick={() => item.href && router.push(item.href)}
+                      data-testid={`work-item-${item.kind}`}
                       className="w-full p-4 hover:bg-accent/50 transition flex items-center gap-4 text-left"
                     >
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-mono text-purple-400">
-                            TKT-{ticket.ticket_number}
-                          </span>
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          {/* The source is a badge now rather than a tab, so a
+                              mixed list stays readable at a glance. */}
                           <span
                             className={`px-2 py-0.5 rounded text-xs font-medium ${
-                              STATUS_COLORS[ticket.status]?.bg || "bg-accent"
-                            } ${STATUS_COLORS[ticket.status]?.text || "text-foreground"}`}
+                              item.kind === "task"
+                                ? "bg-purple-500/10 text-purple-600 dark:text-purple-300"
+                                : "bg-cyan-500/10 text-cyan-600 dark:text-cyan-300"
+                            }`}
                           >
-                            {STATUS_COLORS[ticket.status]?.label || ticket.status}
+                            {item.kind === "task" ? "Task" : "Ticket"}
                           </span>
-                          {ticket.priority && (
-                            <span
-                              className={`px-2 py-0.5 rounded text-xs font-medium ${
-                                PRIORITY_COLORS[ticket.priority]?.bg || "bg-accent"
-                              } ${PRIORITY_COLORS[ticket.priority]?.text || "text-foreground"}`}
-                            >
-                              {ticket.priority}
+                          {item.reference && (
+                            <span className="text-sm font-mono text-purple-400">
+                              {item.reference}
                             </span>
                           )}
-                          {ticket.sla_breached && (
+                          <span
+                            className={`px-2 py-0.5 rounded text-xs font-medium ${
+                              item.statusStyle?.bg || "bg-accent"
+                            } ${item.statusStyle?.text || "text-foreground"}`}
+                          >
+                            {item.statusStyle?.label || item.status}
+                          </span>
+                          {item.priority && (
+                            <span
+                              className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                PRIORITY_COLORS[item.priority as TicketPriority]?.bg || "bg-accent"
+                              } ${PRIORITY_COLORS[item.priority as TicketPriority]?.text || "text-foreground"}`}
+                            >
+                              {item.priority}
+                            </span>
+                          )}
+                          {item.storyPoints ? (
+                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-accent text-foreground">
+                              {item.storyPoints} pts
+                            </span>
+                          ) : null}
+                          {item.slaBreached && (
                             <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400">
                               SLA Breached
                             </span>
                           )}
                         </div>
-                        <p className="text-foreground font-medium truncate">
-                          {ticket.submitter_name || ticket.submitter_email || "Anonymous"}
-                        </p>
+                        <p className="text-foreground font-medium truncate">{item.title}</p>
                         <p className="text-sm text-muted-foreground">
-                          {ticket.form_name} • {formatDate(ticket.created_at)}
+                          {item.subtitle ? `${item.subtitle} • ` : ""}
+                          {formatDate(item.createdAt)}
                         </p>
                       </div>
-                      {ticket.assignee_name && (
+                      {item.assigneeName && !onlyMine && (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <User className="h-4 w-4" />
-                          {ticket.assignee_name}
+                          {item.assigneeName}
                         </div>
                       )}
                       <ChevronRight className="h-5 w-5 text-muted-foreground" />
@@ -536,8 +566,7 @@ export default function TicketsPage() {
               )}
             </div>
 
-            {/* Pagination */}
-            {total > 50 && (
+            {source !== "tasks" && total > 50 && (
               <div className="mt-4 flex justify-center">
                 <p className="text-sm text-muted-foreground">
                   Showing {filteredTickets.length} of {total} tickets
