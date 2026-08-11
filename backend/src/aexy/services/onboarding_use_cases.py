@@ -125,14 +125,30 @@ USE_CASES: dict[str, UseCaseConfig] = {
     "operations": {
         "label": "Operations & Support",
         "apps": ["service_desk", "tickets", "organization", "drive"],
-        # No department, for two reasons. None of the profile bundles grant
-        # Service Desk or Drive, so seeding one would hand Operations people a
-        # baseline missing the very apps this pick turns on. And the Service
-        # Desk industry templates already seed an Operations department
-        # deliberately — since `function_key` is unique per workspace, whichever
-        # ran first would win, and onboarding winning would mean the desk's
-        # people get the profile that omits their desk.
-        "departments": [],
+        "departments": [
+            # This has to seed a department, and the reason is the persona
+            # rather than the apps. `suggested_persona` reads the primary
+            # department's `default_persona`, and with no department the sidebar
+            # falls back to "developer" — under which the whole Business
+            # section, Service Desk included, is filtered out of the navigation.
+            # Picking "Operations & Support" and being shown a developer sidebar
+            # with the desk listed as "available in another view" is the exact
+            # hollow outcome this module exists to prevent.
+            {
+                "name": "Operations",
+                # Same key the Service Desk industry templates seed, which is
+                # what we want: `function_key` is unique per workspace, so
+                # whichever runs first creates it and the other finds it. The
+                # templates seed it without an access profile, and
+                # `seed_departments_for_use_cases` only skips departments that
+                # already have one — so onboarding fills in the profile the
+                # templates leave empty rather than fighting them for it.
+                "function_key": "operations",
+                # Business grants service_desk, as every bundle does.
+                "profile_slug": "business",
+                "persona": "support",
+            },
+        ],
     },
 }
 

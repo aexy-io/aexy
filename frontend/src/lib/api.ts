@@ -11445,6 +11445,10 @@ export interface GoogleIntegrationStatus {
   last_error: string | null;
   granted_scopes: string[];
   sync_settings?: GoogleSyncSettings;
+  /** "all" = whole inbox minus exclusions; "opt_in" = only marked threads. */
+  sync_mode?: "all" | "opt_in";
+  /** The Gmail label that marks a thread without leaving Gmail. */
+  opt_in_label?: string;
 }
 
 export interface SyncJobStatus {
@@ -11530,6 +11534,59 @@ export interface GoogleCalendar {
   color: string | null;
 }
 
+export interface GoogleAccountSummary {
+  id: string;
+  google_email: string;
+  gmail_sync_enabled: boolean;
+  calendar_sync_enabled: boolean;
+  is_active: boolean;
+  connected_by_id: string | null;
+  connected_by_name: string | null;
+  /** Whether the caller connected this one. */
+  is_mine: boolean;
+  /** Whether a Service Desk mailbox reads it — disconnecting is refused. */
+  is_service_desk_mailbox: boolean;
+  last_error: string | null;
+  created_at: string | null;
+}
+
+export interface GoogleAccountList {
+  accounts: GoogleAccountSummary[];
+  /** The address connecting would add for this caller, named before they act. */
+  connectable_email: string | null;
+}
+
+/**
+ * A thread an opt-in account has seen but not stored.
+ *
+ * Headers only — there is no body field omitted here, the sync never fetched
+ * one. This exists so opt-in can bootstrap: with nothing stored there would be
+ * nothing to point at when saying "sync that one".
+ */
+export interface GoogleThreadSummary {
+  gmail_thread_id: string;
+  subject: string | null;
+  participants: string[];
+  message_count: number;
+  last_message_at: string | null;
+  is_marked: boolean;
+}
+
+export interface GoogleThreadList {
+  threads: GoogleThreadSummary[];
+  total: number;
+  /** The Gmail label that marks a thread without leaving Gmail. */
+  opt_in_label: string;
+  sync_mode: string;
+}
+
+export interface GoogleThreadMarkResult {
+  gmail_thread_id: string;
+  is_marked: boolean;
+  /** Messages stored by marking, or removed by unmarking. */
+  messages_changed: number;
+}
+
 export interface GmailExclusionRule {
   id: string;
   integration_id: string;
@@ -11580,8 +11637,19 @@ export const googleIntegrationApi = {
     return response.data;
   },
 
-  getStatus: async (workspaceId: string): Promise<GoogleIntegrationStatus> => {
-    const response = await api.get(`/workspaces/${workspaceId}/integrations/google/status`);
+  /**
+   * Status for ONE connected Google account. Every number it returns —
+   * message counts, last-sync times, the toggles — belongs to a single
+   * account, so pass `integrationId` on a workspace with several. Omitted, the
+   * server answers "yours, else the oldest".
+   */
+  getStatus: async (
+    workspaceId: string,
+    integrationId?: string | null
+  ): Promise<GoogleIntegrationStatus> => {
+    const response = await api.get(`/workspaces/${workspaceId}/integrations/google/status`, {
+      params: integrationId ? { integration_id: integrationId } : undefined,
+    });
     return response.data;
   },
 
@@ -11593,9 +11661,12 @@ export const googleIntegrationApi = {
       auto_sync_interval_minutes?: number;
       auto_sync_calendar_interval_minutes?: number;
       sync_settings?: Record<string, unknown>;
-    }
+    },
+    integrationId?: string | null
   ): Promise<GoogleIntegrationStatus> => {
-    const response = await api.patch(`/workspaces/${workspaceId}/integrations/google/settings`, settings);
+    const response = await api.patch(`/workspaces/${workspaceId}/integrations/google/settings`, settings, {
+      params: integrationId ? { integration_id: integrationId } : undefined,
+    });
     return response.data;
   },
 
@@ -11622,9 +11693,14 @@ export const googleIntegrationApi = {
   gmail: {
     sync: async (
       workspaceId: string,
-      options?: { full_sync?: boolean; max_messages?: number }
+      options?: { full_sync?: boolean; max_messages?: number },
+      integrationId?: string | null
     ): Promise<GmailSyncResponse> => {
-      const response = await api.post(`/workspaces/${workspaceId}/integrations/google/gmail/sync`, options || {});
+      const response = await api.post(
+        `/workspaces/${workspaceId}/integrations/google/gmail/sync`,
+        options || {},
+        { params: integrationId ? { integration_id: integrationId } : undefined }
+      );
       return response.data;
     },
 
@@ -11684,9 +11760,14 @@ export const googleIntegrationApi = {
 
     sync: async (
       workspaceId: string,
-      options?: { calendar_ids?: string[] }
+      options?: { calendar_ids?: string[] },
+      integrationId?: string | null
     ): Promise<CalendarSyncResponse> => {
-      const response = await api.post(`/workspaces/${workspaceId}/integrations/google/calendar/sync`, options || {});
+      const response = await api.post(
+        `/workspaces/${workspaceId}/integrations/google/calendar/sync`,
+        options || {},
+        { params: integrationId ? { integration_id: integrationId } : undefined }
+      );
       return response.data;
     },
 
@@ -11785,22 +11866,116 @@ export const googleIntegrationApi = {
    * — the API returns 403 otherwise — so callers should treat a 403 here as
    * "not yours to manage", not as a bug.
    */
+  /**
+   * The workspace's Google accounts. A workspace holds one per address; it
+   * used to hold exactly one, and connecting a second overwrote the first.
+   */
+  accounts: {
+    list: async (workspaceId: string): Promise<GoogleAccountList> => {
+      const response = await api.get(`/workspaces/${workspaceId}/integrations/google/accounts`);
+      return response.data;
+    },
+
+    disconnect: async (workspaceId: string, integrationId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/integrations/google/accounts/${integrationId}`);
+    },
+  },
+
+  /**
+   * What an account syncs.
+   *
+   * `all` is the whole inbox minus the exclusion rules; `opt_in` stores nothing
+   * until a thread is marked here or carries the account's label in Gmail.
+   * Owner-only — an admin can disconnect an account, but not quietly widen what
+   * somebody's mailbox contributes to the workspace.
+   */
+  threads: {
+    setSyncMode: async (
+      workspaceId: string,
+      data: { sync_mode: "all" | "opt_in"; opt_in_label?: string },
+      integrationId?: string | null
+    ): Promise<GoogleIntegrationStatus> => {
+      const response = await api.patch(
+        `/workspaces/${workspaceId}/integrations/google/sync-mode`,
+        data,
+        { params: integrationId ? { integration_id: integrationId } : undefined }
+      );
+      return response.data;
+    },
+
+    list: async (
+      workspaceId: string,
+      integrationId?: string | null,
+      params?: { page?: number; page_size?: number; unmarked_only?: boolean }
+    ): Promise<GoogleThreadList> => {
+      const response = await api.get(`/workspaces/${workspaceId}/integrations/google/threads`, {
+        params: { ...(params || {}), ...(integrationId ? { integration_id: integrationId } : {}) },
+      });
+      return response.data;
+    },
+
+    mark: async (
+      workspaceId: string,
+      threadId: string,
+      integrationId?: string | null
+    ): Promise<GoogleThreadMarkResult> => {
+      const response = await api.post(
+        `/workspaces/${workspaceId}/integrations/google/threads/${threadId}/mark`,
+        {},
+        { params: integrationId ? { integration_id: integrationId } : undefined }
+      );
+      return response.data;
+    },
+
+    unmark: async (
+      workspaceId: string,
+      threadId: string,
+      integrationId?: string | null
+    ): Promise<GoogleThreadMarkResult> => {
+      const response = await api.delete(
+        `/workspaces/${workspaceId}/integrations/google/threads/${threadId}/mark`,
+        { params: integrationId ? { integration_id: integrationId } : undefined }
+      );
+      return response.data;
+    },
+  },
+
   exclusions: {
-    list: async (workspaceId: string): Promise<GmailExclusionRule[]> => {
-      const response = await api.get(`/workspaces/${workspaceId}/integrations/google/exclusions`);
+    /**
+     * `integrationId` names which connected Google account the rules belong to.
+     * Rules are keyed by integration, so omitting it on a workspace with
+     * several accounts means "mine, else the oldest" — fine for one account,
+     * but it silently hides the others' rules once there is more than one.
+     */
+    list: async (
+      workspaceId: string,
+      integrationId?: string | null
+    ): Promise<GmailExclusionRule[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/integrations/google/exclusions`, {
+        params: integrationId ? { integration_id: integrationId } : undefined,
+      });
       return response.data;
     },
 
     create: async (
       workspaceId: string,
-      data: { kind: "address" | "domain"; value: string; match_scope?: "participants" | "sender" }
+      data: { kind: "address" | "domain"; value: string; match_scope?: "participants" | "sender" },
+      integrationId?: string | null
     ): Promise<GmailExclusionCreated> => {
-      const response = await api.post(`/workspaces/${workspaceId}/integrations/google/exclusions`, data);
+      const response = await api.post(`/workspaces/${workspaceId}/integrations/google/exclusions`, data, {
+        params: integrationId ? { integration_id: integrationId } : undefined,
+      });
       return response.data;
     },
 
-    remove: async (workspaceId: string, ruleId: string): Promise<void> => {
-      await api.delete(`/workspaces/${workspaceId}/integrations/google/exclusions/${ruleId}`);
+    remove: async (
+      workspaceId: string,
+      ruleId: string,
+      integrationId?: string | null
+    ): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/integrations/google/exclusions/${ruleId}`, {
+        params: integrationId ? { integration_id: integrationId } : undefined,
+      });
     },
 
     /**
@@ -11815,10 +11990,16 @@ export const googleIntegrationApi = {
       return response.data;
     },
 
-    hide: async (workspaceId: string, gmailId: string): Promise<GmailHideResult> => {
-      const response = await api.post(`/workspaces/${workspaceId}/integrations/google/exclusions/hide`, {
-        gmail_id: gmailId,
-      });
+    hide: async (
+      workspaceId: string,
+      gmailId: string,
+      integrationId?: string | null
+    ): Promise<GmailHideResult> => {
+      const response = await api.post(
+        `/workspaces/${workspaceId}/integrations/google/exclusions/hide`,
+        { gmail_id: gmailId },
+        { params: integrationId ? { integration_id: integrationId } : undefined }
+      );
       return response.data;
     },
   },

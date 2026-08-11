@@ -460,3 +460,80 @@ def test_template_rendering_is_sandboxed():
     with pytest.raises(Exception) as exc:
         service.render_template(tmpl, {})
     assert "SecurityError" in type(exc.value).__name__ or "unsafe" in str(exc.value).lower()
+
+
+# ------------------------------------------------- gmail_sync mailbox errors
+#
+# `google_integrations.workspace_id` is unique, so a workspace has exactly one
+# Google account. Every one of these used to answer "Connect and enable Gmail
+# sync for this mailbox address first" — advice that is wrong in three of the
+# four cases, and in the second one describes a loop that cannot terminate.
+
+
+@pytest.mark.asyncio
+async def test_gmail_mailbox_without_any_integration_says_to_connect_one(
+    db_session: AsyncSession,
+):
+    ws, _ = await _ws(db_session)
+    with pytest.raises(HTTPException) as exc:
+        await ServiceDeskService(db_session).create_mailbox(
+            ws.id, MailboxCreate(address="ops@mine.test", channel="gmail_sync")
+        )
+    assert exc.value.status_code == 422
+    assert "no Google account connected" in exc.value.detail
+
+
+@pytest.mark.asyncio
+async def test_gmail_mailbox_for_a_different_address_names_the_connected_one(
+    db_session: AsyncSession,
+):
+    """The reported case: the address is connected as a developer, but the
+    workspace syncs as somebody else, and no amount of reconnecting it helps."""
+    ws, _ = await _ws(db_session)
+    integ = await _integration(db_session, ws.id)
+    integ.gmail_sync_enabled = True
+    integ.is_active = True
+    await db_session.flush()
+
+    with pytest.raises(HTTPException) as exc:
+        await ServiceDeskService(db_session).create_mailbox(
+            ws.id, MailboxCreate(address="operations@other.test", channel="gmail_sync")
+        )
+    assert exc.value.status_code == 422
+    # Names the address actually in use, and offers the channel that would work.
+    assert integ.google_email in exc.value.detail
+    assert "webhook" in exc.value.detail
+
+
+@pytest.mark.asyncio
+async def test_gmail_mailbox_with_sync_switched_off_says_so(db_session: AsyncSession):
+    ws, _ = await _ws(db_session)
+    integ = await _integration(db_session, ws.id)
+    integ.gmail_sync_enabled = False
+    integ.is_active = True
+    await db_session.flush()
+
+    with pytest.raises(HTTPException) as exc:
+        await ServiceDeskService(db_session).create_mailbox(
+            ws.id, MailboxCreate(address=integ.google_email, channel="gmail_sync")
+        )
+    assert exc.value.status_code == 422
+    assert "switched off" in exc.value.detail
+
+
+@pytest.mark.asyncio
+async def test_gmail_mailbox_on_a_disconnected_integration_says_reconnect(
+    db_session: AsyncSession,
+):
+    ws, _ = await _ws(db_session)
+    integ = await _integration(db_session, ws.id)
+    integ.gmail_sync_enabled = True
+    integ.is_active = False
+    await db_session.flush()
+
+    with pytest.raises(HTTPException) as exc:
+        await ServiceDeskService(db_session).create_mailbox(
+            ws.id, MailboxCreate(address=integ.google_email, channel="gmail_sync")
+        )
+    assert exc.value.status_code == 422
+    assert "disconnected" in exc.value.detail

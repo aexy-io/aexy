@@ -31,6 +31,10 @@ class GoogleIntegrationStatusResponse(BaseModel):
     last_error: str | None = None
     granted_scopes: list[str] = []
     sync_settings: dict[str, Any] | None = None
+    # What this account stores: the whole inbox minus exclusions (`all`), or
+    # only threads that were asked for (`opt_in`).
+    sync_mode: str = "all"
+    opt_in_label: str = "Aexy"
 
 
 class GoogleIntegrationSettingsUpdate(BaseModel):
@@ -353,3 +357,85 @@ class WorkspaceExclusionsResponse(BaseModel):
     # hidden, not to read the mail somebody hid.
     hidden_message_count: int
     audit: list[ExclusionAuditEntry]
+
+
+class GoogleAccountSummary(BaseModel):
+    """One Google account connected to a workspace.
+
+    Deliberately not the full status: an account belongs to the person who
+    connected it, and a list every workspace member can read should not carry
+    their sync cursors, error strings or granted scopes.
+    """
+
+    id: str
+    google_email: str
+    gmail_sync_enabled: bool
+    calendar_sync_enabled: bool
+    is_active: bool
+    connected_by_id: str | None = None
+    connected_by_name: str | None = None
+    # Whether the caller connected this one, so the UI can say "yours" and
+    # offer the actions only its owner may take.
+    is_mine: bool = False
+    # Whether a Service Desk mailbox is already reading this account.
+    is_service_desk_mailbox: bool = False
+    last_error: str | None = None
+    created_at: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class GoogleAccountListResponse(BaseModel):
+    accounts: list[GoogleAccountSummary]
+    # The address `connect-from-developer` would add for this caller, so the UI
+    # can say which account it is about to connect instead of surprising them.
+    connectable_email: str | None = None
+
+
+class SyncModeUpdate(BaseModel):
+    """Switch an account between syncing everything and syncing what is asked for."""
+
+    sync_mode: Literal["all", "opt_in"]
+    # Renaming the label is part of the same decision often enough to belong on
+    # the same request: somebody turning opt-in on usually already has a label.
+    opt_in_label: str | None = Field(None, min_length=1, max_length=255)
+
+
+class ThreadSummary(BaseModel):
+    """A thread an opt-in account has seen but not stored.
+
+    Headers only. There is no body field to omit here because the sync never
+    fetched one — see ``GoogleThreadIndex``.
+    """
+
+    gmail_thread_id: str
+    subject: str | None = None
+    participants: list[str] = []
+    message_count: int = 0
+    last_message_at: datetime | None = None
+    # Whether this thread's mail is being stored. True either because somebody
+    # marked it here or because the account's label is on it in Gmail.
+    is_marked: bool = False
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ThreadListResponse(BaseModel):
+    threads: list[ThreadSummary]
+    total: int
+    # Echoed back so the UI can name the label without a second request, and so
+    # "apply this label in Gmail" is answerable from the same payload.
+    opt_in_label: str
+    sync_mode: str
+
+
+class ThreadMarkResponse(BaseModel):
+    """What marking a thread actually did."""
+
+    gmail_thread_id: str
+    is_marked: bool
+    # Messages stored by marking, or removed by unmarking. Reported for the same
+    # reason the exclusion purge count is: the action reaches backwards through
+    # the mailbox and saying so is the difference between a setting and a
+    # surprise.
+    messages_changed: int = 0

@@ -18,12 +18,25 @@ import { getApiErrorMessage } from "@/lib/utils";
 export function GmailExclusions({
   workspaceId,
   connectedEmail,
+  integrationId = null,
+  isMultiAccount = false,
 }: {
   workspaceId: string | null;
   connectedEmail?: string | null;
+  /**
+   * Which account's rules to show. Rules are keyed by account, so without this
+   * every rule landed on whichever one the server resolved and the caller's
+   * other accounts were unreachable.
+   *
+   * Controlled by the page rather than chosen here: the panel this sits inside
+   * already has an account selector, and two independent pickers on one panel
+   * read as a contradiction — "showing settings for A" above "rules for B".
+   */
+  integrationId?: string | null;
+  isMultiAccount?: boolean;
 }) {
   const { rules, isLoading, isManageable, addRule, removeRule } =
-    useGmailExclusions(workspaceId);
+    useGmailExclusions(workspaceId, integrationId);
   const [kind, setKind] = useState<"address" | "domain">("domain");
   const [value, setValue] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -85,7 +98,11 @@ export function GmailExclusions({
         <p className="text-xs text-muted-foreground mt-1">
           Mail to or from these addresses stays out of Aexy entirely — it is
           never stored, and adding one removes anything already synced.
-          {connectedEmail ? ` Applies to ${connectedEmail}.` : ""}
+          {isMultiAccount
+            ? " Each account has its own list — these are for the account selected above."
+            : connectedEmail
+              ? ` Applies to ${connectedEmail}.`
+              : ""}
         </p>
       </div>
 

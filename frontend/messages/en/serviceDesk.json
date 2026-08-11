@@ -174,7 +174,14 @@
       "delete": "Delete",
       "empty": "Nothing here yet.",
       "readOnly": "You have read-only access to Master Data. Ask a workspace admin or service desk manager to make changes.",
-      "domainsHint": "e.g. acme.com, acme.co"
+      "domainsHint": "acme.com, or bob@acme.com",
+      "masterDataHint": "The three tables the desk sorts incoming email against. The sender's domain decides which account a ticket belongs to and who it lands on — mail that matches nothing goes to triage.",
+      "accountsHint": "Who the desk works for. When mail arrives, its sender domain is looked up here: the ticket is attributed to that account and assigned to the owner set below. A whole email address can be used instead of a domain, and beats a domain entry — use one when several accounts share a provider like gmail.com.",
+      "accountsEmpty": "No accounts yet, so every incoming email lands in triage and is given an arbitrary owner. Add the domains you receive requests from and tickets start routing themselves.",
+      "vendorsHint": "Outside parties the desk sends work to. Mail from these domains is read as a vendor replying about existing work rather than a customer raising something new. It still goes to triage — a vendor is not an account.",
+      "vendorsEmpty": "No vendors yet. Mail from anyone who is not a known account is treated as an unknown sender.",
+      "productsHint": "What a ticket can be about. AI categorisation picks one by exact name and the daily digest groups by it, so a name the AI suggests that is not listed here is dropped.",
+      "productsEmpty": "No products yet, so tickets are not tagged with one and the digest cannot group by it."
     },
     "noDepartment": "You're not in a department yet, so no tickets can be routed to you. Ask an admin to add you from Organization → Departments.",
     "assignedOnly": "You see the tickets assigned to you, and none are open right now. Other tickets on the desk are handled by their own owners.",

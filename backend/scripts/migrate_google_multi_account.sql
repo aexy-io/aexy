@@ -18,35 +18,54 @@
 
 DO $$
 DECLARE
-    constraint_name TEXT;
+    target TEXT;
 BEGIN
-    -- Postgres names this constraint automatically, and the name differs
-    -- between databases created by `create_all` and by an earlier migration.
-    -- Look it up rather than guessing `google_integrations_workspace_id_key`.
-    SELECT con.conname INTO constraint_name
-    FROM pg_constraint con
-    JOIN pg_class rel ON rel.oid = con.conrelid
-    JOIN pg_attribute att
-        ON att.attrelid = rel.oid AND att.attnum = ANY (con.conkey)
-    WHERE rel.relname = 'google_integrations'
-      AND con.contype = 'u'
-      AND att.attname = 'workspace_id'
-      AND array_length(con.conkey, 1) = 1
-    LIMIT 1;
+    -- Drop whatever single-column UNIQUE on workspace_id this database has,
+    -- discovered rather than guessed. Guessing is what made the first version
+    -- of this migration a no-op: it dropped the constraint and two invented
+    -- index names, while the real one was `ix_google_integrations_workspace_id`
+    -- — a unique *index*, created by SQLAlchemy because the column carried both
+    -- `unique=True` and `index=True`. The migration reported success and the
+    -- second account still failed to insert.
 
-    IF constraint_name IS NOT NULL THEN
-        EXECUTE format(
-            'ALTER TABLE google_integrations DROP CONSTRAINT %I', constraint_name
-        );
-    END IF;
+    -- Table constraints first (these own their backing index).
+    FOR target IN
+        SELECT con.conname
+        FROM pg_constraint con
+        JOIN pg_class rel ON rel.oid = con.conrelid
+        WHERE rel.relname = 'google_integrations'
+          AND con.contype = 'u'
+          AND array_length(con.conkey, 1) = 1
+          AND con.conkey[1] = (
+              SELECT attnum FROM pg_attribute
+              WHERE attrelid = rel.oid AND attname = 'workspace_id'
+          )
+    LOOP
+        EXECUTE format('ALTER TABLE google_integrations DROP CONSTRAINT %I', target);
+    END LOOP;
+
+    -- Then standalone unique indexes with no constraint behind them.
+    FOR target IN
+        SELECT idx.relname
+        FROM pg_index i
+        JOIN pg_class idx ON idx.oid = i.indexrelid
+        JOIN pg_class rel ON rel.oid = i.indrelid
+        WHERE rel.relname = 'google_integrations'
+          AND i.indisunique
+          AND i.indnatts = 1
+          AND i.indkey[0] = (
+              SELECT attnum FROM pg_attribute
+              WHERE attrelid = rel.oid AND attname = 'workspace_id'
+          )
+    LOOP
+        EXECUTE format('DROP INDEX IF EXISTS %I', target);
+    END LOOP;
 END $$;
 
--- Some databases carry it as a plain unique index rather than a constraint.
-DROP INDEX IF EXISTS google_integrations_workspace_id_key;
-DROP INDEX IF EXISTS ix_google_integrations_workspace_id_unique;
-
--- Still indexed, just no longer unique — every lookup is by workspace.
-CREATE INDEX IF NOT EXISTS ix_google_integrations_workspace
+-- Still indexed, just no longer unique — every lookup is by workspace. The
+-- model declares `index=True`, so `create_all` recreates this name non-unique
+-- on a fresh database.
+CREATE INDEX IF NOT EXISTS ix_google_integrations_workspace_id
     ON google_integrations (workspace_id);
 
 -- One row per address per workspace.

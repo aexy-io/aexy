@@ -41,11 +41,14 @@ import { useWorkspace } from "@/hooks/useWorkspace";
 import {
   DealCreationSettings,
   developerApi,
+  GoogleAccountSummary,
   googleIntegrationApi,
   GoogleIntegrationStatus,
 } from "@/lib/api";
 import { AppAccessGuard } from "@/components/guards/AppAccessGuard";
 import { GmailExclusions } from "@/components/settings/GmailExclusions";
+import { GmailSyncMode } from "@/components/settings/GmailSyncMode";
+import { GoogleAccounts } from "@/components/settings/GoogleAccounts";
 import {
   SettingsEmptyState,
   SettingsPage,
@@ -95,7 +98,13 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
   const [status, setStatus] = useState<GoogleIntegrationStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [isDisconnecting, setIsDisconnecting] = useState(false);
+  // Bumped after a disconnect so the sync panels below re-read status.
+  const [accountsVersion, setAccountsVersion] = useState(0);
+  // Held here because the sections below the list are per-account too.
+  const [accounts, setAccounts] = useState<GoogleAccountSummary[]>([]);
+  // null means "let the server decide" — yours, else the oldest. That is the
+  // right default: it is what a one-account workspace has always shown.
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [syncResult, setSyncResult] = useState<{ gmail?: string; calendar?: string } | null>(null);
   const [dealSettings, setDealSettings] = useState<DealCreationSettings>(DEFAULT_DEAL_SETTINGS);
   const [showDealSettings, setShowDealSettings] = useState(false);
@@ -117,19 +126,21 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
     }
   }, [searchParams]);
 
-  // Fetch status
+  // Fetch status for the selected account. Re-runs when the selection changes,
+  // because every figure on this page belongs to one account rather than to
+  // the workspace.
   useEffect(() => {
     const fetchStatus = async () => {
       if (!workspaceId) return;
       try {
-        let data = await googleIntegrationApi.getStatus(workspaceId);
+        let data = await googleIntegrationApi.getStatus(workspaceId, selectedAccountId);
 
         if (!data.is_connected) {
           try {
             const developerStatus = await developerApi.getGoogleStatus();
             if (developerStatus.is_connected) {
               await googleIntegrationApi.connectFromDeveloper(workspaceId);
-              data = await googleIntegrationApi.getStatus(workspaceId);
+              data = await googleIntegrationApi.getStatus(workspaceId, selectedAccountId);
             }
           } catch {
             // Continue with workspace-only status
@@ -149,10 +160,18 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
       }
     };
     fetchStatus();
-  }, [workspaceId]);
+  }, [workspaceId, selectedAccountId]);
 
   // Minimum interval in minutes when enabled (to prevent aggressive syncing)
   const MIN_SYNC_INTERVAL = 5;
+
+  // The account the panels below are about. `selectedAccountId` is null until
+  // somebody chooses, so fall back to whichever one the server resolved —
+  // matched by address, since status carries the email and not the id.
+  const selectedIntegrationId =
+    selectedAccountId ??
+    accounts.find((a) => a.google_email === status?.google_email)?.id ??
+    null;
 
   // Debounce custom Gmail interval input
   useEffect(() => {
@@ -208,27 +227,19 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
     }
   };
 
-  const handleDisconnect = async () => {
-    if (!workspaceId || !confirm("Are you sure you want to disconnect Google integration?")) return;
-    setIsDisconnecting(true);
-    try {
-      await googleIntegrationApi.disconnect(workspaceId);
-      setStatus(null);
-    } catch (error) {
-      console.error("Failed to disconnect:", error);
-    } finally {
-      setIsDisconnecting(false);
-    }
-  };
 
   const handleGmailSync = async () => {
     if (!workspaceId) return;
     setIsSyncing(true);
     setSyncResult(null);
     try {
-      const result = await googleIntegrationApi.gmail.sync(workspaceId, { full_sync: false });
+      const result = await googleIntegrationApi.gmail.sync(
+        workspaceId,
+        { full_sync: false },
+        selectedAccountId
+      );
       setSyncResult({ gmail: `Synced ${result.messages_synced} emails` });
-      const newStatus = await googleIntegrationApi.getStatus(workspaceId);
+      const newStatus = await googleIntegrationApi.getStatus(workspaceId, selectedAccountId);
       setStatus(newStatus);
     } catch (error) {
       setSyncResult({ gmail: "Sync failed" });
@@ -243,9 +254,9 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
     setIsSyncing(true);
     setSyncResult(null);
     try {
-      const result = await googleIntegrationApi.calendar.sync(workspaceId);
+      const result = await googleIntegrationApi.calendar.sync(workspaceId, undefined, selectedAccountId);
       setSyncResult({ calendar: `Synced ${result.events_synced} events` });
-      const newStatus = await googleIntegrationApi.getStatus(workspaceId);
+      const newStatus = await googleIntegrationApi.getStatus(workspaceId, selectedAccountId);
       setStatus(newStatus);
     } catch (error) {
       setSyncResult({ calendar: "Sync failed" });
@@ -258,7 +269,11 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
   const handleUpdateSettings = async (settings: { gmail_sync_enabled?: boolean; calendar_sync_enabled?: boolean; auto_sync_interval_minutes?: number; auto_sync_calendar_interval_minutes?: number; }) => {
     if (!workspaceId) return;
     try {
-      const newStatus = await googleIntegrationApi.updateSettings(workspaceId, settings);
+      const newStatus = await googleIntegrationApi.updateSettings(
+        workspaceId,
+        settings,
+        selectedAccountId
+      );
       setStatus(newStatus);
     } catch (error) {
       console.error("Failed to update settings:", error);
@@ -287,12 +302,16 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
     const updatedSettings = { ...dealSettings, ...newSettings };
     setDealSettings(updatedSettings);
     try {
-      const newStatus = await googleIntegrationApi.updateSettings(workspaceId, {
-        sync_settings: {
-          ...status?.sync_settings,
-          deal_settings: updatedSettings,
+      const newStatus = await googleIntegrationApi.updateSettings(
+        workspaceId,
+        {
+          sync_settings: {
+            ...status?.sync_settings,
+            deal_settings: updatedSettings,
+          },
         },
-      });
+        selectedAccountId
+      );
       setStatus(newStatus);
     } catch (error) {
       console.error("Failed to update deal settings:", error);
@@ -380,29 +399,60 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
         {/* Connection status */}
         {status?.is_connected ? (
           <>
-            {/* Connected email */}
+            {/* Connected accounts. A list rather than one line, because a
+                workspace holds one Google account per address — several people
+                can each sync their own mailbox, and a shared desk address is
+                its own entry again. */}
             <div className="p-6 border-b border-border/50">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <Mail className="w-5 h-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-foreground font-medium">{status.google_email}</p>
-                    <p className="text-sm text-muted-foreground">Connected Google account</p>
-                  </div>
-                </div>
-                <button
-                  onClick={handleDisconnect}
-                  disabled={isDisconnecting}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  {isDisconnecting ? "Disconnecting..." : "Disconnect"}
-                </button>
+              <div className="flex items-center gap-3 mb-3">
+                <Mail className="w-5 h-5 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  Connected Google accounts
+                </p>
               </div>
+              <GoogleAccounts
+                key={accountsVersion}
+                workspaceId={workspaceId}
+                onConnectAnother={handleConnect}
+                onChanged={() => setAccountsVersion((v) => v + 1)}
+                onLoaded={setAccounts}
+              />
             </div>
 
-            {/* Sync options */}
+            {/* Sync options.
+
+                Scoped to one account. Sync state, counts, intervals and
+                exclusions are all per-account, so with several connected the
+                page has to say which one it is showing — otherwise the numbers
+                below silently describe whichever account the server picked. */}
             <div className="p-6 space-y-6">
+              {accounts.length > 1 && (
+                <label
+                  className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground"
+                  data-testid="sync-account-scope"
+                >
+                  Showing settings for
+                  <select
+                    // Before a choice is made the server picked the account, so
+                    // reflect *that* one — matched by address, since the
+                    // options are ids and status carries only the email.
+                    value={
+                      selectedAccountId ??
+                      accounts.find((a) => a.google_email === status.google_email)?.id ??
+                      ""
+                    }
+                    onChange={(e) => setSelectedAccountId(e.target.value)}
+                    aria-label="Which Google account these sync settings apply to"
+                    className="rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground"
+                  >
+                    {accounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.google_email}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               {/* Gmail Sync */}
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-4">
@@ -453,10 +503,31 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
               {/* What this mailbox keeps out. Directly under the Gmail Sync
                   toggle because the moment somebody turns sync on is the
                   moment they need to know they can keep parts of it out. */}
+              {/* Above exclusions on purpose: this decides whether exclusions
+                  are the right tool at all. On an opt-in account they are a
+                  second line rather than the first. */}
+              {status.gmail_sync_enabled && (
+                <GmailSyncMode
+                  workspaceId={workspaceId}
+                  integrationId={selectedIntegrationId}
+                  syncMode={status.sync_mode ?? "all"}
+                  optInLabel={status.opt_in_label ?? "Aexy"}
+                  isMine={
+                    accounts.find((a) => a.id === selectedIntegrationId)?.is_mine ?? true
+                  }
+                  onModeChanged={() => setAccountsVersion((v) => v + 1)}
+                />
+              )}
+
               {status.gmail_sync_enabled && (
                 <GmailExclusions
                   workspaceId={workspaceId}
                   connectedEmail={status.google_email}
+                  // Follows the scope selector above. If that lands on somebody
+                  // else's account the server answers 403 and the panel hides
+                  // itself — exclusions belong to whoever connected the mailbox.
+                  integrationId={selectedIntegrationId}
+                  isMultiAccount={accounts.length > 1}
                 />
               )}
 

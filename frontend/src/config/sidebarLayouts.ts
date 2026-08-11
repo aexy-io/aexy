@@ -141,7 +141,11 @@ const crmItems: SidebarItemConfig[] = [
 const serviceDeskItems: SidebarItemConfig[] = [
     { href: "/service-desk", label: "Dashboard", icon: LayoutDashboard },
     { href: "/service-desk/tickets", label: "Tickets", icon: Ticket },
-    { href: "/service-desk/settings", label: "Master Data", icon: Settings },
+    // The desk's settings now live in main Settings alongside Escalation
+    // Matrix and Ticket Forms. Kept in this sidebar too, pointing at the new
+    // home: somebody working in the desk should not have to know the
+    // configuration moved house to find it.
+    { href: "/settings/service-desk/master-data", label: "Master Data", icon: Settings },
 ];
 
 const emailItems: SidebarItemConfig[] = [
