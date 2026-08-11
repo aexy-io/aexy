@@ -53,6 +53,10 @@ const PERSONAL_PAGES = new Set([
   // revoking only what they authorised. Gating it behind a workspace permission
   // would stop someone revoking their own connector.
   "connectors",
+  // Connecting your own Google mailbox. The API requires only membership and
+  // says why: gating it meant a new joiner could not put their own inbox on the
+  // Service Desk without an admin signing in to Google as them.
+  "connected-accounts",
 ]);
 
 describe("settings permission catalogue", () => {
@@ -181,4 +185,44 @@ describe("canAccessSettingsItem", () => {
     expect(canAccessSettingsItem(both, one)).toBe(false);
     expect(canAccessSettingsItem({ ...both, anyPermission: true }, one)).toBe(true);
   });
+});
+
+/**
+ * The pages a member must keep, whatever their workspace role.
+ *
+ * These are not "nice to have ungated" — each one manages something that
+ * belongs to the person rather than the workspace, and gating any of them
+ * breaks a real flow with no admin workaround. `connected-accounts` is the
+ * sharpest case: the API deliberately requires only membership to connect your
+ * own mailbox, because gating it meant a new joiner could not put their inbox
+ * on the Service Desk unless an admin signed in to Google as them.
+ */
+describe("personal settings pages stay reachable", () => {
+  const permissionlessMember = {
+    permissions: [],
+    isOwner: false,
+    isPlatformAdmin: false,
+  };
+
+  const MUST_STAY_PERSONAL = [
+    "appearance",
+    "notifications",
+    "identity",
+    "api-tokens",
+    "connectors",
+    "connected-accounts",
+  ];
+
+  it.each(MUST_STAY_PERSONAL)(
+    "%s is reachable by a member with no permissions",
+    (id) => {
+      const item = getAllSettingsNavItems().find((i) => i.id === id);
+      expect(item, `settings entry "${id}" is missing`).toBeDefined();
+      expect(
+        canAccessSettingsItem(item!, permissionlessMember),
+        `"${id}" became gated — a member can no longer reach their own settings`
+      ).toBe(true);
+    }
+  );
+
 });

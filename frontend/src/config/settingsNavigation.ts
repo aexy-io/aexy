@@ -437,6 +437,27 @@ export const settingsNavigation: SettingsNavCategory[] = [
         keywords: ["api", "token", "key", "mcp", "integration", "authentication"],
       },
       {
+        id: "connected-accounts",
+        label: "Connected Accounts",
+        href: "/settings/connected-accounts",
+        icon: Mail,
+        description: "Connect your own Google account for mail, calendar and Service Desk",
+        // Personal, and deliberately ungated: the API already lets any member
+        // connect their own mailbox, and gating the page meant a support agent
+        // could never put their inbox on the Service Desk without an admin
+        // signing in to Google as them.
+        keywords: [
+          "google",
+          "gmail",
+          "calendar",
+          "connect",
+          "mailbox",
+          "account",
+          "service desk",
+          "oauth",
+        ],
+      },
+      {
         id: "connectors",
         label: "Connected Apps",
         href: "/settings/connectors",

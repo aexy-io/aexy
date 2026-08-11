@@ -1,0 +1,21 @@
+{
+  "connectedAccounts": {
+    "title": "जुड़े हुए खाते",
+    "subtitle": "अपना Google खाता जोड़ें ताकि Aexy आपके मेल और कैलेंडर के साथ काम कर सके। यह आपका अपना है — इसके लिए किसी admin की ज़रूरत नहीं।",
+    "google": {
+      "heading": "Google",
+      "label": "इस workspace से जुड़े Google खाते",
+      "footer": "यहां आपको अपने खाते दिखते हैं। Owner और admin को workspace के सभी खाते दिखते हैं, और department head को अपने department के। हटाने पर आगे का sync रुक जाता है; जो मेल पहले sync हो चुका है वह बना रहता है।"
+    },
+    "what": {
+      "heading": "जोड़ने से क्या होता है",
+      "serviceDesk": "आपका पता Service Desk mailbox के रूप में इस्तेमाल हो सकता है, ताकि उसी से tickets का जवाब दिया जा सके।",
+      "crm": "मेल और कैलेंडर CRM records के साथ sync होते हैं, ताकि बातचीत और meetings सही contact पर दिखें।",
+      "shared": "एक workspace में कई Google खाते हो सकते हैं। आपका खाता बाकियों की जगह लेने के बजाय उनके साथ जुड़ता है।"
+    },
+    "toast": {
+      "connected": "Google खाता जुड़ गया",
+      "failed": "वह खाता नहीं जोड़ा जा सका"
+    }
+  }
+}

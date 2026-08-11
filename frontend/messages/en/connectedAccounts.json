@@ -1,0 +1,21 @@
+{
+  "connectedAccounts": {
+    "title": "Connected Accounts",
+    "subtitle": "Connect your own Google account so Aexy can work with your mail and calendar. This is yours — you don't need an admin to do it for you.",
+    "google": {
+      "heading": "Google",
+      "label": "Your connected Google accounts",
+      "footer": "You see your own accounts here. Owners and admins see every account in the workspace, and a department head sees their department's. Disconnecting stops future syncing; mail already synced stays."
+    },
+    "what": {
+      "heading": "What connecting does",
+      "serviceDesk": "Lets your address be used as a Service Desk mailbox, so tickets can be answered from it.",
+      "crm": "Syncs mail and calendar against CRM records, so conversations and meetings show up on the right contact.",
+      "shared": "A workspace can hold several Google accounts. Connecting adds yours alongside the others rather than replacing them."
+    },
+    "toast": {
+      "connected": "Google account connected",
+      "failed": "Could not connect that account"
+    }
+  }
+}

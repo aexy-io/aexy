@@ -86,6 +86,8 @@ from aexy.services.gmail_sync_exclusions import (
     GmailSyncExclusionService,
     address_of,
 )
+from aexy.services.google_account_visibility import visible_google_accounts
+from aexy.services.permission_service import PermissionService
 from aexy.services.workspace_service import WorkspaceService
 
 logger = logging.getLogger(__name__)
@@ -2058,30 +2060,27 @@ async def list_google_accounts(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Every Google account connected to this workspace.
+    """The Google accounts this caller may see.
 
-    Readable by any member, because the Service Desk mailbox form needs to
-    offer them and a member has to see which addresses the workspace already
-    syncs. It carries no tokens, cursors or scopes — see
-    ``GoogleAccountSummary``.
+    Not the whole workspace's. Listing every mailbox to every member was fine
+    while connecting was an admin act, but any member can now connect their own
+    inbox, and the full list is a roster of who has linked their personal mail.
+
+    Owners and admins see everything; a department head sees their own plus
+    their department's; everyone else sees their own. Service Desk mailboxes are
+    team addresses rather than personal ones and stay visible to whoever can
+    manage tickets, because the mailbox form has to offer them. The rule lives
+    in ``google_account_visibility`` so it can be tested without HTTP.
+
+    Carries no tokens, cursors or scopes — see ``GoogleAccountSummary``.
     """
-    await verify_workspace_access(workspace_id, current_user, db, "viewer")
+    workspace_service = await verify_workspace_access(
+        workspace_id, current_user, db, "viewer"
+    )
 
     integrations = await list_integrations(workspace_id, db)
 
-    connected_by_names: dict[str, str] = {}
-    owner_ids = [str(i.connected_by_id) for i in integrations if i.connected_by_id]
-    if owner_ids:
-        rows = (
-            await db.execute(
-                select(Developer.id, Developer.name, Developer.email).where(
-                    Developer.id.in_(owner_ids)
-                )
-            )
-        ).all()
-        connected_by_names = {str(r[0]): (r[1] or r[2] or "") for r in rows}
-
-    desk_integration_ids = set(
+    desk_integration_ids_all = set(
         str(i)
         for i in (
             await db.execute(
@@ -2094,6 +2093,32 @@ async def list_google_accounts(
         .scalars()
         .all()
     )
+
+    integrations = await visible_google_accounts(
+        db,
+        workspace_id=workspace_id,
+        developer_id=str(current_user.id),
+        integrations=list(integrations),
+        is_admin=await workspace_service.check_permission(
+            workspace_id, str(current_user.id), "admin"
+        ),
+        can_manage_tickets=await PermissionService(db).check_permission(
+            workspace_id, str(current_user.id), "can_manage_tickets"
+        ),
+        service_desk_integration_ids=desk_integration_ids_all,
+    )
+
+    connected_by_names: dict[str, str] = {}
+    owner_ids = [str(i.connected_by_id) for i in integrations if i.connected_by_id]
+    if owner_ids:
+        rows = (
+            await db.execute(
+                select(Developer.id, Developer.name, Developer.email).where(
+                    Developer.id.in_(owner_ids)
+                )
+            )
+        ).all()
+        connected_by_names = {str(r[0]): (r[1] or r[2] or "") for r in rows}
 
     # What connecting would add for *this* caller. Named up front because the
     # flow takes whichever Google account they authorise, and being told
@@ -2121,7 +2146,7 @@ async def list_google_accounts(
                     i.connected_by_id
                     and str(i.connected_by_id) == str(current_user.id)
                 ),
-                is_service_desk_mailbox=str(i.id) in desk_integration_ids,
+                is_service_desk_mailbox=str(i.id) in desk_integration_ids_all,
                 last_error=i.last_error,
                 created_at=i.created_at,
             )
