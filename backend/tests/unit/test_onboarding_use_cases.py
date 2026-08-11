@@ -56,6 +56,21 @@ def test_sales_workspace_gets_crm_not_standups():
     assert settings["oncall"] is False
 
 
+def test_operations_workspace_gets_the_service_desk():
+    """Before there was an Operations pick, no choice reached these apps."""
+    settings = workspace_app_settings_for_use_cases(["operations"])
+    assert settings["service_desk"] is True
+    assert settings["drive"] is True
+    assert settings["tickets"] is True
+    assert settings["sprints"] is False
+    assert settings["hiring"] is False
+
+
+def test_knowledge_turns_on_the_reports_it_advertises():
+    """The card's "Reports & Exports" pill named an app nothing enabled."""
+    assert workspace_app_settings_for_use_cases(["knowledge"])["reports"] is True
+
+
 def test_dashboard_and_chat_survive_every_choice():
     for use_case in USE_CASES:
         settings = workspace_app_settings_for_use_cases([use_case])
@@ -120,6 +135,12 @@ def test_capability_use_cases_seed_no_department():
     """"We want AI" describes something every department uses, not a group."""
     assert departments_for_use_cases(["ai"]) == []
     assert departments_for_use_cases(["knowledge"]) == []
+    # Operations seeds none for a different reason: no profile bundle grants
+    # Service Desk or Drive, and the Service Desk templates already seed the
+    # Operations department — whichever seeded it first would own the unique
+    # function key, and onboarding winning would give the desk's own people a
+    # baseline without their desk in it.
+    assert departments_for_use_cases(["operations"]) == []
 
 
 @pytest.mark.parametrize(

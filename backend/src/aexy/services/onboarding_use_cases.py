@@ -117,7 +117,21 @@ USE_CASES: dict[str, UseCaseConfig] = {
     },
     "knowledge": {
         "label": "Knowledge & Data",
-        "apps": ["docs", "tables", "forms"],
+        # `reports` because the card has always advertised a "Reports & Exports"
+        # pill while no use case turned the app on.
+        "apps": ["docs", "tables", "forms", "reports"],
+        "departments": [],
+    },
+    "operations": {
+        "label": "Operations & Support",
+        "apps": ["service_desk", "tickets", "organization", "drive"],
+        # No department, for two reasons. None of the profile bundles grant
+        # Service Desk or Drive, so seeding one would hand Operations people a
+        # baseline missing the very apps this pick turns on. And the Service
+        # Desk industry templates already seed an Operations department
+        # deliberately — since `function_key` is unique per workspace, whichever
+        # ran first would win, and onboarding winning would mean the desk's
+        # people get the profile that omits their desk.
         "departments": [],
     },
 }

@@ -19,6 +19,7 @@ import {
   Briefcase,
   Bot,
   BookOpen,
+  Headset,
   User,
 } from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
@@ -68,12 +69,17 @@ const useCaseModules: Record<string, { icon: LucideIcon; label: string }[]> = {
     { icon: BookOpen, label: "Tables" },
     { icon: BookOpen, label: "Forms" },
   ],
+  operations: [
+    { icon: Headset, label: "Service Desk" },
+    { icon: Headset, label: "Tickets" },
+    { icon: Headset, label: "Org Chart" },
+  ],
 };
 
 export default function WorkspaceStep() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { switchWorkspace } = useWorkspace();
+  const { workspaces, currentWorkspaceId, switchWorkspace } = useWorkspace();
   const { data, updateData, updateWorkspace, setCurrentStep } = useOnboarding();
   const [mode, setMode] = useState<WorkspaceMode>("select");
   const [workspaceName, setWorkspaceName] = useState("");
@@ -84,6 +90,7 @@ export default function WorkspaceStep() {
   const [loadingInvitations, setLoadingInvitations] = useState(true);
   const [acceptingToken, setAcceptingToken] = useState<string | null>(null);
   const [onboardingCompleted, setOnboardingCompleted] = useState(false);
+  const [onboardingStatusLoaded, setOnboardingStatusLoaded] = useState(false);
   const updateWorkspaceRef = useRef(updateWorkspace);
   updateWorkspaceRef.current = updateWorkspace;
 
@@ -104,7 +111,8 @@ export default function WorkspaceStep() {
           });
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setOnboardingStatusLoaded(true));
   }, []);
 
   useEffect(() => {
@@ -128,6 +136,33 @@ export default function WorkspaceStep() {
   // If already has workspace, show continue
   const hasWorkspace = data.workspace.id !== null;
   const isPendingJoin = data.workspace.joinRequestStatus === "pending";
+
+  // A workspace this user already belongs to — from an invitation, or from a
+  // run of onboarding they abandoned partway. `data.workspace` only knows
+  // about workspaces set up during *this* run, so without this they'd be
+  // asked to create or join one they're already in. Users who have finished
+  // onboarding are here deliberately to add another, so they don't get this.
+  const existingWorkspace =
+    workspaces.find((w) => w.id === currentWorkspaceId) ?? workspaces[0];
+  const canContinueWithExisting =
+    !hasWorkspace &&
+    onboardingStatusLoaded &&
+    !onboardingCompleted &&
+    !!existingWorkspace;
+
+  const handleContinueWithExisting = () => {
+    if (!existingWorkspace) return;
+    updateWorkspace({
+      id: existingWorkspace.id,
+      name: existingWorkspace.name,
+      type: "join",
+      joinRequestStatus: "accepted",
+    });
+    if (existingWorkspace.id !== currentWorkspaceId) {
+      switchWorkspace(existingWorkspace.id);
+    }
+    router.push("/onboarding/connect");
+  };
 
   const handleCreateWorkspace = async () => {
     if (!workspaceName.trim()) {
@@ -374,6 +409,30 @@ export default function WorkspaceStep() {
               <div className="flex-1 h-px bg-accent/50" />
             </div>
           </div>
+        )}
+
+        {/* Already a member of a workspace */}
+        {canContinueWithExisting && mode === "select" && (
+          <motion.button
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            onClick={handleContinueWithExisting}
+            className="w-full max-w-2xl mx-auto mb-4 p-6 rounded-xl bg-primary-500/10 border border-primary-500/40 hover:border-primary-500/70 transition-all text-left group flex items-center gap-4"
+          >
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center flex-shrink-0">
+              <Building2 className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                Continue with {existingWorkspace.name}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                You&apos;re already a member of this workspace.
+              </p>
+            </div>
+            <ArrowRight className="w-5 h-5 text-primary-600 dark:text-primary-400 flex-shrink-0" />
+          </motion.button>
         )}
 
         {/* Mode Selection or Forms */}

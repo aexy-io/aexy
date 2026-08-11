@@ -18,6 +18,8 @@ import {
   Mail,
   FileText,
   ClipboardList,
+  Headset,
+  Network,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useOnboarding } from "../OnboardingContext";
@@ -44,6 +46,7 @@ const useCaseLabelMap: Record<string, string> = {
   ai: "AI & Agents",
   people: "People & HR",
   knowledge: "Knowledge & Data",
+  operations: "Operations & Support",
 };
 
 interface QuickLink {
@@ -149,6 +152,22 @@ const linksByUseCase: Record<string, QuickLink[]> = {
       description: "Create a form to collect data",
       href: "/forms",
       color: "from-purple-500 to-violet-600",
+    },
+  ],
+  operations: [
+    {
+      icon: Headset,
+      title: "Open the service desk",
+      description: "Track incoming tickets and turnaround times",
+      href: "/service-desk",
+      color: "from-indigo-500 to-indigo-600",
+    },
+    {
+      icon: Network,
+      title: "Build your org chart",
+      description: "Set up departments and reporting lines",
+      href: "/organization",
+      color: "from-indigo-500 to-indigo-600",
     },
   ],
 };

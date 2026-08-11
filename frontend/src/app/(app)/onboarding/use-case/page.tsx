@@ -11,11 +11,13 @@ import {
   Bot,
   Users,
   BookOpen,
+  Headset,
   CheckCircle2,
   Sparkles,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { TeamStrategy, useOnboarding } from "../OnboardingContext";
+import { useWorkspace } from "@/hooks/useWorkspace";
 
 const TEAM_STRATEGIES: {
   id: TeamStrategy;
@@ -112,11 +114,24 @@ const useCases = [
     features: ["Docs & Wiki", "Tables", "Forms", "Reports & Exports"],
     popular: false,
   },
+  {
+    id: "operations",
+    icon: Headset,
+    title: "Operations & Support",
+    description: "Service desk, ticketing, org structure, and shared files",
+    color: "from-indigo-500 to-indigo-600",
+    selectedBg: "bg-indigo-500/10 border-indigo-500/50 ring-indigo-500/20",
+    pillColor: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-500/20",
+    pillSelectedColor: "bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border-indigo-500/40",
+    features: ["Service Desk", "Tickets", "Org Chart", "Directory", "Drive"],
+    popular: false,
+  },
 ];
 
 export default function UseCaseSelection() {
   const router = useRouter();
-  const { data, updateData, setCurrentStep } = useOnboarding();
+  const { data, updateData, updateWorkspace, setCurrentStep } = useOnboarding();
+  const { workspaces, currentWorkspaceId, switchWorkspace } = useWorkspace();
   const [allSelected, setAllSelected] = useState(false);
 
   useEffect(() => {
@@ -145,6 +160,25 @@ export default function UseCaseSelection() {
   };
 
   const handleContinue = () => {
+    // Users who already belong to a workspace — invited by a teammate, or
+    // returning to a half-finished run — have nothing to do on the workspace
+    // step, so skip straight past it. Reaching that step directly (e.g. from
+    // the workspace switcher) still works: it offers to create another.
+    const existing =
+      workspaces.find((w) => w.id === currentWorkspaceId) ?? workspaces[0];
+    if (existing) {
+      updateWorkspace({
+        id: existing.id,
+        name: existing.name,
+        type: "join",
+        joinRequestStatus: "accepted",
+      });
+      if (existing.id !== currentWorkspaceId) {
+        switchWorkspace(existing.id);
+      }
+      router.push("/onboarding/connect");
+      return;
+    }
     router.push("/onboarding/workspace");
   };
 
