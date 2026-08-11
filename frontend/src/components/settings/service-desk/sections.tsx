@@ -779,6 +779,7 @@ export function MasterDataSections() {
   return (
     <>
       <Section title={terms.accounts ?? t("settings.accounts")}>
+        <p className="max-w-2xl text-sm text-muted-foreground">{t("settings.accountsHint")}</p>
         {canManage && (
           <div className="flex flex-wrap items-end gap-2">
             <Input value={pName} onChange={(e) => setPName(e.target.value)} placeholder={t("settings.name")} className="max-w-[180px]" />
@@ -815,7 +816,12 @@ export function MasterDataSections() {
           </div>
         )}
         {accounts.isLoading ? <Spinner size="sm" /> : (accounts.data ?? []).length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("settings.empty")}</p>
+          // Not "Nothing here yet": an empty account table is not a blank slate,
+          // it is a desk where every ticket lands in triage with an arbitrary
+          // owner. Say the consequence, because it is invisible from here.
+          <p className="max-w-2xl text-sm text-amber-700 dark:text-amber-400">
+            {t("settings.accountsEmpty")}
+          </p>
         ) : (accounts.data ?? []).map((p) => (
           <Row key={p.id} canManage={canManage} onDelete={() => m.deleteAccount.mutate(p.id)}>
             <span className="font-medium">{p.name}</span>{" "}
@@ -825,6 +831,7 @@ export function MasterDataSections() {
       </Section>
 
       <Section title={terms.vendors ?? t("settings.vendors")}>
+        <p className="max-w-2xl text-sm text-muted-foreground">{t("settings.vendorsHint")}</p>
         {canManage && (
           <div className="flex flex-wrap items-end gap-2">
             <Input value={iName} onChange={(e) => setIName(e.target.value)} placeholder={t("settings.name")} className="max-w-[180px]" />
@@ -838,7 +845,11 @@ export function MasterDataSections() {
             >{t("settings.add")}</Button>
           </div>
         )}
-        {(vendors.data ?? []).map((i) => (
+        {/* Previously an empty list rendered nothing at all, so the card read as
+            broken rather than empty. */}
+        {vendors.isLoading ? <Spinner size="sm" /> : (vendors.data ?? []).length === 0 ? (
+          <p className="max-w-2xl text-sm text-muted-foreground">{t("settings.vendorsEmpty")}</p>
+        ) : (vendors.data ?? []).map((i) => (
           <Row key={i.id} canManage={canManage} onDelete={() => m.deleteVendor.mutate(i.id)}>
             <span className="font-medium">{i.name}</span>{" "}
             {i.domains.map((d) => <Badge key={d} variant="secondary" className="ml-1 text-[10px]">{d}</Badge>)}
@@ -847,22 +858,27 @@ export function MasterDataSections() {
       </Section>
 
       <Section title={terms.products ?? t("settings.products")}>
+        <p className="max-w-2xl text-sm text-muted-foreground">{t("settings.productsHint")}</p>
         {canManage && (
           <div className="flex items-end gap-2">
             <Input value={lName} onChange={(e) => setLName(e.target.value)} placeholder={t("settings.name")} className="max-w-[220px]" />
             <Button disabled={!lName.trim() || m.createProduct.isPending} onClick={() => m.createProduct.mutate({ name: lName.trim() }, { onSuccess: () => setLName("") })}>{t("settings.add")}</Button>
           </div>
         )}
-        <div className="flex flex-wrap gap-2">
-          {(products.data ?? []).map((l) => (
-            <span key={l.id} className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-sm">
-              {l.name}
-              {canManage && (
-                <button onClick={() => m.deleteProduct.mutate(l.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-3 w-3" /></button>
-              )}
-            </span>
-          ))}
-        </div>
+        {products.isLoading ? <Spinner size="sm" /> : (products.data ?? []).length === 0 ? (
+          <p className="max-w-2xl text-sm text-muted-foreground">{t("settings.productsEmpty")}</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {(products.data ?? []).map((l) => (
+              <span key={l.id} className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-sm">
+                {l.name}
+                {canManage && (
+                  <button onClick={() => m.deleteProduct.mutate(l.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-3 w-3" /></button>
+                )}
+              </span>
+            ))}
+          </div>
+        )}
       </Section>
     </>
   );

@@ -14,7 +14,10 @@ export default function ServiceDeskMasterDataSettingsPage() {
   return (
     <SettingsPage
       title={t("tabs.settings")}
-      description={t("subtitle")}
+      // Not t("subtitle") — that describes the Service Desk app as a whole
+      // ("email-intake ticketing with stakeholder turnaround tracking"), which
+      // told a reader of this page nothing about what the three tables do.
+      description={t("settings.masterDataHint")}
       width="wide"
       breadcrumbs={[
         { label: "Settings", href: "/settings" },
