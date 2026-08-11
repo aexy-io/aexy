@@ -1,7 +1,18 @@
 # Unified Email — Plan
 
-Status: proposed
+Status: proposed — **partly superseded by `TEAM_INBOX_PLAN.md`**
 Depends on: `feat/gmail-multi-account-v2` (multi-account, exclusions, opt-in sync)
+
+> **Read `TEAM_INBOX_PLAN.md` first.** This plan builds the unified view from
+> `/crm/inbox`, which is the weaker foundation: read-only, no reply, no assignment,
+> no threading, no internal notes. Service Desk has all five, so the inbox view is
+> built there instead (see D2 in that plan).
+>
+> What survives here: §1.2 (the account-mixing leak, still live and still worth
+> fixing), §2.2–2.3 (the label agent and triage), and Phase 4. The mail-client
+> track — `SENT` sync, label history, deletes, push — remains the prerequisite for
+> putting *personal* mailboxes in Aexy, and is deferred until the shared inbox has
+> been used.
 
 ---
 
