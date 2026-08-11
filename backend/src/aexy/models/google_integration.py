@@ -65,6 +65,26 @@ class GoogleIntegration(Base):
     # Sync settings (JSON) - labels to sync, calendars to sync, privacy options
     sync_settings: Mapped[dict] = mapped_column(JSONB, default=dict)
 
+    # What this account syncs.
+    #
+    # ``all`` is the whole INBOX minus the exclusion rules — subtractive, so you
+    # have to predict what to keep out and anything you forget is already in the
+    # workspace before you notice. ``opt_in`` inverts it: nothing is stored
+    # until a thread is marked, either here or by applying ``opt_in_label`` in
+    # Gmail.
+    #
+    # Default stays ``all`` because it is what every existing account does, and
+    # a migration that quietly stopped syncing mailboxes would look exactly like
+    # an outage.
+    sync_mode: Mapped[str] = mapped_column(String(16), default="all", server_default="all")
+
+    # The Gmail label that opts a thread in without leaving Gmail. Held per
+    # account rather than per workspace: it is the owner's own mailbox they are
+    # labelling, and two people may already use different names.
+    opt_in_label: Mapped[str] = mapped_column(
+        String(255), default="Aexy", server_default="Aexy"
+    )
+
     # Gmail sync state
     gmail_history_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     gmail_last_sync_at: Mapped[datetime | None] = mapped_column(
@@ -651,4 +671,121 @@ class GoogleSyncExclusionAudit(Base):
         server_default=func.now(),
         nullable=False,
         index=True,
+    )
+
+
+class GoogleThreadOptIn(Base):
+    """One thread an opt-in account has agreed to sync.
+
+    On an ``opt_in`` account this row is the whole permission: without it a
+    thread's messages are never stored, only indexed by
+    :class:`GoogleThreadIndex`. A thread carrying the account's ``opt_in_label``
+    in Gmail counts as marked too, so the row is not the only way to say yes —
+    which is why the sync checks both rather than treating this table as
+    authoritative.
+
+    Kept even when the thread's messages are later removed. Somebody who
+    marked a thread, unmarked it, then marked it again should get their mail
+    back rather than be told it is already synced.
+    """
+
+    __tablename__ = "google_thread_optins"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    integration_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("google_integrations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    workspace_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    gmail_thread_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    marked_by_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "integration_id", "gmail_thread_id", name="uq_google_thread_optin"
+        ),
+    )
+
+
+class GoogleThreadIndex(Base):
+    """What an opt-in account knows about a thread it has not synced.
+
+    Opt-in has a bootstrapping problem: if nothing is stored, there is nothing
+    to browse and nothing to point at when saying "sync that one". This table is
+    the answer — subject, participants and timing, never bodies and never
+    attachments.
+
+    That is a real disclosure and not a loophole: a subject line and who you
+    correspond with can be as revealing as the message. It exists only on
+    accounts whose owner chose ``opt_in``, the exclusion rules are applied
+    before a row is written, and unlike ``synced_emails`` nothing here is
+    reachable from the CRM.
+    """
+
+    __tablename__ = "google_thread_index"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    integration_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("google_integrations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    workspace_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    gmail_thread_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+
+    subject: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Addresses seen on the thread, deduplicated. No display names: they add
+    # nothing to the decision and are one more thing being stored.
+    participants: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    message_count: Mapped[int] = mapped_column(default=0)
+    last_message_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "integration_id", "gmail_thread_id", name="uq_google_thread_index"
+        ),
     )
