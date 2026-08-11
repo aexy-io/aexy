@@ -16,6 +16,7 @@ from aexy.api.developers import get_current_developer
 from aexy.core.config import get_settings
 from aexy.core.database import get_db
 from aexy.models.developer import Developer, GoogleConnection
+from aexy.models.service_desk import ServiceDeskMailbox
 from aexy.models.google_integration import (
     GoogleSyncExclusionRule,
     GoogleSyncHiddenMessage,
@@ -29,6 +30,8 @@ from aexy.models.google_integration import (
 )
 from aexy.schemas.google_integration import (
     CalendarInfo,
+    GoogleAccountListResponse,
+    GoogleAccountSummary,
     ExclusionAuditEntry,
     ExclusionRuleCreate,
     ExclusionRuleCreatedResponse,
@@ -128,16 +131,78 @@ async def verify_workspace_access(
     return workspace_service
 
 
+async def list_integrations(
+    workspace_id: str, db: AsyncSession
+) -> list[GoogleIntegration]:
+    """Every Google account connected to this workspace, oldest first.
+
+    Oldest first so "the workspace's account" means the same thing from one
+    request to the next. Ordering by `created_at` alone is not enough — rows
+    written in the same transaction can share a timestamp — so `id` breaks the
+    tie and keeps the answer stable.
+    """
+    result = await db.execute(
+        select(GoogleIntegration)
+        .where(GoogleIntegration.workspace_id == workspace_id)
+        .order_by(GoogleIntegration.created_at.asc(), GoogleIntegration.id.asc())
+    )
+    return list(result.scalars().all())
+
+
 async def get_integration(
     workspace_id: str,
     db: AsyncSession,
     required: bool = True,
+    integration_id: str | None = None,
+    prefer_developer_id: str | None = None,
 ) -> GoogleIntegration | None:
-    """Get Google integration for workspace."""
-    result = await db.execute(
-        select(GoogleIntegration).where(GoogleIntegration.workspace_id == workspace_id)
-    )
-    integration = result.scalar_one_or_none()
+    """The Google account a request means.
+
+    A workspace can hold several. This used to end in `scalar_one_or_none()`,
+    which raises `MultipleResultsFound` the moment a second row exists — so it
+    had to be replaced before the unique constraint was dropped, not after.
+
+    Resolution order, and the reason for each:
+
+    * ``integration_id`` — the caller named one. Checked against the workspace,
+      so an id from somewhere else is a 404 rather than another tenant's mailbox.
+    * ``prefer_developer_id`` — the caller's own account, when they have one.
+      Somebody who has connected their mailbox means *theirs* by default; the
+      alternative is quietly acting on a colleague's inbox.
+    * the oldest — the answer a single-account workspace has always given, so
+      nothing changes for the workspaces that have one.
+    """
+    if integration_id is not None:
+        integration = (
+            await db.execute(
+                select(GoogleIntegration).where(
+                    GoogleIntegration.id == integration_id,
+                    GoogleIntegration.workspace_id == workspace_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if required and not integration:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Google account not found in this workspace",
+            )
+        return integration
+
+    integrations = await list_integrations(workspace_id, db)
+
+    integration = None
+    if prefer_developer_id is not None:
+        integration = next(
+            (
+                i
+                for i in integrations
+                if i.connected_by_id
+                and str(i.connected_by_id) == str(prefer_developer_id)
+            ),
+            None,
+        )
+    if integration is None:
+        integration = integrations[0] if integrations else None
 
     if required and not integration:
         raise HTTPException(
@@ -162,9 +227,18 @@ async def get_connect_url(
 ):
     """Get Google OAuth authorization URL for Gmail and Calendar integration.
 
-    Requires admin permission on the workspace.
+    Any member may connect, because what this connects is their own mailbox.
+    The state carries `current_user.id` and the callback records the account
+    under whoever signed in on Google's screen — so a member cannot reach
+    anybody else's mail with it, whatever address they type there.
+
+    Requiring admin here meant a new joiner could not put their own inbox on
+    the Service Desk at all: an admin had to sit at Google's sign-in screen as
+    them, which asks for a password nobody should be sharing. Removing another
+    person's account is still admin-only, and that asymmetry is the point —
+    connecting affects yourself, disconnecting affects somebody else.
     """
-    await verify_workspace_access(workspace_id, current_user, db, "admin")
+    await verify_workspace_access(workspace_id, current_user, db, "member")
 
     settings = get_settings()
     if not settings.google_client_id or not settings.google_client_secret:
@@ -203,9 +277,11 @@ async def connect_from_developer_google(
     This allows users who connected Google during the main onboarding to use
     those credentials for the workspace CRM integration without re-authenticating.
 
-    Requires admin permission on the workspace.
+    Member-level for the same reason as `/connect`: every token it reads comes
+    from `current_user`'s own `GoogleConnection`, so this can only ever attach
+    the caller's own mailbox.
     """
-    await verify_workspace_access(workspace_id, current_user, db, "admin")
+    await verify_workspace_access(workspace_id, current_user, db, "member")
 
     # Check if developer has a Google connection
     dev_conn_result = await db.execute(
@@ -246,15 +322,23 @@ async def connect_from_developer_google(
             detail="Your Google connection has expired. Please reconnect Google.",
         )
 
-    # Check if workspace already has an integration
+    # Match on the *address*, not the workspace. Matching on the workspace is
+    # what made this overwrite: the second person to connect took over the
+    # first person's row, and their mailbox stopped syncing without anyone
+    # being told. Reconnecting your own account still updates it in place.
     existing_result = await db.execute(
-        select(GoogleIntegration).where(GoogleIntegration.workspace_id == workspace_id)
+        select(GoogleIntegration).where(
+            GoogleIntegration.workspace_id == workspace_id,
+            func.lower(GoogleIntegration.google_email)
+            == (dev_connection.google_email or "").lower(),
+        )
     )
     existing = existing_result.scalar_one_or_none()
 
     if existing:
         # Update existing integration with latest tokens from developer
         # This ensures tokens are refreshed when user reconnects Google
+        existing.connected_by_id = str(current_user.id)
         existing.access_token = dev_connection.access_token
         existing.refresh_token = dev_connection.refresh_token
         existing.token_expiry = dev_connection.token_expires_at
@@ -358,9 +442,15 @@ async def oauth_callback(
             )
             user_info = response.json() if response.status_code == 200 else {}
 
-        # Create or update integration
+        # Create or update the integration *for this address*. Keyed on the
+        # workspace, a second person completing OAuth took over the first
+        # person's row and silently stopped their mailbox syncing.
         result = await db.execute(
-            select(GoogleIntegration).where(GoogleIntegration.workspace_id == workspace_id)
+            select(GoogleIntegration).where(
+                GoogleIntegration.workspace_id == workspace_id,
+                func.lower(GoogleIntegration.google_email)
+                == (user_info.get("email") or "").lower(),
+            )
         )
         integration = result.scalar_one_or_none()
 
@@ -488,9 +578,15 @@ async def google_oauth_callback(
             )
             user_info = response.json() if response.status_code == 200 else {}
 
-        # Create or update integration
+        # Create or update the integration *for this address*. Keyed on the
+        # workspace, a second person completing OAuth took over the first
+        # person's row and silently stopped their mailbox syncing.
         result = await db.execute(
-            select(GoogleIntegration).where(GoogleIntegration.workspace_id == workspace_id)
+            select(GoogleIntegration).where(
+                GoogleIntegration.workspace_id == workspace_id,
+                func.lower(GoogleIntegration.google_email)
+                == (user_info.get("email") or "").lower(),
+            )
         )
         integration = result.scalar_one_or_none()
 
@@ -547,13 +643,28 @@ async def google_oauth_callback(
 @router.get("/status", response_model=GoogleIntegrationStatusResponse)
 async def get_status(
     workspace_id: str,
+    integration_id: str | None = Query(
+        None, description="Which connected Google account. Defaults to your own."
+    ),
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get Google integration status for the workspace."""
+    """Get Google integration status for one connected Google account.
+
+    Every figure below — message counts, last-sync times, the enable toggles —
+    belongs to a single account, so with several connected this has to be told
+    which. Omitted, it means "mine, else the oldest", which is what a
+    single-account workspace has always returned.
+    """
     await verify_workspace_access(workspace_id, current_user, db, "viewer")
 
-    integration = await get_integration(workspace_id, db, required=False)
+    integration = await get_integration(
+        workspace_id,
+        db,
+        required=False,
+        integration_id=integration_id,
+        prefer_developer_id=str(current_user.id),
+    )
 
     if not integration:
         return GoogleIntegrationStatusResponse(
@@ -596,13 +707,30 @@ async def get_status(
 async def update_settings(
     workspace_id: str,
     data: GoogleIntegrationSettingsUpdate,
+    integration_id: str | None = Query(
+        None, description="Which connected Google account. Defaults to your own."
+    ),
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Update Google integration settings."""
-    await verify_workspace_access(workspace_id, current_user, db, "admin")
+    """Update settings on one connected Google account.
 
-    integration = await get_integration(workspace_id, db)
+    Your own account, or admin for anybody else's — the same rule as
+    exclusions. Flat admin-only made no sense once a member could connect their
+    own mailbox: they would have been unable to turn sync off on the inbox they
+    had just attached, while still being able to disconnect it outright.
+    """
+    await verify_workspace_access(workspace_id, current_user, db, "member")
+
+    integration = await get_integration(
+        workspace_id,
+        db,
+        integration_id=integration_id,
+        prefer_developer_id=str(current_user.id),
+    )
+
+    if str(integration.connected_by_id or "") != str(current_user.id):
+        await verify_workspace_access(workspace_id, current_user, db, "admin")
 
     if data.gmail_sync_enabled is not None:
         integration.gmail_sync_enabled = data.gmail_sync_enabled
@@ -632,13 +760,40 @@ async def disconnect(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Disconnect Google integration."""
+    """Disconnect the workspace's Google account.
+
+    Unambiguous only while there is one. This used to resolve "the" integration
+    through `get_integration`, which returns the caller's own account or else
+    the oldest — so once a workspace held several it deleted one arbitrary
+    person's connection under a name that promises something workspace-wide,
+    and the owner would find out when their mailbox stopped syncing.
+
+    Deleting all of them instead would be a different arbitrary: an admin
+    clicking one button should not unplug three colleagues who are not
+    mentioned anywhere in the request.
+
+    So it refuses to guess. One account, and it goes; several, and the caller
+    has to name which via `DELETE /accounts/{integration_id}` — which also
+    checks ownership and refuses while a Service Desk mailbox reads it.
+    """
     await verify_workspace_access(workspace_id, current_user, db, "admin")
 
-    integration = await get_integration(workspace_id, db, required=False)
-    if integration:
-        await db.delete(integration)
-        await db.commit()
+    integrations = await list_integrations(workspace_id, db)
+    if not integrations:
+        return
+    if len(integrations) > 1:
+        connected = ", ".join(sorted(i.google_email for i in integrations))
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"This workspace has {len(integrations)} Google accounts "
+                f"({connected}). Disconnect them one at a time so it is clear "
+                "whose mailbox stops syncing."
+            ),
+        )
+
+    await db.delete(integrations[0])
+    await db.commit()
 
 
 # =============================================================================
@@ -650,16 +805,27 @@ async def disconnect(
 async def trigger_gmail_sync(
     workspace_id: str,
     data: GmailSyncRequest,
+    integration_id: str | None = Query(
+        None, description="Which connected Google account to sync. Defaults to your own."
+    ),
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Trigger Gmail sync (async via Temporal).
+    """Trigger Gmail sync for one connected account (async via Temporal).
 
     Returns immediately with a job_id for polling progress.
     """
-    await verify_workspace_access(workspace_id, current_user, db, "admin")
+    await verify_workspace_access(workspace_id, current_user, db, "member")
 
-    integration = await get_integration(workspace_id, db)
+    integration = await get_integration(
+        workspace_id,
+        db,
+        integration_id=integration_id,
+        prefer_developer_id=str(current_user.id),
+    )
+
+    if str(integration.connected_by_id or "") != str(current_user.id):
+        await verify_workspace_access(workspace_id, current_user, db, "admin")
 
     if not integration.gmail_sync_enabled:
         raise HTTPException(
@@ -667,10 +833,14 @@ async def trigger_gmail_sync(
             detail="Gmail sync is not enabled",
         )
 
-    # Check if there's already a running job
+    # Already running *for this account*. Without the integration filter, a sync
+    # on one mailbox reported another mailbox's job as its own and then returned
+    # early — so the account the caller actually asked for never synced, and the
+    # job id they got back belonged to somebody else's inbox.
     existing_job_result = await db.execute(
         select(GoogleSyncJob).where(
             GoogleSyncJob.workspace_id == workspace_id,
+            GoogleSyncJob.integration_id == integration.id,
             GoogleSyncJob.job_type == "gmail",
             GoogleSyncJob.status.in_(["pending", "running"]),
         )
@@ -776,13 +946,24 @@ async def list_emails(
     from_email: str = Query(None, description="Filter by sender email"),
     thread_id: str = Query(None, description="Filter by thread ID"),
     unread_only: bool = Query(False),
+    integration_id: str = Query(None, description="Only mail from this connected account"),
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """List synced emails with filtering and pagination."""
+    """List synced emails with filtering and pagination.
+
+    Workspace-wide by default, which is what it has always been — synced mail
+    is shared with the workspace, and that is the bargain the exclusion rules
+    exist to make acceptable. `integration_id` narrows it to one account, so a
+    workspace syncing several mailboxes can show them apart rather than as one
+    undifferentiated pile.
+    """
     await verify_workspace_access(workspace_id, current_user, db, "viewer")
 
     query = select(SyncedEmail).where(SyncedEmail.workspace_id == workspace_id)
+
+    if integration_id:
+        query = query.where(SyncedEmail.integration_id == integration_id)
 
     if search:
         search_pattern = f"%{search}%"
@@ -895,13 +1076,31 @@ async def get_email(
 async def send_email(
     workspace_id: str,
     data: EmailSendRequest,
+    integration_id: str | None = Query(
+        None, description="Which connected Google account to send from. Defaults to your own."
+    ),
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Send an email via Gmail."""
+    """Send an email via Gmail, from one connected account.
+
+    Defaults to the caller's own account rather than the workspace's oldest,
+    so somebody with a mailbox connected sends as themselves instead of
+    silently sending as whoever connected first.
+
+    Still member-level even when it resolves to somebody else's account: a
+    shared desk address connected by an admin is exactly what the CRM send
+    flows use, and gating that on ownership would stop members mailing
+    customers at all.
+    """
     await verify_workspace_access(workspace_id, current_user, db, "member")
 
-    integration = await get_integration(workspace_id, db)
+    integration = await get_integration(
+        workspace_id,
+        db,
+        integration_id=integration_id,
+        prefer_developer_id=str(current_user.id),
+    )
 
     from aexy.services.gmail_sync_service import GmailSyncService, GmailSyncError
 
@@ -991,13 +1190,21 @@ async def link_email_to_record(
 @router.get("/calendar/calendars", response_model=CalendarListResponse)
 async def list_calendars(
     workspace_id: str,
+    integration_id: str | None = Query(
+        None, description="Which connected Google account. Defaults to your own."
+    ),
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """List available Google Calendars."""
+    """List available Google Calendars on one connected account."""
     await verify_workspace_access(workspace_id, current_user, db, "admin")
 
-    integration = await get_integration(workspace_id, db)
+    integration = await get_integration(
+        workspace_id,
+        db,
+        integration_id=integration_id,
+        prefer_developer_id=str(current_user.id),
+    )
 
     from aexy.services.calendar_sync_service import CalendarSyncService, CalendarSyncError
 
@@ -1028,16 +1235,27 @@ async def list_calendars(
 async def trigger_calendar_sync(
     workspace_id: str,
     data: CalendarSyncRequest,
+    integration_id: str | None = Query(
+        None, description="Which connected Google account to sync. Defaults to your own."
+    ),
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Trigger calendar sync (async via Temporal).
+    """Trigger calendar sync for one connected account (async via Temporal).
 
     Returns immediately with a job_id for polling progress.
     """
-    await verify_workspace_access(workspace_id, current_user, db, "admin")
+    await verify_workspace_access(workspace_id, current_user, db, "member")
 
-    integration = await get_integration(workspace_id, db)
+    integration = await get_integration(
+        workspace_id,
+        db,
+        integration_id=integration_id,
+        prefer_developer_id=str(current_user.id),
+    )
+
+    if str(integration.connected_by_id or "") != str(current_user.id):
+        await verify_workspace_access(workspace_id, current_user, db, "admin")
 
     if not integration.calendar_sync_enabled:
         raise HTTPException(
@@ -1045,10 +1263,11 @@ async def trigger_calendar_sync(
             detail="Calendar sync is not enabled",
         )
 
-    # Check if there's already a running job
+    # Scoped to this account for the same reason as the Gmail job above.
     existing_job_result = await db.execute(
         select(GoogleSyncJob).where(
             GoogleSyncJob.workspace_id == workspace_id,
+            GoogleSyncJob.integration_id == integration.id,
             GoogleSyncJob.job_type == "calendar",
             GoogleSyncJob.status.in_(["pending", "running"]),
         )
@@ -1111,13 +1330,21 @@ async def list_events(
     start_after: datetime = Query(None, description="Filter events starting after this time"),
     start_before: datetime = Query(None, description="Filter events starting before this time"),
     calendar_id: str = Query(None, description="Filter by calendar ID"),
+    integration_id: str = Query(None, description="Only events from this connected account"),
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """List synced calendar events with filtering and pagination."""
+    """List synced calendar events with filtering and pagination.
+
+    Workspace-wide by default; `integration_id` narrows it to one account, as
+    with the mail list above.
+    """
     await verify_workspace_access(workspace_id, current_user, db, "viewer")
 
     query = select(SyncedCalendarEvent).where(SyncedCalendarEvent.workspace_id == workspace_id)
+
+    if integration_id:
+        query = query.where(SyncedCalendarEvent.integration_id == integration_id)
 
     if start_after:
         query = query.where(SyncedCalendarEvent.start_time >= start_after)
@@ -1223,13 +1450,24 @@ async def get_event(
 async def create_event(
     workspace_id: str,
     data: EventCreateRequest,
+    integration_id: str | None = Query(
+        None, description="Which connected Google account owns the event. Defaults to your own."
+    ),
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Create a new calendar event."""
+    """Create a new calendar event on one connected account.
+
+    Member-level for the same reason as `/gmail/send`.
+    """
     await verify_workspace_access(workspace_id, current_user, db, "member")
 
-    integration = await get_integration(workspace_id, db)
+    integration = await get_integration(
+        workspace_id,
+        db,
+        integration_id=integration_id,
+        prefer_developer_id=str(current_user.id),
+    )
 
     from aexy.services.calendar_sync_service import CalendarSyncService, CalendarSyncError
 
@@ -1382,6 +1620,7 @@ async def _integration_for_exclusions(
     workspace_id: str,
     current_user: Developer,
     db: AsyncSession,
+    integration_id: str | None = None,
 ) -> GoogleIntegration:
     """The integration whose exclusions the caller may manage.
 
@@ -1392,9 +1631,20 @@ async def _integration_for_exclusions(
     ``connected_by_id`` is nullable and older rows predate it being recorded, so
     when nobody is on the row the workspace's admins stand in. Without that,
     those workspaces could never set an exclusion at all.
+
+    ``integration_id`` is what makes this usable once somebody connects a second
+    mailbox. Rules are keyed by integration, so without it the caller's other
+    accounts were unreachable: the resolver picked one and every rule silently
+    landed there. Omitting it still means "mine, else the oldest", so a
+    single-account workspace behaves as before.
     """
     await verify_workspace_access(workspace_id, current_user, db, "viewer")
-    integration = await get_integration(workspace_id, db)
+    integration = await get_integration(
+        workspace_id,
+        db,
+        integration_id=integration_id,
+        prefer_developer_id=str(current_user.id),
+    )
 
     if integration.connected_by_id is None:
         await verify_workspace_access(workspace_id, current_user, db, "admin")
@@ -1414,11 +1664,16 @@ async def _integration_for_exclusions(
 @router.get("/exclusions", response_model=list[ExclusionRuleResponse])
 async def list_exclusions(
     workspace_id: str,
+    integration_id: str | None = Query(
+        None, description="Which connected Google account. Defaults to your own."
+    ),
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
     """Addresses and domains this account never syncs."""
-    integration = await _integration_for_exclusions(workspace_id, current_user, db)
+    integration = await _integration_for_exclusions(
+        workspace_id, current_user, db, integration_id
+    )
     rules = await GmailSyncExclusionService(db).list_rules(str(integration.id))
     return [ExclusionRuleResponse.model_validate(rule) for rule in rules]
 
@@ -1431,6 +1686,9 @@ async def list_exclusions(
 async def create_exclusion(
     workspace_id: str,
     data: ExclusionRuleCreate,
+    integration_id: str | None = Query(
+        None, description="Which connected Google account. Defaults to your own."
+    ),
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
@@ -1440,7 +1698,9 @@ async def create_exclusion(
     month's in the CRM is not what anyone means by hide, so the rule applies
     backwards as well as forwards and the response says how much it took.
     """
-    integration = await _integration_for_exclusions(workspace_id, current_user, db)
+    integration = await _integration_for_exclusions(
+        workspace_id, current_user, db, integration_id
+    )
     service = GmailSyncExclusionService(db)
 
     try:
@@ -1487,6 +1747,9 @@ async def create_exclusion(
 async def delete_exclusion(
     workspace_id: str,
     rule_id: str,
+    integration_id: str | None = Query(
+        None, description="Which connected Google account. Defaults to your own."
+    ),
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
@@ -1495,7 +1758,9 @@ async def delete_exclusion(
     Mail an earlier purge removed stays removed — the tombstones outlive the
     rule, so deleting one does not silently pull months of mail back in.
     """
-    integration = await _integration_for_exclusions(workspace_id, current_user, db)
+    integration = await _integration_for_exclusions(
+        workspace_id, current_user, db, integration_id
+    )
     service = GmailSyncExclusionService(db)
 
     # Read the value before deleting it — the audit entry is about which
@@ -1549,6 +1814,9 @@ def _counterparty_of(email: SyncedEmail | None, own_address: str | None) -> str 
 async def hide_synced_message(
     workspace_id: str,
     data: HideMessageRequest,
+    integration_id: str | None = Query(
+        None, description="Which connected Google account holds the message."
+    ),
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
@@ -1562,7 +1830,9 @@ async def hide_synced_message(
     by the time the client asks "hide future mail from them too?" the row that
     held the sender is gone.
     """
-    integration = await _integration_for_exclusions(workspace_id, current_user, db)
+    integration = await _integration_for_exclusions(
+        workspace_id, current_user, db, integration_id
+    )
 
     existing = (
         await db.execute(
@@ -1649,3 +1919,141 @@ async def list_workspace_exclusions(
             for e in await governance.list_audit(workspace_id)
         ],
     )
+
+
+# =============================================================================
+# Accounts
+#
+# A workspace holds one Google account per address. It used to hold exactly one
+# full stop, and `connect-from-developer` overwrote — so the second person to
+# connect silently replaced the first and their mailbox stopped syncing.
+# =============================================================================
+
+
+@router.get("/accounts", response_model=GoogleAccountListResponse)
+async def list_google_accounts(
+    workspace_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Every Google account connected to this workspace.
+
+    Readable by any member, because the Service Desk mailbox form needs to
+    offer them and a member has to see which addresses the workspace already
+    syncs. It carries no tokens, cursors or scopes — see
+    ``GoogleAccountSummary``.
+    """
+    await verify_workspace_access(workspace_id, current_user, db, "viewer")
+
+    integrations = await list_integrations(workspace_id, db)
+
+    connected_by_names: dict[str, str] = {}
+    owner_ids = [str(i.connected_by_id) for i in integrations if i.connected_by_id]
+    if owner_ids:
+        rows = (
+            await db.execute(
+                select(Developer.id, Developer.name, Developer.email).where(
+                    Developer.id.in_(owner_ids)
+                )
+            )
+        ).all()
+        connected_by_names = {str(r[0]): (r[1] or r[2] or "") for r in rows}
+
+    desk_integration_ids = set(
+        str(i)
+        for i in (
+            await db.execute(
+                select(ServiceDeskMailbox.integration_id).where(
+                    ServiceDeskMailbox.workspace_id == workspace_id,
+                    ServiceDeskMailbox.integration_id.isnot(None),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    # What connecting would add for *this* caller. Named up front because the
+    # flow takes whichever Google account they authorise, and being told
+    # afterwards which address you just attached to a shared workspace is the
+    # wrong order.
+    dev_connection = (
+        await db.execute(
+            select(GoogleConnection).where(
+                GoogleConnection.developer_id == str(current_user.id)
+            )
+        )
+    ).scalar_one_or_none()
+
+    return GoogleAccountListResponse(
+        accounts=[
+            GoogleAccountSummary(
+                id=str(i.id),
+                google_email=i.google_email,
+                gmail_sync_enabled=i.gmail_sync_enabled,
+                calendar_sync_enabled=i.calendar_sync_enabled,
+                is_active=i.is_active,
+                connected_by_id=str(i.connected_by_id) if i.connected_by_id else None,
+                connected_by_name=connected_by_names.get(str(i.connected_by_id or "")),
+                is_mine=bool(
+                    i.connected_by_id
+                    and str(i.connected_by_id) == str(current_user.id)
+                ),
+                is_service_desk_mailbox=str(i.id) in desk_integration_ids,
+                last_error=i.last_error,
+                created_at=i.created_at,
+            )
+            for i in integrations
+        ],
+        connectable_email=dev_connection.google_email if dev_connection else None,
+    )
+
+
+@router.delete("/accounts/{integration_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def disconnect_google_account(
+    workspace_id: str,
+    integration_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Disconnect one account, leaving the others alone.
+
+    Only its owner or a workspace admin. Somebody else's mailbox is not yours
+    to unplug, and the old single-account `/disconnect` could not express the
+    difference because there was only ever one.
+
+    Refused while a Service Desk mailbox reads it: silently detaching that
+    would stop a customer-facing queue receiving mail, and the symptom is
+    nothing arriving — which nobody notices until they are asked why.
+    """
+    await verify_workspace_access(workspace_id, current_user, db, "viewer")
+    integration = await get_integration(
+        workspace_id, db, integration_id=integration_id
+    )
+
+    is_owner = integration.connected_by_id and str(
+        integration.connected_by_id
+    ) == str(current_user.id)
+    if not is_owner:
+        await verify_workspace_access(workspace_id, current_user, db, "admin")
+
+    desk_mailbox = (
+        await db.execute(
+            select(ServiceDeskMailbox.address).where(
+                ServiceDeskMailbox.workspace_id == workspace_id,
+                ServiceDeskMailbox.integration_id == str(integration.id),
+            )
+        )
+    ).scalars().first()
+    if desk_mailbox:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"{integration.google_email} is the Service Desk mailbox for "
+                f"{desk_mailbox}. Remove that mailbox first, or its queue stops "
+                "receiving mail with no other sign."
+            ),
+        )
+
+    await db.delete(integration)
+    await db.flush()

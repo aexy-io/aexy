@@ -353,3 +353,36 @@ class WorkspaceExclusionsResponse(BaseModel):
     # hidden, not to read the mail somebody hid.
     hidden_message_count: int
     audit: list[ExclusionAuditEntry]
+
+
+class GoogleAccountSummary(BaseModel):
+    """One Google account connected to a workspace.
+
+    Deliberately not the full status: an account belongs to the person who
+    connected it, and a list every workspace member can read should not carry
+    their sync cursors, error strings or granted scopes.
+    """
+
+    id: str
+    google_email: str
+    gmail_sync_enabled: bool
+    calendar_sync_enabled: bool
+    is_active: bool
+    connected_by_id: str | None = None
+    connected_by_name: str | None = None
+    # Whether the caller connected this one, so the UI can say "yours" and
+    # offer the actions only its owner may take.
+    is_mine: bool = False
+    # Whether a Service Desk mailbox is already reading this account.
+    is_service_desk_mailbox: bool = False
+    last_error: str | None = None
+    created_at: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class GoogleAccountListResponse(BaseModel):
+    accounts: list[GoogleAccountSummary]
+    # The address `connect-from-developer` would add for this caller, so the UI
+    # can say which account it is about to connect instead of surprising them.
+    connectable_email: str | None = None

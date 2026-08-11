@@ -291,7 +291,10 @@ export function useGoogleCalendarEvents(workspaceId: string | null) {
  * is an expected answer rather than a failure: the UI hides the section instead
  * of showing an error to somebody it was never meant for.
  */
-export function useGmailExclusions(workspaceId: string | null) {
+export function useGmailExclusions(
+  workspaceId: string | null,
+  integrationId?: string | null
+) {
   const [rules, setRules] = useState<GmailExclusionRule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isManageable, setIsManageable] = useState(true);
@@ -302,7 +305,7 @@ export function useGmailExclusions(workspaceId: string | null) {
     setIsLoading(true);
     setError(null);
     try {
-      setRules(await googleIntegrationApi.exclusions.list(workspaceId));
+      setRules(await googleIntegrationApi.exclusions.list(workspaceId, integrationId));
       setIsManageable(true);
     } catch (err) {
       const statusCode = (err as { response?: { status?: number } })?.response?.status;
@@ -320,7 +323,7 @@ export function useGmailExclusions(workspaceId: string | null) {
     } finally {
       setIsLoading(false);
     }
-  }, [workspaceId]);
+  }, [workspaceId, integrationId]);
 
   useEffect(() => {
     refresh();
@@ -329,24 +332,24 @@ export function useGmailExclusions(workspaceId: string | null) {
   const addRule = useCallback(
     async (kind: "address" | "domain", value: string, matchScope: "participants" | "sender" = "participants") => {
       if (!workspaceId) return null;
-      const created = await googleIntegrationApi.exclusions.create(workspaceId, {
-        kind,
-        value,
-        match_scope: matchScope,
-      });
+      const created = await googleIntegrationApi.exclusions.create(
+        workspaceId,
+        { kind, value, match_scope: matchScope },
+        integrationId
+      );
       await refresh();
       return created;
     },
-    [workspaceId, refresh]
+    [workspaceId, integrationId, refresh]
   );
 
   const removeRule = useCallback(
     async (ruleId: string) => {
       if (!workspaceId) return;
-      await googleIntegrationApi.exclusions.remove(workspaceId, ruleId);
+      await googleIntegrationApi.exclusions.remove(workspaceId, ruleId, integrationId);
       await refresh();
     },
-    [workspaceId, refresh]
+    [workspaceId, integrationId, refresh]
   );
 
   return { rules, isLoading, isManageable, error, refresh, addRule, removeRule };

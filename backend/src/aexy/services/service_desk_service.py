@@ -635,45 +635,51 @@ class ServiceDeskService:
             )
 
     async def _gmail_sync_unavailable_detail(self, workspace_id: str, address: str) -> str:
-        """Say which of the three ways this failed actually happened.
+        """Say which of the four ways this failed actually happened.
 
-        The old message — "connect and enable Gmail sync for this mailbox
-        address first" — described an action that cannot succeed in the most
-        common case. ``google_integrations.workspace_id`` is unique, so a
-        workspace has exactly one Google account; when that account is someone
-        else's address there is no amount of connecting the requested address
-        that helps, and the person is sent to reconnect Google in a loop that
-        cannot terminate.
+        The original message — "connect and enable Gmail sync for this mailbox
+        address first" — described an action that could not succeed. A workspace
+        now holds one Google account *per address* rather than exactly one, so
+        the honest answer names the accounts it does have and points at the one
+        that is nearly right.
         """
-        integration = (
-            await self.db.execute(
-                select(GoogleIntegration).where(
-                    GoogleIntegration.workspace_id == workspace_id
+        integrations = (
+            (
+                await self.db.execute(
+                    select(GoogleIntegration).where(
+                        GoogleIntegration.workspace_id == workspace_id
+                    )
                 )
             )
-        ).scalar_one_or_none()
+            .scalars()
+            .all()
+        )
 
-        if integration is None:
+        if not integrations:
             return (
                 "This workspace has no Google account connected yet. Connect one "
                 "under Settings → Integrations → Google, then add the mailbox."
             )
-        if integration.google_email.lower() != address.lower():
+
+        match = next(
+            (i for i in integrations if i.google_email.lower() == address.lower()), None
+        )
+        if match is None:
+            connected = ", ".join(sorted(i.google_email for i in integrations))
             return (
-                f"This workspace syncs Gmail as {integration.google_email}, and a "
-                f"workspace can only have one Google account — so {address} cannot "
-                "be synced. Either add it with the webhook channel instead, or "
-                "reconnect Google as that address (which stops syncing "
-                f"{integration.google_email})."
+                f"{address} is not one of this workspace's connected Google "
+                f"accounts ({connected}). Connect it under Settings → "
+                "Integrations → Google — you can add more than one — or add the "
+                "mailbox with the webhook channel instead."
             )
-        if not integration.is_active:
+        if not match.is_active:
             return (
-                f"The Google connection for {integration.google_email} is "
-                "disconnected. Reconnect it under Settings → Integrations → Google."
+                f"The Google connection for {match.google_email} is disconnected. "
+                "Reconnect it under Settings → Integrations → Google."
             )
         return (
-            f"Gmail sync is switched off for {integration.google_email}. Turn it "
-            "on under Settings → Integrations → Google, then add the mailbox."
+            f"Gmail sync is switched off for {match.google_email}. Turn it on "
+            "under Settings → Integrations → Google, then add the mailbox."
         )
 
     async def create_mailbox(self, workspace_id: str, data: MailboxCreate) -> MailboxResponse:

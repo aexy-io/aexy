@@ -363,12 +363,22 @@ async def send_crm_email(input: SendCRMEmailInput) -> dict[str, Any]:
     from aexy.services.gmail_sync_service import GmailSyncService
 
     async with async_session_maker() as db:
-        stmt = select(GoogleIntegration).where(
-            GoogleIntegration.workspace_id == input.workspace_id,
-            GoogleIntegration.is_active == True,
+        # Oldest active account, deterministically. A workspace can have
+        # several since the address-scoped uniqueness landed, and
+        # `scalar_one_or_none()` raised the moment a second one existed.
+        # Automation that sends mail has no way to name an account yet, so it
+        # sends from the workspace's first — stable, rather than whichever row
+        # Postgres happened to return.
+        stmt = (
+            select(GoogleIntegration)
+            .where(
+                GoogleIntegration.workspace_id == input.workspace_id,
+                GoogleIntegration.is_active == True,
+            )
+            .order_by(GoogleIntegration.created_at.asc(), GoogleIntegration.id.asc())
         )
         result = await db.execute(stmt)
-        integration = result.scalar_one_or_none()
+        integration = result.scalars().first()
 
         if not integration:
             return {"status": "failed", "error": "No active Google integration"}

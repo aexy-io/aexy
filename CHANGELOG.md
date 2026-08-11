@@ -5,6 +5,97 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.0] - 2026-08-11
+
+A workspace can hold more than one Google account, and a connected mailbox can
+keep parts of itself out of Aexy. Both are things the previous shape made
+impossible rather than merely awkward.
+
+### Added: several Google accounts in one workspace
+
+A workspace held exactly one Google account. Several people could not each sync
+their own mailbox, and a `gmail_sync` Service Desk mailbox could only ever be
+that one address.
+
+The cost was silent. `connect-from-developer` matched on the workspace and
+overwrote, so the second person to connect took over the first person's row and
+their mailbox stopped syncing with nothing said. Both OAuth callbacks did the
+same. The 0.15.1 notes describe a 422 message written around this limit —
+"a workspace has exactly one Google account, and when that account is a
+different address no amount of connecting the requested one changes the answer".
+That is no longer true, and the message now says you can add more than one.
+
+`workspace_id` is no longer unique; `(workspace_id, lower(google_email))` is.
+Case-insensitive because Gmail addresses are: two rows for one inbox would be
+two cursors fighting over it.
+
+`get_integration` ended in `scalar_one_or_none()`, which raises the moment a
+second row exists, so it had to be replaced before the constraint dropped rather
+than after. It now takes an explicit account, else prefers the caller's own,
+else the oldest — and every endpoint that reads a mailbox names which one.
+Two of those lookups hid a worse bug than arbitrary resolution: the "is a sync
+already running?" guard matched on workspace and job type but not the account,
+so syncing one mailbox returned another mailbox's job and returned early. The
+account you asked for never synced, and the job id you got back belonged to
+somebody else's inbox.
+
+The "is this our own email" check now tests every connected address. Before,
+mail from a colleague's connected mailbox was auto-enriched into a CRM contact.
+
+Connecting is member-level. Both connect paths only ever attach the caller's own
+mailbox, so requiring admin meant a new joiner could not put their own inbox on
+the desk without an admin sitting at Google's sign-in screen as them, which asks
+for a password nobody should share. Settings and sync follow the same rule —
+your own account, or admin for anybody else's. Disconnecting someone else stays
+admin-only: connecting affects yourself, disconnecting affects a colleague.
+
+The workspace-wide `/disconnect` no longer guesses. It resolved "the"
+integration through the same lookup, so with several accounts it deleted one
+arbitrary person's connection under a name promising something workspace-wide.
+One account and it goes; several and it refuses, naming them.
+
+### Added: what a connected mailbox never syncs
+
+Connecting a personal account to a shared workspace is only a reasonable thing
+to ask if some of it can stay private. Addresses and domains can now be excluded
+from a mailbox: the mail is never stored, and adding a rule removes what is
+already synced — a rule that applied only forwards is not what anyone means by
+"never sync", so the response says how much it took.
+
+Rules belong to whoever connected the mailbox, not to admins: a rule an admin
+could remove is not a rule the person relied on. They are visible to admins and
+notify a department head, and the UI says so before the choice rather than
+after, because that is what keeps "don't connect this mailbox" an option.
+Reading the admin list writes an audit entry — looking at an exclusion list is
+itself revealing.
+
+### Changed: Service Desk settings live in Settings
+
+The desk's own configuration was the one settings surface not reachable from
+Settings, while Escalation Matrix and Ticket Forms — which configure the same
+desk — were already there. The 849-line `/service-desk/settings` route is now
+six pages under `/settings/service-desk/*`: mailboxes, master data, working
+hours and SLA, ticket intake, desk identity, and AI. The old route redirects
+rather than 404s, since it is bookmarked and linked from the desk's nav.
+
+Master Data now explains itself. It described the app rather than the page, and
+Vendors and Products rendered nothing at all when empty, so those cards read as
+broken. Each table now says what intake does with it, and the empty states say
+the consequence: with no accounts, every incoming email lands in triage with an
+arbitrary owner. That is a desk quietly not working, and "Nothing here yet" gave
+no reason to act.
+
+### Fixed: form tickets are a filter, not a second tab
+
+Already on main and unreleased, so it belongs in these notes.
+
+### Fixed: the welcome step lists Operations & Support
+
+The welcome step keeps its own copy of the module list, separate from the
+use-case step, so adding the Operations card to the second left the first
+showing six. Someone arriving to run a support desk read the pitch, saw nothing
+describing their work, and found the option a screen later.
+
 ## [0.15.1] - 2026-08-11
 
 Three fixes, all of them cases where the thing that was supposed to enforce a
