@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -147,6 +147,55 @@ async def list_integrations(
         .order_by(GoogleIntegration.created_at.asc(), GoogleIntegration.id.asc())
     )
     return list(result.scalars().all())
+
+
+async def readable_integration_ids(
+    workspace_id: str, current_user: Developer, db: AsyncSession
+) -> list[str]:
+    """The connected accounts whose synced mail this caller may read.
+
+    Synced mail used to be workspace-wide, and that was right while a workspace
+    could hold exactly one Google account: everyone saw the one shared mailbox,
+    which is what connecting it meant. Multi-account made "workspace-wide" and
+    "the shared mailbox" different things without anything noticing, so a second
+    person connecting their own inbox published it to every member — interleaved
+    into the CRM inbox with nothing saying whose it was.
+
+    Three ways an account qualifies:
+
+    * **Yours.** You connected it, so you can read it.
+    * **A Service Desk mailbox reads it.** That makes it a team address rather
+      than somebody's personal inbox — it is answered by whoever is on the desk,
+      and hiding it from them would break the queue.
+    * **Nobody owns it.** ``connected_by_id`` is nullable and rows predating it
+      have none. Those are single-account workspaces from before this was a
+      question, where every member already saw that mailbox; excluding them
+      would empty an inbox that has worked for months, which reads as data loss
+      rather than as a privacy fix.
+
+    Returns ids rather than a filtered query so the four endpoints that need it
+    cannot each get the rule subtly different.
+    """
+    desk_backed = (
+        select(ServiceDeskMailbox.integration_id)
+        .where(
+            ServiceDeskMailbox.workspace_id == workspace_id,
+            ServiceDeskMailbox.integration_id.isnot(None),
+        )
+        .scalar_subquery()
+    )
+
+    rows = await db.execute(
+        select(GoogleIntegration.id).where(
+            GoogleIntegration.workspace_id == workspace_id,
+            or_(
+                GoogleIntegration.connected_by_id == str(current_user.id),
+                GoogleIntegration.connected_by_id.is_(None),
+                GoogleIntegration.id.in_(desk_backed),
+            ),
+        )
+    )
+    return [str(row) for row in rows.scalars().all()]
 
 
 async def get_integration(
@@ -950,17 +999,29 @@ async def list_emails(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """List synced emails with filtering and pagination.
+    """List synced emails this caller may read, filtered and paginated.
 
-    Workspace-wide by default, which is what it has always been — synced mail
-    is shared with the workspace, and that is the bargain the exclusion rules
-    exist to make acceptable. `integration_id` narrows it to one account, so a
-    workspace syncing several mailboxes can show them apart rather than as one
-    undifferentiated pile.
+    Scoped to `readable_integration_ids` — your own accounts, team addresses a
+    Service Desk mailbox reads, and ownerless legacy rows. It was workspace-wide,
+    which was correct while a workspace held one Google account and became a leak
+    the moment it could hold several.
+
+    `integration_id` narrows within that set. It cannot widen it: an id outside
+    the readable set returns nothing rather than 403, because whether a colleague
+    has connected a mailbox is itself something worth not disclosing.
     """
     await verify_workspace_access(workspace_id, current_user, db, "viewer")
 
-    query = select(SyncedEmail).where(SyncedEmail.workspace_id == workspace_id)
+    readable = await readable_integration_ids(workspace_id, current_user, db)
+    if not readable:
+        return SyncedEmailListResponse(
+            emails=[], total=0, page=page, page_size=page_size, has_more=False
+        )
+
+    query = select(SyncedEmail).where(
+        SyncedEmail.workspace_id == workspace_id,
+        SyncedEmail.integration_id.in_(readable),
+    )
 
     if integration_id:
         query = query.where(SyncedEmail.integration_id == integration_id)
@@ -1033,12 +1094,30 @@ async def get_email(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get a specific synced email with full body."""
+    """Get a specific synced email with full body.
+
+    Scoped like the list. This is the one that matters most: the list at least
+    buried a colleague's mail among everyone else's, while this returns one named
+    message, in full, to anyone holding its id — and the list was handing those
+    ids out.
+
+    An unreadable email is 404, the same answer as one that does not exist.
+    Distinguishing them would confirm that a particular message is in the
+    workspace, which is most of what an attacker wants.
+    """
     await verify_workspace_access(workspace_id, current_user, db, "viewer")
+
+    readable = await readable_integration_ids(workspace_id, current_user, db)
+    if not readable:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Email not found")
 
     result = await db.execute(
         select(SyncedEmail)
-        .where(SyncedEmail.id == email_id, SyncedEmail.workspace_id == workspace_id)
+        .where(
+            SyncedEmail.id == email_id,
+            SyncedEmail.workspace_id == workspace_id,
+            SyncedEmail.integration_id.in_(readable),
+        )
         .options(selectinload(SyncedEmail.record_links))
     )
     email = result.scalar_one_or_none()
@@ -1334,14 +1413,24 @@ async def list_events(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """List synced calendar events with filtering and pagination.
+    """List synced calendar events this caller may read.
 
-    Workspace-wide by default; `integration_id` narrows it to one account, as
-    with the mail list above.
+    Same scoping as the mail list, for the same reason and with more force: a
+    calendar is a record of who somebody met and when, which is revealing even
+    when every title is dull.
     """
     await verify_workspace_access(workspace_id, current_user, db, "viewer")
 
-    query = select(SyncedCalendarEvent).where(SyncedCalendarEvent.workspace_id == workspace_id)
+    readable = await readable_integration_ids(workspace_id, current_user, db)
+    if not readable:
+        return SyncedEventListResponse(
+            events=[], total=0, page=page, page_size=page_size, has_more=False
+        )
+
+    query = select(SyncedCalendarEvent).where(
+        SyncedCalendarEvent.workspace_id == workspace_id,
+        SyncedCalendarEvent.integration_id.in_(readable),
+    )
 
     if integration_id:
         query = query.where(SyncedCalendarEvent.integration_id == integration_id)
@@ -1408,12 +1497,24 @@ async def get_event(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get a specific synced calendar event."""
+    """Get a specific synced calendar event.
+
+    Scoped like the list, and 404 rather than 403 for the same reason as
+    `get_email`: a different answer would confirm the event exists.
+    """
     await verify_workspace_access(workspace_id, current_user, db, "viewer")
+
+    readable = await readable_integration_ids(workspace_id, current_user, db)
+    if not readable:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
 
     result = await db.execute(
         select(SyncedCalendarEvent)
-        .where(SyncedCalendarEvent.id == event_id, SyncedCalendarEvent.workspace_id == workspace_id)
+        .where(
+            SyncedCalendarEvent.id == event_id,
+            SyncedCalendarEvent.workspace_id == workspace_id,
+            SyncedCalendarEvent.integration_id.in_(readable),
+        )
         .options(selectinload(SyncedCalendarEvent.record_links))
     )
     event = result.scalar_one_or_none()
