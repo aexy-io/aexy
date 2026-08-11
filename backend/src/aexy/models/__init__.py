@@ -270,6 +270,8 @@ from aexy.models.google_integration import (
     GoogleSyncExclusionRule,
     GoogleSyncExclusionAudit,
     GoogleSyncHiddenMessage,
+    GoogleThreadOptIn,
+    GoogleThreadIndex,
 )
 from aexy.models.workflow import WorkflowDefinition
 from aexy.models.forms import (
@@ -859,6 +861,8 @@ __all__ = [
     "GoogleSyncExclusionRule",
     "GoogleSyncExclusionAudit",
     "GoogleSyncHiddenMessage",
+    "GoogleThreadOptIn",
+    "GoogleThreadIndex",
     # Workflow
     "WorkflowDefinition",
     # Forms

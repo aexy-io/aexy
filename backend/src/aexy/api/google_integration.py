@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -25,6 +25,8 @@ from aexy.models.google_integration import (
     GoogleSyncJob,
     SyncedCalendarEvent,
     SyncedCalendarEventRecordLink,
+    GoogleThreadIndex,
+    GoogleThreadOptIn,
     SyncedEmail,
     SyncedEmailRecordLink,
 )
@@ -38,6 +40,10 @@ from aexy.schemas.google_integration import (
     ExclusionRuleResponse,
     HideMessageRequest,
     HideMessageResponse,
+    SyncModeUpdate,
+    ThreadListResponse,
+    ThreadMarkResponse,
+    ThreadSummary,
     WorkspaceExclusionsResponse,
     CalendarListResponse,
     CalendarSyncRequest,
@@ -749,6 +755,8 @@ async def get_status(
         last_error=integration.last_error,
         granted_scopes=integration.granted_scopes or [],
         sync_settings=integration.sync_settings,
+        sync_mode=integration.sync_mode or "all",
+        opt_in_label=integration.opt_in_label or "Aexy",
     )
 
 
@@ -2158,3 +2166,269 @@ async def disconnect_google_account(
 
     await db.delete(integration)
     await db.flush()
+
+
+# =============================================================================
+# Opt-in sync
+#
+# `all` syncs the whole inbox and subtracts the exclusion rules. That asks
+# somebody to predict everything worth keeping out of a shared workspace, and
+# whatever they fail to predict is already in it. `opt_in` inverts the default:
+# nothing is stored until a thread is asked for, here or by applying the
+# account's label in Gmail.
+# =============================================================================
+
+
+async def _own_integration(
+    workspace_id: str,
+    integration_id: str | None,
+    current_user: Developer,
+    db: AsyncSession,
+) -> GoogleIntegration:
+    """The account whose sync scope the caller may change — their own.
+
+    The same rule as exclusions, for the same reason: what a mailbox stores is
+    its owner's decision. An admin can disconnect the account outright, which is
+    visible, but quietly widening what somebody's inbox contributes to the
+    workspace is not something they should be able to do on that person's
+    behalf.
+    """
+    await verify_workspace_access(workspace_id, current_user, db, "viewer")
+    integration = await get_integration(
+        workspace_id,
+        db,
+        integration_id=integration_id,
+        prefer_developer_id=str(current_user.id),
+    )
+
+    if str(integration.connected_by_id or "") != str(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Only the person who connected this Google account can change "
+                "what it syncs."
+            ),
+        )
+    return integration
+
+
+@router.patch("/sync-mode", response_model=GoogleIntegrationStatusResponse)
+async def update_sync_mode(
+    workspace_id: str,
+    data: SyncModeUpdate,
+    integration_id: str | None = Query(
+        None, description="Which connected Google account. Defaults to your own."
+    ),
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Switch this account between syncing everything and syncing what is marked.
+
+    Forward-only in both directions. Turning opt-in on does not remove mail
+    already synced — the switch changes what happens next, and deleting months
+    of a shared workspace's history as a side effect of a toggle is not
+    something to infer from it. Use the exclusion rules to remove what is
+    already there; they say how much they took.
+
+    Refused on an account a Service Desk mailbox reads. The desk turns every
+    incoming mail into a ticket, so an opt-in desk mailbox stops creating
+    tickets and reports nothing — the failure is silence, which is the worst
+    kind here.
+    """
+    integration = await _own_integration(workspace_id, integration_id, current_user, db)
+
+    if data.sync_mode == "opt_in":
+        desk_mailbox = (
+            await db.execute(
+                select(ServiceDeskMailbox.address).where(
+                    ServiceDeskMailbox.workspace_id == workspace_id,
+                    ServiceDeskMailbox.integration_id == str(integration.id),
+                )
+            )
+        ).scalars().first()
+        if desk_mailbox:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    f"{integration.google_email} is the Service Desk mailbox for "
+                    f"{desk_mailbox}. The desk needs every incoming mail to become "
+                    "a ticket, so it cannot be opt-in — tickets would simply stop "
+                    "being created."
+                ),
+            )
+
+    integration.sync_mode = data.sync_mode
+    if data.opt_in_label is not None:
+        integration.opt_in_label = data.opt_in_label.strip()
+    await db.commit()
+
+    return await get_status(
+        workspace_id=workspace_id,
+        integration_id=str(integration.id),
+        current_user=current_user,
+        db=db,
+    )
+
+
+@router.get("/threads", response_model=ThreadListResponse)
+async def list_threads(
+    workspace_id: str,
+    integration_id: str | None = Query(
+        None, description="Which connected Google account. Defaults to your own."
+    ),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
+    unmarked_only: bool = Query(False),
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Threads this account has seen, so there is something to point at.
+
+    Opt-in cannot bootstrap itself: with nothing stored there is nothing to
+    browse and no way to say "that one". This is the answer — subject,
+    participants and timing, never bodies. Owner-only, because a list of who
+    somebody corresponds with is revealing even without the messages.
+    """
+    integration = await _own_integration(workspace_id, integration_id, current_user, db)
+
+    marked_ids = set(
+        (
+            await db.execute(
+                select(GoogleThreadOptIn.gmail_thread_id).where(
+                    GoogleThreadOptIn.integration_id == str(integration.id)
+                )
+            )
+        ).scalars().all()
+    )
+
+    query = select(GoogleThreadIndex).where(
+        GoogleThreadIndex.integration_id == str(integration.id)
+    )
+    if unmarked_only and marked_ids:
+        query = query.where(GoogleThreadIndex.gmail_thread_id.notin_(marked_ids))
+
+    total = (
+        await db.execute(select(func.count()).select_from(query.subquery()))
+    ).scalar() or 0
+
+    rows = (
+        await db.execute(
+            query.order_by(GoogleThreadIndex.last_message_at.desc().nullslast())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+    ).scalars().all()
+
+    return ThreadListResponse(
+        threads=[
+            ThreadSummary(
+                gmail_thread_id=row.gmail_thread_id,
+                subject=row.subject,
+                participants=row.participants or [],
+                message_count=row.message_count or 0,
+                last_message_at=row.last_message_at,
+                is_marked=row.gmail_thread_id in marked_ids,
+            )
+            for row in rows
+        ],
+        total=total,
+        opt_in_label=integration.opt_in_label or "Aexy",
+        sync_mode=integration.sync_mode or "all",
+    )
+
+
+@router.post("/threads/{gmail_thread_id}/mark", response_model=ThreadMarkResponse)
+async def mark_thread(
+    workspace_id: str,
+    gmail_thread_id: str,
+    integration_id: str | None = Query(
+        None, description="Which connected Google account. Defaults to your own."
+    ),
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Sync this thread, and keep syncing it.
+
+    Marking fetches the thread's messages now rather than waiting for the next
+    scheduled run: somebody who has just said "bring this in" and sees nothing
+    appear concludes it did not work.
+    """
+    integration = await _own_integration(workspace_id, integration_id, current_user, db)
+
+    existing = (
+        await db.execute(
+            select(GoogleThreadOptIn).where(
+                GoogleThreadOptIn.integration_id == str(integration.id),
+                GoogleThreadOptIn.gmail_thread_id == gmail_thread_id,
+            )
+        )
+    ).scalar_one_or_none()
+
+    if existing is None:
+        db.add(
+            GoogleThreadOptIn(
+                id=str(uuid4()),
+                integration_id=str(integration.id),
+                workspace_id=workspace_id,
+                gmail_thread_id=gmail_thread_id,
+                marked_by_id=str(current_user.id),
+            )
+        )
+        await db.flush()
+
+    from aexy.services.gmail_sync_service import GmailSyncService
+
+    synced = await GmailSyncService(db).sync_thread(integration, gmail_thread_id)
+    await db.commit()
+
+    return ThreadMarkResponse(
+        gmail_thread_id=gmail_thread_id, is_marked=True, messages_changed=synced
+    )
+
+
+@router.delete("/threads/{gmail_thread_id}/mark", response_model=ThreadMarkResponse)
+async def unmark_thread(
+    workspace_id: str,
+    gmail_thread_id: str,
+    integration_id: str | None = Query(
+        None, description="Which connected Google account. Defaults to your own."
+    ),
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Stop syncing this thread, and remove what it already put in the CRM.
+
+    This one does purge, unlike the mode switch. "Stop syncing this thread" that
+    leaves the thread's mail in the CRM is the same broken promise the exclusion
+    rules refuse to make — the count comes back so it is visible rather than
+    inferred.
+
+    The mail is deleted, not tombstoned. A tombstone would make re-marking the
+    thread impossible, and changing your mind twice is not an unreasonable
+    thing to do.
+    """
+    integration = await _own_integration(workspace_id, integration_id, current_user, db)
+
+    await db.execute(
+        delete(GoogleThreadOptIn).where(
+            GoogleThreadOptIn.integration_id == str(integration.id),
+            GoogleThreadOptIn.gmail_thread_id == gmail_thread_id,
+        )
+    )
+
+    doomed = (
+        await db.execute(
+            select(SyncedEmail).where(
+                SyncedEmail.integration_id == str(integration.id),
+                SyncedEmail.gmail_thread_id == gmail_thread_id,
+            )
+        )
+    ).scalars().all()
+    for email in doomed:
+        await db.delete(email)
+
+    await db.commit()
+
+    return ThreadMarkResponse(
+        gmail_thread_id=gmail_thread_id, is_marked=False, messages_changed=len(doomed)
+    )

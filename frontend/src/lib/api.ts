@@ -11445,6 +11445,10 @@ export interface GoogleIntegrationStatus {
   last_error: string | null;
   granted_scopes: string[];
   sync_settings?: GoogleSyncSettings;
+  /** "all" = whole inbox minus exclusions; "opt_in" = only marked threads. */
+  sync_mode?: "all" | "opt_in";
+  /** The Gmail label that marks a thread without leaving Gmail. */
+  opt_in_label?: string;
 }
 
 export interface SyncJobStatus {
@@ -11550,6 +11554,37 @@ export interface GoogleAccountList {
   accounts: GoogleAccountSummary[];
   /** The address connecting would add for this caller, named before they act. */
   connectable_email: string | null;
+}
+
+/**
+ * A thread an opt-in account has seen but not stored.
+ *
+ * Headers only — there is no body field omitted here, the sync never fetched
+ * one. This exists so opt-in can bootstrap: with nothing stored there would be
+ * nothing to point at when saying "sync that one".
+ */
+export interface GoogleThreadSummary {
+  gmail_thread_id: string;
+  subject: string | null;
+  participants: string[];
+  message_count: number;
+  last_message_at: string | null;
+  is_marked: boolean;
+}
+
+export interface GoogleThreadList {
+  threads: GoogleThreadSummary[];
+  total: number;
+  /** The Gmail label that marks a thread without leaving Gmail. */
+  opt_in_label: string;
+  sync_mode: string;
+}
+
+export interface GoogleThreadMarkResult {
+  gmail_thread_id: string;
+  is_marked: boolean;
+  /** Messages stored by marking, or removed by unmarking. */
+  messages_changed: number;
 }
 
 export interface GmailExclusionRule {
@@ -11843,6 +11878,65 @@ export const googleIntegrationApi = {
 
     disconnect: async (workspaceId: string, integrationId: string): Promise<void> => {
       await api.delete(`/workspaces/${workspaceId}/integrations/google/accounts/${integrationId}`);
+    },
+  },
+
+  /**
+   * What an account syncs.
+   *
+   * `all` is the whole inbox minus the exclusion rules; `opt_in` stores nothing
+   * until a thread is marked here or carries the account's label in Gmail.
+   * Owner-only — an admin can disconnect an account, but not quietly widen what
+   * somebody's mailbox contributes to the workspace.
+   */
+  threads: {
+    setSyncMode: async (
+      workspaceId: string,
+      data: { sync_mode: "all" | "opt_in"; opt_in_label?: string },
+      integrationId?: string | null
+    ): Promise<GoogleIntegrationStatus> => {
+      const response = await api.patch(
+        `/workspaces/${workspaceId}/integrations/google/sync-mode`,
+        data,
+        { params: integrationId ? { integration_id: integrationId } : undefined }
+      );
+      return response.data;
+    },
+
+    list: async (
+      workspaceId: string,
+      integrationId?: string | null,
+      params?: { page?: number; page_size?: number; unmarked_only?: boolean }
+    ): Promise<GoogleThreadList> => {
+      const response = await api.get(`/workspaces/${workspaceId}/integrations/google/threads`, {
+        params: { ...(params || {}), ...(integrationId ? { integration_id: integrationId } : {}) },
+      });
+      return response.data;
+    },
+
+    mark: async (
+      workspaceId: string,
+      threadId: string,
+      integrationId?: string | null
+    ): Promise<GoogleThreadMarkResult> => {
+      const response = await api.post(
+        `/workspaces/${workspaceId}/integrations/google/threads/${threadId}/mark`,
+        {},
+        { params: integrationId ? { integration_id: integrationId } : undefined }
+      );
+      return response.data;
+    },
+
+    unmark: async (
+      workspaceId: string,
+      threadId: string,
+      integrationId?: string | null
+    ): Promise<GoogleThreadMarkResult> => {
+      const response = await api.delete(
+        `/workspaces/${workspaceId}/integrations/google/threads/${threadId}/mark`,
+        { params: integrationId ? { integration_id: integrationId } : undefined }
+      );
+      return response.data;
     },
   },
 
