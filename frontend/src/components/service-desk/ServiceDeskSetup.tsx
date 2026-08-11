@@ -88,7 +88,7 @@ export function ServiceDeskSetup({
             {t("done.completeOrg")}
           </Link>
           <Link
-            href="/service-desk/settings"
+            href="/settings/service-desk/master-data"
             className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-accent"
           >
             {t("done.masterData")}

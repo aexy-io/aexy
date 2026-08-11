@@ -21,10 +21,17 @@ export function GoogleAccounts({
   workspaceId,
   onConnectAnother,
   onChanged,
+  onLoaded,
 }: {
   workspaceId: string | null;
   onConnectAnother: () => void;
   onChanged?: () => void;
+  /**
+   * Hands the loaded list back up. The sections below this one — exclusions,
+   * sync — are per-account too, and this saves them each refetching the same
+   * list. Keep the callback stable at the call site or the effect re-runs.
+   */
+  onLoaded?: (accounts: GoogleAccountSummary[]) => void;
 }) {
   const [accounts, setAccounts] = useState<GoogleAccountSummary[]>([]);
   const [connectableEmail, setConnectableEmail] = useState<string | null>(null);
@@ -38,12 +45,14 @@ export function GoogleAccounts({
       const data = await googleIntegrationApi.accounts.list(workspaceId);
       setAccounts(data.accounts);
       setConnectableEmail(data.connectable_email);
+      onLoaded?.(data.accounts);
     } catch {
       setAccounts([]);
+      onLoaded?.([]);
     } finally {
       setIsLoading(false);
     }
-  }, [workspaceId]);
+  }, [workspaceId, onLoaded]);
 
   useEffect(() => {
     refresh();
