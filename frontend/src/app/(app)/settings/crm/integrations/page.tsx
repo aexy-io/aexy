@@ -47,6 +47,7 @@ import {
 } from "@/lib/api";
 import { AppAccessGuard } from "@/components/guards/AppAccessGuard";
 import { GmailExclusions } from "@/components/settings/GmailExclusions";
+import { GmailSyncMode } from "@/components/settings/GmailSyncMode";
 import { GoogleAccounts } from "@/components/settings/GoogleAccounts";
 import {
   SettingsEmptyState,
@@ -163,6 +164,14 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
 
   // Minimum interval in minutes when enabled (to prevent aggressive syncing)
   const MIN_SYNC_INTERVAL = 5;
+
+  // The account the panels below are about. `selectedAccountId` is null until
+  // somebody chooses, so fall back to whichever one the server resolved —
+  // matched by address, since status carries the email and not the id.
+  const selectedIntegrationId =
+    selectedAccountId ??
+    accounts.find((a) => a.google_email === status?.google_email)?.id ??
+    null;
 
   // Debounce custom Gmail interval input
   useEffect(() => {
@@ -494,6 +503,22 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
               {/* What this mailbox keeps out. Directly under the Gmail Sync
                   toggle because the moment somebody turns sync on is the
                   moment they need to know they can keep parts of it out. */}
+              {/* Above exclusions on purpose: this decides whether exclusions
+                  are the right tool at all. On an opt-in account they are a
+                  second line rather than the first. */}
+              {status.gmail_sync_enabled && (
+                <GmailSyncMode
+                  workspaceId={workspaceId}
+                  integrationId={selectedIntegrationId}
+                  syncMode={status.sync_mode ?? "all"}
+                  optInLabel={status.opt_in_label ?? "Aexy"}
+                  isMine={
+                    accounts.find((a) => a.id === selectedIntegrationId)?.is_mine ?? true
+                  }
+                  onModeChanged={() => setAccountsVersion((v) => v + 1)}
+                />
+              )}
+
               {status.gmail_sync_enabled && (
                 <GmailExclusions
                   workspaceId={workspaceId}
@@ -501,11 +526,7 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
                   // Follows the scope selector above. If that lands on somebody
                   // else's account the server answers 403 and the panel hides
                   // itself — exclusions belong to whoever connected the mailbox.
-                  integrationId={
-                    selectedAccountId ??
-                    accounts.find((a) => a.google_email === status.google_email)?.id ??
-                    null
-                  }
+                  integrationId={selectedIntegrationId}
                   isMultiAccount={accounts.length > 1}
                 />
               )}

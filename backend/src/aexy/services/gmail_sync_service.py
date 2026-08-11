@@ -23,6 +23,8 @@ from aexy.models.google_integration import (
     EmailSyncCursor,
     GoogleIntegration,
     GoogleSyncExclusionRule,
+    GoogleThreadIndex,
+    GoogleThreadOptIn,
     SyncedEmail,
     SyncedEmailRecordLink,
 )
@@ -33,6 +35,12 @@ from aexy.services.gmail_sync_exclusions import (
 )
 
 logger = logging.getLogger(__name__)
+
+# `google_integrations.sync_mode`. Kept as constants because the value is
+# compared in the sync path and a typo there fails open — the account would
+# store everything, which is the opposite of what its owner asked for.
+SYNC_ALL = "all"
+OPT_IN = "opt_in"
 
 
 # Payloads made of nothing but base64 characters may still be encoded, but the
@@ -877,12 +885,200 @@ class GmailSyncService:
                 return await self.start_full_sync(integration)
             raise
 
+    async def _optin_label_id(self, integration: GoogleIntegration) -> str | None:
+        """The Gmail id of this account's opt-in label, or None if absent.
+
+        Gmail reports labels on a message as ids, not names, so the configured
+        name has to be resolved once per sync run. Memoised on the instance: the
+        alternative is a labels request per message.
+
+        A missing label is not an error. Somebody may opt threads in from Aexy
+        and never create it, and failing the sync over that would stop the
+        marked threads syncing too.
+        """
+        if not hasattr(self, "_optin_label_cache"):
+            self._optin_label_cache: dict[str, str | None] = {}
+        key = str(integration.id)
+        if key in self._optin_label_cache:
+            return self._optin_label_cache[key]
+
+        label_id: str | None = None
+        try:
+            response = await self._make_gmail_request(
+                integration, "GET", "/users/me/labels"
+            )
+            wanted = (integration.opt_in_label or "").strip().lower()
+            for label in response.get("labels", []):
+                if (label.get("name") or "").strip().lower() == wanted:
+                    label_id = label.get("id")
+                    break
+        except Exception as exc:  # noqa: BLE001 - see docstring
+            logger.warning(
+                "Could not read labels for integration %s: %s", integration.id, exc
+            )
+
+        self._optin_label_cache[key] = label_id
+        return label_id
+
+    async def _thread_is_marked(
+        self, integration: GoogleIntegration, message: dict
+    ) -> bool:
+        """Whether this message's thread has been opted in.
+
+        Two ways to say yes, checked in cost order: a row in
+        ``google_thread_optins``, or the account's label applied in Gmail. The
+        label matters because the decision often happens on a phone, in the
+        mailbox, at the moment the mail arrives — not in a settings page later.
+        """
+        thread_id = message.get("threadId")
+        if not thread_id:
+            # No thread to reason about. Treat as unmarked: on an opt-in account
+            # the safe failure is to store nothing.
+            return False
+
+        marked = (
+            await self.db.execute(
+                select(GoogleThreadOptIn.id).where(
+                    GoogleThreadOptIn.integration_id == integration.id,
+                    GoogleThreadOptIn.gmail_thread_id == thread_id,
+                )
+            )
+        ).scalars().first()
+        if marked:
+            return True
+
+        label_id = await self._optin_label_id(integration)
+        return bool(label_id and label_id in (message.get("labelIds") or []))
+
+    async def _index_thread(
+        self, integration: GoogleIntegration, message: dict
+    ) -> None:
+        """Record that a thread exists, without recording what it says.
+
+        Subject, participants and timing — enough to recognise a thread and
+        decide, and nothing more. The exclusion rules run first, so a thread the
+        account already refuses is not indexed either: an excluded correspondent
+        should not be listed by name on a page the owner shows to somebody else.
+        """
+        thread_id = message.get("threadId")
+        if not thread_id:
+            return
+
+        parsed = self._parse_message(message)
+        if await self._excluded_from_sync(integration, parsed):
+            return
+
+        # `from_email` is a bare address; `to_emails`/`cc_emails` are
+        # {name, email} dicts. Only the address is kept — a display name is one
+        # more piece of somebody's mail stored for no gain in recognising a
+        # thread.
+        candidates: list[str | None] = [parsed.get("from_email")]
+        for entry in [*(parsed.get("to_emails") or []), *(parsed.get("cc_emails") or [])]:
+            candidates.append(entry.get("email") if isinstance(entry, dict) else entry)
+
+        participants: list[str] = []
+        for value in candidates:
+            address = (value or "").strip().lower()
+            if address and address not in participants:
+                participants.append(address)
+
+        existing = (
+            await self.db.execute(
+                select(GoogleThreadIndex).where(
+                    GoogleThreadIndex.integration_id == integration.id,
+                    GoogleThreadIndex.gmail_thread_id == thread_id,
+                )
+            )
+        ).scalar_one_or_none()
+
+        sent_at = parsed.get("date")
+        if existing is None:
+            self.db.add(
+                GoogleThreadIndex(
+                    integration_id=str(integration.id),
+                    workspace_id=str(integration.workspace_id),
+                    gmail_thread_id=thread_id,
+                    subject=parsed.get("subject"),
+                    participants=participants,
+                    message_count=1,
+                    last_message_at=sent_at,
+                )
+            )
+        else:
+            # A later message renames the thread only if it actually has a
+            # subject; a reply with none should not blank what is already there.
+            if parsed.get("subject"):
+                existing.subject = parsed["subject"]
+            merged = list(existing.participants or [])
+            for address in participants:
+                if address not in merged:
+                    merged.append(address)
+            existing.participants = merged
+            existing.message_count = (existing.message_count or 0) + 1
+            if sent_at and (existing.last_message_at is None or sent_at > existing.last_message_at):
+                existing.last_message_at = sent_at
+
+        await self.db.flush()
+
+    async def sync_thread(
+        self, integration: GoogleIntegration, gmail_thread_id: str
+    ) -> int:
+        """Store every message on one thread, now.
+
+        Called when a thread is marked. It goes through ``_sync_message`` like
+        everything else, so the exclusion rules and the hidden-message
+        tombstones still apply — marking a thread is permission to sync it, not
+        an override of the rules the account already has.
+
+        Returns how many messages became rows, which is what the caller reports
+        back. A thread that was already synced returns 0 rather than failing:
+        the mark is the point, and the count is information about it.
+        """
+        try:
+            thread = await self._make_gmail_request(
+                integration,
+                "GET",
+                f"/users/me/threads/{gmail_thread_id}",
+                params={"format": "minimal"},
+            )
+        except Exception as exc:  # noqa: BLE001
+            # A thread id from a stale index, or one deleted in Gmail since.
+            # Marking still stands — the next sync will pick it up if it
+            # reappears — so this is not worth failing the request over.
+            logger.warning(
+                "Could not fetch thread %s for integration %s: %s",
+                gmail_thread_id,
+                integration.id,
+                exc,
+            )
+            return 0
+
+        stored = 0
+        for message in thread.get("messages", []):
+            message_id = message.get("id")
+            if not message_id:
+                continue
+            try:
+                if await self._sync_message(integration, message_id):
+                    stored += 1
+            except Exception as exc:  # noqa: BLE001
+                logger.error(
+                    "Failed to sync message %s while marking thread %s: %s",
+                    message_id,
+                    gmail_thread_id,
+                    exc,
+                )
+                continue
+
+        return stored
+
     async def _sync_message(
         self, integration: GoogleIntegration, message_id: str
     ) -> SyncedEmail | None:
         """Fetch and store a single message.
 
-        Returns None when the account's exclusions cover it — both sync paths
+        Returns None when the account's exclusions cover it, or when the account
+        is opt-in and the message's thread has not been marked — both sync paths
         funnel through here, so this is the one place that decides whether a
         message becomes a row at all.
         """
@@ -899,6 +1095,26 @@ class GmailSyncService:
         # let the next full sync import it straight back.
         if await self._exclusions.is_hidden(str(integration.id), message_id):
             return None
+
+        # On an opt-in account, decide from headers alone whether this message
+        # may be stored. The metadata fetch is deliberate: asking for `full`
+        # first would pull the body of every unmarked message across the wire
+        # to then throw it away, which is exactly the exposure opt-in exists to
+        # avoid. Marked threads cost one extra request, and on an opt-in
+        # account those are the rare ones.
+        if integration.sync_mode == OPT_IN:
+            meta = await self._make_gmail_request(
+                integration,
+                "GET",
+                f"/users/me/messages/{message_id}",
+                params={
+                    "format": "metadata",
+                    "metadataHeaders": ["Subject", "From", "To", "Cc", "Date"],
+                },
+            )
+            if not await self._thread_is_marked(integration, meta):
+                await self._index_thread(integration, meta)
+                return None
 
         # Fetch full message
         message = await self._make_gmail_request(
