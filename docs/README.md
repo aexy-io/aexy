@@ -42,6 +42,7 @@ We're on a mission to bring positive change by building world-class tools actual
 - [Microsoft integration](./microsoft.md) - Sign-in, Outlook & Calendar (Microsoft Graph)
 - [Slack](./slack.md) - Bot install, slash commands, OAuth
 - [Stripe](./stripe.md) - Billing & subscriptions
+- [MCP (Model Context Protocol)](./mcp.md) - Connect Claude Code, Claude Desktop, Codex, Cursor & VS Code to Aexy
 
 ### Modules — Work & planning
 - [Sprints & planning](./sprints.md) - Sprints, epics, stories, planning poker, retrospectives, releases

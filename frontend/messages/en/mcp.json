@@ -7,9 +7,9 @@
       "heading": "Overview",
       "descriptionBefore": "The ",
       "linkText": "Model Context Protocol (MCP)",
-      "descriptionAfter": " lets AI assistants like Claude Code and OpenAI Codex interact directly with your Aexy workspace — managing sprints, querying analytics, running agents, and more through natural language.",
+      "descriptionAfter": " lets AI assistants like Claude Code, Claude Desktop and OpenAI Codex interact directly with your Aexy workspace — managing sprints, querying analytics, running agents, and more through natural language.",
       "toolCount": "{count, plural, =1 {1 tool} other {# tools}}",
-      "summary": "{total} tools available across {categories} categories"
+      "summary": "{total} tools across {categories} categories, from aexy-mcp {version}"
     },
 
     "quickStart": {
@@ -20,127 +20,58 @@
         "link": "Settings → API Tokens"
       },
       "step2": {
-        "title": "Install the MCP server"
+        "title": "Pick your client",
+        "description": "The server runs through uvx, so there is nothing to clone or keep updated — your client fetches it on demand."
       },
       "step3": {
-        "title": "Configure your AI client",
-        "description": "See the setup guides below for your specific client."
+        "title": "Add the configuration",
+        "description": "Copy the block for your client below into the file it names, then restart the client."
       }
     },
 
     "clientSetup": {
       "heading": "Client Setup",
       "tabs": {
-        "claude": "Claude Code",
+        "claudeCode": "Claude Code",
+        "claudeDesktop": "Claude Desktop",
+        "chatgpt": "ChatGPT",
         "codex": "OpenAI Codex",
+        "cursor": "Cursor / VS Code",
         "other": "Other Clients"
       },
-      "claude": {
-        "introBefore": "Add this to your ",
-        "introAfter": " or global Claude Code settings:",
-        "noteLabel": "Note:",
-        "noteBefore": " Set ",
-        "noteMiddle": " to ",
-        "noteAfter": " if you don't need Temporal debugging tools, or if the Temporal server is not accessible from your machine."
+      "intro": {
+        "claudeCode": "Either run the CLI command, or commit the project file so everyone on the repo gets the server. Both are equivalent; the CLI writes to your user config, the file is shared.",
+        "claudeDesktop": "Claude Desktop reads a single config file. Create it if it does not exist, then quit and reopen the app — it only loads this file at startup.",
+        "chatgpt": "ChatGPT connects to remote MCP servers over HTTP.",
+        "codex": "Codex reads MCP servers from its TOML config. Add this table, then restart Codex.",
+        "cursor": "Cursor and VS Code use the same stdio server with slightly different file shapes. Use whichever matches your editor.",
+        "other": "Any MCP client that supports the stdio transport can run the server with this shape. Translate it into whatever format your client expects."
       },
-      "codex": {
-        "intro": "Configure Codex to use the Aexy MCP server by providing the connection details:",
-        "serverCommand": "Server command",
-        "requiredEnvVars": "Required environment variables",
-        "env": {
-          "apiUrl": "Aexy backend API URL",
-          "apiToken": "API token from Settings",
-          "enableTemporal": "Enable Temporal tools"
-        }
+      "snippet": {
+        "cli": "Add with the CLI",
+        "projectFile": "Or commit to the project",
+        "macos": "macOS",
+        "windows": "Windows",
+        "configToml": "Add to your Codex config",
+        "cursorFile": "Cursor",
+        "vscodeFile": "VS Code",
+        "genericStdio": "stdio server definition"
       },
-      "other": {
-        "intro": "For any MCP-compatible client, use the stdio transport with these environment variables:",
-        "envReferenceLabel": "Environment variables reference:",
-        "env": {
-          "apiUrl": "Backend API base URL",
-          "apiToken": "Authentication token (create in Settings > API Tokens)",
-          "enableTemporal": "Enable/disable Temporal tools (true/false)",
-          "temporalAddress": "Temporal server address (default: localhost:7233)",
-          "temporalNamespace": "Temporal namespace (default: default)"
-        }
+      "remoteRequired": {
+        "heading": "Not available yet",
+        "body": "ChatGPT only supports remote MCP servers reached over HTTP with OAuth — it cannot launch a local stdio process the way Claude Code, Claude Desktop and Codex do. Aexy's hosted MCP endpoint is in progress; until it ships, use one of the other clients."
+      },
+      "envReferenceLabel": "Environment variables:",
+      "env": {
+        "apiUrl": "Aexy backend API base URL",
+        "apiToken": "Your API token, created in Settings → API Tokens"
       }
     },
 
     "availableTools": {
-      "heading": "Available Tools"
-    },
-
-    "categories": {
-      "sprintManagement": {
-        "name": "Sprint Management",
-        "tools": {
-          "aexy_sprints": "List, create, start, and complete sprints",
-          "aexy_sprint_tasks": "Manage sprint tasks — create, update status, assign, comment",
-          "aexy_sprint_analytics": "Velocity, burndown, and sprint metrics",
-          "aexy_projects": "List and manage projects",
-          "aexy_epics": "Create and manage epics",
-          "aexy_bugs": "Track and manage bugs"
-        }
-      },
-      "crm": {
-        "name": "CRM",
-        "tools": {
-          "aexy_crm_objects": "Manage CRM object schemas (contacts, deals, etc.)",
-          "aexy_crm_records": "CRUD operations on CRM records",
-          "aexy_crm_automations": "Create and manage CRM automations"
-        }
-      },
-      "aiAgents": {
-        "name": "AI Agents",
-        "tools": {
-          "aexy_agents": "List, create, run, and manage AI agents",
-          "aexy_agent_policies": "Configure agent safety policies",
-          "aexy_workflows": "Visual workflow builder operations"
-        }
-      },
-      "emailGtm": {
-        "name": "Email & GTM",
-        "tools": {
-          "aexy_email_campaigns": "Create and send email campaigns",
-          "aexy_email_infrastructure": "Manage sending domains and providers",
-          "aexy_gtm_leads": "Lead scoring and visitor tracking",
-          "aexy_gtm_sequences": "Outreach sequence management"
-        }
-      },
-      "analyticsInsights": {
-        "name": "Analytics & Insights",
-        "tools": {
-          "aexy_analytics": "Developer and team analytics",
-          "aexy_developer_insights": "Individual developer metrics",
-          "aexy_compliance": "Compliance and training tracking",
-          "aexy_assessments": "Technical assessment management"
-        }
-      },
-      "platform": {
-        "name": "Platform",
-        "tools": {
-          "aexy_workspaces": "Workspace and team management",
-          "aexy_notifications": "Read and manage notifications",
-          "aexy_documents": "Document management",
-          "aexy_tickets": "Ticket and support management",
-          "aexy_tables": "Standalone table operations",
-          "aexy_integrations": "External integrations (Slack, Jira, Linear)",
-          "aexy_api": "Generic API gateway for any endpoint"
-        }
-      },
-      "temporal": {
-        "name": "Temporal (Infrastructure)",
-        "tools": {
-          "temporal_list_workflows": "List running and completed workflows",
-          "temporal_describe_workflow": "Get workflow execution details",
-          "temporal_get_workflow_history": "View workflow event history",
-          "temporal_query_workflow": "Query workflow state",
-          "temporal_signal_workflow": "Send signals to running workflows",
-          "temporal_cancel_workflow": "Cancel a running workflow",
-          "temporal_list_schedules": "List scheduled workflows",
-          "temporal_system_status": "Temporal cluster health check"
-        }
-      }
+      "heading": "Available Tools",
+      "generatedNote": "Generated from aexy-mcp {version}",
+      "writesTitle": "This tool can change data"
     }
   }
 }

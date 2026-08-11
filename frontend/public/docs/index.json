@@ -166,6 +166,12 @@
           "slug": "stripe",
           "path": "stripe.md",
           "description": "Billing & subscriptions"
+        },
+        {
+          "title": "MCP (Model Context Protocol)",
+          "slug": "mcp",
+          "path": "mcp.md",
+          "description": "Connect Claude Code, Claude Desktop, Codex, Cursor & VS Code to Aexy"
         }
       ]
     },
@@ -486,6 +492,12 @@
       "section": "Provider setup",
       "description": "Billing & subscriptions",
       "path": "stripe.md"
+    },
+    "mcp": {
+      "title": "MCP (Model Context Protocol)",
+      "section": "Provider setup",
+      "description": "Connect Claude Code, Claude Desktop, Codex, Cursor & VS Code to Aexy",
+      "path": "mcp.md"
     },
     "sprints": {
       "title": "Sprints & planning",
@@ -854,14 +866,24 @@
         "slug": "slack"
       },
       "next": {
+        "title": "MCP (Model Context Protocol)",
+        "slug": "mcp"
+      }
+    },
+    "mcp": {
+      "prev": {
+        "title": "Stripe",
+        "slug": "stripe"
+      },
+      "next": {
         "title": "Sprints & planning",
         "slug": "sprints"
       }
     },
     "sprints": {
       "prev": {
-        "title": "Stripe",
-        "slug": "stripe"
+        "title": "MCP (Model Context Protocol)",
+        "slug": "mcp"
       },
       "next": {
         "title": "Tickets & projects",

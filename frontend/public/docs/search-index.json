@@ -937,6 +937,38 @@
     ]
   },
   {
+    "slug": "mcp",
+    "title": "MCP (Model Context Protocol)",
+    "section": "Provider setup",
+    "description": "Connect Claude Code, Claude Desktop, Codex, Cursor & VS Code to Aexy",
+    "headings": [
+      "MCP (Model Context Protocol)",
+      "Quick start",
+      "Environment variables",
+      "Client setup",
+      "Claude Code",
+      "Claude Desktop",
+      "OpenAI Codex",
+      "Cursor",
+      "VS Code",
+      "ChatGPT",
+      "Any other client",
+      "Tools",
+      "Sprint Management",
+      "CRM",
+      "AI Agents",
+      "Email & GTM",
+      "Analytics & Insights",
+      "Platform",
+      "Temporal Workflows",
+      "The `aexy_api` escape hatch",
+      "Access and permissions",
+      "Temporal tools, and why they are changing",
+      "Troubleshooting",
+      "For maintainers"
+    ]
+  },
+  {
     "slug": "sprints",
     "title": "Sprints & planning",
     "section": "Modules — Work & planning",
