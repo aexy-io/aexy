@@ -91,6 +91,16 @@ class GoogleIntegration(Base):
         onupdate=func.now(),
     )
 
+    __table_args__ = (
+        # One row per address per workspace. Declared here and not only in the
+        # migration: an index production has and the tests do not is how
+        # `uq_task_assignees_one_primary` stayed green while every reassignment
+        # failed.
+        UniqueConstraint(
+            "workspace_id", "google_email", name="uq_google_integration_address"
+        ),
+    )
+
     # Relationships
     workspace: Mapped["Workspace"] = relationship(
         "Workspace",
@@ -167,16 +177,6 @@ class SyncedEmail(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
-    )
-
-    __table_args__ = (
-        # One row per address per workspace. Declared here and not only in the
-        # migration: an index production has and the tests do not is how
-        # `uq_task_assignees_one_primary` stayed green while every reassignment
-        # failed.
-        UniqueConstraint(
-            "workspace_id", "google_email", name="uq_google_integration_address"
-        ),
     )
 
     # Relationships
