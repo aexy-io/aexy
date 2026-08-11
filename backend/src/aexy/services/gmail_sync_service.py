@@ -14,7 +14,7 @@ from typing import Any
 
 import httpx
 from openpyxl import load_workbook
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -84,13 +84,23 @@ async def auto_enrich_contact_from_email(
     personal_domains = {"gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com", "aol.com", "protonmail.com"}
     domain = from_email.split("@")[1].lower() if "@" in from_email else None
 
-    # Skip if it's likely the user's own email
+    # Skip if it's one of the workspace's own connected addresses.
+    #
+    # Was "the workspace's integration", singular — which raised once a second
+    # account existed, and before that meant mail from a colleague's connected
+    # mailbox was auto-enriched into a CRM contact for a coworker.
     try:
-        int_result = await db.execute(
-            select(GoogleIntegration).where(GoogleIntegration.workspace_id == workspace_id)
+        own_addresses = set(
+            (
+                await db.execute(
+                    select(func.lower(GoogleIntegration.google_email)).where(
+                        GoogleIntegration.workspace_id == workspace_id,
+                        GoogleIntegration.google_email.isnot(None),
+                    )
+                )
+            ).scalars().all()
         )
-        integration = int_result.scalar_one_or_none()
-        if integration and integration.google_email and from_email.lower() == integration.google_email.lower():
+        if from_email.lower() in own_addresses:
             return None, None
     except Exception:
         pass

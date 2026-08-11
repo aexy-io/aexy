@@ -128,16 +128,78 @@ async def verify_workspace_access(
     return workspace_service
 
 
+async def list_integrations(
+    workspace_id: str, db: AsyncSession
+) -> list[GoogleIntegration]:
+    """Every Google account connected to this workspace, oldest first.
+
+    Oldest first so "the workspace's account" means the same thing from one
+    request to the next. Ordering by `created_at` alone is not enough — rows
+    written in the same transaction can share a timestamp — so `id` breaks the
+    tie and keeps the answer stable.
+    """
+    result = await db.execute(
+        select(GoogleIntegration)
+        .where(GoogleIntegration.workspace_id == workspace_id)
+        .order_by(GoogleIntegration.created_at.asc(), GoogleIntegration.id.asc())
+    )
+    return list(result.scalars().all())
+
+
 async def get_integration(
     workspace_id: str,
     db: AsyncSession,
     required: bool = True,
+    integration_id: str | None = None,
+    prefer_developer_id: str | None = None,
 ) -> GoogleIntegration | None:
-    """Get Google integration for workspace."""
-    result = await db.execute(
-        select(GoogleIntegration).where(GoogleIntegration.workspace_id == workspace_id)
-    )
-    integration = result.scalar_one_or_none()
+    """The Google account a request means.
+
+    A workspace can hold several. This used to end in `scalar_one_or_none()`,
+    which raises `MultipleResultsFound` the moment a second row exists — so it
+    had to be replaced before the unique constraint was dropped, not after.
+
+    Resolution order, and the reason for each:
+
+    * ``integration_id`` — the caller named one. Checked against the workspace,
+      so an id from somewhere else is a 404 rather than another tenant's mailbox.
+    * ``prefer_developer_id`` — the caller's own account, when they have one.
+      Somebody who has connected their mailbox means *theirs* by default; the
+      alternative is quietly acting on a colleague's inbox.
+    * the oldest — the answer a single-account workspace has always given, so
+      nothing changes for the workspaces that have one.
+    """
+    if integration_id is not None:
+        integration = (
+            await db.execute(
+                select(GoogleIntegration).where(
+                    GoogleIntegration.id == integration_id,
+                    GoogleIntegration.workspace_id == workspace_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if required and not integration:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Google account not found in this workspace",
+            )
+        return integration
+
+    integrations = await list_integrations(workspace_id, db)
+
+    integration = None
+    if prefer_developer_id is not None:
+        integration = next(
+            (
+                i
+                for i in integrations
+                if i.connected_by_id
+                and str(i.connected_by_id) == str(prefer_developer_id)
+            ),
+            None,
+        )
+    if integration is None:
+        integration = integrations[0] if integrations else None
 
     if required and not integration:
         raise HTTPException(
@@ -246,15 +308,23 @@ async def connect_from_developer_google(
             detail="Your Google connection has expired. Please reconnect Google.",
         )
 
-    # Check if workspace already has an integration
+    # Match on the *address*, not the workspace. Matching on the workspace is
+    # what made this overwrite: the second person to connect took over the
+    # first person's row, and their mailbox stopped syncing without anyone
+    # being told. Reconnecting your own account still updates it in place.
     existing_result = await db.execute(
-        select(GoogleIntegration).where(GoogleIntegration.workspace_id == workspace_id)
+        select(GoogleIntegration).where(
+            GoogleIntegration.workspace_id == workspace_id,
+            func.lower(GoogleIntegration.google_email)
+            == (dev_connection.google_email or "").lower(),
+        )
     )
     existing = existing_result.scalar_one_or_none()
 
     if existing:
         # Update existing integration with latest tokens from developer
         # This ensures tokens are refreshed when user reconnects Google
+        existing.connected_by_id = str(current_user.id)
         existing.access_token = dev_connection.access_token
         existing.refresh_token = dev_connection.refresh_token
         existing.token_expiry = dev_connection.token_expires_at
@@ -358,9 +428,15 @@ async def oauth_callback(
             )
             user_info = response.json() if response.status_code == 200 else {}
 
-        # Create or update integration
+        # Create or update the integration *for this address*. Keyed on the
+        # workspace, a second person completing OAuth took over the first
+        # person's row and silently stopped their mailbox syncing.
         result = await db.execute(
-            select(GoogleIntegration).where(GoogleIntegration.workspace_id == workspace_id)
+            select(GoogleIntegration).where(
+                GoogleIntegration.workspace_id == workspace_id,
+                func.lower(GoogleIntegration.google_email)
+                == (user_info.get("email") or "").lower(),
+            )
         )
         integration = result.scalar_one_or_none()
 
@@ -488,9 +564,15 @@ async def google_oauth_callback(
             )
             user_info = response.json() if response.status_code == 200 else {}
 
-        # Create or update integration
+        # Create or update the integration *for this address*. Keyed on the
+        # workspace, a second person completing OAuth took over the first
+        # person's row and silently stopped their mailbox syncing.
         result = await db.execute(
-            select(GoogleIntegration).where(GoogleIntegration.workspace_id == workspace_id)
+            select(GoogleIntegration).where(
+                GoogleIntegration.workspace_id == workspace_id,
+                func.lower(GoogleIntegration.google_email)
+                == (user_info.get("email") or "").lower(),
+            )
         )
         integration = result.scalar_one_or_none()
 
