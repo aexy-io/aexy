@@ -15,6 +15,7 @@ We're on a mission to bring positive change by building world-class tools actual
 - [Tech Stack](./architecture/tech-stack.md) - Technologies and frameworks used
 - [Database Schema](./architecture/database-schema.md) - Data models and relationships
 - [LLM Integration](./architecture/llm-integration.md) - AI/LLM provider architecture
+- [Gmail: multiple accounts & sync exclusions](./architecture/gmail-multi-account-and-exclusions.md) - Design (not built): per-person Gmail connections, address/domain exclusions, and the governance around them
 
 ### API Reference
 - [API Overview](./api/overview.md) - Base URL, live Swagger/ReDoc, pointers to the cross-cutting API docs
