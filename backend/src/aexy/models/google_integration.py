@@ -26,10 +26,14 @@ class GoogleIntegration(Base):
         primary_key=True,
         default=lambda: str(uuid4()),
     )
+    # Not unique. A workspace has one Google account per address, not one
+    # account: several people each sync their own mailbox, and a shared desk
+    # address is its own row again. It was unique because the original design
+    # was "the workspace connects Google" — which made the second person to
+    # connect silently replace the first.
     workspace_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False),
         ForeignKey("workspaces.id", ondelete="CASCADE"),
-        unique=True,
         index=True,
     )
     connected_by_id: Mapped[str] = mapped_column(
@@ -163,6 +167,16 @@ class SyncedEmail(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
+    )
+
+    __table_args__ = (
+        # One row per address per workspace. Declared here and not only in the
+        # migration: an index production has and the tests do not is how
+        # `uq_task_assignees_one_primary` stayed green while every reassignment
+        # failed.
+        UniqueConstraint(
+            "workspace_id", "google_email", name="uq_google_integration_address"
+        ),
     )
 
     # Relationships
