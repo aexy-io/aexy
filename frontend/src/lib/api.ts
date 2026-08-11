@@ -11530,6 +11530,28 @@ export interface GoogleCalendar {
   color: string | null;
 }
 
+export interface GoogleAccountSummary {
+  id: string;
+  google_email: string;
+  gmail_sync_enabled: boolean;
+  calendar_sync_enabled: boolean;
+  is_active: boolean;
+  connected_by_id: string | null;
+  connected_by_name: string | null;
+  /** Whether the caller connected this one. */
+  is_mine: boolean;
+  /** Whether a Service Desk mailbox reads it — disconnecting is refused. */
+  is_service_desk_mailbox: boolean;
+  last_error: string | null;
+  created_at: string | null;
+}
+
+export interface GoogleAccountList {
+  accounts: GoogleAccountSummary[];
+  /** The address connecting would add for this caller, named before they act. */
+  connectable_email: string | null;
+}
+
 export interface GmailExclusionRule {
   id: string;
   integration_id: string;
@@ -11785,6 +11807,21 @@ export const googleIntegrationApi = {
    * — the API returns 403 otherwise — so callers should treat a 403 here as
    * "not yours to manage", not as a bug.
    */
+  /**
+   * The workspace's Google accounts. A workspace holds one per address; it
+   * used to hold exactly one, and connecting a second overwrote the first.
+   */
+  accounts: {
+    list: async (workspaceId: string): Promise<GoogleAccountList> => {
+      const response = await api.get(`/workspaces/${workspaceId}/integrations/google/accounts`);
+      return response.data;
+    },
+
+    disconnect: async (workspaceId: string, integrationId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/integrations/google/accounts/${integrationId}`);
+    },
+  },
+
   exclusions: {
     list: async (workspaceId: string): Promise<GmailExclusionRule[]> => {
       const response = await api.get(`/workspaces/${workspaceId}/integrations/google/exclusions`);

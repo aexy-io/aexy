@@ -46,6 +46,7 @@ import {
 } from "@/lib/api";
 import { AppAccessGuard } from "@/components/guards/AppAccessGuard";
 import { GmailExclusions } from "@/components/settings/GmailExclusions";
+import { GoogleAccounts } from "@/components/settings/GoogleAccounts";
 import {
   SettingsEmptyState,
   SettingsPage,
@@ -95,7 +96,8 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
   const [status, setStatus] = useState<GoogleIntegrationStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [isDisconnecting, setIsDisconnecting] = useState(false);
+  // Bumped after a disconnect so the sync panels below re-read status.
+  const [accountsVersion, setAccountsVersion] = useState(0);
   const [syncResult, setSyncResult] = useState<{ gmail?: string; calendar?: string } | null>(null);
   const [dealSettings, setDealSettings] = useState<DealCreationSettings>(DEFAULT_DEAL_SETTINGS);
   const [showDealSettings, setShowDealSettings] = useState(false);
@@ -208,18 +210,6 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
     }
   };
 
-  const handleDisconnect = async () => {
-    if (!workspaceId || !confirm("Are you sure you want to disconnect Google integration?")) return;
-    setIsDisconnecting(true);
-    try {
-      await googleIntegrationApi.disconnect(workspaceId);
-      setStatus(null);
-    } catch (error) {
-      console.error("Failed to disconnect:", error);
-    } finally {
-      setIsDisconnecting(false);
-    }
-  };
 
   const handleGmailSync = async () => {
     if (!workspaceId) return;
@@ -380,25 +370,23 @@ function IntegrationsTab({ workspaceId }: { workspaceId: string }) {
         {/* Connection status */}
         {status?.is_connected ? (
           <>
-            {/* Connected email */}
+            {/* Connected accounts. A list rather than one line, because a
+                workspace holds one Google account per address — several people
+                can each sync their own mailbox, and a shared desk address is
+                its own entry again. */}
             <div className="p-6 border-b border-border/50">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <Mail className="w-5 h-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-foreground font-medium">{status.google_email}</p>
-                    <p className="text-sm text-muted-foreground">Connected Google account</p>
-                  </div>
-                </div>
-                <button
-                  onClick={handleDisconnect}
-                  disabled={isDisconnecting}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  {isDisconnecting ? "Disconnecting..." : "Disconnect"}
-                </button>
+              <div className="flex items-center gap-3 mb-3">
+                <Mail className="w-5 h-5 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  Connected Google accounts
+                </p>
               </div>
+              <GoogleAccounts
+                key={accountsVersion}
+                workspaceId={workspaceId}
+                onConnectAnother={handleConnect}
+                onChanged={() => setAccountsVersion((v) => v + 1)}
+              />
             </div>
 
             {/* Sync options */}
