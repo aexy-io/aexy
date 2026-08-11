@@ -27,6 +27,11 @@ from aexy.models.google_integration import (
 )
 from aexy.schemas.google_integration import (
     CalendarInfo,
+    ExclusionRuleCreate,
+    ExclusionRuleCreatedResponse,
+    ExclusionRuleResponse,
+    HideMessageRequest,
+    HideMessageResponse,
     CalendarListResponse,
     CalendarSyncRequest,
     CalendarSyncResponse,
@@ -55,6 +60,11 @@ from aexy.schemas.google_integration import (
 from aexy.services.oauth_token_service import (
     RefreshTokenRevokedError,
     ensure_valid_google_token,
+)
+from aexy.services.gmail_sync_exclusions import (
+    ExclusionValueError,
+    GmailSyncExclusionService,
+    address_of,
 )
 from aexy.services.workspace_service import WorkspaceService
 
@@ -1346,3 +1356,167 @@ async def enrich_record(
 
     except ContactEnrichmentError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+# =============================================================================
+# Sync exclusions
+#
+# What a connected mailbox keeps out of Aexy. Connecting a personal account to a
+# shared workspace is only a reasonable thing to ask if some of it can stay
+# private, so these endpoints belong to the person who connected it.
+# =============================================================================
+
+
+async def _integration_for_exclusions(
+    workspace_id: str,
+    current_user: Developer,
+    db: AsyncSession,
+) -> GoogleIntegration:
+    """The integration whose exclusions the caller may manage.
+
+    Exclusions belong to whoever connected the mailbox — it is their mail. An
+    admin cannot manage somebody else's, which is the point: a rule an admin
+    could remove is not a rule the person relied on.
+
+    ``connected_by_id`` is nullable and older rows predate it being recorded, so
+    when nobody is on the row the workspace's admins stand in. Without that,
+    those workspaces could never set an exclusion at all.
+    """
+    await verify_workspace_access(workspace_id, current_user, db, "viewer")
+    integration = await get_integration(workspace_id, db)
+
+    if integration.connected_by_id is None:
+        await verify_workspace_access(workspace_id, current_user, db, "admin")
+        return integration
+
+    if str(integration.connected_by_id) != str(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Only the person who connected this Google account can change "
+                "what it excludes."
+            ),
+        )
+    return integration
+
+
+@router.get("/exclusions", response_model=list[ExclusionRuleResponse])
+async def list_exclusions(
+    workspace_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Addresses and domains this account never syncs."""
+    integration = await _integration_for_exclusions(workspace_id, current_user, db)
+    rules = await GmailSyncExclusionService(db).list_rules(str(integration.id))
+    return [ExclusionRuleResponse.model_validate(rule) for rule in rules]
+
+
+@router.post(
+    "/exclusions",
+    response_model=ExclusionRuleCreatedResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_exclusion(
+    workspace_id: str,
+    data: ExclusionRuleCreate,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Stop syncing an address or domain, and remove what is already synced.
+
+    The purge is not optional. "Hide mail from this domain" that leaves last
+    month's in the CRM is not what anyone means by hide, so the rule applies
+    backwards as well as forwards and the response says how much it took.
+    """
+    integration = await _integration_for_exclusions(workspace_id, current_user, db)
+    service = GmailSyncExclusionService(db)
+
+    try:
+        rule = await service.create_rule(
+            integration_id=str(integration.id),
+            workspace_id=workspace_id,
+            kind=data.kind,
+            value=data.value,
+            match_scope=data.match_scope,
+            actor_id=str(current_user.id),
+        )
+    except ExclusionValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        )
+
+    purged = await service.purge_for_rule(
+        integration_id=str(integration.id),
+        workspace_id=workspace_id,
+        rule=rule,
+        actor_id=str(current_user.id),
+    )
+    return ExclusionRuleCreatedResponse(
+        rule=ExclusionRuleResponse.model_validate(rule), purged=purged
+    )
+
+
+@router.delete("/exclusions/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_exclusion(
+    workspace_id: str,
+    rule_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Resume syncing this address or domain.
+
+    Mail an earlier purge removed stays removed — the tombstones outlive the
+    rule, so deleting one does not silently pull months of mail back in.
+    """
+    integration = await _integration_for_exclusions(workspace_id, current_user, db)
+    removed = await GmailSyncExclusionService(db).delete_rule(
+        str(integration.id), rule_id
+    )
+    if not removed:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Exclusion rule not found"
+        )
+
+
+@router.post("/exclusions/hide", response_model=HideMessageResponse)
+async def hide_synced_message(
+    workspace_id: str,
+    data: HideMessageRequest,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Hide one synced message.
+
+    Deletes the row and keeps a tombstone. Both are needed: the row is also the
+    "already synced" marker, so deleting it alone would let the next full sync
+    import the message straight back.
+
+    Returns the address and domain a follow-up rule could be built from, because
+    by the time the client asks "hide future mail from them too?" the row that
+    held the sender is gone.
+    """
+    integration = await _integration_for_exclusions(workspace_id, current_user, db)
+
+    existing = (
+        await db.execute(
+            select(SyncedEmail).where(
+                SyncedEmail.integration_id == integration.id,
+                SyncedEmail.gmail_id == data.gmail_id,
+            )
+        )
+    ).scalar_one_or_none()
+
+    sender = address_of(existing.from_email) if existing is not None else None
+
+    await GmailSyncExclusionService(db).hide_message(
+        integration_id=str(integration.id),
+        workspace_id=workspace_id,
+        gmail_id=data.gmail_id,
+        actor_id=str(current_user.id),
+    )
+    return HideMessageResponse(
+        hidden=True,
+        suggested_address=sender,
+        suggested_domain=sender.rsplit("@", 1)[1] if sender and "@" in sender else None,
+    )
