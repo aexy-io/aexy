@@ -8,6 +8,7 @@ import {
   Bot,
   Users,
   BookOpen,
+  Headset,
   BarChart3,
   ArrowRight,
   Sparkles,
@@ -62,6 +63,12 @@ const moduleGroups = [
     title: "Knowledge & Data",
     description: "Docs, databases, forms, and reporting",
     color: "from-purple-500 to-violet-600",
+  },
+  {
+    icon: Headset,
+    title: "Operations & Support",
+    description: "Service desk, ticketing, org structure, and shared files",
+    color: "from-indigo-500 to-indigo-600",
   },
 ];
 
@@ -124,7 +131,13 @@ export default function OnboardingWelcome() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: 0.1 * index }}
-                className="flex items-start gap-3 p-3 rounded-xl bg-muted/30 border border-border/50"
+                // An odd count would leave the last card alone in a two-column
+                // grid, reading as a truncated list rather than a full one.
+                className={`flex items-start gap-3 p-3 rounded-xl bg-muted/30 border border-border/50 ${
+                  index === moduleGroups.length - 1 && moduleGroups.length % 2 === 1
+                    ? "col-span-2"
+                    : ""
+                }`}
               >
                 <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${group.color} flex items-center justify-center flex-shrink-0`}>
                   <group.icon className="w-4 h-4 text-white" />

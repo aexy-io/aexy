@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, Text, func
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -453,3 +453,188 @@ class GoogleSyncJob(Base):
     # Relationships
     workspace: Mapped["Workspace"] = relationship("Workspace")
     integration: Mapped["GoogleIntegration"] = relationship("GoogleIntegration")
+
+
+class GoogleSyncExclusionRule(Base):
+    """An address or domain this account never syncs into Aexy.
+
+    Connecting a personal mailbox to a shared workspace is only a reasonable
+    thing to ask if some of it can be kept out. A rule is evaluated before a
+    message becomes a ``SyncedEmail`` row, so excluded mail leaves no body,
+    snippet or attachment preview behind to be scrubbed later.
+
+    Keyed on the *integration*, not the workspace: the person who connected the
+    mailbox owns the decision, and a workspace-scoped rule would be one somebody
+    else could delete.
+    """
+
+    __tablename__ = "google_sync_exclusion_rules"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    integration_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("google_integrations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    # Denormalised so an admin's "show me this workspace's exclusions" does not
+    # have to join through integrations, and so the row survives being read
+    # after its integration is gone in an audit context.
+    workspace_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # "address" | "domain"
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    # Normalised lowercase on the way in; a domain is stored bare ("acme.com"),
+    # never "@acme.com", so matching is one comparison rather than two shapes.
+    value: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+
+    # "participants" (default) | "sender"
+    #
+    # Sender-only leaves your own replies to a hidden domain in place — they
+    # carry the counterparty in `to_emails`, not `from_email` — so hiding a
+    # correspondent that way still exposes half the thread. Participants is the
+    # honest default; sender-only is the narrower deliberate choice.
+    match_scope: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="participants"
+    )
+
+    created_by_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    integration: Mapped["GoogleIntegration"] = relationship("GoogleIntegration")
+
+    __table_args__ = (
+        UniqueConstraint(
+            "integration_id", "kind", "value", name="uq_google_sync_exclusion"
+        ),
+    )
+
+
+class GoogleSyncHiddenMessage(Base):
+    """One message this account hid, and a tombstone so it stays hidden.
+
+    ``_sync_message`` treats the presence of a ``SyncedEmail`` row as "already
+    seen" — it is the dedup marker. So deleting a hidden message's row is not
+    enough: the next full sync would import it again and the user would watch
+    something they hid come back.
+
+    This table is what remains after the row is deleted. It holds no content,
+    only the Gmail id, which is what both the dedup check and the hide need.
+    """
+
+    __tablename__ = "google_sync_hidden_messages"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    integration_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("google_integrations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    workspace_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    gmail_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+
+    # Which rule hid it, when a retroactive purge did the hiding. Null for a
+    # one-off click-hide. Deliberately SET NULL rather than CASCADE: deleting a
+    # rule must not resurrect the mail it already removed.
+    rule_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("google_sync_exclusion_rules.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    hidden_by_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "integration_id", "gmail_id", name="uq_google_sync_hidden_message"
+        ),
+    )
+
+
+class GoogleSyncExclusionAudit(Base):
+    """Who did what to a mailbox's exclusions, and who looked.
+
+    Exclusions are visible to workspace admins by policy, which makes the list
+    itself revealing: a set of hidden domains reads as a set of things somebody
+    would rather their manager not see. The symmetry is that looking is recorded
+    too — ``exclusions_viewed`` is written when an admin opens somebody's list.
+
+    The owner is not notified of a view. That is deliberate: the record exists so
+    the access can be reviewed later, not so it can be watched live.
+
+    Separate from ``app_access_logs`` despite the shared vocabulary — that table
+    is documented as Enterprise-only, and an audit trail that some workspaces
+    silently do not keep is not an audit trail.
+    """
+
+    __tablename__ = "google_sync_exclusion_audit"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    workspace_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    # No FK: the entry has to outlive the integration it describes, or
+    # disconnecting Google would erase the record of what was excluded.
+    integration_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False), nullable=True, index=True
+    )
+    actor_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    # exclusion_rule_created | exclusion_rule_deleted | message_hidden |
+    # exclusions_viewed
+    action: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    # The rule's value, or the Gmail id. Null for a view.
+    target: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    extra_data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        index=True,
+    )

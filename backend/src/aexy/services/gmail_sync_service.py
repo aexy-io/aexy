@@ -22,10 +22,15 @@ from aexy.core.config import get_settings
 from aexy.models.google_integration import (
     EmailSyncCursor,
     GoogleIntegration,
+    GoogleSyncExclusionRule,
     SyncedEmail,
     SyncedEmailRecordLink,
 )
 from aexy.models.crm import CRMRecord, CRMObject, CRMObjectType, CRMRecordRelation
+from aexy.services.gmail_sync_exclusions import (
+    GmailSyncExclusionService,
+    matching_rule,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -579,6 +584,61 @@ class GmailSyncService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
+        self._exclusions = GmailSyncExclusionService(db)
+        # Both caches live for one sync run. A full sync asks these questions
+        # once per message, and neither answer changes underneath it.
+        self._rules_cache: dict[str, list[GoogleSyncExclusionRule]] = {}
+        self._desk_mailbox_cache: dict[str, bool] = {}
+
+    async def _exclusion_rules(
+        self, integration_id: str
+    ) -> list[GoogleSyncExclusionRule]:
+        if integration_id not in self._rules_cache:
+            self._rules_cache[integration_id] = await self._exclusions.list_rules(
+                integration_id
+            )
+        return self._rules_cache[integration_id]
+
+    async def _is_service_desk_mailbox(self, integration: GoogleIntegration) -> bool:
+        key = str(integration.id)
+        if key not in self._desk_mailbox_cache:
+            from aexy.services.service_desk_intake_service import (
+                ServiceDeskIntakeService,
+            )
+
+            mailbox = await ServiceDeskIntakeService.find_mailbox_by_integration(
+                self.db, integration.id, workspace_id=integration.workspace_id
+            )
+            self._desk_mailbox_cache[key] = mailbox is not None
+        return self._desk_mailbox_cache[key]
+
+    async def _excluded_from_sync(
+        self, integration: GoogleIntegration, email_data: dict
+    ) -> bool:
+        """Whether this account's exclusions keep this message out.
+
+        A registered Service Desk address is exempt, and that is a rule rather
+        than an ordering accident. A desk address is a shared business channel,
+        not private mail: letting a personal exclusion apply there would stop a
+        customer's tickets from being created, silently, and nobody would find
+        out until they asked why they had been ignored.
+        """
+        if await self._is_service_desk_mailbox(integration):
+            return False
+
+        rules = await self._exclusion_rules(str(integration.id))
+        if not rules:
+            return False
+
+        return (
+            matching_rule(
+                rules,
+                email_data.get("from_email"),
+                email_data.get("to_emails"),
+                email_data.get("cc_emails"),
+            )
+            is not None
+        )
 
     async def _refresh_token_if_needed(
         self, integration: GoogleIntegration
@@ -695,8 +755,10 @@ class GmailSyncService:
                 # Fetch and store each message
                 for msg_info in messages:
                     try:
-                        await self._sync_message(integration, msg_info["id"])
-                        messages_synced += 1
+                        # None means the account's exclusions kept it out, so
+                        # it is not something to report as synced.
+                        if await self._sync_message(integration, msg_info["id"]):
+                            messages_synced += 1
                     except Exception as e:
                         logger.error(f"Failed to sync message {msg_info['id']}: {e}")
                         continue
@@ -778,8 +840,8 @@ class GmailSyncService:
                     if msg_id not in seen_message_ids:
                         seen_message_ids.add(msg_id)
                         try:
-                            await self._sync_message(integration, msg_id)
-                            messages_synced += 1
+                            if await self._sync_message(integration, msg_id):
+                                messages_synced += 1
                         except Exception as e:
                             logger.error(f"Failed to sync message {msg_id}: {e}")
 
@@ -807,8 +869,13 @@ class GmailSyncService:
 
     async def _sync_message(
         self, integration: GoogleIntegration, message_id: str
-    ) -> SyncedEmail:
-        """Fetch and store a single message."""
+    ) -> SyncedEmail | None:
+        """Fetch and store a single message.
+
+        Returns None when the account's exclusions cover it — both sync paths
+        funnel through here, so this is the one place that decides whether a
+        message becomes a row at all.
+        """
         # Check if already synced
         result = await self.db.execute(
             select(SyncedEmail).where(SyncedEmail.gmail_id == message_id)
@@ -816,6 +883,12 @@ class GmailSyncService:
         existing = result.scalar_one_or_none()
         if existing:
             return existing
+
+        # Hidden once, hidden for good. The row above is the "already synced"
+        # marker, so hiding a message has to delete it — which would otherwise
+        # let the next full sync import it straight back.
+        if await self._exclusions.is_hidden(str(integration.id), message_id):
+            return None
 
         # Fetch full message
         message = await self._make_gmail_request(
@@ -827,6 +900,17 @@ class GmailSyncService:
 
         # Parse message
         email_data = self._parse_message(message)
+
+        # An excluded message never becomes a row: no body, no snippet, no
+        # attachment preview to scrub later. A registered Service Desk address
+        # is exempt on purpose — see `_excluded_from_sync`.
+        if await self._excluded_from_sync(integration, email_data):
+            logger.debug(
+                "Skipping message %s for integration %s: matches an exclusion rule",
+                message_id,
+                integration.id,
+            )
+            return None
 
         # Create synced email record
         synced_email = SyncedEmail(

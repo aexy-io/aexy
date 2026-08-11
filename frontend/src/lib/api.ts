@@ -11530,6 +11530,47 @@ export interface GoogleCalendar {
   color: string | null;
 }
 
+export interface GmailExclusionRule {
+  id: string;
+  integration_id: string;
+  kind: "address" | "domain";
+  value: string;
+  match_scope: "participants" | "sender";
+  created_by_id: string | null;
+  created_at: string;
+}
+
+export interface GmailExclusionCreated {
+  rule: GmailExclusionRule;
+  /** How much already-synced mail the new rule removed. A rule applies
+   *  backwards as well as forwards, so this is worth showing. */
+  purged: number;
+}
+
+export interface GmailExclusionAuditEntry {
+  id: string;
+  actor_id: string | null;
+  action: string;
+  target: string | null;
+  extra_data: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface WorkspaceExclusions {
+  rules: GmailExclusionRule[];
+  /** A count, not the messages — an admin may know mail was hidden, not read it. */
+  hidden_message_count: number;
+  audit: GmailExclusionAuditEntry[];
+}
+
+export interface GmailHideResult {
+  hidden: boolean;
+  /** What a follow-up rule could be built from. The synced row is deleted by
+   *  the time this returns, so the sender has to come back with the response. */
+  suggested_address: string | null;
+  suggested_domain: string | null;
+}
+
 export const googleIntegrationApi = {
   // Connection
   getConnectUrl: async (workspaceId: string, redirectUrl?: string): Promise<{ auth_url: string }> => {
@@ -11735,6 +11776,51 @@ export const googleIntegrationApi = {
   }> => {
     const response = await api.post(`/workspaces/${workspaceId}/integrations/google/records/${recordId}/enrich`);
     return response.data;
+  },
+
+  /**
+   * What this mailbox keeps out of Aexy.
+   *
+   * Only the person who connected the Google account may read or change these
+   * — the API returns 403 otherwise — so callers should treat a 403 here as
+   * "not yours to manage", not as a bug.
+   */
+  exclusions: {
+    list: async (workspaceId: string): Promise<GmailExclusionRule[]> => {
+      const response = await api.get(`/workspaces/${workspaceId}/integrations/google/exclusions`);
+      return response.data;
+    },
+
+    create: async (
+      workspaceId: string,
+      data: { kind: "address" | "domain"; value: string; match_scope?: "participants" | "sender" }
+    ): Promise<GmailExclusionCreated> => {
+      const response = await api.post(`/workspaces/${workspaceId}/integrations/google/exclusions`, data);
+      return response.data;
+    },
+
+    remove: async (workspaceId: string, ruleId: string): Promise<void> => {
+      await api.delete(`/workspaces/${workspaceId}/integrations/google/exclusions/${ruleId}`);
+    },
+
+    /**
+     * Every exclusion in the workspace — admin only.
+     *
+     * Reading this writes an `exclusions_viewed` audit entry server-side. That
+     * is the point rather than a side effect: an exclusion list is revealing,
+     * so looking at one is recorded.
+     */
+    forWorkspace: async (workspaceId: string): Promise<WorkspaceExclusions> => {
+      const response = await api.get(`/workspaces/${workspaceId}/integrations/google/exclusions/admin`);
+      return response.data;
+    },
+
+    hide: async (workspaceId: string, gmailId: string): Promise<GmailHideResult> => {
+      const response = await api.post(`/workspaces/${workspaceId}/integrations/google/exclusions/hide`, {
+        gmail_id: gmailId,
+      });
+      return response.data;
+    },
   },
 };
 

@@ -22,12 +22,16 @@ import {
   Star,
   Archive,
   Loader2,
+  EyeOff,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { SearchInput } from "@/components/ui/search-input";
-import { googleIntegrationApi, developerApi, SyncedEmail, SyncJobStatus } from "@/lib/api";
+import { googleIntegrationApi, developerApi, SyncedEmail, SyncJobStatus, GmailHideResult } from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/utils";
+import { toast } from "sonner";
+import { HideFollowUpPrompt } from "@/components/settings/GmailExclusions";
 
 function formatDate(dateString: string) {
   const date = new Date(dateString);
@@ -192,17 +196,58 @@ function EmailDetail({
   workspaceId,
   onClose,
   onLinkToRecord,
+  onHidden,
   isLoadingBody,
 }: {
   email: SyncedEmail;
   workspaceId: string;
   onClose: () => void;
   onLinkToRecord: () => void;
+  onHidden: (gmailId: string) => void;
   isLoadingBody?: boolean;
 }) {
   const [showReply, setShowReply] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [isHiding, setIsHiding] = useState(false);
+  const [followUp, setFollowUp] = useState<GmailHideResult | null>(null);
+
+  /**
+   * Take this email out of Aexy.
+   *
+   * The row is deleted server-side and a tombstone kept, so it does not come
+   * back on the next sync. What returns is the address and domain a standing
+   * rule could be built from — by then the row that held the sender is gone,
+   * so the follow-up prompt could not work them out for itself.
+   */
+  const handleHide = async () => {
+    if (!email.gmail_id || isHiding) return;
+    setIsHiding(true);
+    try {
+      const result = await googleIntegrationApi.exclusions.hide(workspaceId, email.gmail_id);
+      setFollowUp(result);
+      onHidden(email.gmail_id);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Could not hide this email"));
+    } finally {
+      setIsHiding(false);
+    }
+  };
+
+  const handleExcludeFuture = async (kind: "address" | "domain", value: string) => {
+    try {
+      const created = await googleIntegrationApi.exclusions.create(workspaceId, { kind, value });
+      // A rule reaches backwards, so say what it took with it.
+      toast.success(
+        created.purged > 0
+          ? `${value} will no longer sync — ${created.purged} more removed`
+          : `${value} will no longer sync`
+      );
+      setFollowUp(null);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Could not add that exclusion"));
+    }
+  };
 
   const handleSendReply = async () => {
     if (!replyText.trim() || !email.from_email) return;
@@ -243,6 +288,16 @@ function EmailDetail({
             Link to Record
           </button>
           <button
+            onClick={handleHide}
+            disabled={isHiding || !email.gmail_id}
+            data-testid="hide-email"
+            title="Remove this email from Aexy. It will not come back on the next sync."
+            className="flex items-center gap-2 px-3 py-1.5 text-sm bg-accent hover:bg-accent text-foreground rounded-lg transition-colors disabled:opacity-50"
+          >
+            {isHiding ? <Loader2 className="w-4 h-4 animate-spin" /> : <EyeOff className="w-4 h-4" />}
+            Hide
+          </button>
+          <button
             onClick={() => setShowReply(!showReply)}
             className="flex items-center gap-2 px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
           >
@@ -251,6 +306,17 @@ function EmailDetail({
           </button>
         </div>
       </div>
+
+      {followUp && (
+        <div className="px-4 pt-4">
+          <HideFollowUpPrompt
+            address={followUp.suggested_address}
+            domain={followUp.suggested_domain}
+            onExclude={handleExcludeFuture}
+            onDismiss={() => setFollowUp(null)}
+          />
+        </div>
+      )}
 
       {/* Email Content */}
       <div className="flex-1 overflow-auto p-6">
@@ -919,6 +985,11 @@ function InboxPageContent() {
                   workspaceId={workspaceId}
                   onClose={() => setSelectedEmail(null)}
                   onLinkToRecord={() => setShowLinkModal(true)}
+                  onHidden={(gmailId) => {
+                    // The server has deleted the row, so drop it from the list
+                    // rather than leaving a card that 404s when clicked.
+                    setEmails((prev) => prev.filter((e) => e.gmail_id !== gmailId));
+                  }}
                   isLoadingBody={isLoadingEmail}
                 />
               ) : (

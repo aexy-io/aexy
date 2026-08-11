@@ -260,8 +260,9 @@ async def _sync_gmail_with_progress(
             # Sync each new message
             for idx, msg_id in enumerate(message_ids):
                 try:
-                    await service._sync_message(integration, msg_id)
-                    messages_synced += 1
+                    # None means an exclusion rule kept it out; not synced.
+                    if await service._sync_message(integration, msg_id):
+                        messages_synced += 1
 
                     if messages_synced % 5 == 0 or messages_synced == total_messages:
                         job.processed_items = messages_synced
@@ -316,8 +317,8 @@ async def _sync_gmail_with_progress(
 
             for msg_info in messages:
                 try:
-                    await service._sync_message(integration, msg_info["id"])
-                    messages_synced += 1
+                    if await service._sync_message(integration, msg_info["id"]):
+                        messages_synced += 1
 
                     if messages_synced % 10 == 0:
                         job.processed_items = messages_synced

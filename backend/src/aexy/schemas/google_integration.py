@@ -1,8 +1,8 @@
 """Pydantic schemas for Google Integration (Gmail & Calendar sync)."""
 
 from datetime import datetime
-from pydantic import BaseModel, Field
-from typing import Any
+from pydantic import BaseModel, ConfigDict, Field
+from typing import Any, Literal
 
 
 # =============================================================================
@@ -281,3 +281,75 @@ class RecordEnrichResponse(BaseModel):
     enrichments: dict[str, Any] = {}
     classification: dict[str, Any] = {}
     emails_analyzed: int = 0
+
+
+class ExclusionRuleCreate(BaseModel):
+    """Ask for an address or domain to stay out of this account's sync."""
+
+    kind: Literal["address", "domain"]
+    value: str = Field(..., min_length=3, max_length=255)
+    # Sender-only leaves your own replies to a hidden correspondent in place,
+    # so the default matches everyone on the message.
+    match_scope: Literal["participants", "sender"] = "participants"
+
+
+class ExclusionRuleResponse(BaseModel):
+    id: str
+    integration_id: str
+    kind: str
+    value: str
+    match_scope: str
+    created_by_id: str | None = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ExclusionRuleCreatedResponse(BaseModel):
+    """The rule, and how much already-synced mail it removed.
+
+    `purged` is reported rather than left silent: a rule applies backwards as
+    well as forwards, and somebody excluding a domain they have corresponded
+    with for a year should see that a year of mail has just gone.
+    """
+
+    rule: ExclusionRuleResponse
+    purged: int = 0
+
+
+class HideMessageRequest(BaseModel):
+    """Hide one already-synced message."""
+
+    gmail_id: str = Field(..., min_length=1, max_length=255)
+
+
+class HideMessageResponse(BaseModel):
+    hidden: bool
+    # What a follow-up rule could be built from, so the client can offer
+    # "also hide future mail from bob@acme.com / from acme.com" without
+    # re-parsing headers it no longer has — the row is gone by then.
+    suggested_address: str | None = None
+    suggested_domain: str | None = None
+
+
+class ExclusionAuditEntry(BaseModel):
+    """One recorded action on a workspace's exclusions — including a read."""
+
+    id: str
+    actor_id: str | None = None
+    action: str
+    target: str | None = None
+    extra_data: dict[str, Any] | None = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class WorkspaceExclusionsResponse(BaseModel):
+    """What an admin sees, and the trail of who saw it before them."""
+
+    rules: list[ExclusionRuleResponse]
+    # A count, not the messages: an admin is entitled to know that mail was
+    # hidden, not to read the mail somebody hid.
+    hidden_message_count: int
+    audit: list[ExclusionAuditEntry]

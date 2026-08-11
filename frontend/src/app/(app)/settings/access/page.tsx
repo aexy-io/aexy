@@ -9,6 +9,7 @@ import {
   Minus,
   X,
   Package,
+  Ban,
   Users,
   Settings2,
   FileText,
@@ -205,6 +206,12 @@ export default function AccessControlPage() {
       width="wide"
       actions={
         <>
+          <Link href="/settings/access/gmail-exclusions">
+            <Button variant="outline" size="sm" className="gap-2">
+              <Ban className="h-4 w-4" aria-hidden />
+              Gmail exclusions
+            </Button>
+          </Link>
           <Link href="/settings/access/logs">
             <Button variant="outline" size="sm" className="gap-2">
               <FileText className="h-4 w-4" aria-hidden />
