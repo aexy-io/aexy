@@ -1,7 +1,14 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseMutationOptions,
+} from "@tanstack/react-query";
+import { toast } from "sonner";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import {
   serviceDeskApi,
@@ -21,6 +28,30 @@ import {
   ServiceDeskTicket,
   ServiceDeskTicketDetail,
 } from "@/lib/service-desk-api";
+
+/**
+ * A mutation that reports its own failure.
+ *
+ * Every mutation here used to declare `onSuccess` and nothing else, and the
+ * settings page drives them with bare `mutateAsync` calls. A rejection
+ * therefore reached no one: adding a mailbox for an address the workspace's
+ * Google integration isn't connected as returned a 422 explaining exactly
+ * that, the input kept its text, and the screen said nothing at all.
+ *
+ * The API's `detail` is the message worth showing — it is written for the
+ * person who hit it — so it is preferred over the fallback.
+ */
+function useDeskMutation<TData, TVariables>(
+  options: UseMutationOptions<TData, unknown, TVariables>,
+) {
+  return useMutation({
+    ...options,
+    onError: (error, variables, onMutateResult, context) => {
+      toast.error(getApiErrorMessage(error, "Something went wrong. Please try again."));
+      options.onError?.(error, variables, onMutateResult, context);
+    },
+  });
+}
 
 const keys = {
   dashboard: (ws: string) => ["service-desk", "dashboard", ws] as const,
@@ -208,36 +239,36 @@ export function useServiceDeskMutations() {
   };
 
   return {
-    splitDetectedIssues: useMutation({
+    splitDetectedIssues: useDeskMutation({
       mutationFn: ({ id, issue_indexes }: { id: string; issue_indexes: number[] }) =>
         serviceDeskApi.splitDetectedIssues(ws!, id, issue_indexes),
       onSuccess: (_r, v) => invalidateTickets(v.id),
     }),
-    changePendingWith: useMutation({
+    changePendingWith: useDeskMutation({
       mutationFn: ({ id, pending_with, note }: { id: string; pending_with: PendingWith; note?: string }) =>
         serviceDeskApi.changePendingWith(ws!, id, pending_with, note),
       onSuccess: (_r, v) => invalidateTickets(v.id),
     }),
-    updateTicket: useMutation({
+    updateTicket: useDeskMutation({
       mutationFn: ({ id, data }: { id: string; data: Partial<{ request_type: RequestType; product_id: string | null; account_id: string | null; assigned_owner_id: string | null; needs_triage: boolean }> }) =>
         serviceDeskApi.updateTicket(ws!, id, data),
       onSuccess: (_r, v) => invalidateTickets(v.id),
     }),
-    createManual: useMutation({
+    createManual: useDeskMutation({
       mutationFn: (data: Parameters<typeof serviceDeskApi.createManual>[1]) => serviceDeskApi.createManual(ws!, data),
       onSuccess: () => invalidateTickets(),
     }),
-    emailStakeholder: useMutation({
+    emailStakeholder: useDeskMutation({
       mutationFn: ({ id, data }: { id: string; data: { to: string; subject: string; body: string; attachment_filenames?: string[]; move_ticket?: boolean } }) =>
         serviceDeskApi.emailStakeholder(ws!, id, data),
       onSuccess: (_r, v) => invalidateTickets(v.id),
     }),
-    convertToTask: useMutation({
+    convertToTask: useDeskMutation({
       mutationFn: ({ id, data }: { id: string; data: Parameters<typeof serviceDeskApi.convertToTask>[2] }) =>
         serviceDeskApi.convertToTask(ws!, id, data),
       onSuccess: (_r, v) => invalidateTickets(v.id),
     }),
-    updateSettings: useMutation({
+    updateSettings: useDeskMutation({
       mutationFn: (patch: ServiceDeskSettingsPatch) => serviceDeskApi.updateSettings(ws!, patch),
       onSuccess: () => {
         if (ws) {
@@ -246,66 +277,66 @@ export function useServiceDeskMutations() {
         }
       },
     }),
-    updateTemplate: useMutation({
+    updateTemplate: useDeskMutation({
       mutationFn: ({ key, subject, body }: { key: string; subject: string; body: string }) =>
         serviceDeskApi.updateTemplate(ws!, key, subject, body),
       onSuccess: () => {
         if (ws) qc.invalidateQueries({ queryKey: keys.templates(ws) });
       },
     }),
-    createAccount: useMutation({
+    createAccount: useDeskMutation({
       mutationFn: (data: Parameters<typeof serviceDeskApi.createAccount>[1]) => serviceDeskApi.createAccount(ws!, data),
       onSuccess: invalidateMaster,
     }),
-    deleteAccount: useMutation({ mutationFn: (id: string) => serviceDeskApi.deleteAccount(ws!, id), onSuccess: invalidateMaster }),
-    createVendor: useMutation({
+    deleteAccount: useDeskMutation({ mutationFn: (id: string) => serviceDeskApi.deleteAccount(ws!, id), onSuccess: invalidateMaster }),
+    createVendor: useDeskMutation({
       mutationFn: (data: Parameters<typeof serviceDeskApi.createVendor>[1]) => serviceDeskApi.createVendor(ws!, data),
       onSuccess: invalidateMaster,
     }),
-    deleteVendor: useMutation({ mutationFn: (id: string) => serviceDeskApi.deleteVendor(ws!, id), onSuccess: invalidateMaster }),
-    createProduct: useMutation({
+    deleteVendor: useDeskMutation({ mutationFn: (id: string) => serviceDeskApi.deleteVendor(ws!, id), onSuccess: invalidateMaster }),
+    createProduct: useDeskMutation({
       mutationFn: (data: Parameters<typeof serviceDeskApi.createProduct>[1]) => serviceDeskApi.createProduct(ws!, data),
       onSuccess: invalidateMaster,
     }),
-    deleteProduct: useMutation({ mutationFn: (id: string) => serviceDeskApi.deleteProduct(ws!, id), onSuccess: invalidateMaster }),
-    createMailbox: useMutation({
+    deleteProduct: useDeskMutation({ mutationFn: (id: string) => serviceDeskApi.deleteProduct(ws!, id), onSuccess: invalidateMaster }),
+    createMailbox: useDeskMutation({
       mutationFn: (data: Parameters<typeof serviceDeskApi.createMailbox>[1]) => serviceDeskApi.createMailbox(ws!, data),
       onSuccess: invalidateMaster,
     }),
-    deleteMailbox: useMutation({ mutationFn: (id: string) => serviceDeskApi.deleteMailbox(ws!, id), onSuccess: invalidateMaster }),
+    deleteMailbox: useDeskMutation({ mutationFn: (id: string) => serviceDeskApi.deleteMailbox(ws!, id), onSuccess: invalidateMaster }),
 
     // Taxonomy. Editing a stakeholder relabels or re-orders live queue columns,
     // so the dashboard and ticket lists are invalidated alongside it.
-    createStakeholder: useMutation({
+    createStakeholder: useDeskMutation({
       mutationFn: (data: Parameters<typeof serviceDeskApi.createStakeholder>[1]) =>
         serviceDeskApi.createStakeholder(ws!, data),
       onSuccess: invalidateTaxonomy,
     }),
-    updateStakeholder: useMutation({
+    updateStakeholder: useDeskMutation({
       mutationFn: ({ id, data }: { id: string; data: Parameters<typeof serviceDeskApi.updateStakeholder>[2] }) =>
         serviceDeskApi.updateStakeholder(ws!, id, data),
       onSuccess: invalidateTaxonomy,
     }),
-    deleteStakeholder: useMutation({
+    deleteStakeholder: useDeskMutation({
       mutationFn: (id: string) => serviceDeskApi.deleteStakeholder(ws!, id),
       onSuccess: invalidateTaxonomy,
     }),
-    createRequestType: useMutation({
+    createRequestType: useDeskMutation({
       mutationFn: (data: Parameters<typeof serviceDeskApi.createRequestType>[1]) =>
         serviceDeskApi.createRequestType(ws!, data),
       onSuccess: invalidateTaxonomy,
     }),
-    updateRequestType: useMutation({
+    updateRequestType: useDeskMutation({
       mutationFn: ({ id, data }: { id: string; data: Parameters<typeof serviceDeskApi.updateRequestType>[2] }) =>
         serviceDeskApi.updateRequestType(ws!, id, data),
       onSuccess: invalidateTaxonomy,
     }),
-    deleteRequestType: useMutation({
+    deleteRequestType: useDeskMutation({
       mutationFn: (id: string) => serviceDeskApi.deleteRequestType(ws!, id),
       onSuccess: invalidateTaxonomy,
     }),
 
-    applyIndustryTemplate: useMutation({
+    applyIndustryTemplate: useDeskMutation({
       mutationFn: (data: Parameters<typeof serviceDeskApi.applyIndustryTemplate>[1]) =>
         serviceDeskApi.applyIndustryTemplate(ws!, data),
       // Touches taxonomy, terminology (settings) and departments at once.
