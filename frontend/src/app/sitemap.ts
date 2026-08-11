@@ -18,6 +18,7 @@ const productSlugs = [
   "gtm-intelligence",
   "hiring",
   "learning",
+  "mcp",
   "planning",
   "reminders",
   "reviews",

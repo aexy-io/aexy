@@ -161,13 +161,44 @@ declares its `type`:
 
 ### ChatGPT
 
-**Not supported yet.** ChatGPT connects only to *remote* MCP servers reached over
-HTTP with OAuth; it cannot launch a local stdio process the way the clients above
-do. This is a transport gap, not a configuration one — no arrangement of the
-settings above will make it work.
+ChatGPT connects only to *remote* MCP servers reached over HTTP with OAuth; it
+cannot launch a local stdio process the way the clients above do. So it takes a
+URL rather than a config file, and there is nothing to install:
 
-A hosted Aexy MCP endpoint with OAuth is planned. Until it ships, use one of the
-other clients.
+```
+<api-url>/mcp
+```
+
+In ChatGPT, open **Settings → Connectors → Create** and paste that URL. ChatGPT
+registers itself through Dynamic Client Registration, then sends you to Aexy to
+sign in and choose which workspace the connector may use.
+
+There is no API token in this flow. Authorization is an OAuth 2.1 authorization
+code grant with PKCE, and the resulting token is scoped to one developer in one
+workspace — the connector sees exactly the apps you already have access to
+there, and nothing else.
+
+Everything you have authorized is listed under **Settings → Connected Apps**,
+with the workspace it reaches and when it was last used. Revoking there kills
+every token on the grant at once, including the refresh token, so the client
+cannot quietly mint another; it has to walk the consent flow again.
+
+The endpoints backing this are discoverable, so any remote MCP client can use
+them, not just ChatGPT:
+
+| Endpoint | Purpose |
+| --- | --- |
+| `/.well-known/oauth-protected-resource` | Points at the authorization server |
+| `/.well-known/oauth-authorization-server` | Metadata: endpoints, PKCE methods |
+| `/oauth/register` | Dynamic Client Registration (RFC 7591) |
+| `/oauth/authorize` | Redirects to the consent screen |
+| `/oauth/token` | Code exchange and refresh, both rotating |
+| `/oauth/revoke` | Token revocation (RFC 7009) |
+
+Two behaviours are worth knowing because they look like bugs when you hit them:
+redeeming an authorization code twice revokes every token from that grant, and
+reusing a retired refresh token does the same. Both are deliberate — a replayed
+secret means someone other than the client is holding it.
 
 ### Any other client
 
@@ -296,6 +327,8 @@ anything your account could not do through the UI.
 
 Two caveats worth knowing:
 
+These apply to the **stdio** server and its API tokens:
+
 - **Tokens are not scoped.** A token grants everything your account can do, not a
   subset. Treat one like a password: create a separate token per machine, and
   revoke it in Settings → API Tokens when the machine goes away.
@@ -303,9 +336,15 @@ Two caveats worth knowing:
   tools; ones you lack permission for fail at call time with a 403 rather than
   being hidden.
 
-Per-capability grants — resolved from the same app-access model that governs the
-rest of Aexy, with scoped tokens and a filtered tool list — are the next planned
-change here.
+The **remote** transport used by [ChatGPT](#chatgpt) does not share either
+limitation. An OAuth grant is bound to one developer in one workspace, and
+capabilities resolve from the same app-access model that governs the web app —
+holding the `sprints` app is what grants `mcp.sprints`. The tool list is built
+from those capabilities, so it is filtered before the client ever sees it.
+
+Grants are visible and revocable at **Settings → Connected Apps**. Revoked
+grants stay listed rather than disappearing — someone auditing what reached
+their workspace needs to see that a connector existed and when it last ran.
 
 ### Temporal tools, and why they are changing
 

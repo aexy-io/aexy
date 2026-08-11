@@ -1,0 +1,124 @@
+{
+  "marketingMcp": {
+    "_note": "Placeholder: values are intentionally English. The marketing surface is not yet localised — a single translated block on an otherwise English page reads worse than a consistent one. Keys are in place so translating marketing is a copy pass, not a refactor.",
+    "nav": {
+      "label": "MCP"
+    },
+    "hero": {
+      "linkLabel": "Connect ChatGPT or Claude"
+    },
+    "home": {
+      "eyebrow": "Model Context Protocol",
+      "heading": "Already using ChatGPT? Point it at your company.",
+      "body": "Aexy speaks MCP, so the assistant you already pay for can work inside your workspace — moving tickets, updating deals, reading sprints, drafting from real context — instead of you copying it into a chat window and pasting the answer back.",
+      "cards": {
+        "anyClient": {
+          "title": "The assistant you already have",
+          "body": "ChatGPT connects over HTTP. Claude Code, Claude Desktop, Cursor, VS Code and Codex run the server locally. Nothing new to learn."
+        },
+        "realWork": {
+          "title": "It does the work, not just the reading",
+          "body": "Move a task to In Review and assign it. Create a deal. Log a ticket. Query analytics. Not a chatbot bolted onto a search box."
+        },
+        "oauth": {
+          "title": "Sign in, don't paste a key",
+          "body": "ChatGPT registers itself and sends you to a consent screen where you pick one workspace. No API key to mint, store, or forget about."
+        },
+        "revoke": {
+          "title": "You can take it back",
+          "body": "Every connector is listed with the workspace it reaches and when it last ran. Revoking cuts it off immediately — it cannot quietly reconnect."
+        }
+      },
+      "cta": "See how it works"
+    },
+    "faq": {
+      "question": "Can I use Aexy from ChatGPT or Claude?",
+      "answer": "Yes. Aexy ships an MCP server, so ChatGPT, Claude Desktop, Claude Code, Cursor, VS Code and Codex can work inside your workspace directly — reading sprints, moving tickets, updating CRM records, querying analytics. ChatGPT connects over a remote HTTP endpoint with OAuth: it registers itself, you approve one workspace on a consent screen, and the access it gets is scoped to you in that workspace and revocable at any time under Settings → Connected Apps."
+    },
+    "page": {
+      "metaTitle": "MCP Server — Run Aexy from ChatGPT and Claude",
+      "metaDescription": "Connect ChatGPT, Claude, Cursor or Codex to Aexy over the Model Context Protocol. Move tickets, update CRM records and query analytics from the assistant you already use, with OAuth and per-workspace scoping.",
+      "badge": "Model Context Protocol",
+      "h1": "Run Aexy from the assistant you already use.",
+      "subhead": "Aexy ships an MCP server, so ChatGPT, Claude, Cursor and Codex can work inside your workspace directly — instead of you copying context out of a browser tab and pasting the answer back in.",
+      "ctaPrimary": "Start free",
+      "ctaSecondary": "Read the setup guide",
+      "prompts": {
+        "heading": "Things you can just ask for",
+        "body": "Each of these lands on a real tool call against your workspace, under your own permissions.",
+        "sprint": "Move the auth-refresh bug to In Review and assign it to Priya.",
+        "standup": "What shipped in this sprint, and what is still open?",
+        "crm": "Log a call with Northwind and set the deal to Negotiation.",
+        "ticket": "Open a ticket for the login timeout and tag it urgent.",
+        "docs": "Find our incident runbook and summarise the escalation path.",
+        "analytics": "Who is over capacity this sprint?"
+      },
+      "capabilities": {
+        "heading": "What makes it safe to connect",
+        "anyClient": {
+          "title": "Any MCP client",
+          "body": "ChatGPT over remote HTTP; Claude Code, Claude Desktop, Cursor, VS Code and Codex over a local process. One server, six ways in."
+        },
+        "scoped": {
+          "title": "Scoped to one workspace",
+          "body": "You pick the workspace at the consent screen. The grant is bound to you in that workspace — not to your account across everything you can reach."
+        },
+        "filtered": {
+          "title": "Filtered before it is offered",
+          "body": "Capabilities resolve from the same app access that governs the web app. Holding the sprints app is what grants sprint tools. What you cannot use is never offered."
+        },
+        "audit": {
+          "title": "Listed, and revocable",
+          "body": "Connected Apps shows every client you authorised and when it last ran. Revoking kills the refresh token too, so it has to ask again."
+        }
+      },
+      "connect": {
+        "heading": "Two ways to connect",
+        "body": "Which one you get depends on your client, and the difference matters.",
+        "remote": {
+          "title": "ChatGPT — remote, over OAuth",
+          "body": "Paste the server URL into Settings → Connectors → Create. ChatGPT registers itself, you approve one workspace, and the access is scoped to you there and revocable from Connected Apps. There is no API key in this flow.",
+          "tag": "Recommended"
+        },
+        "local": {
+          "title": "Claude, Cursor, Codex — local process",
+          "body": "These launch the server on your machine with an API token. Convenient for editors, but the token carries everything your account can do — treat it like a password and revoke it when the machine goes away.",
+          "tag": "Editors"
+        },
+        "guide": "Full setup for every client"
+      },
+      "security": {
+        "heading": "Governance, not a trust exercise",
+        "body": "An MCP grant is the app grant your workspace already made. There is no second permission model to configure, drift from, or forget to revoke when somebody changes teams.",
+        "points": {
+          "one": "Authorization is OAuth 2.1 with PKCE, and every code and token is stored only as a digest.",
+          "two": "Replaying an authorization code or a retired refresh token revokes the whole grant, because a replayed secret means somebody else is holding it.",
+          "three": "Revoked connectors stay listed rather than disappearing, so an audit can see what existed and when it last ran."
+        }
+      },
+      "faq": {
+        "heading": "Questions",
+        "q1": {
+          "q": "Do I need to install anything for ChatGPT?",
+          "a": "No. ChatGPT reaches Aexy over HTTP — you paste a URL into Settings → Connectors and approve a workspace. The local install applies only to editor clients like Claude Code, Cursor and Codex."
+        },
+        "q2": {
+          "q": "Can a connector see data I cannot?",
+          "a": "No. Tools are built from the capabilities you already hold in the workspace you approved, and filtered before the client ever sees the list. A client that ignores the list gains nothing — every endpoint still enforces its own permissions."
+        },
+        "q3": {
+          "q": "How do I disconnect it?",
+          "a": "Settings → Connected Apps lists every client you authorised. Revoking invalidates both the access token and the refresh token behind it, so the client cannot mint a replacement — it has to walk the consent flow again."
+        },
+        "q4": {
+          "q": "Does this work with self-hosted Aexy?",
+          "a": "Yes. The MCP server and its authorization endpoints are part of Aexy itself, so a self-hosted deployment exposes them at its own domain. Aexy is open source and self-hostable."
+        }
+      },
+      "finalCta": {
+        "heading": "Connect it in about a minute.",
+        "body": "Start free, open Settings → Connected Apps, and point your assistant at your workspace."
+      }
+    }
+  }
+}

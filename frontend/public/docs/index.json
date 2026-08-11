@@ -337,6 +337,29 @@
       ]
     },
     {
+      "title": "Modules",
+      "items": [
+        {
+          "title": "MCP_COVERAGE_PLAN",
+          "slug": "MCP_COVERAGE_PLAN",
+          "path": "MCP_COVERAGE_PLAN.md",
+          "description": ""
+        },
+        {
+          "title": "TEAM_INBOX_PLAN",
+          "slug": "TEAM_INBOX_PLAN",
+          "path": "TEAM_INBOX_PLAN.md",
+          "description": ""
+        },
+        {
+          "title": "UNIFIED_EMAIL_PLAN",
+          "slug": "UNIFIED_EMAIL_PLAN",
+          "path": "UNIFIED_EMAIL_PLAN.md",
+          "description": ""
+        }
+      ]
+    },
+    {
       "title": "Other",
       "items": [
         {
@@ -624,6 +647,24 @@
       "section": "Testing",
       "description": "Overall testing approach",
       "path": "testing/testing-strategy.md"
+    },
+    "MCP_COVERAGE_PLAN": {
+      "title": "MCP_COVERAGE_PLAN",
+      "section": "Modules",
+      "description": "",
+      "path": "MCP_COVERAGE_PLAN.md"
+    },
+    "TEAM_INBOX_PLAN": {
+      "title": "TEAM_INBOX_PLAN",
+      "section": "Modules",
+      "description": "",
+      "path": "TEAM_INBOX_PLAN.md"
+    },
+    "UNIFIED_EMAIL_PLAN": {
+      "title": "UNIFIED_EMAIL_PLAN",
+      "section": "Modules",
+      "description": "",
+      "path": "UNIFIED_EMAIL_PLAN.md"
     },
     "integrations/openobserve": {
       "title": "Openobserve",
@@ -1086,14 +1127,44 @@
         "slug": "notifications-and-chat"
       },
       "next": {
+        "title": "MCP_COVERAGE_PLAN",
+        "slug": "MCP_COVERAGE_PLAN"
+      }
+    },
+    "MCP_COVERAGE_PLAN": {
+      "prev": {
+        "title": "Testing Strategy",
+        "slug": "testing/testing-strategy"
+      },
+      "next": {
+        "title": "TEAM_INBOX_PLAN",
+        "slug": "TEAM_INBOX_PLAN"
+      }
+    },
+    "TEAM_INBOX_PLAN": {
+      "prev": {
+        "title": "MCP_COVERAGE_PLAN",
+        "slug": "MCP_COVERAGE_PLAN"
+      },
+      "next": {
+        "title": "UNIFIED_EMAIL_PLAN",
+        "slug": "UNIFIED_EMAIL_PLAN"
+      }
+    },
+    "UNIFIED_EMAIL_PLAN": {
+      "prev": {
+        "title": "TEAM_INBOX_PLAN",
+        "slug": "TEAM_INBOX_PLAN"
+      },
+      "next": {
         "title": "Openobserve",
         "slug": "integrations/openobserve"
       }
     },
     "integrations/openobserve": {
       "prev": {
-        "title": "Testing Strategy",
-        "slug": "testing/testing-strategy"
+        "title": "UNIFIED_EMAIL_PLAN",
+        "slug": "UNIFIED_EMAIL_PLAN"
       },
       "next": null
     }

@@ -2,12 +2,13 @@ const LLMS_TXT = `# Aexy
 
 > Aexy is an open-source (AGPL-3.0), AI-native company operating system. It replaces separate CRM, engineering/project-tracking, workflow, HR, and docs tools with one workspace where teams and governed AI agents share the same context. Self-hostable for free, with a commercial cloud option.
 
-Key facts: agent-native CRM with schema-flexible custom objects and AI-computed fields; sprint/task management with commit and PR auto-linking; uptime and observability alerts that auto-create and auto-resolve tickets; website visitor identification with lead scoring and routing; email sending-domain warming; AI agents governed by policy gates, approvals, and immutable audit logs; docs with a knowledge graph; self-host or cloud deployment.
+Key facts: agent-native CRM with schema-flexible custom objects and AI-computed fields; sprint/task management with commit and PR auto-linking; uptime and observability alerts that auto-create and auto-resolve tickets; website visitor identification with lead scoring and routing; email sending-domain warming; AI agents governed by policy gates, approvals, and immutable audit logs; docs with a knowledge graph; an MCP server so ChatGPT, Claude, Cursor and Codex can operate the workspace directly; self-host or cloud deployment.
 
 ## Products
 
 - [Agent-native CRM](https://aexy.io/products/crm): CRM for humans and AI agents — custom objects, email/calendar sync, sequences, GTM signals
 - [AI Agents](https://aexy.io/products/ai-agents): governed agents with tool access, policy gates, and audit history
+- [MCP Server](https://aexy.io/products/mcp): use Aexy from ChatGPT, Claude, Cursor or Codex over the Model Context Protocol — ChatGPT connects remotely over OAuth with per-workspace scoping
 - [GTM Intelligence](https://aexy.io/products/gtm-intelligence): visitor identification, ICP scoring, routing, sequences
 - [Sprint Planning](https://aexy.io/products/planning): AI-assisted capacity planning from historical contribution data
 - [Pricing](https://aexy.io/pricing): self-host free; cloud and enterprise tiers

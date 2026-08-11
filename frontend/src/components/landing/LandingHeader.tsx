@@ -23,6 +23,7 @@ import {
   Bot,
   Menu,
   Crosshair,
+  Plug,
 } from "lucide-react";
 import {
   Sheet,
@@ -44,6 +45,7 @@ const productLinks = [
   { href: "/products/crm", label: "CRM", icon: Building2, desc: "Relationship management", color: "from-purple-500 to-violet-500" },
   { href: "/products/email-marketing", label: "Email Marketing", icon: Mail, desc: "Campaigns & automation", color: "from-sky-500 to-blue-500" },
   { href: "/products/ai-agents", label: "AI Agents", icon: Bot, desc: "Intelligent automation", color: "from-purple-500 to-violet-500" },
+  { href: "/products/mcp", label: "MCP Server", icon: Plug, desc: "Use Aexy from ChatGPT & Claude", color: "from-teal-500 to-cyan-500" },
   { href: "/products/gtm-intelligence", label: "GTM Intelligence", icon: Crosshair, desc: "Visitor ID & lead scoring", color: "from-indigo-500 to-violet-500" },
 ];
 
@@ -251,6 +253,7 @@ export function LandingHeader({ showGetStarted = true }: LandingHeaderProps) {
                   <Link href="/#platform" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Platform</Link>
                   <Link href="/ai-company-os" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Company OS</Link>
                   <Link href="/products/ai-agents" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">AI Agents</Link>
+                  <Link href="/products/mcp" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">MCP Server</Link>
                   <Link href="/products/gtm-intelligence" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">GTM Intelligence</Link>
                   <Link href="/pricing" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Pricing</Link>
                   <Link href="/handbook" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Docs</Link>
@@ -313,6 +316,7 @@ export function LandingFooter() {
               <li><Link href="/products/crm" className="hover:text-white transition">CRM</Link></li>
               <li><Link href="/products/email-marketing" className="hover:text-white transition">Email Marketing</Link></li>
               <li><Link href="/products/ai-agents" className="hover:text-white transition">AI Agents</Link></li>
+              <li><Link href="/products/mcp" className="hover:text-white transition">MCP Server</Link></li>
               <li><Link href="/products/gtm-intelligence" className="hover:text-white transition">GTM Intelligence</Link></li>
               <li><Link href="/ai-company-os" className="hover:text-white transition">AI Company OS</Link></li>
               <li><Link href="/open-source-company-os" className="hover:text-white transition">Open Source Company OS</Link></li>
