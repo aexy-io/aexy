@@ -5,6 +5,91 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0] - 2026-08-12
+
+ChatGPT can now use Aexy, and you can see and cut off everything that connects
+this way. Both halves matter: the first without the second is a door with no
+lock on your side of it.
+
+### Added: a remote MCP server, and the authorization server it needs
+
+The MCP page listed ChatGPT and told you to use something else. That was
+accurate — ChatGPT consumes *remote* MCP servers reached over HTTP with OAuth,
+and cannot launch a local stdio process the way Claude Code, Claude Desktop and
+Codex do. No arrangement of the existing setup guides would have made it work,
+because the gap was in the transport rather than the documentation.
+
+Aexy is now an OAuth 2.1 authorization server. A client discovers it through
+the two well-known documents, registers itself (RFC 7591 Dynamic Client
+Registration — there is no human to approve an install of ChatGPT in advance),
+and walks the authorization-code flow with PKCE, which OAuth 2.1 requires of
+every client rather than only public ones. ChatGPT gets a URL to paste instead
+of a config file, and a consent screen instead of an API token.
+
+Nothing replayable is stored. Client secrets, authorization codes, access
+tokens and refresh tokens are all kept as SHA-256 digests, so reading the schema
+yields nothing that can be used; only a prefix survives, and only so a person
+can recognise a credential in a list.
+
+Two behaviours look like bugs the first time you hit one, and are deliberate.
+Redeeming an authorization code twice does not merely fail — it revokes every
+token issued from that code. Presenting a retired refresh token does the same to
+its whole chain. A replayed secret means somebody other than the client is
+holding it, and refusing that one request would leave the tokens it already
+produced alive.
+
+A grant is scoped to one developer in one workspace, chosen by the person at
+consent. Capabilities resolve from the same app-access model that governs the
+web app: holding the `sprints` app is what grants `mcp.sprints`. There is no
+second permission model to configure, drift from, or forget to revoke when
+somebody changes teams. The tool list is built from those capabilities, so a
+tool the caller cannot use is absent rather than offered and then refused —
+carrying it would cost selection accuracy on every call they *can* make.
+
+The three MCP surfaces that were never apps — workspace and member
+administration, provider integrations, and billing — became modules on the
+`mcp` app rather than a parallel access model of their own. This also retires
+`AEXY_ENABLE_TEMPORAL`, which gated nothing: the caller set it on their own
+machine, so anyone holding an API token decided their own access to the
+Temporal tools. That decision is now made server-side.
+
+### Added: Settings → Connected Apps
+
+Every client you have authorized, in whichever workspace, with the workspace it
+reaches and when it last ran. Revoking kills every token on the grant at once —
+both the access token and the refresh token behind it — so a client cannot
+quietly mint a replacement; it has to ask for consent again. The client is not
+notified, and finds out on its next request.
+
+Revoked connectors stay listed rather than disappearing. Somebody auditing what
+reached their workspace needs to see that a connector existed and when it last
+ran; deleting the row would erase exactly the evidence they came for.
+
+A grant is several token rows — an access token, the refresh token that minted
+it, and every rotation before them — collapsed back into the one decision you
+actually made, so refreshing does not grow the list. "Active" is judged on the
+refresh token rather than the access token: an access token expiring hourly does
+not mean access ended, and showing "expired" beside a connector that still works
+would invite people to think they were safe.
+
+### Fixed: two handlers sharing one operation id
+
+`/integrations/google/calendar/calendars` and
+`/integrations/google-calendar/calendars` derived the same operation id once
+`-` and `/` both normalise to `_`. Both are reachable and they are different
+handlers backed by different services, so anything addressing an operation *by
+id* — the MCP catalogue, generated clients — could only ever reach whichever
+resolved first. The sync route now declares `list_google_sync_calendars`
+explicitly.
+
+### Fixed: the admin sidebar view is honoured only for admins
+
+Settings → Appearance offered the `admin` sidebar persona to everyone, and that
+persona is the one that switches curation off entirely. Removing the button
+would not have been enough: people who are not admins can already have it saved,
+and the preferences endpoint accepts any string. The stored value is now ignored
+for non-admins, who fall back to their derived persona.
+
 ## [0.16.0] - 2026-08-11
 
 A workspace can hold more than one Google account, and a connected mailbox can
