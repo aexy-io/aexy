@@ -103,6 +103,7 @@ async def update_settings(workspace_id: str, data: ServiceDeskSettingsUpdate, db
         test_sla=data.test_sla,
         clear_test_sla=data.clear_test_sla,
         desk_department_id=data.desk_department_id,
+        ignored_senders=data.ignored_senders,
         developer_id=str(current.id),
     )
 
