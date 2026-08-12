@@ -249,8 +249,16 @@ class ServiceDeskDigestService:
                 },
             )
             try:
+                # Marked as ours, and as machine-generated. A desk team member is
+                # often the shared ops mailbox itself, so the digest lands in the
+                # inbox the desk watches — unmarked, it came back through the sync
+                # and opened a ticket whose requester was Aexy.
                 await EmailService().send_templated_email(
-                    db=self.db, recipient_email=d.recipient_email, subject=subject, body_text=body
+                    db=self.db,
+                    recipient_email=d.recipient_email,
+                    subject=subject,
+                    body_text=body,
+                    auto_generated=True,
                 )
                 sent += 1
             except Exception as exc:  # noqa: BLE001 — digest send is best-effort

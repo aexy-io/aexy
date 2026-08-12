@@ -238,6 +238,16 @@
       "clear": "End test and remove rules",
       "invalid": "Tick at least one stage, use a future expiry within 24 hours, and give every ticked stage a red value greater than its amber.",
       "active": "Test mode is active. It is ignored automatically after its expiry."
+    },
+    "ignoredSenders": {
+      "title": "Ignored senders",
+      "description": "Mail from these senders is not turned into tickets. Add one address, or a whole domain, for infrastructure mail the desk does not track — a provider's security alerts, for instance. Nothing is ignored until you add it: a counterparty's own no-reply address often carries the notices you do want. An account or vendor in Master Data always wins over an entry here.",
+      "placeholder": "no-reply@accounts.google.com or a domain",
+      "add": "Add",
+      "empty": "Nothing ignored — every sender opens a ticket.",
+      "invalid": "Enter an email address, or a domain like accounts.google.com.",
+      "duplicate": "Already on the list.",
+      "remove": "Stop ignoring {sender}"
     }
   }
 }
