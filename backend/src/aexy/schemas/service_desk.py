@@ -264,6 +264,12 @@ class InboundEmail(BaseModel):
     message_id: str | None = None
     thread_id: str | None = None
     in_reply_to: str | None = None
+    # When the provider says this arrived, by the provider's own clock rather than
+    # the sender's Date header. The outbound side compares it against other
+    # messages in the same thread to tell "a colleague has since replied" from
+    # "the desk started this thread", so a skewed or forged Date must not decide
+    # it. None when the channel does not report one.
+    sent_at: datetime | None = None
     attachments: list[InboundAttachment] = Field(default_factory=list)
     # Raw message headers, keys lower-cased. Intake reads these to recognise
     # automatic responses and our own outbound mail; providers hand them over in
@@ -500,6 +506,11 @@ class ServiceDeskTicketDetail(ServiceDeskTicketResponse):
     # Server-computed write authority for the requesting caller, so the UI never
     # re-derives (and drifts from) the ``can_edit_ticket`` rule.
     can_edit: bool = False
+    # Whether outbound mail can leave this ticket at all: its mailbox has to be a
+    # connected Gmail account. False for a ticket logged by phone or one on a
+    # webhook mailbox, where a send raises — the compose form asks first rather
+    # than letting somebody write a message that cannot be delivered.
+    can_send_email: bool = False
 
 
 # ==================== Dashboard (stakeholder × age) ====================

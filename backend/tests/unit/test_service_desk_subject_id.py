@@ -158,7 +158,7 @@ async def test_a_customised_receipt_template_cannot_drop_the_id(
     async def _send(db, mb, to_email, subject, body_text, thread_id=None):
         sent.append(subject)
 
-    async def _nobody_replied(db, mb, thread_id):
+    async def _nobody_replied(db, mb, thread_id, after=None):
         return False
 
     monkeypatch.setattr(mailer, "send_service_desk_email", _send)

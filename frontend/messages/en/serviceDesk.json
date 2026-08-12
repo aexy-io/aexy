@@ -89,6 +89,7 @@
       "emailCcInvalid": "Check the Cc addresses — one of them is not a valid email.",
       "emailCcNone": "none",
       "emailCustomRecipient": "Not a configured address, so the ticket will not change stage.",
+      "emailNoMailbox": "This ticket's mailbox is not a connected Gmail account, so mail cannot be sent from it. Connect the mailbox in Settings → Mailboxes first.",
       "emailSubject": "Subject",
       "emailBody": "Write the message…",
       "emailSend": "Send email",

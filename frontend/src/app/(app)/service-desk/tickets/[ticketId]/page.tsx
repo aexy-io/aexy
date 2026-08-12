@@ -26,6 +26,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 
+// Kept in step with `_ADDRESS_RE` in backend/src/aexy/schemas/service_desk.py —
+// the server is the authority, this only spares the sender a round trip.
+const EMAIL_RE = /^[^@\s,;<>]+@[^@\s,;<>]+\.[^@\s,;<>]{2,}$/;
+
+/**
+ * The subject as the desk will send it — mirrors `force_ticket_id_into_subject`.
+ *
+ * The id is prefixed only when this ticket's own is absent, so a sender who
+ * already typed "Re: SD-41 …" does not see it doubled in the confirmation.
+ */
+function subjectWithTicketId(subject: string, displayId: string): string {
+  const already = new RegExp(`${displayId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
+  return already.test(subject) ? subject : `[${displayId}] ${subject}`;
+}
+
 function fmtDays(seconds: number): string {
   const d = seconds / 86400;
   if (d >= 1) return `${d.toFixed(1)}d`;
@@ -86,7 +101,13 @@ export default function ServiceDeskTicketDetailPage() {
   // Typed by hand, so the address is checked here as well as server-side — the
   // send is irreversible and a typo in Cc is silent.
   const ccList = mailCc.split(",").map((value) => value.trim()).filter(Boolean);
-  const ccInvalid = ccList.some((value) => !/^[^@\s,;<>]+@[^@\s,;<>]+\.[^@\s,;<>]{2,}$/.test(value));
+  const ccInvalid = ccList.some((value) => !EMAIL_RE.test(value));
+  // The confirmation panel's whole job is showing exactly what will leave, so it
+  // has to apply the server's rule rather than assume the prefix is always
+  // added: an id the sender already typed is not repeated.
+  const mailSubjectSent = ticket.display_id
+    ? subjectWithTicketId(mailSubject.trim(), ticket.display_id)
+    : mailSubject.trim();
 
   const currentSh = stakeholders.find((x) => x.slug === ticket.pending_with);
   const pc = serviceDeskStakeholderColor(ticket.pending_with, {
@@ -287,6 +308,15 @@ export default function ServiceDeskTicketDetailPage() {
             </div>
             <p className="mt-1 text-xs text-muted-foreground">{t("detail.emailStakeholderHint")}</p>
           </div>
+
+          {/* Said before anything is typed, not after a send fails: a ticket
+              logged by phone, or one on a webhook mailbox, has no connected
+              account to send from and the server refuses. */}
+          {!ticket.can_send_email && (
+            <p className="rounded-md border border-amber-500/50 bg-amber-500/10 p-2 text-xs">
+              {t("detail.emailNoMailbox")}
+            </p>
+          )}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {/* Free text with the configured addresses as suggestions: a desk
                 often has to loop in someone Master Data has never heard of, and
@@ -412,7 +442,7 @@ export default function ServiceDeskTicketDetailPage() {
                   <span className="text-muted-foreground">{t("detail.emailCc")}: </span>
                   {ccList.length ? ccList.join(", ") : t("detail.emailCcNone")}
                 </div>
-                <div><span className="text-muted-foreground">{t("detail.emailSubject")}: </span>[{ticket.display_id}] {mailSubject.trim()}</div>
+                <div><span className="text-muted-foreground">{t("detail.emailSubject")}: </span>{mailSubjectSent}</div>
                 <div>
                   <span className="text-muted-foreground">{t("detail.emailAttach")}: </span>
                   {mailFiles.length ? mailFiles.join(", ") : t("detail.emailNoAttachments")}
@@ -440,6 +470,7 @@ export default function ServiceDeskTicketDetailPage() {
             ) : (
               <Button
                 disabled={
+                  !ticket.can_send_email ||
                   !mailTo.trim() ||
                   !mailSubject.trim() ||
                   !mailBody.trim() ||

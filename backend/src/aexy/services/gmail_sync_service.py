@@ -597,6 +597,22 @@ class GmailAuthError(GmailSyncError):
     pass
 
 
+def _internal_date(message: dict[str, Any]) -> datetime | None:
+    """When Gmail says this message arrived, as an aware UTC datetime.
+
+    Gmail's own clock, in milliseconds, and deliberately preferred over the Date
+    header: the Service Desk compares it against other messages in the same
+    thread, and a sender controls their Date header while nobody controls this.
+    """
+    raw = message.get("internalDate")
+    if raw is None:
+        return None
+    try:
+        return datetime.fromtimestamp(int(raw) / 1000, tz=timezone.utc)
+    except (TypeError, ValueError, OSError, OverflowError):
+        return None
+
+
 def ordered_new_message_ids(history: list[dict[str, Any]]) -> list[str]:
     """New message ids from a Gmail History response, oldest first, deduplicated.
 
@@ -1226,6 +1242,7 @@ class GmailSyncService:
                             body_html=email_data.get("body_html"),
                             message_id=message_id,
                             thread_id=message.get("threadId"),
+                            sent_at=_internal_date(message),
                             attachments=attachments,
                             headers=email_data.get("headers") or {},
                         ),

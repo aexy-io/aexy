@@ -59,6 +59,7 @@ vi.mock("@/hooks/useServiceDesk", () => ({
       // The panel is gated on server-computed write authority, so a mock without
       // it renders nothing and the test passes vacuously.
       can_edit: true,
+      can_send_email: true,
       origin: "email",
       needs_triage: true,
       ai_confidence: 0.91,

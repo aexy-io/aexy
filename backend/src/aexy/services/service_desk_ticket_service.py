@@ -1043,13 +1043,20 @@ class ServiceDeskTicketService:
         # A reply typed in Gmail from the desk address has no Aexy author to
         # name, but it is still the desk writing out — so the address it was sent
         # from decides direction when the author does not.
-        from aexy.models.service_desk import ServiceDeskMailbox
+        from aexy.models.service_desk import MailboxChannel, ServiceDeskMailbox
 
         desk_address = None
+        # Same condition ``send_stakeholder_email`` raises on, answered once here
+        # so the compose form can say so before anybody types a message.
+        can_send_email = False
         if sd.mailbox_id:
             desk_mailbox = await self.db.get(ServiceDeskMailbox, sd.mailbox_id)
             if desk_mailbox is not None:
                 desk_address = (desk_mailbox.address or "").strip().lower()
+                can_send_email = bool(
+                    desk_mailbox.channel == MailboxChannel.GMAIL_SYNC.value
+                    and desk_mailbox.integration_id
+                )
 
         # Outer join the author so an outgoing message can name the person who
         # sent it. Inbound replies have no Aexy author and stay unattributed.
@@ -1122,6 +1129,7 @@ class ServiceDeskTicketService:
             ],
             tat=tat,
             can_edit=can_edit,
+            can_send_email=can_send_email,
         )
 
     # ------------------------------------------------------- convert to task

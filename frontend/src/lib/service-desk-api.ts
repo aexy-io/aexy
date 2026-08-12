@@ -202,6 +202,9 @@ export interface ServiceDeskTicketDetail extends ServiceDeskTicket {
   tat: TicketTAT;
   /** Server-computed write authority for the requesting caller. */
   can_edit: boolean;
+  /** Whether this ticket's mailbox is a connected Gmail account, i.e. whether
+   *  outbound mail can leave the ticket at all. */
+  can_send_email: boolean;
 }
 
 export interface StakeholderBucket {

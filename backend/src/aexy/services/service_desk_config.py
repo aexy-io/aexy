@@ -18,6 +18,7 @@ not have been for one already corresponding with customers.
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -85,6 +86,47 @@ async def ticket_number_in_subject(
     pattern = re.compile(rf"{re.escape(prefix)}-(\d+)", re.IGNORECASE)
     match = pattern.search(subject)
     return int(match.group(1)) if match else None
+
+
+# Headers that mean "a machine sent this". The X-Auto* ones only ever appear on
+# auto-responders, so their presence is enough; Precedence needs a value check
+# because ordinary mail carries it too.
+_AUTO_RESPONSE_MARKER_HEADERS = ("x-autoreply", "x-autorespond")
+_AUTO_RESPONSE_PRECEDENCE = {"auto_reply", "auto-reply", "bulk", "junk", "list"}
+_AUTO_RESPONSE_SUBJECT_RE = re.compile(
+    r"out of (the )?office|auto[\s-]?repl(y|ied)|automatic repl(y|ied)|"
+    r"on (annual )?leave|vacation repl(y|ied)|away from (my |the )?(desk|office)",
+    re.IGNORECASE,
+)
+
+# The headers that answer "did a person write this?", for a caller that has to ask
+# the provider for named headers rather than being handed the whole message.
+AUTO_RESPONSE_HEADER_NAMES = (
+    "Auto-Submitted",
+    "Precedence",
+    "X-Autoreply",
+    "X-Autorespond",
+)
+
+
+def looks_automatic(headers: Mapping[str, str], subject: str | None) -> bool:
+    """Whether these headers and subject read as machine-generated.
+
+    Lives here rather than in the intake service because both directions need the
+    same answer: inbound, so an out-of-office is not treated as a request; and
+    outbound, so the desk's *own* vacation responder is not mistaken for a
+    colleague having replied. Header keys must be lower-cased by the caller.
+    """
+    # RFC 3834: ordinary mail says "no"; every other value (often with
+    # parameters, e.g. "auto-replied; owner-email=...") means automatic.
+    auto_submitted = headers.get("auto-submitted", "").strip().lower()
+    if auto_submitted and not auto_submitted.startswith("no"):
+        return True
+    if any(headers.get(name, "").strip() for name in _AUTO_RESPONSE_MARKER_HEADERS):
+        return True
+    if headers.get("precedence", "").strip().lower() in _AUTO_RESPONSE_PRECEDENCE:
+        return True
+    return bool(_AUTO_RESPONSE_SUBJECT_RE.search(subject or ""))
 
 
 async def force_ticket_id_into_subject(

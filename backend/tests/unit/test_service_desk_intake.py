@@ -910,7 +910,7 @@ def _capture_receipt_sends(monkeypatch) -> list[tuple[str, str]]:
     async def _send(db, mailbox, to_email, subject, body_text, thread_id=None):
         sent.append((to_email, subject))
 
-    async def _nobody_replied(db, mailbox, thread_id):
+    async def _nobody_replied(db, mailbox, thread_id, after=None):
         return False
 
     monkeypatch.setattr(mailer, "send_service_desk_email", _send)
@@ -997,7 +997,7 @@ async def test_acknowledgement_stands_down_when_the_account_shows_a_human_reply(
     monkeypatch.setattr(ServiceDeskIntakeService, "_send_receipt", _REAL_SEND_RECEIPT)
     sent = _capture_receipt_sends(monkeypatch)
 
-    async def _somebody_replied(db, mailbox, thread_id):
+    async def _somebody_replied(db, mailbox, thread_id, after=None):
         return True
 
     monkeypatch.setattr(mailer, "desk_replied_in_thread", _somebody_replied)

@@ -43,6 +43,7 @@ from aexy.schemas.service_desk import InboundEmail
 from aexy.services.service_desk_config import (
     display_id as render_display_id,
     force_ticket_id_into_subject,
+    looks_automatic,
     ticket_number_in_subject,
     ticket_prefix,
     ticket_prefix_display,
@@ -69,17 +70,6 @@ _SPLIT_MIN_CONFIDENCE = 0.85
 _LOW_CONFIDENCE = 0.6
 _AI_MATCH_MIN_CONFIDENCE = 0.85
 _AI_MATCH_MAX_CANDIDATES = 20
-
-# Headers that mean "a machine sent this". The X-Auto* ones only ever appear on
-# auto-responders, so their presence is enough; Precedence needs a value check
-# because ordinary mail carries it too.
-_AUTO_RESPONSE_MARKER_HEADERS = ("x-autoreply", "x-autorespond")
-_AUTO_RESPONSE_PRECEDENCE = {"auto_reply", "auto-reply", "bulk", "junk", "list"}
-_AUTO_RESPONSE_SUBJECT_RE = re.compile(
-    r"out of (the )?office|auto[\s-]?repl(y|ied)|automatic repl(y|ied)|"
-    r"on (annual )?leave|vacation repl(y|ied)|away from (my |the )?(desk|office)",
-    re.IGNORECASE,
-)
 
 
 def _domain_of(email: str | None) -> str | None:
@@ -148,18 +138,11 @@ def is_automatic_response(email: InboundEmail) -> bool:
     These carry no request: acknowledging them invites a reply loop, splitting
     them invents work, and reopening a closed ticket from one hides a closure
     the requester never disputed.
+
+    The predicate itself is shared with the outbound side, which has to ask the
+    same question about the desk's own mail — see ``looks_automatic``.
     """
-    headers = email.headers or {}
-    # RFC 3834: ordinary mail says "no"; every other value (often with
-    # parameters, e.g. "auto-replied; owner-email=...") means automatic.
-    auto_submitted = headers.get("auto-submitted", "").strip().lower()
-    if auto_submitted and not auto_submitted.startswith("no"):
-        return True
-    if any(headers.get(name, "").strip() for name in _AUTO_RESPONSE_MARKER_HEADERS):
-        return True
-    if headers.get("precedence", "").strip().lower() in _AUTO_RESPONSE_PRECEDENCE:
-        return True
-    return bool(_AUTO_RESPONSE_SUBJECT_RE.search(email.subject or ""))
+    return looks_automatic(email.headers or {}, email.subject)
 
 
 class ServiceDeskIntakeService:
@@ -812,7 +795,12 @@ class ServiceDeskIntakeService:
         # produced. Children never send their own — the requester wrote once.
         if not automatic:
             await self._send_receipt(
-                workspace_id, ticket, mailbox, thread_id=email.thread_id, children=children
+                workspace_id,
+                ticket,
+                mailbox,
+                thread_id=email.thread_id,
+                children=children,
+                arrived_at=email.sent_at,
             )
 
         logger.info(
@@ -1322,6 +1310,7 @@ class ServiceDeskIntakeService:
         mailbox: ServiceDeskMailbox | None,
         thread_id: str | None = None,
         children: list[Ticket] | None = None,
+        arrived_at: datetime | None = None,
     ) -> None:
         """Queue the acknowledgement email; sent by ``flush_notifications()``.
 
@@ -1362,6 +1351,9 @@ class ServiceDeskIntakeService:
                 "ticket_number": ticket.ticket_number,
                 "to": ticket.submitter_email,
                 "thread_id": thread_id,
+                # The cutoff for "has a person replied since?" — see
+                # ``desk_replied_in_thread``.
+                "arrived_at": arrived_at,
                 "vars": {
                     "display_id": await ticket_prefix_display(
                         self.db, workspace_id, ticket.ticket_number
@@ -1430,7 +1422,9 @@ class ServiceDeskIntakeService:
                 # ticket's transaction, and it sees a reply sent seconds ago.
                 if await self._already_answered_by_a_person(
                     item["ticket_id"], mailbox
-                ) or await desk_replied_in_thread(self.db, mailbox, item["thread_id"]):
+                ) or await desk_replied_in_thread(
+                    self.db, mailbox, item["thread_id"], after=item["arrived_at"]
+                ):
                     logger.info(
                         "Service desk: receipt for %s withheld, a person already replied",
                         item["vars"].get("display_id"),

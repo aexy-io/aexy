@@ -19,6 +19,8 @@ import ServiceDeskTicketDetailPage from "@/app/(app)/service-desk/tickets/[ticke
 const mocks = vi.hoisted(() => ({
   email: vi.fn(),
   push: vi.fn(),
+  // Whether the ticket's mailbox can send at all — flipped per test.
+  canSendEmail: true,
 }));
 
 vi.mock("next/navigation", () => ({
@@ -64,6 +66,7 @@ vi.mock("@/hooks/useServiceDesk", () => ({
       request_type: "query",
       pending_with: "kam",
       can_edit: true,
+      can_send_email: mocks.canSendEmail,
       origin: "email",
       needs_triage: false,
       ai_confidence: null,
@@ -147,6 +150,7 @@ describe("Service Desk outbound email card", () => {
   beforeEach(() => {
     mocks.email.mockReset();
     mocks.email.mockResolvedValue(undefined);
+    mocks.canSendEmail = true;
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -191,6 +195,40 @@ describe("Service Desk outbound email card", () => {
     );
 
     expect(fields().to.value).toBe("requester@example.com");
+  });
+
+  it("shows the subject the server will actually send", async () => {
+    await act(async () => root.render(<ServiceDeskTicketDetailPage />));
+
+    const form = fields();
+    await act(async () => type(form.to, "bhanu423@gmail.com"));
+    await act(async () => type(form.body, "Here is the update."));
+
+    // No id typed: the desk adds it.
+    await act(async () => type(form.subject!, "Following up"));
+    await act(async () => buttonWith(container, "detail.emailReview").click());
+    expect(container.textContent).toContain("[SD-5] Following up");
+
+    // Already carries this ticket's id: it must not be doubled, because the
+    // server will not add it either.
+    await act(async () => type(form.subject!, "Re: SD-5 following up"));
+    await act(async () => buttonWith(container, "detail.emailReview").click());
+    expect(container.textContent).toContain("Re: SD-5 following up");
+    expect(container.textContent).not.toContain("[SD-5] Re: SD-5");
+  });
+
+  it("refuses to send when the ticket has no connected mailbox", async () => {
+    mocks.canSendEmail = false;
+    await act(async () => root.render(<ServiceDeskTicketDetailPage />));
+
+    const form = fields();
+    await act(async () => type(form.to, "bhanu423@gmail.com"));
+    await act(async () => type(form.subject!, "Following up"));
+    await act(async () => type(form.body, "Here is the update."));
+
+    // Said up front, not after a 502 has thrown the message away.
+    expect(container.textContent).toContain("detail.emailNoMailbox");
+    expect(buttonWith(container, "detail.emailReview").disabled).toBe(true);
   });
 
   it("refuses to review while a Cc address is malformed", async () => {

@@ -9,6 +9,7 @@ webhook mailbox (or if Gmail send fails), it falls back to the transactional
 
 import base64
 import logging
+from datetime import datetime
 from email import encoders
 from email.message import Message
 from email.mime.base import MIMEBase
@@ -19,6 +20,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.models.google_integration import GoogleIntegration
 from aexy.models.service_desk import MailboxChannel, ServiceDeskMailbox
+from aexy.services.service_desk_config import (
+    AUTO_RESPONSE_HEADER_NAMES,
+    looks_automatic,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -104,8 +109,9 @@ async def desk_replied_in_thread(
     db: AsyncSession,
     mailbox: ServiceDeskMailbox | None,
     thread_id: str | None,
+    after: datetime | None = None,
 ) -> bool:
-    """True when a person has already answered this Gmail thread from the desk.
+    """True when a person has answered this Gmail thread from the desk since ``after``.
 
     Asked before an automatic acknowledgement goes out. Somebody typing a reply
     in Gmail minutes after the mail arrived is a better answer than "your request
@@ -114,14 +120,25 @@ async def desk_replied_in_thread(
     may not have been synced yet when the ticket is created — so the account is
     asked directly.
 
-    Mail this application sent is skipped by its marker header, otherwise a
-    receipt would be mistaken for a colleague's answer. False for anything this
-    cannot establish (webhook mailbox, no thread, API failure): a receipt too
-    many is better than a requester who is never told their ticket number.
+    ``after`` is when the message that opened the ticket arrived, and only mail
+    the desk sent *later* counts. Without it, a thread the desk itself started —
+    an ops colleague writing to a partner by hand, the partner's reply becoming
+    the ticket — read as already answered, and that requester was never
+    acknowledged at all.
+
+    Two classes of desk mail are not a colleague answering: mail this application
+    sent, identified by its marker header, and the mailbox's own auto-responder.
+    An out-of-office is the strongest reason to send the ticket id, not to
+    withhold it.
+
+    False for anything this cannot establish (webhook mailbox, no thread, no
+    ``after``, API failure): a receipt too many is better than a requester who is
+    never told their ticket number.
     """
     if (
         mailbox is None
         or not thread_id
+        or after is None
         or mailbox.channel != MailboxChannel.GMAIL_SYNC.value
         or not mailbox.integration_id
     ):
@@ -139,22 +156,39 @@ async def desk_replied_in_thread(
             f"/users/me/threads/{thread_id}",
             params={
                 "format": "metadata",
-                "metadataHeaders": ["From", OUTBOUND_MARKER_HEADER],
+                "metadataHeaders": [
+                    "From",
+                    "Subject",
+                    OUTBOUND_MARKER_HEADER,
+                    *AUTO_RESPONSE_HEADER_NAMES,
+                ],
             },
         )
     except Exception as exc:  # noqa: BLE001 — never block an acknowledgement
         logger.info("Service desk: could not read thread %s (%s)", thread_id, exc)
         return False
 
+    # Gmail's own clock for both sides of the comparison: the caller's `after`
+    # comes from the ticket-opening message's internalDate, so a sender's skewed
+    # or forged Date header cannot decide whether a receipt goes out.
+    cutoff_ms = int(after.timestamp() * 1000)
+
     for message in (thread or {}).get("messages", []):
         if "SENT" not in (message.get("labelIds") or []):
             continue
+        try:
+            if int(message.get("internalDate", 0)) <= cutoff_ms:
+                continue
+        except (TypeError, ValueError):
+            continue  # undatable, so it cannot be shown to be a later reply
         headers = {
             str(header.get("name", "")).lower(): str(header.get("value", ""))
             for header in ((message.get("payload") or {}).get("headers") or [])
         }
         if headers.get(OUTBOUND_MARKER_HEADER.lower(), "").strip():
             continue  # our own automatic mail, not a colleague
+        if looks_automatic(headers, headers.get("subject")):
+            continue  # the desk's own out-of-office
         return True
     return False
 
