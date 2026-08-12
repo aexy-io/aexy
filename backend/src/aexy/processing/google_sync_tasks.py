@@ -220,6 +220,7 @@ async def _sync_gmail_with_progress(
 ) -> dict[str, Any]:
     """Gmail sync with progress updates - uses incremental sync when possible."""
     from aexy.models.google_integration import EmailSyncCursor
+    from aexy.services.gmail_sync_service import ordered_new_message_ids
 
     # Get or create the sync cursor to check if we have a history_id
     cursor = await service.get_or_create_sync_cursor(integration)
@@ -246,11 +247,9 @@ async def _sync_gmail_with_progress(
             history = response.get("history", [])
             new_history_id = response.get("historyId")
 
-            # Collect unique message IDs
-            message_ids = set()
-            for record in history:
-                for msg_added in record.get("messagesAdded", []):
-                    message_ids.add(msg_added["message"]["id"])
+            # Collect unique message IDs, oldest first (see the helper's note on
+            # why the order is not incidental).
+            message_ids = ordered_new_message_ids(history)
 
             total_messages = len(message_ids)
             job.total_items = total_messages

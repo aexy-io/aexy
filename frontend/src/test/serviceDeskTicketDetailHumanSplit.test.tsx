@@ -59,6 +59,7 @@ vi.mock("@/hooks/useServiceDesk", () => ({
       // The panel is gated on server-computed write authority, so a mock without
       // it renders nothing and the test passes vacuously.
       can_edit: true,
+      can_send_email: true,
       origin: "email",
       needs_triage: true,
       ai_confidence: 0.91,
@@ -91,8 +92,9 @@ vi.mock("@/hooks/useServiceDesk", () => ({
       split_done_indexes: [3],
       segments: [],
       correspondence: [],
-      // Left empty on purpose: with no recipients the compose card does not
-      // render, so the checkboxes counted below are only the issue checkboxes.
+      // No configured recipients and no attachments, so the compose card renders
+      // without a checkbox of its own (the move-stage one needs a recipient with
+      // a stage behind it) and the count below is only the issue checkboxes.
       email_recipients: [],
       attachments: [],
       tat: {

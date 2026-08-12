@@ -202,6 +202,9 @@ export interface ServiceDeskTicketDetail extends ServiceDeskTicket {
   tat: TicketTAT;
   /** Server-computed write authority for the requesting caller. */
   can_edit: boolean;
+  /** Whether this ticket's mailbox is a connected Gmail account, i.e. whether
+   *  outbound mail can leave the ticket at all. */
+  can_send_email: boolean;
 }
 
 export interface StakeholderBucket {
@@ -369,7 +372,7 @@ export const serviceDeskApi = {
     (await api.post(`${base(ws)}/tickets/manual`, data)).data,
   emailStakeholder: async (
     ws: string, id: string,
-    data: { to: string; subject: string; body: string; attachment_filenames?: string[]; move_ticket?: boolean },
+    data: { to: string; cc?: string[]; subject: string; body: string; attachment_filenames?: string[]; move_ticket?: boolean },
   ): Promise<ServiceDeskTicketDetail> =>
     (await api.post(`${base(ws)}/tickets/${id}/email`, data)).data,
   convertToTask: async (

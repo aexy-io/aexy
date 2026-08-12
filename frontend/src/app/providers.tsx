@@ -7,6 +7,7 @@ import { NavigationProgress } from "@/components/ui/navigation-progress";
 import { OAuthInflightTagger } from "@/components/OAuthInflightTagger";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { useLocaleStore } from "@/stores/localeStore";
+import { DEFAULT_TIME_ZONE } from "@/i18n/timeZone";
 
 export function Providers({
   children,
@@ -29,8 +30,14 @@ export function Providers({
       })
   );
 
+  // `timeZone` is the same value the server rendered with, or dates formatted
+  // here disagree with the markup that arrived and hydration mismatches.
   return (
-    <NextIntlClientProvider locale={serverLocale} messages={messages}>
+    <NextIntlClientProvider
+      locale={serverLocale}
+      messages={messages}
+      timeZone={DEFAULT_TIME_ZONE}
+    >
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <Suspense fallback={null}>

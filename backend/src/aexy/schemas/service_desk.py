@@ -1,5 +1,6 @@
 """Service Desk Pydantic schemas (taxonomy, master data, intake, ticket views)."""
 
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Literal
 
@@ -263,6 +264,12 @@ class InboundEmail(BaseModel):
     message_id: str | None = None
     thread_id: str | None = None
     in_reply_to: str | None = None
+    # When the provider says this arrived, by the provider's own clock rather than
+    # the sender's Date header. The outbound side compares it against other
+    # messages in the same thread to tell "a colleague has since replied" from
+    # "the desk started this thread", so a skewed or forged Date must not decide
+    # it. None when the channel does not report one.
+    sent_at: datetime | None = None
     attachments: list[InboundAttachment] = Field(default_factory=list)
     # Raw message headers, keys lower-cased. Intake reads these to recognise
     # automatic responses and our own outbound mail; providers hand them over in
@@ -432,8 +439,15 @@ class TicketAttachment(BaseModel):
     can_forward: bool = False
 
 
+_ADDRESS_RE = re.compile(r"^[^@\s,;<>]+@[^@\s,;<>]+\.[^@\s,;<>]{2,}$")
+
+
 class StakeholderEmailRequest(BaseModel):
     to: str = Field(..., min_length=3, max_length=255)
+    # Anyone else who needs to see this reply. Kept separate from ``to`` because
+    # only the To address can imply a hand-off — copying a colleague says nothing
+    # about who now has to act.
+    cc: list[str] = Field(default_factory=list, max_length=10)
     subject: str = Field(..., min_length=1, max_length=255)
     body: str = Field(..., min_length=1, max_length=20000)
 
@@ -441,11 +455,35 @@ class StakeholderEmailRequest(BaseModel):
     @classmethod
     def _no_header_injection(cls, value: str) -> str:
         """A CR or LF in a header field would let the sender append headers of
-        their own (a Bcc, say) to the raw MIME handed to Gmail — quietly
-        defeating the recipient allowlist this endpoint is built around."""
+        their own (a Bcc, say) to the raw MIME handed to Gmail."""
         if "\r" in value or "\n" in value:
             raise ValueError("must not contain line breaks")
         return value
+
+    @field_validator("to")
+    @classmethod
+    def _one_address(cls, value: str) -> str:
+        """A single bare address, so a comma-separated list cannot smuggle in
+        recipients the confirmation step never showed the sender."""
+        address = value.strip().lower()
+        if not _ADDRESS_RE.match(address):
+            raise ValueError("must be a single email address")
+        return address
+
+    @field_validator("cc")
+    @classmethod
+    def _clean_cc(cls, value: list[str]) -> list[str]:
+        """Same rule per entry, blanks dropped and duplicates collapsed."""
+        cleaned: list[str] = []
+        for item in value:
+            address = str(item).strip().lower()
+            if not address:
+                continue
+            if not _ADDRESS_RE.match(address):
+                raise ValueError(f"{item!r} is not a valid email address")
+            if address not in cleaned:
+                cleaned.append(address)
+        return cleaned
     # Filenames chosen from the ticket's own attachments. Never a client-supplied
     # payload: the bytes are re-fetched from the original email, so a caller
     # cannot use the desk to send a file that never arrived on the ticket.
@@ -468,6 +506,11 @@ class ServiceDeskTicketDetail(ServiceDeskTicketResponse):
     # Server-computed write authority for the requesting caller, so the UI never
     # re-derives (and drifts from) the ``can_edit_ticket`` rule.
     can_edit: bool = False
+    # Whether outbound mail can leave this ticket at all: its mailbox has to be a
+    # connected Gmail account. False for a ticket logged by phone or one on a
+    # webhook mailbox, where a send raises — the compose form asks first rather
+    # than letting somebody write a message that cannot be delivered.
+    can_send_email: bool = False
 
 
 # ==================== Dashboard (stakeholder × age) ====================

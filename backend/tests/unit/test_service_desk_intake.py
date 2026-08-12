@@ -34,6 +34,7 @@ from aexy.models.ticketing import Ticket, TicketResponse
 from aexy.models.workspace import Workspace, WorkspaceMember
 from aexy.schemas.service_desk import InboundAttachment, InboundEmail, MailboxCreate
 from aexy.services import service_desk_intake_service as sd_mod
+from aexy.services import service_desk_mailer as mailer
 from aexy.services.service_desk_intake_service import ServiceDeskIntakeService
 from aexy.services.service_desk_service import ServiceDeskService
 from tests.conftest import seed_service_desk_taxonomy
@@ -819,6 +820,265 @@ async def test_partner_mail_from_the_same_domain_is_still_ingested(db_session: A
     await db_session.commit()
 
     assert ticket is not None
+
+
+@pytest.mark.asyncio
+async def test_reply_typed_in_gmail_from_the_desk_never_opens_a_ticket(
+    db_session: AsyncSession,
+):
+    """A colleague answering from Gmail carries no marker header.
+
+    The incremental sync walks History ``messagesAdded``, which includes SENT, so
+    that reply comes back in as if inbound. Ingesting it made the desk its own
+    requester — a ticket whose submitter was the desk, acknowledged to the desk.
+    """
+    ws = await _workspace(db_session, "sd-a1-desk-reply-new")
+    mb = await _mailbox(db_session, ws)
+    await _ops_kam(db_session, ws)
+
+    result = await ServiceDeskIntakeService(db_session).ingest(
+        _email(
+            from_email=f"Bimaplan Operations <{mb.address}>",
+            to="requester@partner.example",
+            message_id="a1-desk-reply-1",
+            thread_id="T-unknown",
+            body_text="Hi, I got it.",
+        ),
+        mb,
+        "service_desk_gmail",
+    )
+    await db_session.commit()
+
+    assert result is None
+    assert await _tickets_of(db_session, ws) == []
+
+
+@pytest.mark.asyncio
+async def test_reply_typed_in_gmail_from_the_desk_is_filed_as_outgoing(
+    db_session: AsyncSession,
+):
+    """It belongs on the ticket it answers, so the timeline holds the whole thread."""
+    ws = await _workspace(db_session, "sd-a1-desk-reply-thread")
+    mb = await _mailbox(db_session, ws)
+    await _ops_kam(db_session, ws)
+    service = ServiceDeskIntakeService(db_session)
+
+    ticket = await service.ingest(
+        _email(
+            from_email="bhanu@partner.example",
+            message_id="a1-desk-thread-1",
+            thread_id="T-desk",
+        ),
+        mb,
+        "service_desk_gmail",
+    )
+    await db_session.commit()
+
+    same = await service.ingest(
+        _email(
+            from_email=mb.address,
+            to="bhanu@partner.example",
+            message_id="a1-desk-thread-2",
+            thread_id="T-desk",
+            body_text="Hi, I got it.",
+        ),
+        mb,
+        "service_desk_gmail",
+    )
+    await db_session.commit()
+
+    assert same is not None
+    assert same.id == ticket.id
+    assert len(await _tickets_of(db_session, ws)) == 1
+    responses = (
+        await db_session.execute(
+            select(TicketResponse).where(TicketResponse.ticket_id == ticket.id)
+        )
+    ).scalars().all()
+    assert [r.author_email for r in responses] == [mb.address]
+    assert "Hi, I got it." in responses[0].content
+
+
+def _capture_receipt_sends(monkeypatch) -> list[tuple[str, str]]:
+    """Collect what ``flush_notifications`` would put on the wire.
+
+    Also stubs the thread lookahead to "nobody replied", so a test that wants the
+    Gmail side of the check has to say so.
+    """
+    sent: list[tuple[str, str]] = []
+
+    async def _send(db, mailbox, to_email, subject, body_text, thread_id=None):
+        sent.append((to_email, subject))
+
+    async def _nobody_replied(db, mailbox, thread_id, after=None):
+        return False
+
+    monkeypatch.setattr(mailer, "send_service_desk_email", _send)
+    monkeypatch.setattr(mailer, "desk_replied_in_thread", _nobody_replied)
+    return sent
+
+
+@pytest.mark.asyncio
+async def test_acknowledgement_still_reaches_a_requester_nobody_has_answered(
+    db_session: AsyncSession,
+    monkeypatch,
+):
+    """The control for the two suppression tests below."""
+    ws = await _workspace(db_session, "sd-a1-ack-control")
+    mb = await _mailbox(db_session, ws)
+    await _ops_kam(db_session, ws)
+    monkeypatch.setattr(ServiceDeskIntakeService, "_send_receipt", _REAL_SEND_RECEIPT)
+    sent = _capture_receipt_sends(monkeypatch)
+
+    service = ServiceDeskIntakeService(db_session)
+    await service.ingest(
+        _email(from_email="bhanu@partner.example", message_id="ack-control-1"),
+        mb,
+        "service_desk_gmail",
+    )
+    await db_session.commit()
+    await service.flush_notifications()
+
+    assert [to for to, _ in sent] == ["bhanu@partner.example"]
+
+
+@pytest.mark.asyncio
+async def test_acknowledgement_stands_down_once_the_desk_has_answered_by_hand(
+    db_session: AsyncSession,
+    monkeypatch,
+):
+    """A person already replied, so "your request has been logged" is noise.
+
+    Worse than noise: it arrives after the human answer and reads as though the
+    desk never saw it.
+    """
+    ws = await _workspace(db_session, "sd-a1-ack-answered")
+    mb = await _mailbox(db_session, ws)
+    await _ops_kam(db_session, ws)
+    monkeypatch.setattr(ServiceDeskIntakeService, "_send_receipt", _REAL_SEND_RECEIPT)
+    sent = _capture_receipt_sends(monkeypatch)
+
+    service = ServiceDeskIntakeService(db_session)
+    await service.ingest(
+        _email(
+            from_email="bhanu@partner.example",
+            message_id="ack-answered-1",
+            thread_id="T-ack-answered",
+        ),
+        mb,
+        "service_desk_gmail",
+    )
+    await service.ingest(
+        _email(
+            from_email=mb.address,
+            to="bhanu@partner.example",
+            message_id="ack-answered-2",
+            thread_id="T-ack-answered",
+            body_text="Hi, I got it.",
+        ),
+        mb,
+        "service_desk_gmail",
+    )
+    await db_session.commit()
+    await service.flush_notifications()
+
+    assert sent == []
+
+
+@pytest.mark.asyncio
+async def test_acknowledgement_stands_down_when_the_account_shows_a_human_reply(
+    db_session: AsyncSession,
+    monkeypatch,
+):
+    """The reply may not be synced yet, so the account itself is asked."""
+    ws = await _workspace(db_session, "sd-a1-ack-lookahead")
+    mb = await _mailbox(db_session, ws)
+    await _ops_kam(db_session, ws)
+    monkeypatch.setattr(ServiceDeskIntakeService, "_send_receipt", _REAL_SEND_RECEIPT)
+    sent = _capture_receipt_sends(monkeypatch)
+
+    async def _somebody_replied(db, mailbox, thread_id, after=None):
+        return True
+
+    monkeypatch.setattr(mailer, "desk_replied_in_thread", _somebody_replied)
+
+    service = ServiceDeskIntakeService(db_session)
+    await service.ingest(
+        _email(
+            from_email="bhanu@partner.example",
+            message_id="ack-lookahead-1",
+            thread_id="T-ack-lookahead",
+        ),
+        mb,
+        "service_desk_gmail",
+    )
+    await db_session.commit()
+    await service.flush_notifications()
+
+    assert sent == []
+
+
+@pytest.mark.asyncio
+async def test_the_desk_is_never_acknowledged_to_itself(
+    db_session: AsyncSession,
+    monkeypatch,
+):
+    """The guard behind the guard.
+
+    ``ingest`` now refuses the desk's own mail outright, so this goes through
+    ``create_ticket`` — the path a ticket written before that check, or logged by
+    hand against the desk address, would take.
+    """
+    ws = await _workspace(db_session, "sd-a1-ack-self")
+    mb = await _mailbox(db_session, ws)
+    await _ops_kam(db_session, ws)
+    monkeypatch.setattr(ServiceDeskIntakeService, "_send_receipt", _REAL_SEND_RECEIPT)
+
+    service = ServiceDeskIntakeService(db_session)
+    await service.create_ticket(
+        ws.id,
+        _email(from_email=mb.address, message_id="ack-self-1"),
+        mb,
+        "service_desk_manual",
+    )
+    await db_session.commit()
+
+    assert service._pending_notifications == []
+
+
+@pytest.mark.asyncio
+async def test_desk_answering_its_own_mail_does_not_reopen_a_closed_ticket(
+    db_session: AsyncSession,
+):
+    """Only the requester disputes a closure. The desk replying is not that."""
+    ws = await _workspace(db_session, "sd-a1-desk-reply-closed")
+    mb = await _mailbox(db_session, ws)
+    await _ops_kam(db_session, ws)
+    service = ServiceDeskIntakeService(db_session)
+
+    ticket = await service.ingest(
+        _email(message_id="a1-desk-closed-1", thread_id="T-desk-closed"),
+        mb,
+        "service_desk_gmail",
+    )
+    sd = await _sd_for(db_session, ticket.id)
+    sd.pending_with = "closed"
+    await db_session.commit()
+
+    await service.ingest(
+        _email(
+            from_email=mb.address,
+            message_id="a1-desk-closed-2",
+            thread_id="T-desk-closed",
+            body_text="Closing note sent by hand.",
+        ),
+        mb,
+        "service_desk_gmail",
+    )
+    await db_session.commit()
+    await db_session.refresh(sd)
+
+    assert sd.pending_with == "closed"
 
 
 @pytest.mark.asyncio

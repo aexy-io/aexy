@@ -597,6 +597,44 @@ class GmailAuthError(GmailSyncError):
     pass
 
 
+def _internal_date(message: dict[str, Any]) -> datetime | None:
+    """When Gmail says this message arrived, as an aware UTC datetime.
+
+    Gmail's own clock, in milliseconds, and deliberately preferred over the Date
+    header: the Service Desk compares it against other messages in the same
+    thread, and a sender controls their Date header while nobody controls this.
+    """
+    raw = message.get("internalDate")
+    if raw is None:
+        return None
+    try:
+        return datetime.fromtimestamp(int(raw) / 1000, tz=timezone.utc)
+    except (TypeError, ValueError, OSError, OverflowError):
+        return None
+
+
+def ordered_new_message_ids(history: list[dict[str, Any]]) -> list[str]:
+    """New message ids from a Gmail History response, oldest first, deduplicated.
+
+    Order matters and a ``set`` destroyed it. Service Desk intake gives the
+    ticket to whichever message of a thread it sees first, so processing a batch
+    in arbitrary order let a reply the desk itself had sent open the ticket — the
+    desk became its own requester and acknowledged itself — while the customer's
+    original message was filed as a reply to it. Gmail returns history records in
+    chronological order, so preserving that order is the whole fix.
+    """
+    ordered: list[str] = []
+    seen: set[str] = set()
+    for record in history:
+        for added in record.get("messagesAdded", []):
+            message_id = (added.get("message") or {}).get("id")
+            if not message_id or message_id in seen:
+                continue
+            seen.add(message_id)
+            ordered.append(message_id)
+    return ordered
+
+
 class GmailSyncService:
     """Service for syncing Gmail emails."""
 
@@ -850,18 +888,14 @@ class GmailSyncService:
             history = response.get("history", [])
             new_history_id = response.get("historyId")
 
-            # Process each history record
-            seen_message_ids = set()
-            for record in history:
-                for msg_added in record.get("messagesAdded", []):
-                    msg_id = msg_added["message"]["id"]
-                    if msg_id not in seen_message_ids:
-                        seen_message_ids.add(msg_id)
-                        try:
-                            if await self._sync_message(integration, msg_id):
-                                messages_synced += 1
-                        except Exception as e:
-                            logger.error(f"Failed to sync message {msg_id}: {e}")
+            # Oldest first: Service Desk intake gives the ticket to the first
+            # message of a thread it sees, so the order is load-bearing.
+            for msg_id in ordered_new_message_ids(history):
+                try:
+                    if await self._sync_message(integration, msg_id):
+                        messages_synced += 1
+                except Exception as e:
+                    logger.error(f"Failed to sync message {msg_id}: {e}")
 
             # Update cursor
             if new_history_id:
@@ -1208,6 +1242,7 @@ class GmailSyncService:
                             body_html=email_data.get("body_html"),
                             message_id=message_id,
                             thread_id=message.get("threadId"),
+                            sent_at=_internal_date(message),
                             attachments=attachments,
                             headers=email_data.get("headers") or {},
                         ),
