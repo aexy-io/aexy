@@ -85,3 +85,26 @@ async def ticket_number_in_subject(
     pattern = re.compile(rf"{re.escape(prefix)}-(\d+)", re.IGNORECASE)
     match = pattern.search(subject)
     return int(match.group(1)) if match else None
+
+
+async def force_ticket_id_into_subject(
+    db: AsyncSession, workspace_id: str, subject: str, ticket_number: int | None
+) -> str:
+    """``"[ACME-41] …"`` — the id present on every mail the desk sends out.
+
+    One rule for all of them, because the subject is doing three jobs at once:
+    it is the second (deliberate) path the inbound matcher reads, it is what a
+    requester quotes when they write about the ticket again, and it is what a
+    colleague's Gmail reply inherits as ``Re: …`` — the only way the id reaches a
+    message this application never composed.
+
+    A wrong number is not corrected: matching reads the first id in the subject,
+    so overwriting the one a human typed would silently redirect their reply. The
+    id is added when this ticket's own is absent, and otherwise left alone.
+    """
+    if ticket_number is None:
+        return subject
+    if await ticket_number_in_subject(db, workspace_id, subject) == ticket_number:
+        return subject
+    prefix = await ticket_prefix(db, workspace_id)
+    return f"[{display_id(prefix, ticket_number)}] {subject}"

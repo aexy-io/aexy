@@ -66,7 +66,7 @@ def _split_done_indexes(field_values: dict, issue_count: int) -> list[int]:
 from aexy.services.service_desk_clock import load_clock  # noqa: E402
 from aexy.services.service_desk_config import (  # noqa: E402
     display_id as render_display_id,
-    ticket_number_in_subject,
+    force_ticket_id_into_subject,
     ticket_prefix,
     ticket_prefix_display,
 )
@@ -823,9 +823,9 @@ class ServiceDeskTicketService:
         display_id = render_display_id(
             await ticket_prefix(self.db, workspace_id), ticket.ticket_number
         )
-        in_subject = await ticket_number_in_subject(self.db, workspace_id, subject)
-        if in_subject != ticket.ticket_number:
-            subject = f"[{display_id}] {subject}"
+        subject = await force_ticket_id_into_subject(
+            self.db, workspace_id, subject, ticket.ticket_number
+        )
 
         requester = (ticket.submitter_email or "").strip().lower()
         thread_id = sd.thread_ref if requester and recipient == requester else None
@@ -1368,6 +1368,13 @@ class ServiceDeskTicketService:
                 "closure_note": note or "Resolved.",
                 "overall_days": tat.overall_days,
             },
+        )
+        # The template is editable, so the id cannot be left to the copy: an Ops
+        # edit that drops {{display_id}} would send the desk's own mail out with
+        # no id in the subject, and every Gmail reply on that thread would inherit
+        # a subject the inbound matcher cannot read.
+        subject = await force_ticket_id_into_subject(
+            self.db, workspace_id, subject, ticket.ticket_number
         )
 
         # Reply from the mailbox the ticket actually arrived on. This used to pick

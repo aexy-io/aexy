@@ -42,6 +42,7 @@ from aexy.models.workspace import Workspace, WorkspaceMember
 from aexy.schemas.service_desk import InboundEmail
 from aexy.services.service_desk_config import (
     display_id as render_display_id,
+    force_ticket_id_into_subject,
     ticket_number_in_subject,
     ticket_prefix,
     ticket_prefix_display,
@@ -1358,6 +1359,7 @@ class ServiceDeskIntakeService:
                 "workspace_id": workspace_id,
                 "mailbox_id": mailbox.id if mailbox is not None else None,
                 "ticket_id": ticket.id,
+                "ticket_number": ticket.ticket_number,
                 "to": ticket.submitter_email,
                 "thread_id": thread_id,
                 "vars": {
@@ -1435,6 +1437,14 @@ class ServiceDeskIntakeService:
                     )
                     continue
                 subject, body = await render_sd(self.db, item["workspace_id"], "receipt", item["vars"])
+                # The receipt is usually the first message the desk sends, so its
+                # subject is the one a colleague's later Gmail reply inherits as
+                # "Re: …" — the only way the id reaches mail this application
+                # never composed. The template is editable, so an Ops edit that
+                # drops {{display_id}} cannot be allowed to take the id with it.
+                subject = await force_ticket_id_into_subject(
+                    self.db, item["workspace_id"], subject, item["ticket_number"]
+                )
                 await send_service_desk_email(
                     self.db, mailbox, item["to"], subject, body, thread_id=item["thread_id"]
                 )
