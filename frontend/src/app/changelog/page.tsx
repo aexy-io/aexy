@@ -15,19 +15,39 @@ interface Version {
   lines: string[];
 }
 
+/**
+ * Read the generated changelog.
+ *
+ * The path is spelled out at the call site rather than looped over. Feeding a
+ * variable to `readFileSync` made Next's static analysis give up and trace the
+ * *whole project* into the server bundle — every source file plus the entire
+ * public folder — which bloats deploys and can trip size limits. The old second
+ * candidate made it worse by pointing outside the project root.
+ *
+ * `prebuild` runs `generate-changelog.mjs`, so `public/changelog.md` is always
+ * present in a real build. `predev` does not, so in development the file may be
+ * missing until someone builds; there the repo-root CHANGELOG.md is read
+ * instead, behind an ignore comment so it never reaches the production trace.
+ */
 function getChangelog(): string {
-  const candidates = [
-    path.join(process.cwd(), "public", "changelog.md"),
-    path.join(process.cwd(), "..", "CHANGELOG.md"),
-  ];
-  for (const p of candidates) {
-    try {
-      return fs.readFileSync(p, "utf-8");
-    } catch {
-      continue;
+  try {
+    return fs.readFileSync(
+      path.join(process.cwd(), "public", "changelog.md"),
+      "utf-8",
+    );
+  } catch {
+    if (process.env.NODE_ENV === "development") {
+      try {
+        return fs.readFileSync(
+          /*turbopackIgnore: true*/ path.join(process.cwd(), "..", "CHANGELOG.md"),
+          "utf-8",
+        );
+      } catch {
+        return "";
+      }
     }
+    return "";
   }
-  return "";
 }
 
 function parseVersions(raw: string): Version[] {
