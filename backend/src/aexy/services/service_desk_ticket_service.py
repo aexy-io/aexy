@@ -768,6 +768,7 @@ class ServiceDeskTicketService:
         attachment_filenames: list[str] | None = None,
         move_ticket: bool = True,
         scope_developer_id: str | None = None,
+        cc_emails: list[str] | None = None,
     ) -> ServiceDeskTicketDetail:
         """Send a ticket email as the watched mailbox and log it on the ticket.
 
@@ -779,6 +780,14 @@ class ServiceDeskTicketService:
         watched mailbox, where a later reply-all would expose one to the other.
         Its replies match back by the ticket number in the subject, which is the
         matcher's second and deliberate path.
+
+        The recipient does not have to be one of the configured addresses. A desk
+        routinely has to loop in a surveyor, a broker or a colleague that Master
+        Data has never heard of, and refusing meant leaving the ticket to answer
+        that person from a personal inbox — outside the thread, outside the
+        record. What an unconfigured address cannot do is imply a hand-off: with
+        no stakeholder behind it there is no stage to move to, so the ticket
+        stays where it is.
         """
         from aexy.models.service_desk import ServiceDeskMailbox
         from aexy.services.service_desk_mailer import send_stakeholder_email
@@ -797,20 +806,9 @@ class ServiceDeskTicketService:
         }
         taxonomy = await load_taxonomy(self.db, workspace_id, seed=False)
         chosen = options.get(recipient)
-        if chosen is None:
-            # Named in the workspace's own nouns — this desk may call them
-            # partner/insurer, client/carrier, or anything else.
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=(
-                    "Recipient must be an exact address configured for this ticket's "
-                    f"{taxonomy.term('account').lower()} or a {taxonomy.term('vendor').lower()}, "
-                    "or the ticket's requester"
-                ),
-            )
 
         vendor_slug = external_slug_for(taxonomy, "vendor")
-        if vendor_slug is not None and chosen.stage == vendor_slug:
+        if chosen is not None and vendor_slug is not None and chosen.stage == vendor_slug:
             from aexy.models.service_desk import ServiceDeskVendorDomain
 
             sd.vendor_id = (
@@ -837,9 +835,21 @@ class ServiceDeskTicketService:
         files = await self._load_forward_bytes(sd, ticket, attachment_filenames or [])
 
         mailbox = await self.db.get(ServiceDeskMailbox, sd.mailbox_id) if sd.mailbox_id else None
+        # Copying the To address twice, or the desk itself, makes the reply read
+        # as a mistake — and a desk address in Cc would come back through the
+        # sync as correspondence the desk never received.
+        skip = {recipient, (mailbox.address or "").strip().lower() if mailbox else ""}
+        cc = [address for address in (cc_emails or []) if address and address not in skip]
         try:
             await send_stakeholder_email(
-                self.db, mailbox, recipient, subject, body, thread_id=thread_id, attachments=files
+                self.db,
+                mailbox,
+                recipient,
+                subject,
+                body,
+                thread_id=thread_id,
+                attachments=files,
+                cc=cc,
             )
         except Exception as exc:  # noqa: BLE001 — the user is waiting on this send
             logger.warning("Service desk: stakeholder email failed for %s (%s)", display_id, exc)
@@ -851,6 +861,9 @@ class ServiceDeskTicketService:
         attached_line = (
             "\nAttached: " + ", ".join(name for name, _, _ in files) if files else ""
         )
+        # Logged on the ticket, not just in the headers: who else saw a reply is
+        # part of the record a later reader needs.
+        cc_line = "\nCc: " + ", ".join(cc) if cc else ""
         # author_id is what marks this correspondence outgoing; inbound replies
         # are stored with only an author_email.
         self.db.add(
@@ -859,7 +872,7 @@ class ServiceDeskTicketService:
                 ticket_id=ticket_id,
                 author_id=sender_id,
                 author_email=mailbox.address if mailbox else None,
-                content=f"To: {recipient}\nSubject: {subject}{attached_line}\n\n{body}",
+                content=f"To: {recipient}{cc_line}\nSubject: {subject}{attached_line}\n\n{body}",
                 is_internal=False,
             )
         )
@@ -869,7 +882,8 @@ class ServiceDeskTicketService:
         # so an emailed hand-off is indistinguishable from a Move to click: same
         # segment, same timeline entry, same clock. The KAM can still move the
         # ticket by hand, and can untick the move when the mail is only an update.
-        if move_ticket and chosen.stage and chosen.stage != sd.pending_with:
+        # A custom recipient has no stage behind it, so there is nothing to move.
+        if move_ticket and chosen is not None and chosen.stage and chosen.stage != sd.pending_with:
             return await self.change_pending_with(
                 workspace_id,
                 ticket_id,
@@ -1026,6 +1040,17 @@ class ServiceDeskTicketService:
             if isinstance(raw_detected_issues, list)
             else []
         )
+        # A reply typed in Gmail from the desk address has no Aexy author to
+        # name, but it is still the desk writing out — so the address it was sent
+        # from decides direction when the author does not.
+        from aexy.models.service_desk import ServiceDeskMailbox
+
+        desk_address = None
+        if sd.mailbox_id:
+            desk_mailbox = await self.db.get(ServiceDeskMailbox, sd.mailbox_id)
+            if desk_mailbox is not None:
+                desk_address = (desk_mailbox.address or "").strip().lower()
+
         # Outer join the author so an outgoing message can name the person who
         # sent it. Inbound replies have no Aexy author and stay unattributed.
         correspondence = (
@@ -1073,7 +1098,15 @@ class ServiceDeskTicketService:
                     author_name=(author_name or author_email) if response.author_id else None,
                     content=response.content,
                     created_at=response.created_at,
-                    direction="outgoing" if response.author_id else "incoming",
+                    direction=(
+                        "outgoing"
+                        if response.author_id
+                        or (
+                            desk_address
+                            and (response.author_email or "").strip().lower() == desk_address
+                        )
+                        else "incoming"
+                    ),
                 )
                 for response, author_name, author_email in correspondence
             ],

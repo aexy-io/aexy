@@ -122,6 +122,25 @@ def is_aexy_generated(email: InboundEmail) -> bool:
     return bool((email.headers or {}).get(OUTBOUND_MARKER_HEADER.lower(), "").strip())
 
 
+def is_desk_own_mail(email: InboundEmail, mailbox: ServiceDeskMailbox | None) -> bool:
+    """True when the desk address itself sent this message.
+
+    The marker header only covers mail *this application* sent. A reply someone
+    types in Gmail from the shared desk address carries no marker, and the
+    incremental Gmail sync walks History ``messagesAdded``, which includes SENT —
+    so the desk's own outbound comes back through the sync as if it were inbound.
+    Ingesting it as a request made the desk its own requester: a ticket whose
+    submitter was the desk address, acknowledged to the desk address.
+
+    Deliberately an exact-address test, not a domain test: a colleague writing in
+    from the same domain is a real request (see ``TicketOrigin.INTERNAL``).
+    """
+    if mailbox is None:
+        return False
+    sender = _address_of(email.from_email)
+    return sender is not None and sender == (mailbox.address or "").strip().lower()
+
+
 def is_automatic_response(email: InboundEmail) -> bool:
     """True for out-of-office replies, auto-responders and bulk machine mail.
 
@@ -175,6 +194,12 @@ class ServiceDeskIntakeService:
             logger.info("Service desk: skipped self-generated message %s", email.message_id)
             return None
 
+        # 0b) Mail the desk itself sent, but that this application did not
+        #     compose — somebody answered from Gmail. It belongs on the ticket as
+        #     outgoing correspondence, never as a new request.
+        if is_desk_own_mail(email, mailbox):
+            return await self._record_desk_reply(workspace_id, email, mailbox)
+
         automatic = is_automatic_response(email)
 
         # 1) Idempotency — claim this message id first. The unique constraint on
@@ -216,6 +241,57 @@ class ServiceDeskIntakeService:
         ticket = await self.create_ticket(
             workspace_id, email, mailbox, source, automatic=automatic, suggestion=suggestion
         )
+        await self._link_message(workspace_id, email.message_id, ticket.id)
+        return ticket
+
+    # ------------------------------------------------------------- own outbound
+
+    async def _record_desk_reply(
+        self, workspace_id: str, email: InboundEmail, mailbox: ServiceDeskMailbox
+    ) -> Ticket | None:
+        """File a Gmail-typed reply from the desk on the ticket it answers.
+
+        Recorded rather than dropped so the timeline holds the whole conversation
+        — otherwise the ticket shows the customer's mail and the desk's later
+        acknowledgement with the actual answer missing from between them.
+
+        Deliberately not ``_append_reply``: that path reads the sender as a
+        stakeholder handing the ticket back, and would reopen a closed ticket and
+        restart the clock because the desk answered its own mail. What a reply
+        typed in Gmail means for stage and ownership is a human judgement — the
+        Move control — not something to infer here.
+
+        A reply on a thread that has no ticket has nothing to attach to, so it is
+        claimed and dropped: opening a ticket for it is the bug this guards.
+        """
+        if email.message_id and not await self._claim_message(workspace_id, email.message_id):
+            logger.info("Service desk: duplicate message %s ignored", email.message_id)
+            return None
+
+        ticket = await self._find_thread_ticket(workspace_id, email)
+        if ticket is None:
+            logger.info(
+                "Service desk: desk reply %s matched no ticket, not ingested",
+                email.message_id,
+            )
+            return None
+
+        # Same shape the UI's own send writes, so both read alike on the
+        # timeline. ``author_id`` stays empty — Gmail names the shared mailbox,
+        # not which colleague typed it — so the desk address is what marks this
+        # correspondence outgoing.
+        recipient = _address_of(email.to) or email.to or "requester"
+        self.db.add(
+            TicketResponse(
+                id=str(uuid4()),
+                ticket_id=ticket.id,
+                author_email=mailbox.address,
+                content=f"To: {recipient}\nSubject: {email.subject}\n\n{email.body_text or ''}",
+                is_internal=False,
+            )
+        )
+        self._absorb_attachments(ticket, email)
+        await self.db.flush()
         await self._link_message(workspace_id, email.message_id, ticket.id)
         return ticket
 
@@ -1253,6 +1329,18 @@ class ServiceDeskIntakeService:
         """
         if not ticket.submitter_email:
             return
+        # Belt and braces against a self-loop: whatever produced a ticket whose
+        # requester is the desk itself, the desk does not write to itself about
+        # it. ``is_desk_own_mail`` stops that ticket being created at all; this
+        # also covers rows written before it existed and manual mis-entry.
+        if mailbox is not None and _address_of(ticket.submitter_email) == (
+            mailbox.address or ""
+        ).strip().lower():
+            logger.info(
+                "Service desk: receipt withheld, requester is the desk address (%s)",
+                mailbox.address,
+            )
+            return
         prefix = await ticket_prefix(self.db, workspace_id)
         child_ids = [
             render_display_id(prefix, child.ticket_number) for child in (children or [])
@@ -1269,6 +1357,7 @@ class ServiceDeskIntakeService:
             {
                 "workspace_id": workspace_id,
                 "mailbox_id": mailbox.id if mailbox is not None else None,
+                "ticket_id": ticket.id,
                 "to": ticket.submitter_email,
                 "thread_id": thread_id,
                 "vars": {
@@ -1282,6 +1371,36 @@ class ServiceDeskIntakeService:
             }
         )
 
+    async def _already_answered_by_a_person(
+        self, ticket_id: str, mailbox: ServiceDeskMailbox | None
+    ) -> bool:
+        """True when a colleague has already replied to this requester by hand.
+
+        The acknowledgement exists to tell a requester their mail arrived and
+        carries a ticket number. Once a person has answered them, sending it
+        anyway reads as though the desk never noticed the human reply — so the
+        canned receipt stands down.
+
+        Two sources, because the reply may not have been ingested yet: what is
+        already on the ticket, and what the account itself shows in the thread.
+        """
+        if mailbox is None:
+            return False
+        desk_address = (mailbox.address or "").strip().lower()
+        if desk_address:
+            replied = (
+                await self.db.execute(
+                    select(TicketResponse.id).where(
+                        TicketResponse.ticket_id == ticket_id,
+                        func.lower(TicketResponse.author_email) == desk_address,
+                        TicketResponse.is_internal.is_(False),
+                    )
+                )
+            ).first()
+            if replied is not None:
+                return True
+        return False
+
     async def flush_notifications(self) -> None:
         """Send queued acknowledgements. Call AFTER committing; never raises.
 
@@ -1291,7 +1410,10 @@ class ServiceDeskIntakeService:
         pending, self._pending_notifications = self._pending_notifications, []
         if not pending:
             return
-        from aexy.services.service_desk_mailer import send_service_desk_email
+        from aexy.services.service_desk_mailer import (
+            desk_replied_in_thread,
+            send_service_desk_email,
+        )
         from aexy.services.service_desk_templates import render_sd
 
         for item in pending:
@@ -1301,6 +1423,17 @@ class ServiceDeskIntakeService:
                     if item["mailbox_id"]
                     else None
                 )
+                # Checked here rather than at queue time: this runs after the
+                # commit, so the thread lookup is a network call outside the
+                # ticket's transaction, and it sees a reply sent seconds ago.
+                if await self._already_answered_by_a_person(
+                    item["ticket_id"], mailbox
+                ) or await desk_replied_in_thread(self.db, mailbox, item["thread_id"]):
+                    logger.info(
+                        "Service desk: receipt for %s withheld, a person already replied",
+                        item["vars"].get("display_id"),
+                    )
+                    continue
                 subject, body = await render_sd(self.db, item["workspace_id"], "receipt", item["vars"])
                 await send_service_desk_email(
                     self.db, mailbox, item["to"], subject, body, thread_id=item["thread_id"]

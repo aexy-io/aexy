@@ -259,7 +259,7 @@ export function useServiceDeskMutations() {
       onSuccess: () => invalidateTickets(),
     }),
     emailStakeholder: useDeskMutation({
-      mutationFn: ({ id, data }: { id: string; data: { to: string; subject: string; body: string; attachment_filenames?: string[]; move_ticket?: boolean } }) =>
+      mutationFn: ({ id, data }: { id: string; data: { to: string; cc?: string[]; subject: string; body: string; attachment_filenames?: string[]; move_ticket?: boolean } }) =>
         serviceDeskApi.emailStakeholder(ws!, id, data),
       onSuccess: (_r, v) => invalidateTickets(v.id),
     }),

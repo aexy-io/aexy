@@ -211,15 +211,29 @@ def sent(monkeypatch):
     """Capture the Gmail send instead of making it, keeping the guard path real."""
     calls: list[dict] = []
 
+    # Keyword-only on purpose. The caller used to pass these positionally and had
+    # fallen one place out of step with the real signature — a stub that accepts
+    # positions would let that happen again without a failure.
     async def _capture(
-        db, integration_id, from_address, to_email, subject, body_text, thread_id,
+        db,
+        *,
+        integration_id,
+        workspace_id,
+        from_address,
+        to_email,
+        subject,
+        body_text,
+        thread_id,
         attachments=None,
+        cc=None,
     ):
         calls.append(
             {
                 "integration_id": integration_id,
+                "workspace_id": workspace_id,
                 "from": from_address,
                 "to": to_email,
+                "cc": cc or [],
                 "subject": subject,
                 "body": body_text,
                 "thread_id": thread_id,
@@ -385,21 +399,81 @@ async def test_an_existing_bsd_subject_is_not_prefixed_twice(db_session, desk, s
 
 
 @pytest.mark.asyncio
-async def test_recipient_must_be_configured_master_data(db_session, desk, sent):
-    """The send leaves a real Gmail account, so the address list is a closed set."""
+async def test_the_send_is_scoped_to_the_mailbox_own_workspace(db_session, desk, sent):
+    """The mailer's cross-workspace guard reads this argument.
+
+    It used to be skipped by the caller, which shifted every later argument one
+    place left: the guard compared the integration against the desk's own email
+    address, so it failed for every mailbox and no stakeholder email ever left.
+    """
     svc = ServiceDeskTicketService(db_session)
-    with pytest.raises(HTTPException) as exc:
-        await svc.email_stakeholder(
-            desk["ws"],
-            desk["ticket"],
-            "someone-else@example.com",
-            "Hello",
-            "Body",
-            sender_id=desk["kam"],
-            scope_developer_id=desk["kam"],
-        )
-    assert exc.value.status_code == 400
-    assert sent == []
+    await svc.email_stakeholder(
+        desk["ws"],
+        desk["ticket"],
+        "claims@insurer-one.example",
+        "Please confirm",
+        "Body",
+        sender_id=desk["kam"],
+        scope_developer_id=desk["kam"],
+    )
+
+    assert sent[0]["workspace_id"] == desk["ws"]
+    assert sent[0]["from"] == "august@capbumpy.in"
+    assert sent[0]["body"] == "Body"
+
+
+@pytest.mark.asyncio
+async def test_an_unconfigured_recipient_is_allowed_but_hands_the_ticket_to_nobody(
+    db_session, desk, sent
+):
+    """A desk has to loop in people Master Data has never heard of.
+
+    Refusing meant answering them from a personal inbox, outside the thread and
+    outside the record. What the address cannot do is imply a hand-off.
+    """
+    svc = ServiceDeskTicketService(db_session)
+    detail = await svc.email_stakeholder(
+        desk["ws"],
+        desk["ticket"],
+        "surveyor@somewhere.example",
+        "Please inspect",
+        "Body",
+        sender_id=desk["kam"],
+        scope_developer_id=desk["kam"],
+    )
+    await db_session.commit()
+
+    assert sent[0]["to"] == "surveyor@somewhere.example"
+    # No stakeholder behind the address, so there is no stage to move to.
+    assert detail.pending_with == "kam"
+    assert "surveyor@somewhere.example" in detail.correspondence[-1].content
+
+
+@pytest.mark.asyncio
+async def test_cc_addresses_go_out_and_are_recorded_on_the_ticket(db_session, desk, sent):
+    """Who else saw a reply is part of the record, not just a header."""
+    svc = ServiceDeskTicketService(db_session)
+    detail = await svc.email_stakeholder(
+        desk["ws"],
+        desk["ticket"],
+        "claims@insurer-one.example",
+        "Please confirm",
+        "Body",
+        sender_id=desk["kam"],
+        scope_developer_id=desk["kam"],
+        cc_emails=[
+            "broker@partner.example",
+            # The To address and the desk's own mailbox are dropped: copying
+            # either makes the reply read as a mistake.
+            "claims@insurer-one.example",
+            "august@capbumpy.in",
+        ],
+    )
+    await db_session.commit()
+
+    assert sent[0]["cc"] == ["broker@partner.example"]
+    outgoing = [c for c in detail.correspondence if c.direction == "outgoing"]
+    assert "Cc: broker@partner.example" in outgoing[0].content
 
 
 @pytest.mark.asyncio

@@ -1,5 +1,6 @@
 """Service Desk Pydantic schemas (taxonomy, master data, intake, ticket views)."""
 
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Literal
 
@@ -432,8 +433,15 @@ class TicketAttachment(BaseModel):
     can_forward: bool = False
 
 
+_ADDRESS_RE = re.compile(r"^[^@\s,;<>]+@[^@\s,;<>]+\.[^@\s,;<>]{2,}$")
+
+
 class StakeholderEmailRequest(BaseModel):
     to: str = Field(..., min_length=3, max_length=255)
+    # Anyone else who needs to see this reply. Kept separate from ``to`` because
+    # only the To address can imply a hand-off — copying a colleague says nothing
+    # about who now has to act.
+    cc: list[str] = Field(default_factory=list, max_length=10)
     subject: str = Field(..., min_length=1, max_length=255)
     body: str = Field(..., min_length=1, max_length=20000)
 
@@ -441,11 +449,35 @@ class StakeholderEmailRequest(BaseModel):
     @classmethod
     def _no_header_injection(cls, value: str) -> str:
         """A CR or LF in a header field would let the sender append headers of
-        their own (a Bcc, say) to the raw MIME handed to Gmail — quietly
-        defeating the recipient allowlist this endpoint is built around."""
+        their own (a Bcc, say) to the raw MIME handed to Gmail."""
         if "\r" in value or "\n" in value:
             raise ValueError("must not contain line breaks")
         return value
+
+    @field_validator("to")
+    @classmethod
+    def _one_address(cls, value: str) -> str:
+        """A single bare address, so a comma-separated list cannot smuggle in
+        recipients the confirmation step never showed the sender."""
+        address = value.strip().lower()
+        if not _ADDRESS_RE.match(address):
+            raise ValueError("must be a single email address")
+        return address
+
+    @field_validator("cc")
+    @classmethod
+    def _clean_cc(cls, value: list[str]) -> list[str]:
+        """Same rule per entry, blanks dropped and duplicates collapsed."""
+        cleaned: list[str] = []
+        for item in value:
+            address = str(item).strip().lower()
+            if not address:
+                continue
+            if not _ADDRESS_RE.match(address):
+                raise ValueError(f"{item!r} is not a valid email address")
+            if address not in cleaned:
+                cleaned.append(address)
+        return cleaned
     # Filenames chosen from the ticket's own attachments. Never a client-supplied
     # payload: the bytes are re-fetched from the original email, so a caller
     # cannot use the desk to send a file that never arrived on the ticket.

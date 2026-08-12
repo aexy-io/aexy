@@ -47,6 +47,7 @@ async def _send_via_gmail(
     body_text: str,
     thread_id: str | None,
     attachments: list[tuple[str, str | None, bytes]] | None = None,
+    cc: list[str] | None = None,
 ) -> str | None:
     """Send through the connected account. Returns Gmail's thread id, if given."""
     from aexy.services.gmail_sync_service import GmailSyncService
@@ -76,6 +77,10 @@ async def _send_via_gmail(
         mime = MIMEText(body_text)
 
     mime["To"] = _header_safe(to_email)
+    if cc:
+        # Gmail delivers to whatever the raw MIME addresses, so the header is
+        # also the send list — no separate recipient argument to keep in step.
+        mime["Cc"] = _header_safe(", ".join(cc))
     mime["From"] = from_address
     # Keep the watched mailbox in the reply path explicitly. Gmail already sends
     # as the connected account, but a stakeholder replying to a display name or
@@ -95,6 +100,65 @@ async def _send_via_gmail(
     return (response or {}).get("threadId")
 
 
+async def desk_replied_in_thread(
+    db: AsyncSession,
+    mailbox: ServiceDeskMailbox | None,
+    thread_id: str | None,
+) -> bool:
+    """True when a person has already answered this Gmail thread from the desk.
+
+    Asked before an automatic acknowledgement goes out. Somebody typing a reply
+    in Gmail minutes after the mail arrived is a better answer than "your request
+    has been logged"; sending the canned receipt afterwards reads as if the desk
+    never saw the human reply. The sync cannot know this on its own — the reply
+    may not have been synced yet when the ticket is created — so the account is
+    asked directly.
+
+    Mail this application sent is skipped by its marker header, otherwise a
+    receipt would be mistaken for a colleague's answer. False for anything this
+    cannot establish (webhook mailbox, no thread, API failure): a receipt too
+    many is better than a requester who is never told their ticket number.
+    """
+    if (
+        mailbox is None
+        or not thread_id
+        or mailbox.channel != MailboxChannel.GMAIL_SYNC.value
+        or not mailbox.integration_id
+    ):
+        return False
+
+    from aexy.services.gmail_sync_service import GmailSyncService
+
+    try:
+        integration = await db.get(GoogleIntegration, mailbox.integration_id)
+        if integration is None or str(integration.workspace_id) != str(mailbox.workspace_id):
+            return False
+        thread = await GmailSyncService(db)._make_gmail_request(
+            integration,
+            "GET",
+            f"/users/me/threads/{thread_id}",
+            params={
+                "format": "metadata",
+                "metadataHeaders": ["From", OUTBOUND_MARKER_HEADER],
+            },
+        )
+    except Exception as exc:  # noqa: BLE001 — never block an acknowledgement
+        logger.info("Service desk: could not read thread %s (%s)", thread_id, exc)
+        return False
+
+    for message in (thread or {}).get("messages", []):
+        if "SENT" not in (message.get("labelIds") or []):
+            continue
+        headers = {
+            str(header.get("name", "")).lower(): str(header.get("value", ""))
+            for header in ((message.get("payload") or {}).get("headers") or [])
+        }
+        if headers.get(OUTBOUND_MARKER_HEADER.lower(), "").strip():
+            continue  # our own automatic mail, not a colleague
+        return True
+    return False
+
+
 async def send_stakeholder_email(
     db: AsyncSession,
     mailbox: ServiceDeskMailbox | None,
@@ -103,6 +167,7 @@ async def send_stakeholder_email(
     body_text: str,
     thread_id: str | None = None,
     attachments: list[tuple[str, str | None, bytes]] | None = None,
+    cc: list[str] | None = None,
 ) -> str | None:
     """Send a person-composed ticket email AS the watched mailbox. Raises on failure.
 
@@ -121,15 +186,22 @@ async def send_stakeholder_email(
             "This ticket's mailbox is not linked to a connected Gmail account, "
             "so outbound stakeholder email cannot be sent from it"
         )
+    # Keywords, not positions. This call omitted ``workspace_id`` when that
+    # parameter was added, so every argument after it landed one place to the
+    # left: the cross-workspace check compared the integration against the desk's
+    # own email address, failed for every mailbox, and the UI reported "the email
+    # could not be sent" on every send.
     return await _send_via_gmail(
         db,
-        mailbox.integration_id,
-        mailbox.address,
-        to_email,
-        subject,
-        body_text,
-        thread_id,
-        attachments,
+        integration_id=mailbox.integration_id,
+        workspace_id=mailbox.workspace_id,
+        from_address=mailbox.address,
+        to_email=to_email,
+        subject=subject,
+        body_text=body_text,
+        thread_id=thread_id,
+        attachments=attachments,
+        cc=cc,
     )
 
 
@@ -153,13 +225,13 @@ async def send_service_desk_email(
         try:
             await _send_via_gmail(
                 db,
-                mailbox.integration_id,
-                mailbox.workspace_id,
-                mailbox.address,
-                to_email,
-                subject,
-                body_text,
-                thread_id,
+                integration_id=mailbox.integration_id,
+                workspace_id=mailbox.workspace_id,
+                from_address=mailbox.address,
+                to_email=to_email,
+                subject=subject,
+                body_text=body_text,
+                thread_id=thread_id,
             )
             return
         except Exception as exc:  # noqa: BLE001 — degrade to transactional send

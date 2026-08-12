@@ -60,6 +60,7 @@ export default function ServiceDeskTicketDetailPage() {
   // the ticket already holds, so a background refetch never fights the form.
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [mailTo, setMailTo] = useState("");
+  const [mailCc, setMailCc] = useState("");
   const [mailSubject, setMailSubject] = useState("");
   const [mailBody, setMailBody] = useState("");
   const [mailFiles, setMailFiles] = useState<string[]>([]);
@@ -77,9 +78,15 @@ export default function ServiceDeskTicketDetailPage() {
   // rule lives only in the backend (can_edit_ticket); the UI must not re-derive it.
   const canEdit = ticket.can_edit;
 
-  const mailStageRaw = ticket.email_recipients.find((r) => r.email === mailTo)?.stage ?? null;
+  const mailToClean = mailTo.trim().toLowerCase();
+  const mailKnown = ticket.email_recipients.find((r) => r.email.toLowerCase() === mailToClean);
+  const mailStageRaw = mailKnown?.stage ?? null;
   // Already there? Then there is nothing to move and no choice to offer.
   const mailStage = mailStageRaw && mailStageRaw !== ticket.pending_with ? mailStageRaw : null;
+  // Typed by hand, so the address is checked here as well as server-side — the
+  // send is irreversible and a typo in Cc is silent.
+  const ccList = mailCc.split(",").map((value) => value.trim()).filter(Boolean);
+  const ccInvalid = ccList.some((value) => !/^[^@\s,;<>]+@[^@\s,;<>]+\.[^@\s,;<>]{2,}$/.test(value));
 
   const currentSh = stakeholders.find((x) => x.slug === ticket.pending_with);
   const pc = serviceDeskStakeholderColor(ticket.pending_with, {
@@ -111,17 +118,19 @@ export default function ServiceDeskTicketDetailPage() {
   };
 
   const sendMail = async () => {
-    if (!mailTo || !mailSubject.trim() || !mailBody.trim()) return;
+    if (!mailTo || !mailSubject.trim() || !mailBody.trim() || ccInvalid) return;
     await emailStakeholder.mutateAsync({
       id: ticketId,
       data: {
-        to: mailTo,
+        to: mailTo.trim(),
+        cc: ccList,
         subject: mailSubject.trim(),
         body: mailBody.trim(),
         attachment_filenames: mailFiles,
         move_ticket: mailMoves,
       },
     });
+    setMailCc("");
     setMailSubject("");
     setMailBody("");
     setMailFiles([]);
@@ -270,7 +279,7 @@ export default function ServiceDeskTicketDetailPage() {
       </Card>
 
       {/* Outbound stakeholder email — sent as the watched mailbox, never a KAM's own inbox */}
-      {canEdit && ticket.email_recipients.length > 0 && (
+      {canEdit && (
         <Card className="space-y-3 p-4">
           <div>
             <div className="flex items-center gap-1.5 text-sm font-semibold">
@@ -279,21 +288,67 @@ export default function ServiceDeskTicketDetailPage() {
             <p className="mt-1 text-xs text-muted-foreground">{t("detail.emailStakeholderHint")}</p>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Picker
-              label={t("detail.emailTo")}
-              value={mailTo}
-              onChange={(v) => { setMailTo(v); setConfirming(false); }}
-              placeholder={t("detail.emailSelectRecipient")}
-              options={ticket.email_recipients.map((r) => ({
-                value: r.email,
-                label: `${r.label} — ${r.email}`,
-              }))}
-            />
+            {/* Free text with the configured addresses as suggestions: a desk
+                often has to loop in someone Master Data has never heard of, and
+                the alternative was answering them from a personal inbox. */}
+            <div>
+              <label className="mb-1 block text-xs text-muted-foreground">{t("detail.emailTo")}</label>
+              <Input
+                type="email"
+                list="sd-email-recipients"
+                value={mailTo}
+                placeholder={t("detail.emailRecipientPlaceholder")}
+                onChange={(e) => { setMailTo(e.target.value); setConfirming(false); }}
+              />
+              <datalist id="sd-email-recipients">
+                {ticket.email_recipients.map((r) => (
+                  <option key={r.email} value={r.email}>{r.label}</option>
+                ))}
+              </datalist>
+            </div>
             <div>
               <label className="mb-1 block text-xs text-muted-foreground">{t("detail.emailSubject")}</label>
               <Input value={mailSubject} onChange={(e) => { setMailSubject(e.target.value); setConfirming(false); }} />
             </div>
           </div>
+
+          {/* One click for the addresses the ticket already knows — the old
+              dropdown's whole job — without shutting out any other address. */}
+          {ticket.email_recipients.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">{t("detail.emailKnownRecipients")}</span>
+              {ticket.email_recipients.map((r) => (
+                <button
+                  key={r.email}
+                  type="button"
+                  onClick={() => { setMailTo(r.email); setConfirming(false); }}
+                  className={`rounded-full border px-2 py-0.5 text-xs transition-colors ${
+                    r.email.toLowerCase() === mailToClean
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {r.label} — {r.email}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">{t("detail.emailCc")}</label>
+            <Input
+              value={mailCc}
+              placeholder={t("detail.emailCcPlaceholder")}
+              onChange={(e) => { setMailCc(e.target.value); setConfirming(false); }}
+            />
+            {ccInvalid && (
+              <p className="mt-1 text-xs text-destructive">{t("detail.emailCcInvalid")}</p>
+            )}
+          </div>
+
+          {mailToClean && !mailKnown && (
+            <p className="text-xs text-muted-foreground">{t("detail.emailCustomRecipient")}</p>
+          )}
           <textarea
             value={mailBody}
             onChange={(e) => { setMailBody(e.target.value); setConfirming(false); }}
@@ -352,7 +407,11 @@ export default function ServiceDeskTicketDetailPage() {
               <div className="font-medium">{t("detail.emailConfirmTitle")}</div>
               <div className="mt-1 text-muted-foreground">{t("detail.emailConfirmHint")}</div>
               <div className="mt-2 space-y-0.5">
-                <div><span className="text-muted-foreground">{t("detail.emailTo")}: </span>{mailTo}</div>
+                <div><span className="text-muted-foreground">{t("detail.emailTo")}: </span>{mailTo.trim()}</div>
+                <div>
+                  <span className="text-muted-foreground">{t("detail.emailCc")}: </span>
+                  {ccList.length ? ccList.join(", ") : t("detail.emailCcNone")}
+                </div>
                 <div><span className="text-muted-foreground">{t("detail.emailSubject")}: </span>[{ticket.display_id}] {mailSubject.trim()}</div>
                 <div>
                   <span className="text-muted-foreground">{t("detail.emailAttach")}: </span>
@@ -380,7 +439,13 @@ export default function ServiceDeskTicketDetailPage() {
               </>
             ) : (
               <Button
-                disabled={!mailTo || !mailSubject.trim() || !mailBody.trim() || emailStakeholder.isPending}
+                disabled={
+                  !mailTo.trim() ||
+                  !mailSubject.trim() ||
+                  !mailBody.trim() ||
+                  ccInvalid ||
+                  emailStakeholder.isPending
+                }
                 onClick={() => setConfirming(true)}
               >
                 {t("detail.emailReview")}
