@@ -620,6 +620,12 @@ class ServiceDeskSettings(BaseModel):
     """Workspace-level Service Desk settings."""
 
     ai_classification_enabled: bool = False
+    # Senders whose mail must not become tickets — infrastructure noise a desk has
+    # decided it does not track, e.g. "no-reply@accounts.google.com". An entry with
+    # an "@" is one address; without, a whole domain. Empty by default: this is a
+    # list somebody writes, never one intake infers, because a counterparty's own
+    # no-reply address carries the notices the desk exists to act on.
+    ignored_senders: list[str] = Field(default_factory=list)
     # Whether intake may auto-create a second ticket when one email carries two
     # clearly different, high-confidence requests. Off by default: everything
     # else stays a single ticket flagged for triage, which is the safe outcome.
@@ -697,6 +703,10 @@ class ServiceDeskSettingsUpdate(BaseModel):
     digest_hours: list[int] | None = None
     terminology: dict[str, str] | None = None
     desk_name: str | None = Field(None, max_length=120)
+    # A complete replacement of the list, not an addition — the settings page
+    # holds the whole set, and a per-entry API would need a delete verb to undo a
+    # mistake that silences a real requester.
+    ignored_senders: list[str] | None = Field(None, max_length=200)
     # Send a complete replacement when starting or changing a test. Send only
     # ``clear_test_sla`` to remove it immediately after the test is complete.
     test_sla: TestSLAOverride | None = None

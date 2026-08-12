@@ -27,6 +27,7 @@ from aexy.services.service_desk_clock import (
 from aexy.services.service_desk_config import (
     DEFAULT_TICKET_PREFIX,
     display_id,
+    normalise_ignored_senders,
     normalise_prefix,
     ticket_prefix,
 )
@@ -785,6 +786,10 @@ class ServiceDeskService:
             "breach_amber_days": float(sd.get("breach_amber_days") or BREACH_AMBER_DAYS),
             "digest_hours": list(sd.get("digest_hours") or DEFAULT_DIGEST_HOURS),
             "industry_template": sd.get("industry_template"),
+            # Senders Ops has marked as noise — infrastructure mail like a
+            # provider's security alerts. Empty by default: nothing is ignored
+            # until somebody names it.
+            "ignored_senders": normalise_ignored_senders(sd.get("ignored_senders")),
             # Resolved, not raw: the page should render the labels in force rather
             # than blanks for whatever the workspace hasn't overridden.
             "terminology": dict(taxonomy.terminology),
@@ -825,6 +830,7 @@ class ServiceDeskService:
         terminology: dict[str, str] | None = None,
         desk_name: str | None = None,
         desk_department_id: str | None = None,
+        ignored_senders: list[str] | None = None,
     ) -> dict:
         """Patch semantics: only the fields supplied are touched.
 
@@ -839,6 +845,17 @@ class ServiceDeskService:
 
         if ai_classification_enabled is not None:
             sd["ai_classification_enabled"] = bool(ai_classification_enabled)
+
+        if ignored_senders is not None:
+            # Audited: adding an entry stops mail becoming tickets, and the only
+            # evidence afterwards is an intake log line. "Who silenced this
+            # sender, and when" is the question asked when a request goes missing.
+            cleaned = normalise_ignored_senders(ignored_senders)
+            sd["ignored_senders"] = cleaned
+            logger.info(
+                "Service desk ignored senders for workspace %s set to %s by %s",
+                workspace_id, cleaned, developer_id or "unknown",
+            )
 
         if auto_split_enabled is not None:
             # Worth an audit line: turning this on lets intake create a ticket

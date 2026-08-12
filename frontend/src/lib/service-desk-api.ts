@@ -240,6 +240,11 @@ export interface ServiceDeskDashboard {
 
 export interface ServiceDeskSettings {
   ai_classification_enabled: boolean;
+  /** Senders whose mail must not become tickets. An entry with an "@" is one
+   *  address; without, a whole domain. Empty by default — the list is written by
+   *  hand, never inferred, because a counterparty's own no-reply address carries
+   *  notices the desk does want. Master Data always wins over an entry here. */
+  ignored_senders: string[];
   /** Whether intake may open a second ticket when one email carries two clearly
    *  different, high-confidence requests. Off by default — everything else
    *  stays a single ticket flagged for triage. */
@@ -316,6 +321,8 @@ export interface ServiceDeskSettingsPatch {
   clear_test_sla?: boolean;
   /** Empty string clears it, putting the desk back on inferring a department. */
   desk_department_id?: string;
+  /** The complete replacement list, not an addition. */
+  ignored_senders?: string[];
 }
 
 /** One placeholder and what a send renders when its value is missing. */

@@ -109,6 +109,39 @@ AUTO_RESPONSE_HEADER_NAMES = (
 )
 
 
+def normalise_ignored_senders(values: object) -> list[str]:
+    """Clean an Ops-supplied ignore list into lower-cased addresses and domains.
+
+    Deliberately a list somebody writes, not a pattern this module guesses. A
+    heuristic on ``no-reply@`` would have dropped an insurer's own notices — the
+    work an ops desk exists to do — so nothing is ignored until a human says which
+    sender is noise. ``@`` decides the kind: ``no-reply@accounts.google.com`` is
+    one address, ``accounts.google.com`` is every sender at that domain.
+    """
+    if not isinstance(values, (list, tuple, set)):
+        return []
+    cleaned: list[str] = []
+    for value in values:
+        # Strings only. ``str(None)`` is "none", which would silently become a
+        # domain nobody typed.
+        if not isinstance(value, str):
+            continue
+        entry = value.strip().lower().lstrip("@")
+        if not entry or " " in entry or entry in cleaned:
+            continue
+        cleaned.append(entry)
+    return cleaned
+
+
+def sender_is_ignored(
+    address: str | None, domain: str | None, ignored: list[str]
+) -> bool:
+    """Whether an ignore-list entry covers this sender."""
+    if not ignored:
+        return False
+    return any(entry == address or entry == domain for entry in ignored if entry)
+
+
 def looks_automatic(headers: Mapping[str, str], subject: str | None) -> bool:
     """Whether these headers and subject read as machine-generated.
 

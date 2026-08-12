@@ -44,6 +44,8 @@ from aexy.services.service_desk_config import (
     display_id as render_display_id,
     force_ticket_id_into_subject,
     looks_automatic,
+    normalise_ignored_senders,
+    sender_is_ignored,
     ticket_number_in_subject,
     ticket_prefix,
     ticket_prefix_display,
@@ -184,6 +186,17 @@ class ServiceDeskIntakeService:
         if is_desk_own_mail(email, mailbox):
             return await self._record_desk_reply(workspace_id, email, mailbox)
 
+        # 0c) A sender Ops has chosen to ignore. Nothing is inferred here: a
+        #     no-reply address is a perfectly ordinary way for a counterparty to
+        #     send the notices a desk acts on, so only an explicit entry drops mail.
+        if await self._sender_is_ignored(workspace_id, email):
+            logger.info(
+                "Service desk: sender %s is on this workspace's ignore list (%s)",
+                email.from_email,
+                email.message_id,
+            )
+            return None
+
         automatic = is_automatic_response(email)
 
         # 1) Idempotency — claim this message id first. The unique constraint on
@@ -227,6 +240,32 @@ class ServiceDeskIntakeService:
         )
         await self._link_message(workspace_id, email.message_id, ticket.id)
         return ticket
+
+    async def _sender_is_ignored(self, workspace_id: str, email: InboundEmail) -> bool:
+        """Whether this workspace has listed this sender as noise.
+
+        Ops maintains the list ("Ignored senders" in Service Desk settings). The
+        alternative — inferring it from the address — would have dropped a
+        vendor's ``no-reply@`` notices, which are exactly the mail a desk is there
+        to act on. Infrastructure senders like ``no-reply@accounts.google.com``
+        keep opening tickets until somebody says otherwise, and then stop.
+
+        A known account or vendor still overrides the list: the master data
+        somebody maintains deliberately outranks a broad domain entry.
+        """
+        ws = await self.db.get(Workspace, workspace_id)
+        ignored = normalise_ignored_senders(
+            ((ws.settings or {}).get("service_desk") or {}).get("ignored_senders") if ws else None
+        )
+        if not ignored:
+            return False
+        address = _address_of(email.from_email)
+        domain = _domain_of(email.from_email)
+        if not sender_is_ignored(address, domain, ignored):
+            return False
+        if await self._match_account(workspace_id, domain, address) is not None:
+            return False
+        return await self._match_vendor(workspace_id, domain, address) is None
 
     # ------------------------------------------------------------- own outbound
 

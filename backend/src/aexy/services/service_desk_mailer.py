@@ -18,6 +18,11 @@ from email.mime.text import MIMEText
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from aexy.core.mail_headers import (
+    AUTO_SUBMITTED_HEADER,
+    AUTO_SUBMITTED_VALUE,
+    OUTBOUND_MARKER_HEADER,
+)
 from aexy.models.google_integration import GoogleIntegration
 from aexy.models.service_desk import MailboxChannel, ServiceDeskMailbox
 from aexy.services.service_desk_config import (
@@ -27,12 +32,15 @@ from aexy.services.service_desk_config import (
 
 logger = logging.getLogger(__name__)
 
-# Stamped on every service-desk email we send through Gmail, and checked by
-# intake before a ticket is created. The synced mailbox is the same Google
-# account these receipts are sent from, so our own sent mail comes back through
-# the sync — without a deterministic marker every acknowledgement would be
-# ingested as a fresh ticket, which would then be acknowledged in turn.
-OUTBOUND_MARKER_HEADER = "X-Aexy-Service-Desk"
+# Re-exported: intake and its tests have always read the marker from here, and
+# the constant now has one definition shared with the transactional sender —
+# whichever channel a message leaves on, it comes back marked the same way.
+__all__ = [
+    "OUTBOUND_MARKER_HEADER",
+    "desk_replied_in_thread",
+    "send_service_desk_email",
+    "send_stakeholder_email",
+]
 
 
 def _header_safe(value: str) -> str:
@@ -53,6 +61,7 @@ async def _send_via_gmail(
     thread_id: str | None,
     attachments: list[tuple[str, str | None, bytes]] | None = None,
     cc: list[str] | None = None,
+    auto_generated: bool = False,
 ) -> str | None:
     """Send through the connected account. Returns Gmail's thread id, if given."""
     from aexy.services.gmail_sync_service import GmailSyncService
@@ -93,6 +102,11 @@ async def _send_via_gmail(
     mime["Reply-To"] = from_address
     mime["Subject"] = _header_safe(subject)
     mime[OUTBOUND_MARKER_HEADER] = "1"
+    # A person clicked Send for a stakeholder email, so only the automatic sends
+    # claim RFC 3834 — an out-of-office answering a KAM's own message is a reply
+    # they should see.
+    if auto_generated:
+        mime[AUTO_SUBMITTED_HEADER] = AUTO_SUBMITTED_VALUE
     raw = base64.urlsafe_b64encode(mime.as_bytes()).decode()
 
     payload: dict = {"raw": raw}
@@ -266,6 +280,7 @@ async def send_service_desk_email(
                 subject=subject,
                 body_text=body_text,
                 thread_id=thread_id,
+                auto_generated=True,
             )
             return
         except Exception as exc:  # noqa: BLE001 — degrade to transactional send
@@ -275,7 +290,13 @@ async def send_service_desk_email(
         from aexy.services.email_service import EmailService
 
         await EmailService().send_templated_email(
-            db=db, recipient_email=to_email, subject=subject, body_text=body_text
+            db=db,
+            recipient_email=to_email,
+            subject=subject,
+            body_text=body_text,
+            # Same marker the Gmail path stamps: the channel a receipt happened to
+            # go out on must not decide whether it can come back in as a ticket.
+            auto_generated=True,
         )
     except Exception as exc:  # noqa: BLE001 — outbound is best-effort
         logger.info("Service desk: email send skipped (%s)", exc)

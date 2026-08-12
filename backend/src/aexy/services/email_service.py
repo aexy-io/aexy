@@ -14,6 +14,7 @@ from botocore.exceptions import ClientError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.core.config import settings
+from aexy.core.mail_headers import auto_generated_headers
 from aexy.models.notification import EmailNotificationLog, Notification
 from aexy.schemas.notification import NOTIFICATION_TEMPLATES, NotificationEventType
 
@@ -225,6 +226,7 @@ class EmailService:
         body_text: str,
         body_html: str | None = None,
         unsubscribe_url: str | None = None,
+        auto_generated: bool = False,
     ) -> dict[str, Any]:
         """Send email via AWS SES.
 
@@ -233,9 +235,9 @@ class EmailService:
         List-Unsubscribe header (RFC 2369/8058). Callers with no unsubscribe
         URL keep the original code path untouched.
         """
-        if unsubscribe_url:
+        if unsubscribe_url or auto_generated:
             message = self._build_mime_message(
-                recipient_email, subject, body_text, body_html, unsubscribe_url
+                recipient_email, subject, body_text, body_html, unsubscribe_url, auto_generated
             )
             response = self.ses_client.send_raw_email(
                 Source=self._get_sender_address(),
@@ -278,6 +280,7 @@ class EmailService:
         body_text: str,
         body_html: str | None,
         unsubscribe_url: str | None,
+        auto_generated: bool = False,
     ) -> MIMEMultipart:
         """Build a MIME message with optional one-click List-Unsubscribe headers."""
         if body_html:
@@ -294,6 +297,8 @@ class EmailService:
         if unsubscribe_url:
             message["List-Unsubscribe"] = f"<{unsubscribe_url}>"
             message["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click"
+        for name, value in auto_generated_headers(auto_generated).items():
+            message[name] = value
         return message
 
     async def _send_via_smtp(
@@ -303,11 +308,12 @@ class EmailService:
         body_text: str,
         body_html: str | None = None,
         unsubscribe_url: str | None = None,
+        auto_generated: bool = False,
     ) -> dict[str, Any]:
         """Send email via SMTP using aiosmtplib."""
         # Create message (carries List-Unsubscribe headers when provided)
         message = self._build_mime_message(
-            recipient_email, subject, body_text, body_html, unsubscribe_url
+            recipient_email, subject, body_text, body_html, unsubscribe_url, auto_generated
         )
 
         # Determine connection parameters
@@ -350,6 +356,7 @@ class EmailService:
         body_text: str,
         body_html: str | None = None,
         unsubscribe_url: str | None = None,
+        auto_generated: bool = False,
     ) -> dict[str, Any]:
         """Send email via Postmark Server API."""
         from_address = self._get_sender_address()
@@ -365,11 +372,18 @@ class EmailService:
             payload["HtmlBody"] = body_html
         if body_text:
             payload["TextBody"] = body_text
+        headers: list[dict[str, str]] = []
         if unsubscribe_url:
-            payload["Headers"] = [
+            headers += [
                 {"Name": "List-Unsubscribe", "Value": f"<{unsubscribe_url}>"},
                 {"Name": "List-Unsubscribe-Post", "Value": "List-Unsubscribe=One-Click"},
             ]
+        headers += [
+            {"Name": name, "Value": value}
+            for name, value in auto_generated_headers(auto_generated).items()
+        ]
+        if headers:
+            payload["Headers"] = headers
 
         async with httpx.AsyncClient() as client:
             response = await client.post(
@@ -401,18 +415,25 @@ class EmailService:
         body_text: str,
         body_html: str | None = None,
         unsubscribe_url: str | None = None,
+        auto_generated: bool = False,
     ) -> dict[str, Any]:
         """Send email using the configured provider."""
         logger.info(f"_send_email called with provider={self.provider}, smtp_configured={self.is_smtp_configured}, ses_configured={self.is_ses_configured}")
         if self.provider == "postmark":
             logger.info(f"Using Postmark to send email to {recipient_email}")
-            return await self._send_via_postmark(recipient_email, subject, body_text, body_html, unsubscribe_url)
+            return await self._send_via_postmark(
+                recipient_email, subject, body_text, body_html, unsubscribe_url, auto_generated
+            )
         elif self.provider == "smtp":
             logger.info(f"Using SMTP to send email to {recipient_email}")
-            return await self._send_via_smtp(recipient_email, subject, body_text, body_html, unsubscribe_url)
+            return await self._send_via_smtp(
+                recipient_email, subject, body_text, body_html, unsubscribe_url, auto_generated
+            )
         else:
             logger.info(f"Using SES to send email to {recipient_email}")
-            return await self._send_via_ses(recipient_email, subject, body_text, body_html, unsubscribe_url)
+            return await self._send_via_ses(
+                recipient_email, subject, body_text, body_html, unsubscribe_url, auto_generated
+            )
 
     async def send_notification_email(
         self,
@@ -498,8 +519,16 @@ class EmailService:
         body_html: str | None = None,
         notification_id: str | None = None,
         unsubscribe_url: str | None = None,
+        auto_generated: bool = False,
     ) -> EmailNotificationLog:
-        """Send a custom templated email."""
+        """Send a custom templated email.
+
+        ``auto_generated`` marks the message as composed by this application and
+        by no person (RFC 3834 plus our own marker). Set it for anything sent on a
+        schedule or in reaction to an event: a watched Service Desk mailbox
+        ignores marked mail instead of turning it into a ticket, and somebody
+        else's helpdesk will not answer it either.
+        """
         log = EmailNotificationLog(
             notification_id=notification_id,
             recipient_email=recipient_email,
@@ -516,7 +545,9 @@ class EmailService:
             return log
 
         try:
-            result = await self._send_email(recipient_email, subject, body_text, body_html, unsubscribe_url)
+            result = await self._send_email(
+                recipient_email, subject, body_text, body_html, unsubscribe_url, auto_generated
+            )
 
             log.ses_message_id = result.get("message_id")
             log.status = "sent"

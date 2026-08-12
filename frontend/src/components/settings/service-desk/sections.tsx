@@ -706,9 +706,115 @@ export function IntakeSection() {
         saving={m.updateSettings.isPending}
         onSave={(departmentId) => m.updateSettings.mutate({ desk_department_id: departmentId })}
       />
+      <IgnoredSendersEditor
+        current={settings.data?.ignored_senders ?? []}
+        canManage={canManage}
+        saving={m.updateSettings.isPending}
+        onSave={(senders) => m.updateSettings.mutate({ ignored_senders: senders })}
+      />
     </Section>
   );
 }
+
+/**
+ * Senders whose mail must not become tickets.
+ *
+ * A list somebody writes, never one intake infers: the shape that looks most
+ * like noise — a `no-reply@` address — is also how a counterparty sends the
+ * notices a desk exists to act on. So a provider's security alerts keep opening
+ * tickets until somebody names the sender here.
+ *
+ * A registered account or vendor still wins, so a domain ignored in passing
+ * cannot silence a counterparty somebody deliberately added to Master Data.
+ */
+function IgnoredSendersEditor({
+  current,
+  canManage,
+  saving,
+  onSave,
+}: {
+  current: string[];
+  canManage: boolean;
+  saving: boolean;
+  onSave: (senders: string[]) => void;
+}) {
+  const t = useTranslations("serviceDesk");
+  const [draft, setDraft] = useState("");
+  const entry = draft.trim().toLowerCase().replace(/^@/, "");
+  const invalid = entry.length > 0 && (entry.includes(" ") || !entry.includes("."));
+  const duplicate = entry.length > 0 && current.includes(entry);
+
+  const add = () => {
+    if (!entry || invalid || duplicate) return;
+    onSave([...current, entry]);
+    setDraft("");
+  };
+
+  return (
+    <div className="space-y-2">
+      <p className="text-sm text-muted-foreground">{t("ignoredSenders.description")}</p>
+      <div className="flex flex-wrap gap-1.5">
+        {current.length === 0 ? (
+          <span className="text-xs text-muted-foreground">{t("ignoredSenders.empty")}</span>
+        ) : (
+          current.map((sender) => (
+            <span
+              key={sender}
+              className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs"
+            >
+              {sender}
+              {canManage && (
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => onSave(current.filter((value) => value !== sender))}
+                  className="text-muted-foreground hover:text-destructive disabled:opacity-60"
+                  aria-label={t("ignoredSenders.remove", { sender })}
+                >
+                  &times;
+                </button>
+              )}
+            </span>
+          ))
+        )}
+      </div>
+      {canManage && (
+        <div className="flex flex-wrap items-start gap-2">
+          <div>
+            <Input
+              value={draft}
+              placeholder={t("ignoredSenders.placeholder")}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  add();
+                }
+              }}
+              className="w-72"
+              aria-label={t("ignoredSenders.title")}
+            />
+            {invalid && (
+              <p className="mt-1 text-xs text-destructive">{t("ignoredSenders.invalid")}</p>
+            )}
+            {duplicate && (
+              <p className="mt-1 text-xs text-muted-foreground">{t("ignoredSenders.duplicate")}</p>
+            )}
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!entry || invalid || duplicate || saving}
+            onClick={add}
+          >
+            {t("ignoredSenders.add")}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 /** Ticket prefix, timezone, breach thresholds, and the customer-facing copy. */
 export function IdentitySections() {
