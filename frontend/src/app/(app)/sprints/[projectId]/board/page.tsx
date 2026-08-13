@@ -1,6 +1,6 @@
 "use client";
 
-import { getApiErrorMessage } from "@/lib/utils";
+import { getApiErrorMessage, saveBlob } from "@/lib/utils";
 
 import { use, useState, useMemo, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
@@ -1342,15 +1342,7 @@ export default function ProjectBoardPage({
     try {
       const blob = await sprintApi.exportTasks(activeSprint.id, format);
 
-      // Create download link
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${activeSprint.name.replace(/\s+/g, "_")}_tasks.${format}`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      saveBlob(blob, `${activeSprint.name.replace(/\s+/g, "_")}_tasks.${format}`);
     } catch (error) {
       console.error("Export failed:", error);
       alert("Failed to export tasks. Please try again.");
