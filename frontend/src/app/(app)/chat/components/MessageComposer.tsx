@@ -126,7 +126,6 @@ export function MessageComposer({
   pendingFilesRef.current = pendingFiles;
   useEffect(() => {
     return () => {
-      // eslint-disable-next-line react-hooks/exhaustive-deps
       pendingFilesRef.current.forEach((pf) => {
         if (pf.preview) URL.revokeObjectURL(pf.preview);
       });

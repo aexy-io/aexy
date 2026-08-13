@@ -105,7 +105,6 @@ export default function SprintCapacityPage() {
       },
     ],
     // confidenceColor is a stable function declared in the render scope
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
