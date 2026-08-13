@@ -5,6 +5,7 @@ through this router — it is driven by the inbound webhook / Gmail sync hooks
 (see services/service_desk_intake_service.py).
 """
 
+import asyncio
 import logging
 import re
 from urllib.parse import quote
@@ -56,6 +57,11 @@ from aexy.services.service_desk_service import ServiceDeskService
 from aexy.services.service_desk_ticket_service import ServiceDeskTicketService
 
 logger = logging.getLogger(__name__)
+
+# How long the manual-ticket response will wait on Temporal before giving up and
+# sending the receipt itself. Generous for starting a workflow, short enough that
+# an operator on a call does not notice it.
+_RECEIPT_DISPATCH_TIMEOUT = 5.0
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/service-desk", tags=["Service Desk"])
 
@@ -349,16 +355,30 @@ async def _queue_manual_ticket_receipt(ticket_id: str, background: BackgroundTas
     from aexy.temporal.task_queues import TaskQueue
 
     try:
-        await dispatch(
-            "send_service_desk_receipt",
-            SendServiceDeskReceiptInput(ticket_id=ticket_id),
-            task_queue=TaskQueue.EMAIL,
-            workflow_id=f"send_service_desk_receipt-{ticket_id}",
-            reject_duplicate_id=True,
+        # Bounded, because "unreachable" is not always a refused connection.
+        # `start_workflow` carries no RPC deadline of its own, and a Temporal that
+        # completes the TCP handshake but never answers — a wedged container, a
+        # partition, a load balancer accepting for a backend that is gone — leaves
+        # this awaiting forever. That is the exact case the fallback below exists
+        # for, and without a deadline it is the one case that never reaches it,
+        # with an operator holding a phone at the other end.
+        await asyncio.wait_for(
+            dispatch(
+                "send_service_desk_receipt",
+                SendServiceDeskReceiptInput(ticket_id=ticket_id),
+                task_queue=TaskQueue.EMAIL,
+                workflow_id=f"send_service_desk_receipt-{ticket_id}",
+                reject_duplicate_id=True,
+            ),
+            timeout=_RECEIPT_DISPATCH_TIMEOUT,
         )
     except WorkflowAlreadyStartedError:
         logger.info("Service desk: receipt for %s already queued", ticket_id)
     except Exception as exc:  # noqa: BLE001 — a receipt must not fail the ticket
+        # On a timeout the start may in fact have landed, so this can acknowledge
+        # a requester twice. Deliberate: a duplicate receipt is an annoyance, a
+        # request that never returns is an outage, and a dropped receipt is the
+        # thing this whole path exists to prevent.
         logger.warning(
             "Service desk: Temporal unavailable for the receipt for %s, sending in-process (%s)",
             ticket_id,
