@@ -9,6 +9,7 @@ import {
   Strikethrough,
   Code,
   BookmarkPlus,
+  MessageSquarePlus,
   Heading1,
   Heading2,
   Heading3,
@@ -32,6 +33,9 @@ import { cn } from "@/lib/utils";
 
 interface EditorToolbarProps {
   editor: Editor;
+  /** Starts a thread on the current selection. Absent when the document cannot be
+   *  commented on (the read-only embed), which is also when there is no rail. */
+  onComment?: () => void;
   onSave?: () => void;
   editorMode?: "rich" | "markdown";
   onModeToggle?: () => void;
@@ -39,7 +43,7 @@ interface EditorToolbarProps {
   onSaveAsTemplate?: () => void;
 }
 
-export function EditorToolbar({ editor, onSave, editorMode = "rich", onModeToggle, onSaveAsTemplate }: EditorToolbarProps) {
+export function EditorToolbar({ editor, onComment, onSave, editorMode = "rich", onModeToggle, onSaveAsTemplate }: EditorToolbarProps) {
   // Add link
   const setLink = useCallback(() => {
     const previousUrl = editor.getAttributes("link").href;
@@ -257,6 +261,26 @@ export function EditorToolbar({ editor, onSave, editorMode = "rich", onModeToggl
           <Database className="h-4 w-4" />
         </ToolbarButton>
       </ToolbarGroup>
+
+      {onComment && (
+        <ToolbarGroup>
+          {/* Deliberately here and not a TipTap BubbleMenu — see the note further
+              down this file's sibling (DocumentEditor.tsx:431) on why that was
+              removed. A toolbar button needs no floating positioning and so cannot
+              reintroduce the reconciler crash. */}
+          <ToolbarButton
+            onClick={onComment}
+            disabled={editor.state.selection.empty}
+            tooltip={
+              editor.state.selection.empty
+                ? "Select text to comment on it"
+                : "Comment on the selection"
+            }
+          >
+            <MessageSquarePlus className="h-4 w-4" />
+          </ToolbarButton>
+        </ToolbarGroup>
+      )}
 
       {/* Spacer */}
       <div className="flex-1" />

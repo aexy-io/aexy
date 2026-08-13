@@ -967,6 +967,26 @@ class DocumentComment(Base):
 
     content: Mapped[str] = mapped_column(Text, nullable=False)
 
+    # Which passage this thread is about. The same id is carried by a
+    # `commentAnchor` mark inside `Document.content`, and that pairing is the only
+    # link between the two — positions are not stored, because every edit above a
+    # comment would move them.
+    #
+    # NULL *is* the whole-document comment, which is why anchored threads and the
+    # discussion at the foot of the document share one table: the distinction is
+    # this field, not a second model. Only ever set on a root comment; a reply
+    # belongs to whatever its parent is about.
+    #
+    # There is deliberately no `is_orphaned` flag. The editor already knows which
+    # anchor ids still have marks, so a thread whose passage was edited away is
+    # grouped as unanchored from what the client can see. A stored flag would need
+    # the server to walk TipTap JSON on every list, and would go stale between.
+    anchor_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    # The passage as it read when the comment was made. Shown in the rail and in
+    # the unanchored group — a thread whose text is gone is unreadable without it,
+    # and it is what makes "this no longer matches the document" legible.
+    quoted_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     # Resolution is a property of the thread, so it is only meaningful on a root
     # comment. Resolving is not deleting — a resolved thread stays readable.
     is_resolved: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

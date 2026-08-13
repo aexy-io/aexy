@@ -262,6 +262,8 @@ def _comment_to_response(comment) -> DocumentCommentResponse:
         author_name=comment.author.name if comment.author else None,
         author_avatar=comment.author.avatar_url if comment.author else None,
         content=comment.content,
+        anchor_id=comment.anchor_id,
+        quoted_text=comment.quoted_text,
         is_resolved=comment.is_resolved,
         resolved_by_id=str(comment.resolved_by_id) if comment.resolved_by_id else None,
         resolved_at=comment.resolved_at,
@@ -318,6 +320,8 @@ async def create_document_comment(
         author_id=str(current_user.id),
         content=data.content,
         parent_id=data.parent_id,
+        anchor_id=data.anchor_id,
+        quoted_text=data.quoted_text,
     )
     return _comment_to_response(comment)
 

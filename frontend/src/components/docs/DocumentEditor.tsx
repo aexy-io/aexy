@@ -20,6 +20,8 @@ import { Markdown } from "tiptap-markdown";
 import { common, createLowlight } from "lowlight";
 import { InlineDatabase } from "./extensions/InlineDatabase";
 import { SlashCommands } from "./extensions/SlashCommands";
+import { CommentAnchor, anchorIdsInDoc, newAnchorId } from "./extensions/CommentAnchor";
+import { DocumentCommentRail, type PendingAnchor } from "./DocumentCommentRail";
 import { EditorToolbar } from "./EditorToolbar";
 import { DocumentEmptyState } from "./DocumentEmptyState";
 import { debounce } from "@/lib/utils";
@@ -54,6 +56,8 @@ interface DocumentEditorProps {
   embedded?: boolean;
   /** Enables the template empty state. Omitted in the embed, which is a reader. */
   workspaceId?: string | null;
+  /** Enables anchored comments. Omitted in the embed, which cannot comment. */
+  documentId?: string | null;
 }
 
 export function DocumentEditor({
@@ -69,6 +73,7 @@ export function DocumentEditor({
   breadcrumb,
   embedded = false,
   workspaceId,
+  documentId,
 }: DocumentEditorProps) {
   const [localTitle, setLocalTitle] = useState(title);
   const [localIcon, setLocalIcon] = useState(icon || "📄");
@@ -78,6 +83,15 @@ export function DocumentEditor({
   const [editorMode, setEditorMode] = useState<EditorMode>("rich");
   const [markdownContent, setMarkdownContent] = useState("");
   const [templateSaved, setTemplateSaved] = useState(false);
+  const [pendingAnchor, setPendingAnchor] = useState<PendingAnchor | null>(null);
+  const [activeAnchorId, setActiveAnchorId] = useState<string | null>(null);
+  // Which anchors the document still carries. Read from the editor rather than the
+  // saved content so a thread whose text was just deleted becomes unanchored
+  // immediately, not after the next save.
+  const [liveAnchorIds, setLiveAnchorIds] = useState<string[]>([]);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  // Commenting needs a document to attach to and a reader who may write.
+  const commentsEnabled = Boolean(workspaceId && documentId && !readOnly);
   const { createTemplate } = useTemplates(workspaceId ?? null);
 
   // Use ref for initial content to prevent editor recreation
@@ -98,6 +112,7 @@ export function DocumentEditor({
   useEffect(() => {
     setLocalIcon(icon || "📄");
   }, [icon]);
+
 
   // Escape closes the emoji picker. Audit caught the picker staying
   // open through multiple intermediate actions because only the
@@ -199,6 +214,7 @@ export function DocumentEditor({
       }),
       InlineDatabase,
       SlashCommands,
+      CommentAnchor,
     ],
     content: initialContentRef.current,
     editable: !readOnly,
@@ -218,11 +234,18 @@ export function DocumentEditor({
       },
     },
     onUpdate: ({ editor }) => {
+      setLiveAnchorIds(anchorIdsInDoc(editor.getJSON()));
       if (autoSave && !readOnly) {
         debouncedSave({ content: editor.getJSON() as Record<string, unknown> });
       }
     },
   });
+
+  // Seed the live anchor set from the document as loaded. Without this every
+  // thread reads as unanchored until the first keystroke fires `onUpdate`.
+  useEffect(() => {
+    if (editor) setLiveAnchorIds(anchorIdsInDoc(editor.getJSON()));
+  }, [editor]);
 
   // Handle title change
   const handleTitleChange = useCallback(
@@ -315,6 +338,41 @@ export function DocumentEditor({
     }
   }, [editor, workspaceId, localTitle, localIcon, createTemplate]);
 
+  /**
+   * Start a thread on the current selection.
+   *
+   * The mark goes in immediately so the rail has something to align to while the
+   * comment is still being typed; cancelling takes it back out. The id is generated
+   * here because the mark has to carry it before the comment row exists.
+   */
+  const handleComment = useCallback(() => {
+    if (!editor || editor.state.selection.empty) return;
+    const { from, to } = editor.state.selection;
+    const quoted = editor.state.doc.textBetween(from, to, " ").trim();
+    if (!quoted) return;
+    const anchorId = newAnchorId();
+    editor.chain().focus().setCommentAnchor(anchorId).run();
+    setPendingAnchor({ anchorId, quotedText: quoted.slice(0, 2000) });
+    setActiveAnchorId(anchorId);
+  }, [editor]);
+
+  const handleRemoveAnchor = useCallback(
+    (anchorId: string) => {
+      editor?.commands.unsetCommentAnchor(anchorId);
+      setActiveAnchorId((current) => (current === anchorId ? null : current));
+    },
+    [editor],
+  );
+
+  // Clicking a highlight focuses its thread. Delegated from the container rather
+  // than bound per mark: the marks are ProseMirror's DOM to create and destroy, and
+  // attaching listeners to them would leak on every edit.
+  const handleContentClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    const mark = (event.target as HTMLElement).closest?.("[data-comment-anchor]");
+    const anchorId = mark?.getAttribute("data-comment-anchor");
+    if (anchorId) setActiveAnchorId(anchorId);
+  }, []);
+
   // `handleManualSave` removed — autoSave covers every change path
   // (rich/markdown), the dual-affordance was an audit finding. If a
   // future force-save UX is needed, prefer keyboard (Mod+S) over a
@@ -325,6 +383,21 @@ export function DocumentEditor({
     if (!editor) return;
 
     if (editorMode === "rich") {
+      // Markdown has no way to express a comment anchor, and coming back calls
+      // `setContent`, which rebuilds the document from that Markdown — so every
+      // highlight is dropped on the return trip. The threads themselves are safe
+      // (they are rows, keyed by an id, holding the text they were written
+      // against) and reappear as "no longer in the document", but that is a
+      // surprise worth asking about rather than discovering.
+      const anchors = anchorIdsInDoc(editor.getJSON());
+      if (anchors.length > 0) {
+        const proceed = window.confirm(
+          `Markdown cannot carry comment highlights, so switching will unpin ${
+            anchors.length === 1 ? "1 comment thread" : `${anchors.length} comment threads`
+          } from the text. The comments are kept, with the passage they were written about.`,
+        );
+        if (!proceed) return;
+      }
       // Switching to markdown mode - extract markdown from editor
       try {
         const markdown = editor.storage.markdown.getMarkdown();
@@ -337,6 +410,9 @@ export function DocumentEditor({
       // Switching to rich mode - parse markdown back into editor
       try {
         editor.commands.setContent(markdownContent);
+        setLiveAnchorIds(anchorIdsInDoc(editor.getJSON()));
+        setPendingAnchor(null);
+        setActiveAnchorId(null);
         setEditorMode("rich");
       } catch (error) {
         console.error("Failed to parse markdown:", error);
@@ -498,6 +574,7 @@ export function DocumentEditor({
             <EditorToolbar
               editor={editor}
               editorMode={editorMode}
+              onComment={commentsEnabled ? handleComment : undefined}
               onModeToggle={handleModeToggle}
               onSaveAsTemplate={
                 workspaceId && !readOnly && !editor?.isEmpty ? handleSaveAsTemplate : undefined
@@ -519,14 +596,18 @@ export function DocumentEditor({
             steady-state selection path still crashed because each
             selection causes BubbleMenu to mount/unmount its Tippy
             instance. Top `EditorToolbar` already exposes Bold / Italic /
-            Underline / Code, so the affordance is intact. A custom
-            in-tree floating menu (via @floating-ui/react, not Tippy)
-            can be revisited later if the UX is missed. */}
+            Underline / Code, so the affordance is intact. Commenting
+            on a selection landed in that toolbar for the same reason —
+            a button needs no floating positioning, so it cannot
+            reintroduce this crash — and the thread it opens is an
+            absolutely-positioned card inside this component's own tree
+            (DocumentCommentRail), never appended to document.body. */}
       </div>
 
       {/* Editor Content */}
       <div className="flex-1 overflow-auto">
-        <div className="px-8 py-8">
+        <div className="mx-auto flex w-full max-w-[1400px] gap-6 px-8 py-8">
+         <div className="min-w-0 flex-1" ref={contentRef} onClick={handleContentClick}>
           {/* Only while the page is genuinely blank, and only in rich mode —
               `editor.isEmpty` is live, so it clears itself on the first keystroke. */}
           {workspaceId && !readOnly && editorMode === "rich" && editor?.isEmpty && (
@@ -552,7 +633,52 @@ export function DocumentEditor({
               </p>
             </div>
           )}
+         </div>
+
+          {/* The margin. Hidden below xl, where there is no room for a gutter
+              beside a readable measure — the threads are still reachable there
+              because the rail reflows under the document (see the sibling block
+              below). Only in rich mode: the Markdown textarea has no marks to
+              align to. */}
+          {commentsEnabled && editorMode === "rich" && (
+            <div className="hidden w-[320px] shrink-0 xl:block">
+              <DocumentCommentRail
+                workspaceId={workspaceId ?? null}
+                documentId={documentId!}
+                contentRef={contentRef}
+                liveAnchorIds={liveAnchorIds}
+                pending={pendingAnchor}
+                onPendingCancel={() => setPendingAnchor(null)}
+                onPendingCommitted={() => setPendingAnchor(null)}
+                activeAnchorId={activeAnchorId}
+                onActiveChange={setActiveAnchorId}
+                onRemoveAnchor={handleRemoveAnchor}
+              />
+            </div>
+          )}
         </div>
+
+        {/* Below xl the same threads sit under the document rather than beside it.
+            Positioning against a mark needs a gutter to position into, so here they
+            are an ordinary list — the anchor still says which passage each is
+            about, via its quoted text. */}
+        {commentsEnabled && editorMode === "rich" && (
+          <div className="px-8 pb-8 xl:hidden">
+            <DocumentCommentRail
+              positioned={false}
+              workspaceId={workspaceId ?? null}
+              documentId={documentId!}
+              contentRef={contentRef}
+              liveAnchorIds={liveAnchorIds}
+              pending={pendingAnchor}
+              onPendingCancel={() => setPendingAnchor(null)}
+              onPendingCommitted={() => setPendingAnchor(null)}
+              activeAnchorId={activeAnchorId}
+              onActiveChange={setActiveAnchorId}
+              onRemoveAnchor={handleRemoveAnchor}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

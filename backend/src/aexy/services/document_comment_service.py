@@ -151,8 +151,16 @@ class DocumentCommentService:
         author_id: str,
         content: str,
         parent_id: str | None = None,
+        anchor_id: str | None = None,
+        quoted_text: str | None = None,
     ) -> DocumentComment:
-        """Post a comment or a reply, then notify the people in the conversation."""
+        """Post a comment or a reply, then notify the people in the conversation.
+
+        An ``anchor_id`` ties the thread to a passage of the document — see the
+        column's note on the model. It is dropped on a reply: a reply is about
+        whatever its parent was about, so storing it twice would give one thread
+        two places to disagree with itself.
+        """
         document = await self._load_document(
             workspace_id, document_id, author_id, write=True
         )
@@ -183,6 +191,8 @@ class DocumentCommentService:
             parent_id=parent_id,
             author_id=author_id,
             content=content,
+            anchor_id=None if parent_id else anchor_id,
+            quoted_text=None if parent_id else quoted_text,
         )
         self.db.add(comment)
         await self.db.flush()
