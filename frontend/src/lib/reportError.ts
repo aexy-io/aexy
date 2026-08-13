@@ -73,14 +73,12 @@ export function reportError(error: unknown, ctx: ReportContext = {}): void {
       // Sentry's transport failed (network down, init pending, etc).
       // Fall through to the console path — we still want the
       // operator to see SOMETHING.
-      // eslint-disable-next-line no-console
       console.error("[reportError] Sentry transport failed:", innerError);
     }
   }
 
   // No Sentry — structured console fallback. Prefix is what
   // operators grep for in browser-side log shippers.
-  // eslint-disable-next-line no-console
   console.error(
     "[reportError]",
     error,
