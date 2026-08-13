@@ -97,7 +97,6 @@
       "emailFailed": "ईमेल नहीं भेजा जा सका। टिकट पर कुछ भी दर्ज नहीं हुआ।",
       "request": "अनुरोध",
       "attachments": "संलग्नक",
-      "notForwardable": "अग्रेषित नहीं किया जा सकता",
       "emailQuoteRequest": "मूल अनुरोध उद्धृत करें",
       "emailAttach": "इस टिकट से फ़ाइलें संलग्न करें",
       "emailNoAttachments": "कोई नहीं",
@@ -108,7 +107,13 @@
       "emailCancel": "रद्द करें",
       "sentBy": "{name} द्वारा भेजा गया",
       "emailMoveStage": "भेजने पर इस टिकट को {stage} पर ले जाएँ",
-      "confirmTriage": "सही के रूप में पुष्टि करें"
+      "confirmTriage": "सही के रूप में पुष्टि करें",
+      "details": "विवरण",
+      "turnaround": "टर्नअराउंड",
+      "actions": "कार्रवाई",
+      "download": "डाउनलोड",
+      "downloading": "डाउनलोड हो रहा है…",
+      "attachmentUnavailable": "केवल मूल ईमेल में उपलब्ध"
     },
     "ai": {
       "title": "AI ईमेल वर्गीकरण",

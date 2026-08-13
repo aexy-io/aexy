@@ -53,6 +53,42 @@ function useDeskMutation<TData, TVariables>(
   });
 }
 
+/**
+ * Put a fetched blob in the user's Downloads under `filename`.
+ *
+ * The anchor is attached to the document before it is clicked and the object URL
+ * is released on a later tick, because neither is optional: Firefox ignores
+ * `click()` on an element that is not in the document, and revoking the URL in
+ * the same tick can cancel a download the browser has not started reading yet.
+ */
+function saveBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.style.display = "none";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
+/**
+ * Rewrite a blob-typed error body in place as the parsed JSON it really is.
+ *
+ * Only needed for responses fetched with `responseType: "blob"`. Silent when the
+ * body is not JSON: the caller still throws, and the generic message stands.
+ */
+async function revealBlobError(error: unknown): Promise<void> {
+  const response = (error as { response?: { data?: unknown } })?.response;
+  if (!response || !(response.data instanceof Blob)) return;
+  try {
+    response.data = JSON.parse(await response.data.text());
+  } catch {
+    // Not JSON — nothing to reveal.
+  }
+}
+
 const keys = {
   dashboard: (ws: string) => ["service-desk", "dashboard", ws] as const,
   tickets: (ws: string) => ["service-desk", "tickets", ws] as const,
@@ -239,6 +275,31 @@ export function useServiceDeskMutations() {
   };
 
   return {
+    /**
+     * Hand a ticket's own attachment to the person reading it.
+     *
+     * A mutation rather than a query: it is an action with a side effect on the
+     * browser (a file lands in Downloads), it must not be cached, and the shared
+     * `onError` toast is exactly what a failed fetch needs — the alternative was
+     * a filename rendered as dead text.
+     */
+    downloadAttachment: useDeskMutation({
+      mutationFn: async ({ id, index, filename }: { id: string; index: number; filename: string }) => {
+        let blob: Blob;
+        try {
+          blob = await serviceDeskApi.downloadAttachment(ws!, id, index);
+        } catch (error) {
+          // Asking for a blob makes axios hand back the *error* body as a blob
+          // too, so `detail` is unreadable and every failure would have read
+          // "Something went wrong". These failures are the ones worth quoting —
+          // an expired Gmail token, a file the mailbox no longer holds — so the
+          // body is decoded back into the shape `getApiErrorMessage` expects.
+          await revealBlobError(error);
+          throw error;
+        }
+        saveBlob(blob, filename);
+      },
+    }),
     splitDetectedIssues: useDeskMutation({
       mutationFn: ({ id, issue_indexes }: { id: string; issue_indexes: number[] }) =>
         serviceDeskApi.splitDetectedIssues(ws!, id, issue_indexes),

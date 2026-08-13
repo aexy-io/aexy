@@ -791,6 +791,117 @@ class ServiceDeskTicketService:
         raw = (ticket.field_values or {}).get("attachments")
         return [item for item in raw if isinstance(item, dict)] if isinstance(raw, list) else []
 
+    async def _attachment_source(self, sd: ServiceDeskTicket, action: str) -> GoogleIntegration:
+        """The connected account this ticket's files are re-fetched from.
+
+        Bytes are never stored on the ticket, so forwarding a file and handing it
+        to the person reading the ticket both go back to the mailbox the mail
+        arrived in — and both become impossible in the same two ways.
+        """
+        from aexy.models.service_desk import ServiceDeskMailbox
+
+        mailbox = await self.db.get(ServiceDeskMailbox, sd.mailbox_id) if sd.mailbox_id else None
+        integration_id = mailbox.integration_id if mailbox else None
+        if not integration_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "This ticket's original email is not available, so its files "
+                    f"cannot be {action}"
+                ),
+            )
+
+        integration = await self.db.get(GoogleIntegration, integration_id)
+        if integration is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"The mailbox is no longer connected, so files cannot be {action}",
+            )
+        return integration
+
+    async def _attachment_bytes(
+        self,
+        integration: GoogleIntegration,
+        sd: ServiceDeskTicket,
+        item: dict,
+        filename: str,
+        action: str,
+        failure: str,
+    ) -> bytes:
+        """One file, pulled fresh from the message it arrived on."""
+        from aexy.services.gmail_sync_service import (
+            SERVICE_DESK_ATTACHMENT_FORWARD_BYTE_LIMIT,
+            GmailSyncService,
+        )
+
+        # A handle is only valid against the message the file arrived on, and a
+        # ticket collects files from replies as well as the first email.
+        owning_message_id = item.get("message_id") or sd.source_message_id
+        if not owning_message_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"'{filename}' has no source message, so it cannot be {action}",
+            )
+        try:
+            return await GmailSyncService(self.db).gmail_attachment_bytes(
+                integration,
+                owning_message_id,
+                {"attachmentId": item["attachment_id"], "size": item.get("size_bytes")},
+                max_bytes=SERVICE_DESK_ATTACHMENT_FORWARD_BYTE_LIMIT,
+                filename=filename,
+                content_type=item.get("content_type"),
+            )
+        except Exception as exc:  # noqa: BLE001 — surfaced, never silently dropped
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"'{filename}' could not be retrieved, {failure}: {exc}",
+            ) from exc
+
+    async def load_attachment(
+        self,
+        workspace_id: str,
+        ticket_id: str,
+        index: int,
+        scope_developer_id: str | None = None,
+    ) -> tuple[str, str, bytes]:
+        """One of the ticket's own files, for the person reading the ticket.
+
+        Anyone who may see the ticket may take its files: the request card lists
+        them by name already, and a claim register a KAM cannot open is a ticket
+        they cannot work. Write authority is deliberately *not* required — that
+        gate is for changing the ticket, not for reading what arrived on it.
+
+        Addressed by position rather than by name because two replies can attach
+        files called the same thing, and the list only ever grows.
+        """
+        sd = await self._sd(workspace_id, ticket_id, developer_id=scope_developer_id)
+        ticket = await self.db.get(Ticket, sd.ticket_id)
+        if ticket is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+
+        items = self._ticket_attachments(ticket)
+        if index < 0 or index >= len(items):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="This ticket has no such attachment",
+            )
+        item = items[index]
+        filename = str(item.get("filename") or "attachment")
+        if not item.get("attachment_id"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"'{filename}' arrived before the desk started keeping a handle "
+                    "on attachments, so its contents are only in the original email"
+                ),
+            )
+
+        integration = await self._attachment_source(sd, "downloaded")
+        raw = await self._attachment_bytes(
+            integration, sd, item, filename, "downloaded", "so there is nothing to download"
+        )
+        return filename, str(item.get("content_type") or "application/octet-stream"), raw
+
     async def _load_forward_bytes(
         self,
         sd: ServiceDeskTicket,
@@ -806,29 +917,13 @@ class ServiceDeskTicketService:
         """
         if not filenames:
             return []
-        from aexy.models.service_desk import ServiceDeskMailbox
         from aexy.services.gmail_sync_service import (
             SERVICE_DESK_ATTACHMENT_FORWARD_BYTE_LIMIT,
-            GmailSyncService,
         )
 
         by_name = {str(item.get("filename")): item for item in self._ticket_attachments(ticket)}
-        mailbox = await self.db.get(ServiceDeskMailbox, sd.mailbox_id) if sd.mailbox_id else None
-        integration_id = mailbox.integration_id if mailbox else None
-        if not integration_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="This ticket's original email is not available, so its files cannot be attached",
-            )
+        integration = await self._attachment_source(sd, "attached")
 
-        integration = await self.db.get(GoogleIntegration, integration_id)
-        if integration is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="The mailbox is no longer connected, so files cannot be attached",
-            )
-
-        service = GmailSyncService(self.db)
         loaded: list[tuple[str, str | None, bytes]] = []
         total = 0
         for filename in filenames:
@@ -838,31 +933,12 @@ class ServiceDeskTicketService:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"'{filename}' is not a forwardable file on this ticket",
                 )
-            # A handle is only valid against the message the file arrived on, and
-            # a ticket collects files from replies as well as the first email.
-            owning_message_id = item.get("message_id") or sd.source_message_id
-            if not owning_message_id:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"'{filename}' has no source message, so it cannot be attached",
-                )
-            try:
-                raw = await service.gmail_attachment_bytes(
-                    integration,
-                    owning_message_id,
-                    {"attachmentId": item["attachment_id"], "size": item.get("size_bytes")},
-                    max_bytes=SERVICE_DESK_ATTACHMENT_FORWARD_BYTE_LIMIT,
-                    filename=filename,
-                    content_type=item.get("content_type"),
-                )
-            except Exception as exc:  # noqa: BLE001 — surfaced, never silently dropped
-                # Sending "please find attached" with nothing attached is worse
-                # than not sending: the insurer waits, and the desk shows a sent
-                # message that was useless.
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail=f"'{filename}' could not be retrieved, so nothing was sent: {exc}",
-                ) from exc
+            # Sending "please find attached" with nothing attached is worse than
+            # not sending: the insurer waits, and the desk shows a sent message
+            # that was useless.
+            raw = await self._attachment_bytes(
+                integration, sd, item, filename, "attached", "so nothing was sent"
+            )
             total += len(raw)
             if total > SERVICE_DESK_ATTACHMENT_FORWARD_BYTE_LIMIT:
                 raise HTTPException(
@@ -1235,12 +1311,13 @@ class ServiceDeskTicketService:
             email_recipients=await self._email_recipients(workspace_id, sd, ticket),
             attachments=[
                 TicketAttachment(
+                    index=index,
                     filename=str(item.get("filename") or "attachment"),
                     content_type=item.get("content_type"),
                     size_bytes=item.get("size_bytes"),
                     can_forward=bool(item.get("attachment_id")),
                 )
-                for item in self._ticket_attachments(ticket)
+                for index, item in enumerate(self._ticket_attachments(ticket))
             ],
             tat=tat,
             can_edit=can_edit,

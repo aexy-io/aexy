@@ -57,6 +57,10 @@ from aexy.services.service_desk_taxonomy import external_slug_for, load_taxonomy
 logger = logging.getLogger(__name__)
 
 SERVICE_DESK_FORM_SLUG = "service-desk"
+# Stands in for the requester on a ticket logged by phone or WhatsApp, where
+# there may be no email address at all. It is not deliverable, so the
+# acknowledgement recognises it and stays put rather than attempting a send.
+MANUAL_SENDER_ADDRESS = "manual@local"
 _TICKET_NUMBER_ATTEMPTS = 5
 _MAX_ISSUES_PER_EMAIL = 5
 # An email may only be auto-split into two tickets, and only when the model is
@@ -668,6 +672,8 @@ class ServiceDeskIntakeService:
         source: str,
         automatic: bool = False,
         suggestion: str | None = None,
+        classify: bool = True,
+        send_receipt: bool = True,
     ) -> Ticket:
         """Create a ticket from a normalised message. Public: manual logging
         (phone/WhatsApp) goes through the same path with ``mailbox=None``, and
@@ -675,6 +681,14 @@ class ServiceDeskIntakeService:
 
         The acknowledgement is queued, not sent — the caller commits, then calls
         ``flush_notifications()``.
+
+        ``classify=False`` skips the LLM step. Email intake runs inside a worker
+        where a ten-second model call costs nobody anything; manual logging runs
+        inside an HTTP request with somebody watching a spinner, and there the
+        model is guessing at fields the person filling the form has just typed.
+
+        ``send_receipt=False`` does not queue the acknowledgement at all, for a
+        caller that will send it after responding — see ``acknowledge_ticket``.
         """
         domain = _domain_of(email.from_email)
         address = _address_of(email.from_email)
@@ -812,14 +826,15 @@ class ServiceDeskIntakeService:
         overflow = False
         if automatic:
             sd.needs_triage = True
-        elif await self._ai_enabled(workspace_id):
+        elif classify and await self._ai_enabled(workspace_id):
             issues, overflow = await self._classify(workspace_id, sd, email)
         else:
-            # No AI: the ticket is still created, owned and clocked, but nobody
-            # has set the LOB or confirmed the request type — it holds the
-            # placeholder "query". Flag it so the owning KAM completes those
-            # fields by hand rather than the desk silently reporting every
-            # ticket as a Query with no product against it.
+            # Nothing has read this ticket: the ticket is still created, owned and
+            # clocked, but nobody has set the LOB or confirmed the request type —
+            # it holds the workspace's default. Flag it so the owning KAM
+            # completes those fields by hand rather than the desk silently
+            # reporting every ticket as a Query with no product against it.
+            # A caller that already has those answers from a person clears it.
             sd.needs_triage = True
 
         children: list[Ticket] = []
@@ -832,7 +847,7 @@ class ServiceDeskIntakeService:
 
         # One acknowledgement per inbound message, listing every ticket it
         # produced. Children never send their own — the requester wrote once.
-        if not automatic:
+        if not automatic and send_receipt:
             await self._send_receipt(
                 workspace_id,
                 ticket,
@@ -1342,6 +1357,40 @@ class ServiceDeskIntakeService:
         if issue.get("product"):
             sd.product_id = product_ids.get(str(issue["product"]).lower())
 
+    async def acknowledge_ticket(self, ticket_id: str) -> None:
+        """Acknowledge a ticket that is already committed.
+
+        The manual path uses this. Creating the ticket is what the operator is
+        waiting for; the receipt is an SMTP round trip that has nothing to do
+        with whether the ticket exists, so it happens once the response is out.
+        Best-effort, exactly as the inline receipt always was.
+        """
+        ticket = await self.db.get(Ticket, ticket_id)
+        if ticket is None:
+            logger.info("Service desk: ticket %s vanished before its receipt", ticket_id)
+            return
+        # A phone call has no address to answer. The sentinel is not deliverable,
+        # so sending to it only buys an SMTP failure and a log line.
+        if (ticket.submitter_email or "").strip().lower() == MANUAL_SENDER_ADDRESS:
+            return
+        sd = (
+            await self.db.execute(
+                select(ServiceDeskTicket).where(ServiceDeskTicket.ticket_id == ticket_id)
+            )
+        ).scalar_one_or_none()
+        mailbox = (
+            await self.db.get(ServiceDeskMailbox, sd.mailbox_id)
+            if sd is not None and sd.mailbox_id
+            else None
+        )
+        await self._send_receipt(
+            ticket.workspace_id,
+            ticket,
+            mailbox,
+            thread_id=sd.thread_ref if sd is not None else None,
+        )
+        await self.flush_notifications()
+
     async def _send_receipt(
         self,
         workspace_id: str,
@@ -1572,3 +1621,19 @@ class ServiceDeskIntakeService:
             mailbox.integration_id = integration_id
             await db.flush()
         return mailbox
+
+
+async def acknowledge_ticket_in_background(ticket_id: str) -> None:
+    """Send a committed ticket's acknowledgement, in a session of its own.
+
+    Shaped for ``BackgroundTasks``: it runs after the response has gone out, so
+    the request-scoped session is already closed and any failure has nobody left
+    to report to. Both facts are handled here rather than at each call site.
+    """
+    from aexy.core.database import get_async_session
+
+    try:
+        async with get_async_session() as session:
+            await ServiceDeskIntakeService(session).acknowledge_ticket(ticket_id)
+    except Exception as exc:  # noqa: BLE001 — acknowledgements are best-effort
+        logger.warning("Service desk: receipt for %s skipped (%s)", ticket_id, exc)

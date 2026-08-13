@@ -430,12 +430,18 @@ class TicketEmailRecipient(BaseModel):
 class TicketAttachment(BaseModel):
     """A file that arrived on the ticket's original email."""
 
+    # Position in the ticket's own attachment list — the handle the download
+    # endpoint takes. A filename would be friendlier in the URL but two replies
+    # can attach files with the same name, and a path segment carrying arbitrary
+    # user-supplied text is a worse thing to route on.
+    index: int
     filename: str
     content_type: str | None = None
     size_bytes: int | None = None
     # False when the provider gave us no handle for the bytes, e.g. mail that
-    # arrived before attachment ids were captured. The UI must not offer to
-    # forward a file the send would then fail on.
+    # arrived before attachment ids were captured. Without that handle the file
+    # can be neither forwarded nor downloaded — both re-fetch from the original
+    # message — so the UI must not offer either.
     can_forward: bool = False
 
 

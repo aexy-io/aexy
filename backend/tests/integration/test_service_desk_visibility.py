@@ -221,6 +221,10 @@ async def test_kam_reaching_a_peer_ticket_by_id_gets_404_everywhere(client, desk
             f"{b}/tickets/{peer}/convert-to-task", headers=h, json={"project_id": str(uuid4())}
         ),
         "split": await client.post(f"{b}/tickets/{peer}/split", headers=h, json={"issue_indexes": [2]}),
+        # A read path like any other: the files on a peer's ticket are as much
+        # out of scope as the ticket, and a 404 here keeps the id unenumerable
+        # even though the endpoint returns bytes rather than JSON.
+        "attachment download": await client.get(f"{b}/tickets/{peer}/attachments/0", headers=h),
     }
     for label, resp in attempts.items():
         assert resp.status_code == 404, f"KAM A reached peer ticket via {label}: {resp.status_code}"
