@@ -112,6 +112,9 @@ ACTIVITY_CONFIG: dict[str, dict[str, Any]] = {
     "send_slack_message": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=2)},
     "send_slack_dm": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=2)},
     "send_uptime_notification": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=2)},
+    # The acknowledgement for a manually logged Service Desk ticket. One SMTP
+    # round trip, so the same shape as the other notification sends.
+    "send_service_desk_receipt": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=2)},
     "send_booking_notification": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=2)},
     "send_swap_notification": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=2)},
 

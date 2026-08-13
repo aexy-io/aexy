@@ -5,6 +5,8 @@ through this router — it is driven by the inbound webhook / Gmail sync hooks
 (see services/service_desk_intake_service.py).
 """
 
+import asyncio
+import logging
 import re
 from urllib.parse import quote
 
@@ -53,6 +55,13 @@ from aexy.schemas.service_desk import (
 )
 from aexy.services.service_desk_service import ServiceDeskService
 from aexy.services.service_desk_ticket_service import ServiceDeskTicketService
+
+logger = logging.getLogger(__name__)
+
+# How long the manual-ticket response will wait on Temporal before giving up and
+# sending the receipt itself. Generous for starting a workflow, short enough that
+# an operator on a call does not notice it.
+_RECEIPT_DISPATCH_TIMEOUT = 5.0
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/service-desk", tags=["Service Desk"])
 
@@ -311,10 +320,9 @@ async def create_manual_ticket(
     """Log a request that arrived by phone or WhatsApp.
 
     Somebody is on the line, so the response waits for nothing but the ticket
-    itself: the requester's acknowledgement is an SMTP round trip and goes out
-    behind the response.
+    itself: the requester's acknowledgement is an SMTP round trip and is handed
+    to Temporal to send afterwards.
     """
-    from aexy.services.service_desk_intake_service import acknowledge_ticket_in_background
     from aexy.services.service_desk_service import can_create_manual_ticket
 
     if not await can_create_manual_ticket(db, workspace_id, str(current.id)):
@@ -323,8 +331,60 @@ async def create_manual_ticket(
             detail="Only a member of the desk's owning team or a Service Desk manager can log a manual ticket",
         )
     ticket_id = await ServiceDeskService(db).create_manual_ticket(workspace_id, data)
-    background.add_task(acknowledge_ticket_in_background, ticket_id)
+    await _queue_manual_ticket_receipt(ticket_id, background)
     return {"ticket_id": ticket_id}
+
+
+async def _queue_manual_ticket_receipt(ticket_id: str, background: BackgroundTasks) -> None:
+    """Hand the acknowledgement to Temporal, or send it in-process if it cannot.
+
+    Named after the ticket and started with ``reject_duplicate_id``, so the
+    requester cannot be acknowledged twice — the default policy only refuses a
+    start while the first is still running, which would let a receipt that had
+    already completed be sent again.
+
+    The in-process fallback is for a deployment with no reachable Temporal, where
+    a dropped receipt is worse than one that does not survive a restart. It keeps
+    the request fast either way, which is the part the operator notices.
+    """
+    from temporalio.exceptions import WorkflowAlreadyStartedError
+
+    from aexy.services.service_desk_intake_service import acknowledge_ticket_in_background
+    from aexy.temporal.activities.service_desk import SendServiceDeskReceiptInput
+    from aexy.temporal.dispatch import dispatch
+    from aexy.temporal.task_queues import TaskQueue
+
+    try:
+        # Bounded, because "unreachable" is not always a refused connection.
+        # `start_workflow` carries no RPC deadline of its own, and a Temporal that
+        # completes the TCP handshake but never answers — a wedged container, a
+        # partition, a load balancer accepting for a backend that is gone — leaves
+        # this awaiting forever. That is the exact case the fallback below exists
+        # for, and without a deadline it is the one case that never reaches it,
+        # with an operator holding a phone at the other end.
+        await asyncio.wait_for(
+            dispatch(
+                "send_service_desk_receipt",
+                SendServiceDeskReceiptInput(ticket_id=ticket_id),
+                task_queue=TaskQueue.EMAIL,
+                workflow_id=f"send_service_desk_receipt-{ticket_id}",
+                reject_duplicate_id=True,
+            ),
+            timeout=_RECEIPT_DISPATCH_TIMEOUT,
+        )
+    except WorkflowAlreadyStartedError:
+        logger.info("Service desk: receipt for %s already queued", ticket_id)
+    except Exception as exc:  # noqa: BLE001 — a receipt must not fail the ticket
+        # On a timeout the start may in fact have landed, so this can acknowledge
+        # a requester twice. Deliberate: a duplicate receipt is an annoyance, a
+        # request that never returns is an outage, and a dropped receipt is the
+        # thing this whole path exists to prevent.
+        logger.warning(
+            "Service desk: Temporal unavailable for the receipt for %s, sending in-process (%s)",
+            ticket_id,
+            exc,
+        )
+        background.add_task(acknowledge_ticket_in_background, ticket_id)
 
 
 @router.get("/tickets/{ticket_id}", response_model=ServiceDeskTicketDetail)

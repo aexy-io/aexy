@@ -16,6 +16,7 @@ import logging
 import re
 import secrets
 from datetime import datetime, timezone
+from typing import NamedTuple
 from uuid import uuid4
 
 from fastapi import HTTPException
@@ -61,6 +62,10 @@ SERVICE_DESK_FORM_SLUG = "service-desk"
 # there may be no email address at all. It is not deliverable, so the
 # acknowledgement recognises it and stays put rather than attempting a send.
 MANUAL_SENDER_ADDRESS = "manual@local"
+# What `acknowledge_ticket` reports. Only ACK_FAILED is worth another attempt.
+ACK_SENT = "sent"
+ACK_NOTHING_TO_DO = "nothing_to_do"
+ACK_FAILED = "failed"
 _TICKET_NUMBER_ATTEMPTS = 5
 _MAX_ISSUES_PER_EMAIL = 5
 # An email may only be auto-split into two tickets, and only when the model is
@@ -76,6 +81,20 @@ _SPLIT_MIN_CONFIDENCE = 0.85
 _LOW_CONFIDENCE = 0.6
 _AI_MATCH_MIN_CONFIDENCE = 0.85
 _AI_MATCH_MAX_CANDIDATES = 20
+
+
+class FlushOutcome(NamedTuple):
+    """What one ``flush_notifications`` call actually did.
+
+    ``skipped`` is a queued acknowledgement that never left and never will: a
+    colleague answered the requester by hand first, or this deployment has no
+    channel configured to send on. Retrying either changes nothing, which is why
+    it is counted apart from ``failed``.
+    """
+
+    sent: int
+    failed: int
+    skipped: int
 
 
 def _domain_of(email: str | None) -> str | None:
@@ -1357,22 +1376,25 @@ class ServiceDeskIntakeService:
         if issue.get("product"):
             sd.product_id = product_ids.get(str(issue["product"]).lower())
 
-    async def acknowledge_ticket(self, ticket_id: str) -> None:
+    async def acknowledge_ticket(self, ticket_id: str) -> str:
         """Acknowledge a ticket that is already committed.
 
         The manual path uses this. Creating the ticket is what the operator is
-        waiting for; the receipt is an SMTP round trip that has nothing to do
-        with whether the ticket exists, so it happens once the response is out.
-        Best-effort, exactly as the inline receipt always was.
+        waiting for; the receipt is an SMTP round trip that has nothing to do with
+        whether the ticket exists, so it happens after the response.
+
+        Returns one of ``ACK_SENT``, ``ACK_NOTHING_TO_DO`` or ``ACK_FAILED``. The
+        caller is a Temporal activity, and "there was nobody to write to" must not
+        look like "the send broke" — only the second is worth retrying.
         """
         ticket = await self.db.get(Ticket, ticket_id)
         if ticket is None:
             logger.info("Service desk: ticket %s vanished before its receipt", ticket_id)
-            return
+            return ACK_NOTHING_TO_DO
         # A phone call has no address to answer. The sentinel is not deliverable,
         # so sending to it only buys an SMTP failure and a log line.
         if (ticket.submitter_email or "").strip().lower() == MANUAL_SENDER_ADDRESS:
-            return
+            return ACK_NOTHING_TO_DO
         sd = (
             await self.db.execute(
                 select(ServiceDeskTicket).where(ServiceDeskTicket.ticket_id == ticket_id)
@@ -1389,7 +1411,17 @@ class ServiceDeskIntakeService:
             mailbox,
             thread_id=sd.thread_ref if sd is not None else None,
         )
-        await self.flush_notifications()
+        # Nothing queued means `_send_receipt` declined it — no requester address,
+        # or the requester is the desk itself. That is a decision, not a failure.
+        if not self._pending_notifications:
+            return ACK_NOTHING_TO_DO
+        outcome = await self.flush_notifications()
+        if outcome.failed:
+            return ACK_FAILED
+        # Queued but not sent and not failed: a colleague got there first, or
+        # there is no channel to send on. Reporting ACK_SENT for either would put
+        # "sent" in the activity log for a message nobody received.
+        return ACK_SENT if outcome.sent else ACK_NOTHING_TO_DO
 
     async def _send_receipt(
         self,
@@ -1483,21 +1515,29 @@ class ServiceDeskIntakeService:
                 return True
         return False
 
-    async def flush_notifications(self) -> None:
+    async def flush_notifications(self) -> FlushOutcome:
         """Send queued acknowledgements. Call AFTER committing; never raises.
 
         Kept separate from ``ingest`` so a rolled-back transaction can't leave a
         requester holding a receipt for a ticket that does not exist.
+
+        Returns what became of each one. Callers that treat outbound as
+        best-effort ignore it, as they always have; the Temporal activity behind
+        manual logging does not, because a receipt that silently never arrived is
+        the whole reason it is a durable job.
         """
         pending, self._pending_notifications = self._pending_notifications, []
         if not pending:
-            return
+            return FlushOutcome(sent=0, failed=0, skipped=0)
         from aexy.services.service_desk_mailer import (
+            SEND_FAILED,
+            SEND_OK,
             desk_replied_in_thread,
             send_service_desk_email,
         )
         from aexy.services.service_desk_templates import render_sd
 
+        sent = failures = skipped = 0
         for item in pending:
             try:
                 mailbox = (
@@ -1517,6 +1557,7 @@ class ServiceDeskIntakeService:
                         "Service desk: receipt for %s withheld, a person already replied",
                         item["vars"].get("display_id"),
                     )
+                    skipped += 1
                     continue
                 subject, body = await render_sd(self.db, item["workspace_id"], "receipt", item["vars"])
                 # The receipt is usually the first message the desk sends, so its
@@ -1527,11 +1568,23 @@ class ServiceDeskIntakeService:
                 subject = await force_ticket_id_into_subject(
                     self.db, item["workspace_id"], subject, item["ticket_number"]
                 )
-                await send_service_desk_email(
+                outcome = await send_service_desk_email(
                     self.db, mailbox, item["to"], subject, body, thread_id=item["thread_id"]
                 )
+                if outcome == SEND_OK:
+                    sent += 1
+                elif outcome == SEND_FAILED:
+                    failures += 1
+                    logger.warning(
+                        "Service desk: receipt for %s was not delivered",
+                        item["vars"].get("display_id"),
+                    )
+                else:
+                    skipped += 1
             except Exception as exc:  # noqa: BLE001 — acknowledgements are best-effort
+                failures += 1
                 logger.warning("Service desk: receipt send skipped (%s)", exc)
+        return FlushOutcome(sent=sent, failed=failures, skipped=skipped)
 
     # ---------------------------------------------------------- mailbox lookup
 
