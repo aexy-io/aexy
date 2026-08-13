@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from temporalio import activity
+from temporalio.exceptions import WorkflowAlreadyStartedError
 
 from aexy.core.database import async_session_maker
 
@@ -23,6 +24,36 @@ FREQUENCY_MAP = {
     "12h": timedelta(hours=12),
     "24h": timedelta(hours=24),
 }
+
+
+def repo_sync_workflow_id(repository_id: str, developer_id: str) -> str:
+    """Temporal id for one repo's sync under one adopter's token.
+
+    This is what stops a sync being dispatched on top of itself. The row-level
+    `sync_status == "syncing"` check cannot: the marker is written inside the
+    sync's own transaction and not committed until it finishes, so the
+    scheduler never sees it mid-flight — and a worker that dies mid-sync would
+    leave the row saying "syncing" forever, blocking the repo permanently.
+    Temporal refuses a duplicate id while a run is open and frees it as soon as
+    the run closes, however it closes.
+
+    Keyed on (repo, adopter) rather than the catalog row because the artifacts
+    a sync writes are repo-global: two workspaces that adopted the same repo
+    behind the same adopter want one sync, not two identical ones.
+    """
+    return f"repo-sync-{repository_id}-{developer_id}"
+
+
+def repo_sync_due(last_sync_at: datetime | None, frequency: str, now: datetime) -> bool:
+    """Has enough time passed since this repo last synced?
+
+    `last_sync_at` here is the workspace catalog row's own column, which until
+    recently nothing ever wrote — leaving it NULL, this check permanently true,
+    and every eligible repo re-dispatched on each 5-minute tick no matter which
+    frequency the adopter picked. See `record_workspace_sync_state`.
+    """
+    interval = FREQUENCY_MAP.get(frequency, timedelta(hours=1))
+    return not last_sync_at or now >= last_sync_at + interval
 
 
 @dataclass
@@ -122,17 +153,21 @@ async def check_repo_auto_sync(input: CheckRepoAutoSyncInput) -> dict[str, Any]:
     now = datetime.now(timezone.utc)
     syncs_triggered = 0
     skipped_auth = 0
+    skipped_in_flight = 0
 
     async with async_session_maker() as db:
         # Walk every active workspace_repository. Sync uses the
         # adopter's installation token; if their auth is broken the
         # workspace_repository's sync_status flips to no_credentials so
         # the catalog UI can prompt a reclaim.
+        #
+        # Deliberately not filtered on `sync_status != "syncing"`: that state
+        # is not visible until the sync commits, and a worker lost mid-sync
+        # would leave it set for good. `repo_sync_workflow_id` is the guard.
         wrs_stmt = (
             select(WorkspaceRepository)
             .where(
                 WorkspaceRepository.is_active == True,  # noqa: E712
-                WorkspaceRepository.sync_status != "syncing",
                 WorkspaceRepository.adopted_by_developer_id.is_not(None),
             )
         )
@@ -163,10 +198,7 @@ async def check_repo_auto_sync(input: CheckRepoAutoSyncInput) -> dict[str, Any]:
                 wr.sync_status = "no_credentials"
                 continue
 
-            frequency = settings.get("frequency", "1h")
-            interval = FREQUENCY_MAP.get(frequency, timedelta(hours=1))
-
-            if wr.last_sync_at and now < wr.last_sync_at + interval:
+            if not repo_sync_due(wr.last_sync_at, settings.get("frequency", "1h"), now):
                 continue
 
             try:
@@ -176,22 +208,40 @@ async def check_repo_auto_sync(input: CheckRepoAutoSyncInput) -> dict[str, Any]:
                         repository_id=wr.repository_id,
                         developer_id=str(developer.id),
                     ),
+                    workflow_id=repo_sync_workflow_id(
+                        str(wr.repository_id), str(developer.id)
+                    ),
                 )
                 syncs_triggered += 1
                 logger.info(
                     f"Auto-sync triggered for workspace_repository {wr.id} "
                     f"(repo {wr.repository_id}, adopter {developer.id})"
                 )
+            except WorkflowAlreadyStartedError:
+                # This repo's previous sync is still running. Expected on a
+                # long backfill, and not a failure — say so quietly.
+                skipped_in_flight += 1
+                logger.debug(
+                    f"Auto-sync already in flight for workspace_repository {wr.id}"
+                )
             except Exception:
                 logger.exception(
                     f"Failed to dispatch auto-sync for workspace_repository {wr.id}"
                 )
 
+        # `sync_status = "no_credentials"` above is the catalog page's cue to
+        # offer a reclaim. The session was closed without committing, so that
+        # cue was thrown away on every pass and the banner never appeared.
+        await db.commit()
+
     if skipped_auth:
         logger.warning(f"Auto-sync skipped {skipped_auth} developers with broken GitHub auth")
 
-    logger.info(f"Auto-sync check complete: {syncs_triggered} syncs triggered")
-    return {"syncs_triggered": syncs_triggered}
+    logger.info(
+        f"Auto-sync check complete: {syncs_triggered} syncs triggered, "
+        f"{skipped_in_flight} already running"
+    )
+    return {"syncs_triggered": syncs_triggered, "skipped_in_flight": skipped_in_flight}
 
 
 @dataclass

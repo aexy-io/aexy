@@ -1,0 +1,90 @@
+{
+  "reportsMonthly": {
+    "title": "Monthly Engineering Report",
+    "subtitle": "Contribution report for {workspace}, built from synced GitHub activity.",
+    "month": "Month",
+    "timezone": "Timezone",
+    "generate": "Generate report",
+    "regenerate": "Regenerate",
+    "generating": "Building the report…",
+    "copyMarkdown": "Copy markdown",
+    "copied": "Markdown copied to clipboard",
+    "download": "Download markdown",
+    "loadFailed": "Could not build the report",
+    "noWorkspace": "Pick a workspace to report on.",
+    "freshness": {
+      "title": "Data freshness",
+      "upToDate": "All {count} repositories are synced past the end of {month}.",
+      "stale": "{count} of {total} repositories were last synced before {month} ended. Work that landed after their last sync is missing from this report.",
+      "neverSynced": "never synced",
+      "lastSynced": "last synced {when}",
+      "noAdopter": "no adopter — nobody's GitHub token is lending this repository a sync",
+      "syncNow": "Sync repositories now",
+      "syncing": "Syncing…",
+      "syncStarted": "Sync started for {count} repositories. This can take a few minutes on a first run — regenerate the report when it settles.",
+      "syncAlreadyRunning": "{count} repositories were already syncing.",
+      "syncNothingToDo": "Nothing to sync: no repository has an adopter to sync under.",
+      "syncFailed": "Could not start the sync",
+      "syncAdminOnly": "Only a workspace admin can start a sync. The report below is built on whatever has synced so far.",
+      "reclaimHint": "Reassign an adopter on the repositories page so this one can sync again."
+    },
+    "summary": {
+      "title": "Summary",
+      "contributors": "Contributors",
+      "commits": "Commits",
+      "commitsHint": "deduplicated, human",
+      "prsMerged": "Pull requests merged",
+      "lines": "Source lines",
+      "linesHint": "lockfiles, build output and generated code excluded",
+      "repositories": "Active repositories",
+      "activeDays": "Active working days",
+      "ported": "Ported commits",
+      "portedHint": "same change, more than one branch",
+      "botsExcluded": "Automated commits excluded",
+      "mergesExcluded": "Merge commits excluded"
+    },
+    "members": {
+      "title": "Contribution by member",
+      "note": "Both pull-request columns count what merged this month: \"theirs\" is what they wrote, \"merged by them\" is what they pressed merge on — a different job from writing it.",
+      "member": "Member",
+      "commits": "Commits",
+      "share": "Share",
+      "added": "+src",
+      "removed": "−src",
+      "prsTheirs": "PRs theirs",
+      "prsMergedByThem": "PRs merged by them",
+      "reviews": "Reviews",
+      "activeDays": "Active days",
+      "repos": "Repos",
+      "team": "Team",
+      "caution": "Read commit counts with care. Volume reflects branching style as much as output — porting each change onto two branches, or committing from the GitHub web editor, multiplies the count for the same work."
+    },
+    "repositories": {
+      "title": "Activity by repository",
+      "repository": "Repository",
+      "commits": "Commits",
+      "added": "+src",
+      "removed": "−src",
+      "contributors": "Main contributors"
+    },
+    "observations": {
+      "title": "Observations"
+    },
+    "limitations": {
+      "title": "What this report could not measure",
+      "intro": "Every figure above rests on synced data. These are the gaps in it."
+    },
+    "empty": {
+      "title": "No activity in {month}",
+      "body": "Nothing landed in this workspace's repositories during this period. If that looks wrong, check the sync state above — a repository that has never synced has no history here yet."
+    },
+    "forbidden": {
+      "title": "You do not have access to this report",
+      "body": "The monthly engineering report is available to workspace admins and department heads. It reports on individual contribution, so it is kept to the people who run the team. Ask an admin if you need it."
+    },
+    "scope": {
+      "title": "Scope: {departments}.",
+      "body": "Every figure below counts only the people in your department. Workspace-wide numbers are available to admins."
+    }
+  }
+}

@@ -300,9 +300,31 @@ class IngestionService:
             except (ValueError, AttributeError):
                 return None
 
+        # Webhook payloads carry the merger; the `closed` event with
+        # `merged: true` is where a PR gets one. Resolved to a developer when
+        # they have a GitHub connection — no ghost is created here, the repo
+        # sync does that on its next pass, and `merged_by_login` holds the
+        # answer meanwhile.
+        merged_by = pull_request.get("merged_by") or {}
+        merged_by_login = merged_by.get("login")
+        merged_by_developer_id = None
+        if merged_by.get("id"):
+            merged_by_developer_id = (
+                await db.execute(
+                    select(GitHubConnection.developer_id).where(
+                        GitHubConnection.github_id == merged_by["id"]
+                    )
+                )
+            ).scalar_one_or_none()
+
         if existing:
             # Update existing PR
             existing.state = pull_request.get("state", existing.state)
+            if merged_by_login:
+                existing.merged_by_login = merged_by_login
+                existing.merged_by_developer_id = (
+                    merged_by_developer_id or existing.merged_by_developer_id
+                )
             existing.title = title or existing.title
             existing.description = body
             existing.additions = pull_request.get("additions", existing.additions)
@@ -337,6 +359,8 @@ class IngestionService:
             commits_count=pull_request.get("commits", 0),
             comments_count=pull_request.get("comments", 0),
             review_comments_count=pull_request.get("review_comments", 0),
+            merged_by_login=merged_by_login,
+            merged_by_developer_id=merged_by_developer_id,
             detected_skills=detected_skills,
             created_at_github=parse_timestamp(created_at_str) or datetime.now(),
             updated_at_github=parse_timestamp(updated_at_str),

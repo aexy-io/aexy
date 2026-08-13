@@ -66,6 +66,9 @@ class WorkspaceRepositoryService:
             existing.is_active = True
             if not existing.adopted_by_developer_id:
                 existing.adopted_by_developer_id = adopted_by_developer_id
+            await self.ensure_developer_repository(
+                existing.adopted_by_developer_id, repository_id
+            )
             await self.db.flush()
             return existing
 
@@ -78,8 +81,67 @@ class WorkspaceRepositoryService:
             sync_status="pending",
         )
         self.db.add(wr)
+        await self.ensure_developer_repository(adopted_by_developer_id, repository_id)
         await self.db.flush()
         return wr
+
+    async def ensure_developer_repository(
+        self, developer_id: str | None, repository_id: str
+    ) -> DeveloperRepository | None:
+        """Give the adopter the per-developer row the sync writes its state to.
+
+        Adoption used to create only the workspace row, and `SyncService`
+        looks the sync up by (developer, repository) — so an adopter who had
+        never listed the repo themselves got `Repository not found for this
+        developer` on every run. Nothing surfaced it: the scheduler dispatches
+        and moves on, and the catalog page just kept saying pending.
+
+        This row is bookkeeping, not permission. Whether the adopter can
+        actually read the repo is decided by GitHub when the sync calls it,
+        and a token without access fails visibly with a reconnect message.
+        """
+        if not developer_id:
+            return None
+
+        existing = (
+            await self.db.execute(
+                select(DeveloperRepository).where(
+                    DeveloperRepository.developer_id == developer_id,
+                    DeveloperRepository.repository_id == repository_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if existing:
+            return existing
+
+        dev_repo = DeveloperRepository(
+            id=str(uuid4()),
+            developer_id=developer_id,
+            repository_id=repository_id,
+            is_enabled=True,
+            sync_status="pending",
+            webhook_status="none",
+        )
+        self.db.add(dev_repo)
+        await self.db.flush()
+        return dev_repo
+
+    async def has_installation_reach(
+        self, developer_id: str, repository_id: str
+    ) -> bool:
+        """Has GitHub ever shown this repo to this developer?
+
+        Read before adoption creates a row, never after — adoption's own row
+        would answer yes for somebody who cannot see the repo at all.
+        """
+        return (
+            await self.db.execute(
+                select(DeveloperRepository.id).where(
+                    DeveloperRepository.developer_id == developer_id,
+                    DeveloperRepository.repository_id == repository_id,
+                )
+            )
+        ).scalar_one_or_none() is not None
 
     async def get_workspace_repository(
         self, workspace_id: str, repository_id: str
@@ -120,6 +182,10 @@ class WorkspaceRepositoryService:
         if not wr:
             return None
         wr.adopted_by_developer_id = new_adopter_id
+        # The new adopter needs the row the sync writes to, exactly as an
+        # original adopter does — otherwise reclaiming looks like it worked
+        # and the repo still never syncs.
+        await self.ensure_developer_repository(new_adopter_id, wr.repository_id)
         # Clear no_credentials marker if it was set; sync will pick this up.
         if wr.sync_status == "no_credentials":
             wr.sync_status = "pending"
@@ -208,6 +274,13 @@ class WorkspaceRepositoryService:
         `DeveloperRepository` row for this repo (i.e., GitHub revealed
         the repo to their installation), or None if no one in the
         workspace has reach.
+
+        Row presence is a weaker signal than it was: adoption now creates one
+        for the adopter, whether or not GitHub ever showed them the repo. So
+        prefer whoever has actually synced it — that is proof of access, where
+        a bare row is only a claim. Everyone unproven sorts after them, and if
+        the pick turns out to lack access the sync says so with a reconnect
+        message rather than failing silently.
         """
         stmt = (
             select(DeveloperRepository.developer_id)
@@ -219,6 +292,10 @@ class WorkspaceRepositoryService:
                 WorkspaceMember.workspace_id == workspace_id,
                 WorkspaceMember.status == "active",
                 DeveloperRepository.repository_id == repository_id,
+            )
+            .order_by(
+                DeveloperRepository.last_sync_at.desc().nullslast(),
+                DeveloperRepository.commits_synced.desc(),
             )
             .limit(1)
         )

@@ -398,6 +398,7 @@ export const APP_CATALOG: Record<string, AppDefinition> = {
     requiredPermission: null,
     modules: [
       { id: "custom_reports", name: "Custom Reports", description: "Build, schedule, and view custom reports", route: "" },
+      { id: "monthly_engineering", name: "Monthly Engineering Report", description: "Month-by-month contribution report built from synced GitHub activity", route: "/monthly" },
       { id: "exports", name: "Exports", description: "Generate and download report exports", route: "/exports" },
     ],
   },

@@ -13,6 +13,11 @@ from aexy.llm.gateway import LLMGateway
 from aexy.models.activity import Commit, PullRequest, CodeReview
 from aexy.models.developer import Developer
 from aexy.models.review import ContributionSummary
+from aexy.services.contribution_filters import (
+    human_commit_filters,
+    source_additions,
+    source_deletions,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -243,16 +248,20 @@ class ContributionService:
         start_dt = datetime.combine(period_start, datetime.min.time())
         end_dt = datetime.combine(period_end, datetime.max.time())
 
-        # Aggregate commits
+        # Aggregate commits. `human_commits` drops bots and merge commits —
+        # a release bot's version bumps and a merge's second-parent diff are
+        # not somebody's contribution, and counting them flatters whoever
+        # happens to integrate.
         commits_stmt = select(
             func.count(Commit.id).label("total"),
-            func.sum(Commit.additions).label("additions"),
-            func.sum(Commit.deletions).label("deletions"),
+            func.sum(source_additions()).label("additions"),
+            func.sum(source_deletions()).label("deletions"),
         ).where(
             and_(
                 Commit.developer_id == developer_id,
                 Commit.committed_at >= start_dt,
                 Commit.committed_at <= end_dt,
+                *human_commit_filters(),
             )
         )
         commits_result = await self.db.execute(commits_stmt)
@@ -269,6 +278,7 @@ class ContributionService:
                     Commit.developer_id == developer_id,
                     Commit.committed_at >= start_dt,
                     Commit.committed_at <= end_dt,
+                    *human_commit_filters(),
                 )
             )
             .group_by(Commit.repository)
@@ -288,6 +298,7 @@ class ContributionService:
                     Commit.developer_id == developer_id,
                     Commit.committed_at >= start_dt,
                     Commit.committed_at <= end_dt,
+                    *human_commit_filters(),
                 )
             )
             .group_by(month_col)
@@ -307,8 +318,11 @@ class ContributionService:
         ).where(
             and_(
                 PullRequest.developer_id == developer_id,
-                PullRequest.created_at >= start_dt,
-                PullRequest.created_at <= end_dt,
+                # `created_at_github`, not `created_at`: the latter is when our
+                # sync first wrote the row, so a backfill dropped a year of PRs
+                # into whichever period it happened to run in.
+                PullRequest.created_at_github >= start_dt,
+                PullRequest.created_at_github <= end_dt,
             )
         )
         prs_result = await self.db.execute(prs_stmt)
@@ -340,6 +354,7 @@ class ContributionService:
                     Commit.committed_at >= start_dt,
                     Commit.committed_at <= end_dt,
                     Commit.languages.isnot(None),
+                    *human_commit_filters(),
                 )
             )
         )
@@ -411,8 +426,11 @@ class ContributionService:
             reviews_changes_requested=reviews_row.changes_requested or 0,
             reviews_commented=reviews_row.commented or 0,
             avg_comments_per_review=float(reviews_row.avg_comments) if reviews_row.avg_comments else None,
-            lines_added=(commits_row.additions or 0) + (prs_row.additions or 0),
-            lines_deleted=(commits_row.deletions or 0) + (prs_row.deletions or 0),
+            # Commits only. Adding the PR totals on top double-counted every
+            # line that went through a PR — which is all of them, on any team
+            # that reviews its work.
+            lines_added=commits_row.additions or 0,
+            lines_deleted=commits_row.deletions or 0,
             languages=languages,
             skills_demonstrated=skills_demonstrated,
         )

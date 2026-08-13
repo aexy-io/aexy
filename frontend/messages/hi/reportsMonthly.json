@@ -1,0 +1,90 @@
+{
+  "reportsMonthly": {
+    "title": "मासिक इंजीनियरिंग रिपोर्ट",
+    "subtitle": "{workspace} के लिए योगदान रिपोर्ट, सिंक की गई GitHub गतिविधि से बनी।",
+    "month": "महीना",
+    "timezone": "टाइमज़ोन",
+    "generate": "रिपोर्ट बनाएँ",
+    "regenerate": "फिर से बनाएँ",
+    "generating": "रिपोर्ट बनाई जा रही है…",
+    "copyMarkdown": "Markdown कॉपी करें",
+    "copied": "Markdown क्लिपबोर्ड पर कॉपी हो गया",
+    "download": "Markdown डाउनलोड करें",
+    "loadFailed": "रिपोर्ट नहीं बन सकी",
+    "noWorkspace": "रिपोर्ट के लिए एक workspace चुनें।",
+    "freshness": {
+      "title": "डेटा की ताज़गी",
+      "upToDate": "सभी {count} रिपॉज़िटरीज़ {month} के अंत के बाद तक सिंक हैं।",
+      "stale": "{total} में से {count} रिपॉज़िटरीज़ {month} खत्म होने से पहले सिंक हुई थीं। उनके आखिरी सिंक के बाद का काम इस रिपोर्ट में नहीं है।",
+      "neverSynced": "कभी सिंक नहीं हुई",
+      "lastSynced": "आखिरी सिंक {when}",
+      "noAdopter": "कोई adopter नहीं — इस रिपॉज़िटरी को सिंक करने के लिए किसी का GitHub token उपलब्ध नहीं है",
+      "syncNow": "अभी रिपॉज़िटरीज़ सिंक करें",
+      "syncing": "सिंक हो रहा है…",
+      "syncStarted": "{count} रिपॉज़िटरीज़ के लिए सिंक शुरू हुआ। पहली बार में कुछ मिनट लग सकते हैं — पूरा होने पर रिपोर्ट फिर से बनाएँ।",
+      "syncAlreadyRunning": "{count} रिपॉज़िटरीज़ पहले से सिंक हो रही थीं।",
+      "syncNothingToDo": "सिंक करने को कुछ नहीं: किसी रिपॉज़िटरी का adopter सेट नहीं है।",
+      "syncFailed": "सिंक शुरू नहीं हो सका",
+      "syncAdminOnly": "सिंक केवल workspace admin शुरू कर सकते हैं। नीचे की रिपोर्ट अब तक सिंक हुए डेटा पर बनी है।",
+      "reclaimHint": "रिपॉज़िटरीज़ पेज पर नया adopter असाइन करें ताकि यह फिर से सिंक हो सके।"
+    },
+    "summary": {
+      "title": "सारांश",
+      "contributors": "योगदानकर्ता",
+      "commits": "Commits",
+      "commitsHint": "डुप्लिकेट हटाकर, मानव",
+      "prsMerged": "Merge हुए pull requests",
+      "lines": "Source lines",
+      "linesHint": "lockfiles, build output और generated code शामिल नहीं",
+      "repositories": "सक्रिय रिपॉज़िटरीज़",
+      "activeDays": "सक्रिय कार्यदिवस",
+      "ported": "पोर्ट किए गए commits",
+      "portedHint": "एक ही बदलाव, एक से ज़्यादा branch पर",
+      "botsExcluded": "स्वचालित commits हटाए गए",
+      "mergesExcluded": "Merge commits हटाए गए"
+    },
+    "members": {
+      "title": "सदस्य के अनुसार योगदान",
+      "note": "दोनों pull-request कॉलम इस महीने merge हुए PRs गिनते हैं: \"इनके\" यानी जो इन्होंने लिखे, और \"इन्होंने merge किए\" यानी जिन पर इन्होंने merge दबाया — लिखने से अलग काम।",
+      "member": "सदस्य",
+      "commits": "Commits",
+      "share": "हिस्सा",
+      "added": "+src",
+      "removed": "−src",
+      "prsTheirs": "PRs इनके",
+      "prsMergedByThem": "PRs इन्होंने merge किए",
+      "reviews": "Reviews",
+      "activeDays": "सक्रिय दिन",
+      "repos": "रिपोज़",
+      "team": "टीम",
+      "caution": "Commit संख्या को सावधानी से पढ़ें। यह जितना काम का संकेत है उतना ही branching शैली का — हर बदलाव को दो branch पर पोर्ट करने या GitHub web editor से commit करने पर वही काम कई गुना commits बनाता है।"
+    },
+    "repositories": {
+      "title": "रिपॉज़िटरी के अनुसार गतिविधि",
+      "repository": "रिपॉज़िटरी",
+      "commits": "Commits",
+      "added": "+src",
+      "removed": "−src",
+      "contributors": "मुख्य योगदानकर्ता"
+    },
+    "observations": {
+      "title": "अवलोकन"
+    },
+    "limitations": {
+      "title": "यह रिपोर्ट क्या नहीं माप सकी",
+      "intro": "ऊपर के सभी आँकड़े सिंक किए गए डेटा पर टिके हैं। ये उसमें मौजूद कमियाँ हैं।"
+    },
+    "empty": {
+      "title": "{month} में कोई गतिविधि नहीं",
+      "body": "इस अवधि में इस workspace की रिपॉज़िटरीज़ में कुछ नहीं आया। यदि यह गलत लगता है, ऊपर सिंक स्थिति देखें — जो रिपॉज़िटरी कभी सिंक नहीं हुई, उसका इतिहास यहाँ अभी नहीं है।"
+    },
+    "forbidden": {
+      "title": "इस रिपोर्ट तक आपकी पहुँच नहीं है",
+      "body": "मासिक इंजीनियरिंग रिपोर्ट workspace admins और विभाग प्रमुखों के लिए है। यह व्यक्तिगत योगदान दिखाती है, इसलिए इसे टीम चलाने वालों तक सीमित रखा गया है। ज़रूरत हो तो admin से कहें।"
+    },
+    "scope": {
+      "title": "दायरा: {departments}।",
+      "body": "नीचे के सभी आँकड़े केवल आपके विभाग के लोगों के हैं। पूरे workspace के आँकड़े admins के पास हैं।"
+    }
+  }
+}

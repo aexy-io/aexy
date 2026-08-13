@@ -35,10 +35,20 @@ class Commit(Base):
     repository: Mapped[str] = mapped_column(String(255), index=True)
     message: Mapped[str] = mapped_column(Text)
 
-    # Metrics
+    # Metrics — everything GitHub counted, lockfiles and vendored trees included.
     additions: Mapped[int] = mapped_column(Integer, default=0)
     deletions: Mapped[int] = mapped_column(Integer, default=0)
     files_changed: Mapped[int] = mapped_column(Integer, default=0)
+
+    # The same three counting source files only: no lockfiles, no dist/build/
+    # vendor/node_modules/coverage, no minified or generated output. A single
+    # `npm install` drags six figures of lockfile churn into the raw numbers, so
+    # any report quoting lines written has to read these instead. NULL means the
+    # commit predates the split (or its file list never arrived) — fall back to
+    # the raw columns and say so rather than reporting a silent zero.
+    source_additions: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    source_deletions: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    source_files_changed: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # File types and languages detected
     languages: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
@@ -54,6 +64,18 @@ class Commit(Base):
     is_merge: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_revert: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
+    # Hash of the change itself rather than of its place in history, so the
+    # same work cherry-picked onto a release branch collides with the original.
+    # A team that ports every change onto two branches otherwise looks three
+    # times as productive as it is; `sha` cannot see it, since a cherry-pick
+    # gets a new one. Same idea as `git patch-id --stable`.
+    content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+
+    # Branch we first met this commit on while walking the repo. Not "the branch
+    # it lives on" — a commit reachable from several branches is recorded under
+    # whichever came first, default branch first.
+    branch: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
     # Truncated diff stored at sync time so re-analysis doesn't re-fetch from GitHub
     patch_sample: Mapped[str | None] = mapped_column(Text, nullable=True)
 
@@ -63,7 +85,13 @@ class Commit(Base):
         DateTime(timezone=True), nullable=True, index=True
     )
 
+    # When it landed. A cherry-pick or a rebase rewrites this; `authored_at` is
+    # when the work was actually written, which is why a monthly report counts
+    # one and narrates the other.
     committed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    authored_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -97,13 +125,28 @@ class PullRequest(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     state: Mapped[str] = mapped_column(String(50))  # open, closed, merged
 
-    # Metrics
+    # Metrics. GitHub's *list* endpoint omits every one of these, so a PR that
+    # arrived through a backfill sync used to store six zeros — which also made
+    # `size_bucket` "xs" and had the AI pass skip the PR for good. They come from
+    # the per-PR detail call now; webhooks always carried them.
     additions: Mapped[int] = mapped_column(Integer, default=0)
     deletions: Mapped[int] = mapped_column(Integer, default=0)
     files_changed: Mapped[int] = mapped_column(Integer, default=0)
     commits_count: Mapped[int] = mapped_column(Integer, default=0)
     comments_count: Mapped[int] = mapped_column(Integer, default=0)
     review_comments_count: Mapped[int] = mapped_column(Integer, default=0)
+
+    # Who pressed merge, which is not who wrote it. Integration load lands on a
+    # couple of people on most teams and is invisible without this.
+    merged_by_developer_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    # Kept beside the FK so the merger survives as a name when they were never
+    # an internal developer, or their row is deleted.
+    merged_by_login: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # Detected skills/technologies
     detected_skills: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
@@ -143,10 +186,16 @@ class PullRequest(Base):
         server_default=func.now(),
     )
 
-    # Relationship
+    # Relationship. `foreign_keys` is explicit because the table now points at
+    # developers twice — author and merger — and SQLAlchemy will not guess.
     developer: Mapped["Developer"] = relationship(
         "Developer",
         back_populates="pull_requests",
+        foreign_keys=[developer_id],
+    )
+    merged_by: Mapped["Developer | None"] = relationship(
+        "Developer",
+        foreign_keys=[merged_by_developer_id],
     )
 
 
