@@ -37,10 +37,19 @@ logger = logging.getLogger(__name__)
 # whichever channel a message leaves on, it comes back marked the same way.
 __all__ = [
     "OUTBOUND_MARKER_HEADER",
+    "SEND_FAILED",
+    "SEND_OK",
+    "SEND_UNCONFIGURED",
     "desk_replied_in_thread",
     "send_service_desk_email",
     "send_stakeholder_email",
 ]
+
+# What `send_service_desk_email` reports back. Only the retryable one is
+# interesting to most callers; see that function's docstring.
+SEND_OK = "sent"
+SEND_FAILED = "failed"
+SEND_UNCONFIGURED = "unconfigured"
 
 
 def _header_safe(value: str) -> str:
@@ -260,10 +269,21 @@ async def send_service_desk_email(
     subject: str,
     body_text: str,
     thread_id: str | None = None,
-) -> None:
-    """Send an email for a service-desk mailbox, picking the channel. Never raises."""
+) -> str:
+    """Send an email for a service-desk mailbox, picking the channel. Never raises.
+
+    Returns what happened, because a caller running inside a Temporal activity has
+    to tell a failure worth retrying from one that is not — swallow that
+    distinction here and the retry policy has nothing to act on. Every existing
+    caller ignores the return value and keeps its best-effort behaviour.
+
+        ``SEND_OK``          a channel accepted the message
+        ``SEND_FAILED``      delivery was attempted and did not happen — retryable
+        ``SEND_UNCONFIGURED`` this deployment has no transactional email at all,
+                             so there is nothing to retry until somebody sets it up
+    """
     if not to_email:
-        return
+        return SEND_UNCONFIGURED
 
     if (
         mailbox is not None
@@ -282,14 +302,18 @@ async def send_service_desk_email(
                 thread_id=thread_id,
                 auto_generated=True,
             )
-            return
+            return SEND_OK
         except Exception as exc:  # noqa: BLE001 — degrade to transactional send
             logger.info("Service desk: Gmail send failed, falling back to EmailService (%s)", exc)
 
     try:
         from aexy.services.email_service import EmailService
 
-        await EmailService().send_templated_email(
+        service = EmailService()
+        if not service.is_configured:
+            logger.info("Service desk: no transactional email configured, send skipped")
+            return SEND_UNCONFIGURED
+        log = await service.send_templated_email(
             db=db,
             recipient_email=to_email,
             subject=subject,
@@ -298,5 +322,10 @@ async def send_service_desk_email(
             # go out on must not decide whether it can come back in as a ticket.
             auto_generated=True,
         )
+        # `send_templated_email` catches its own provider errors and records the
+        # outcome on the log row rather than raising, so the row is the only place
+        # that knows whether anything left.
+        return SEND_OK if log.status == "sent" else SEND_FAILED
     except Exception as exc:  # noqa: BLE001 — outbound is best-effort
         logger.info("Service desk: email send skipped (%s)", exc)
+        return SEND_FAILED

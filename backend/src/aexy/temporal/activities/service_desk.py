@@ -13,6 +13,41 @@ class SendServiceDeskDigestInput:
     pass
 
 
+@dataclass
+class SendServiceDeskReceiptInput:
+    ticket_id: str
+
+
+@activity.defn
+async def send_service_desk_receipt(input: SendServiceDeskReceiptInput) -> str:
+    """Acknowledge a manually logged ticket, after its request has returned.
+
+    The operator is on the phone when they log a call, so the SMTP round trip
+    does not belong in their request. It was a FastAPI background task first,
+    which took it off the critical path but tied it to the lifetime of the
+    process that served the request: a deploy or a crash in the seconds after
+    the ticket was created dropped the receipt with nothing to say so.
+
+    Raising on a failed send is the point of running here — ``STANDARD_RETRY``
+    then tries again with backoff. "Nobody to write to" is a decision rather
+    than a failure and returns normally, so it does not burn retries.
+    """
+    from aexy.core.database import get_async_session
+    from aexy.services.service_desk_intake_service import (
+        ACK_FAILED,
+        ServiceDeskIntakeService,
+    )
+
+    async with get_async_session() as session:
+        outcome = await ServiceDeskIntakeService(session).acknowledge_ticket(input.ticket_id)
+    if outcome == ACK_FAILED:
+        raise RuntimeError(
+            f"Service desk receipt for ticket {input.ticket_id} was not delivered"
+        )
+    logger.info("Service desk receipt for %s: %s", input.ticket_id, outcome)
+    return outcome
+
+
 @activity.defn
 async def send_service_desk_digest(input: SendServiceDeskDigestInput) -> int:
     """Send open-ticket digests for every workspace that is due one.
