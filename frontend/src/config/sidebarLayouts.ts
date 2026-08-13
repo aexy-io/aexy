@@ -68,6 +68,7 @@ import {
     UserCheck,
     MessageCircle,
     Workflow,
+    CalendarRange,
     ListTodo,
 } from "lucide-react";
 
@@ -196,6 +197,7 @@ const leaveItems: SidebarItemConfig[] = [
 
 const reportsItems: SidebarItemConfig[] = [
     { href: "/reports", label: "Custom Reports", icon: FileText },
+    { href: "/reports/monthly", label: "Monthly Engineering", icon: CalendarRange },
     { href: "/exports", label: "Exports", icon: Download },
 ];
 

@@ -181,10 +181,11 @@ async def _resolve_adopter_metadata(
 async def _resolve_sync_metadata(db: AsyncSession, wrs: list) -> dict[str, dict]:
     """Resolve effective sync state for workspace repos.
 
-    WorkspaceRepository is the workspace-owned catalog, but older sync paths
-    still update DeveloperRepository counters. Use the adopter row as a
-    compatibility source so settings and analytics do not disagree while the
-    sync pipeline migration is completed.
+    The sync now stamps the WorkspaceRepository row itself, but rows adopted
+    before that only carry their adoption defaults — `pending`, no timestamp —
+    while the adopter's DeveloperRepository row holds the real history. Keep
+    reading the adopter row so those repos don't read as never-synced until
+    their next sync; the two agree from that point on.
     """
     pairs = [
         (str(wr.id), str(wr.adopted_by_developer_id), str(wr.repository_id))
@@ -291,16 +292,19 @@ async def adopt_repository(
                 status_code=status.HTTP_402_PAYMENT_REQUIRED,
                 detail=error or "Workspace repository limit reached",
             )
+    # Prefer the caller when GitHub has actually shown them this repo, and
+    # only borrow somebody else's reach when it hasn't. The old version took
+    # the fallback whenever it named a different person — so adopting a repo
+    # you could see handed the sync to an arbitrary colleague, which is the
+    # opposite of what its own comment claimed. Asked before adoption creates
+    # the caller's row, or the answer would always be yes.
     adopter = developer_id
-    fallback = await service.pick_installation_developer(
-        workspace_id, data.repository_id
-    )
-    # Prefer the caller as adopter if they have reach; else fall back to
-    # any workspace member who can reach the repo through their install.
-    if fallback != developer_id and fallback is not None:
-        # Caller might not have a DeveloperRepository row for this repo;
-        # use whoever does to avoid sync failing.
-        adopter = fallback
+    if not await service.has_installation_reach(developer_id, data.repository_id):
+        fallback = await service.pick_installation_developer(
+            workspace_id, data.repository_id
+        )
+        if fallback:
+            adopter = fallback
 
     wr = await service.adopt_repository(
         workspace_id=workspace_id,

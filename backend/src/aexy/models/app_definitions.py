@@ -512,6 +512,11 @@ APP_CATALOG: dict[str, AppConfig] = {
                 "description": "Build, schedule, and view custom reports",
                 "route": "",
             },
+            "monthly_engineering": {
+                "name": "Monthly Engineering Report",
+                "description": "Month-by-month contribution report built from synced GitHub activity",
+                "route": "/monthly",
+            },
             "exports": {
                 "name": "Exports",
                 "description": "Generate and download report exports",

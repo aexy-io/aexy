@@ -1570,7 +1570,110 @@ export interface ScheduledReport {
 }
 
 // Reports API
+/** One person's row in the monthly engineering report. */
+export interface MonthlyReportMember {
+  developer_id: string;
+  name: string;
+  commits: number;
+  source_additions: number;
+  source_deletions: number;
+  prs_authored: number;
+  prs_merged_by_them: number;
+  reviews_given: number;
+  active_days: number;
+  repositories: string[];
+  low_signal_subjects: number;
+  reverts: number;
+  ported_commits: number;
+}
+
+export interface MonthlyReportRepo {
+  full_name: string;
+  commits: number;
+  source_additions: number;
+  source_deletions: number;
+  contributors: [string, number][];
+  last_synced_at: string | null;
+}
+
+/** Freshness of an adopted repo — drives the "sync before reporting" prompt. */
+export interface MonthlyReportRepoSyncState {
+  repository_id: string;
+  full_name: string;
+  sync_status: string;
+  last_synced_at: string | null;
+  covers_period: boolean;
+  has_adopter: boolean;
+}
+
+export interface MonthlyEngineeringReport {
+  workspace_id: string;
+  workspace_name: string;
+  month: string;
+  period_start: string;
+  period_end: string;
+  timezone_name: string;
+  contributors: number;
+  commits: number;
+  commits_before_dedup: number;
+  ported_commits: number;
+  bot_commits_excluded: number;
+  merge_commits_excluded: number;
+  prs_merged: number;
+  source_additions: number;
+  source_deletions: number;
+  active_repositories: number;
+  active_days: number;
+  /** Empty for a workspace-wide report; otherwise the departments it covers. */
+  scope_departments: string[];
+  members: MonthlyReportMember[];
+  repositories: MonthlyReportRepo[];
+  repository_sync_state: MonthlyReportRepoSyncState[];
+  observations: string[];
+  limitations: string[];
+}
+
+export interface MonthlyReportRefreshResult {
+  queued: string[];
+  already_running: string[];
+  no_adopter: string[];
+  failed: string[];
+}
+
 export const reportsApi = {
+  getMonthlyEngineeringReport: async (
+    workspaceId: string,
+    month: string,
+    timezone: string
+  ): Promise<MonthlyEngineeringReport> => {
+    const response = await api.get("/reports/engineering/monthly", {
+      params: { workspace_id: workspaceId, month, timezone },
+    });
+    return response.data;
+  },
+
+  getMonthlyEngineeringReportMarkdown: async (
+    workspaceId: string,
+    month: string,
+    timezone: string
+  ): Promise<string> => {
+    const response = await api.get("/reports/engineering/monthly", {
+      params: { workspace_id: workspaceId, month, timezone, format: "markdown" },
+      responseType: "text",
+    });
+    return response.data;
+  },
+
+  /** Sync every adopted repo so the report is built on current data. Admin only. */
+  refreshMonthlyEngineeringReportData: async (
+    workspaceId: string
+  ): Promise<MonthlyReportRefreshResult> => {
+    const response = await api.post("/reports/engineering/monthly/refresh", null, {
+      params: { workspace_id: workspaceId },
+    });
+    return response.data;
+  },
+
   listReports: async (includePublic = true, includeTemplates = false): Promise<CustomReport[]> => {
     const response = await api.get("/reports", {
       params: { include_public: includePublic, include_templates: includeTemplates },

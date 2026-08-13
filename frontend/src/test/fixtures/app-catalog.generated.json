@@ -205,7 +205,8 @@
       "required_permission": null,
       "modules": [
         "custom_reports",
-        "exports"
+        "exports",
+        "monthly_engineering"
       ]
     },
     "reviews": {

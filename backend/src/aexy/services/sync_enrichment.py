@@ -7,6 +7,7 @@ bot commits, formatter-only changes, or trivial PRs.
 
 from __future__ import annotations
 
+import hashlib
 import re
 from typing import Any
 
@@ -127,6 +128,98 @@ def is_revert_commit(message: str | None) -> bool:
     if not message:
         return False
     return bool(_REVERT_RE.match(message.strip()))
+
+
+_LOCKFILE_NAMES = frozenset(
+    {
+        "package-lock.json",
+        "yarn.lock",
+        "pnpm-lock.yaml",
+        "poetry.lock",
+        "uv.lock",
+        "cargo.lock",
+        "gemfile.lock",
+        "composer.lock",
+        "go.sum",
+        "podfile.lock",
+        "packages.lock.json",
+        "mix.lock",
+    }
+)
+
+
+def counts_as_source(path: str) -> bool:
+    """Would a person counting "lines written" count this file?
+
+    No for lockfiles, vendored and build output, minified bundles and
+    generated code — the churn that makes one `npm install` outweigh a month
+    of work. Yes for everything else, tests and docs included: they are
+    written by hand and `change_class` already distinguishes them for anyone
+    who wants to split them out.
+    """
+    if not path:
+        return False
+    if path.rsplit("/", 1)[-1].lower() in _LOCKFILE_NAMES:
+        return False
+    return not _GENERATED_PATTERNS.search(path)
+
+
+def source_churn(files: list[dict[str, Any]] | None) -> tuple[int, int, int] | None:
+    """(additions, deletions, files) counting source files only.
+
+    Returns None when there is no file list to judge — the commit-details
+    fetch failed, or the payload never carried one. The caller stores NULL so
+    a report can say "not measured" rather than publish a zero as if the
+    commit were empty.
+    """
+    if not files:
+        return None
+
+    additions = deletions = counted = 0
+    for f in files:
+        if not counts_as_source(f.get("filename") or ""):
+            continue
+        additions += int(f.get("additions") or 0)
+        deletions += int(f.get("deletions") or 0)
+        counted += 1
+    return additions, deletions, counted
+
+
+def content_hash(files: list[dict[str, Any]] | None) -> str | None:
+    """Fingerprint the change so a cherry-pick collides with its original.
+
+    `git patch-id --stable` in spirit: hash the diff, ignoring where it sits in
+    history. The line *content* is what we hash — filename plus the added and
+    removed lines of each file's patch, sorted by filename — so the same change
+    ported to another branch, with different line offsets and a different sha,
+    lands on the same hash. Hunk headers are dropped for that reason.
+
+    Returns None when there is no patch to hash (a merge commit, or a
+    commit-details fetch that failed). Never treat None as "unique" or as
+    "duplicate" — it means unknown, and a report should count the row once and
+    disclose that it could not be deduplicated.
+    """
+    if not files:
+        return None
+
+    parts: list[str] = []
+    for f in sorted(files, key=lambda x: x.get("filename") or ""):
+        filename = f.get("filename") or ""
+        patch = f.get("patch")
+        if not filename or not patch:
+            continue
+        body = "\n".join(
+            line
+            for line in patch.splitlines()
+            # +++/--- are file headers, @@ is a hunk header carrying the line
+            # offsets that a port changes and we are trying to ignore.
+            if (line.startswith(("+", "-")) and not line.startswith(("+++", "---")))
+        )
+        parts.append(f"{filename}\n{body}")
+
+    if not parts:
+        return None
+    return hashlib.sha256("\n".join(parts).encode("utf-8")).hexdigest()
 
 
 def size_bucket(additions: int, deletions: int, files_changed: int) -> str:

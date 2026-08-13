@@ -1,8 +1,12 @@
 """Report builder API endpoints."""
 
+import logging
+from dataclasses import asdict
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi.responses import PlainTextResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.api.developers import get_current_developer_id
@@ -18,6 +22,9 @@ from aexy.schemas.analytics import (
     DateRange,
 )
 from aexy.services.report_builder import ReportBuilderService
+from aexy.temporal.task_queues import TaskQueue
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/reports")
 
@@ -324,3 +331,142 @@ async def delete_schedule(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Schedule not found",
         )
+
+
+# -------------------------------------------------------------------------
+# Monthly engineering contribution report
+# -------------------------------------------------------------------------
+
+
+@router.get("/engineering/monthly")
+async def monthly_engineering_report(
+    workspace_id: str = Query(..., description="Workspace to report on"),
+    month: str = Query(..., description="Month as YYYY-MM", pattern=r"^\d{4}-\d{2}$"),
+    timezone_name: str = Query(
+        "UTC",
+        alias="timezone",
+        description="IANA timezone the month is measured in, e.g. Asia/Kolkata",
+    ),
+    fmt: str = Query("json", alias="format", pattern="^(json|markdown)$"),
+    db: AsyncSession = Depends(get_db),
+    developer_id: str = Depends(get_current_developer_id),
+) -> Any:
+    """Contribution report for one workspace and one month, from synced data.
+
+    Owners, admins and department heads only — see `can_read_report`.
+    """
+    from aexy.services.engineering_report import (
+        EngineeringReportService,
+        resolve_report_scope,
+    )
+    from aexy.services.engineering_report_markdown import render_markdown
+
+    # The scope *is* the permission: an admin gets the workspace, a department
+    # head gets their department, anyone else gets nothing.
+    scope = await resolve_report_scope(db, workspace_id, developer_id)
+    if scope is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "This report is available to workspace admins and department "
+                "heads. Ask an admin if you need access to it."
+            ),
+        )
+
+    try:
+        report = await EngineeringReportService(db).build_monthly(
+            workspace_id=workspace_id,
+            month=month,
+            timezone_name=timezone_name,
+            scope=scope,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
+
+    if fmt == "markdown":
+        return PlainTextResponse(
+            render_markdown(report), media_type="text/markdown; charset=utf-8"
+        )
+    return asdict(report)
+
+
+@router.post("/engineering/monthly/refresh")
+async def refresh_engineering_report_data(
+    workspace_id: str = Query(..., description="Workspace whose repositories to sync"),
+    db: AsyncSession = Depends(get_db),
+    developer_id: str = Depends(get_current_developer_id),
+) -> dict[str, Any]:
+    """Sync every adopted repository so the report is built on current data.
+
+    Admin-only: it spends the workspace's GitHub rate limit, unlike reading a
+    report. Each repository syncs under its own adopter's token, the same way
+    the scheduler does it — and under the same Temporal id, so asking twice
+    while a sync is running does nothing rather than starting a second one.
+    """
+    from temporalio.exceptions import WorkflowAlreadyStartedError
+
+    from aexy.models.repository import Repository, WorkspaceRepository
+    from aexy.services.workspace_service import WorkspaceService
+    from aexy.temporal.activities.sync import (
+        SyncRepositoryInput,
+        repo_sync_workflow_id,
+    )
+    from aexy.temporal.dispatch import dispatch
+
+    if not await WorkspaceService(db).check_permission(workspace_id, developer_id, "admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Workspace admin role required to trigger a sync",
+        )
+
+    rows = (
+        await db.execute(
+            select(Repository.id, Repository.full_name, WorkspaceRepository.adopted_by_developer_id)
+            .join(
+                WorkspaceRepository,
+                WorkspaceRepository.repository_id == Repository.id,
+            )
+            .where(
+                WorkspaceRepository.workspace_id == workspace_id,
+                WorkspaceRepository.is_active.is_(True),
+            )
+        )
+    ).all()
+
+    queued: list[str] = []
+    already_running: list[str] = []
+    # A repository whose adopter was removed has no token to sync with. It is
+    # not an error — the catalog page offers a reclaim — but the report would
+    # otherwise look stale for no visible reason.
+    no_adopter: list[str] = []
+    failed: list[str] = []
+
+    for repository_id, full_name, adopter_id in rows:
+        if not adopter_id:
+            no_adopter.append(full_name)
+            continue
+        try:
+            await dispatch(
+                "sync_repository",
+                SyncRepositoryInput(
+                    repository_id=str(repository_id),
+                    developer_id=str(adopter_id),
+                ),
+                task_queue=TaskQueue.SYNC,
+                workflow_id=repo_sync_workflow_id(str(repository_id), str(adopter_id)),
+            )
+            queued.append(full_name)
+        except WorkflowAlreadyStartedError:
+            already_running.append(full_name)
+        except Exception:
+            logger.exception(f"Failed to dispatch sync for {full_name}")
+            failed.append(full_name)
+
+    return {
+        "queued": queued,
+        "already_running": already_running,
+        "no_adopter": no_adopter,
+        "failed": failed,
+    }

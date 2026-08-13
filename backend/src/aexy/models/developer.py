@@ -136,9 +136,13 @@ class Developer(Base):
         "Commit",
         back_populates="developer",
     )
+    # PRs they wrote. PRs they *merged* hang off PullRequest.merged_by_developer_id
+    # and are deliberately not a collection here — integration load is a report
+    # question, not something to load with a developer.
     pull_requests: Mapped[list["PullRequest"]] = relationship(
         "PullRequest",
         back_populates="developer",
+        foreign_keys="PullRequest.developer_id",
     )
     code_reviews: Mapped[list["CodeReview"]] = relationship(
         "CodeReview",

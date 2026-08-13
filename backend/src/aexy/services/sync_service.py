@@ -14,15 +14,17 @@ from aexy.core.config import get_settings
 from aexy.core.database import async_session_maker
 from aexy.models.activity import CodeReview, Commit, PullRequest
 from aexy.models.developer import Developer, GitHubConnection, GitHubInstallation
-from aexy.models.repository import DeveloperRepository, Repository
+from aexy.models.repository import DeveloperRepository, Repository, WorkspaceRepository
 from aexy.services.github_service import GitHubAPIError, GitHubAuthError, GitHubNotFoundError, GitHubService
 from aexy.services.sync_enrichment import (
     build_patch_sample,
     classify_author,
     classify_change,
+    content_hash,
     is_merge_commit,
     is_revert_commit,
     size_bucket,
+    source_churn,
 )
 
 logger = logging.getLogger(__name__)
@@ -31,6 +33,66 @@ settings = get_settings()
 # Sync mode types
 SyncMode = Literal["async", "temporal"]
 SyncType = Literal["full", "incremental"]
+
+
+def _github_ts(value: str | None) -> datetime | None:
+    """Parse a GitHub ISO-8601 timestamp. None in, None out."""
+    if not value:
+        return None
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+async def adopted_workspace_rows(
+    db: AsyncSession, developer_id: str, repository_id: str
+) -> list[WorkspaceRepository]:
+    """Workspace catalog rows a sync of (repo, developer) speaks for.
+
+    The scheduler dispatches one sync per `workspace_repositories` row and
+    drives it with the adopter's token, so a completed sync answers for every
+    row this developer adopted this repo into — usually one, more when two
+    workspaces named the same adopter.
+    """
+    result = await db.execute(
+        select(WorkspaceRepository).where(
+            WorkspaceRepository.repository_id == repository_id,
+            WorkspaceRepository.adopted_by_developer_id == developer_id,
+        )
+    )
+    return list(result.scalars().all())
+
+
+def record_workspace_sync_state(
+    rows: list[WorkspaceRepository],
+    *,
+    status: str,
+    error: str | None = None,
+    synced_at: datetime | None = None,
+    counts: dict[str, int] | None = None,
+) -> None:
+    """Advance the workspace catalog row's own sync state.
+
+    `check_repo_auto_sync` throttles on `WorkspaceRepository.last_sync_at` and
+    skips rows already `syncing` — but every sync path wrote its state to
+    `DeveloperRepository` instead, so those two columns never moved off their
+    adoption defaults. `last_sync_at` stayed NULL, the frequency check behind
+    it never fired, and each 5-minute tick re-dispatched every eligible repo
+    whatever the adopter had chosen; the in-flight skip never matched either.
+    The API had already worked around the stale row by overlaying the adopter's
+    `DeveloperRepository` values onto the response, so the catalog page looked
+    right while the scheduler read columns nobody wrote.
+
+    Kept separate from `SyncService` so a test can call the writer the sync
+    actually uses rather than restate it.
+    """
+    for row in rows:
+        row.sync_status = status
+        row.sync_error = error
+        if synced_at is not None:
+            row.last_sync_at = synced_at
+        if counts is not None:
+            row.commits_synced = counts.get("commits", row.commits_synced)
+            row.prs_synced = counts.get("prs", row.prs_synced)
+            row.reviews_synced = counts.get("reviews", row.reviews_synced)
 
 
 class SyncService:
@@ -146,7 +208,14 @@ class SyncService:
         dev_repo = result.scalar_one_or_none()
 
         if not dev_repo:
-            raise ValueError("Repository not found for this developer")
+            # Adoption creates this row now, but rows adopted before that do
+            # not have one, and it can be pruned later. It holds sync state
+            # rather than permission, so make it and carry on — refusing here
+            # only turned a missing bookkeeping row into a repo that never
+            # syncs and never says why.
+            dev_repo = await self._create_developer_repository(
+                developer_id, repository_id
+            )
 
         # Note: per-developer is_enabled gate was removed in 0.7.72 —
         # adoption is now workspace-scoped and the auto-sync scheduler
@@ -172,6 +241,12 @@ class SyncService:
         # the UI gets stuck on "syncing".
         dev_repo.sync_status = "syncing"
         dev_repo.sync_error = None
+        # The workspace catalog rows carry the state the scheduler reads. They
+        # are updated alongside dev_repo on every exit path below.
+        workspace_rows = await adopted_workspace_rows(
+            self.db, developer_id, repository_id
+        )
+        record_workspace_sync_state(workspace_rows, status="syncing")
         await self.db.flush()
 
         # Initialize developer lookup caches
@@ -200,6 +275,7 @@ class SyncService:
                     repository_id,
                     repo_language,
                     sync_branches=repo.sync_branches,
+                    default_branch=repo.default_branch,
                     heartbeat_fn=heartbeat_fn,
                 )
 
@@ -220,12 +296,23 @@ class SyncService:
                 )
 
             # Update status
+            synced_at = datetime.now(timezone.utc)
             dev_repo.sync_status = "synced"
-            dev_repo.last_sync_at = datetime.now(timezone.utc)
+            dev_repo.last_sync_at = synced_at
             dev_repo.commits_synced = commits_synced
             dev_repo.prs_synced = prs_synced
             dev_repo.reviews_synced = reviews_synced
-            dev_repo.updated_at = datetime.now(timezone.utc)
+            dev_repo.updated_at = synced_at
+            record_workspace_sync_state(
+                workspace_rows,
+                status="synced",
+                synced_at=synced_at,
+                counts={
+                    "commits": commits_synced,
+                    "prs": prs_synced,
+                    "reviews": reviews_synced,
+                },
+            )
             await self.db.flush()
 
             logger.info(
@@ -273,6 +360,14 @@ class SyncService:
             dev_repo.sync_status = "failed"
             dev_repo.sync_error = "GitHub authentication failed - please reconnect your GitHub account"
             dev_repo.updated_at = datetime.now(timezone.utc)
+            # `no_credentials`, not `failed`: it is the state the scheduler
+            # would set on its next pass anyway, and the one `reclaim_repository`
+            # knows how to clear when somebody else lends their installation.
+            record_workspace_sync_state(
+                workspace_rows,
+                status="no_credentials",
+                error=dev_repo.sync_error,
+            )
             # Mark the GitHub connection as broken (unless already marked by _ensure_valid_token)
             if connection.auth_status != "error":
                 connection.auth_status = "error"
@@ -289,6 +384,9 @@ class SyncService:
             dev_repo.sync_error = sync_error
             dev_repo.is_enabled = False
             dev_repo.updated_at = datetime.now(timezone.utc)
+            record_workspace_sync_state(
+                workspace_rows, status="failed", error=sync_error
+            )
             logger.warning(f"Disabled auto-sync for inaccessible repo {repo.full_name}")
             await self.db.flush()
             raise
@@ -297,8 +395,57 @@ class SyncService:
             dev_repo.sync_status = "failed"
             dev_repo.sync_error = str(e)
             dev_repo.updated_at = datetime.now(timezone.utc)
+            record_workspace_sync_state(
+                workspace_rows, status="failed", error=str(e)
+            )
             await self.db.flush()
             raise
+
+    async def _resolve_merger(
+        self, db: AsyncSession, merged_by: dict, fallback_developer_id: str
+    ) -> str | None:
+        """Developer id for whoever merged, or None when that is a bot.
+
+        `_resolve_developer_for_pr` invents a ghost developer for a login it
+        doesn't know, which is right for an author — a human wrote that code
+        and their work should land somewhere. For a merger it is wrong: a
+        merge queue would become a person, and then a row in the contribution
+        report crediting Mergify with half the team's integration load. The
+        login is still stored, so the raw answer to "who merged this" survives.
+        """
+        login = merged_by.get("login")
+        if not login or classify_author(login, None) == "bot":
+            return None
+        return await self._resolve_developer_for_pr(db, merged_by, fallback_developer_id)
+
+    async def _create_developer_repository(
+        self, developer_id: str, repository_id: str
+    ) -> DeveloperRepository:
+        """Create the per-developer sync-state row for a repo that exists.
+
+        A missing *repository* is still an error — that is a bad id, not a
+        gap in bookkeeping.
+        """
+        repository = await self.db.get(Repository, repository_id)
+        if repository is None:
+            raise ValueError(f"Repository {repository_id} not found")
+
+        dev_repo = DeveloperRepository(
+            id=str(uuid4()),
+            developer_id=developer_id,
+            repository_id=repository_id,
+            is_enabled=True,
+            sync_status="pending",
+            webhook_status="none",
+        )
+        self.db.add(dev_repo)
+        await self.db.flush()
+        dev_repo.repository = repository
+        logger.info(
+            f"Created missing developer_repository for {repository.full_name} "
+            f"/ developer {developer_id}"
+        )
+        return dev_repo
 
     async def _ensure_valid_token(self, connection: GitHubConnection) -> None:
         """Refresh the GitHub token if it's expired or about to expire.
@@ -600,6 +747,7 @@ class SyncService:
         repository_id: str,
         repo_language: str | None = None,
         sync_branches: list[str] | None = None,
+        default_branch: str | None = None,
         heartbeat_fn: Any = None,
     ) -> int:
         """Sync commits from repository (all contributors).
@@ -707,6 +855,9 @@ class SyncService:
                                     detected_languages.add(ext_to_lang[ext])
 
                         full_message = commit_data["commit"]["message"] or ""
+                        # None when the details fetch failed — stored as NULL so
+                        # a report reads it as unmeasured, not as an empty commit.
+                        churn = source_churn(files)
 
                         commit = Commit(
                             id=str(uuid4()),
@@ -717,6 +868,9 @@ class SyncService:
                             additions=stats.get("additions", 0),
                             deletions=stats.get("deletions", 0),
                             files_changed=len(files),
+                            source_additions=churn[0] if churn else None,
+                            source_deletions=churn[1] if churn else None,
+                            source_files_changed=churn[2] if churn else None,
                             languages=list(detected_languages) if detected_languages else None,
                             file_types=list(file_types) if file_types else None,
                             author_github_login=github_login,
@@ -725,9 +879,14 @@ class SyncService:
                             change_class=classify_change(files),
                             is_merge=is_merge_commit(commit_data),
                             is_revert=is_revert_commit(full_message),
+                            content_hash=content_hash(files),
+                            branch=branch or default_branch,
                             patch_sample=build_patch_sample(files),
-                            committed_at=datetime.fromisoformat(
-                                commit_data["commit"]["committer"]["date"].replace("Z", "+00:00")
+                            committed_at=_github_ts(
+                                commit_data["commit"]["committer"]["date"]
+                            ),
+                            authored_at=_github_ts(
+                                (commit_data["commit"].get("author") or {}).get("date")
                             ),
                         )
                         db.add(commit)
@@ -788,9 +947,25 @@ class SyncService:
                         db, pr_data.get("user", {}), developer_id
                     )
 
-                    pr_additions = pr_data.get("additions", 0)
-                    pr_deletions = pr_data.get("deletions", 0)
-                    pr_files_changed = pr_data.get("changed_files", 0)
+                    # The list endpoint carries none of the metrics and no
+                    # merged_by — only the per-PR detail call does. One extra
+                    # request per *new* PR: a real cost on a first backfill,
+                    # negligible afterwards, and the alternative is six zeroed
+                    # columns and a PR the AI pass writes off as "xs".
+                    detail = pr_data
+                    try:
+                        detail = await gh.get_pull_request(owner, repo, pr_data["number"])
+                    except GitHubAPIError:
+                        logger.warning(
+                            f"PR detail unavailable for {owner}/{repo}"
+                            f"#{pr_data['number']}; storing list-endpoint fields only"
+                        )
+
+                    pr_additions = detail.get("additions", 0)
+                    pr_deletions = detail.get("deletions", 0)
+                    pr_files_changed = detail.get("changed_files", 0)
+                    merged_by = detail.get("merged_by") or {}
+                    merged_by_id = await self._resolve_merger(db, merged_by, developer_id)
                     pr = PullRequest(
                         id=str(uuid4()),
                         developer_id=resolved_dev_id,
@@ -802,30 +977,37 @@ class SyncService:
                         additions=pr_additions,
                         deletions=pr_deletions,
                         files_changed=pr_files_changed,
-                        commits_count=pr_data.get("commits", 0),
-                        comments_count=pr_data.get("comments", 0) + pr_data.get("review_comments", 0),
+                        commits_count=detail.get("commits", 0),
+                        comments_count=detail.get("comments", 0),
+                        review_comments_count=detail.get("review_comments", 0),
+                        merged_by_developer_id=merged_by_id,
+                        merged_by_login=merged_by.get("login"),
                         size_bucket=size_bucket(pr_additions, pr_deletions, pr_files_changed),
-                        created_at_github=datetime.fromisoformat(
-                            pr_data["created_at"].replace("Z", "+00:00")
-                        ),
-                        merged_at=datetime.fromisoformat(
-                            pr_data["merged_at"].replace("Z", "+00:00")
-                        ) if pr_data.get("merged_at") else None,
-                        closed_at=datetime.fromisoformat(
-                            pr_data["closed_at"].replace("Z", "+00:00")
-                        ) if pr_data.get("closed_at") else None,
+                        created_at_github=_github_ts(pr_data["created_at"]),
+                        merged_at=_github_ts(pr_data.get("merged_at")),
+                        closed_at=_github_ts(pr_data.get("closed_at")),
                     )
                     db.add(pr)
                     synced += 1
                 else:
                     # Update existing PR state and timestamps
                     existing.state = pr_state
-                    existing.merged_at = datetime.fromisoformat(
-                        pr_data["merged_at"].replace("Z", "+00:00")
-                    ) if pr_data.get("merged_at") else existing.merged_at
-                    existing.closed_at = datetime.fromisoformat(
-                        pr_data["closed_at"].replace("Z", "+00:00")
-                    ) if pr_data.get("closed_at") else existing.closed_at
+                    existing.merged_at = (
+                        _github_ts(pr_data.get("merged_at")) or existing.merged_at
+                    )
+                    existing.closed_at = (
+                        _github_ts(pr_data.get("closed_at")) or existing.closed_at
+                    )
+                    # Rows synced before the detail call existed carry six
+                    # zeroed metrics and no merger. Refill them once — the
+                    # condition stops being true as soon as it works, so this
+                    # does not turn into a request per PR per sync.
+                    if (
+                        existing.additions == 0
+                        and existing.deletions == 0
+                        and existing.files_changed == 0
+                    ):
+                        await self._backfill_pr_detail(db, gh, owner, repo, existing)
 
             if len(prs) < 100:
                 break
@@ -836,6 +1018,46 @@ class SyncService:
 
         await db.commit()
         return synced
+
+    async def _backfill_pr_detail(
+        self,
+        db: AsyncSession,
+        gh: GitHubService,
+        owner: str,
+        repo: str,
+        pr: PullRequest,
+    ) -> None:
+        """Refill a PR row that was stored from the list endpoint alone.
+
+        Those rows have additions, deletions, changed files, commits and both
+        comment counts at zero, no merger, and a `size_bucket` of "xs" derived
+        from the zeros — which the AI pass reads as "too small to look at",
+        stamping `ai_analyzed_at` as it skips. Clearing that stamp here puts the
+        PR back in the queue; the accompanying migration does the same for rows
+        that will not be revisited.
+        """
+        try:
+            detail = await gh.get_pull_request(owner, repo, pr.number)
+        except GitHubAPIError:
+            return
+
+        pr.additions = detail.get("additions", 0)
+        pr.deletions = detail.get("deletions", 0)
+        pr.files_changed = detail.get("changed_files", 0)
+        pr.commits_count = detail.get("commits", 0)
+        pr.comments_count = detail.get("comments", 0)
+        pr.review_comments_count = detail.get("review_comments", 0)
+        pr.size_bucket = size_bucket(pr.additions, pr.deletions, pr.files_changed)
+
+        merged_by = detail.get("merged_by") or {}
+        if merged_by.get("login"):
+            pr.merged_by_login = merged_by.get("login")
+            pr.merged_by_developer_id = await self._resolve_merger(
+                db, merged_by, str(pr.developer_id)
+            )
+
+        if pr.ai_analysis is None and pr.size_bucket != "xs":
+            pr.ai_analyzed_at = None
 
     async def _sync_reviews_with_session(
         self,
