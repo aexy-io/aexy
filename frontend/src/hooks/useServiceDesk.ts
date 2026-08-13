@@ -8,7 +8,7 @@ import {
 } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { getApiErrorMessage } from "@/lib/utils";
+import { getApiErrorMessage, saveBlob } from "@/lib/utils";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import {
   serviceDeskApi,
@@ -51,26 +51,6 @@ function useDeskMutation<TData, TVariables>(
       options.onError?.(error, variables, onMutateResult, context);
     },
   });
-}
-
-/**
- * Put a fetched blob in the user's Downloads under `filename`.
- *
- * The anchor is attached to the document before it is clicked and the object URL
- * is released on a later tick, because neither is optional: Firefox ignores
- * `click()` on an element that is not in the document, and revoking the URL in
- * the same tick can cancel a download the browser has not started reading yet.
- */
-function saveBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.style.display = "none";
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
 /**

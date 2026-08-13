@@ -7,6 +7,34 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Put a blob in the user's Downloads under `filename`.
+ *
+ * Two details here are not stylistic, and both were wrong in every hand-rolled
+ * copy of this dance:
+ *
+ *  - The anchor is in the document when it is clicked. Firefox ignores `click()`
+ *    on an element that was never attached, so the download simply did not
+ *    happen — silently, and only in that browser.
+ *  - The object URL is released on a later tick. Revoking it in the same tick can
+ *    cancel a download the browser has not started reading yet, which shows up as
+ *    an empty or truncated file rather than as an error.
+ *
+ * Ten seconds is long enough for the browser to have taken the bytes and short
+ * enough that a page exporting repeatedly does not hold them all.
+ */
+export function saveBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement("a")
+  anchor.href = url
+  anchor.download = filename
+  anchor.style.display = "none"
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 10_000)
+}
+
+/**
  * Return the useful message from FastAPI validation responses instead of the
  * generic Axios status message. Automation validation uses both a plain
  * string and an object with a message plus per-field errors.

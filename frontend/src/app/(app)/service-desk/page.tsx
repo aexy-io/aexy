@@ -12,6 +12,7 @@ import {
   SERVICE_DESK_BREACH_COLORS,
   serviceDeskStakeholderColor,
 } from "@/lib/statusColors";
+import { saveBlob } from "@/lib/utils";
 import { ServiceDeskSetup } from "@/components/service-desk/ServiceDeskSetup";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -91,13 +92,10 @@ export default function ServiceDeskDashboardPage() {
 
   const download = () => {
     if (!data) return;
-    const blob = new Blob([toCsv(data.tickets, terms)], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "service-desk-open-tickets.csv";
-    a.click();
-    URL.revokeObjectURL(url);
+    // `charset` spelled out: Excel on Windows reads a bare text/csv as the local
+    // ANSI codepage, which mangles any non-Latin account name in the export.
+    const blob = new Blob([toCsv(data.tickets, terms)], { type: "text/csv;charset=utf-8" });
+    saveBlob(blob, "service-desk-open-tickets.csv");
   };
 
   return (
