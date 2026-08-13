@@ -1,15 +1,45 @@
 {
   "myWork": {
     "title": "मेरा काम",
-    "description": "Tasks, bugs और stories — आपको सौंपा गया सारा काम एक जगह।",
+    "description": "Tasks, bugs, stories और tickets — आपको सौंपा गया सारा काम एक जगह।",
     "showCompleted": "पूर्ण किए गए दिखाएं",
-    "empty": "फ़िलहाल आपको कुछ भी असाइन नहीं है।",
+    "manageForms": "Forms प्रबंधित करें",
+    "automations": "Automations",
+    "empty": "फ़िलहाल आपके पास कुछ नहीं है",
+    "emptyDescription": "आपको असाइन किए गए tasks और आपको भेजे गए tickets दोनों यहाँ दिखते हैं।",
+    "emptyAll": "कोई काम नहीं मिला",
+    "emptyAllDescription": "उपयोगकर्ताओं से tickets पाने के लिए एक form बनाएं।",
     "totalCount": "कुल {count}",
     "points": "{count} pts",
+    "noSprint": "कोई Sprint नहीं",
+    "anonymous": "अनाम",
+    "searchTickets": "Tickets खोजें...",
+    "statusLabel": "Status:",
+    "assignedToMe": "मुझे असाइन किए गए",
+    "everyonesTickets": "सभी के tickets",
+    "onlyMineHint": "Tasks हमेशा आपके होते हैं; यह form tickets को सीमित करता है",
+    "showingCount": "{total} में से {shown} tickets दिखाए जा रहे हैं",
+    "justNow": "अभी",
+    "hoursAgo": "{count} घंटे पहले",
+    "daysAgo": "{count} दिन पहले",
+    "sources": {
+      "all": "सभी",
+      "tasks": "Tasks",
+      "tickets": "Form tickets"
+    },
+    "stats": {
+      "items": "आइटम",
+      "tasks": "Tasks",
+      "tickets": "Tickets",
+      "inProgress": "प्रगति में",
+      "toDo": "करना है",
+      "slaBreached": "SLA उल्लंघन"
+    },
     "types": {
       "task": "Task",
       "bug": "Bug",
-      "story": "Story"
+      "story": "Story",
+      "ticket": "Ticket"
     },
     "typeCount": {
       "task": "{count, plural, one {# task} other {# tasks}}",

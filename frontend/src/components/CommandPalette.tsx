@@ -215,13 +215,15 @@ export function CommandPalette({ projectId, onCreateTask }: CommandPaletteProps)
       },
       {
         id: "nav-tickets",
-        label: "Tickets",
-        description: "Help desk and support tickets",
+        label: "My Work",
+        description: "Tasks, bugs, stories and tickets assigned to you",
         icon: <Ticket className="h-4 w-4" />,
         shortcut: ["G", "T"],
-        action: () => router.push("/tickets"),
+        action: () => router.push("/my-work"),
         category: "navigation",
-        keywords: ["support", "helpdesk", "issues", "bugs"],
+        // "tickets" stays searchable: it is what people will type, and the page
+        // still lists them.
+        keywords: ["support", "helpdesk", "issues", "bugs", "tickets", "my work"],
       },
       {
         id: "nav-crm",

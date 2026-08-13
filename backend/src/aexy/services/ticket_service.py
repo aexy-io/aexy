@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from aexy.core.config import settings
+from aexy.models.developer import Developer
 from aexy.models.ticketing import (
     Ticket,
     TicketResponse as TicketResponseModel,
@@ -583,8 +584,78 @@ class TicketService:
                 title=f"Assigned ticket #{ticket.ticket_number}",
                 changes={"assignee_id": {"old": old_assignee, "new": assignee_id}},
             )
+            if assignee_id:
+                await self._notify_assignee(ticket, assignee_id, assigned_by_id)
 
         return await self.get_ticket(ticket_id)
+
+    async def _notify_assignee(
+        self,
+        ticket: Ticket,
+        assignee_id: str,
+        assigned_by_id: str | None,
+    ) -> None:
+        """Tell whoever now owns this ticket.
+
+        This one method assigns both queues — a form ticket from the internal
+        request list and a Service Desk ticket carrying an external SLA clock go
+        through here — so it picks the event, the reference format and the deep
+        link by which kind of ticket it actually is. Sending a desk owner to
+        `/tickets/{id}` would land them on a page that cannot show pending-with
+        or the clock.
+        """
+        from aexy.models.service_desk import ServiceDeskTicket
+        from aexy.services.notification_service import (
+            notify_desk_ticket_assigned,
+            notify_ticket_assigned,
+        )
+
+        sd = (
+            await self.db.execute(
+                select(ServiceDeskTicket).where(
+                    ServiceDeskTicket.ticket_id == str(ticket.id)
+                )
+            )
+        ).scalar_one_or_none()
+
+        actor_name = "Someone"
+        if assigned_by_id:
+            actor = (
+                await self.db.execute(
+                    select(Developer).where(Developer.id == assigned_by_id)
+                )
+            ).scalar_one_or_none()
+            if actor:
+                actor_name = actor.name or actor.github_username or "Someone"
+
+        if sd is not None:
+            from aexy.services.service_desk_config import ticket_prefix_display
+
+            reference = await ticket_prefix_display(
+                self.db, str(ticket.workspace_id), ticket.ticket_number
+            )
+            await notify_desk_ticket_assigned(
+                db=self.db,
+                recipient_id=str(assignee_id),
+                actor_id=assigned_by_id,
+                actor_name=actor_name,
+                ticket_reference=reference,
+                ticket_title=sd.request_type or "Service desk request",
+                action_url=f"/service-desk/tickets/{ticket.id}",
+                workspace_id=str(ticket.workspace_id),
+            )
+            return
+
+        await notify_ticket_assigned(
+            db=self.db,
+            recipient_id=str(assignee_id),
+            actor_id=assigned_by_id,
+            actor_name=actor_name,
+            ticket_reference=f"#{ticket.ticket_number}",
+            ticket_title=ticket.submitter_name or ticket.submitter_email or "Request",
+            action_url=f"/tickets/{ticket.id}",
+            workspace_id=str(ticket.workspace_id),
+        )
 
     async def delete_ticket(self, ticket_id: str) -> bool:
         """Delete a ticket."""

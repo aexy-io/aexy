@@ -1141,7 +1141,7 @@ class ChatService:
         - @all → CHAT_MENTION notification for all channel members (except sender)
         - agent mentions → fire-and-forget agent invocation via Temporal
         """
-        from aexy.services.notification_service import notify_mention
+        from aexy.services.notification_service import notify_chat_mention
 
         if not mentions:
             return
@@ -1158,12 +1158,11 @@ class ChatService:
                 if mid not in notified_ids:
                     notified_ids.add(mid)
                     try:
-                        await notify_mention(
+                        await notify_chat_mention(
                             db=self.db,
                             mentioned_user_id=mid,
                             mentioner_name=sender_name,
-                            entity_type="chat_message",
-                            entity_id=topic_id,
+                            topic_id=topic_id,
                             action_url=action_url,
                             snippet=snippet,
                         )

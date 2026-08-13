@@ -1,15 +1,45 @@
 {
   "myWork": {
     "title": "My Work",
-    "description": "Everything assigned to you across tasks, bugs, and stories.",
+    "description": "Everything assigned to you across tasks, bugs, stories, and tickets.",
     "showCompleted": "Show completed",
-    "empty": "Nothing assigned to you right now.",
+    "manageForms": "Manage Forms",
+    "automations": "Automations",
+    "empty": "Nothing on your plate",
+    "emptyDescription": "Tasks assigned to you and tickets routed to you both appear here.",
+    "emptyAll": "No work found",
+    "emptyAllDescription": "Create a form to start receiving tickets from your users.",
     "totalCount": "{count} total",
     "points": "{count} pts",
+    "noSprint": "No Sprint",
+    "anonymous": "Anonymous",
+    "searchTickets": "Search tickets...",
+    "statusLabel": "Status:",
+    "assignedToMe": "Assigned to me",
+    "everyonesTickets": "Everyone's tickets",
+    "onlyMineHint": "Tasks are always yours; this scopes the form tickets",
+    "showingCount": "Showing {shown} of {total} tickets",
+    "justNow": "Just now",
+    "hoursAgo": "{count}h ago",
+    "daysAgo": "{count}d ago",
+    "sources": {
+      "all": "All",
+      "tasks": "Tasks",
+      "tickets": "Form tickets"
+    },
+    "stats": {
+      "items": "Items",
+      "tasks": "Tasks",
+      "tickets": "Tickets",
+      "inProgress": "In Progress",
+      "toDo": "To Do",
+      "slaBreached": "SLA Breached"
+    },
     "types": {
       "task": "Task",
       "bug": "Bug",
-      "story": "Story"
+      "story": "Story",
+      "ticket": "Ticket"
     },
     "typeCount": {
       "task": "{count, plural, one {# task} other {# tasks}}",

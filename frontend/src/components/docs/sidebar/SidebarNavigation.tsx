@@ -1,19 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Search, Home, Inbox, HardDrive } from "lucide-react";
+import { Search, Home, HardDrive } from "lucide-react";
 
 interface SidebarNavigationProps {
   onOpenSearch: () => void;
-  onOpenInbox: () => void;
-  unreadCount?: number;
 }
 
-export function SidebarNavigation({
-  onOpenSearch,
-  onOpenInbox,
-  unreadCount = 0,
-}: SidebarNavigationProps) {
+export function SidebarNavigation({ onOpenSearch }: SidebarNavigationProps) {
   return (
     <nav className="px-2 py-2 space-y-0.5">
       {/* Search */}
@@ -51,19 +45,12 @@ export function SidebarNavigation({
         <span className="text-sm">Files</span>
       </Link>
 
-      {/* Inbox */}
-      <button
-        onClick={onOpenInbox}
-        className="w-full flex items-center gap-3 px-3 py-1.5 rounded-md hover:bg-accent/50 transition-colors text-muted-foreground hover:text-foreground"
-      >
-        <Inbox className="h-4 w-4" />
-        <span className="flex-1 text-left text-sm">Inbox</span>
-        {unreadCount > 0 && (
-          <span className="px-1.5 py-0.5 text-[10px] font-medium bg-primary-500/20 text-primary-400 rounded-full">
-            {unreadCount > 99 ? "99+" : unreadCount}
-          </span>
-        )}
-      </button>
+      {/* No Inbox entry. It opened a docs-only notification list backed by a
+          `document_notifications` table that carried exactly one thing — "an AI
+          proposed an edit" — with no email, no per-user preference and no place in
+          the main notification bell. That event now goes through
+          NotificationService, so document notifications live in the same inbox as
+          everything else rather than in a panel you had to know to open. */}
     </nav>
   );
 }

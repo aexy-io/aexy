@@ -151,6 +151,7 @@ from aexy.models.oncall import (
 )
 from aexy.models.documentation import (
     Document,
+    DocumentComment,
     DocumentVersion,
     DocumentTemplate,
     DocumentCodeLink,
@@ -752,6 +753,7 @@ __all__ = [
     "SwapRequestStatus",
     # Documentation
     "Document",
+    "DocumentComment",
     "DocumentVersion",
     "DocumentTemplate",
     "DocumentCodeLink",

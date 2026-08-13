@@ -119,27 +119,50 @@ class EmailService:
         template: str,
         context: dict[str, Any],
     ) -> str:
-        """Render a template string with context variables."""
+        """Render a template string with context variables.
+
+        Catches every formatting error, not just KeyError: the notification's own
+        title and body are now used as templates when an event has no registered
+        one, and those strings carry user content (task titles, ticket subjects)
+        that can contain a stray brace. A malformed brace raises ValueError or
+        IndexError, and losing the whole email over it is worse than shipping the
+        unsubstituted text.
+        """
         try:
             return template.format(**context)
-        except KeyError as e:
-            logger.warning(f"Missing template variable: {e}")
+        except (KeyError, IndexError, ValueError) as e:
+            logger.warning(f"Could not render notification template: {e}")
             return template
 
     def _get_email_content(
         self,
-        event_type: NotificationEventType,
+        event_type: NotificationEventType | str | None,
         context: dict[str, Any],
+        fallback_title: str | None = None,
+        fallback_body: str | None = None,
     ) -> tuple[str, str, str]:
-        """Get email subject, text body, and HTML body for an event type."""
-        template = NOTIFICATION_TEMPLATES.get(event_type, {})
+        """Get email subject, text body, and HTML body for an event type.
+
+        ``fallback_title``/``fallback_body`` are the notification's own rendered
+        title and body. They matter more than they look: an event with no
+        NOTIFICATION_TEMPLATES entry used to email "Aexy Notification" / "You
+        have a new notification." — no subject, no content, no reason to click —
+        while the in-app row for the same event read perfectly well. That hit
+        every on-call and reminder event, which are exactly the ones nobody is
+        sitting in the app waiting for. The caller already holds a good title
+        and body; prefer the template when there is one, and use theirs when
+        there isn't.
+        """
+        template = NOTIFICATION_TEMPLATES.get(event_type, {}) if event_type is not None else {}
 
         # Get subject
-        subject_template = template.get("email_subject", "Aexy Notification")
+        subject_template = template.get("email_subject") or fallback_title or "Aexy Notification"
         subject = self._render_template(subject_template, context)
 
         # Get body
-        body_template = template.get("body_template", "You have a new notification.")
+        body_template = (
+            template.get("body_template") or fallback_body or "You have a new notification."
+        )
         body_text = self._render_template(body_template, context)
 
         # Create HTML body
@@ -460,10 +483,19 @@ class EmailService:
             return log
 
         try:
-            # Get email content
-            event_type = NotificationEventType(notification.event_type)
+            # Get email content. The event type is passed through as a plain
+            # string rather than cast to NotificationEventType: the cast raised
+            # ValueError for any event not in this module's enum, and the broad
+            # `except Exception` below turned that into a log row marked "failed"
+            # and an email that was never sent and never retried. NotificationEventType
+            # is a str enum, so template lookup by the raw value works either way.
             context = notification.context or {}
-            subject, body_text, html_body = self._get_email_content(event_type, context)
+            subject, body_text, html_body = self._get_email_content(
+                notification.event_type,
+                context,
+                fallback_title=notification.title,
+                fallback_body=notification.body,
+            )
             log.subject = subject
 
             # Send email via configured provider

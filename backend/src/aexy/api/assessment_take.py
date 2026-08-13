@@ -858,6 +858,29 @@ async def complete_assessment(
         import logging
         logging.error(f"Failed to dispatch assessment.completed automation: {e}")
 
+    # Tell whoever set the assessment up that a candidate has finished it.
+    # `notify_assessment_completed` and its settings toggle both already existed;
+    # this endpoint dispatched an automation trigger and nothing else, so unless a
+    # workspace had built an automation for it, a completed assessment was only
+    # discoverable by refreshing the hiring dashboard.
+    if assessment.created_by:
+        from aexy.services.notification_service import notify_assessment_completed
+
+        try:
+            await notify_assessment_completed(
+                db=db,
+                creator_id=str(assessment.created_by),
+                candidate_name=(candidate.name if candidate else None) or "A candidate",
+                assessment_title=assessment.title,
+                workspace_id=str(assessment.organization_id),
+            )
+        except Exception:
+            import logging
+            logging.exception(
+                "Failed to notify creator that assessment %s was completed",
+                assessment.id,
+            )
+
     attempt_status = attempt.status.value if hasattr(attempt.status, 'value') else attempt.status
     return CompleteAssessmentResponse(
         attempt_id=str(attempt.id),

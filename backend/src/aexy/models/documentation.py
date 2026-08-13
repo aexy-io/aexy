@@ -45,16 +45,6 @@ class DocumentVisibility(str, Enum):
     PUBLIC = "public"  # Anyone with link can view (when is_published=True)
 
 
-class DocumentNotificationType(str, Enum):
-    """Types of document notifications."""
-
-    COMMENT = "comment"
-    MENTION = "mention"
-    SHARE = "share"
-    EDIT = "edit"
-    AI_PROPOSAL = "ai_proposal"
-
-
 class DocumentLinkType(str, Enum):
     """Type of code link."""
 
@@ -918,10 +908,29 @@ class DocumentFavorite(Base):
     )
 
 
-class DocumentNotification(Base):
-    """Notifications for document-related activities (comments, mentions, shares)."""
+class DocumentComment(Base):
+    """A comment on a document, optionally a reply within a thread.
 
-    __tablename__ = "document_notifications"
+    ``DocumentPermission.COMMENT`` has existed since the docs module was written —
+    a permission level an admin could grant on a document that had nothing to
+    comment *with*. This is that feature.
+
+    Threading is one level deep: a root comment plus replies pointing at it via
+    ``parent_id``. Arbitrary nesting reads badly in a side panel and makes
+    "who is in this conversation?" — the question the notification recipients
+    depend on — a recursive walk instead of one query.
+
+    ``content`` is rich text in the same shape task comments and ticket replies
+    use, so ``extract_mentioned_user_ids`` finds ``mention:user:{uuid}`` hrefs in
+    it and document mentions notify through the same path as every other mention
+    in the product.
+
+    Deletion is soft. A hard delete of a root comment would take its replies with
+    it and leave the other participants' words gone with no trace, so a deleted
+    comment keeps its position in the thread and stops rendering its body.
+    """
+
+    __tablename__ = "document_comments"
 
     id: Mapped[str] = mapped_column(
         UUID(as_uuid=False),
@@ -934,52 +943,69 @@ class DocumentNotification(Base):
         nullable=False,
         index=True,
     )
-    developer_id: Mapped[str] = mapped_column(
+    # Replies point at their root comment. CASCADE rather than SET NULL: a reply
+    # whose parent vanished would surface as a second root comment answering
+    # nothing. Soft delete is what keeps threads intact in normal use.
+    parent_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False),
-        ForeignKey("developers.id", ondelete="CASCADE"),
-        nullable=False,
+        ForeignKey("document_comments.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    author_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
         index=True,
     )
 
-    # Notification type and content
-    type: Mapped[str] = mapped_column(
-        String(50), default=DocumentNotificationType.EDIT.value, nullable=False
-    )
-    message: Mapped[str] = mapped_column(Text, nullable=False)
-    is_read: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
 
-    # Who triggered the notification
-    created_by_id: Mapped[str | None] = mapped_column(
+    # Resolution is a property of the thread, so it is only meaningful on a root
+    # comment. Resolving is not deleting — a resolved thread stays readable.
+    is_resolved: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    resolved_by_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False),
         ForeignKey("developers.id", ondelete="SET NULL"),
         nullable=True,
     )
+    resolved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
-    # Timestamps
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_edited: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
         nullable=False,
     )
-    read_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
 
     # Relationships
     document: Mapped["Document"] = relationship("Document", lazy="selectin")
-    developer: Mapped["Developer"] = relationship(
+    author: Mapped["Developer | None"] = relationship(
         "Developer",
-        foreign_keys=[developer_id],
+        foreign_keys=[author_id],
         lazy="selectin",
     )
-    created_by: Mapped["Developer | None"] = relationship(
-        "Developer",
-        foreign_keys=[created_by_id],
+    replies: Mapped[list["DocumentComment"]] = relationship(
+        "DocumentComment",
+        cascade="all, delete-orphan",
         lazy="selectin",
+        order_by="DocumentComment.created_at",
     )
 
     __table_args__ = (
-        Index("ix_document_notifications_developer_unread", "developer_id", "is_read"),
+        # The panel's only read: every comment on a document, oldest first.
+        Index("ix_document_comments_document_created", "document_id", "created_at"),
+        Index("ix_document_comments_parent", "parent_id"),
     )
 
 

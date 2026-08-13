@@ -25,6 +25,10 @@ from aexy.services.activity_logger import log_activity
 from aexy.services.notification_service import (
     extract_mentioned_user_ids,
     notify_mention,
+    notify_work_item_assigned,
+    notify_work_item_commented,
+    notify_work_item_status_changed,
+    notify_work_item_unassigned,
     _get_text_snippet,
 )
 from aexy.services.github_task_sync_service import GitHubTaskSyncService
@@ -285,6 +289,21 @@ class SprintTaskService:
                 },
             )
 
+        # A task created straight onto somebody is the most common way work is
+        # handed over — planning a sprint assigns as it goes, so this path
+        # matters at least as much as the dedicated /assign endpoint.
+        if created_task.assignee_id:
+            await notify_work_item_assigned(
+                db=self.db,
+                recipient_ids=[str(created_task.assignee_id)],
+                actor_id=actor_id,
+                actor_name=await self._actor_name(actor_id),
+                item_label=self._item_label(created_task),
+                item_title=created_task.title,
+                action_url=await self._task_action_url(created_task),
+                workspace_id=workspace_id,
+            )
+
         return created_task
 
     async def get_task(self, task_id: str) -> SprintTask | None:
@@ -507,11 +526,16 @@ class SprintTaskService:
         if priority is not None:
             _record("priority_changed", "priority", task.priority, priority)
             task.priority = priority
+        # Kept outside the `if status` block below so the notification at the end
+        # of this method can see whether the status actually moved.
+        prior_status: str | None = None
         if status is not None:
             # Store the spelling this task's board renders, so the card can't
             # end up in a bucket no column reads.
             status = await self.canonical_status_slug(task, status)
             old_status = task.status
+            if old_status != status:
+                prior_status = old_status
             _record("status_changed", "status", old_status, status)
             task.status = status
             now = datetime.now(timezone.utc)
@@ -643,6 +667,48 @@ class SprintTaskService:
                     "status": refreshed.status,
                     "workspace_id": refreshed.workspace_id,
                 },
+            )
+
+        # Notify last, once every mutation and reconciliation above has happened.
+        # This is the PATCH path, so a single call can both reassign and move the
+        # card; both notifications are warranted, and each is addressed to a
+        # different set of people.
+        if refreshed and assignee_changed:
+            actor_name = await self._actor_name(actor_id)
+            if assignee_id:
+                await notify_work_item_assigned(
+                    db=self.db,
+                    recipient_ids=[assignee_id],
+                    actor_id=actor_id,
+                    actor_name=actor_name,
+                    item_label=self._item_label(refreshed),
+                    item_title=refreshed.title,
+                    action_url=await self._task_action_url(refreshed),
+                    workspace_id=refreshed.workspace_id,
+                )
+            if prior_assignee_id:
+                await notify_work_item_unassigned(
+                    db=self.db,
+                    recipient_ids=[prior_assignee_id],
+                    actor_id=actor_id,
+                    actor_name=actor_name,
+                    item_label=self._item_label(refreshed),
+                    item_title=refreshed.title,
+                    action_url=await self._task_action_url(refreshed),
+                    workspace_id=refreshed.workspace_id,
+                )
+
+        if refreshed and prior_status is not None:
+            await notify_work_item_status_changed(
+                db=self.db,
+                recipient_ids=await self._interested_party_ids(task_id),
+                actor_id=actor_id,
+                actor_name=await self._actor_name(actor_id),
+                item_title=refreshed.title,
+                old_status=prior_status,
+                new_status=refreshed.status,
+                action_url=await self._task_action_url(refreshed),
+                workspace_id=refreshed.workspace_id,
             )
 
         return refreshed
@@ -804,6 +870,22 @@ class SprintTaskService:
                 },
             )
 
+        # Tell the new owner. Last, and after every mutation above, so a failure
+        # here cannot leave the assignment half-applied — and skipped entirely
+        # when the assignee did not actually change, because re-saving a card
+        # with the same owner is not news.
+        if updated_task and str(developer_id) != str(prior_assignee_id or ""):
+            await notify_work_item_assigned(
+                db=self.db,
+                recipient_ids=[developer_id],
+                actor_id=actor_id,
+                actor_name=await self._actor_name(actor_id),
+                item_label=self._item_label(updated_task),
+                item_title=updated_task.title,
+                action_url=await self._task_action_url(updated_task),
+                workspace_id=updated_task.workspace_id,
+            )
+
         return updated_task
 
     async def unassign_task(
@@ -853,6 +935,16 @@ class SprintTaskService:
                         "to_assignee_id": None,
                     },
                 )
+            await notify_work_item_unassigned(
+                db=self.db,
+                recipient_ids=[prior_assignee_id],
+                actor_id=actor_id,
+                actor_name=await self._actor_name(actor_id),
+                item_label=self._item_label(task),
+                item_title=task.title,
+                action_url=await self._task_action_url(task),
+                workspace_id=task.workspace_id,
+            )
 
         # Re-fetch with relationships loaded
         return await self._reload_with_assignees(task_id)
@@ -1522,6 +1614,23 @@ class SprintTaskService:
                     trigger_data=trigger_data,
                 )
 
+        # Tell the people on the task that somebody else moved it. In-app only by
+        # default (see DEFAULT_NOTIFICATION_PREFERENCES) — this fires on every
+        # column drag, and `_notify_quietly` drops the actor, who is usually the
+        # assignee dragging their own card and needs no telling.
+        if updated_task and old_status != new_status:
+            await notify_work_item_status_changed(
+                db=self.db,
+                recipient_ids=await self._interested_party_ids(task_id),
+                actor_id=actor_id,
+                actor_name=await self._actor_name(actor_id),
+                item_title=updated_task.title,
+                old_status=old_status,
+                new_status=new_status,
+                action_url=await self._task_action_url(updated_task),
+                workspace_id=updated_task.workspace_id,
+            )
+
         return updated_task
 
     # ==================== Assignees (primary + collaborators) ============
@@ -1580,6 +1689,65 @@ class SprintTaskService:
             .order_by(TaskAssignee.created_at)
         )
         return list(rows.scalars().all())
+
+    # ------------------------------------------------- notification plumbing
+
+    async def _actor_name(self, actor_id: str | None) -> str:
+        """Display name for whoever performed an action, for notification copy."""
+        if not actor_id:
+            return "Someone"
+        from aexy.models.developer import Developer
+
+        result = await self.db.execute(
+            select(Developer).where(Developer.id == actor_id)
+        )
+        actor = result.scalar_one_or_none()
+        if not actor:
+            return "Someone"
+        return actor.name or actor.github_username or "Someone"
+
+    async def _task_action_url(self, task: SprintTask) -> str:
+        """Deep link to a task's card.
+
+        A task reached through the board needs the team in the path; a
+        project/backlog card carries ``team_id`` directly. Falling back to
+        ``/sprints?task=`` keeps the link useful rather than broken when neither
+        is resolvable.
+        """
+        team_id = task.team_id
+        if not team_id and task.sprint_id:
+            sprint = (
+                await self.db.execute(select(Sprint).where(Sprint.id == task.sprint_id))
+            ).scalar_one_or_none()
+            team_id = getattr(sprint, "team_id", None)
+        if team_id:
+            return f"/sprints/{team_id}/board?task={task.id}"
+        return f"/sprints?task={task.id}"
+
+    async def _interested_party_ids(self, task_id: str) -> list[str]:
+        """Everybody currently on a task — primary owner and collaborators.
+
+        Reads the ``task_assignees`` rows rather than ``assignee_id`` alone: a
+        task can legitimately have collaborators and no primary ("everyone
+        equal"), and notifying only the mirrored column would miss all of them.
+        """
+        rows = await self._load_assignee_rows(task_id)
+        ids = [str(row.developer_id) for row in rows]
+        if not ids:
+            task = await self.get_task(task_id)
+            if task and task.assignee_id:
+                ids = [str(task.assignee_id)]
+        return ids
+
+    def _item_label(self, task: SprintTask) -> str:
+        """What the user calls this row — "task", "bug", "story", or "card"."""
+        task_type = (getattr(task, "task_type", None) or "").lower()
+        if task_type in ("bug", "story", "epic", "chore", "spike"):
+            return task_type
+        # A row with no sprint is a backlog/project card in every screen that
+        # shows it, and calling it a "task" in the notification when the UI calls
+        # it a card is the kind of mismatch that makes people distrust the link.
+        return "task" if task.sprint_id else "card"
 
     async def _mirror_primary_to_task(self, task: SprintTask) -> None:
         """Make ``task.assignee_id`` equal the row flagged primary.
@@ -1762,6 +1930,7 @@ class SprintTaskService:
         existing = next(
             (r for r in rows if str(r.developer_id) == str(developer_id)), None
         )
+        newly_added = existing is None
 
         if existing is None:
             existing = TaskAssignee(
@@ -1793,6 +1962,21 @@ class SprintTaskService:
             await self.db.flush()
             await self._mirror_primary_to_task(task)
             await self.db.flush()
+
+        # Only a genuinely new name gets told. `add_assignee` is idempotent and
+        # is also how `set_primary_assignee` promotes somebody already on the
+        # task — neither of those is "you have been assigned something".
+        if newly_added:
+            await notify_work_item_assigned(
+                db=self.db,
+                recipient_ids=[developer_id],
+                actor_id=actor_id,
+                actor_name=await self._actor_name(actor_id),
+                item_label=self._item_label(task),
+                item_title=task.title,
+                action_url=await self._task_action_url(task),
+                workspace_id=task.workspace_id,
+            )
 
         return await self._reload_with_assignees(task_id)
 
@@ -1826,6 +2010,16 @@ class SprintTaskService:
             field_name="assignees",
             old_value=str(developer_id),
             metadata={"developer_id": str(developer_id)},
+        )
+        await notify_work_item_unassigned(
+            db=self.db,
+            recipient_ids=[developer_id],
+            actor_id=actor_id,
+            actor_name=await self._actor_name(actor_id),
+            item_label=self._item_label(task),
+            item_title=task.title,
+            action_url=await self._task_action_url(task),
+            workspace_id=task.workspace_id,
         )
         return await self._reload_with_assignees(task_id)
 
@@ -2027,6 +2221,28 @@ class SprintTaskService:
                             action_url=action_url,
                             snippet=snippet,
                         )
+
+        # Everyone assigned to the task hears about the comment too, minus anyone
+        # already told by name above — being @mentioned and being on the task
+        # should not produce two notifications for one comment.
+        if comment:
+            commented_task = await self.get_task(task_id)
+            if commented_task:
+                mentioned = set(extract_mentioned_user_ids(comment))
+                await notify_work_item_commented(
+                    db=self.db,
+                    recipient_ids=[
+                        uid
+                        for uid in await self._interested_party_ids(task_id)
+                        if uid not in mentioned
+                    ],
+                    actor_id=actor_id,
+                    actor_name=await self._actor_name(actor_id),
+                    item_title=commented_task.title,
+                    comment=comment,
+                    action_url=await self._task_action_url(commented_task),
+                    workspace_id=commented_task.workspace_id,
+                )
 
         return activity
 

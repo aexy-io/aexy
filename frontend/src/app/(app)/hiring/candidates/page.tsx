@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useWorkspace } from "@/hooks/useWorkspace";
+import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -54,6 +54,10 @@ interface Candidate {
   appliedAt: string;
   tags: string[];
   avatarUrl?: string;
+  /** The recruiter accountable for this candidate. Null means nobody is, and a
+   *  stage change on an unowned candidate notifies no one. */
+  ownerId: string | null;
+  ownerName: string | null;
 }
 
 const STAGE_CONFIG: Record<CandidateStage, { label: string; color: string; bgColor: string; borderColor: string }> = {
@@ -80,9 +84,23 @@ const toCandidate = (c: HiringCandidate): Candidate => ({
   score: c.score,
   appliedAt: c.applied_at,
   tags: c.tags || [],
+  ownerId: c.owner_id,
+  ownerName: c.owner_name,
 });
 
-function CandidateCard({ candidate, onDragStart, onDragEnd }: { candidate: Candidate; onDragStart?: () => void; onDragEnd?: () => void }) {
+function CandidateCard({
+  candidate,
+  onDragStart,
+  onDragEnd,
+  members,
+  onOwnerChange,
+}: {
+  candidate: Candidate;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
+  members: { developer_id: string; name: string | null }[];
+  onOwnerChange: (candidateId: string, ownerId: string | null) => void;
+}) {
   const [showMenu, setShowMenu] = useState(false);
   const stageConfig = STAGE_CONFIG[candidate.stage];
 
@@ -179,6 +197,33 @@ function CandidateCard({ candidate, onDragStart, onDragEnd }: { candidate: Candi
         <span className="px-1.5 py-0.5 bg-accent/50 rounded">{candidate.source}</span>
       </div>
 
+      {/* Owner. An unowned candidate is the case that mattered: a stage change on
+          one notifies nobody, which is how a candidate sits in `screening` for
+          three weeks with no one accountable — so "Unassigned" is stated plainly
+          rather than left blank. */}
+      <div className="mt-3 pt-3 border-t border-border/60 flex items-center gap-2">
+        <User className="h-3 w-3 text-muted-foreground shrink-0" />
+        <select
+          value={candidate.ownerId ?? ""}
+          onChange={(e) => onOwnerChange(candidate.id, e.target.value || null)}
+          onClick={(e) => e.stopPropagation()}
+          aria-label={`Owner for ${candidate.name}`}
+          data-testid="candidate-owner-select"
+          className={cn(
+            "flex-1 min-w-0 bg-transparent text-xs rounded px-1 py-0.5 border border-transparent",
+            "hover:border-border focus:border-border focus:outline-none cursor-pointer",
+            candidate.ownerId ? "text-foreground" : "text-muted-foreground italic"
+          )}
+        >
+          <option value="">Unassigned</option>
+          {members.map((m) => (
+            <option key={m.developer_id} value={m.developer_id}>
+              {m.name || "Unnamed"}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {/* Quick menu */}
       {showMenu && (
         <motion.div
@@ -216,11 +261,15 @@ function CandidateCard({ candidate, onDragStart, onDragEnd }: { candidate: Candi
 function StageColumn({
   stage,
   candidates,
-  onDrop
+  onDrop,
+  members,
+  onOwnerChange,
 }: {
   stage: CandidateStage;
   candidates: Candidate[];
   onDrop: (stage: CandidateStage, candidateId: string) => void;
+  members: { developer_id: string; name: string | null }[];
+  onOwnerChange: (candidateId: string, ownerId: string | null) => void;
 }) {
   const [isDragOver, setIsDragOver] = useState(false);
   const config = STAGE_CONFIG[stage];
@@ -272,7 +321,11 @@ function StageColumn({
                 e.dataTransfer.setData("candidateId", candidate.id);
               }}
             >
-              <CandidateCard candidate={candidate} />
+              <CandidateCard
+                candidate={candidate}
+                members={members}
+                onOwnerChange={onOwnerChange}
+              />
             </div>
           ))}
         </AnimatePresence>
@@ -291,6 +344,19 @@ function StageColumn({
 export default function CandidatesPage() {
   const { isLoading, isAuthenticated } = useAuth();
   const { currentWorkspaceId, currentWorkspace, workspacesLoading, hasWorkspaces } = useWorkspace();
+  // Who can own a candidate. Active members only — assigning a departed
+  // colleague would point stage notifications at somebody who has no access.
+  const { members } = useWorkspaceMembers(currentWorkspaceId);
+  const ownerOptions = useMemo(
+    () =>
+      (members ?? [])
+        .filter((m) => m.status === "active")
+        .map((m) => ({
+          developer_id: String(m.developer_id),
+          name: m.developer_name ?? m.developer_email ?? null,
+        })),
+    [members]
+  );
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -420,6 +486,40 @@ export default function CandidatesPage() {
       }
     }
   }, [currentWorkspaceId]);
+
+  /** Assign or clear a candidate's owner. */
+  const handleOwnerChange = useCallback(
+    async (candidateId: string, ownerId: string | null) => {
+      const previous = candidates.find((c) => c.id === candidateId);
+      setCandidates((prev) =>
+        prev.map((c) =>
+          c.id === candidateId
+            ? {
+                ...c,
+                ownerId,
+                ownerName:
+                  ownerOptions.find((m) => m.developer_id === ownerId)?.name ?? null,
+              }
+            : c
+        )
+      );
+
+      try {
+        await hiringApi.updateCandidate(candidateId, { owner_id: ownerId });
+      } catch (err) {
+        console.error("Failed to update candidate owner:", err);
+        // Put the old value back rather than leaving the card claiming an owner
+        // the server rejected — a wrong owner here means the wrong person is the
+        // one told about stage changes.
+        if (previous) {
+          setCandidates((prev) =>
+            prev.map((c) => (c.id === candidateId ? previous : c))
+          );
+        }
+      }
+    },
+    [candidates, ownerOptions]
+  );
 
   // Get unique sources
   const sources = useMemo(() => {
@@ -620,6 +720,8 @@ export default function CandidatesPage() {
                 stage={stage}
                 candidates={candidatesByStage[stage]}
                 onDrop={handleDrop}
+                members={ownerOptions}
+                onOwnerChange={handleOwnerChange}
               />
             ))}
           </div>

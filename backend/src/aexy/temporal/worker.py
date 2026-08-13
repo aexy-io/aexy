@@ -64,6 +64,9 @@ def get_all_activities() -> list:
         compose_team_review_period,
         enqueue_review_cycle_digests,
     )
+    from aexy.temporal.activities.work_item_deadlines import (
+        check_work_item_deadlines,
+    )
     from aexy.temporal.activities.analysis import (
         aggregate_billing_usage,
         analyze_commit,
@@ -291,8 +294,10 @@ def get_all_activities() -> list:
         compose_developer_review_period,
         compose_team_review_period,
         enqueue_review_cycle_digests,
-        # Daily deadline-reminder sweep
+        # Daily deadline-reminder sweeps — review cycles, and the work items
+        # (tasks, cards, stories) that people are actually assigned.
         check_review_deadlines,
+        check_work_item_deadlines,
         reset_daily_limits,
         batch_report_usage,
         aggregate_billing_usage,

@@ -495,7 +495,7 @@ async def process_chat_all_mention(input: dict[str, Any]) -> dict[str, Any]:
     logger.info("Processing @all mention: channel=%s topic=%s", channel_id, topic_id)
 
     from aexy.services.chat_service import ChatService
-    from aexy.services.notification_service import notify_mention
+    from aexy.services.notification_service import notify_chat_mention
 
     async with async_session_maker() as db:
         service = ChatService(db)
@@ -505,12 +505,14 @@ async def process_chat_all_mention(input: dict[str, Any]) -> dict[str, Any]:
             if uid == sender_id:
                 continue
             try:
-                await notify_mention(
+                # `chat_mention`, not the generic `mention`: an @all reaches every
+                # member of the channel, so it is the single loudest thing chat can
+                # do and the one people most need their own toggle for.
+                await notify_chat_mention(
                     db=db,
                     mentioned_user_id=uid,
                     mentioner_name=sender_name,
-                    entity_type="chat_message",
-                    entity_id=topic_id,
+                    topic_id=topic_id,
                     action_url=action_url,
                     snippet=snippet,
                 )
