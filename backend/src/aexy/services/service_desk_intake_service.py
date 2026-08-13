@@ -16,6 +16,7 @@ import logging
 import re
 import secrets
 from datetime import datetime, timezone
+from typing import NamedTuple
 from uuid import uuid4
 
 from fastapi import HTTPException
@@ -80,6 +81,20 @@ _SPLIT_MIN_CONFIDENCE = 0.85
 _LOW_CONFIDENCE = 0.6
 _AI_MATCH_MIN_CONFIDENCE = 0.85
 _AI_MATCH_MAX_CANDIDATES = 20
+
+
+class FlushOutcome(NamedTuple):
+    """What one ``flush_notifications`` call actually did.
+
+    ``skipped`` is a queued acknowledgement that never left and never will: a
+    colleague answered the requester by hand first, or this deployment has no
+    channel configured to send on. Retrying either changes nothing, which is why
+    it is counted apart from ``failed``.
+    """
+
+    sent: int
+    failed: int
+    skipped: int
 
 
 def _domain_of(email: str | None) -> str | None:
@@ -1400,7 +1415,13 @@ class ServiceDeskIntakeService:
         # or the requester is the desk itself. That is a decision, not a failure.
         if not self._pending_notifications:
             return ACK_NOTHING_TO_DO
-        return ACK_FAILED if await self.flush_notifications() else ACK_SENT
+        outcome = await self.flush_notifications()
+        if outcome.failed:
+            return ACK_FAILED
+        # Queued but not sent and not failed: a colleague got there first, or
+        # there is no channel to send on. Reporting ACK_SENT for either would put
+        # "sent" in the activity log for a message nobody received.
+        return ACK_SENT if outcome.sent else ACK_NOTHING_TO_DO
 
     async def _send_receipt(
         self,
@@ -1494,28 +1515,29 @@ class ServiceDeskIntakeService:
                 return True
         return False
 
-    async def flush_notifications(self) -> int:
+    async def flush_notifications(self) -> FlushOutcome:
         """Send queued acknowledgements. Call AFTER committing; never raises.
 
         Kept separate from ``ingest`` so a rolled-back transaction can't leave a
         requester holding a receipt for a ticket that does not exist.
 
-        Returns how many of them failed in a way worth retrying. Callers that
-        treat outbound as best-effort ignore it, as they always have; the Temporal
-        activity behind manual logging does not, because a receipt that silently
-        never arrived is the whole reason it is a durable job.
+        Returns what became of each one. Callers that treat outbound as
+        best-effort ignore it, as they always have; the Temporal activity behind
+        manual logging does not, because a receipt that silently never arrived is
+        the whole reason it is a durable job.
         """
         pending, self._pending_notifications = self._pending_notifications, []
         if not pending:
-            return 0
+            return FlushOutcome(sent=0, failed=0, skipped=0)
         from aexy.services.service_desk_mailer import (
             SEND_FAILED,
+            SEND_OK,
             desk_replied_in_thread,
             send_service_desk_email,
         )
         from aexy.services.service_desk_templates import render_sd
 
-        failures = 0
+        sent = failures = skipped = 0
         for item in pending:
             try:
                 mailbox = (
@@ -1535,6 +1557,7 @@ class ServiceDeskIntakeService:
                         "Service desk: receipt for %s withheld, a person already replied",
                         item["vars"].get("display_id"),
                     )
+                    skipped += 1
                     continue
                 subject, body = await render_sd(self.db, item["workspace_id"], "receipt", item["vars"])
                 # The receipt is usually the first message the desk sends, so its
@@ -1548,16 +1571,20 @@ class ServiceDeskIntakeService:
                 outcome = await send_service_desk_email(
                     self.db, mailbox, item["to"], subject, body, thread_id=item["thread_id"]
                 )
-                if outcome == SEND_FAILED:
+                if outcome == SEND_OK:
+                    sent += 1
+                elif outcome == SEND_FAILED:
                     failures += 1
                     logger.warning(
                         "Service desk: receipt for %s was not delivered",
                         item["vars"].get("display_id"),
                     )
+                else:
+                    skipped += 1
             except Exception as exc:  # noqa: BLE001 — acknowledgements are best-effort
                 failures += 1
                 logger.warning("Service desk: receipt send skipped (%s)", exc)
-        return failures
+        return FlushOutcome(sent=sent, failed=failures, skipped=skipped)
 
     # ---------------------------------------------------------- mailbox lookup
 

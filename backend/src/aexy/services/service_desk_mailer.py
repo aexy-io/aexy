@@ -279,17 +279,19 @@ async def send_service_desk_email(
 
         ``SEND_OK``          a channel accepted the message
         ``SEND_FAILED``      delivery was attempted and did not happen — retryable
-        ``SEND_UNCONFIGURED`` this deployment has no transactional email at all,
-                             so there is nothing to retry until somebody sets it up
+        ``SEND_UNCONFIGURED`` no channel was in a position to try, so there is
+                             nothing to retry until somebody configures one
     """
     if not to_email:
         return SEND_UNCONFIGURED
 
+    gmail_attempted = False
     if (
         mailbox is not None
         and mailbox.channel == MailboxChannel.GMAIL_SYNC.value
         and mailbox.integration_id
     ):
+        gmail_attempted = True
         try:
             await _send_via_gmail(
                 db,
@@ -311,6 +313,17 @@ async def send_service_desk_email(
 
         service = EmailService()
         if not service.is_configured:
+            # A desk on a connected Gmail mailbox is the common shape, and such a
+            # deployment often has no transactional email behind it at all. The
+            # mailbox's own channel was configured and it just failed, so this is
+            # a delivery failure worth another attempt — reporting "nothing is
+            # set up" here would retire the receipt on the one error that most
+            # deserves a retry.
+            if gmail_attempted:
+                logger.warning(
+                    "Service desk: Gmail send failed and no transactional email to fall back to"
+                )
+                return SEND_FAILED
             logger.info("Service desk: no transactional email configured, send skipped")
             return SEND_UNCONFIGURED
         log = await service.send_templated_email(

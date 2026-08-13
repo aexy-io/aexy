@@ -29,8 +29,11 @@ async def send_service_desk_receipt(input: SendServiceDeskReceiptInput) -> str:
     the ticket was created dropped the receipt with nothing to say so.
 
     Raising on a failed send is the point of running here — ``STANDARD_RETRY``
-    then tries again with backoff. "Nobody to write to" is a decision rather
-    than a failure and returns normally, so it does not burn retries.
+    then tries again with backoff. Anything that was never going to be sent
+    returns ``ACK_NOTHING_TO_DO`` instead and burns no retries: a call with no
+    address to answer, a colleague who replied by hand first, or a deployment
+    with no channel to send on. It is logged as itself rather than as a send,
+    so a receipt nobody received never reads as one that went out.
     """
     from aexy.core.database import get_async_session
     from aexy.services.service_desk_intake_service import (
