@@ -52,6 +52,9 @@ function AttachmentItem({
         .downloadAttachment(workspaceId, ticketId, attachment.id)
         .then((blob) => {
           if (!active) return;
+          // Not a download: the `src` of an inline image thumbnail. Released by
+          // this effect's cleanup below.
+          // eslint-disable-next-line no-restricted-syntax
           url = URL.createObjectURL(blob);
           setObjectUrl(url);
         })
@@ -66,6 +69,10 @@ function AttachmentItem({
   const open = async () => {
     if (!attachment.id) return;
     const blob = await ticketsApi.downloadAttachment(workspaceId, ticketId, attachment.id);
+    // Not a download: this opens the file in a tab for viewing, which `saveBlob`
+    // deliberately does not do. Already deferred the revoke, which is the half of
+    // the rule that applies here.
+    // eslint-disable-next-line no-restricted-syntax
     const url = URL.createObjectURL(blob);
     window.open(url, "_blank", "noopener,noreferrer");
     // Revoke after the tab has had a chance to load it.
