@@ -5,6 +5,348 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.2] - 2026-08-13
+
+A month-end engineering report built from what the repo sync already knows —
+and the five things the sync was not recording that a report of that kind
+needs.
+
+### Added: Monthly Engineering Report
+
+Reports → Monthly Engineering. The report an engineering lead assembles by hand
+at month end: contributors, commits, source lines, merged pull requests, a
+per-person table, activity per repository, and observations drawn from the data
+— where work concentrates, who carries the merges, how much of the month went
+into porting the same change between branches, and how many merged PRs nobody
+commented on.
+
+Three commitments shape the arithmetic, because a report about people's work is
+read as a judgement about people whether or not it was meant that way.
+
+**Bots and merge commits are out.** A release bot's version bumps and a merge's
+combined diff are not somebody's contribution, and counting them flatters
+whoever happens to integrate.
+
+**Lines are source lines.** Lockfiles, `dist/`, `build/`, `vendor/`,
+`node_modules/`, coverage output, minified bundles and generated code do not
+count as somebody's writing — one `npm install` can outweigh a month of real
+work.
+
+**A change ported to three branches is one change.** Deduplication is by diff
+content, so it survives the new SHA a cherry-pick gets. It is keyed per
+repository, because the same edit made in two repositories is two pieces of
+work and collapsing them would delete one from somebody's month.
+
+Everything the report could not measure is stated in the report itself rather
+than left for the reader to discover: commits with no fingerprint, line counts
+that predate source-only counting, merges with no recorded merger, and
+repositories whose last sync predates the end of the period. A number nobody
+can audit is worse than a gap somebody can.
+
+Repository freshness sits above the figures, not in a footnote — a repository
+that has never synced and one with a quiet month look identical otherwise — and
+an admin can trigger a sync of every adopted repository from there before
+generating. Asking twice while a sync is running does nothing rather than
+starting a second one.
+
+The report is available as JSON or as markdown to paste into a document.
+
+### Added: the sync now records what a contribution report needs
+
+**Who merged a pull request.** On most teams a couple of people carry the
+integration load and nothing in the schema could show it. Bot mergers are
+recorded by login only — resolving them to a developer would invent a person
+and credit a merge queue with the team's integration work.
+
+**Real pull-request metrics.** GitHub's *list* endpoint returns none of
+additions, deletions, changed files, commits or comment counts — only the
+per-PR detail call does — and the sync read them off the list. Every
+backfilled PR stored six zeros. The zeros also made `size_bucket` "xs", which
+the AI pass treats as too small to look at while stamping `ai_analyzed_at` on
+the way past, so those pull requests were never analysed and never would be.
+There is now one detail request per *new* pull request, rows already stored
+are refilled once, and the migration clears the stamp on the ones that were
+skipped without ever being read.
+
+**Source-only line counts**, stored beside the raw ones so nothing is lost.
+
+**A content fingerprint per commit**, patch-id in spirit, which is what lets a
+cherry-pick collide with its original.
+
+**When work was written, and on which branch**, as distinct from when it landed.
+
+### Fixed: an adopted repository could sync every five minutes, or never
+
+`check_repo_auto_sync` throttles on `workspace_repositories.last_sync_at` and
+skips rows already syncing. No sync path ever wrote either column — every one
+of them wrote its state to the adopter's `developer_repositories` row instead.
+So `last_sync_at` stayed NULL for the row's whole life, the frequency check
+behind it was permanently true, and every eligible repository was re-dispatched
+on each five-minute tick no matter which frequency the adopter had chosen. The
+in-flight skip matched nothing. The catalog API had already worked around the
+stale row by overlaying the adopter's values onto its response, so the page
+looked right while the scheduler read columns nobody wrote.
+
+The sync now stamps the workspace row on every exit path. Duplicate dispatch is
+prevented by a stable Temporal id rather than by a database flag: the flag is
+written inside the sync's own transaction and is not visible until it commits,
+and a worker lost mid-sync would leave it set for good, blocking that
+repository permanently.
+
+Two dead writes alongside it. The scheduler marked a repository
+`no_credentials` when the adopter's GitHub auth was broken and then closed the
+session without committing, so the reclaim prompt never appeared. And a broken
+token now marks the workspace row directly.
+
+### Fixed: adopting a repository left it unable to sync
+
+Adoption created the workspace catalog row and nothing else, while the sync
+looks its state up by developer and repository — so an adopter who had never
+listed the repository themselves got `Repository not found for this developer`
+on every run. Nothing surfaced it: the scheduler dispatches and moves on, and
+the catalog page went on saying pending.
+
+Adoption and reclaim now create that row, and the sync creates one if it is
+missing, so repositories adopted before this need no backfill. Presence of the
+row is a weaker signal of GitHub access than it was, so the fallback that picks
+an adopter prefers whoever has actually synced the repository over whoever
+merely holds a row.
+
+The same endpoint's fallback contradicted its own comment: it claimed to prefer
+the caller when they had access, but took the fallback whenever it named a
+different person, so adopting a repository you could see handed the sync to an
+arbitrary colleague.
+
+### Changed: contribution metrics count differently
+
+`ContributionService` counted bots and merge commits, and summed raw churn
+including lockfiles. It now uses the same definition of "somebody's
+contribution" as the report, so two screens in the same product cannot disagree
+about how much work happened.
+
+Two defects surfaced while applying it. Pull requests were windowed on
+`created_at` — when our sync first wrote the row, so a backfill dropped a year
+of pull requests into whichever period it happened to run in — rather than when
+the pull request was created on GitHub. And lines added summed commits *and*
+pull requests, double-counting every line that went through review, which is
+all of them on any team that reviews its work.
+
+### Changed: who can read a contribution report
+
+Owners, admins and department heads only, and a head sees their department
+rather than the workspace. Read by the people who run a team this is a
+management tool; read by everybody it is a leaderboard, and the numbers are too
+easy to misread for that — commit volume tracks branching style as much as
+effort, and none of the work that leaves no git trace appears at all.
+
+A head's report is recomputed over their department, not the workspace's with
+rows hidden: totals, the repository table and every observation. Pull requests
+count from either end, so a head still sees merges they made on another team's
+work, without that work's author gaining a row. The scope is stated on the
+page, under the markdown title, and in the limitations, because a partial total
+that does not announce itself is the easiest way to mislead somebody with true
+numbers.
+
+Headship is read from both places it is recorded — `Department.head_id` and a
+`role_in_department` of `head` — since the two do not always agree, and reading
+one silently locks out whichever half of the org chart was written the other
+way. That helper moved out of the Google mailbox module it grew up in; the org
+chart is not a Google question.
+
+## [0.18.1] - 2026-08-13
+
+Work landing on you now tells you so. Documents get comments, and stop having two
+notification systems. And "My Work" stops being two different pages, one of them
+called Tickets.
+
+### Added: assignment notifications, which did not exist
+
+Nothing in this product ever told anybody that work had been assigned to them.
+Not a task, not a project card, not a bug, not a story, not a form ticket, not a
+Service Desk ticket. Every assignment path wrote a history row and returned. The
+only way to find out something was yours was to go looking — or, for the Service
+Desk alone, to wait for the next daily digest, which can be a day late.
+
+`task_assigned` and `task_unassigned` fire from every path that can change who
+owns a work item: the dedicated assign endpoint, the multi-assignee add and
+remove, task creation with an assignee already set, the generic PATCH, the
+project-card create, and the bug and story endpoints. Bugs and stories are their
+own tables but they land on the same person and appear in the same list, so they
+notify like anything else.
+
+`task_status_changed` and `task_commented` go to the people on the item, minus
+whoever did it. Both are in-app only by default: they fire on every column drag
+and every comment, and defaulting those to email is how a notification system
+teaches people to filter it. Someone @mentioned in a comment gets the mention
+instead, never both for one comment.
+
+`ticket_assigned` and `desk_ticket_assigned` come from one shared assign path
+that serves both queues, so it picks the event, the reference format and the deep
+link by which kind of ticket it actually is — sending a desk owner to
+`/tickets/{id}` would land them on a page that cannot show pending-with or the
+clock. `desk_ticket_pending_with_changed` notifies the queue a ticket is handed
+to, because `pending_with` is the desk's real unit of handoff: a ticket changes
+queue far more often than it changes owner, and the queue it lands in is the one
+that has to act before the clock runs out. Both are queued and sent after the
+commit, following the pattern the desk service already documents for closure
+mail — telling somebody a ticket is theirs and then rolling the change back is
+worse than saying nothing.
+
+### Fixed: on-call and reminder emails arrived empty
+
+`EmailService` built every email from `NOTIFICATION_TEMPLATES` and never looked
+at the notification's own title and body. Sixteen events have no template entry,
+so they sent subject "Aexy Notification", body "You have a new notification." The
+in-app row for the same event read perfectly well.
+
+The affected set was exactly the wrong one: all six on-call events, all six
+reminder events, mentions, and both insight alerts — the events nobody is sitting
+in the app waiting for. The notification's own title and body are now the
+fallback, which also means any new event gets a correct email without a template.
+
+The same function cast the event type through an enum that did not contain every
+event, and the resulting `ValueError` was swallowed by a broad `except` that
+recorded the send as failed and never retried. Now passed through as a string.
+
+### Fixed: notification events that could not be switched off
+
+`aexy.schemas.notification` declared a second copy of `NotificationEventType`,
+and the two copies drifted. Because `EmailService` imports the schema copy, an
+event that existed only in the model failed the cast above. Worse in the other
+direction: `workspace_join_request` was firing in production from a member that
+existed only in the schema copy, so it had no category, no channel defaults, no
+row in the notification settings screen — and `get_preference`'s unknown-event
+fallback defaults email to on. Admins were getting mail they had no way to stop.
+
+The schema module now re-exports the model's enum. `usage_alert_80/90/100` were
+emitted with no defaults entry and had the same problem: billing mail nobody
+could switch off.
+
+Three tests now enforce the invariants — every event has a category, complete
+channel defaults, and a label on the settings screen — plus a generated fixture
+so the frontend cannot fall behind the backend. Three events had no label and
+rendered as a de-underscored slug.
+
+### Added: document comments
+
+`DocumentPermission.COMMENT` has been a grantable permission level since the docs
+module was written, on documents that had nothing to comment with. An admin could
+grant somebody comment access to a document and there was no comment box.
+
+Threads are one level — a root comment plus replies. Deeper nesting reads badly
+in a panel and turns "who is in this conversation?", which decides who gets
+notified, into a recursive walk. Resolve, reopen, edit and delete are all there;
+deletion is soft, so a deleted comment keeps its place and its replies keep
+theirs. Resolved threads collapse to their opening comment rather than vanishing:
+a resolved conversation is still the record of why the document says what it
+says.
+
+Comment bodies are rich text carrying mention anchors, so `document_mentioned`
+and `document_commented` travel the same path as every other mention in the
+product rather than growing a second parser. Bodies are sanitised on render —
+they are HTML written by one workspace member and displayed to every reader of
+the document.
+
+### Changed: documents had two notification systems; now one
+
+`document_notifications` was a second, parallel notification table with its own
+endpoint, its own hook, and an "Inbox" entry in the docs sidebar. One thing wrote
+to it: an `ai_proposal` row when an AI proposed an edit, telling the document
+owner a review was pending.
+
+That was the problem rather than the incidental detail. Because the row lived
+there instead of in `notifications`, it got no email, no per-user channel
+preference, and no place in the main notification bell — so a proposal generated
+by a *scheduled sync*, which nobody clicked anything to cause, waited for the
+owner to happen to open one specific panel.
+
+It now emits `document_ai_proposal` through `NotificationService`, alongside
+`document_shared`, `document_commented` and `document_mentioned`. The table,
+endpoint, hook, panel and sidebar entry are gone. Existing rows are not
+migrated — they are "go and look" pointers whose proposals are still visible on
+the document, and importing weeks-old ones into the main bell would page people
+the moment this ships.
+
+### Changed: "My Work" was two pages, and one of them was called Tickets
+
+The sidebar had a **My Work** under Planning and a **Tickets** in Engineering.
+The Tickets item opened a page whose heading was also "My Work". Meanwhile the
+Business section had a Service Desk with its own **Tickets** child, an unrelated
+system. Two names for one question, and one name for two different things.
+
+Worse, the two overlapped unequally: the Tickets page filtered its task list to
+`item_type == "task"`, so your bugs and stories were missing from the page
+claiming to show everything assigned to you, and appeared only on the other one.
+
+The richer page now lives at `/my-work` and lists tasks, bugs, stories and form
+tickets together. The Planning entry is gone; Engineering's item is renamed **My
+Work** at the same level, so Tickets unambiguously means the Service Desk.
+`/tickets` redirects, and the keyboard shortcut, command palette, app header and
+hiring tiles point at the page directly rather than through the redirect — which
+sits behind the tickets app guard and dead-ended anyone with sprint access and no
+ticket access.
+
+Form tickets are gated per *source* rather than per page, because `/my-work` is
+the personal work list: somebody with sprints and no ticket access must still
+reach their own tasks.
+
+### Added: due-date reminders for the work you are assigned
+
+`deadline_reminder_1_day` and `deadline_reminder_day_of` were declared, given
+defaults, listed in settings, and fired by nothing. Review cycles had their own
+sweep, so the only deadlines anyone was reminded about were review deadlines.
+
+Being told a task is yours and never being told it is due is most of the way to
+not being told at all. A daily sweep now covers `SprintTask.end_date` and
+`UserStory.target_date`. Bugs have no due-date column, so there is nothing to
+sweep. Overdue items are skipped: a reminder that a deadline is coming, sent
+after it passed, reads as a bug.
+
+Idempotent by inspecting the notifications already sent rather than adding a
+column to every table with a due date, so it survives running twice in a day or
+catching up after a missed one.
+
+### Added: a candidate has an owner
+
+`candidate_stage_changed` was another declared event with a toggle and no
+emitter, for one reason: `hiring_candidates` had no owner column, so the only
+choices were notifying every hiring-app member on every Kanban drag, or nobody.
+
+Candidates now have an owner, settable on the board and validated to be a member
+of the candidate's workspace — otherwise stage notifications get addressed to
+somebody with no access to the candidate. Existing candidates are left unowned,
+because there is no correct guess and assigning them all to whoever runs the
+migration would be worse. An unowned candidate notifies nobody, which is what
+happens today.
+
+### Changed: dead notification toggles
+
+Eleven events were declared, defaulted, and rendered as switches in the settings
+screen with nothing firing them. A toggle that controls nothing is worse than no
+toggle, because it reads as a delivery failure rather than an unbuilt feature.
+
+Seven are now wired: `goal_at_risk` on the transition into that status,
+`learning_approval_requested` to the approver the request already names,
+`assessment_completed` to the assessment's creator, `goal_auto_linked` counting
+only newly linked contributions, `automation_run_completed`, and the two
+deadline reminders above. `chat_mention` was firing the generic `mention` event,
+so the "Chat mention" toggle did nothing — its own docstring said otherwise.
+
+`goal_auto_linked` and `automation_run_completed` default to off on every
+channel: one fires during GitHub sync and can match many commits at once, the
+other reports that a thing worked. The toggle now does something for people who
+want it without making either noisy for everyone who does not.
+
+One remains unwired — `oncall_shift_started`, redundant with the wired
+`oncall_shift_starting` that fires 30 minutes ahead. It is off on every channel,
+and a test enforces that an event nothing can fire may not default any channel
+on.
+
+### Migrations
+
+Three, to run in order: `migrate_document_comments.sql`,
+`migrate_drop_document_notifications.sql`, `migrate_hiring_candidate_owner.sql`.
+
 ## [0.18.0] - 2026-08-12
 
 Connecting your own mailbox stops being an admin favour, the setup questions

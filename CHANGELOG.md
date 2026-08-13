@@ -5,6 +5,154 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.2] - 2026-08-13
+
+A month-end engineering report built from what the repo sync already knows —
+and the five things the sync was not recording that a report of that kind
+needs.
+
+### Added: Monthly Engineering Report
+
+Reports → Monthly Engineering. The report an engineering lead assembles by hand
+at month end: contributors, commits, source lines, merged pull requests, a
+per-person table, activity per repository, and observations drawn from the data
+— where work concentrates, who carries the merges, how much of the month went
+into porting the same change between branches, and how many merged PRs nobody
+commented on.
+
+Three commitments shape the arithmetic, because a report about people's work is
+read as a judgement about people whether or not it was meant that way.
+
+**Bots and merge commits are out.** A release bot's version bumps and a merge's
+combined diff are not somebody's contribution, and counting them flatters
+whoever happens to integrate.
+
+**Lines are source lines.** Lockfiles, `dist/`, `build/`, `vendor/`,
+`node_modules/`, coverage output, minified bundles and generated code do not
+count as somebody's writing — one `npm install` can outweigh a month of real
+work.
+
+**A change ported to three branches is one change.** Deduplication is by diff
+content, so it survives the new SHA a cherry-pick gets. It is keyed per
+repository, because the same edit made in two repositories is two pieces of
+work and collapsing them would delete one from somebody's month.
+
+Everything the report could not measure is stated in the report itself rather
+than left for the reader to discover: commits with no fingerprint, line counts
+that predate source-only counting, merges with no recorded merger, and
+repositories whose last sync predates the end of the period. A number nobody
+can audit is worse than a gap somebody can.
+
+Repository freshness sits above the figures, not in a footnote — a repository
+that has never synced and one with a quiet month look identical otherwise — and
+an admin can trigger a sync of every adopted repository from there before
+generating. Asking twice while a sync is running does nothing rather than
+starting a second one.
+
+The report is available as JSON or as markdown to paste into a document.
+
+### Added: the sync now records what a contribution report needs
+
+**Who merged a pull request.** On most teams a couple of people carry the
+integration load and nothing in the schema could show it. Bot mergers are
+recorded by login only — resolving them to a developer would invent a person
+and credit a merge queue with the team's integration work.
+
+**Real pull-request metrics.** GitHub's *list* endpoint returns none of
+additions, deletions, changed files, commits or comment counts — only the
+per-PR detail call does — and the sync read them off the list. Every
+backfilled PR stored six zeros. The zeros also made `size_bucket` "xs", which
+the AI pass treats as too small to look at while stamping `ai_analyzed_at` on
+the way past, so those pull requests were never analysed and never would be.
+There is now one detail request per *new* pull request, rows already stored
+are refilled once, and the migration clears the stamp on the ones that were
+skipped without ever being read.
+
+**Source-only line counts**, stored beside the raw ones so nothing is lost.
+
+**A content fingerprint per commit**, patch-id in spirit, which is what lets a
+cherry-pick collide with its original.
+
+**When work was written, and on which branch**, as distinct from when it landed.
+
+### Fixed: an adopted repository could sync every five minutes, or never
+
+`check_repo_auto_sync` throttles on `workspace_repositories.last_sync_at` and
+skips rows already syncing. No sync path ever wrote either column — every one
+of them wrote its state to the adopter's `developer_repositories` row instead.
+So `last_sync_at` stayed NULL for the row's whole life, the frequency check
+behind it was permanently true, and every eligible repository was re-dispatched
+on each five-minute tick no matter which frequency the adopter had chosen. The
+in-flight skip matched nothing. The catalog API had already worked around the
+stale row by overlaying the adopter's values onto its response, so the page
+looked right while the scheduler read columns nobody wrote.
+
+The sync now stamps the workspace row on every exit path. Duplicate dispatch is
+prevented by a stable Temporal id rather than by a database flag: the flag is
+written inside the sync's own transaction and is not visible until it commits,
+and a worker lost mid-sync would leave it set for good, blocking that
+repository permanently.
+
+Two dead writes alongside it. The scheduler marked a repository
+`no_credentials` when the adopter's GitHub auth was broken and then closed the
+session without committing, so the reclaim prompt never appeared. And a broken
+token now marks the workspace row directly.
+
+### Fixed: adopting a repository left it unable to sync
+
+Adoption created the workspace catalog row and nothing else, while the sync
+looks its state up by developer and repository — so an adopter who had never
+listed the repository themselves got `Repository not found for this developer`
+on every run. Nothing surfaced it: the scheduler dispatches and moves on, and
+the catalog page went on saying pending.
+
+Adoption and reclaim now create that row, and the sync creates one if it is
+missing, so repositories adopted before this need no backfill. Presence of the
+row is a weaker signal of GitHub access than it was, so the fallback that picks
+an adopter prefers whoever has actually synced the repository over whoever
+merely holds a row.
+
+The same endpoint's fallback contradicted its own comment: it claimed to prefer
+the caller when they had access, but took the fallback whenever it named a
+different person, so adopting a repository you could see handed the sync to an
+arbitrary colleague.
+
+### Changed: contribution metrics count differently
+
+`ContributionService` counted bots and merge commits, and summed raw churn
+including lockfiles. It now uses the same definition of "somebody's
+contribution" as the report, so two screens in the same product cannot disagree
+about how much work happened.
+
+Two defects surfaced while applying it. Pull requests were windowed on
+`created_at` — when our sync first wrote the row, so a backfill dropped a year
+of pull requests into whichever period it happened to run in — rather than when
+the pull request was created on GitHub. And lines added summed commits *and*
+pull requests, double-counting every line that went through review, which is
+all of them on any team that reviews its work.
+
+### Changed: who can read a contribution report
+
+Owners, admins and department heads only, and a head sees their department
+rather than the workspace. Read by the people who run a team this is a
+management tool; read by everybody it is a leaderboard, and the numbers are too
+easy to misread for that — commit volume tracks branching style as much as
+effort, and none of the work that leaves no git trace appears at all.
+
+A head's report is recomputed over their department, not the workspace's with
+rows hidden: totals, the repository table and every observation. Pull requests
+count from either end, so a head still sees merges they made on another team's
+work, without that work's author gaining a row. The scope is stated on the
+page, under the markdown title, and in the limitations, because a partial total
+that does not announce itself is the easiest way to mislead somebody with true
+numbers.
+
+Headship is read from both places it is recorded — `Department.head_id` and a
+`role_in_department` of `head` — since the two do not always agree, and reading
+one silently locks out whichever half of the org chart was written the other
+way. That helper moved out of the Google mailbox module it grew up in; the org
+chart is not a Google question.
+
 ## [0.18.1] - 2026-08-13
 
 Work landing on you now tells you so. Documents get comments, and stop having two
