@@ -312,20 +312,12 @@ async def send_service_desk_email(
         from aexy.services.email_service import EmailService
 
         service = EmailService()
-        if not service.is_configured:
-            # A desk on a connected Gmail mailbox is the common shape, and such a
-            # deployment often has no transactional email behind it at all. The
-            # mailbox's own channel was configured and it just failed, so this is
-            # a delivery failure worth another attempt — reporting "nothing is
-            # set up" here would retire the receipt on the one error that most
-            # deserves a retry.
-            if gmail_attempted:
-                logger.warning(
-                    "Service desk: Gmail send failed and no transactional email to fall back to"
-                )
-                return SEND_FAILED
-            logger.info("Service desk: no transactional email configured, send skipped")
-            return SEND_UNCONFIGURED
+        # Read before sending, because it is the difference between "this send
+        # broke" and "there is nothing here to send with", and only the first is
+        # worth retrying. Asked here rather than used to skip the send: an
+        # unconfigured deployment still writes its failed row below, and a desk
+        # that quietly stopped recording attempted mail is a desk nobody can audit.
+        configured = service.is_configured
         log = await service.send_templated_email(
             db=db,
             recipient_email=to_email,
@@ -338,7 +330,22 @@ async def send_service_desk_email(
         # `send_templated_email` catches its own provider errors and records the
         # outcome on the log row rather than raising, so the row is the only place
         # that knows whether anything left.
-        return SEND_OK if log.status == "sent" else SEND_FAILED
+        if log.status == "sent":
+            return SEND_OK
+        if configured:
+            return SEND_FAILED
+        # Nothing to send with. A desk on a connected Gmail mailbox is the common
+        # shape, and such a deployment often has no transactional email behind it
+        # at all — so if Gmail was the channel and it failed, this is a delivery
+        # failure worth another attempt. Calling it "unconfigured" would retire
+        # the receipt on the one error that most deserves a retry.
+        if gmail_attempted:
+            logger.warning(
+                "Service desk: Gmail send failed and no transactional email to fall back to"
+            )
+            return SEND_FAILED
+        logger.info("Service desk: no transactional email configured, send skipped")
+        return SEND_UNCONFIGURED
     except Exception as exc:  # noqa: BLE001 — outbound is best-effort
         logger.info("Service desk: email send skipped (%s)", exc)
         return SEND_FAILED
