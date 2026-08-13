@@ -355,13 +355,12 @@ async def _queue_manual_ticket_receipt(ticket_id: str, background: BackgroundTas
     from aexy.temporal.task_queues import TaskQueue
 
     try:
-        # Bounded, because "unreachable" is not always a refused connection.
-        # `start_workflow` carries no RPC deadline of its own, and a Temporal that
-        # completes the TCP handshake but never answers — a wedged container, a
-        # partition, a load balancer accepting for a backend that is gone — leaves
-        # this awaiting forever. That is the exact case the fallback below exists
-        # for, and without a deadline it is the one case that never reaches it,
-        # with an operator holding a phone at the other end.
+        # Bounded here as well as in `dispatch`, which carries its own default
+        # deadline for the same reason. Not redundancy: that one is the infra
+        # backstop for every caller, this one is the promise made to somebody
+        # holding a phone, and it should not silently move when the shared
+        # default is retuned for workers. Whichever is shorter wins, and the
+        # fallback below is reached either way.
         await asyncio.wait_for(
             dispatch(
                 "send_service_desk_receipt",
