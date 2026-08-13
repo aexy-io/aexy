@@ -1,12 +1,9 @@
-import { act } from "react";
-import { createRoot, type Root } from "react-dom/client";
+import type { ReactNode } from "react";
+import { act, renderHook } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useServiceDeskMutations } from "@/hooks/useServiceDesk";
-
-(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean })
-  .IS_REACT_ACT_ENVIRONMENT = true;
 
 const mocks = vi.hoisted(() => ({
   splitDetectedIssues: vi.fn(),
@@ -27,52 +24,47 @@ vi.mock("@/lib/service-desk-api", async (importOriginal) => {
   };
 });
 
-describe("Service Desk human split mutation", () => {
-  let container: HTMLDivElement;
-  let root: Root;
+/**
+ * A client whose cache the test can inspect, plus the provider `renderHook`
+ * needs. Returned together because the assertions are about what the mutation
+ * did to *this* client's cache.
+ */
+function makeWrapper() {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  );
+  return { client, Wrapper };
+}
 
+describe("Service Desk human split mutation", () => {
   beforeEach(() => {
     mocks.splitDetectedIssues.mockReset();
     mocks.splitDetectedIssues.mockResolvedValue({
       created_ticket_ids: ["child-1"],
       created_ticket_display_ids: ["BSD-2"],
     });
-    container = document.createElement("div");
-    document.body.appendChild(container);
-    root = createRoot(container);
-  });
-
-  afterEach(() => {
-    act(() => root.unmount());
-    container.remove();
   });
 
   it("invalidates detail, list, and dashboard queries after splitting", async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-    });
+    const { client: queryClient, Wrapper } = makeWrapper();
     const detailKey = ["service-desk", "ticket", "workspace-1", "primary-1"];
     const listKey = ["service-desk", "tickets", "workspace-1"];
     const dashboardKey = ["service-desk", "dashboard", "workspace-1"];
     queryClient.setQueryData(detailKey, { ticket_id: "primary-1" });
     queryClient.setQueryData(listKey, []);
     queryClient.setQueryData(dashboardKey, { total_open: 1 });
-    let mutations: ReturnType<typeof useServiceDeskMutations> | undefined;
-    function Probe() {
-      mutations = useServiceDeskMutations();
-      return null;
-    }
-    await act(async () => {
-      root.render(
-        <QueryClientProvider client={queryClient}>
-          <Probe />
-        </QueryClientProvider>,
-      );
-    });
-    expect(mutations).toBeDefined();
+
+    // `renderHook` rather than a probe component assigning the hook's return
+    // value to an outer variable: that assignment happens during render, which
+    // is a side effect the React Compiler ruleset rejects outright — and it is
+    // what every other hook test here already does.
+    const { result } = renderHook(() => useServiceDeskMutations(), { wrapper: Wrapper });
 
     await act(async () => {
-      await mutations!.splitDetectedIssues.mutateAsync({
+      await result.current.splitDetectedIssues.mutateAsync({
         id: "primary-1",
         issue_indexes: [2],
       });
