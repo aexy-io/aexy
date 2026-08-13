@@ -11,7 +11,6 @@ DocumentStatus = Literal["draft", "generating", "generated", "failed"]
 DocumentLinkType = Literal["file", "directory"]
 DocumentPermission = Literal["view", "comment", "edit", "admin"]
 DocumentVisibility = Literal["private", "workspace", "public"]
-DocumentNotificationType = Literal["comment", "mention", "share", "edit"]
 TemplateCategory = Literal[
     "api_docs", "readme", "function_docs", "module_docs", "guides", "changelog", "custom"
 ]
@@ -370,34 +369,57 @@ class GitHubSyncResponse(BaseModel):
     error: str | None = None
 
 
-# ==================== Notification Schemas ====================
+# ==================== Comment Schemas ====================
 
 
-class DocumentNotificationResponse(BaseModel):
-    """Schema for document notification response."""
+class DocumentCommentCreate(BaseModel):
+    """Post a comment, or a reply to one."""
+
+    content: str = Field(min_length=1, max_length=20000)
+    # Present means "this is a reply". Only root comments accept replies, so the
+    # service rejects a parent that is itself a reply rather than silently
+    # flattening it — one level of threading is a decision, not an accident.
+    parent_id: str | None = None
+
+
+class DocumentCommentUpdate(BaseModel):
+    """Edit your own comment."""
+
+    content: str = Field(min_length=1, max_length=20000)
+
+
+class DocumentCommentResponse(BaseModel):
+    """A single comment. Replies are nested one level under their root."""
 
     model_config = ConfigDict(from_attributes=True)
 
     id: str
     document_id: str
-    document_title: str | None = None
-    document_icon: str | None = None
-    type: DocumentNotificationType
-    message: str
-    is_read: bool = False
-    created_by_id: str | None = None
-    created_by_name: str | None = None
-    created_by_avatar: str | None = None
+    parent_id: str | None = None
+    # Null when the author's account was removed; the comment survives so the
+    # thread still reads.
+    author_id: str | None = None
+    author_name: str | None = None
+    author_avatar: str | None = None
+    # Empty for a deleted comment — the row stays so replies keep their place,
+    # but the body does not come back.
+    content: str
+    is_resolved: bool = False
+    resolved_by_id: str | None = None
+    resolved_at: datetime | None = None
+    is_deleted: bool = False
+    is_edited: bool = False
     created_at: datetime
-    read_at: datetime | None = None
+    updated_at: datetime
+    replies: list["DocumentCommentResponse"] = Field(default_factory=list)
 
 
-class DocumentNotificationListResponse(BaseModel):
-    """Schema for notification list with pagination."""
+class DocumentCommentListResponse(BaseModel):
+    """Root comments for a document, each carrying its replies."""
 
-    notifications: list[DocumentNotificationResponse]
+    comments: list[DocumentCommentResponse]
     total: int
-    unread_count: int
+    unresolved_count: int
 
 
 # ==================== Favorites Schemas ====================

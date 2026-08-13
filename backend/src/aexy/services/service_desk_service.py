@@ -92,6 +92,57 @@ async def _caller_functions(db: AsyncSession, workspace_id: str, developer_id: s
     return {key for key in (canonical_function_key(raw) for raw in stored) if key}
 
 
+async def developers_in_queue(
+    db: AsyncSession, workspace_id: str, pending_with: str
+) -> list[str]:
+    """The developers who can act on a ticket parked in ``pending_with``.
+
+    The inverse of ``can_edit_ticket``'s third clause, and it has to honour the
+    same two exclusions or it becomes a spam cannon:
+
+    * a stakeholder with no mapped internal function is somebody outside the
+      company (a customer, a vendor) and has no developers to notify;
+    * the default bucket is where every untriaged ticket parks, so treating it
+      as a queue would mail the whole operations team about every ticket that
+      lands anywhere — which is exactly why ``can_edit_ticket`` excludes it.
+
+    Desk managers are deliberately not included. They can act on anything, so
+    including them would mean notifying them about every handoff in the desk;
+    the daily digest already gives them the whole-desk view.
+    """
+    taxonomy = await load_taxonomy(db, workspace_id, seed=False)
+    function_key = taxonomy.internal_function_keys.get(pending_with)
+    if function_key is None or function_key == _assignment_only_function(taxonomy):
+        return []
+
+    # Canonicalise on this side too — the same part-migrated workspace that
+    # `_caller_functions` guards against would otherwise resolve to nobody.
+    departments = (
+        await db.execute(
+            select(Department.id, Department.function_key).where(
+                Department.workspace_id == workspace_id,
+                Department.function_key.isnot(None),
+            )
+        )
+    ).all()
+    matching_ids = [
+        dept_id
+        for dept_id, raw in departments
+        if canonical_function_key(raw) == function_key
+    ]
+    if not matching_ids:
+        return []
+
+    members = (
+        await db.execute(
+            select(DepartmentMember.developer_id).where(
+                DepartmentMember.department_id.in_(matching_ids)
+            )
+        )
+    ).scalars().all()
+    return [str(m) for m in members]
+
+
 def _assignment_only_function(taxonomy: Taxonomy) -> str | None:
     """The one function whose queue is by assignment rather than by bucket.
 

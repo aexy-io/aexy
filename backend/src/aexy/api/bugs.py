@@ -36,6 +36,11 @@ from aexy.schemas.bug import (
 )
 from aexy.services.workspace_service import WorkspaceService
 from aexy.services.activity_logger import log_activity
+from aexy.services.notification_service import (
+    notify_work_item_assigned,
+    notify_work_item_status_changed,
+    notify_work_item_unassigned,
+)
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/bugs", tags=["Bugs"])
 
@@ -282,6 +287,20 @@ async def create_bug(
     await db.commit()
     await db.refresh(bug)
 
+    # A bug filed straight onto somebody. Bugs are their own table but they show
+    # up in My Work alongside tasks and stories, so they have to notify like one.
+    if bug.assignee_id:
+        await notify_work_item_assigned(
+            db=db,
+            recipient_ids=[str(bug.assignee_id)],
+            actor_id=str(current_user.id),
+            actor_name=current_user.name or "Someone",
+            item_label="bug",
+            item_title=bug.title,
+            action_url=f"/sprints?bug={bug.id}",
+            workspace_id=workspace_id,
+        )
+
     return bug_to_response(bug)
 
 
@@ -416,6 +435,8 @@ async def update_bug(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bug not found")
 
     update_data = data.model_dump(exclude_unset=True)
+    prior_assignee_id = str(bug.assignee_id) if bug.assignee_id else None
+    prior_status = bug.status
 
     # Convert steps if provided
     if "steps_to_reproduce" in update_data and update_data["steps_to_reproduce"]:
@@ -451,6 +472,44 @@ async def update_bug(
 
     await db.commit()
     await db.refresh(bug)
+
+    new_assignee_id = str(bug.assignee_id) if bug.assignee_id else None
+    actor_name = current_user.name or "Someone"
+    if new_assignee_id != prior_assignee_id:
+        if new_assignee_id:
+            await notify_work_item_assigned(
+                db=db,
+                recipient_ids=[new_assignee_id],
+                actor_id=str(current_user.id),
+                actor_name=actor_name,
+                item_label="bug",
+                item_title=bug.title,
+                action_url=f"/sprints?bug={bug.id}",
+                workspace_id=workspace_id,
+            )
+        if prior_assignee_id:
+            await notify_work_item_unassigned(
+                db=db,
+                recipient_ids=[prior_assignee_id],
+                actor_id=str(current_user.id),
+                actor_name=actor_name,
+                item_label="bug",
+                item_title=bug.title,
+                action_url=f"/sprints?bug={bug.id}",
+                workspace_id=workspace_id,
+            )
+    if bug.status != prior_status and new_assignee_id:
+        await notify_work_item_status_changed(
+            db=db,
+            recipient_ids=[new_assignee_id],
+            actor_id=str(current_user.id),
+            actor_name=actor_name,
+            item_title=bug.title,
+            old_status=prior_status,
+            new_status=bug.status,
+            action_url=f"/sprints?bug={bug.id}",
+            workspace_id=workspace_id,
+        )
 
     return bug_to_response(bug)
 

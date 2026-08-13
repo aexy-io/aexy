@@ -38,7 +38,10 @@ from aexy.schemas.sprint import (
 )
 from aexy.api import task_assignee_ops
 from aexy.services.workspace_service import WorkspaceService
-from aexy.services.notification_service import NotificationService
+from aexy.services.notification_service import (
+    NotificationService,
+    notify_work_item_assigned,
+)
 from aexy.services.activity_logger import log_activity
 from aexy.services.github_task_sync_service import GitHubTaskSyncService
 from aexy.services.sprint_task_service import SprintTaskService, TaskValidationError
@@ -312,6 +315,22 @@ async def create_project_task(
             mentioned_user_ids=data.mentioned_user_ids,
             actor_id=str(current_user.id),
             actor_name=current_user.name or "Someone",
+        )
+
+    # A card created with somebody already on it is still work landing on them.
+    # This path builds the SprintTask directly rather than going through
+    # SprintTaskService.update_task, so it does not inherit that method's
+    # notification and has to send its own.
+    if task.assignee_id:
+        await notify_work_item_assigned(
+            db=db,
+            recipient_ids=[str(task.assignee_id)],
+            actor_id=str(current_user.id),
+            actor_name=current_user.name or "Someone",
+            item_label="task" if task.sprint_id else "card",
+            item_title=task.title,
+            action_url=f"/sprints/{team_id}/board?task={task.id}",
+            workspace_id=str(team.workspace_id) if team.workspace_id else None,
         )
 
     return task_to_response(task)

@@ -13,7 +13,7 @@ import { DocumentItem } from "./DocumentItem";
 import { SpaceFolderWithData } from "./SpaceFolderWithData";
 import { CreateSpaceModal } from "../CreateSpaceModal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { useNotionDocs, useDocumentNotifications } from "@/hooks/useNotionDocs";
+import { useNotionDocs } from "@/hooks/useNotionDocs";
 import { useDocumentSpaces } from "@/hooks/useDocumentSpaces";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAuth } from "@/hooks/useAuth";
@@ -27,13 +27,11 @@ import { SIDEBAR_TO_APP_MAP } from "@/config/appDefinitions";
 interface NotionSidebarProps {
   selectedDocumentId?: string;
   onOpenSearch: () => void;
-  onOpenInbox: () => void;
 }
 
 export function NotionSidebar({
   selectedDocumentId,
   onOpenSearch,
-  onOpenInbox,
 }: NotionSidebarProps) {
   const router = useRouter();
   const { workspaces, currentWorkspace, switchWorkspace } = useWorkspace();
@@ -119,8 +117,6 @@ export function NotionSidebar({
     createDocument,
     deleteDocument,
   } = useNotionDocs(workspaceId);
-
-  const { unreadCount } = useDocumentNotifications(workspaceId);
 
   // Create new private document
   const handleCreatePrivateDocument = async (parentId?: string) => {
@@ -226,11 +222,7 @@ export function NotionSidebar({
       </div>
 
       {/* Navigation */}
-      <SidebarNavigation
-        onOpenSearch={onOpenSearch}
-        onOpenInbox={onOpenInbox}
-        unreadCount={unreadCount}
-      />
+      <SidebarNavigation onOpenSearch={onOpenSearch} />
 
       {/* Divider */}
       <div className="h-px bg-muted/50 mx-3 my-1" />

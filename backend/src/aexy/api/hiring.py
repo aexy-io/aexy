@@ -787,6 +787,9 @@ class HiringCandidateCreate(BaseModel):
     location: str | None = None
     requirement_id: str | None = None
     applied_at: datetime | None = None
+    # The recruiter or hiring manager accountable for this candidate. They are who
+    # `candidate_stage_changed` notifies.
+    owner_id: str | None = None
 
 
 class HiringCandidateUpdate(BaseModel):
@@ -809,6 +812,7 @@ class HiringCandidateUpdate(BaseModel):
     experience_years: int | None = None
     location: str | None = None
     requirement_id: str | None = None
+    owner_id: str | None = None
 
 
 class HiringCandidateResponse(BaseModel):
@@ -833,6 +837,8 @@ class HiringCandidateResponse(BaseModel):
     current_role: str | None = None
     experience_years: int | None = None
     location: str | None = None
+    owner_id: str | None = None
+    owner_name: str | None = None
     applied_at: datetime
     created_at: datetime
     updated_at: datetime
@@ -844,6 +850,60 @@ class StageUpdateRequest(BaseModel):
 
 
 VALID_STAGES = ["applied", "screening", "assessment", "interview", "offer", "hired", "rejected"]
+
+
+async def _assert_owner_is_member(
+    db: AsyncSession, workspace_id: str, owner_id: str | None
+) -> None:
+    """Reject an owner who isn't a member of the candidate's workspace.
+
+    Without this, any developer id from any workspace can be dropped onto a
+    candidate: they then show as the owner, get notified about stage changes, and
+    have no access to the candidate itself. The same guard sprint tasks apply to
+    assignees.
+    """
+    if not owner_id:
+        return
+    workspace_service = WorkspaceService(db)
+    if not await workspace_service.check_permission(
+        str(workspace_id), str(owner_id), "viewer"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Candidate owner must be a member of this workspace",
+        )
+
+
+async def _notify_stage_change(
+    db: AsyncSession,
+    candidate: HiringCandidate,
+    old_stage: str,
+    actor: Developer,
+) -> None:
+    """Tell the candidate's owner that somebody else moved them.
+
+    Nothing fired `candidate_stage_changed` before, because `hiring_candidates`
+    had no owner column — the only options were notifying every member with the
+    hiring app on every Kanban drag, or notifying nobody. With an owner there is
+    one right recipient, and `notify_candidate_stage_changed` drops the actor, so
+    a recruiter dragging their own pipeline hears nothing.
+    """
+    if not candidate.owner_id or candidate.stage == old_stage:
+        return
+
+    from aexy.services.notification_service import notify_candidate_stage_changed
+
+    await notify_candidate_stage_changed(
+        db=db,
+        recipient_id=str(candidate.owner_id),
+        actor_id=str(actor.id),
+        actor_name=actor.name or "Someone",
+        candidate_id=str(candidate.id),
+        candidate_name=candidate.name,
+        old_stage=old_stage,
+        new_stage=candidate.stage,
+        workspace_id=str(candidate.workspace_id),
+    )
 
 
 def candidate_to_response(candidate: HiringCandidate) -> HiringCandidateResponse:
@@ -869,6 +929,8 @@ def candidate_to_response(candidate: HiringCandidate) -> HiringCandidateResponse
         current_role=candidate.current_role,
         experience_years=candidate.experience_years,
         location=candidate.location,
+        owner_id=str(candidate.owner_id) if candidate.owner_id else None,
+        owner_name=candidate.owner.name if candidate.owner else None,
         applied_at=candidate.applied_at,
         created_at=candidate.created_at,
         updated_at=candidate.updated_at,
@@ -1057,6 +1119,8 @@ async def create_hiring_candidate(
             detail="A candidate with this email already exists in this workspace",
         )
 
+    await _assert_owner_is_member(db, workspace_id, data.owner_id)
+
     candidate = HiringCandidate(
         workspace_id=workspace_id,
         requirement_id=data.requirement_id,
@@ -1077,6 +1141,7 @@ async def create_hiring_candidate(
         current_role=data.current_role,
         experience_years=data.experience_years,
         location=data.location,
+        owner_id=data.owner_id,
         applied_at=data.applied_at or datetime.utcnow(),
     )
 
@@ -1195,11 +1260,22 @@ async def update_hiring_candidate(
 
     # Update fields
     update_data = data.model_dump(exclude_unset=True)
+    if "owner_id" in update_data:
+        await _assert_owner_is_member(
+            db, str(candidate.workspace_id), update_data["owner_id"]
+        )
+
+    # This endpoint can move a candidate's stage too, not just the dedicated
+    # /stage one the Kanban board uses, so it notifies from here as well.
+    old_stage = candidate.stage
+
     for field, value in update_data.items():
         setattr(candidate, field, value)
 
     await db.commit()
     await db.refresh(candidate)
+
+    await _notify_stage_change(db, candidate, old_stage, current_user)
 
     # Dispatch automation event
     await dispatch_automation_event(
@@ -1272,6 +1348,8 @@ async def update_candidate_stage(
     candidate.stage = data.stage
     await db.commit()
     await db.refresh(candidate)
+
+    await _notify_stage_change(db, candidate, old_stage, current_user)
 
     # Dispatch automation event
     await dispatch_automation_event(

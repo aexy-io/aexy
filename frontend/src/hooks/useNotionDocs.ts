@@ -5,7 +5,6 @@ import {
   documentApi,
   DocumentTreeItem,
   DocumentVisibility,
-  DocumentNotificationList,
   DocumentAncestor,
   DocumentCreate,
 } from "@/lib/api";
@@ -178,52 +177,3 @@ export function useDocumentBreadcrumbs(
   };
 }
 
-/**
- * Hook for document notifications
- */
-export function useDocumentNotifications(workspaceId: string | null) {
-  const queryClient = useQueryClient();
-
-  const {
-    data: notificationData,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ["documents", "notifications", workspaceId],
-    queryFn: () => documentApi.getNotifications(workspaceId!),
-    enabled: !!workspaceId,
-    staleTime: 30000,
-    refetchInterval: 60000, // Refetch every minute
-  });
-
-  const markReadMutation = useMutation({
-    mutationFn: (notificationId: string) =>
-      documentApi.markNotificationRead(workspaceId!, notificationId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["documents", "notifications", workspaceId],
-      });
-    },
-  });
-
-  const markAllReadMutation = useMutation({
-    mutationFn: () => documentApi.markAllNotificationsRead(workspaceId!),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["documents", "notifications", workspaceId],
-      });
-    },
-  });
-
-  return {
-    notifications: notificationData?.notifications || [],
-    total: notificationData?.total || 0,
-    unreadCount: notificationData?.unread_count || 0,
-    isLoading,
-    error,
-
-    markRead: markReadMutation.mutate,
-    markAllRead: markAllReadMutation.mutate,
-    isMarkingRead: markReadMutation.isPending,
-  };
-}

@@ -207,12 +207,25 @@ class ServiceDeskTicketService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self._pending_notifications: list[dict] = []
+        self._pending_alerts: list[dict] = []
+
+    def _queue_alert(self, kind: str, **payload: object) -> None:
+        """Queue an in-app/email notification for after the commit.
+
+        Deferred for the same reason the closure mail is: this class mutates a
+        ticket and the API layer's ``get_db`` commits only once the handler
+        returns, so anything sent inline is sent before the outcome is durable.
+        A notification is worse than the closure mail here, not better —
+        "this ticket is yours now" that then rolls back sends somebody to a
+        ticket they do not own.
+        """
+        self._pending_alerts.append({"kind": kind, **payload})
 
     async def flush_notifications(self) -> None:
-        """Send queued closure mail. Call AFTER committing; never raises."""
+        """Send queued closure mail and alerts. Call AFTER committing; never raises."""
         pending, self._pending_notifications = self._pending_notifications, []
-        if not pending:
-            return
+        alerts, self._pending_alerts = self._pending_alerts, []
+
         from aexy.models.service_desk import ServiceDeskMailbox
         from aexy.services.service_desk_mailer import send_service_desk_email
 
@@ -233,6 +246,68 @@ class ServiceDeskTicketService:
                 )
             except Exception as exc:  # noqa: BLE001 — closure mail is best-effort
                 logger.warning("Service desk: closure mail to %s skipped (%s)", item["to"], exc)
+
+        for alert in alerts:
+            try:
+                await self._send_alert(alert)
+            except Exception as exc:  # noqa: BLE001 — best-effort, same as above
+                logger.warning("Service desk: alert %s skipped (%s)", alert.get("kind"), exc)
+
+    async def _send_alert(self, alert: dict) -> None:
+        """Deliver one queued alert."""
+        from aexy.services.notification_service import (
+            notify_desk_ticket_assigned,
+            notify_desk_ticket_pending_with,
+        )
+
+        if alert["kind"] == "assigned":
+            await notify_desk_ticket_assigned(
+                db=self.db,
+                recipient_id=alert["recipient_id"],
+                actor_id=alert["actor_id"],
+                actor_name=alert["actor_name"],
+                ticket_reference=alert["reference"],
+                ticket_title=alert["title"],
+                action_url=alert["action_url"],
+                workspace_id=alert["workspace_id"],
+            )
+        elif alert["kind"] == "pending_with":
+            await notify_desk_ticket_pending_with(
+                db=self.db,
+                recipient_ids=alert["recipient_ids"],
+                actor_id=alert["actor_id"],
+                pending_with=alert["pending_with"],
+                ticket_reference=alert["reference"],
+                ticket_title=alert["title"],
+                action_url=alert["action_url"],
+                workspace_id=alert["workspace_id"],
+            )
+
+    async def _alert_identity(
+        self, workspace_id: str, ticket: Ticket, sd: ServiceDeskTicket, actor_id: str | None
+    ) -> dict:
+        """The reference, title, link and actor name every desk alert needs."""
+        from aexy.models.developer import Developer
+
+        reference = await ticket_prefix_display(
+            self.db, workspace_id, ticket.ticket_number
+        )
+        actor_name = "Someone"
+        if actor_id:
+            actor = (
+                await self.db.execute(select(Developer).where(Developer.id == actor_id))
+            ).scalar_one_or_none()
+            if actor:
+                actor_name = actor.name or actor.github_username or "Someone"
+        return {
+            "reference": reference,
+            # Desk tickets carry no subject column; the request type is what the
+            # dashboard and the digest identify them by.
+            "title": sd.request_type or "Service desk request",
+            "action_url": f"/service-desk/tickets/{ticket.id}",
+            "actor_name": actor_name,
+            "workspace_id": workspace_id,
+        }
 
     # ------------------------------------------------------------------ loads
 
@@ -411,6 +486,25 @@ class ServiceDeskTicketService:
 
         if taxonomy.is_closed(new_value):
             await self._send_closure(workspace_id, ticket, note)
+        else:
+            # Tell the queue it has just been handed. Skipped on close: a closed
+            # ticket has no clock and needs nobody to pick it up. `new_label` is
+            # the human stakeholder name, matching the timeline line above rather
+            # than leaking the slug.
+            from aexy.services.service_desk_service import developers_in_queue
+
+            recipients = await developers_in_queue(self.db, workspace_id, new_value)
+            if recipients:
+                identity = await self._alert_identity(
+                    workspace_id, ticket, sd, changed_by_id
+                )
+                self._queue_alert(
+                    "pending_with",
+                    recipient_ids=recipients,
+                    actor_id=changed_by_id,
+                    pending_with=new_label,
+                    **{k: identity[k] for k in ("reference", "title", "action_url", "workspace_id")},
+                )
 
         return await self.get_detail(workspace_id, ticket_id)
 
@@ -446,6 +540,10 @@ class ServiceDeskTicketService:
                     detail=f"Unknown request type {rt!r} for this workspace (known: {known})",
                 )
 
+        prior_assignee_id = (
+            await self.db.execute(select(Ticket.assignee_id).where(Ticket.id == ticket_id))
+        ).scalar_one_or_none()
+
         for k, v in payload.items():
             setattr(sd, k, v)
         if assigned is not None:
@@ -453,6 +551,23 @@ class ServiceDeskTicketService:
                 self.db, workspace_id, ticket_id, assigned
             )
         await self.db.flush()
+
+        # A handover through the edit form is the same event as one through the
+        # dedicated assign endpoint, and this path had no notification at all —
+        # the new owner's only signal was the next daily digest.
+        if assigned and str(assigned) != str(prior_assignee_id or ""):
+            ticket = await self.db.get(Ticket, ticket_id)
+            if ticket is not None:
+                identity = await self._alert_identity(
+                    workspace_id, ticket, sd, scope_developer_id
+                )
+                self._queue_alert(
+                    "assigned",
+                    recipient_id=str(assigned),
+                    actor_id=scope_developer_id,
+                    **identity,
+                )
+
         return await self.get_detail(workspace_id, ticket_id)
 
     async def split_detected_issues(

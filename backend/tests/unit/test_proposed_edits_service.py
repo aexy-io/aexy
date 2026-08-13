@@ -87,6 +87,11 @@ def make_service():
 def make_doc(*, doc_id="doc-1", owner_id="owner-1", content=None):
     return SimpleNamespace(
         id=doc_id,
+        # `title` and `workspace_id` are read when notifying the owner: the
+        # notification now names the document and is workspace-scoped for Slack
+        # routing, where the old inbox row carried neither.
+        title="Runbook",
+        workspace_id="ws-1",
         content=content or {"type": "doc", "content": []},
         created_by_id=owner_id,
     )
@@ -201,10 +206,29 @@ class TestIsStale:
 
 
 class TestNotificationOnCreate:
+    """The owner is told a proposal is waiting, through NotificationService.
+
+    This used to insert a row into a `document_notifications` table read only by
+    an "Inbox" panel in the docs sidebar — no email, no per-user preference, no
+    presence in the main notification bell. A proposal from a scheduled sync,
+    which nobody clicked anything to cause, waited for the owner to happen to open
+    that one panel. These tests now assert on the shared notification path, so the
+    delivery guarantees are the same as every other event in the product.
+    """
+
     @pytest.mark.asyncio
-    async def test_notification_fired_for_owner(self):
-        """Creating a system-generated proposal (proposed_by_id is None)
-        creates a DocumentNotification addressed to the doc owner."""
+    async def test_notification_fired_for_owner(self, monkeypatch):
+        """A system-generated proposal (proposed_by_id is None) notifies the owner."""
+        import aexy.services.notification_service as notifications
+
+        sent = []
+
+        async def _capture(**kwargs):
+            sent.append(kwargs)
+            return 1
+
+        monkeypatch.setattr(notifications, "notify_document_ai_proposal", _capture)
+
         svc, db = make_service()
         db.get.return_value = make_doc(owner_id="owner-1")
 
@@ -215,18 +239,30 @@ class TestNotificationOnCreate:
             proposed_by_id=None,
         )
 
-        # First db.add is the proposal; second is the notification
-        # (we don't care about order beyond "both fired").
         added_kinds = [type(call.args[0]).__name__ for call in db.add.call_args_list]
         assert "DocumentProposedEdit" in added_kinds, added_kinds
-        assert "DocumentNotification" in added_kinds, (
-            f"no DocumentNotification was added — owner won't see the proposal: {added_kinds}"
+        assert len(sent) == 1, (
+            f"owner was not notified — the proposal is invisible to them: {sent}"
         )
+        assert sent[0]["recipient_id"] == "owner-1"
+        assert sent[0]["document_title"] == "Runbook"
+        # The label names what produced it, since usually no person did.
+        assert sent[0]["actor_label"]
 
     @pytest.mark.asyncio
-    async def test_no_self_notification(self):
+    async def test_no_self_notification(self, monkeypatch):
         """Proposer == doc owner shouldn't get a notification about
         their own action (manual regenerate triggered by the owner)."""
+        import aexy.services.notification_service as notifications
+
+        sent = []
+
+        async def _capture(**kwargs):
+            sent.append(kwargs)
+            return 1
+
+        monkeypatch.setattr(notifications, "notify_document_ai_proposal", _capture)
+
         svc, db = make_service()
         db.get.return_value = make_doc(owner_id="dev-1")
 
@@ -237,10 +273,7 @@ class TestNotificationOnCreate:
             proposed_by_id="dev-1",
         )
 
-        added_kinds = [type(call.args[0]).__name__ for call in db.add.call_args_list]
-        assert "DocumentNotification" not in added_kinds, (
-            "owner-triggered proposal fired a notification to the owner"
-        )
+        assert sent == [], "owner-triggered proposal fired a notification to the owner"
 
     @pytest.mark.asyncio
     async def test_no_notification_when_owner_missing(self):

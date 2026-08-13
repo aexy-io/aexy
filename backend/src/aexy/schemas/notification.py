@@ -1,136 +1,22 @@
 """Notification Pydantic schemas."""
 
 from datetime import datetime
-from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, Field
 
+# The event-type enum lives with the model, not here, and is re-exported for the
+# many callers that import it from this module. There used to be a second
+# declaration below and the two drifted: this one grew `workspace_join_*` and an
+# `assessment_invitation` duplicate while the model's copy grew
+# `ai_conversation_shared`. Because EmailService imports the enum from *this*
+# module, a model-only member failed the cast and its email was silently recorded
+# as failed and never retried, and NotificationService.get_preference could not
+# resolve it either, so it defaulted to email-enabled and never appeared in the
+# notification settings screen. Re-exporting makes that class of bug impossible
+# rather than merely fixed.
+from aexy.models.notification import NotificationEventType  # noqa: E402
 
-class NotificationEventType(str, Enum):
-    """Types of notification events."""
-
-    # Review-related
-    PEER_REVIEW_REQUESTED = "peer_review_requested"
-    PEER_REVIEW_RECEIVED = "peer_review_received"
-    REVIEW_CYCLE_ACTIVATED = "review_cycle_activated"
-    REVIEW_CYCLE_PHASE_CHANGED = "review_cycle_phase_changed"
-    REVIEW_DEADLINE_REMINDER = "review_deadline_reminder"
-    MANAGER_REVIEW_COMPLETED = "manager_review_completed"
-    REVIEW_ACKNOWLEDGED = "review_acknowledged"
-
-    # Deadline reminders
-    DEADLINE_REMINDER_1_DAY = "deadline_reminder_1_day"
-    DEADLINE_REMINDER_DAY_OF = "deadline_reminder_day_of"
-
-    # Goal-related
-    GOAL_AUTO_LINKED = "goal_auto_linked"
-    GOAL_AT_RISK = "goal_at_risk"
-    GOAL_COMPLETED = "goal_completed"
-
-    # General
-    WORKSPACE_INVITE = "workspace_invite"
-    TEAM_ADDED = "team_added"
-
-    # Workspace join requests
-    WORKSPACE_JOIN_REQUEST = "workspace_join_request"
-    WORKSPACE_JOIN_APPROVED = "workspace_join_approved"
-    WORKSPACE_JOIN_REJECTED = "workspace_join_rejected"
-
-    # Assessment invitations
-    ASSESSMENT_INVITATION = "assessment_invitation"
-
-    # Mentions
-    MENTION = "mention"
-
-    # App access requests
-    APP_ACCESS_REQUESTED = "app_access_requested"
-    APP_ACCESS_APPROVED = "app_access_approved"
-    APP_ACCESS_REJECTED = "app_access_rejected"
-
-    # Usage alerts (billing)
-    USAGE_ALERT_80 = "usage_alert_80"  # 80% of limit reached
-    USAGE_ALERT_90 = "usage_alert_90"  # 90% of limit reached (critical)
-    USAGE_ALERT_100 = "usage_alert_100"  # Limit reached
-
-    # On-call
-    ONCALL_SHIFT_STARTING = "oncall_shift_starting"
-    ONCALL_SHIFT_STARTED = "oncall_shift_started"
-    ONCALL_SHIFT_ENDING = "oncall_shift_ending"
-    ONCALL_SWAP_REQUESTED = "oncall_swap_requested"
-    ONCALL_SWAP_ACCEPTED = "oncall_swap_accepted"
-    ONCALL_SWAP_DECLINED = "oncall_swap_declined"
-
-    # Task mentions
-    TASK_MENTIONED = "task_mentioned"
-
-    # Insights
-    INSIGHT_ALERT_WARNING = "insight_alert_warning"
-    INSIGHT_ALERT_CRITICAL = "insight_alert_critical"
-
-    # Leave
-    LEAVE_REQUEST_SUBMITTED = "leave_request_submitted"
-    LEAVE_REQUEST_APPROVED = "leave_request_approved"
-    LEAVE_REQUEST_REJECTED = "leave_request_rejected"
-    LEAVE_REQUEST_CANCELLED = "leave_request_cancelled"
-
-    # Reminders
-    REMINDER_DUE = "reminder_due"
-    REMINDER_ACKNOWLEDGED = "reminder_acknowledged"
-    REMINDER_COMPLETED = "reminder_completed"
-    REMINDER_ESCALATED = "reminder_escalated"
-    REMINDER_OVERDUE = "reminder_overdue"
-    REMINDER_ASSIGNED = "reminder_assigned"
-
-    # Agent mentions
-    AGENT_INVOKED = "agent_invoked"
-
-    # Agent policy events
-    AGENT_TOOL_BLOCKED = "agent_tool_blocked"
-    AGENT_APPROVAL_REQUIRED = "agent_approval_required"
-    AGENT_CONFIG_CHANGED = "agent_config_changed"
-
-    # Blocker escalation
-    BLOCKER_ESCALATED = "blocker_escalated"
-
-    # Uptime
-    UPTIME_INCIDENT_CREATED = "uptime_incident_created"
-    UPTIME_INCIDENT_RESOLVED = "uptime_incident_resolved"
-
-    # Learning
-    LEARNING_APPROVAL_REQUESTED = "learning_approval_requested"
-    LEARNING_APPROVAL_DECIDED = "learning_approval_decided"
-    LEARNING_GOAL_ASSIGNED = "learning_goal_assigned"
-    LEARNING_GOAL_OVERDUE = "learning_goal_overdue"
-    LEARNING_ACTIVITY_COMPLETED = "learning_activity_completed"
-
-    # Forms
-    FORM_SUBMISSION_RECEIVED = "form_submission_received"
-    FORM_SUBMISSION_FAILED = "form_submission_failed"
-
-    # Campaigns
-    CAMPAIGN_COMPLETED = "campaign_completed"
-    CAMPAIGN_SCHEDULED = "campaign_scheduled"
-    CAMPAIGN_SEND_BLOCKED = "campaign_send_blocked"
-
-    # Automations
-    AUTOMATION_RUN_FAILED = "automation_run_failed"
-    AUTOMATION_RUN_COMPLETED = "automation_run_completed"
-
-    # Hiring / Assessments
-    ASSESSMENT_INVITATION_SENT = "assessment_invitation_sent"
-    ASSESSMENT_COMPLETED = "assessment_completed"
-    CANDIDATE_STAGE_CHANGED = "candidate_stage_changed"
-
-    # GTM
-    GTM_ALERT_TRIGGERED = "gtm_alert_triggered"
-
-    # Documents
-    DOCUMENT_SHARED = "document_shared"
-    DOCUMENT_MENTIONED = "document_mentioned"
-    DOCUMENT_COMMENTED = "document_commented"
-
-    # Chat
-    CHAT_MENTION = "chat_mention"
+__all__ = ["NotificationEventType", "NOTIFICATION_TEMPLATES"]
 
 
 class NotificationContext(BaseModel):
@@ -369,15 +255,18 @@ NOTIFICATION_TEMPLATES = {
         "body_template": "{developer_name} has acknowledged their performance review",
         "email_subject": "Review Acknowledged by {developer_name}",
     },
+    # Naming the item matters more here than anywhere else: somebody with eight
+    # things assigned needs to know *which* one is due, and "task deadline is
+    # tomorrow" made them open the app to find out.
     NotificationEventType.DEADLINE_REMINDER_1_DAY: {
-        "title": "Deadline Reminder",
-        "body_template": "{task_type} deadline is tomorrow ({deadline})",
-        "email_subject": "Reminder: {task_type} Due Tomorrow",
+        "title": "Due tomorrow",
+        "body_template": "Your {task_type} \"{title}\" is due tomorrow ({deadline})",
+        "email_subject": "Due tomorrow: {title}",
     },
     NotificationEventType.DEADLINE_REMINDER_DAY_OF: {
-        "title": "Deadline Today",
-        "body_template": "{task_type} is due today ({deadline})",
-        "email_subject": "URGENT: {task_type} Due Today",
+        "title": "Due today",
+        "body_template": "Your {task_type} \"{title}\" is due today ({deadline})",
+        "email_subject": "Due today: {title}",
     },
     NotificationEventType.GOAL_AUTO_LINKED: {
         "title": "Contributions Linked",
@@ -419,15 +308,84 @@ NOTIFICATION_TEMPLATES = {
         "body_template": "Your request to join {workspace_name} was not approved",
         "email_subject": "Update on Your Join Request for {workspace_name}",
     },
-    NotificationEventType.ASSESSMENT_INVITATION: {
-        "title": "Assessment Invitation",
-        "body_template": "You have been invited to take the assessment: {assessment_title}. Please complete it by {deadline}.",
-        "email_subject": "You're Invited: {assessment_title} Assessment",
-    },
+    # `assessment_invitation` (the candidate-facing "you have been invited to take
+    # this assessment" note) is deliberately absent. It was declared here and
+    # nowhere else, and it could not have worked: notification preferences hang off
+    # a Developer row, and the recipient of that message is a candidate. Candidate
+    # invitations go out through the assessment service's own mail path.
     NotificationEventType.MENTION: {
         "title": "You were mentioned",
         "body_template": "{mentioner_name} mentioned you in a {entity_type}: {snippet}",
         "email_subject": "{mentioner_name} mentioned you",
+    },
+    # Task assignment and lifecycle. `item_label` is the kind of thing as the user
+    # would name it ("task", "bug", "story", "card") so one template covers the
+    # board, the backlog and the project view without reading as though everything
+    # is a "task".
+    NotificationEventType.CANDIDATE_STAGE_CHANGED: {
+        "title": "Candidate stage changed",
+        "body_template": "{actor_name} moved {candidate_name} from {old_stage} to {new_stage}",
+        "email_subject": "{candidate_name} is now at {new_stage}",
+    },
+    NotificationEventType.DOCUMENT_MENTIONED: {
+        "title": "Mentioned in a document",
+        "body_template": "{actor_name} mentioned you in \"{document_title}\": {snippet}",
+        "email_subject": "{actor_name} mentioned you in {document_title}",
+    },
+    NotificationEventType.DOCUMENT_COMMENTED: {
+        "title": "New comment",
+        "body_template": "{actor_name} commented on \"{document_title}\": {snippet}",
+        "email_subject": "New comment on {document_title}",
+    },
+    NotificationEventType.DOCUMENT_AI_PROPOSAL: {
+        "title": "AI proposed a doc update",
+        "body_template": "{actor_label} proposed an update to \"{document_title}\" — review pending",
+        "email_subject": "Review pending: proposed update to {document_title}",
+    },
+    NotificationEventType.CHAT_MENTION: {
+        "title": "Mentioned in chat",
+        "body_template": "{mentioner_name} mentioned you: {snippet}",
+        "email_subject": "{mentioner_name} mentioned you in chat",
+    },
+    NotificationEventType.AI_CONVERSATION_SHARED: {
+        "title": "Conversation shared with you",
+        "body_template": "{actor_name} shared an AI conversation with you: {conversation_title}",
+        "email_subject": "{actor_name} shared a conversation with you",
+    },
+    NotificationEventType.TASK_ASSIGNED: {
+        "title": "Assigned to you",
+        "body_template": "{actor_name} assigned you the {item_label} \"{task_title}\"",
+        "email_subject": "Assigned to you: {task_title}",
+    },
+    NotificationEventType.TASK_UNASSIGNED: {
+        "title": "Removed from a task",
+        "body_template": "{actor_name} took you off the {item_label} \"{task_title}\"",
+        "email_subject": "You were removed from: {task_title}",
+    },
+    NotificationEventType.TASK_STATUS_CHANGED: {
+        "title": "Status changed",
+        "body_template": "{actor_name} moved \"{task_title}\" from {old_status} to {new_status}",
+        "email_subject": "{task_title} is now {new_status}",
+    },
+    NotificationEventType.TASK_COMMENTED: {
+        "title": "New comment",
+        "body_template": "{actor_name} commented on \"{task_title}\": {snippet}",
+        "email_subject": "New comment on {task_title}",
+    },
+    NotificationEventType.TICKET_ASSIGNED: {
+        "title": "Ticket assigned to you",
+        "body_template": "{actor_name} assigned you ticket {ticket_reference}: {ticket_title}",
+        "email_subject": "Ticket assigned to you: {ticket_title}",
+    },
+    NotificationEventType.DESK_TICKET_ASSIGNED: {
+        "title": "Service desk ticket assigned to you",
+        "body_template": "{actor_name} made you the owner of {ticket_reference}: {ticket_title}",
+        "email_subject": "You now own {ticket_reference}: {ticket_title}",
+    },
+    NotificationEventType.DESK_TICKET_PENDING_WITH_CHANGED: {
+        "title": "Ticket is with your queue",
+        "body_template": "{ticket_reference} ({ticket_title}) is now pending with {pending_with}",
+        "email_subject": "Pending with you: {ticket_reference} {ticket_title}",
     },
     NotificationEventType.APP_ACCESS_REQUESTED: {
         "title": "App Access Request",

@@ -64,7 +64,10 @@ export function GlobalShortcuts() {
               d: "/dashboard",
               a: "/agents",
               s: "/sprints",
-              t: "/tickets",
+              // /my-work, not /tickets: the latter is a redirect behind the
+              // tickets app guard, so this shortcut dead-ended for anyone
+              // without that app even though the page is theirs.
+              t: "/my-work",
               e: "/tracking",
               c: "/crm",
               m: "/email-marketing",

@@ -2,6 +2,7 @@
 
 import logging
 import re
+from collections.abc import Iterable
 from datetime import datetime
 from typing import Any
 from uuid import uuid4
@@ -876,22 +877,33 @@ async def notify_deadline_reminder(
     deadline: str,
     action_url: str,
     is_day_of: bool = False,
+    entity_id: str | None = None,
+    title: str = "",
 ) -> Notification | None:
-    """Send deadline reminder notification."""
+    """Send deadline reminder notification.
+
+    ``entity_id`` is what makes the daily sweep idempotent — it is how
+    ``check_work_item_deadlines`` recognises an item it has already reminded
+    about, without a new column on every table that carries a due date.
+    """
     service = NotificationService(db)
     event_type = (
         NotificationEventType.DEADLINE_REMINDER_DAY_OF
         if is_day_of
         else NotificationEventType.DEADLINE_REMINDER_1_DAY
     )
+    context: dict[str, Any] = {
+        "task_type": task_type,
+        "deadline": deadline,
+        "action_url": action_url,
+        "title": title,
+    }
+    if entity_id:
+        context["entity_id"] = entity_id
     return await service.create_notification_from_event(
         recipient_id=developer_id,
         event_type=event_type,
-        context={
-            "task_type": task_type,
-            "deadline": deadline,
-            "action_url": action_url,
-        },
+        context=context,
     )
 
 
@@ -916,6 +928,38 @@ async def notify_mention(
             "entity_type": entity_type,
             "entity_id": entity_id,
             "action_url": action_url,
+        },
+    )
+
+
+async def notify_chat_mention(
+    db: AsyncSession,
+    mentioned_user_id: str,
+    mentioner_name: str,
+    topic_id: str,
+    action_url: str,
+    snippet: str = "",
+) -> Notification | None:
+    """Send notification when a user is @mentioned in chat.
+
+    Distinct from ``notify_mention`` on purpose. ``chat_mention`` has its own
+    settings toggle and its own category, and chat is noisier than a comment on a
+    document — somebody who wants chat mentions in-app only but review mentions
+    by email had no way to say so, because chat was sending the generic ``mention``
+    event and the "Chat mention" toggle they were reaching for controlled nothing.
+    """
+    service = NotificationService(db)
+    return await service.create_notification(
+        recipient_id=mentioned_user_id,
+        event_type=NotificationEventType.CHAT_MENTION,
+        title=f"{mentioner_name} mentioned you in chat",
+        body=f"{mentioner_name} mentioned you" + (f": {snippet}" if snippet else ""),
+        context={
+            "mentioner_name": mentioner_name,
+            "entity_type": "chat_message",
+            "entity_id": topic_id,
+            "action_url": action_url,
+            "snippet": snippet,
         },
     )
 
@@ -1364,6 +1408,117 @@ async def notify_document_shared(
     )
 
 
+async def notify_document_commented(
+    db: AsyncSession,
+    recipient_ids: Iterable[str],
+    actor_id: str | None,
+    actor_name: str,
+    document_id: str,
+    document_title: str,
+    comment: str,
+    workspace_id: str | None = None,
+    comment_id: str | None = None,
+) -> int:
+    """Tell a document's owner and thread participants about a new comment.
+
+    Callers pass everyone in the conversation and let this drop the actor;
+    mentioned users are notified separately by ``notify_document_mentioned``,
+    which is the louder signal, so callers exclude them from ``recipient_ids``
+    rather than sending both for one comment.
+    """
+    context: dict[str, Any] = {
+        "actor_name": actor_name,
+        "document_id": document_id,
+        "document_title": document_title,
+        "snippet": _get_text_snippet(comment),
+        "action_url": f"/docs/{document_id}",
+    }
+    if workspace_id:
+        context["workspace_id"] = str(workspace_id)
+    if comment_id:
+        context["comment_id"] = comment_id
+
+    return await _notify_quietly(
+        db,
+        recipient_ids,
+        NotificationEventType.DOCUMENT_COMMENTED,
+        title="New comment",
+        body=f'{actor_name} commented on "{document_title}": {context["snippet"]}',
+        context=context,
+        actor_id=actor_id,
+    )
+
+
+async def notify_document_mentioned(
+    db: AsyncSession,
+    recipient_ids: Iterable[str],
+    actor_id: str | None,
+    actor_name: str,
+    document_id: str,
+    document_title: str,
+    comment: str,
+    workspace_id: str | None = None,
+    comment_id: str | None = None,
+) -> int:
+    """Tell people they were named in a document comment."""
+    context: dict[str, Any] = {
+        "actor_name": actor_name,
+        "document_id": document_id,
+        "document_title": document_title,
+        "snippet": _get_text_snippet(comment),
+        "action_url": f"/docs/{document_id}",
+    }
+    if workspace_id:
+        context["workspace_id"] = str(workspace_id)
+    if comment_id:
+        context["comment_id"] = comment_id
+
+    return await _notify_quietly(
+        db,
+        recipient_ids,
+        NotificationEventType.DOCUMENT_MENTIONED,
+        title="Mentioned in a document",
+        body=f'{actor_name} mentioned you in "{document_title}": {context["snippet"]}',
+        context=context,
+        actor_id=actor_id,
+    )
+
+
+async def notify_document_ai_proposal(
+    db: AsyncSession,
+    recipient_id: str,
+    document_id: str,
+    document_title: str,
+    actor_label: str,
+    workspace_id: str | None = None,
+    proposed_by_id: str | None = None,
+) -> int:
+    """Tell a document's owner that an AI edit is waiting for review.
+
+    ``actor_label`` names what produced the proposal ("AI sync", "Regenerate")
+    rather than a person, because usually nobody clicked anything — which is
+    precisely why this needs to reach the owner instead of sitting in a panel.
+    """
+    context: dict[str, Any] = {
+        "actor_label": actor_label,
+        "document_id": document_id,
+        "document_title": document_title,
+        "action_url": f"/docs/{document_id}",
+    }
+    if workspace_id:
+        context["workspace_id"] = str(workspace_id)
+
+    return await _notify_quietly(
+        db,
+        [recipient_id],
+        NotificationEventType.DOCUMENT_AI_PROPOSAL,
+        title="AI proposed a doc update",
+        body=f'{actor_label} proposed an update to "{document_title}" — review pending',
+        context=context,
+        actor_id=proposed_by_id,
+    )
+
+
 # ============ GTM Notifications ============
 
 
@@ -1412,6 +1567,48 @@ async def notify_assessment_published(
     )
 
 
+async def notify_candidate_stage_changed(
+    db: AsyncSession,
+    recipient_id: str,
+    actor_id: str | None,
+    actor_name: str,
+    candidate_id: str,
+    candidate_name: str,
+    old_stage: str,
+    new_stage: str,
+    workspace_id: str | None = None,
+) -> int:
+    """Tell a candidate's owner that somebody else moved them along the pipeline.
+
+    In-app only by default: it fires on every drag of the hiring board, and the
+    owner dragging their own candidate is filtered out as the actor, so what
+    survives is "somebody else touched your candidate" — worth knowing, not worth
+    an email each time.
+    """
+    context: dict[str, Any] = {
+        "actor_name": actor_name,
+        "candidate_id": candidate_id,
+        "candidate_name": candidate_name,
+        "old_stage": old_stage,
+        "new_stage": new_stage,
+        "action_url": "/hiring/candidates",
+    }
+    if workspace_id:
+        context["workspace_id"] = str(workspace_id)
+
+    return await _notify_quietly(
+        db,
+        [recipient_id],
+        NotificationEventType.CANDIDATE_STAGE_CHANGED,
+        title="Candidate stage changed",
+        body=(
+            f"{actor_name} moved {candidate_name} from {old_stage} to {new_stage}"
+        ),
+        context=context,
+        actor_id=actor_id,
+    )
+
+
 async def notify_assessment_completed(
     db: AsyncSession,
     creator_id: str,
@@ -1429,5 +1626,334 @@ async def notify_assessment_completed(
             "assessment_title": assessment_title,
             "workspace_id": workspace_id,
             "action_url": "/hiring/assessments",
+        },
+    )
+
+
+# ============ Work Item (task / bug / story / ticket) Notifications ============
+#
+# Assignment was the one thing this product never told anybody about. Tasks,
+# project cards, bugs, stories, form tickets and service desk tickets could all
+# land on you and the only way to find out was to go looking, or — for the
+# service desk alone — to wait for the next daily digest.
+#
+# These helpers are deliberately tolerant. A notification must never be the
+# reason an assignment fails: the assignment is the user's actual intent and it
+# is already committed or flushed by the time we get here. Every one of them
+# swallows its own errors and returns quietly.
+
+
+async def _notify_quietly(
+    db: AsyncSession,
+    recipient_ids: Iterable[str],
+    event_type: NotificationEventType,
+    title: str,
+    body: str,
+    context: dict[str, Any],
+    actor_id: str | None = None,
+) -> int:
+    """Notify each distinct recipient except the actor. Never raises.
+
+    Self-filtering is not a nicety — the person clicking "assign to me" is the
+    single most common assignment in any tracker, and mailing them about their
+    own click is how people learn to ignore the sender.
+    """
+    actor = str(actor_id) if actor_id else None
+    seen: set[str] = set()
+    sent = 0
+    service = NotificationService(db)
+    for recipient_id in recipient_ids:
+        if not recipient_id:
+            continue
+        recipient = str(recipient_id)
+        if recipient == actor or recipient in seen:
+            continue
+        seen.add(recipient)
+        try:
+            if await service.create_notification(
+                recipient_id=recipient,
+                event_type=event_type,
+                title=title,
+                body=body,
+                context=context,
+            ):
+                sent += 1
+        except Exception:
+            # The caller's mutation matters more than telling somebody about it.
+            logger.exception(
+                "Failed to notify %s of %s", recipient, event_type.value
+            )
+    return sent
+
+
+async def notify_work_item_assigned(
+    db: AsyncSession,
+    recipient_ids: Iterable[str],
+    actor_id: str | None,
+    actor_name: str,
+    item_label: str,
+    item_title: str,
+    action_url: str,
+    workspace_id: str | None = None,
+    event_type: NotificationEventType = NotificationEventType.TASK_ASSIGNED,
+    extra_context: dict[str, Any] | None = None,
+) -> int:
+    """Tell people that a task, card, bug, story or ticket is now theirs.
+
+    ``item_label`` is what the user calls the thing — "task", "bug", "story",
+    "card", "ticket". One event covers all of them because they are one question
+    ("what landed on me?") even though they are several tables.
+    """
+    context: dict[str, Any] = {
+        "actor_name": actor_name,
+        "item_label": item_label,
+        "task_title": item_title,
+        "action_url": action_url,
+    }
+    if workspace_id:
+        context["workspace_id"] = str(workspace_id)
+    if extra_context:
+        context.update(extra_context)
+
+    return await _notify_quietly(
+        db,
+        recipient_ids,
+        event_type,
+        title="Assigned to you",
+        body=f'{actor_name} assigned you the {item_label} "{item_title}"',
+        context=context,
+        actor_id=actor_id,
+    )
+
+
+async def notify_work_item_unassigned(
+    db: AsyncSession,
+    recipient_ids: Iterable[str],
+    actor_id: str | None,
+    actor_name: str,
+    item_label: str,
+    item_title: str,
+    action_url: str,
+    workspace_id: str | None = None,
+) -> int:
+    """Tell people they were taken off something they may be mid-way through."""
+    context: dict[str, Any] = {
+        "actor_name": actor_name,
+        "item_label": item_label,
+        "task_title": item_title,
+        "action_url": action_url,
+    }
+    if workspace_id:
+        context["workspace_id"] = str(workspace_id)
+
+    return await _notify_quietly(
+        db,
+        recipient_ids,
+        NotificationEventType.TASK_UNASSIGNED,
+        title="Removed from a task",
+        body=f'{actor_name} took you off the {item_label} "{item_title}"',
+        context=context,
+        actor_id=actor_id,
+    )
+
+
+async def notify_work_item_status_changed(
+    db: AsyncSession,
+    recipient_ids: Iterable[str],
+    actor_id: str | None,
+    actor_name: str,
+    item_title: str,
+    old_status: str,
+    new_status: str,
+    action_url: str,
+    workspace_id: str | None = None,
+) -> int:
+    """Tell the people on an item that somebody else moved it."""
+    context: dict[str, Any] = {
+        "actor_name": actor_name,
+        "task_title": item_title,
+        "old_status": old_status,
+        "new_status": new_status,
+        "action_url": action_url,
+    }
+    if workspace_id:
+        context["workspace_id"] = str(workspace_id)
+
+    return await _notify_quietly(
+        db,
+        recipient_ids,
+        NotificationEventType.TASK_STATUS_CHANGED,
+        title="Status changed",
+        body=f'{actor_name} moved "{item_title}" from {old_status} to {new_status}',
+        context=context,
+        actor_id=actor_id,
+    )
+
+
+async def notify_work_item_commented(
+    db: AsyncSession,
+    recipient_ids: Iterable[str],
+    actor_id: str | None,
+    actor_name: str,
+    item_title: str,
+    comment: str,
+    action_url: str,
+    workspace_id: str | None = None,
+) -> int:
+    """Tell the people on an item about a new comment.
+
+    Mentions inside the same comment are notified separately and are the louder
+    signal; this is the ambient "there is activity on your thing" one.
+    """
+    snippet = _get_text_snippet(comment)
+    context: dict[str, Any] = {
+        "actor_name": actor_name,
+        "task_title": item_title,
+        "snippet": snippet,
+        "action_url": action_url,
+    }
+    if workspace_id:
+        context["workspace_id"] = str(workspace_id)
+
+    return await _notify_quietly(
+        db,
+        recipient_ids,
+        NotificationEventType.TASK_COMMENTED,
+        title="New comment",
+        body=f'{actor_name} commented on "{item_title}": {snippet}',
+        context=context,
+        actor_id=actor_id,
+    )
+
+
+async def notify_desk_ticket_assigned(
+    db: AsyncSession,
+    recipient_id: str,
+    actor_id: str | None,
+    actor_name: str,
+    ticket_reference: str,
+    ticket_title: str,
+    action_url: str,
+    workspace_id: str | None = None,
+) -> int:
+    """Tell somebody they own a service desk ticket, and its SLA clock."""
+    context: dict[str, Any] = {
+        "actor_name": actor_name,
+        "ticket_reference": ticket_reference,
+        "ticket_title": ticket_title,
+        "action_url": action_url,
+    }
+    if workspace_id:
+        context["workspace_id"] = str(workspace_id)
+
+    return await _notify_quietly(
+        db,
+        [recipient_id],
+        NotificationEventType.DESK_TICKET_ASSIGNED,
+        title="Service desk ticket assigned to you",
+        body=f"{actor_name} made you the owner of {ticket_reference}: {ticket_title}",
+        context=context,
+        actor_id=actor_id,
+    )
+
+
+async def notify_desk_ticket_pending_with(
+    db: AsyncSession,
+    recipient_ids: Iterable[str],
+    actor_id: str | None,
+    pending_with: str,
+    ticket_reference: str,
+    ticket_title: str,
+    action_url: str,
+    workspace_id: str | None = None,
+) -> int:
+    """Tell a queue that a ticket has been handed to it.
+
+    ``pending_with`` is the desk's real unit of handoff — a ticket changes queue
+    far more often than it changes owner, and the queue it lands in is the one
+    that has to act before the clock runs out.
+    """
+    context: dict[str, Any] = {
+        "pending_with": pending_with,
+        "ticket_reference": ticket_reference,
+        "ticket_title": ticket_title,
+        "action_url": action_url,
+    }
+    if workspace_id:
+        context["workspace_id"] = str(workspace_id)
+
+    return await _notify_quietly(
+        db,
+        recipient_ids,
+        NotificationEventType.DESK_TICKET_PENDING_WITH_CHANGED,
+        title="Ticket is with your queue",
+        body=f"{ticket_reference} ({ticket_title}) is now pending with {pending_with}",
+        context=context,
+        actor_id=actor_id,
+    )
+
+
+async def notify_ticket_assigned(
+    db: AsyncSession,
+    recipient_id: str,
+    actor_id: str | None,
+    actor_name: str,
+    ticket_reference: str,
+    ticket_title: str,
+    action_url: str,
+    workspace_id: str | None = None,
+) -> int:
+    """Tell somebody a form ticket (the internal request queue) is theirs."""
+    context: dict[str, Any] = {
+        "actor_name": actor_name,
+        "ticket_reference": ticket_reference,
+        "ticket_title": ticket_title,
+        "action_url": action_url,
+    }
+    if workspace_id:
+        context["workspace_id"] = str(workspace_id)
+
+    return await _notify_quietly(
+        db,
+        [recipient_id],
+        NotificationEventType.TICKET_ASSIGNED,
+        title="Ticket assigned to you",
+        body=f"{actor_name} assigned you ticket {ticket_reference}: {ticket_title}",
+        context=context,
+        actor_id=actor_id,
+    )
+
+
+# ============ Workspace Join Request Notifications ============
+
+
+async def notify_workspace_join_decided(
+    db: AsyncSession,
+    requester_id: str,
+    workspace_id: str,
+    workspace_name: str,
+    approved: bool,
+) -> int:
+    """Tell somebody whether they are in the workspace or not.
+
+    The request notification already went to the admins; without this the
+    requester was left watching a screen that never changed.
+    """
+    return await _notify_quietly(
+        db,
+        [requester_id],
+        NotificationEventType.WORKSPACE_JOIN_APPROVED
+        if approved
+        else NotificationEventType.WORKSPACE_JOIN_REJECTED,
+        title="Join request approved" if approved else "Join request declined",
+        body=(
+            f"You now have access to {workspace_name}"
+            if approved
+            else f"Your request to join {workspace_name} was declined"
+        ),
+        context={
+            "workspace_id": str(workspace_id),
+            "workspace_name": workspace_name,
+            "action_url": "/dashboard" if approved else "/onboarding/workspace",
         },
     )

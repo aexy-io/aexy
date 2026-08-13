@@ -441,6 +441,33 @@ class LearningManagementService:
         )
         await self.db.commit()
 
+        # Tell the approver. The request already names them, so this needed no
+        # rule about who approves what — the event and its helper simply had no
+        # call site, which left approval requests sitting in a queue whose owner
+        # was never told the queue had anything in it. `learning_approval_decided`
+        # was already wired, so only the requester ever heard anything.
+        if request.approver_id:
+            from aexy.services.notification_service import (
+                notify_learning_approval_requested,
+            )
+
+            requester = await self._get_developer_by_id(requester_id)
+            try:
+                await notify_learning_approval_requested(
+                    db=self.db,
+                    approver_id=str(request.approver_id),
+                    requester_name=(
+                        (requester.name if requester else None) or "A team member"
+                    ),
+                    course_title=request.course_title,
+                    request_id=str(request.id),
+                    workspace_id=str(workspace_id),
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to notify approver of learning request %s", request.id
+                )
+
         logger.info(f"Created approval request {request.id} for {data.course_title}")
         return request
 

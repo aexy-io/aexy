@@ -810,7 +810,11 @@ export const SIDEBAR_TO_APP_MAP: Record<string, string> = {
   "/community": "community",
   // Sub-surfaces of apps that already existed, but under paths the prefix rules
   // could never reach from the app's own base route:
-  "/my-work": "sprints",       // personal view of sprint tasks
+  // Stays mapped to `sprints`, not `tickets`, even though My Work now also lists
+  // form tickets. It is the personal work list: somebody with sprint access and
+  // no ticket access must still reach their own tasks, so the page gates the
+  // form-ticket *source* on `tickets` access instead of gating the whole route.
+  "/my-work": "sprints",       // personal view of tasks, bugs, stories, tickets
   "/operations": "automations", // the Autopilot overview over agents + workflows
   "/exports": "reports",        // the `exports` module of Reports, at a top-level path
   "/activity": "dashboard",     // workspace activity feed

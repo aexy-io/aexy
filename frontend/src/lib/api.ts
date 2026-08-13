@@ -767,6 +767,10 @@ export interface HiringCandidate {
   current_role: string | null;
   experience_years: number | null;
   location: string | null;
+  // The recruiter accountable for this candidate; who `candidate_stage_changed`
+  // notifies when somebody else moves them.
+  owner_id: string | null;
+  owner_name: string | null;
   applied_at: string;
   created_at: string;
   updated_at: string;
@@ -792,6 +796,7 @@ export interface HiringCandidateCreate {
   location?: string;
   requirement_id?: string;
   applied_at?: string;
+  owner_id?: string | null;
 }
 
 export interface HiringCandidateUpdate {
@@ -813,6 +818,7 @@ export interface HiringCandidateUpdate {
   experience_years?: number;
   location?: string;
   requirement_id?: string;
+  owner_id?: string | null;
 }
 
 export interface PipelineMetrics {
@@ -6529,7 +6535,6 @@ export type DocumentStatus = "draft" | "generating" | "generated" | "failed";
 export type DocumentLinkType = "file" | "directory";
 export type DocumentPermission = "view" | "comment" | "edit" | "admin";
 export type DocumentVisibility = "private" | "workspace" | "public";
-export type DocumentNotificationType = "comment" | "mention" | "share" | "edit";
 export type TemplateCategory = "api_docs" | "readme" | "function_docs" | "module_docs" | "guides" | "changelog" | "custom" | "general";
 export type DocumentSpaceRole = "admin" | "editor" | "viewer";
 
@@ -6760,26 +6765,29 @@ export interface DocumentUpdate {
   is_auto_save?: boolean;
 }
 
-// Notification types
-export interface DocumentNotification {
+// Comment types
+export interface DocumentComment {
   id: string;
   document_id: string;
-  document_title: string | null;
-  document_icon: string | null;
-  type: DocumentNotificationType;
-  message: string;
-  is_read: boolean;
-  created_by_id: string | null;
-  created_by_name: string | null;
-  created_by_avatar: string | null;
+  parent_id: string | null;
+  author_id: string | null;
+  author_name: string | null;
+  author_avatar: string | null;
+  content: string;
+  is_resolved: boolean;
+  resolved_by_id: string | null;
+  resolved_at: string | null;
+  is_deleted: boolean;
+  is_edited: boolean;
   created_at: string;
-  read_at: string | null;
+  updated_at: string;
+  replies: DocumentComment[];
 }
 
-export interface DocumentNotificationList {
-  notifications: DocumentNotification[];
+export interface DocumentCommentList {
+  comments: DocumentComment[];
   total: number;
-  unread_count: number;
+  unresolved_count: number;
 }
 
 // Ancestor (breadcrumb) types
@@ -6831,22 +6839,63 @@ export const documentApi = {
     return response.data;
   },
 
-  // Notifications
-  getNotifications: async (
+  // Comments
+  listComments: async (
     workspaceId: string,
-    options?: { unread_only?: boolean; limit?: number; offset?: number }
-  ): Promise<DocumentNotificationList> => {
-    const response = await api.get(`/workspaces/${workspaceId}/documents/notifications`, { params: options });
+    documentId: string
+  ): Promise<DocumentCommentList> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/documents/${documentId}/comments`
+    );
     return response.data;
   },
 
-  markNotificationRead: async (workspaceId: string, notificationId: string): Promise<{ success: boolean }> => {
-    const response = await api.post(`/workspaces/${workspaceId}/documents/notifications/${notificationId}/read`);
+  createComment: async (
+    workspaceId: string,
+    documentId: string,
+    data: { content: string; parent_id?: string | null }
+  ): Promise<DocumentComment> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/documents/${documentId}/comments`,
+      data
+    );
     return response.data;
   },
 
-  markAllNotificationsRead: async (workspaceId: string): Promise<{ marked_read: number }> => {
-    const response = await api.post(`/workspaces/${workspaceId}/documents/notifications/mark-all-read`);
+  updateComment: async (
+    workspaceId: string,
+    documentId: string,
+    commentId: string,
+    content: string
+  ): Promise<DocumentComment> => {
+    const response = await api.patch(
+      `/workspaces/${workspaceId}/documents/${documentId}/comments/${commentId}`,
+      { content }
+    );
+    return response.data;
+  },
+
+  deleteComment: async (
+    workspaceId: string,
+    documentId: string,
+    commentId: string
+  ): Promise<void> => {
+    await api.delete(
+      `/workspaces/${workspaceId}/documents/${documentId}/comments/${commentId}`
+    );
+  },
+
+  resolveComment: async (
+    workspaceId: string,
+    documentId: string,
+    commentId: string,
+    resolved: boolean
+  ): Promise<DocumentComment> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/documents/${documentId}/comments/${commentId}/resolve`,
+      null,
+      { params: { resolved } }
+    );
     return response.data;
   },
 

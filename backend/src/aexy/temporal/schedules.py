@@ -83,6 +83,19 @@ SCHEDULES: list[dict] = [
         "interval": timedelta(hours=24),
         "queue": TaskQueue.ANALYSIS,
     },
+    # The same idea for the work people are actually assigned: due-tomorrow and
+    # due-today reminders for tasks, project cards and stories. Review cycles had
+    # a sweep and work items did not, so `deadline_reminder_1_day` /
+    # `deadline_reminder_day_of` were declared events that nothing could fire.
+    # Idempotent by inspecting notifications already sent, not a new column.
+    {
+        "id": "work-item-deadline-reminders",
+        "activity": "check_work_item_deadlines",
+        "input_module": "aexy.temporal.activities.work_item_deadlines",
+        "input_class": "CheckWorkItemDeadlinesInput",
+        "interval": timedelta(hours=24),
+        "queue": TaskQueue.ANALYSIS,
+    },
     # Phase 4 / C2 — 30-min poll of every open PR across AI-enabled
     # workspaces. Cheap (one GitHub call per PR); only fans out re-analysis
     # when title/description actually changed since last poll.

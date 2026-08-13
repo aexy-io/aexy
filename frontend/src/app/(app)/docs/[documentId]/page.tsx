@@ -9,6 +9,7 @@ import { CollaborativeEditor } from "@/components/docs/CollaborativeEditor";
 import { DocumentEditor } from "@/components/docs/DocumentEditor";
 import { DocumentBreadcrumb } from "@/components/docs/DocumentBreadcrumb";
 import { SyncStatusPanel } from "@/components/docs/SyncStatusPanel";
+import { DocumentComments } from "@/components/docs/DocumentComments";
 import { ProposedEditsBanner } from "@/components/docs/ProposedEditsBanner";
 import { Spinner } from "@/components/ui/spinner";
 import { documentApi } from "@/lib/api";
@@ -186,6 +187,17 @@ export default function DocumentPage() {
         embedded={embedded}
         breadcrumb={embedded ? undefined : <DocumentBreadcrumb workspaceId={currentWorkspaceId} documentId={documentId} />}
       />
+      {/* Comments live under the document rather than in a side panel, and are
+          hidden when embedded — an embed is a read-only view of the content, so a
+          comment box in it would post to a document the reader may not have open. */}
+      {!embedded && (
+        <div className="px-4 pb-10 max-w-3xl mx-auto w-full">
+          <DocumentComments
+            workspaceId={currentWorkspaceId}
+            documentId={documentId}
+          />
+        </div>
+      )}
     </div>
   );
 }

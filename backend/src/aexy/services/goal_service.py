@@ -213,12 +213,36 @@ class GoalService:
             "tracking_keywords", "status",
         }
 
+        prior_status = goal.status
+
         for field, value in updates.items():
             if field in allowed_fields and value is not None:
                 setattr(goal, field, value)
 
         goal.updated_at = datetime.utcnow()
         await self.db.flush()
+
+        # Tell the owner when their goal is flagged at risk. `at_risk` is one of
+        # the statuses this column already carries, and the notification event
+        # for it has existed all along with nothing to fire it — so the flag was
+        # only ever visible to whoever went looking at the goal.
+        #
+        # Only on the transition *into* at_risk: re-saving an at-risk goal is not
+        # news, and this method is the generic PATCH path so it runs on every edit.
+        if goal.status == "at_risk" and prior_status != "at_risk" and goal.owner_id:
+            from aexy.services.notification_service import notify_goal_at_risk
+
+            try:
+                await notify_goal_at_risk(
+                    db=self.db,
+                    developer_id=str(goal.owner_id),
+                    goal_id=str(goal.id),
+                    goal_title=goal.title,
+                )
+            except Exception:
+                # The status change is the caller's intent; failing to announce it
+                # must not fail the write.
+                logger.exception("Failed to notify owner of at-risk goal %s", goal.id)
 
         return goal
 
@@ -427,6 +451,17 @@ class GoalService:
                 if pr_id not in linked_prs:
                     linked_prs.append(pr_id)
 
+        # What was already linked before this run, so the notification below can
+        # count what is actually new. This method recomputes the whole set and
+        # overwrites it, so without this it would report the running total every
+        # time and claim the same commits again on every sync.
+        previous = goal.linked_activity or {}
+        newly_linked = len(
+            set(linked_commits) - set(previous.get("commits") or [])
+        ) + len(
+            set(linked_prs) - set(previous.get("pull_requests") or [])
+        )
+
         # Update goal with linked activity
         goal.linked_activity = {
             "commits": linked_commits,
@@ -436,6 +471,28 @@ class GoalService:
         goal.updated_at = datetime.utcnow()
 
         await self.db.flush()
+
+        # Off by default on every channel (see DEFAULT_NOTIFICATION_PREFERENCES).
+        # This runs during GitHub sync and can match many commits at once, so it
+        # is opt-in: the toggle now does something for the people who want it,
+        # without making sync noisy for everyone who does not.
+        recipient_id = goal.owner_id or goal.developer_id
+        if newly_linked and recipient_id:
+            from aexy.services.notification_service import notify_goal_auto_linked
+
+            try:
+                await notify_goal_auto_linked(
+                    db=self.db,
+                    developer_id=str(recipient_id),
+                    goal_id=str(goal.id),
+                    goal_title=goal.title,
+                    count=newly_linked,
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to notify owner of auto-linked contributions on goal %s",
+                    goal.id,
+                )
 
         return {"commits": linked_commits, "pull_requests": linked_prs}
 

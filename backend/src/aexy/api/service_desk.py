@@ -415,6 +415,14 @@ async def update_ticket_fields(
     db: AsyncSession = Depends(get_db),
     current: Developer = Depends(get_current_developer),
 ):
-    return await ServiceDeskTicketService(db).update_fields(
+    service = ServiceDeskTicketService(db)
+    detail = await service.update_fields(
         workspace_id, ticket_id, data, scope_developer_id=current.id
     )
+    # Same ordering as the pending-with handler: commit first, then send. A
+    # reassignment through this form now notifies the new owner, and telling them
+    # a ticket is theirs before the change is durable is the failure this
+    # sequence exists to prevent.
+    await db.commit()
+    await service.flush_notifications()
+    return detail
