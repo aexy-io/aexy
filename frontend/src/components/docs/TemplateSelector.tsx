@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { X, FileText, Code2, BookOpen, Layers, FileCode, Sparkles } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Copy, Search, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TemplateListItem, TemplateCategory } from "@/lib/api";
 import { useTemplates } from "@/hooks/useDocuments";
@@ -12,215 +12,195 @@ interface TemplateSelectorProps {
   isOpen: boolean;
   onClose: () => void;
   onSelect: (template: TemplateListItem | null) => void;
+  /** Offered as its own card when the caller can act on it. */
+  onGenerateFromCode?: () => void;
 }
 
-const categoryIcons: Record<TemplateCategory, React.ElementType> = {
-  api_docs: Code2,
-  readme: BookOpen,
-  function_docs: FileCode,
-  module_docs: Layers,
-  guides: FileText,
-  general: FileText,
-  changelog: FileText,
-  custom: FileText,
-};
-
-const categoryLabels: Record<TemplateCategory, string> = {
-  api_docs: "API Documentation",
-  readme: "README",
-  function_docs: "Function Documentation",
-  module_docs: "Module Documentation",
-  guides: "Guides & Tutorials",
-  general: "General",
+/** Display order and headings. A category with no templates is not rendered. */
+const CATEGORY_LABELS: Record<TemplateCategory, string> = {
+  general: "Planning & process",
+  module_docs: "Architecture",
+  guides: "Guides & runbooks",
+  api_docs: "API documentation",
+  readme: "Project README",
+  function_docs: "Function documentation",
   changelog: "Changelog",
   custom: "Custom",
 };
 
-const categoryDescriptions: Record<TemplateCategory, string> = {
-  api_docs: "Document REST APIs, endpoints, and responses",
-  readme: "Project overview, setup, and usage",
-  function_docs: "Detailed function/method documentation",
-  module_docs: "Architecture and module overviews",
-  guides: "Step-by-step tutorials and how-tos",
-  general: "General purpose documentation",
-  changelog: "Track changes and version history",
-  custom: "Custom template format",
-};
+const CATEGORY_ORDER: TemplateCategory[] = [
+  "general",
+  "module_docs",
+  "guides",
+  "api_docs",
+  "readme",
+  "function_docs",
+  "changelog",
+  "custom",
+];
 
+/**
+ * Pick a starting point for a new document.
+ *
+ * This used to render one card *per category* and open `categoryTemplates[0]` on
+ * click, which was invisible while the template table was empty and wrong the
+ * moment it was not: four templates share "general", so clicking it would have
+ * silently picked one of them. Templates are the unit of choice here; categories
+ * are only headings.
+ */
 export function TemplateSelector({
   workspaceId,
   isOpen,
   onClose,
   onSelect,
+  onGenerateFromCode,
 }: TemplateSelectorProps) {
-  const [selectedCategory, setSelectedCategory] = useState<TemplateCategory | null>(null);
-  const { templates, templatesByCategory, isLoading } = useTemplates(workspaceId);
+  const { templates, isLoading, duplicateTemplate } = useTemplates(workspaceId);
+  const [query, setQuery] = useState("");
+
+  const grouped = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    const matching = (templates ?? []).filter(
+      (template) =>
+        !needle ||
+        template.name.toLowerCase().includes(needle) ||
+        (template.description ?? "").toLowerCase().includes(needle),
+    );
+    return CATEGORY_ORDER.map((category) => ({
+      category,
+      label: CATEGORY_LABELS[category],
+      items: matching.filter((template) => template.category === category),
+    })).filter((group) => group.items.length > 0);
+  }, [templates, query]);
 
   if (!isOpen) return null;
 
-  const categories = Object.keys(templatesByCategory) as TemplateCategory[];
-
-  const handleSelectBlank = () => {
-    onSelect(null);
-    onClose();
-  };
-
-  const handleSelectTemplate = (template: TemplateListItem) => {
+  const choose = (template: TemplateListItem) => {
     onSelect(template);
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Choose a template">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Modal */}
-      <div className="relative w-full max-w-3xl max-h-[80vh] bg-background border border-border rounded-2xl shadow-2xl overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+      <div className="relative flex w-full max-w-3xl max-h-[85vh] flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-4">
           <div>
-            <h2 className="text-lg font-semibold text-foreground">Create New Document</h2>
+            <h2 className="text-lg font-semibold text-foreground">New document</h2>
             <p className="text-sm text-muted-foreground">
-              Choose a template or start with a blank document
+              Start from a template, or from a blank page
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition"
+            aria-label="Close"
+            className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[60vh]">
-          {/* Blank Document Option */}
-          <div className="mb-6">
-            <button
-              onClick={handleSelectBlank}
-              className="w-full flex items-center gap-4 p-4 bg-muted/50 border border-border rounded-xl hover:bg-muted hover:border-border transition group"
-            >
-              <div className="p-3 bg-accent rounded-xl group-hover:bg-muted transition">
-                <FileText className="h-6 w-6 text-foreground" />
-              </div>
-              <div className="text-left">
-                <h3 className="text-foreground font-medium">Blank Document</h3>
-                <p className="text-sm text-muted-foreground">Start with an empty page</p>
-              </div>
-            </button>
+        <div className="border-b border-border px-6 py-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search templates"
+              aria-label="Search templates"
+              className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
           </div>
+        </div>
 
-          {/* AI Generation Option */}
-          <div className="mb-6">
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          {onGenerateFromCode && !query && (
             <button
-              onClick={() => setSelectedCategory(null)}
-              className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-purple-900/30 to-blue-900/30 border border-purple-700/50 rounded-xl hover:from-purple-900/50 hover:to-blue-900/50 transition group"
+              onClick={() => {
+                onGenerateFromCode();
+                onClose();
+              }}
+              className="group mb-6 flex w-full items-center gap-4 rounded-xl border border-purple-700/50 bg-gradient-to-r from-purple-900/30 to-blue-900/30 p-4 text-left transition hover:from-purple-900/50 hover:to-blue-900/50"
             >
-              <div className="p-3 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl">
-                <Sparkles className="h-6 w-6 text-foreground" />
+              <div className="rounded-xl bg-gradient-to-br from-purple-600 to-blue-600 p-3">
+                <Sparkles className="h-5 w-5 text-white" aria-hidden />
               </div>
-              <div className="text-left flex-1">
-                <h3 className="text-foreground font-medium">Generate from Code</h3>
+              <div className="flex-1">
+                <h3 className="font-medium text-foreground">Generate from code</h3>
                 <p className="text-sm text-muted-foreground">
-                  Use AI to generate documentation from your source code
+                  Point AI at a repository and let it draft the document
                 </p>
               </div>
-              <span className="px-2 py-1 text-xs font-medium text-purple-300 bg-purple-100 dark:bg-purple-900/50 rounded-full">
-                AI Powered
-              </span>
             </button>
-          </div>
-
-          {/* Template Categories */}
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Spinner size="xs" />
-            </div>
-          ) : (
-            <div>
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-                Templates
-              </h3>
-              <div className="grid grid-cols-2 gap-4">
-                {Object.entries(categoryLabels).map(([category, label]) => {
-                  const Icon = categoryIcons[category as TemplateCategory];
-                  const description = categoryDescriptions[category as TemplateCategory];
-                  const categoryTemplates = templatesByCategory[category as TemplateCategory] || [];
-
-                  return (
-                    <button
-                      key={category}
-                      onClick={() => {
-                        if (categoryTemplates.length > 0) {
-                          handleSelectTemplate(categoryTemplates[0]);
-                        }
-                      }}
-                      disabled={categoryTemplates.length === 0}
-                      className={cn(
-                        "flex flex-col items-start p-4 rounded-xl border transition text-left",
-                        categoryTemplates.length > 0
-                          ? "bg-muted/50 border-border hover:bg-muted hover:border-border"
-                          : "bg-background/50 border-border opacity-50 cursor-not-allowed"
-                      )}
-                    >
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 bg-accent rounded-lg">
-                          <Icon className="h-4 w-4 text-primary-400" />
-                        </div>
-                        <span className="text-foreground font-medium">{label}</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">{description}</p>
-                      {categoryTemplates.length > 0 && (
-                        <span className="mt-2 text-xs text-muted-foreground">
-                          {categoryTemplates.length} template{categoryTemplates.length > 1 ? "s" : ""}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
           )}
 
-          {/* Custom Templates */}
-          {templates && templates.filter(t => !t.is_system).length > 0 && (
-            <div className="mt-6">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-                Custom Templates
-              </h3>
-              <div className="space-y-2">
-                {templates
-                  .filter(t => !t.is_system)
-                  .map((template) => {
-                    const Icon = categoryIcons[template.category] || FileText;
-                    return (
-                      <button
+          {isLoading ? (
+            <div className="flex items-center justify-center py-10">
+              <Spinner size="xs" label="Loading templates" />
+            </div>
+          ) : grouped.length === 0 ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">
+              No template matches “{query}”.
+            </p>
+          ) : (
+            <div className="space-y-6">
+              {grouped.map((group) => (
+                <div key={group.category}>
+                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    {group.label}
+                  </h3>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {group.items.map((template) => (
+                      <div
                         key={template.id}
-                        onClick={() => handleSelectTemplate(template)}
-                        className="w-full flex items-center gap-3 p-3 bg-muted/30 border border-border/50 rounded-lg hover:bg-muted hover:border-border transition"
+                        className="group relative rounded-xl border border-border bg-muted/40 transition hover:border-primary-500/50 hover:bg-muted"
                       >
-                        <span className="text-xl">{template.icon || "📄"}</span>
-                        <div className="text-left flex-1">
-                          <span className="text-foreground text-sm font-medium">
-                            {template.name}
+                        <button
+                          onClick={() => choose(template)}
+                          className="flex w-full items-start gap-3 p-4 text-left"
+                        >
+                          <span className="text-xl leading-none" aria-hidden>
+                            {template.icon || "📄"}
                           </span>
-                          {template.description && (
-                            <p className="text-xs text-muted-foreground truncate">
-                              {template.description}
-                            </p>
-                          )}
-                        </div>
-                        <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                          {categoryLabels[template.category]}
-                        </span>
-                      </button>
-                    );
-                  })}
-              </div>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-medium text-foreground">
+                              {template.name}
+                            </span>
+                            {template.description && (
+                              <span className="mt-0.5 block text-xs text-muted-foreground">
+                                {template.description}
+                              </span>
+                            )}
+                            {!template.is_system && (
+                              <span className="mt-1.5 inline-block rounded bg-accent px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                                This workspace
+                              </span>
+                            )}
+                          </span>
+                        </button>
+                        {/* Forking a system template is how a workspace gets an
+                            editable version of it — the model has always supported
+                            workspace-scoped templates, with no way in from the UI. */}
+                        {template.is_system && (
+                          <button
+                            onClick={() => duplicateTemplate.mutate(template.id)}
+                            disabled={duplicateTemplate.isPending}
+                            title="Save an editable copy to this workspace"
+                            aria-label={`Customise ${template.name}`}
+                            className={cn(
+                              "absolute right-2 top-2 rounded-md p-1.5 text-muted-foreground transition",
+                              "opacity-0 hover:bg-accent hover:text-foreground focus:opacity-100 group-hover:opacity-100",
+                            )}
+                          >
+                            <Copy className="h-3.5 w-3.5" aria-hidden />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

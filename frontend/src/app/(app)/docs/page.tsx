@@ -6,7 +6,6 @@ import { useQuery } from "@tanstack/react-query";
 import {
   FileText,
   Sparkles,
-  BookOpen,
   Code2,
   X,
   Loader2,
@@ -19,155 +18,18 @@ import {
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useDocuments, useTemplates } from "@/hooks/useDocuments";
-import { documentApi, repositoriesApi, Repository } from "@/lib/api";
-
-// Initial content for API Documentation
-const API_DOC_CONTENT = {
-  type: "doc",
-  content: [
-    {
-      type: "heading",
-      attrs: { level: 1 },
-      content: [{ type: "text", text: "API Documentation" }],
-    },
-    {
-      type: "paragraph",
-      content: [{ type: "text", text: "Document your API endpoints, request/response formats, and authentication." }],
-    },
-    {
-      type: "heading",
-      attrs: { level: 2 },
-      content: [{ type: "text", text: "Authentication" }],
-    },
-    {
-      type: "paragraph",
-      content: [{ type: "text", text: "Describe your authentication method (API keys, OAuth, JWT, etc.)" }],
-    },
-    {
-      type: "heading",
-      attrs: { level: 2 },
-      content: [{ type: "text", text: "Endpoints" }],
-    },
-    {
-      type: "heading",
-      attrs: { level: 3 },
-      content: [{ type: "text", text: "GET /api/resource" }],
-    },
-    {
-      type: "paragraph",
-      content: [{ type: "text", text: "Description of the endpoint." }],
-    },
-    {
-      type: "heading",
-      attrs: { level: 4 },
-      content: [{ type: "text", text: "Parameters" }],
-    },
-    {
-      type: "bulletList",
-      content: [
-        {
-          type: "listItem",
-          content: [{ type: "paragraph", content: [{ type: "text", marks: [{ type: "code" }], text: "param1" }, { type: "text", text: " (required) - Description" }] }],
-        },
-      ],
-    },
-    {
-      type: "heading",
-      attrs: { level: 4 },
-      content: [{ type: "text", text: "Response" }],
-    },
-    {
-      type: "codeBlock",
-      attrs: { language: "json" },
-      content: [{ type: "text", text: '{\n  "data": [],\n  "status": "success"\n}' }],
-    },
-  ],
-};
-
-// Initial content for README
-const README_CONTENT = {
-  type: "doc",
-  content: [
-    {
-      type: "heading",
-      attrs: { level: 1 },
-      content: [{ type: "text", text: "Project Name" }],
-    },
-    {
-      type: "paragraph",
-      content: [{ type: "text", text: "A brief description of what this project does and who it's for." }],
-    },
-    {
-      type: "heading",
-      attrs: { level: 2 },
-      content: [{ type: "text", text: "Features" }],
-    },
-    {
-      type: "bulletList",
-      content: [
-        { type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Feature 1" }] }] },
-        { type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Feature 2" }] }] },
-        { type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Feature 3" }] }] },
-      ],
-    },
-    {
-      type: "heading",
-      attrs: { level: 2 },
-      content: [{ type: "text", text: "Installation" }],
-    },
-    {
-      type: "codeBlock",
-      attrs: { language: "bash" },
-      content: [{ type: "text", text: "npm install my-project\n# or\nyarn add my-project" }],
-    },
-    {
-      type: "heading",
-      attrs: { level: 2 },
-      content: [{ type: "text", text: "Quick Start" }],
-    },
-    {
-      type: "codeBlock",
-      attrs: { language: "javascript" },
-      content: [{ type: "text", text: "import { myProject } from 'my-project';\n\n// Example usage\nconst result = myProject.doSomething();" }],
-    },
-    {
-      type: "heading",
-      attrs: { level: 2 },
-      content: [{ type: "text", text: "Configuration" }],
-    },
-    {
-      type: "paragraph",
-      content: [{ type: "text", text: "Describe configuration options here." }],
-    },
-    {
-      type: "heading",
-      attrs: { level: 2 },
-      content: [{ type: "text", text: "Contributing" }],
-    },
-    {
-      type: "paragraph",
-      content: [{ type: "text", text: "Contributions are welcome! Please read the contributing guidelines first." }],
-    },
-    {
-      type: "heading",
-      attrs: { level: 2 },
-      content: [{ type: "text", text: "License" }],
-    },
-    {
-      type: "paragraph",
-      content: [{ type: "text", text: "MIT" }],
-    },
-  ],
-};
+import { documentApi, repositoriesApi, Repository, TemplateListItem } from "@/lib/api";
+import { TemplateSelector } from "@/components/docs/TemplateSelector";
 
 export default function DocsPage() {
   const router = useRouter();
   const { currentWorkspaceId } = useWorkspace();
   const { createDocument, isCreating } = useDocuments(currentWorkspaceId);
-  const { templates, templatesByCategory, isLoading: templatesLoading } = useTemplates(currentWorkspaceId);
+  const { templates, isLoading: templatesLoading } = useTemplates(currentWorkspaceId);
 
   // State for Generate from Code modal
   const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
   const [codeInput, setCodeInput] = useState("");
   const [codeLanguage, setCodeLanguage] = useState("typescript");
   const [docType, setDocType] = useState("function_docs");
@@ -218,11 +80,13 @@ export default function DocsPage() {
     }
   }, [createDocument, currentWorkspaceId, router]);
 
-  const handleCreateFromTemplate = useCallback(async (templateId: string) => {
+  const handleCreateFromTemplate = useCallback(async (templateId: string, title?: string) => {
     if (!currentWorkspaceId) return;
     try {
       const result = await createDocument.mutateAsync({
-        title: "Untitled",
+        // The template's own name is a better working title than "Untitled" —
+        // it is what the person just chose, and it is renameable in the editor.
+        title: title || "Untitled",
         template_id: templateId,
       });
       router.push(`/docs/${result.id}`);
@@ -231,33 +95,14 @@ export default function DocsPage() {
     }
   }, [createDocument, currentWorkspaceId, router]);
 
-  const handleCreateAPIDoc = useCallback(async () => {
-    if (!currentWorkspaceId) return;
-    try {
-      const result = await createDocument.mutateAsync({
-        title: "API Documentation",
-        content: API_DOC_CONTENT,
-        icon: "📡",
-      });
-      router.push(`/docs/${result.id}`);
-    } catch (error) {
-      console.error("Failed to create API documentation:", error);
+  /** The picker hands back a template, or null for a plain blank page. */
+  const handlePickTemplate = useCallback((template: TemplateListItem | null) => {
+    if (!template) {
+      void handleCreateBlankDocument();
+      return;
     }
-  }, [createDocument, currentWorkspaceId, router]);
-
-  const handleCreateREADME = useCallback(async () => {
-    if (!currentWorkspaceId) return;
-    try {
-      const result = await createDocument.mutateAsync({
-        title: "README",
-        content: README_CONTENT,
-        icon: "📖",
-      });
-      router.push(`/docs/${result.id}`);
-    } catch (error) {
-      console.error("Failed to create README:", error);
-    }
-  }, [createDocument, currentWorkspaceId, router]);
+    void handleCreateFromTemplate(template.id, template.name);
+  }, [handleCreateBlankDocument, handleCreateFromTemplate]);
 
   const handleGenerateFromCode = useCallback(async () => {
     if (!currentWorkspaceId || !codeInput.trim()) return;
@@ -366,31 +211,21 @@ export default function DocsPage() {
   // Breadcrumb path parts
   const pathParts = currentPath ? currentPath.split("/") : [];
 
+  // Two entry points, not four. "API Documentation" and "README" were cards here
+  // because their bodies were hardcoded in this file; they are catalogue templates
+  // now and appear in the picker alongside the rest, so a card each would mean
+  // this page decided which two of nine templates deserved promoting.
   const quickActions = [
     {
       icon: FileText,
-      label: "Blank Document",
-      description: "Start with an empty page",
-      onClick: handleCreateBlankDocument,
+      label: "New document",
+      description: "Blank, or from a template",
+      onClick: () => setShowTemplates(true),
       color: "from-slate-500 to-slate-600",
     },
     {
-      icon: Code2,
-      label: "API Documentation",
-      description: "Document your API endpoints",
-      onClick: handleCreateAPIDoc,
-      color: "from-blue-500 to-blue-600",
-    },
-    {
-      icon: BookOpen,
-      label: "README",
-      description: "Project overview and setup",
-      onClick: handleCreateREADME,
-      color: "from-green-500 to-green-600",
-    },
-    {
       icon: Sparkles,
-      label: "Generate from Code",
+      label: "Generate from code",
       description: "AI-powered documentation",
       onClick: () => setShowGenerateModal(true),
       color: "from-purple-500 to-purple-600",
@@ -450,7 +285,7 @@ export default function DocsPage() {
               {templates.slice(0, 5).map((template) => (
                 <button
                   key={template.id}
-                  onClick={() => handleCreateFromTemplate(template.id)}
+                  onClick={() => handleCreateFromTemplate(template.id, template.name)}
                   disabled={isCreating}
                   className="w-full flex items-center gap-3 p-3 bg-background/30 border border-border/50 rounded-lg hover:bg-muted/30 hover:border-border transition disabled:opacity-50"
                 >
@@ -481,6 +316,16 @@ export default function DocsPage() {
           </p>
         </div>
       </div>
+
+      {currentWorkspaceId && (
+        <TemplateSelector
+          workspaceId={currentWorkspaceId}
+          isOpen={showTemplates}
+          onClose={() => setShowTemplates(false)}
+          onSelect={handlePickTemplate}
+          onGenerateFromCode={() => setShowGenerateModal(true)}
+        />
+      )}
 
       {/* Generate from Code Modal */}
       {showGenerateModal && (

@@ -11,8 +11,18 @@ DocumentStatus = Literal["draft", "generating", "generated", "failed"]
 DocumentLinkType = Literal["file", "directory"]
 DocumentPermission = Literal["view", "comment", "edit", "admin"]
 DocumentVisibility = Literal["private", "workspace", "public"]
+# Kept in step with `TemplateCategory` in models/documentation.py and with the
+# frontend union in lib/api.ts. Three hand-maintained copies of one list, and
+# "general" was already in the frontend's before it was in either of these.
 TemplateCategory = Literal[
-    "api_docs", "readme", "function_docs", "module_docs", "guides", "changelog", "custom"
+    "api_docs",
+    "readme",
+    "function_docs",
+    "module_docs",
+    "guides",
+    "changelog",
+    "custom",
+    "general",
 ]
 DocumentSpaceRole = Literal["admin", "editor", "viewer"]
 

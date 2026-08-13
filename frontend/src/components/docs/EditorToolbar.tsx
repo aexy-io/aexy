@@ -8,6 +8,7 @@ import {
   Underline as UnderlineIcon,
   Strikethrough,
   Code,
+  BookmarkPlus,
   Heading1,
   Heading2,
   Heading3,
@@ -34,9 +35,11 @@ interface EditorToolbarProps {
   onSave?: () => void;
   editorMode?: "rich" | "markdown";
   onModeToggle?: () => void;
+  /** Offered when the document can become a reusable workspace template. */
+  onSaveAsTemplate?: () => void;
 }
 
-export function EditorToolbar({ editor, onSave, editorMode = "rich", onModeToggle }: EditorToolbarProps) {
+export function EditorToolbar({ editor, onSave, editorMode = "rich", onModeToggle, onSaveAsTemplate }: EditorToolbarProps) {
   // Add link
   const setLink = useCallback(() => {
     const previousUrl = editor.getAttributes("link").href;
@@ -257,6 +260,19 @@ export function EditorToolbar({ editor, onSave, editorMode = "rich", onModeToggl
 
       {/* Spacer */}
       <div className="flex-1" />
+
+      {/* A document that works is the best description of a template. This turns
+          the one in front of you into one the workspace can reuse. */}
+      {onSaveAsTemplate && (
+        <button
+          onClick={onSaveAsTemplate}
+          className="mr-2 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
+          title="Save this document as a reusable template"
+        >
+          <BookmarkPlus className="h-4 w-4" />
+          Save as template
+        </button>
+      )}
 
       {/* Mode Toggle */}
       {onModeToggle && (

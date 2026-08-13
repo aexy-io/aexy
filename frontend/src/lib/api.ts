@@ -7375,6 +7375,28 @@ export const templateApi = {
     });
     return response.data;
   },
+
+  /** Rename or re-body one of the workspace's own templates. System ones 404. */
+  update: async (
+    templateId: string,
+    workspaceId: string,
+    data: {
+      name?: string;
+      description?: string | null;
+      icon?: string | null;
+      content_template?: Record<string, unknown>;
+    }
+  ): Promise<DocumentTemplate> => {
+    const response = await api.patch(`/templates/${templateId}`, data, {
+      params: { workspace_id: workspaceId },
+    });
+    return response.data;
+  },
+
+  /** Retire a workspace template. Deactivates server-side, so it is recoverable. */
+  remove: async (templateId: string, workspaceId: string): Promise<void> => {
+    await api.delete(`/templates/${templateId}`, { params: { workspace_id: workspaceId } });
+  },
 };
 
 // ============ Document Space API ============

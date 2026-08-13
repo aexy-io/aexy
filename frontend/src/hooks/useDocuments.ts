@@ -327,6 +327,31 @@ export function useTemplates(workspaceId: string | null) {
     },
   });
 
+  // Rename / retire a workspace's own template. Both refresh the list, which is
+  // what the picker and the management panel read.
+  const updateTemplate = useMutation({
+    mutationFn: ({
+      templateId,
+      ...data
+    }: {
+      templateId: string;
+      name?: string;
+      description?: string | null;
+      icon?: string | null;
+      content_template?: Record<string, unknown>;
+    }) => templateApi.update(templateId, workspaceId!, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["templates", workspaceId] });
+    },
+  });
+
+  const removeTemplate = useMutation({
+    mutationFn: (templateId: string) => templateApi.remove(templateId, workspaceId!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["templates", workspaceId] });
+    },
+  });
+
   return {
     templates,
     templatesByCategory,
@@ -335,6 +360,8 @@ export function useTemplates(workspaceId: string | null) {
     getTemplate,
     duplicateTemplate,
     createTemplate,
+    updateTemplate,
+    removeTemplate,
     isDuplicating: duplicateTemplate.isPending,
     isCreating: createTemplate.isPending,
   };

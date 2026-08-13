@@ -71,6 +71,12 @@ class TemplateCategory(str, Enum):
     GUIDES = "guides"
     CHANGELOG = "changelog"
     CUSTOM = "custom"
+    # For the documents that are not about code — a PRD, a postmortem, meeting
+    # notes. The frontend's `TemplateCategory` union and the template picker's
+    # labels have carried "general" since they were written; this enum was the
+    # side that never had it, so the two could not agree on a value the client
+    # was already prepared to send.
+    GENERAL = "general"
 
 
 class DocumentSpaceRole(str, Enum):

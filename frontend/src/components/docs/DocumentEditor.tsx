@@ -21,7 +21,10 @@ import { common, createLowlight } from "lowlight";
 import { InlineDatabase } from "./extensions/InlineDatabase";
 import { SlashCommands } from "./extensions/SlashCommands";
 import { EditorToolbar } from "./EditorToolbar";
+import { DocumentEmptyState } from "./DocumentEmptyState";
 import { debounce } from "@/lib/utils";
+import { useTemplates } from "@/hooks/useDocuments";
+import type { DocumentTemplate } from "@/lib/api";
 import {
   Check,
   Cloud,
@@ -49,6 +52,8 @@ interface DocumentEditorProps {
   /** Chromeless embed (macOS app): hide the title/breadcrumb header; the native
    * app shows the title. The toolbar + content still render. */
   embedded?: boolean;
+  /** Enables the template empty state. Omitted in the embed, which is a reader. */
+  workspaceId?: string | null;
 }
 
 export function DocumentEditor({
@@ -63,6 +68,7 @@ export function DocumentEditor({
   autoSaveDelay = 1000,
   breadcrumb,
   embedded = false,
+  workspaceId,
 }: DocumentEditorProps) {
   const [localTitle, setLocalTitle] = useState(title);
   const [localIcon, setLocalIcon] = useState(icon || "📄");
@@ -71,6 +77,8 @@ export function DocumentEditor({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [editorMode, setEditorMode] = useState<EditorMode>("rich");
   const [markdownContent, setMarkdownContent] = useState("");
+  const [templateSaved, setTemplateSaved] = useState(false);
+  const { createTemplate } = useTemplates(workspaceId ?? null);
 
   // Use ref for initial content to prevent editor recreation
   const initialContentRef = useRef(content);
@@ -248,6 +256,65 @@ export function DocumentEditor({
     [autoSave, debouncedSave]
   );
 
+  /**
+   * Fill an empty document from a template chosen in the empty state.
+   *
+   * Saved in one call rather than three: title, icon and content land together so
+   * a refresh mid-way cannot leave a document carrying a template's title with
+   * none of its content. The title is only taken when there is nothing to
+   * overwrite — somebody who named the document first meant that name.
+   */
+  const handleApplyTemplate = useCallback(
+    (template: DocumentTemplate) => {
+      if (!editor) return;
+      const content = template.content_template as Record<string, unknown>;
+      editor.commands.setContent(content);
+
+      const untitled = !localTitle.trim() || localTitle === "Untitled";
+      const nextTitle = untitled ? template.name : localTitle;
+      const nextIcon = template.icon || localIcon;
+      setLocalTitle(nextTitle);
+      setLocalIcon(nextIcon);
+      onTitleChange?.(nextTitle);
+      onSaveRef.current({ title: nextTitle, icon: nextIcon, content });
+      editor.commands.focus("end");
+    },
+    [editor, localTitle, localIcon, onTitleChange]
+  );
+
+  /**
+   * Turn this document into a workspace template.
+   *
+   * Named from the document's own title so the picker shows something
+   * recognisable, and prompted rather than silent because a template name is
+   * read by everybody else in the workspace. `prompt` matches how this editor
+   * already asks for a link URL — a modal for one text field would be the only
+   * one in the component.
+   */
+  const handleSaveAsTemplate = useCallback(async () => {
+    if (!editor || !workspaceId) return;
+    const name = window.prompt("Template name", localTitle || "Untitled template");
+    if (name === null) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    try {
+      await createTemplate.mutateAsync({
+        name: trimmed,
+        category: "custom",
+        content_template: editor.getJSON() as Record<string, unknown>,
+        // `prompt_template` is NOT NULL and feeds the AI generation path, so a
+        // template saved by hand still needs something usable there.
+        prompt_template: `Write a document following the "${trimmed}" template.\n\n{context}`,
+        variables: [],
+        icon: localIcon,
+      });
+      setTemplateSaved(true);
+      setTimeout(() => setTemplateSaved(false), 2500);
+    } catch (error) {
+      console.error("Failed to save template:", error);
+    }
+  }, [editor, workspaceId, localTitle, localIcon, createTemplate]);
+
   // `handleManualSave` removed — autoSave covers every change path
   // (rich/markdown), the dual-affordance was an audit finding. If a
   // future force-save UX is needed, prefer keyboard (Mod+S) over a
@@ -404,6 +471,14 @@ export function DocumentEditor({
                         <span>Saved</span>
                       </div>
                     )}
+                    {/* Distinct from "Saved": that is the document, this is the
+                        template it was just copied into. */}
+                    {templateSaved && (
+                      <div className="flex items-center gap-1.5 text-success text-xs animate-fade-in">
+                        <Check className="h-3.5 w-3.5" />
+                        <span>Saved as template</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -424,6 +499,9 @@ export function DocumentEditor({
               editor={editor}
               editorMode={editorMode}
               onModeToggle={handleModeToggle}
+              onSaveAsTemplate={
+                workspaceId && !readOnly && !editor?.isEmpty ? handleSaveAsTemplate : undefined
+              }
             />
           </div>
         )}
@@ -449,6 +527,11 @@ export function DocumentEditor({
       {/* Editor Content */}
       <div className="flex-1 overflow-auto">
         <div className="px-8 py-8">
+          {/* Only while the page is genuinely blank, and only in rich mode —
+              `editor.isEmpty` is live, so it clears itself on the first keystroke. */}
+          {workspaceId && !readOnly && editorMode === "rich" && editor?.isEmpty && (
+            <DocumentEmptyState workspaceId={workspaceId} onApply={handleApplyTemplate} />
+          )}
           {editorMode === "rich" ? (
             <EditorContent
               editor={editor}
