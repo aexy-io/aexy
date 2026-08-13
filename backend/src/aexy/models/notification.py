@@ -22,7 +22,24 @@ if TYPE_CHECKING:
 
 
 class NotificationEventType(str, Enum):
-    """Types of notification events."""
+    """Types of notification events.
+
+    This enum is the single source of truth. ``aexy.schemas.notification``
+    re-exports it rather than declaring its own copy — there were two
+    declarations and they drifted, which is not a cosmetic problem:
+    ``EmailService`` imports the schema one, so a member that existed only here
+    failed the ``NotificationEventType(...)`` cast and the email died inside a
+    broad ``except Exception``, and ``get_preference`` fell back to
+    "email enabled" for a member it could not parse, leaving the event
+    un-silenceable and absent from the settings screen.
+
+    Adding a member here is not enough to make it work. A new event needs an
+    entry in ``NOTIFICATION_CATEGORIES`` (category toggle + Slack routing) and
+    in ``DEFAULT_NOTIFICATION_PREFERENCES`` (so it appears in settings and has
+    channel defaults); ``tests/unit/test_notification_event_coverage.py``
+    fails if either is missing. Do not add a member without a real emitter —
+    a toggle that controls nothing is worse than no toggle.
+    """
 
     # Review-related
     PEER_REVIEW_REQUESTED = "peer_review_requested"
@@ -46,6 +63,11 @@ class NotificationEventType(str, Enum):
     WORKSPACE_INVITE = "workspace_invite"
     TEAM_ADDED = "team_added"
 
+    # Workspace join requests
+    WORKSPACE_JOIN_REQUEST = "workspace_join_request"
+    WORKSPACE_JOIN_APPROVED = "workspace_join_approved"
+    WORKSPACE_JOIN_REJECTED = "workspace_join_rejected"
+
     # On-call related
     ONCALL_SHIFT_STARTING = "oncall_shift_starting"  # Reminder before shift
     ONCALL_SHIFT_STARTED = "oncall_shift_started"
@@ -57,6 +79,23 @@ class NotificationEventType(str, Enum):
     # Task mentions
     TASK_MENTIONED = "task_mentioned"  # User was mentioned in a task description with @
     MENTION = "mention"  # User was @mentioned in a comment or note
+
+    # Task assignment and lifecycle. Covers sprint tasks, backlog/project cards,
+    # bugs and stories — they are all rows in the same table, reached through
+    # different screens.
+    TASK_ASSIGNED = "task_assigned"  # Task/card assigned to you, or you were added as an assignee
+    TASK_UNASSIGNED = "task_unassigned"  # You were taken off a task you were on
+    TASK_STATUS_CHANGED = "task_status_changed"  # Somebody else moved a task you are on
+    TASK_COMMENTED = "task_commented"  # Somebody commented on a task you are on or reported
+
+    # Ticket assignment (form tickets — the internal request queue)
+    TICKET_ASSIGNED = "ticket_assigned"
+
+    # Service desk. `pending_with` is the desk's real handoff — a ticket moves
+    # between team queues far more often than it changes assigned owner, and the
+    # queue it lands in is the one that has to act.
+    DESK_TICKET_ASSIGNED = "desk_ticket_assigned"
+    DESK_TICKET_PENDING_WITH_CHANGED = "desk_ticket_pending_with_changed"
 
     # Usage alerts (billing)
     USAGE_ALERT_80 = "usage_alert_80"  # 80% of limit reached
@@ -136,6 +175,12 @@ class NotificationEventType(str, Enum):
     DOCUMENT_SHARED = "document_shared"
     DOCUMENT_MENTIONED = "document_mentioned"
     DOCUMENT_COMMENTED = "document_commented"
+    # An AI proposed an edit to a document you own. Previously delivered through a
+    # separate `document_notifications` table with its own inbox in the docs
+    # sidebar, which meant no email, no per-user preference and nothing in the
+    # main notification bell — so a proposal waited silently for someone to go
+    # looking in the right panel.
+    DOCUMENT_AI_PROPOSAL = "document_ai_proposal"
 
     # Chat
     CHAT_MENTION = "chat_mention"
@@ -430,10 +475,24 @@ NOTIFICATION_CATEGORIES: dict[str, list[str]] = {
     "workspace": [
         NotificationEventType.WORKSPACE_INVITE.value,
         NotificationEventType.TEAM_ADDED.value,
+        NotificationEventType.WORKSPACE_JOIN_REQUEST.value,
+        NotificationEventType.WORKSPACE_JOIN_APPROVED.value,
+        NotificationEventType.WORKSPACE_JOIN_REJECTED.value,
     ],
     "mentions": [
         NotificationEventType.TASK_MENTIONED.value,
         NotificationEventType.MENTION.value,
+    ],
+    "tasks": [
+        NotificationEventType.TASK_ASSIGNED.value,
+        NotificationEventType.TASK_UNASSIGNED.value,
+        NotificationEventType.TASK_STATUS_CHANGED.value,
+        NotificationEventType.TASK_COMMENTED.value,
+        NotificationEventType.TICKET_ASSIGNED.value,
+    ],
+    "service_desk": [
+        NotificationEventType.DESK_TICKET_ASSIGNED.value,
+        NotificationEventType.DESK_TICKET_PENDING_WITH_CHANGED.value,
     ],
     "billing_and_usage": [
         NotificationEventType.USAGE_ALERT_80.value,
@@ -498,6 +557,7 @@ NOTIFICATION_CATEGORIES: dict[str, list[str]] = {
         NotificationEventType.DOCUMENT_SHARED.value,
         NotificationEventType.DOCUMENT_MENTIONED.value,
         NotificationEventType.DOCUMENT_COMMENTED.value,
+        NotificationEventType.DOCUMENT_AI_PROPOSAL.value,
     ],
     "chat": [
         NotificationEventType.CHAT_MENTION.value,
@@ -524,14 +584,45 @@ DEFAULT_NOTIFICATION_PREFERENCES = {
     NotificationEventType.REVIEW_ACKNOWLEDGED: {"in_app": True, "email": False, "slack": False, "web_push": False},
     NotificationEventType.DEADLINE_REMINDER_1_DAY: {"in_app": True, "email": True, "slack": False, "web_push": False},
     NotificationEventType.DEADLINE_REMINDER_DAY_OF: {"in_app": True, "email": True, "slack": False, "web_push": False},
-    NotificationEventType.GOAL_AUTO_LINKED: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    # Opt-in: fires during GitHub sync and can match many commits at once, so
+    # every channel is off until somebody asks for it.
+    NotificationEventType.GOAL_AUTO_LINKED: {"in_app": False, "email": False, "slack": False, "web_push": False},
     NotificationEventType.GOAL_AT_RISK: {"in_app": True, "email": True, "slack": False, "web_push": False},
     NotificationEventType.GOAL_COMPLETED: {"in_app": True, "email": False, "slack": False, "web_push": False},
     NotificationEventType.WORKSPACE_INVITE: {"in_app": True, "email": True, "slack": False, "web_push": False},
     NotificationEventType.TEAM_ADDED: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    # Workspace join requests. An admin who misses the request leaves somebody
+    # locked out of the workspace, so email is on; the decision notices go to the
+    # requester, who is waiting on exactly this answer.
+    NotificationEventType.WORKSPACE_JOIN_REQUEST: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.WORKSPACE_JOIN_APPROVED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.WORKSPACE_JOIN_REJECTED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    # Task assignment and lifecycle.
+    #
+    # Assignment emails, because work landing on you is the one thing you cannot
+    # discover by not opening the app — until now that was true of nothing in
+    # this product, which is why the events exist at all.
+    #
+    # Status changes and comments are in-app only by default. They fire on every
+    # column drag and every comment on anything you touch; defaulting those to
+    # email is how a notification system trains people to filter it.
+    NotificationEventType.TASK_ASSIGNED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.TASK_UNASSIGNED: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    NotificationEventType.TASK_STATUS_CHANGED: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    NotificationEventType.TASK_COMMENTED: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    NotificationEventType.TICKET_ASSIGNED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    # Service desk. These carry an external SLA clock, so both the new owner and
+    # the queue a ticket lands in get email — the daily digest was previously the
+    # only signal and it can be up to a day late.
+    NotificationEventType.DESK_TICKET_ASSIGNED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.DESK_TICKET_PENDING_WITH_CHANGED: {"in_app": True, "email": True, "slack": False, "web_push": False},
     # On-call notifications (web_push enabled by default for critical alerts)
     NotificationEventType.ONCALL_SHIFT_STARTING: {"in_app": True, "email": True, "slack": True, "web_push": True},
-    NotificationEventType.ONCALL_SHIFT_STARTED: {"in_app": True, "email": False, "slack": True, "web_push": True},
+    # Nothing fires this. `oncall_shift_starting` is the wired one and goes out
+    # 30 minutes ahead; a second alert at the exact moment the shift begins tells
+    # the engineer what they were told half an hour ago. Off on every channel so
+    # the toggle cannot promise delivery that will not happen.
+    NotificationEventType.ONCALL_SHIFT_STARTED: {"in_app": False, "email": False, "slack": False, "web_push": False},
     NotificationEventType.ONCALL_SHIFT_ENDING: {"in_app": True, "email": False, "slack": False, "web_push": False},
     NotificationEventType.ONCALL_SWAP_REQUESTED: {"in_app": True, "email": True, "slack": True, "web_push": True},
     NotificationEventType.ONCALL_SWAP_ACCEPTED: {"in_app": True, "email": True, "slack": False, "web_push": False},
@@ -539,6 +630,14 @@ DEFAULT_NOTIFICATION_PREFERENCES = {
     # Task mentions
     NotificationEventType.TASK_MENTIONED: {"in_app": True, "email": True, "slack": False, "web_push": False},
     NotificationEventType.MENTION: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    # Usage alerts (billing). These were emitted but had no defaults entry, so
+    # get_preferences() never created a row, they never appeared in the settings
+    # list, and get_preference()'s unknown-event fallback defaulted email to on —
+    # billing mail nobody could switch off. 80% is in-app only; the two that mean
+    # service is about to stop, or has, get email.
+    NotificationEventType.USAGE_ALERT_80: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    NotificationEventType.USAGE_ALERT_90: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.USAGE_ALERT_100: {"in_app": True, "email": True, "slack": False, "web_push": False},
     # Insights alerts
     NotificationEventType.INSIGHT_ALERT_WARNING: {"in_app": True, "email": False, "slack": False, "web_push": False},
     NotificationEventType.INSIGHT_ALERT_CRITICAL: {"in_app": True, "email": True, "slack": False, "web_push": True},
@@ -586,17 +685,31 @@ DEFAULT_NOTIFICATION_PREFERENCES = {
     NotificationEventType.CAMPAIGN_SEND_BLOCKED: {"in_app": True, "email": True, "slack": False, "web_push": False},
     # Automations
     NotificationEventType.AUTOMATION_RUN_FAILED: {"in_app": True, "email": True, "slack": False, "web_push": False},
-    NotificationEventType.AUTOMATION_RUN_COMPLETED: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    # Opt-in: a run that worked is the normal case, and a workspace with hourly
+    # automations would collect hundreds of these a week.
+    NotificationEventType.AUTOMATION_RUN_COMPLETED: {"in_app": False, "email": False, "slack": False, "web_push": False},
     # Hiring / Assessments
     NotificationEventType.ASSESSMENT_INVITATION_SENT: {"in_app": True, "email": False, "slack": False, "web_push": False},
     NotificationEventType.ASSESSMENT_COMPLETED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    # Goes to `HiringCandidate.owner_id`, the recruiter accountable for the
+    # candidate. In-app only: it fires on every drag of the hiring board, and the
+    # owner moving their own candidate is filtered out as the actor, so what is
+    # left is "somebody else touched your candidate".
     NotificationEventType.CANDIDATE_STAGE_CHANGED: {"in_app": True, "email": False, "slack": False, "web_push": False},
     # GTM
     NotificationEventType.GTM_ALERT_TRIGGERED: {"in_app": True, "email": True, "slack": True, "web_push": False},
     # Documents
     NotificationEventType.DOCUMENT_SHARED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    # Being named in a document is addressed to you personally, so it emails like
+    # every other mention in the product.
     NotificationEventType.DOCUMENT_MENTIONED: {"in_app": True, "email": True, "slack": False, "web_push": False},
-    NotificationEventType.DOCUMENT_COMMENTED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    # A comment on a thread you are in is ambient rather than addressed — and a
+    # busy document produces a lot of them — so it stays in-app. Anyone mentioned
+    # by name in the same comment gets DOCUMENT_MENTIONED instead, which emails.
+    NotificationEventType.DOCUMENT_COMMENTED: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    # A proposal sits in a review queue waiting on the document owner, so it is
+    # worth an email — that queue is exactly the thing nobody thinks to check.
+    NotificationEventType.DOCUMENT_AI_PROPOSAL: {"in_app": True, "email": True, "slack": False, "web_push": False},
     # Chat
     NotificationEventType.CHAT_MENTION: {"in_app": True, "email": True, "slack": False, "web_push": False},
     NotificationEventType.AI_CONVERSATION_SHARED: {"in_app": True, "email": True, "slack": False, "web_push": False},

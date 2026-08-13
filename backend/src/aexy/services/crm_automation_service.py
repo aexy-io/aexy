@@ -823,6 +823,36 @@ class CRMAutomationService:
                     self.db, automation.id, succeeded=not failed_steps
                 )
 
+            # The success counterpart of the failure notification below. Off by
+            # default on every channel (see DEFAULT_NOTIFICATION_PREFERENCES),
+            # because a run that worked is the normal case and a workspace with
+            # hourly automations would get hundreds of these a week. The toggle
+            # exists for people who want a specific automation confirmed; until
+            # now it was a switch wired to nothing.
+            if run.status == "completed" and automation.created_by_id:
+                try:
+                    from aexy.models.notification import NotificationEventType
+                    from aexy.services.notification_service import NotificationService
+
+                    notif_service = NotificationService(self.db)
+                    await notif_service.create_notification(
+                        recipient_id=automation.created_by_id,
+                        event_type=NotificationEventType.AUTOMATION_RUN_COMPLETED,
+                        title=f"Automation Completed: {automation.name}",
+                        body=f'Automation "{automation.name}" ran successfully.',
+                        context={
+                            "workspace_id": automation.workspace_id,
+                            "automation_id": automation.id,
+                            "automation_name": automation.name,
+                            "action_url": "/automations",
+                        },
+                    )
+                except Exception:
+                    logger.exception(
+                        "Failed to notify creator that automation %s completed",
+                        automation.id,
+                    )
+
         except Exception as e:
             run.status = "failed"
             run.completed_at = datetime.now(timezone.utc)

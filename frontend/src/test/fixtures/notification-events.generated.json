@@ -1,0 +1,743 @@
+{
+  "_meta": {
+    "source": "backend/src/aexy/models/notification.py",
+    "generator": "backend/scripts/dump_notification_events.py",
+    "mirror": "frontend/src/app/(app)/settings/notifications/page.tsx"
+  },
+  "categories": [
+    "agents",
+    "app_access",
+    "automations",
+    "billing_and_usage",
+    "campaigns",
+    "chat",
+    "documents",
+    "forms",
+    "gtm",
+    "hiring",
+    "insights",
+    "learning",
+    "leave",
+    "mentions",
+    "on_call",
+    "reminders",
+    "reviews_and_goals",
+    "service_desk",
+    "tasks",
+    "uptime",
+    "workspace"
+  ],
+  "events": {
+    "agent_approval_required": {
+      "category": "agents",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": true,
+        "web_push": true
+      }
+    },
+    "agent_config_changed": {
+      "category": "agents",
+      "defaults": {
+        "in_app": true,
+        "email": false,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "agent_invoked": {
+      "category": "agents",
+      "defaults": {
+        "in_app": true,
+        "email": false,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "agent_tool_blocked": {
+      "category": "agents",
+      "defaults": {
+        "in_app": true,
+        "email": false,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "ai_conversation_shared": {
+      "category": "chat",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "app_access_approved": {
+      "category": "app_access",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "app_access_rejected": {
+      "category": "app_access",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "app_access_requested": {
+      "category": "app_access",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "assessment_completed": {
+      "category": "hiring",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "assessment_invitation_sent": {
+      "category": "hiring",
+      "defaults": {
+        "in_app": true,
+        "email": false,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "automation_run_completed": {
+      "category": "automations",
+      "defaults": {
+        "in_app": false,
+        "email": false,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "automation_run_failed": {
+      "category": "automations",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "blocker_escalated": {
+      "category": "insights",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": true,
+        "web_push": true
+      }
+    },
+    "campaign_completed": {
+      "category": "campaigns",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "campaign_scheduled": {
+      "category": "campaigns",
+      "defaults": {
+        "in_app": true,
+        "email": false,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "campaign_send_blocked": {
+      "category": "campaigns",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "candidate_stage_changed": {
+      "category": "hiring",
+      "defaults": {
+        "in_app": true,
+        "email": false,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "chat_mention": {
+      "category": "chat",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "deadline_reminder_1_day": {
+      "category": "reminders",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "deadline_reminder_day_of": {
+      "category": "reminders",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "desk_ticket_assigned": {
+      "category": "service_desk",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "desk_ticket_pending_with_changed": {
+      "category": "service_desk",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "document_ai_proposal": {
+      "category": "documents",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "document_commented": {
+      "category": "documents",
+      "defaults": {
+        "in_app": true,
+        "email": false,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "document_mentioned": {
+      "category": "documents",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "document_shared": {
+      "category": "documents",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "form_submission_failed": {
+      "category": "forms",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "form_submission_received": {
+      "category": "forms",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "goal_at_risk": {
+      "category": "reviews_and_goals",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "goal_auto_linked": {
+      "category": "reviews_and_goals",
+      "defaults": {
+        "in_app": false,
+        "email": false,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "goal_completed": {
+      "category": "reviews_and_goals",
+      "defaults": {
+        "in_app": true,
+        "email": false,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "gtm_alert_triggered": {
+      "category": "gtm",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": true,
+        "web_push": false
+      }
+    },
+    "insight_alert_critical": {
+      "category": "insights",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": true
+      }
+    },
+    "insight_alert_warning": {
+      "category": "insights",
+      "defaults": {
+        "in_app": true,
+        "email": false,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "learning_activity_completed": {
+      "category": "learning",
+      "defaults": {
+        "in_app": true,
+        "email": false,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "learning_approval_decided": {
+      "category": "learning",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "learning_approval_requested": {
+      "category": "learning",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "learning_goal_assigned": {
+      "category": "learning",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "learning_goal_overdue": {
+      "category": "learning",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "leave_request_approved": {
+      "category": "leave",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "leave_request_cancelled": {
+      "category": "leave",
+      "defaults": {
+        "in_app": true,
+        "email": false,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "leave_request_rejected": {
+      "category": "leave",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "leave_request_submitted": {
+      "category": "leave",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "manager_review_completed": {
+      "category": "reviews_and_goals",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "mention": {
+      "category": "mentions",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "oncall_shift_ending": {
+      "category": "on_call",
+      "defaults": {
+        "in_app": true,
+        "email": false,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "oncall_shift_started": {
+      "category": "on_call",
+      "defaults": {
+        "in_app": false,
+        "email": false,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "oncall_shift_starting": {
+      "category": "on_call",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": true,
+        "web_push": true
+      }
+    },
+    "oncall_swap_accepted": {
+      "category": "on_call",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "oncall_swap_declined": {
+      "category": "on_call",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "oncall_swap_requested": {
+      "category": "on_call",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": true,
+        "web_push": true
+      }
+    },
+    "peer_review_received": {
+      "category": "reviews_and_goals",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "peer_review_requested": {
+      "category": "reviews_and_goals",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "reminder_acknowledged": {
+      "category": "reminders",
+      "defaults": {
+        "in_app": true,
+        "email": false,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "reminder_assigned": {
+      "category": "reminders",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "reminder_completed": {
+      "category": "reminders",
+      "defaults": {
+        "in_app": true,
+        "email": false,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "reminder_due": {
+      "category": "reminders",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "reminder_escalated": {
+      "category": "reminders",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": true,
+        "web_push": true
+      }
+    },
+    "reminder_overdue": {
+      "category": "reminders",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": true,
+        "web_push": true
+      }
+    },
+    "review_acknowledged": {
+      "category": "reviews_and_goals",
+      "defaults": {
+        "in_app": true,
+        "email": false,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "review_cycle_activated": {
+      "category": "reviews_and_goals",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "review_cycle_phase_changed": {
+      "category": "reviews_and_goals",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "review_deadline_reminder": {
+      "category": "reviews_and_goals",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "task_assigned": {
+      "category": "tasks",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "task_commented": {
+      "category": "tasks",
+      "defaults": {
+        "in_app": true,
+        "email": false,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "task_mentioned": {
+      "category": "mentions",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "task_status_changed": {
+      "category": "tasks",
+      "defaults": {
+        "in_app": true,
+        "email": false,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "task_unassigned": {
+      "category": "tasks",
+      "defaults": {
+        "in_app": true,
+        "email": false,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "team_added": {
+      "category": "workspace",
+      "defaults": {
+        "in_app": true,
+        "email": false,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "ticket_assigned": {
+      "category": "tasks",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "uptime_incident_created": {
+      "category": "uptime",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": true,
+        "web_push": true
+      }
+    },
+    "uptime_incident_resolved": {
+      "category": "uptime",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": true,
+        "web_push": false
+      }
+    },
+    "usage_alert_100": {
+      "category": "billing_and_usage",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "usage_alert_80": {
+      "category": "billing_and_usage",
+      "defaults": {
+        "in_app": true,
+        "email": false,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "usage_alert_90": {
+      "category": "billing_and_usage",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "workspace_invite": {
+      "category": "workspace",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "workspace_join_approved": {
+      "category": "workspace",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "workspace_join_rejected": {
+      "category": "workspace",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "workspace_join_request": {
+      "category": "workspace",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    }
+  }
+}

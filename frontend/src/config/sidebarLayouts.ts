@@ -68,6 +68,7 @@ import {
     UserCheck,
     MessageCircle,
     Workflow,
+    ListTodo,
 } from "lucide-react";
 
 export type SidebarLayoutType = "grouped" | "flat";
@@ -102,8 +103,11 @@ const trackingItems: SidebarItemConfig[] = [
     { href: "/tracking/tracker", label: "Tracker", icon: Activity },
 ];
 
+// "My Work" is deliberately not in here. It is a top-level Engineering item,
+// because it is the one screen that is about *you* rather than about a project —
+// burying it under Planning put it a click away and next to a second entry
+// ("Tickets") that opened a different page also titled "My Work".
 const planningItems: SidebarItemConfig[] = [
-    { href: "/my-work", label: "My Work", icon: CheckSquare },
     { href: "/sprints", label: "Board", icon: KanbanSquare },
     { href: "/sprints?tab=epics", label: "Epics", icon: Milestone },
 ];
@@ -274,9 +278,14 @@ export const GROUPED_LAYOUT: SidebarLayoutConfig = {
                     personas: ["developer", "manager", "product", "admin"],
                 },
                 {
-                    href: "/tickets",
-                    label: "Tickets",
-                    icon: Ticket,
+                    // Renamed from "Tickets", same level. It was one of two items
+                    // called "Tickets" (the other being the Service Desk's, an
+                    // unrelated system), and it opened a page headed "My Work" —
+                    // so the label now matches what the page is, and "Tickets"
+                    // unambiguously means the Service Desk.
+                    href: "/my-work",
+                    label: "My Work",
+                    icon: ListTodo,
                     personas: ["developer", "manager", "product", "support", "admin"],
                 },
                 {
@@ -428,9 +437,14 @@ export const FLAT_LAYOUT: SidebarLayoutConfig = {
                     personas: ["developer", "manager", "product", "admin"],
                 },
                 {
-                    href: "/tickets",
-                    label: "Tickets",
-                    icon: Ticket,
+                    // Renamed from "Tickets", same level. It was one of two items
+                    // called "Tickets" (the other being the Service Desk's, an
+                    // unrelated system), and it opened a page headed "My Work" —
+                    // so the label now matches what the page is, and "Tickets"
+                    // unambiguously means the Service Desk.
+                    href: "/my-work",
+                    label: "My Work",
+                    icon: ListTodo,
                     personas: ["developer", "manager", "product", "support", "admin"],
                 },
                 {

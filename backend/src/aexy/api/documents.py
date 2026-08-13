@@ -11,6 +11,10 @@ from aexy.core.database import get_db
 from aexy.models.developer import Developer
 from aexy.models.documentation import DocumentPermission
 from aexy.schemas.document import (
+    DocumentCommentCreate,
+    DocumentCommentListResponse,
+    DocumentCommentResponse,
+    DocumentCommentUpdate,
     CodeLinkCreate,
     CodeLinkResponse,
     CollaboratorAdd,
@@ -20,8 +24,6 @@ from aexy.schemas.document import (
     DocumentCreate,
     DocumentListResponse,
     DocumentMoveRequest,
-    DocumentNotificationListResponse,
-    DocumentNotificationResponse,
     DocumentResponse,
     DocumentTreeItem,
     DocumentUpdate,
@@ -32,6 +34,8 @@ from aexy.schemas.document import (
     TemplateListResponse,
     TemplateResponse,
 )
+from aexy.services.document_comment_service import DocumentCommentService
+from aexy.services.github_app_service import GitHubAppService
 from aexy.services.document_service import DocumentService
 from aexy.services.document_generation_service import DocumentGenerationService
 from aexy.services.proposed_edits_service import (
@@ -229,95 +233,165 @@ async def get_favorites(
     return favorites
 
 
-# ==================== Notifications ====================
+# ==================== Comments ====================
 # NOTE: These routes MUST be before /{document_id} routes to avoid path conflicts
 
 
-@router.get("/notifications", response_model=DocumentNotificationListResponse)
-async def get_notifications(
+def _comment_to_response(comment) -> DocumentCommentResponse:
+    """One comment, with its replies nested for a root comment.
+
+    Only a root comment's ``replies`` is read. Threading is one level, so a reply
+    has none — and touching the attribute on a reply loaded via ``selectinload``
+    triggers a lazy load that raises MissingGreenlet on an async session, turning
+    every thread with a reply in it into a 500.
+    """
+    replies = (
+        [
+            _comment_to_response(reply)
+            for reply in sorted(comment.replies or [], key=lambda r: r.created_at)
+        ]
+        if comment.parent_id is None
+        else []
+    )
+    return DocumentCommentResponse(
+        id=str(comment.id),
+        document_id=str(comment.document_id),
+        parent_id=str(comment.parent_id) if comment.parent_id else None,
+        author_id=str(comment.author_id) if comment.author_id else None,
+        author_name=comment.author.name if comment.author else None,
+        author_avatar=comment.author.avatar_url if comment.author else None,
+        content=comment.content,
+        is_resolved=comment.is_resolved,
+        resolved_by_id=str(comment.resolved_by_id) if comment.resolved_by_id else None,
+        resolved_at=comment.resolved_at,
+        is_deleted=comment.is_deleted,
+        is_edited=comment.is_edited,
+        created_at=comment.created_at,
+        updated_at=comment.updated_at,
+        replies=replies,
+    )
+
+
+@router.get("/{document_id}/comments", response_model=DocumentCommentListResponse)
+async def list_document_comments(
     workspace_id: str,
-    unread_only: bool = Query(default=False),
-    limit: int = Query(default=50, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
+    document_id: str,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get document notifications for the current user."""
+    """List a document's comment threads."""
     await check_workspace_permission(workspace_id, current_user, db, "viewer")
 
-    service = DocumentService(db)
-    notifications, total, unread_count = await service.get_notifications(
-        developer_id=str(current_user.id),
+    service = DocumentCommentService(db)
+    roots, total, unresolved = await service.list_comments(
         workspace_id=workspace_id,
-        unread_only=unread_only,
-        limit=limit,
-        offset=offset,
+        document_id=document_id,
+        developer_id=str(current_user.id),
     )
-
-    return DocumentNotificationListResponse(
-        notifications=[
-            DocumentNotificationResponse(
-                id=str(n.id),
-                document_id=str(n.document_id),
-                document_title=n.document.title if n.document else None,
-                document_icon=n.document.icon if n.document else None,
-                type=n.type,
-                message=n.message,
-                is_read=n.is_read,
-                created_by_id=str(n.created_by_id) if n.created_by_id else None,
-                created_by_name=n.created_by.name if n.created_by else None,
-                created_by_avatar=n.created_by.avatar_url if n.created_by else None,
-                created_at=n.created_at,
-                read_at=n.read_at,
-            )
-            for n in notifications
-        ],
+    return DocumentCommentListResponse(
+        comments=[_comment_to_response(c) for c in roots],
         total=total,
-        unread_count=unread_count,
+        unresolved_count=unresolved,
     )
 
 
-@router.post("/notifications/{notification_id}/read")
-async def mark_notification_read(
+@router.post(
+    "/{document_id}/comments",
+    response_model=DocumentCommentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_document_comment(
     workspace_id: str,
-    notification_id: str,
+    document_id: str,
+    data: DocumentCommentCreate,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Mark a notification as read."""
-    await check_workspace_permission(workspace_id, current_user, db, "viewer")
+    """Post a comment, or a reply to an existing thread."""
+    await check_workspace_permission(workspace_id, current_user, db, "member")
 
-    service = DocumentService(db)
-    success = await service.mark_notification_read(
-        notification_id=notification_id,
-        developer_id=str(current_user.id),
-    )
-
-    if not success:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Notification not found",
-        )
-
-    return {"success": True}
-
-
-@router.post("/notifications/mark-all-read")
-async def mark_all_notifications_read(
-    workspace_id: str,
-    current_user: Developer = Depends(get_current_developer),
-    db: AsyncSession = Depends(get_db),
-):
-    """Mark all notifications as read."""
-    await check_workspace_permission(workspace_id, current_user, db, "viewer")
-
-    service = DocumentService(db)
-    count = await service.mark_all_notifications_read(
-        developer_id=str(current_user.id),
+    service = DocumentCommentService(db)
+    comment = await service.create_comment(
         workspace_id=workspace_id,
+        document_id=document_id,
+        author_id=str(current_user.id),
+        content=data.content,
+        parent_id=data.parent_id,
+    )
+    return _comment_to_response(comment)
+
+
+@router.patch(
+    "/{document_id}/comments/{comment_id}", response_model=DocumentCommentResponse
+)
+async def update_document_comment(
+    workspace_id: str,
+    document_id: str,
+    comment_id: str,
+    data: DocumentCommentUpdate,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Edit your own comment."""
+    await check_workspace_permission(workspace_id, current_user, db, "member")
+
+    service = DocumentCommentService(db)
+    comment = await service.update_comment(
+        workspace_id=workspace_id,
+        document_id=document_id,
+        comment_id=comment_id,
+        developer_id=str(current_user.id),
+        content=data.content,
+    )
+    return _comment_to_response(comment)
+
+
+@router.delete(
+    "/{document_id}/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT
+)
+async def delete_document_comment(
+    workspace_id: str,
+    document_id: str,
+    comment_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Soft-delete your own comment, keeping its place in the thread."""
+    await check_workspace_permission(workspace_id, current_user, db, "member")
+
+    service = DocumentCommentService(db)
+    await service.delete_comment(
+        workspace_id=workspace_id,
+        document_id=document_id,
+        comment_id=comment_id,
+        developer_id=str(current_user.id),
     )
 
-    return {"marked_read": count}
+
+@router.post(
+    "/{document_id}/comments/{comment_id}/resolve",
+    response_model=DocumentCommentResponse,
+)
+async def resolve_document_comment(
+    workspace_id: str,
+    document_id: str,
+    comment_id: str,
+    resolved: bool = Query(default=True),
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Resolve or reopen a thread."""
+    await check_workspace_permission(workspace_id, current_user, db, "member")
+
+    service = DocumentCommentService(db)
+    comment = await service.set_resolved(
+        workspace_id=workspace_id,
+        document_id=document_id,
+        comment_id=comment_id,
+        developer_id=str(current_user.id),
+        resolved=resolved,
+    )
+    return _comment_to_response(comment)
 
 
 # ==================== Document CRUD (parameterized routes) ====================
@@ -983,9 +1057,17 @@ async def generate_from_code(
 
 
 class GitHubServiceAdapter:
-    """Adapter to wrap GitHubAppService with the interface expected by DocumentGenerationService."""
+    """Adapter to wrap GitHubAppService with the interface expected by DocumentGenerationService.
 
-    def __init__(self, app_service: "GitHubAppService", installation_id: int, owner: str, repo: str):
+    ``app_service`` was annotated as the string ``"GitHubAppService"`` while the
+    only import of that name lived inside the request handler further down, so the
+    forward reference had nothing to resolve to: a type checker could not follow it
+    and ``typing.get_type_hints`` on this class raised NameError. A real
+    module-level import fixes it rather than hiding it — the two modules do not
+    form a cycle in either direction, so the local import bought nothing here.
+    """
+
+    def __init__(self, app_service: GitHubAppService, installation_id: int, owner: str, repo: str):
         self.app_service = app_service
         self.installation_id = installation_id
         self.owner = owner
@@ -1029,7 +1111,15 @@ async def generate_from_repository(
     repository_id: str = Query(..., description="Repository ID"),
     path: str = Query("", description="Directory path within repository"),
     branch: str = Query("main", description="Branch name"),
-    template_category: str = Query(default="module_docs"),
+    template_category: str = Query(
+        default="module_docs",
+        deprecated=True,
+        description=(
+            "Ignored. This endpoint always produces module documentation; "
+            "`generate_module_documentation` takes no template. Kept so existing "
+            "callers do not break."
+        ),
+    ),
     custom_prompt: str | None = Query(default=None, description="Custom instructions for documentation generation"),
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
@@ -1038,16 +1128,19 @@ async def generate_from_repository(
 
     Analyzes the directory structure and key files to generate comprehensive documentation.
     Optionally accepts a custom prompt to guide the AI generation.
+
+    Always generates *module* documentation. `template_category` was converted to a
+    `TemplateCategory` here and then never passed on — the downstream
+    `generate_module_documentation` has no such parameter — so a caller asking for
+    `api_docs` silently got module docs. The parameter is marked deprecated rather
+    than removed, and the dead conversion is gone; honouring it means giving the
+    service a template argument, which is a larger change than making the current
+    behaviour honest.
     """
-    from aexy.services.github_app_service import GitHubAppService, GitHubAppError
+    from aexy.services.github_app_service import GitHubAppError
     from aexy.services.repository_service import RepositoryService
 
     await check_workspace_permission(workspace_id, current_user, db, "member")
-
-    try:
-        category = TemplateCategory(template_category)
-    except ValueError:
-        category = TemplateCategory.MODULE_DOCS
 
     repo_service = RepositoryService(db)
     app_service = GitHubAppService(db)

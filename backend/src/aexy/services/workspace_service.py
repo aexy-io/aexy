@@ -362,12 +362,33 @@ class WorkspaceService:
         if member.role == "owner" and new_status == "removed":
             raise ValueError("Cannot mark the workspace owner as left")
 
+        was_pending = member.status == "pending"
         member.status = new_status
         await self.db.flush()
         await self.db.refresh(member)
         # A removed member resolves to no access at all; that has to bite now,
         # not at the end of a cache window.
         await self._invalidate_access_cache(workspace_id)
+
+        # Deciding a *pending* member is deciding a join request, and the
+        # requester was previously told nothing either way — the admins got the
+        # `workspace_join_request` notification and the person waiting got a
+        # screen that never changed. A status flip on an already-active member is
+        # the "Mark as left" / "Restore" admin action, which is not a join
+        # decision and stays silent.
+        if was_pending:
+            from aexy.models.workspace import Workspace
+            from aexy.services.notification_service import notify_workspace_join_decided
+
+            workspace = await self.db.get(Workspace, workspace_id)
+            await notify_workspace_join_decided(
+                db=self.db,
+                requester_id=str(developer_id),
+                workspace_id=str(workspace_id),
+                workspace_name=workspace.name if workspace else "the workspace",
+                approved=new_status == "active",
+            )
+
         return member
 
     async def get_members(

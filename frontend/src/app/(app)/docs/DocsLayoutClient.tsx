@@ -5,7 +5,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { NotionSidebar } from "@/components/docs/sidebar";
 import { SearchModal } from "@/components/docs/SearchModal";
-import { NotificationInbox } from "@/components/docs/NotificationInbox";
 import { Spinner } from "@/components/ui/spinner";
 import { useRouter, useParams } from "next/navigation";
 import { Plus, Menu, X } from "lucide-react";
@@ -31,7 +30,6 @@ export default function DocsLayoutClient({
 
   // Modal states
   const [showSearch, setShowSearch] = useState(false);
-  const [showInbox, setShowInbox] = useState(false);
   // Mobile drawer state — desktop ignores this; the sidebar is always
   // visible there. Below `md` we hide the sidebar off-screen and a
   // hamburger toggles it.
@@ -218,7 +216,6 @@ export default function DocsLayoutClient({
             <NotionSidebar
               selectedDocumentId={params?.documentId as string | undefined}
               onOpenSearch={() => setShowSearch(true)}
-              onOpenInbox={() => setShowInbox(true)}
             />
           )}
         </div>
@@ -237,13 +234,6 @@ export default function DocsLayoutClient({
         workspaceId={currentWorkspaceId}
         isOpen={showSearch}
         onClose={() => setShowSearch(false)}
-      />
-
-      {/* Notification Inbox */}
-      <NotificationInbox
-        workspaceId={currentWorkspaceId}
-        isOpen={showInbox}
-        onClose={() => setShowInbox(false)}
       />
     </div>
   );

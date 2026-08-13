@@ -31,6 +31,11 @@ from aexy.schemas.story import (
 )
 from aexy.services.workspace_service import WorkspaceService
 from aexy.services.activity_logger import log_activity
+from aexy.services.notification_service import (
+    notify_work_item_assigned,
+    notify_work_item_status_changed,
+    notify_work_item_unassigned,
+)
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/stories", tags=["User Stories"])
 
@@ -282,6 +287,19 @@ async def create_story(
     await db.commit()
     await db.refresh(story)
 
+    # A story's owner is its assignee everywhere it is listed, including My Work.
+    if story.owner_id:
+        await notify_work_item_assigned(
+            db=db,
+            recipient_ids=[str(story.owner_id)],
+            actor_id=str(current_user.id),
+            actor_name=current_user.name or "Someone",
+            item_label="story",
+            item_title=story.title,
+            action_url=f"/sprints?story={story.id}",
+            workspace_id=workspace_id,
+        )
+
     return story_to_response(story)
 
 
@@ -402,6 +420,8 @@ async def update_story(
         )
 
     update_data = data.model_dump(exclude_unset=True)
+    prior_owner_id = str(story.owner_id) if story.owner_id else None
+    prior_status = story.status
 
     # Handle design/spec links conversion
     if "design_links" in update_data and update_data["design_links"]:
@@ -437,6 +457,44 @@ async def update_story(
 
     await db.commit()
     await db.refresh(story)
+
+    new_owner_id = str(story.owner_id) if story.owner_id else None
+    actor_name = current_user.name or "Someone"
+    if new_owner_id != prior_owner_id:
+        if new_owner_id:
+            await notify_work_item_assigned(
+                db=db,
+                recipient_ids=[new_owner_id],
+                actor_id=str(current_user.id),
+                actor_name=actor_name,
+                item_label="story",
+                item_title=story.title,
+                action_url=f"/sprints?story={story.id}",
+                workspace_id=workspace_id,
+            )
+        if prior_owner_id:
+            await notify_work_item_unassigned(
+                db=db,
+                recipient_ids=[prior_owner_id],
+                actor_id=str(current_user.id),
+                actor_name=actor_name,
+                item_label="story",
+                item_title=story.title,
+                action_url=f"/sprints?story={story.id}",
+                workspace_id=workspace_id,
+            )
+    if story.status != prior_status and new_owner_id:
+        await notify_work_item_status_changed(
+            db=db,
+            recipient_ids=[new_owner_id],
+            actor_id=str(current_user.id),
+            actor_name=actor_name,
+            item_title=story.title,
+            old_status=prior_status,
+            new_status=story.status,
+            action_url=f"/sprints?story={story.id}",
+            workspace_id=workspace_id,
+        )
 
     return story_to_response(story)
 

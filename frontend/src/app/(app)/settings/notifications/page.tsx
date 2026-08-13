@@ -29,11 +29,17 @@ import {
 } from "@/components/settings/SettingsPrimitives";
 
 // Complete event type labels covering all 37+ event types
-const EVENT_TYPE_LABELS: Record<string, { label: string; description: string }> = {
+// Exported so `src/test/notificationEventParity.test.ts` can assert these cover
+// every event the backend can emit. Three events had no entry here and their
+// rows rendered as a de-underscored slug, which looks intentional enough that
+// nobody reports it.
+export const EVENT_TYPE_LABELS: Record<string, { label: string; description: string }> = {
   // Reviews & Goals
   peer_review_requested: { label: "Peer review requested", description: "When someone requests your review" },
   peer_review_received: { label: "Peer review received", description: "When someone submits a review for you" },
+  review_cycle_activated: { label: "Review cycle started", description: "When a review cycle becomes active" },
   review_cycle_phase_changed: { label: "Review cycle phase changed", description: "When a review cycle moves to a new phase" },
+  review_deadline_reminder: { label: "Review deadline reminder", description: "When a review deadline is approaching" },
   manager_review_completed: { label: "Manager review completed", description: "When your manager completes your review" },
   review_acknowledged: { label: "Review acknowledged", description: "When a team member acknowledges their review" },
   goal_auto_linked: { label: "Goal auto-linked", description: "When contributions are automatically linked to your goal" },
@@ -58,9 +64,21 @@ const EVENT_TYPE_LABELS: Record<string, { label: string; description: string }> 
   // Workspace
   workspace_invite: { label: "Workspace invitation", description: "When you're invited to a workspace" },
   team_added: { label: "Added to team", description: "When you're added to a new team" },
+  workspace_join_request: { label: "Join request", description: "When someone asks to join a workspace you administer" },
+  workspace_join_approved: { label: "Join request approved", description: "When your request to join a workspace is approved" },
+  workspace_join_rejected: { label: "Join request declined", description: "When your request to join a workspace is declined" },
   // Mentions
   task_mentioned: { label: "Mentioned in task", description: "When you're @mentioned in a task description" },
   mention: { label: "Mentioned in comment", description: "When you're @mentioned in a comment or note" },
+  // Tasks & Tickets
+  task_assigned: { label: "Assigned to you", description: "When a task, card, bug, or story is assigned to you" },
+  task_unassigned: { label: "Removed from a task", description: "When you're taken off something you were assigned" },
+  task_status_changed: { label: "Status changed", description: "When someone else moves a task you're on" },
+  task_commented: { label: "New comment", description: "When someone comments on a task you're on" },
+  ticket_assigned: { label: "Ticket assigned to you", description: "When a form ticket is assigned to you" },
+  // Service Desk
+  desk_ticket_assigned: { label: "Desk ticket assigned to you", description: "When you become the owner of a service desk ticket" },
+  desk_ticket_pending_with_changed: { label: "Pending with your queue", description: "When a ticket is handed to a queue you're in" },
   // Billing & Usage
   usage_alert_80: { label: "Usage at 80%", description: "When you've used 80% of a resource limit" },
   usage_alert_90: { label: "Usage at 90%", description: "When you've used 90% of a resource limit (critical)" },
@@ -99,30 +117,34 @@ const EVENT_TYPE_LABELS: Record<string, { label: string; description: string }> 
   // Campaigns
   campaign_completed: { label: "Campaign completed", description: "When an email campaign finishes sending" },
   campaign_scheduled: { label: "Campaign scheduled", description: "When a campaign is scheduled for sending" },
+  campaign_send_blocked: { label: "Campaign send blocked", description: "When a scheduled campaign's send time passed without sending" },
   // Automations
   automation_run_failed: { label: "Automation failed", description: "When an automation run encounters an error" },
   automation_run_completed: { label: "Automation completed", description: "When an automation run completes successfully" },
   // Hiring / Assessments
   assessment_invitation_sent: { label: "Assessment published", description: "When an assessment is published with invitations" },
   assessment_completed: { label: "Assessment completed", description: "When a candidate completes an assessment" },
-  candidate_stage_changed: { label: "Candidate stage changed", description: "When a candidate moves to a new hiring stage" },
+  candidate_stage_changed: { label: "Candidate stage changed", description: "When someone else moves a candidate you own to a new stage" },
   // GTM
   gtm_alert_triggered: { label: "GTM alert triggered", description: "When a go-to-market alert condition is met" },
   // Documents
   document_shared: { label: "Document shared", description: "When someone shares a document with you" },
-  document_mentioned: { label: "Mentioned in document", description: "When you're @mentioned in a document" },
-  document_commented: { label: "Document comment", description: "When someone comments on your document" },
+  document_mentioned: { label: "Mentioned in document", description: "When you're @mentioned in a document comment" },
+  document_commented: { label: "Document comment", description: "When someone comments on a document you own or a thread you're in" },
+  document_ai_proposal: { label: "AI proposed a doc update", description: "When an AI suggests an edit to your document and it needs review" },
   // Chat
   chat_mention: { label: "Chat mention", description: "When you're @mentioned in a chat message" },
   ai_conversation_shared: { label: "AI conversation shared", description: "When someone shares an AI conversation with you" },
 };
 
-const CATEGORY_LABELS: Record<string, { label: string; description: string }> = {
+export const CATEGORY_LABELS: Record<string, { label: string; description: string }> = {
   reviews_and_goals: { label: "Reviews & Goals", description: "Performance reviews, peer feedback, and goal tracking" },
   reminders: { label: "Reminders", description: "Deadlines, due dates, and task reminders" },
   on_call: { label: "On-Call", description: "Shift schedules, swaps, and on-call alerts" },
   workspace: { label: "Workspace", description: "Workspace invitations and team membership" },
   mentions: { label: "Mentions", description: "When you're @mentioned in tasks or comments" },
+  tasks: { label: "Tasks & Tickets", description: "Work assigned to you, status changes, and comments" },
+  service_desk: { label: "Service Desk", description: "Ticket ownership and queue handoffs" },
   billing_and_usage: { label: "Billing & Usage", description: "Resource usage alerts and limits" },
   insights: { label: "Insights", description: "Metric warnings and critical alerts" },
   leave: { label: "Leave", description: "Leave requests and approvals" },

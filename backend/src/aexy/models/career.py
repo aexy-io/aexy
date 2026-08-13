@@ -4,7 +4,7 @@ from datetime import date, datetime
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -390,6 +390,20 @@ class HiringCandidate(Base):
         nullable=True,
     )
 
+    # The recruiter or hiring manager accountable for moving this candidate along.
+    #
+    # Added because there was nobody to notify. A pipeline where every stage change
+    # is everyone's business or nobody's is a pipeline where candidates stall in
+    # `screening` for three weeks and no single person was ever told. SET NULL on
+    # departure rather than CASCADE — losing a recruiter must not delete their
+    # candidates.
+    owner_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     # Custom fields
     custom_fields: Mapped[dict] = mapped_column(JSONB, default=dict)
 
@@ -413,10 +427,17 @@ class HiringCandidate(Base):
         "HiringRequirement",
         back_populates="candidates",
     )
+    owner: Mapped["Developer | None"] = relationship(
+        "Developer",
+        foreign_keys=[owner_id],
+        lazy="selectin",
+    )
 
     __table_args__ = (
         # Unique email per workspace
         UniqueConstraint("workspace_id", "email", name="uq_hiring_candidate_workspace_email"),
+        # The recruiter's own view: "my candidates, by stage".
+        Index("ix_hiring_candidates_owner_stage", "owner_id", "stage"),
     )
 
 
