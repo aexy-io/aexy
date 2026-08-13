@@ -69,17 +69,23 @@ export default function ServiceDeskTicketsPage() {
 
   const submit = async () => {
     if (!form.subject.trim()) return;
-    await createManual.mutateAsync({
+    const created = await createManual.mutateAsync({
       subject: form.subject.trim(),
+      // The dropdown always shows a request type, so send the one on screen
+      // rather than nothing when it was never touched — otherwise the server
+      // resolves its own default and the ticket stays flagged for triage.
+      request_type: form.request_type || defaultRequestType || undefined,
       body: form.body,
       requester_name: form.requester_name || undefined,
       requester_email: form.requester_email || undefined,
-      request_type: form.request_type || undefined,
       product_id: form.product_id || undefined,
       account_id: form.account_id || undefined,
     });
     setForm(EMPTY_FORM);
     setOpen(false);
+    // Straight to the ticket. Whoever logged this is usually still on the phone
+    // with the requester, and the ticket id is what they have to read out.
+    if (created?.ticket_id) router.push(`/service-desk/tickets/${created.ticket_id}`);
   };
 
   return (

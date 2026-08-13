@@ -113,8 +113,10 @@ function DrivePreview({
 }) {
   if (!file.file_url) return null;
   if (file.kind === "image") {
-    // eslint-disable-next-line @next/next/no-img-element
     return (
+      // A user-uploaded file preview at an arbitrary remote URL, so `next/image`
+      // would need every host allowlisted to render it at all.
+      // eslint-disable-next-line @next/next/no-img-element
       <img
         src={file.file_url}
         alt={file.file_name}

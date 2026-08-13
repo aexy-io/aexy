@@ -35,7 +35,7 @@ import {
   type MonthlyEngineeringReport,
   type MonthlyReportRepoSyncState,
 } from "@/lib/api";
-import { getApiErrorMessage } from "@/lib/utils";
+import { getApiErrorMessage, saveBlob } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/EmptyState";
@@ -180,14 +180,10 @@ export default function MonthlyEngineeringReportPage() {
         month,
         timezone
       );
-      const url = URL.createObjectURL(
-        new Blob([markdown], { type: "text/markdown;charset=utf-8" })
+      saveBlob(
+        new Blob([markdown], { type: "text/markdown;charset=utf-8" }),
+        `engineering-report-${month}.md`
       );
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `engineering-report-${month}.md`;
-      link.click();
-      URL.revokeObjectURL(url);
     } catch (err) {
       toast.error(getApiErrorMessage(err, t("loadFailed")));
     }

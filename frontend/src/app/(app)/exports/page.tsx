@@ -20,6 +20,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { PremiumGate } from "@/components/PremiumGate";
 import { DataTable, DataTableColumn } from "@/components/ui/data-table";
 import { ExportJob } from "@/lib/api";
+import { saveBlob } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 
 const EXPORT_TYPES = [
@@ -287,25 +288,26 @@ export default function ExportsPage() {
     }
   };
 
-  const handleDownload = (jobId: string) => {
+  const handleDownload = async (jobId: string) => {
     const url = getDownloadUrl(jobId);
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    // Open download with auth
-    const link = document.createElement("a");
-    link.href = url;
-    if (token) {
-      // Use fetch for authenticated download
-      fetch(url, { headers: { Authorization: `Bearer ${token}` } })
-        .then((res) => res.blob())
-        .then((blob) => {
-          const blobUrl = URL.createObjectURL(blob);
-          link.href = blobUrl;
-          link.download = `export-${jobId}`;
-          link.click();
-          URL.revokeObjectURL(blobUrl);
-        });
-    } else {
-      link.click();
+    if (!token) {
+      // Nothing to attach, so let the browser ask and let the server answer.
+      // This used to click a detached anchor, which Firefox ignores outright.
+      window.location.href = url;
+      return;
+    }
+    try {
+      // Fetched rather than linked: the token travels as a header, and a browser
+      // navigation cannot set one.
+      const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      // Checked, because a 401 or a 500 has a perfectly good body — and saving
+      // that as `export-<id>` hands the user a file full of the error instead of
+      // telling them the download failed.
+      if (!response.ok) throw new Error(`Download failed with status ${response.status}`);
+      saveBlob(await response.blob(), `export-${jobId}`);
+    } catch (error) {
+      console.error("Failed to download export:", error);
     }
   };
 

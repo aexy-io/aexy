@@ -168,11 +168,16 @@ export interface TicketEmailRecipient {
 
 /** A file that arrived on the ticket's original email. */
 export interface TicketAttachment {
+  /** Position in the ticket's attachment list — the handle the download URL
+   *  takes. Two replies can attach files with the same name, so the name is a
+   *  label and never an identifier. */
+  index: number;
   filename: string;
   content_type: string | null;
   size_bytes: number | null;
-  /** False when the original message gave us no handle for the bytes, so it
-   *  cannot be forwarded and must not be offered. */
+  /** False when the original message gave us no handle for the bytes. Both
+   *  forwarding and downloading re-fetch from that message, so neither can be
+   *  offered without it. */
   can_forward: boolean;
 }
 
@@ -361,6 +366,16 @@ export const serviceDeskApi = {
     (await api.get(`${base(ws)}/tickets`)).data,
   getTicket: async (ws: string, id: string): Promise<ServiceDeskTicketDetail> =>
     (await api.get(`${base(ws)}/tickets/${id}`)).data,
+  /**
+   * The bytes of one file that arrived on the ticket.
+   *
+   * Addressed by position, not name — see `TicketAttachment.index`. Fetched
+   * through the client rather than linked with an `<a href>` because the token
+   * travels as an `Authorization` header, and a browser navigation cannot set
+   * one — the link would arrive unauthenticated.
+   */
+  downloadAttachment: async (ws: string, id: string, index: number): Promise<Blob> =>
+    (await api.get(`${base(ws)}/tickets/${id}/attachments/${index}`, { responseType: "blob" })).data,
   splitDetectedIssues: async (
     ws: string, id: string, issue_indexes: number[],
   ): Promise<HumanSplitResponse> =>

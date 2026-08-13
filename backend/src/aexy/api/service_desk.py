@@ -5,7 +5,10 @@ through this router — it is driven by the inbound webhook / Gmail sync hooks
 (see services/service_desk_intake_service.py).
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+import re
+from urllib.parse import quote
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.api.developers import get_current_developer
@@ -298,7 +301,20 @@ async def list_tickets(workspace_id: str, db: AsyncSession = Depends(get_db), cu
 
 
 @router.post("/tickets/manual", status_code=status.HTTP_201_CREATED)
-async def create_manual_ticket(workspace_id: str, data: ManualTicketCreate, db: AsyncSession = Depends(get_db), current: Developer = Depends(get_current_developer)):
+async def create_manual_ticket(
+    workspace_id: str,
+    data: ManualTicketCreate,
+    background: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """Log a request that arrived by phone or WhatsApp.
+
+    Somebody is on the line, so the response waits for nothing but the ticket
+    itself: the requester's acknowledgement is an SMTP round trip and goes out
+    behind the response.
+    """
+    from aexy.services.service_desk_intake_service import acknowledge_ticket_in_background
     from aexy.services.service_desk_service import can_create_manual_ticket
 
     if not await can_create_manual_ticket(db, workspace_id, str(current.id)):
@@ -307,6 +323,7 @@ async def create_manual_ticket(workspace_id: str, data: ManualTicketCreate, db: 
             detail="Only a member of the desk's owning team or a Service Desk manager can log a manual ticket",
         )
     ticket_id = await ServiceDeskService(db).create_manual_ticket(workspace_id, data)
+    background.add_task(acknowledge_ticket_in_background, ticket_id)
     return {"ticket_id": ticket_id}
 
 
@@ -314,6 +331,49 @@ async def create_manual_ticket(workspace_id: str, data: ManualTicketCreate, db: 
 async def get_ticket(workspace_id: str, ticket_id: str, db: AsyncSession = Depends(get_db), current: Developer = Depends(get_current_developer)):
     return await ServiceDeskTicketService(db).get_detail(
         workspace_id, ticket_id, scope_developer_id=current.id
+    )
+
+
+@router.get("/tickets/{ticket_id}/attachments/{index}")
+async def download_ticket_attachment(
+    workspace_id: str,
+    ticket_id: str,
+    index: int,
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """Hand back one of the ticket's own attachments.
+
+    The bytes are never stored — they are re-fetched from the message the file
+    arrived on, so this needs the same connected mailbox that forwarding does.
+    Visibility is the only gate: whoever may open the ticket may open its files.
+    """
+    filename, content_type, raw = await ServiceDeskTicketService(db).load_attachment(
+        workspace_id, ticket_id, index, scope_developer_id=current.id
+    )
+    # Both forms: the plain one for clients that ignore RFC 5987, and the encoded
+    # one so a name with spaces or Devanagari in it survives. Quotes and anything
+    # outside printable ASCII go from the plain form — it sits inside a header —
+    # and a name that was entirely non-ASCII would leave it empty, which some
+    # clients read as "no name given" and answer with the last URL segment: `0`.
+    ascii_fallback = re.sub(r'[^\x20-\x7e]', "_", filename).replace('"', "").strip()
+    return Response(
+        content=raw,
+        media_type=content_type,
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="{ascii_fallback or "attachment"}"; '
+                f"filename*=UTF-8''{quote(filename)}"
+            ),
+            # A ticket's file is one person's document, not something a shared
+            # cache should keep a copy of.
+            "Cache-Control": "private, no-store",
+            # The content type came off an inbound MIME part, so it is chosen by
+            # whoever emailed the desk. `Content-Disposition: attachment` already
+            # stops the browser rendering a `text/html` "register" as a page on
+            # our own origin; this stops it sniffing its way there anyway.
+            "X-Content-Type-Options": "nosniff",
+        },
     )
 
 

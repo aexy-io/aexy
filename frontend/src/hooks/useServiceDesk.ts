@@ -8,7 +8,7 @@ import {
 } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { getApiErrorMessage } from "@/lib/utils";
+import { getApiErrorMessage, saveBlob } from "@/lib/utils";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import {
   serviceDeskApi,
@@ -51,6 +51,22 @@ function useDeskMutation<TData, TVariables>(
       options.onError?.(error, variables, onMutateResult, context);
     },
   });
+}
+
+/**
+ * Rewrite a blob-typed error body in place as the parsed JSON it really is.
+ *
+ * Only needed for responses fetched with `responseType: "blob"`. Silent when the
+ * body is not JSON: the caller still throws, and the generic message stands.
+ */
+async function revealBlobError(error: unknown): Promise<void> {
+  const response = (error as { response?: { data?: unknown } })?.response;
+  if (!response || !(response.data instanceof Blob)) return;
+  try {
+    response.data = JSON.parse(await response.data.text());
+  } catch {
+    // Not JSON — nothing to reveal.
+  }
 }
 
 const keys = {
@@ -239,6 +255,31 @@ export function useServiceDeskMutations() {
   };
 
   return {
+    /**
+     * Hand a ticket's own attachment to the person reading it.
+     *
+     * A mutation rather than a query: it is an action with a side effect on the
+     * browser (a file lands in Downloads), it must not be cached, and the shared
+     * `onError` toast is exactly what a failed fetch needs — the alternative was
+     * a filename rendered as dead text.
+     */
+    downloadAttachment: useDeskMutation({
+      mutationFn: async ({ id, index, filename }: { id: string; index: number; filename: string }) => {
+        let blob: Blob;
+        try {
+          blob = await serviceDeskApi.downloadAttachment(ws!, id, index);
+        } catch (error) {
+          // Asking for a blob makes axios hand back the *error* body as a blob
+          // too, so `detail` is unreadable and every failure would have read
+          // "Something went wrong". These failures are the ones worth quoting —
+          // an expired Gmail token, a file the mailbox no longer holds — so the
+          // body is decoded back into the shape `getApiErrorMessage` expects.
+          await revealBlobError(error);
+          throw error;
+        }
+        saveBlob(blob, filename);
+      },
+    }),
     splitDetectedIssues: useDeskMutation({
       mutationFn: ({ id, issue_indexes }: { id: string; issue_indexes: number[] }) =>
         serviceDeskApi.splitDetectedIssues(ws!, id, issue_indexes),

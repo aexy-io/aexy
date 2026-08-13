@@ -20,6 +20,7 @@ import {
   ReactFlowProvider,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import { saveBlob } from "@/lib/utils";
 
 import { TriggerNode } from "./nodes/TriggerNode";
 import { ActionNode } from "./nodes/ActionNode";
@@ -670,16 +671,11 @@ function WorkflowCanvasInner({
       );
       const exportData = response.data;
 
-      // Create and download the JSON file
       const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `workflow-${automationId}-${new Date().toISOString().split("T")[0]}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      saveBlob(
+        blob,
+        `workflow-${automationId}-${new Date().toISOString().split("T")[0]}.json`
+      );
     } catch (error) {
       console.error("Failed to export workflow:", error);
       toast.error("Failed to export workflow");

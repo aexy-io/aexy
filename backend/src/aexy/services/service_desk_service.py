@@ -1501,22 +1501,40 @@ class ServiceDeskService:
         return out
 
     async def create_manual_ticket(self, workspace_id: str, data: ManualTicketCreate) -> str:
-        """Log a phone/WhatsApp request as a ticket (same fields, origin=manual)."""
-        from aexy.services.service_desk_intake_service import ServiceDeskIntakeService
+        """Log a phone/WhatsApp request as a ticket (same fields, origin=manual).
+
+        Somebody is holding a phone in one hand and watching this form submit
+        with the other, so nothing slow happens on the way to the response. The
+        two things that used to: an LLM classification whose every answer this
+        method then overwrote with what the operator had typed, and the
+        acknowledgement email, whose SMTP round trip is now the caller's to
+        schedule (see ``ServiceDeskIntakeService.acknowledge_ticket``).
+        """
+        from aexy.services.service_desk_intake_service import (
+            MANUAL_SENDER_ADDRESS,
+            ServiceDeskIntakeService,
+        )
 
         # A manual ticket has no mailbox. It used to pass a synthetic, unsaved
         # ServiceDeskMailbox — which would now violate the mailbox_id FK — and
         # intake handles None directly (outbound falls back to EmailService).
         intake = ServiceDeskIntakeService(self.db)
         email = InboundEmail(
-            to="manual@local",
-            from_email=data.requester_email or "manual@local",
+            to=MANUAL_SENDER_ADDRESS,
+            from_email=data.requester_email or MANUAL_SENDER_ADDRESS,
             from_name=data.requester_name,
             subject=data.subject,
             body_text=data.body,
         )
-        ticket = await intake.create_ticket(workspace_id, email, None, source="service_desk_manual")
-        # override AI defaults with the explicitly-provided fields
+        ticket = await intake.create_ticket(
+            workspace_id,
+            email,
+            None,
+            source="service_desk_manual",
+            classify=False,
+            send_receipt=False,
+        )
+        # override intake's defaults with the explicitly-provided fields
         sd = (
             await self.db.execute(
                 select(ServiceDeskTicket).where(ServiceDeskTicket.ticket_id == ticket.id)
@@ -1546,12 +1564,20 @@ class ServiceDeskService:
         if data.account_id:
             await self._require_own(ServiceDeskAccount, workspace_id, data.account_id, "Account")
             sd.account_id = data.account_id
+        # Triage exists to ask a human for the request type and the product.
+        # Intake flags every unclassified ticket because an email arrives with
+        # nobody having answered those — but a manual ticket arrives *through* the
+        # person who would answer them, and asking them to confirm the dropdown
+        # they just picked left every logged call flagged forever.
+        if data.request_type is not None:
+            sd.needs_triage = False
         await self.db.flush()
 
         # Commit before the acknowledgement goes out, so a rollback can't leave
-        # the requester holding a receipt for a ticket that never existed.
+        # the requester holding a receipt for a ticket that never existed. The
+        # send itself is the caller's to schedule (``acknowledge_ticket``) — it is
+        # an SMTP round trip and the operator does not have to watch it finish.
         await self.db.commit()
-        await intake.flush_notifications()
         return ticket.id
 
     async def _require_own(self, model, workspace_id: str, row_id: str, label: str) -> None:

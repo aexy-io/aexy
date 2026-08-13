@@ -18,6 +18,7 @@ import {
   Download,
 } from "lucide-react";
 import { useDeveloperInsights } from "@/hooks/useInsights";
+import { saveBlob } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import {
   InsightsPeriodType,
@@ -82,12 +83,7 @@ export default function MyInsightsPage() {
     try {
       const data = await insightsApi.exportDeveloperData(currentWorkspaceId, myId);
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `insights-export-${myId.slice(0, 8)}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+      saveBlob(blob, `insights-export-${myId.slice(0, 8)}.json`);
     } catch (err) {
       console.error("Export failed:", err);
     } finally {

@@ -208,7 +208,6 @@ export function useDriveUpload(
 
   return useMemo(
     () => ({ queue, enqueue, reset }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [queue],
   );
 }

@@ -97,7 +97,6 @@
       "emailFailed": "The email could not be sent. Nothing was logged on the ticket.",
       "request": "Request",
       "attachments": "Attachments",
-      "notForwardable": "Cannot be forwarded",
       "emailQuoteRequest": "Quote the original request",
       "emailAttach": "Attach files from this ticket",
       "emailNoAttachments": "none",
@@ -108,7 +107,13 @@
       "emailCancel": "Cancel",
       "sentBy": "Sent by {name}",
       "emailMoveStage": "Move this ticket to {stage} when sent",
-      "confirmTriage": "Confirm as correct"
+      "confirmTriage": "Confirm as correct",
+      "details": "Details",
+      "turnaround": "Turnaround",
+      "actions": "Actions",
+      "download": "Download",
+      "downloading": "Downloading…",
+      "attachmentUnavailable": "Only in the original email"
     },
     "ai": {
       "title": "AI email categorisation",

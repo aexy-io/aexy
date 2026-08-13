@@ -126,7 +126,6 @@ export function MessageComposer({
   pendingFilesRef.current = pendingFiles;
   useEffect(() => {
     return () => {
-      // eslint-disable-next-line react-hooks/exhaustive-deps
       pendingFilesRef.current.forEach((pf) => {
         if (pf.preview) URL.revokeObjectURL(pf.preview);
       });
@@ -379,6 +378,9 @@ export function MessageComposer({
       if (file.size > 20 * 1024 * 1024) continue; // Skip > 20MB
       const pf: PendingFile = { file };
       if (file.type.startsWith("image/")) {
+        // Not a download: a thumbnail shown in the composer until the message is
+        // sent. Released when the pending file is dropped.
+        // eslint-disable-next-line no-restricted-syntax
         pf.preview = URL.createObjectURL(file);
       }
       newFiles.push(pf);

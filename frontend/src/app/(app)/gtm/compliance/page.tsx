@@ -32,7 +32,6 @@ export default function CompliancePage() {
   const [activeTab, setActiveTab] = useState<Tab>("tracking");
   const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null);
   const [suppressionPage, setSuppressionPage] = useState(1);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [auditPage, _setAuditPage] = useState(1);
   const [checkEmail, setCheckEmail] = useState("");
   const [checkResult, setCheckResult] = useState<SendPermissionCheck | null>(null);

@@ -23,6 +23,7 @@ import {
   BlockerAnalytics,
   TimeReport,
 } from "@/lib/api";
+import { saveBlob } from "@/lib/utils";
 
 // ==================== Standup Hooks ====================
 
@@ -294,15 +295,7 @@ export function useExportStandups() {
         team_id: options.teamId,
       }),
     onSuccess: (blob, variables) => {
-      // Trigger download
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `standups_${variables.startDate}_${variables.endDate}.${variables.format}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      saveBlob(blob, `standups_${variables.startDate}_${variables.endDate}.${variables.format}`);
     },
   });
 }
@@ -320,14 +313,7 @@ export function useExportTimesheet() {
         format: options.format,
       }),
     onSuccess: (blob, variables) => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `timesheet_${variables.startDate}_${variables.endDate}.${variables.format}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      saveBlob(blob, `timesheet_${variables.startDate}_${variables.endDate}.${variables.format}`);
     },
   });
 }
@@ -347,14 +333,7 @@ export function useExportBlockers() {
         team_id: options.teamId,
       }),
     onSuccess: (blob, variables) => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `blockers_${variables.startDate}_${variables.endDate}.${variables.format}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      saveBlob(blob, `blockers_${variables.startDate}_${variables.endDate}.${variables.format}`);
     },
   });
 }
