@@ -1053,49 +1053,10 @@ class DocumentComment(Base):
     )
 
 
-# System templates to seed
-SYSTEM_TEMPLATES = [
-    {
-        "name": "API Reference",
-        "category": TemplateCategory.API_DOCS.value,
-        "description": "Comprehensive API documentation with endpoints, parameters, and examples",
-        "icon": "api",
-        "variables": ["repository", "path", "language", "custom_instructions"],
-        "is_system": True,
-    },
-    {
-        "name": "README",
-        "category": TemplateCategory.README.value,
-        "description": "Project README with installation, usage, and configuration",
-        "icon": "book",
-        "variables": ["repository", "path", "files", "custom_instructions"],
-        "is_system": True,
-    },
-    {
-        "name": "Function Documentation",
-        "category": TemplateCategory.FUNCTION_DOCS.value,
-        "description": "Detailed documentation for individual functions/methods",
-        "icon": "function",
-        "variables": ["file_path", "repository", "language", "custom_instructions"],
-        "is_system": True,
-    },
-    {
-        "name": "Module Overview",
-        "category": TemplateCategory.MODULE_DOCS.value,
-        "description": "Documentation for a module or directory of related code",
-        "icon": "folder",
-        "variables": ["path", "repository", "file_list", "custom_instructions"],
-        "is_system": True,
-    },
-    {
-        "name": "Getting Started Guide",
-        "category": TemplateCategory.GUIDES.value,
-        "description": "Step-by-step guide for new users",
-        "icon": "rocket",
-        "variables": ["repository", "custom_instructions"],
-        "is_system": True,
-    },
-]
+# The `SYSTEM_TEMPLATES` list that used to sit here is gone. It described
+# templates to seed as rows, was consumed by nothing, and once
+# `services/document_templates_catalog.py` became the real catalogue it was the
+# more discoverable of two competing answers to "what are the system templates".
 
 
 # ---------------------------------------------------------------------------

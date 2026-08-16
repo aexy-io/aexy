@@ -77,6 +77,19 @@ def test_system_ids_are_distinguishable_from_row_ids():
     assert not is_system_template_id(None)
 
 
+def test_the_ids_the_frontend_hardcodes_still_exist():
+    """These ids are a contract that no type checker spans.
+
+    `frontend/src/components/docs/templateIds.ts` names them, because the empty
+    state has to filter out "Blank" — offering an empty page as the way out of an
+    empty page. Renaming a slug here would leave that filter matching nothing and
+    quietly put Blank back in the list, so it fails here instead.
+    """
+    ids = {template.id for template in SYSTEM_TEMPLATES}
+    assert "sys:blank" in ids, "BLANK_TEMPLATE_ID in templateIds.ts points at nothing"
+    assert all(template.id.startswith("sys:") for template in SYSTEM_TEMPLATES)
+
+
 @requires_postgres
 async def test_listing_merges_the_catalogue_with_the_workspaces_own(db_session):
     workspace_id = await seed_workspace(db_session)
@@ -201,7 +214,7 @@ async def test_a_system_template_cannot_be_edited_or_retired(db_session):
     """
     service = DocumentService(db_session)
 
-    assert await service.update_workspace_template("sys:prd", "workspace-1", name="Mine") is None
+    assert await service.update_workspace_template("sys:prd", "workspace-1", {"name": "Mine"}) is None
     assert await service.delete_workspace_template("sys:prd", "workspace-1") is False
     # Still there and unchanged.
     assert (await service.get_template("sys:prd")).name == "Product requirements"
@@ -223,14 +236,14 @@ async def test_renaming_and_retiring_a_workspace_template(db_session):
     )
 
     renamed = await service.update_workspace_template(
-        str(template.id), workspace_id, name="Incident review"
+        str(template.id), workspace_id, {"name": "Incident review"}
     )
     assert renamed is not None and renamed.name == "Incident review"
 
     # Another workspace's id must not reach it — scoped in the query, so this is
     # indistinguishable from the template not existing.
     assert await service.update_workspace_template(
-        str(template.id), str(uuid.uuid4()), name="Hijacked"
+        str(template.id), str(uuid.uuid4()), {"name": "Hijacked"}
     ) is None
 
     assert await service.delete_workspace_template(str(template.id), workspace_id) is True

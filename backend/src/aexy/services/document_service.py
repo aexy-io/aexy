@@ -700,15 +700,18 @@ class DocumentService:
             system_prompt=original.system_prompt,
         )
 
+    #: What a workspace may change about its own template. Anything else on the
+    #: model — `is_system`, `workspace_id`, `created_by_id` — is not the caller's
+    #: to set, so an unknown key is dropped rather than trusted.
+    EDITABLE_TEMPLATE_FIELDS = frozenset(
+        {"name", "description", "icon", "content_template", "category"}
+    )
+
     async def update_workspace_template(
         self,
         template_id: str,
         workspace_id: str,
-        *,
-        name: str | None = None,
-        description: str | None = None,
-        icon: str | None = None,
-        content_template: dict | None = None,
+        fields: dict,
     ) -> DocumentTemplate | None:
         """Rename or re-body one of this workspace's own templates.
 
@@ -716,6 +719,10 @@ class DocumentService:
         a template id from another workspace is indistinguishable from one that
         does not exist. System templates live in code and are not editable at all;
         the way to change one is to fork it (``duplicate_template``).
+
+        ``fields`` carries only what the request actually sent, so a description
+        can be cleared by sending ``null`` — treating ``None`` as "leave alone"
+        would make a template's description unremovable once written.
         """
         if is_system_template_id(template_id):
             return None
@@ -728,17 +735,14 @@ class DocumentService:
         if template is None:
             return None
 
-        if name is not None:
-            template.name = name
-        if description is not None:
-            template.description = description
-        if icon is not None:
-            template.icon = icon
-        if content_template is not None:
-            template.content_template = content_template
+        for key, value in fields.items():
+            if key in self.EDITABLE_TEMPLATE_FIELDS:
+                setattr(template, key, value)
 
+        # No `refresh` afterwards: the session is configured with
+        # `expire_on_commit=False`, so the instance is still readable and a
+        # re-select would only cost a round trip.
         await self.db.commit()
-        await self.db.refresh(template)
         return template
 
     async def delete_workspace_template(self, template_id: str, workspace_id: str) -> bool:

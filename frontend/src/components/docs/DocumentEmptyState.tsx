@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Loader2 } from "lucide-react";
 import { DocumentTemplate, TemplateListItem } from "@/lib/api";
 import { useTemplates } from "@/hooks/useDocuments";
+import { BLANK_TEMPLATE_ID } from "./templateIds";
 
 interface DocumentEmptyStateProps {
   workspaceId: string;
@@ -23,11 +25,14 @@ interface DocumentEmptyStateProps {
  * "Blank" is filtered out on purpose: it is the state the reader is already in.
  */
 export function DocumentEmptyState({ workspaceId, onApply }: DocumentEmptyStateProps) {
+  const t = useTranslations("docs.emptyState");
   const { templates, getTemplate } = useTemplates(workspaceId);
   const [applying, setApplying] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
 
-  const offered = (templates ?? []).filter((template) => template.id !== "sys:blank");
+  const offered = (templates ?? []).filter(
+    (template) => template.id !== BLANK_TEMPLATE_ID,
+  );
   if (offered.length === 0) return null;
 
   const apply = async (item: TemplateListItem) => {
@@ -46,7 +51,7 @@ export function DocumentEmptyState({ workspaceId, onApply }: DocumentEmptyStateP
   return (
     <div className="mb-8" data-testid="document-empty-state">
       <p className="mb-3 text-sm text-muted-foreground">
-        Start writing, or pick a template:
+        {t("prompt")}
       </p>
       <div className="flex flex-wrap gap-2">
         {offered.map((template) => (
@@ -68,7 +73,7 @@ export function DocumentEmptyState({ workspaceId, onApply }: DocumentEmptyStateP
       </div>
       {failed && (
         <p className="mt-2 text-xs text-destructive">
-          That template could not be loaded. Your document is untouched.
+          {t("failed")}
         </p>
       )}
     </div>

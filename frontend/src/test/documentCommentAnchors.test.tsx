@@ -13,7 +13,7 @@
  * * abandoning the composer has to take the mark back out, or the document keeps a
  *   highlight with no thread behind it.
  */
-import { act } from "react";
+import { act, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -159,25 +159,36 @@ describe("DocumentCommentRail", () => {
   let root: Root;
   const noop = () => {};
 
-  const render = async (props: Partial<Record<string, unknown>> = {}) => {
-    const contentRef = { current: document.createElement("div") };
-    await act(async () =>
-      root.render(
-        <DocumentCommentRail
-          workspaceId="ws-1"
-          documentId="d-1"
-          contentRef={contentRef as React.RefObject<HTMLElement>}
-          liveAnchorIds={["anchor-live"]}
-          pending={null}
-          onPendingCancel={noop}
-          onPendingCommitted={noop}
-          activeAnchorId={null}
-          onActiveChange={noop}
-          onRemoveAnchor={noop}
-          {...props}
-        />,
-      ),
+  /** The composer's draft belongs to the editor now, so the test plays that part
+   *  — which is also what lets the rail be remounted without losing it. */
+  function Harness(props: Record<string, unknown>) {
+    const [draft, setDraft] = useState("");
+    const contentRef = useRef(document.createElement("div"));
+    return (
+      <DocumentCommentRail
+        // Keyed on the layout so switching it genuinely remounts the rail. React
+        // would preserve internal state across a plain re-render, which would let
+        // the draft test pass without the draft having been hoisted at all.
+        key={`positioned-${props.positioned !== false}`}
+        workspaceId="ws-1"
+        documentId="d-1"
+        contentRef={contentRef as React.RefObject<HTMLElement>}
+        liveAnchorIds={["anchor-live"]}
+        pending={null}
+        onPendingCancel={noop}
+        onPendingCommitted={noop}
+        activeAnchorId={null}
+        onActiveChange={noop}
+        onRemoveAnchor={noop}
+        draft={draft}
+        onDraftChange={setDraft}
+        {...props}
+      />
     );
+  }
+
+  const render = async (props: Partial<Record<string, unknown>> = {}) => {
+    await act(async () => root.render(<Harness {...props} />));
   };
 
   beforeEach(() => {
@@ -257,11 +268,38 @@ describe("DocumentCommentRail", () => {
     )!;
     await act(async () => post.click());
 
+    // Plain text, the same shape the composer at the foot of the document
+    // stores. Two shapes in one stream would surface as markup in the edit box.
     expect(mocks.createComment).toHaveBeenCalledWith({
-      content: "<p>Is this right?</p>",
+      content: "Is this right?",
       anchorId: "anchor-new",
       quotedText: "the selected words",
     });
+  });
+
+  it("keeps a half-written comment when the layout changes under it", async () => {
+    // The rail used to be mounted twice, once per breakpoint, hidden from itself
+    // by CSS — so the composer had two separate drafts and crossing `xl` showed
+    // the empty one. The draft belongs to the editor now; this is what that buys.
+    await render({ pending: { anchorId: "anchor-new", quotedText: "words" } });
+
+    const box = container.querySelector("textarea")!;
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(
+        HTMLTextAreaElement.prototype,
+        "value",
+      )!.set!;
+      setter.call(box, "half a thought");
+      box.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    // The gutter goes away, so the rail switches to an unpositioned list.
+    await render({
+      pending: { anchorId: "anchor-new", quotedText: "words" },
+      positioned: false,
+    });
+
+    expect(container.querySelector("textarea")!.value).toBe("half a thought");
   });
 
   it("removes the mark when the composer is abandoned", async () => {

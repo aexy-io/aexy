@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { MessageSquarePlus, Unlink } from "lucide-react";
 import { useDocumentComments } from "@/hooks/useDocumentComments";
 import { useAuth } from "@/hooks/useAuth";
@@ -29,6 +30,11 @@ interface DocumentCommentRailProps {
   onActiveChange: (anchorId: string | null) => void;
   /** Drops the mark for a thread whose highlight should stop showing. */
   onRemoveAnchor: (anchorId: string) => void;
+  /** The composer's text, owned by the editor so it survives this component —
+   *  the rail is remounted by layout changes, and a half-written comment should
+   *  not be one of the things a window resize can throw away. */
+  draft: string;
+  onDraftChange: (draft: string) => void;
   /** When false, threads are an ordinary stacked list instead of being aligned to
    *  their marks. Below `xl` there is no gutter to align into, and passing an empty
    *  `liveAnchorIds` to fake that would label every anchored thread as orphaned. */
@@ -63,8 +69,12 @@ export function DocumentCommentRail({
   activeAnchorId,
   onActiveChange,
   onRemoveAnchor,
+  draft,
+  onDraftChange,
   positioned = true,
 }: DocumentCommentRailProps) {
+  const t = useTranslations("docs.comments");
+  const tc = useTranslations("common");
   const { user } = useAuth();
   const {
     comments,
@@ -75,8 +85,11 @@ export function DocumentCommentRail({
     setResolved,
   } = useDocumentComments(workspaceId, documentId);
 
-  const [draft, setDraft] = useState("");
   const [offsets, setOffsets] = useState<Record<string, number>>({});
+  // Measured rather than read from `contentRef.current` during render: a ref read
+  // does not re-render when it changes, so the box was 0px tall on first paint and
+  // only corrected when something unrelated happened to re-render the rail.
+  const [contentHeight, setContentHeight] = useState(0);
   const cardHeights = useRef<Record<string, number>>({});
 
   const { live, orphaned } = useMemo(() => {
@@ -109,6 +122,9 @@ export function DocumentCommentRail({
     const container = contentRef.current;
     if (!container) return;
     const containerTop = container.getBoundingClientRect().top;
+    setContentHeight((current) =>
+      current === container.offsetHeight ? current : container.offsetHeight,
+    );
 
     const measured = toMeasure.current
       .map((id) => {
@@ -165,17 +181,21 @@ export function DocumentCommentRail({
   const submitPending = async () => {
     const content = draft.trim();
     if (!content || !pending) return;
+    // Sent as the typed text, exactly like the composer at the foot of the
+    // document. Wrapping it in `<p>` here would give one comment stream two
+    // stored shapes, and the edit box — which shows the raw stored content —
+    // would start showing markup to anyone who edits a comment made in the rail.
     await createComment({
-      content: `<p>${content}</p>`,
+      content,
       anchorId: pending.anchorId,
       quotedText: pending.quotedText,
     });
-    setDraft("");
+    onDraftChange("");
     onPendingCommitted();
   };
 
   const cancelPending = () => {
-    setDraft("");
+    onDraftChange("");
     // The mark was added optimistically when the button was pressed, so abandoning
     // the composer has to take it back out or the document keeps a highlight with
     // no thread behind it.
@@ -216,12 +236,12 @@ export function DocumentCommentRail({
   );
 
   return (
-    <aside className="relative w-full" data-testid="document-comment-rail">
+    <aside className="relative w-full" data-testid="document-comment-rail" aria-label={t("railLabel")}>
       {orphaned.length > 0 && (
         <div className="mb-4 space-y-2">
           <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
             <Unlink className="h-3.5 w-3.5" aria-hidden />
-            No longer in the document
+            {t("orphaned")}
           </p>
           {orphaned.map((comment) => (
             <div key={comment.id} className="space-y-1">
@@ -240,7 +260,7 @@ export function DocumentCommentRail({
           document, or the last card would be clipped. */}
       <div
         className={positioned ? "relative" : ""}
-        style={positioned ? { minHeight: contentRef.current?.offsetHeight ?? 0 } : undefined}
+        style={positioned ? { minHeight: contentHeight } : undefined}
       >
         {pending &&
           card(
@@ -252,10 +272,10 @@ export function DocumentCommentRail({
               <textarea
                 autoFocus
                 value={draft}
-                onChange={(event) => setDraft(event.target.value)}
+                onChange={(event) => onDraftChange(event.target.value)}
                 rows={3}
-                placeholder="Add a comment…"
-                aria-label="Comment on the selected text"
+                placeholder={t("placeholder")}
+                aria-label={t("composerLabel")}
                 className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm"
               />
               <div className="mt-2 flex items-center gap-2">
@@ -264,13 +284,13 @@ export function DocumentCommentRail({
                   disabled={!draft.trim() || isCreating}
                   className="rounded-md bg-primary-600 px-2.5 py-1 text-xs font-medium text-white disabled:opacity-50"
                 >
-                  {isCreating ? "Posting…" : "Comment"}
+                  {isCreating ? t("posting") : t("post")}
                 </button>
                 <button
                   onClick={cancelPending}
                   className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
                 >
-                  Cancel
+                  {tc("cancel")}
                 </button>
               </div>
             </div>,
@@ -289,7 +309,7 @@ export function DocumentCommentRail({
       {!pending && live.length === 0 && orphaned.length === 0 && (
         <p className="flex items-start gap-2 text-xs text-muted-foreground">
           <MessageSquarePlus className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-          Select text and use the comment button to start a thread here.
+          {t("empty")}
         </p>
       )}
     </aside>

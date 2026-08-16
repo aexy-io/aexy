@@ -26,8 +26,11 @@ import { EditorToolbar } from "./EditorToolbar";
 import { DocumentEmptyState } from "./DocumentEmptyState";
 import { debounce } from "@/lib/utils";
 import { useTemplates } from "@/hooks/useDocuments";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { useTranslations } from "next-intl";
 import type { DocumentTemplate } from "@/lib/api";
 import {
+  AlertCircle,
   Check,
   Cloud,
   Smile,
@@ -75,6 +78,7 @@ export function DocumentEditor({
   workspaceId,
   documentId,
 }: DocumentEditorProps) {
+  const t = useTranslations("docs.editor");
   const [localTitle, setLocalTitle] = useState(title);
   const [localIcon, setLocalIcon] = useState(icon || "📄");
   const [isSaving, setIsSaving] = useState(false);
@@ -82,9 +86,17 @@ export function DocumentEditor({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [editorMode, setEditorMode] = useState<EditorMode>("rich");
   const [markdownContent, setMarkdownContent] = useState("");
-  const [templateSaved, setTemplateSaved] = useState(false);
+  const [templateFeedback, setTemplateFeedback] = useState<"saved" | "failed" | null>(
+    null,
+  );
   const [pendingAnchor, setPendingAnchor] = useState<PendingAnchor | null>(null);
   const [activeAnchorId, setActiveAnchorId] = useState<string | null>(null);
+  // The rail's composer text lives here so it outlives the rail's own layout —
+  // a comment being typed should not be one of the things a window resize eats.
+  const [commentDraft, setCommentDraft] = useState("");
+  // `xl` in Tailwind. The rail needs this as a value, not a class: with no gutter
+  // there is nothing to align a card into, so it renders a plain list instead.
+  const hasGutter = useMediaQuery("(min-width: 1280px)");
   // Which anchors the document still carries. Read from the editor rather than the
   // saved content so a thread whose text was just deleted becomes unanchored
   // immediately, not after the next save.
@@ -112,7 +124,6 @@ export function DocumentEditor({
   useEffect(() => {
     setLocalIcon(icon || "📄");
   }, [icon]);
-
 
   // Escape closes the emoji picker. Audit caught the picker staying
   // open through multiple intermediate actions because only the
@@ -316,7 +327,10 @@ export function DocumentEditor({
    */
   const handleSaveAsTemplate = useCallback(async () => {
     if (!editor || !workspaceId) return;
-    const name = window.prompt("Template name", localTitle || "Untitled template");
+    const name = window.prompt(
+      t("templateNamePrompt"),
+      localTitle || t("untitledTemplate"),
+    );
     if (name === null) return;
     const trimmed = name.trim();
     if (!trimmed) return;
@@ -331,12 +345,15 @@ export function DocumentEditor({
         variables: [],
         icon: localIcon,
       });
-      setTemplateSaved(true);
-      setTimeout(() => setTemplateSaved(false), 2500);
+      setTemplateFeedback("saved");
     } catch (error) {
+      // Told, not just logged: the success path shows a badge, so a silent
+      // failure reads as "it worked" to anyone not watching a console.
       console.error("Failed to save template:", error);
+      setTemplateFeedback("failed");
     }
-  }, [editor, workspaceId, localTitle, localIcon, createTemplate]);
+    setTimeout(() => setTemplateFeedback(null), 4000);
+  }, [editor, workspaceId, localTitle, localIcon, createTemplate, t]);
 
   /**
    * Start a thread on the current selection.
@@ -392,9 +409,7 @@ export function DocumentEditor({
       const anchors = anchorIdsInDoc(editor.getJSON());
       if (anchors.length > 0) {
         const proceed = window.confirm(
-          `Markdown cannot carry comment highlights, so switching will unpin ${
-            anchors.length === 1 ? "1 comment thread" : `${anchors.length} comment threads`
-          } from the text. The comments are kept, with the passage they were written about.`,
+          t("markdownWarning", { count: anchors.length }),
         );
         if (!proceed) return;
       }
@@ -412,6 +427,7 @@ export function DocumentEditor({
         editor.commands.setContent(markdownContent);
         setLiveAnchorIds(anchorIdsInDoc(editor.getJSON()));
         setPendingAnchor(null);
+        setCommentDraft("");
         setActiveAnchorId(null);
         setEditorMode("rich");
       } catch (error) {
@@ -420,7 +436,7 @@ export function DocumentEditor({
         // so the user doesn't lose their work
       }
     }
-  }, [editor, editorMode, markdownContent]);
+  }, [editor, editorMode, markdownContent, t]);
 
   // Handle markdown content change
   const handleMarkdownChange = useCallback(
@@ -549,10 +565,19 @@ export function DocumentEditor({
                     )}
                     {/* Distinct from "Saved": that is the document, this is the
                         template it was just copied into. */}
-                    {templateSaved && (
+                    {templateFeedback === "saved" && (
                       <div className="flex items-center gap-1.5 text-success text-xs animate-fade-in">
                         <Check className="h-3.5 w-3.5" />
-                        <span>Saved as template</span>
+                        <span>{t("savedAsTemplate")}</span>
+                      </div>
+                    )}
+                    {templateFeedback === "failed" && (
+                      <div
+                        role="alert"
+                        className="flex items-center gap-1.5 text-destructive text-xs animate-fade-in"
+                      >
+                        <AlertCircle className="h-3.5 w-3.5" />
+                        <span>{t("saveAsTemplateFailed")}</span>
                       </div>
                     )}
                   </div>
@@ -606,45 +631,52 @@ export function DocumentEditor({
 
       {/* Editor Content */}
       <div className="flex-1 overflow-auto">
-        <div className="mx-auto flex w-full max-w-[1400px] gap-6 px-8 py-8">
-         <div className="min-w-0 flex-1" ref={contentRef} onClick={handleContentClick}>
-          {/* Only while the page is genuinely blank, and only in rich mode —
-              `editor.isEmpty` is live, so it clears itself on the first keystroke. */}
-          {workspaceId && !readOnly && editorMode === "rich" && editor?.isEmpty && (
-            <DocumentEmptyState workspaceId={workspaceId} onApply={handleApplyTemplate} />
-          )}
-          {editorMode === "rich" ? (
-            <EditorContent
-              editor={editor}
-              className="min-h-[500px] [&_.ProseMirror]:text-foreground [&_.ProseMirror]:leading-relaxed [&_.ProseMirror]:text-[17px] [&_.ProseMirror_h1]:text-foreground [&_.ProseMirror_h2]:text-foreground [&_.ProseMirror_h3]:text-foreground [&_.ProseMirror_h1]:font-bold [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h3]:font-semibold [&_.ProseMirror_h1]:text-3xl [&_.ProseMirror_h2]:text-2xl [&_.ProseMirror_h3]:text-xl [&_.ProseMirror_h1]:mt-10 [&_.ProseMirror_h1]:mb-4 [&_.ProseMirror_h2]:mt-8 [&_.ProseMirror_h2]:mb-3 [&_.ProseMirror_h3]:mt-6 [&_.ProseMirror_h3]:mb-2 [&_.ProseMirror_h1]:tracking-tight [&_.ProseMirror_h2]:tracking-tight [&_.ProseMirror_p]:my-4 [&_.ProseMirror_p]:text-foreground [&_.ProseMirror_ul]:my-4 [&_.ProseMirror_ol]:my-4 [&_.ProseMirror_li]:my-1 [&_.ProseMirror_li]:text-foreground [&_.ProseMirror_strong]:text-foreground [&_.ProseMirror_blockquote]:border-l-4 [&_.ProseMirror_blockquote]:border-primary-500 [&_.ProseMirror_blockquote]:pl-5 [&_.ProseMirror_blockquote]:italic [&_.ProseMirror_blockquote]:text-muted-foreground [&_.ProseMirror_blockquote]:bg-muted/30 [&_.ProseMirror_blockquote]:py-3 [&_.ProseMirror_blockquote]:pr-4 [&_.ProseMirror_blockquote]:rounded-r-lg [&_.ProseMirror_code]:bg-muted [&_.ProseMirror_code]:px-1.5 [&_.ProseMirror_code]:py-0.5 [&_.ProseMirror_code]:rounded [&_.ProseMirror_code]:text-primary-400 [&_.ProseMirror_code]:text-sm [&_.ProseMirror_code]:font-mono"
-            />
-          ) : (
-            <div className="min-h-[500px]">
-              <textarea
-                value={markdownContent}
-                onChange={handleMarkdownChange}
-                disabled={readOnly}
-                placeholder="Write your content in Markdown..."
-                className="w-full min-h-[500px] bg-background/50 border border-border rounded-lg p-4 text-foreground font-mono text-sm leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent placeholder-muted-foreground"
-                spellCheck={false}
+        {/* One row from xl — document beside its margin — and one column below,
+            where the threads stack under the document instead. Stacking rather
+            than swapping keeps the rail mounted across the breakpoint, so a
+            half-written comment survives a window resize. */}
+        <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-6 px-8 py-8 xl:flex-row">
+          <div className="min-w-0 flex-1" ref={contentRef} onClick={handleContentClick}>
+            {/* Only while the page is genuinely blank, and only in rich mode —
+                `editor.isEmpty` is live, so it clears itself on the first keystroke. */}
+            {workspaceId && !readOnly && editorMode === "rich" && editor?.isEmpty && (
+              <DocumentEmptyState workspaceId={workspaceId} onApply={handleApplyTemplate} />
+            )}
+            {editorMode === "rich" ? (
+              <EditorContent
+                editor={editor}
+                className="min-h-[500px] [&_.ProseMirror]:text-foreground [&_.ProseMirror]:leading-relaxed [&_.ProseMirror]:text-[17px] [&_.ProseMirror_h1]:text-foreground [&_.ProseMirror_h2]:text-foreground [&_.ProseMirror_h3]:text-foreground [&_.ProseMirror_h1]:font-bold [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h3]:font-semibold [&_.ProseMirror_h1]:text-3xl [&_.ProseMirror_h2]:text-2xl [&_.ProseMirror_h3]:text-xl [&_.ProseMirror_h1]:mt-10 [&_.ProseMirror_h1]:mb-4 [&_.ProseMirror_h2]:mt-8 [&_.ProseMirror_h2]:mb-3 [&_.ProseMirror_h3]:mt-6 [&_.ProseMirror_h3]:mb-2 [&_.ProseMirror_h1]:tracking-tight [&_.ProseMirror_h2]:tracking-tight [&_.ProseMirror_p]:my-4 [&_.ProseMirror_p]:text-foreground [&_.ProseMirror_ul]:my-4 [&_.ProseMirror_ol]:my-4 [&_.ProseMirror_li]:my-1 [&_.ProseMirror_li]:text-foreground [&_.ProseMirror_strong]:text-foreground [&_.ProseMirror_blockquote]:border-l-4 [&_.ProseMirror_blockquote]:border-primary-500 [&_.ProseMirror_blockquote]:pl-5 [&_.ProseMirror_blockquote]:italic [&_.ProseMirror_blockquote]:text-muted-foreground [&_.ProseMirror_blockquote]:bg-muted/30 [&_.ProseMirror_blockquote]:py-3 [&_.ProseMirror_blockquote]:pr-4 [&_.ProseMirror_blockquote]:rounded-r-lg [&_.ProseMirror_code]:bg-muted [&_.ProseMirror_code]:px-1.5 [&_.ProseMirror_code]:py-0.5 [&_.ProseMirror_code]:rounded [&_.ProseMirror_code]:text-primary-400 [&_.ProseMirror_code]:text-sm [&_.ProseMirror_code]:font-mono"
               />
-              <p className="mt-2 text-xs text-muted-foreground">
-                Tip: Use Markdown syntax for formatting. Click &quot;Rich&quot; to preview and switch back to visual editing.
-              </p>
-            </div>
-          )}
-         </div>
+            ) : (
+              <div className="min-h-[500px]">
+                <textarea
+                  value={markdownContent}
+                  onChange={handleMarkdownChange}
+                  disabled={readOnly}
+                  placeholder="Write your content in Markdown..."
+                  className="w-full min-h-[500px] bg-background/50 border border-border rounded-lg p-4 text-foreground font-mono text-sm leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent placeholder-muted-foreground"
+                  spellCheck={false}
+                />
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Tip: Use Markdown syntax for formatting. Click &quot;Rich&quot; to preview and switch back to visual editing.
+                </p>
+              </div>
+            )}
+          </div>
 
-          {/* The margin. Hidden below xl, where there is no room for a gutter
-              beside a readable measure — the threads are still reachable there
-              because the rail reflows under the document (see the sibling block
-              below). Only in rich mode: the Markdown textarea has no marks to
-              align to. */}
-          {commentsEnabled && editorMode === "rich" && (
-            <div className="hidden w-[320px] shrink-0 xl:block">
+          {/* The margin — beside the document from xl, stacked under it below,
+              which is the whole difference between the two layouts. Only in rich
+              mode: the Markdown textarea has no marks to align to.
+
+              Mounted once. It used to be two instances hidden from each other by
+              CSS, which meant two composers with two separate drafts, two sets of
+              observers measuring the same container, and two autofocused
+              textareas racing each other. */}
+          {commentsEnabled && documentId && editorMode === "rich" && (
+            <div className="w-full xl:w-[320px] xl:shrink-0">
               <DocumentCommentRail
                 workspaceId={workspaceId ?? null}
-                documentId={documentId!}
+                documentId={documentId}
                 contentRef={contentRef}
                 liveAnchorIds={liveAnchorIds}
                 pending={pendingAnchor}
@@ -653,32 +685,17 @@ export function DocumentEditor({
                 activeAnchorId={activeAnchorId}
                 onActiveChange={setActiveAnchorId}
                 onRemoveAnchor={handleRemoveAnchor}
+                draft={commentDraft}
+                onDraftChange={setCommentDraft}
+                // Aligning a card to a mark needs a gutter to align into, and
+                // below xl there is none — so this is a media query rather than a
+                // CSS class: the difference is what the component *does*, not
+                // just how it looks.
+                positioned={hasGutter}
               />
             </div>
           )}
         </div>
-
-        {/* Below xl the same threads sit under the document rather than beside it.
-            Positioning against a mark needs a gutter to position into, so here they
-            are an ordinary list — the anchor still says which passage each is
-            about, via its quoted text. */}
-        {commentsEnabled && editorMode === "rich" && (
-          <div className="px-8 pb-8 xl:hidden">
-            <DocumentCommentRail
-              positioned={false}
-              workspaceId={workspaceId ?? null}
-              documentId={documentId!}
-              contentRef={contentRef}
-              liveAnchorIds={liveAnchorIds}
-              pending={pendingAnchor}
-              onPendingCancel={() => setPendingAnchor(null)}
-              onPendingCommitted={() => setPendingAnchor(null)}
-              activeAnchorId={activeAnchorId}
-              onActiveChange={setActiveAnchorId}
-              onRemoveAnchor={handleRemoveAnchor}
-            />
-          </div>
-        )}
       </div>
     </div>
   );

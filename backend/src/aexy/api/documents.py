@@ -31,9 +31,9 @@ from aexy.schemas.document import (
     ProposedEditReject,
     ProposedEditResponse,
     TemplateCreate,
-    TemplateUpdate,
     TemplateListResponse,
     TemplateResponse,
+    TemplateUpdate,
 )
 from aexy.services.document_comment_service import DocumentCommentService
 from aexy.services.github_app_service import GitHubAppService
@@ -1587,6 +1587,31 @@ async def get_ancestors(
 # ==================== Templates Router ====================
 
 
+def _template_to_response(template) -> TemplateResponse:
+    """One row — or one catalogue entry wearing a row's shape — as the API sees it.
+
+    The same fifteen lines were written out at each of the four endpoints that
+    return a template, which is three more places to forget a new field in.
+    """
+    return TemplateResponse(
+        id=str(template.id),
+        workspace_id=str(template.workspace_id) if template.workspace_id else None,
+        name=template.name,
+        description=template.description,
+        category=template.category,
+        icon=template.icon,
+        content_template=template.content_template,
+        prompt_template=template.prompt_template,
+        system_prompt=template.system_prompt,
+        variables=template.variables,
+        is_system=template.is_system,
+        is_active=template.is_active,
+        created_by_id=str(template.created_by_id) if template.created_by_id else None,
+        created_at=template.created_at,
+        updated_at=template.updated_at,
+    )
+
+
 @template_router.get("", response_model=list[TemplateListResponse])
 async def list_templates(
     workspace_id: str | None = None,
@@ -1643,23 +1668,7 @@ async def get_template(
     if template.workspace_id:
         await ensure_app_enabled(db, str(template.workspace_id), "docs")
 
-    return TemplateResponse(
-        id=str(template.id),
-        workspace_id=str(template.workspace_id) if template.workspace_id else None,
-        name=template.name,
-        description=template.description,
-        category=template.category,
-        icon=template.icon,
-        content_template=template.content_template,
-        prompt_template=template.prompt_template,
-        system_prompt=template.system_prompt,
-        variables=template.variables,
-        is_system=template.is_system,
-        is_active=template.is_active,
-        created_by_id=str(template.created_by_id) if template.created_by_id else None,
-        created_at=template.created_at,
-        updated_at=template.updated_at,
-    )
+    return _template_to_response(template)
 
 
 @template_router.post(
@@ -1697,23 +1706,7 @@ async def create_template(
         system_prompt=data.system_prompt,
     )
 
-    return TemplateResponse(
-        id=str(template.id),
-        workspace_id=str(template.workspace_id) if template.workspace_id else None,
-        name=template.name,
-        description=template.description,
-        category=template.category,
-        icon=template.icon,
-        content_template=template.content_template,
-        prompt_template=template.prompt_template,
-        system_prompt=template.system_prompt,
-        variables=template.variables,
-        is_system=template.is_system,
-        is_active=template.is_active,
-        created_by_id=str(template.created_by_id) if template.created_by_id else None,
-        created_at=template.created_at,
-        updated_at=template.updated_at,
-    )
+    return _template_to_response(template)
 
 
 @template_router.post("/{template_id}/duplicate", response_model=TemplateResponse)
@@ -1748,23 +1741,7 @@ async def duplicate_template(
             detail="Template not found",
         )
 
-    return TemplateResponse(
-        id=str(template.id),
-        workspace_id=str(template.workspace_id) if template.workspace_id else None,
-        name=template.name,
-        description=template.description,
-        category=template.category,
-        icon=template.icon,
-        content_template=template.content_template,
-        prompt_template=template.prompt_template,
-        system_prompt=template.system_prompt,
-        variables=template.variables,
-        is_system=template.is_system,
-        is_active=template.is_active,
-        created_by_id=str(template.created_by_id) if template.created_by_id else None,
-        created_at=template.created_at,
-        updated_at=template.updated_at,
-    )
+    return _template_to_response(template)
 
 
 async def _require_template_author(
@@ -1797,13 +1774,12 @@ async def update_template(
     """
     await _require_template_author(workspace_id, current_user, db)
 
+    # `exclude_unset` so an omitted field is left alone while an explicit `null`
+    # clears it — the two are different requests and should not collapse.
     template = await DocumentService(db).update_workspace_template(
         template_id,
         workspace_id,
-        name=data.name,
-        description=data.description,
-        icon=data.icon,
-        content_template=data.content_template,
+        data.model_dump(exclude_unset=True),
     )
     if not template:
         raise HTTPException(
@@ -1811,23 +1787,7 @@ async def update_template(
             detail="Template not found in this workspace",
         )
 
-    return TemplateResponse(
-        id=str(template.id),
-        workspace_id=str(template.workspace_id) if template.workspace_id else None,
-        name=template.name,
-        description=template.description,
-        category=template.category,
-        icon=template.icon,
-        content_template=template.content_template,
-        prompt_template=template.prompt_template,
-        system_prompt=template.system_prompt,
-        variables=template.variables,
-        is_system=template.is_system,
-        is_active=template.is_active,
-        created_by_id=str(template.created_by_id) if template.created_by_id else None,
-        created_at=template.created_at,
-        updated_at=template.updated_at,
-    )
+    return _template_to_response(template)
 
 
 @template_router.delete("/{template_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import DOMPurify from "isomorphic-dompurify";
 import {
   Check,
@@ -31,6 +32,7 @@ export function DocumentComments({
   workspaceId: string | null;
   documentId: string;
 }) {
+  const t = useTranslations("docs.comments");
   const { user } = useAuth();
   const {
     comments,
@@ -72,7 +74,7 @@ export function DocumentComments({
         )}
         <MessageSquare className="h-4 w-4 text-muted-foreground" />
         <h2 className="text-sm font-semibold">
-          Document discussion
+          {t("documentDiscussion")}
           {wholeDocument.length > 0 ? (
             <span className="text-muted-foreground"> · {wholeDocument.length}</span>
           ) : null}
