@@ -594,6 +594,57 @@ class DocumentGenerationService:
         ]
         return filename.lower() in [p.lower() for p in key_patterns]
 
+    @staticmethod
+    def is_renderable_document(content: Any) -> bool:
+        """Would the editor actually render this?
+
+        `_parse_llm_json` returns whatever parses, and plenty of valid JSON is
+        not a valid document — `{"title": ..., "sections": [...]}` is the shape
+        models reach for most often. TipTap's response to content it cannot
+        understand is to warn to the console and render an entirely blank
+        page, so an invalid document is saved, looks empty, and is
+        indistinguishable from a generation that failed outright.
+
+        Deliberately shallow: this is a shape check, not a schema validator.
+        Anything claiming to be a doc with at least one typed node gets the
+        benefit of the doubt, because rejecting a document the editor would
+        have rendered is worse than accepting an odd one.
+        """
+        if not isinstance(content, dict):
+            return False
+        if content.get("type") != "doc":
+            return False
+        nodes = content.get("content")
+        if not isinstance(nodes, list) or not nodes:
+            return False
+        return any(
+            isinstance(node, dict) and isinstance(node.get("type"), str)
+            for node in nodes
+        )
+
+    def ensure_renderable(
+        self, content: Any, category: TemplateCategory
+    ) -> dict[str, Any]:
+        """Return `content` if the editor can render it, else a fallback.
+
+        The fallback keeps the model's words as plain text — a page somebody
+        can read and fix beats a blank one they have to regenerate blind.
+        """
+        if self.is_renderable_document(content):
+            return content
+
+        logger.warning(
+            "Generated content is not a renderable TipTap document "
+            f"(keys={list(content)[:5] if isinstance(content, dict) else type(content).__name__}) "
+            "— falling back to plain text"
+        )
+        raw = (
+            json.dumps(content, indent=2)
+            if isinstance(content, (dict, list))
+            else str(content)
+        )
+        return self._create_fallback_document(raw, category)
+
     def _create_fallback_document(
         self, content: str, category: TemplateCategory
     ) -> dict[str, Any]:

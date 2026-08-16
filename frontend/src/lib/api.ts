@@ -7230,17 +7230,39 @@ export const documentApi = {
       language?: string;
     }
   ): Promise<{ status: string; content: Record<string, unknown> }> => {
+    // Body, not query params: a 200-line file exceeds the request-line limit
+    // in nginx and uvicorn, and source code in a URL lands in access logs and
+    // browser history.
     const response = await api.post(
       `/workspaces/${workspaceId}/documents/generate-from-code`,
-      null,
       {
-        params: {
-          code,
-          template_category: options?.template_category || "function_docs",
-          file_path: options?.file_path,
-          language: options?.language,
-        },
+        code,
+        template_category: options?.template_category || "function_docs",
+        file_path: options?.file_path,
+        language: options?.language,
       }
+    );
+    return response.data;
+  },
+
+  /** Generate a document from a repository path *and* link it to that path,
+   *  in one server-side transaction. The link is what lets the document ever
+   *  be told its code has changed. */
+  createDocumentFromRepository: async (
+    workspaceId: string,
+    options: {
+      repository_id: string;
+      path: string;
+      link_type: DocumentLinkType;
+      branch: string;
+      template_category?: string;
+      custom_prompt?: string;
+      title?: string;
+    }
+  ): Promise<{ document: Document; code_link: DocumentCodeLink }> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/documents/from-repository`,
+      options
     );
     return response.data;
   },

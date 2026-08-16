@@ -283,6 +283,41 @@ class CodeLinkTransfer(BaseModel):
     owner_developer_id: str
 
 
+class GenerateFromCodeRequest(BaseModel):
+    """Source code to document, in the request body.
+
+    `code` used to be a query parameter. A 200-line file put roughly 8 KB in
+    the request line — past the default ceiling in nginx and in uvicorn's h11
+    limits — so pasting a real file returned 414 and the UI said "please try
+    again", which could not work because the input was the problem. It also
+    wrote the source verbatim into access logs, proxy logs and browser
+    history.
+    """
+
+    code: str = Field(min_length=1)
+    template_category: TemplateCategory = "function_docs"
+    file_path: str | None = Field(default=None, max_length=1000)
+    language: str | None = Field(default=None, max_length=50)
+
+
+class GenerateFromRepositoryRequest(BaseModel):
+    """Generate from a path in a connected repository.
+
+    `path` may name a file or a directory; `link_type` says which, and decides
+    whether the result is written from that one file or from the module around
+    it. Previously only directories were reachable, which made three of the
+    four documentation types on the screen unreachable by construction.
+    """
+
+    repository_id: str
+    path: str = Field(default="", max_length=1000)
+    link_type: DocumentLinkType = "directory"
+    branch: str = Field(default="main", max_length=255)
+    template_category: TemplateCategory = "module_docs"
+    custom_prompt: str | None = None
+    title: str | None = Field(default=None, max_length=500)
+
+
 class CodeLinkSyncModeUpdate(BaseModel):
     """How this document should react when its code changes."""
 
@@ -327,16 +362,6 @@ class CodeChangeCheckResponse(BaseModel):
 
 
 # ==================== Generation Schemas ====================
-
-
-class GenerateFromCodeRequest(BaseModel):
-    """Schema for generating documentation from code."""
-
-    template_id: str
-    repository_id: str
-    paths: list[str] = Field(min_length=1)
-    custom_prompt: str | None = None
-    variables: dict[str, Any] = Field(default_factory=dict)
 
 
 class RegenerateDocumentRequest(BaseModel):
@@ -666,6 +691,13 @@ class ProposedEditResponse(BaseModel):
     # Computed: True when base_content_sha != document.content_sha at
     # read-time. Surfaces the merge-conflict badge in the FE.
     is_stale: bool = False
+
+
+class LinkedDocumentResponse(BaseModel):
+    """A generated document and the code link that keeps it honest."""
+
+    document: DocumentResponse
+    code_link: CodeLinkResponse
 
 
 class WorkspaceProposedEdit(ProposedEditResponse):

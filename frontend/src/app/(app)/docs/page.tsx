@@ -13,9 +13,12 @@ import {
   Folder,
   File,
   ChevronRight,
+  Check,
   ArrowLeft,
   GitBranch,
 } from "lucide-react";
+import { toast } from "sonner";
+import { getApiErrorMessage } from "@/lib/utils";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useDocuments, useTemplates } from "@/hooks/useDocuments";
 import { documentApi, repositoriesApi, Repository, TemplateListItem } from "@/lib/api";
@@ -41,6 +44,7 @@ export default function DocsPage() {
   const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
   const [selectedBranch, setSelectedBranch] = useState("main");
   const [currentPath, setCurrentPath] = useState("");
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [customPrompt, setCustomPrompt] = useState("");
 
   // Fetch repositories when modal is open and in repo mode
@@ -104,6 +108,17 @@ export default function DocsPage() {
     void handleCreateFromTemplate(template.id, template.name);
   }, [handleCreateBlankDocument, handleCreateFromTemplate]);
 
+  const resetModal = useCallback(() => {
+    setShowGenerateModal(false);
+    setSourceMode("paste");
+    setRepoStep("select");
+    setSelectedRepo(null);
+    setCurrentPath("");
+    setSelectedFile(null);
+    setCodeInput("");
+    setCustomPrompt("");
+  }, []);
+
   const handleGenerateFromCode = useCallback(async () => {
     if (!currentWorkspaceId || !codeInput.trim()) return;
 
@@ -122,53 +137,61 @@ export default function DocsPage() {
         icon: "✨",
       });
 
-      setShowGenerateModal(false);
-      setCodeInput("");
+      resetModal();
       router.push(`/docs/${result.id}`);
     } catch (error) {
-      console.error("Failed to generate documentation:", error);
-      alert("Failed to generate documentation. Please try again.");
+      toast.error(
+        getApiErrorMessage(error, "Could not generate this document")
+      );
     } finally {
       setIsGenerating(false);
     }
-  }, [createDocument, currentWorkspaceId, codeInput, codeLanguage, docType, router]);
+  }, [createDocument, currentWorkspaceId, codeInput, codeLanguage, docType, resetModal, router]);
 
   const handleGenerateFromRepository = useCallback(async () => {
     if (!currentWorkspaceId || !selectedRepo) return;
 
     setIsGenerating(true);
     try {
-      // Generate documentation from repository
-      const response = await documentApi.generateFromRepository(currentWorkspaceId, {
-        repository_id: selectedRepo.id,
-        path: currentPath,
-        branch: selectedBranch,
-        template_category: docType,
-        custom_prompt: customPrompt || undefined,
-      });
+      // One call: the server generates, creates the document and records the
+      // code link in a single transaction. Doing it as two client calls left
+      // a document that looked generated and would never notice its code
+      // changing — which is the whole failure this endpoint exists to remove.
+      const { document } = await documentApi.createDocumentFromRepository(
+        currentWorkspaceId,
+        {
+          repository_id: selectedRepo.id,
+          path: selectedFile ?? currentPath,
+          link_type: selectedFile ? "file" : "directory",
+          branch: selectedBranch,
+          template_category: selectedFile ? docType : undefined,
+          custom_prompt: customPrompt || undefined,
+        }
+      );
 
-      // Create document with generated content
-      const result = await createDocument.mutateAsync({
-        title: `${selectedRepo.name}${currentPath ? `/${currentPath}` : ""} Documentation`,
-        content: response.content,
-        icon: "📁",
-      });
-
-      // Reset modal state
-      setShowGenerateModal(false);
-      setSourceMode("paste");
-      setRepoStep("select");
-      setSelectedRepo(null);
-      setCurrentPath("");
-      setCustomPrompt("");
-      router.push(`/docs/${result.id}`);
+      resetModal();
+      router.push(`/docs/${document.id}`);
     } catch (error) {
-      console.error("Failed to generate documentation:", error);
-      alert("Failed to generate documentation. Please try again.");
+      // The backend distinguishes "install the GitHub App", "rate limited"
+      // and "AI unavailable". Collapsing those into "please try again" gave
+      // the wrong advice for all three.
+      toast.error(
+        getApiErrorMessage(error, "Could not generate this document")
+      );
     } finally {
       setIsGenerating(false);
     }
-  }, [createDocument, currentWorkspaceId, selectedRepo, currentPath, selectedBranch, docType, customPrompt, router]);
+  }, [
+    currentWorkspaceId,
+    selectedRepo,
+    selectedFile,
+    currentPath,
+    selectedBranch,
+    docType,
+    customPrompt,
+    resetModal,
+    router,
+  ]);
 
   const handleSelectRepo = useCallback((repo: Repository) => {
     setSelectedRepo(repo);
@@ -177,11 +200,21 @@ export default function DocsPage() {
     setRepoStep("browse");
   }, []);
 
-  const handleNavigateDir = useCallback((item: { name: string; type: string; path: string }) => {
-    if (item.type === "dir") {
-      setCurrentPath(item.path);
-    }
-  }, []);
+  const handleSelectItem = useCallback(
+    (item: { name: string; type: string; path: string }) => {
+      if (item.type === "dir") {
+        setCurrentPath(item.path);
+        setSelectedFile(null);
+        return;
+      }
+      // Files were unclickable, which made three of the four documentation
+      // types on this screen unreachable by construction — "Function
+      // documentation" needs a function, and you could only ever pick a
+      // directory.
+      setSelectedFile((current) => (current === item.path ? null : item.path));
+    },
+    []
+  );
 
   const handleBackToRepos = useCallback(() => {
     setRepoStep("select");
@@ -189,15 +222,6 @@ export default function DocsPage() {
     setCurrentPath("");
   }, []);
 
-  const resetModal = useCallback(() => {
-    setShowGenerateModal(false);
-    setSourceMode("paste");
-    setRepoStep("select");
-    setSelectedRepo(null);
-    setCurrentPath("");
-    setCodeInput("");
-    setCustomPrompt("");
-  }, []);
 
   // Sort contents: directories first, then files
   const sortedContents = contents
@@ -537,18 +561,31 @@ export default function DocsPage() {
                     </div>
                   </div>
 
-                  {/* Doc Type Selector */}
+                  {/* Doc type applies to a single file. Documenting a whole
+                      directory always produces module documentation, so
+                      offering four choices there would be four controls that
+                      change nothing — which is what this screen used to do. */}
                   <div className="px-4 py-2 border-b border-border space-y-3">
-                    <select
-                      value={docType}
-                      onChange={(e) => setDocType(e.target.value)}
-                      className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-primary-500"
-                    >
-                      <option value="module_docs">Module Documentation</option>
-                      <option value="api_docs">API Documentation</option>
-                      <option value="readme">README</option>
-                      <option value="function_docs">Function Documentation</option>
-                    </select>
+                    {selectedFile ? (
+                      <select
+                        value={docType}
+                        onChange={(e) => setDocType(e.target.value)}
+                        className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-primary-500"
+                      >
+                        <option value="function_docs">Function Documentation</option>
+                        <option value="api_docs">API Documentation</option>
+                        <option value="readme">README</option>
+                        <option value="module_docs">Module Documentation</option>
+                      </select>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Documenting the whole of{" "}
+                        <span className="text-foreground font-mono">
+                          {currentPath || selectedRepo?.name}
+                        </span>
+                        . Pick a single file to choose a documentation type.
+                      </p>
+                    )}
                     <div>
                       <label className="block text-xs font-medium text-muted-foreground mb-1">
                         Custom Instructions (optional)
@@ -574,28 +611,33 @@ export default function DocsPage() {
                       </div>
                     ) : (
                       <div className="space-y-1">
-                        {sortedContents.map((item) => (
-                          <button
-                            key={item.path}
-                            onClick={() => handleNavigateDir(item)}
-                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition text-left ${
-                              item.type === "dir"
-                                ? "text-foreground hover:bg-muted"
-                                : "text-muted-foreground cursor-default"
-                            }`}
-                            disabled={item.type !== "dir"}
-                          >
-                            {item.type === "dir" ? (
-                              <Folder className="h-4 w-4 text-blue-400" />
-                            ) : (
-                              <File className="h-4 w-4 text-muted-foreground" />
-                            )}
-                            <span className="flex-1 truncate">{item.name}</span>
-                            {item.type === "dir" && (
-                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                            )}
-                          </button>
-                        ))}
+                        {sortedContents.map((item) => {
+                          const picked = selectedFile === item.path;
+                          return (
+                            <button
+                              key={item.path}
+                              onClick={() => handleSelectItem(item)}
+                              aria-pressed={item.type === "file" ? picked : undefined}
+                              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition text-left ${
+                                picked
+                                  ? "bg-primary-500/10 text-foreground ring-1 ring-primary-500/40"
+                                  : "text-foreground hover:bg-muted"
+                              }`}
+                            >
+                              {item.type === "dir" ? (
+                                <Folder className="h-4 w-4 text-blue-400" />
+                              ) : (
+                                <File className="h-4 w-4 text-muted-foreground" />
+                              )}
+                              <span className="flex-1 truncate">{item.name}</span>
+                              {item.type === "dir" ? (
+                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                              ) : picked ? (
+                                <Check className="h-4 w-4 text-primary-400" />
+                              ) : null}
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -607,7 +649,18 @@ export default function DocsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-t border-border">
               <div className="text-sm text-muted-foreground">
                 {sourceMode === "repo" && repoStep === "browse" && (
-                  <>Generating docs for: <span className="text-foreground">{currentPath || "root"}</span></>
+                  <>
+                    Documenting{" "}
+                    <span className="text-foreground font-mono">
+                      {selectedFile || currentPath || "the repository root"}
+                    </span>
+                    {/* Said plainly, because it is the difference between a
+                        page that can be kept current and one that cannot. */}
+                    <span className="block text-xs">
+                      Linked to this path, so it can be updated when the code
+                      changes.
+                    </span>
+                  </>
                 )}
               </div>
               <div className="flex items-center gap-3">

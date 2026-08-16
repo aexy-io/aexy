@@ -31,6 +31,9 @@ from aexy.schemas.document import (
     DocumentTreeItem,
     DocumentUpdate,
     DocumentVersionResponse,
+    GenerateFromCodeRequest,
+    GenerateFromRepositoryRequest,
+    LinkedDocumentResponse,
     ProposedEditReject,
     ProposedEditResponse,
     TemplateCreate,
@@ -40,7 +43,11 @@ from aexy.schemas.document import (
     WorkspaceProposedEdit,
 )
 from aexy.services.document_comment_service import DocumentCommentService
-from aexy.services.github_app_service import GitHubAppService, GitHubServiceAdapter
+from aexy.services.github_app_service import (
+    GitHubAppError,
+    GitHubAppService,
+    GitHubServiceAdapter,
+)
 from aexy.services.document_service import DocumentService
 from aexy.services.document_sync_service import DocumentSyncService
 from aexy.services.document_generation_service import DocumentGenerationService
@@ -1109,6 +1116,73 @@ async def remove_collaborator(
 # ==================== AI Generation ====================
 
 
+async def _repository_reader(db: AsyncSession, repository_id: str, developer_id: str):
+    """Resolve a repository and a client the generation service can call.
+
+    Access is resolved against the repository account first and the requesting
+    developer second — the same order the background sync uses, so an
+    interactive generation and an automated one succeed and fail together
+    rather than for different reasons.
+    """
+    from aexy.services.repository_service import RepositoryService
+
+    repo = await RepositoryService(db).get_repository_by_id(repository_id)
+    if not repo:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Repository not found"
+        )
+
+    app_service = GitHubAppService(db)
+    token_result = await app_service.get_installation_token_for_account(
+        repo.owner_login
+    )
+    if not token_result:
+        token_result = await app_service.get_installation_token_for_developer(
+            developer_id, repo.owner_login
+        )
+    if not token_result:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                f"No GitHub App installation covers {repo.owner_login}. "
+                "Install the app for that account first."
+            ),
+        )
+
+    _token, installation_id = token_result
+    return repo, GitHubServiceAdapter(
+        app_service=app_service,
+        installation_id=installation_id,
+        owner=repo.owner_login,
+        repo=repo.name,
+    )
+
+
+def _generation_http_error(exc: Exception) -> HTTPException:
+    """Map an LLM failure onto a status a caller can act on.
+
+    Rate limiting and an unavailable provider call for different responses —
+    wait, versus try later or check configuration — and collapsing both into a
+    500 tells the user to do the one thing that cannot help.
+    """
+    from aexy.llm.base import LLMAPIError, LLMRateLimitError
+
+    if isinstance(exc, LLMRateLimitError):
+        return HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="AI service rate limit exceeded. Please wait a few minutes and try again.",
+        )
+    if isinstance(exc, LLMAPIError):
+        return HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"AI service error: {str(exc)}",
+        )
+    return HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail=f"Failed to generate documentation: {str(exc)}",
+    )
+
+
 @router.post("/{document_id}/generate")
 async def generate_documentation(
     workspace_id: str,
@@ -1239,35 +1313,33 @@ async def generate_documentation(
 @router.post("/generate-from-code")
 async def generate_from_code(
     workspace_id: str,
-    code: str = Query(..., description="Source code to document"),
-    template_category: str = Query(default="function_docs"),
-    file_path: str | None = Query(default=None),
-    language: str | None = Query(default=None),
+    data: GenerateFromCodeRequest,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Generate documentation from provided source code."""
+    """Generate documentation from source code pasted into the request body.
+
+    Produces content only; nothing is saved. Pasted code has no repository
+    path to point at, so there is nothing to keep it in sync with afterwards —
+    for a document that stays current, use `/from-repository`.
+    """
     await check_workspace_permission(workspace_id, current_user, db, "member")
 
-    try:
-        category = TemplateCategory(template_category)
-    except ValueError:
-        category = TemplateCategory.FUNCTION_DOCS
-
     gen_service = DocumentGenerationService(db, workspace_id=workspace_id)
+    category = TemplateCategory(data.template_category)
 
     try:
         content = await gen_service.generate_from_code(
-            code=code,
+            code=data.code,
             template_category=category,
-            file_path=file_path,
-            language=language,
+            file_path=data.file_path,
+            language=data.language,
             developer_id=str(current_user.id),
         )
 
         return {
             "status": "success",
-            "content": content,
+            "content": gen_service.ensure_renderable(content, category),
         }
 
     except Exception as e:
@@ -1275,6 +1347,103 @@ async def generate_from_code(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate documentation: {str(e)}",
         )
+
+
+@router.post(
+    "/from-repository",
+    response_model=LinkedDocumentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_document_from_repository(
+    workspace_id: str,
+    data: GenerateFromRepositoryRequest,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Write a document from a repository path, and link it to that path.
+
+    The link is the point. Generation already knows the repository, the branch
+    and the path; creating the document without recording them throws away the
+    only thing that lets it ever be told the code has moved. Every piece of
+    machinery behind this — change detection, the review queue, the freshness
+    badge, the work list an agent reads — keys off `document_code_links`, and
+    until this endpoint existed nothing in the product wrote a row to it.
+
+    One transaction, deliberately. Two client calls would leave a half-created
+    state on any failure: a document that looks generated and will never
+    notice a change, which is precisely the failure being removed.
+    """
+    await check_workspace_permission(workspace_id, current_user, db, "member")
+
+    doc_service = DocumentService(db)
+    gen_service = DocumentGenerationService(db, workspace_id=workspace_id)
+    category = TemplateCategory(data.template_category)
+
+    repo, github_adapter = await _repository_reader(
+        db, repository_id=data.repository_id, developer_id=str(current_user.id)
+    )
+
+    try:
+        if data.link_type == "file":
+            # A single file is documented from its own contents; the category
+            # is meaningful here, which is why the UI only offers it for files.
+            content = await gen_service.generate_from_repository(
+                github_service=github_adapter,
+                repository_full_name=repo.full_name,
+                path=data.path,
+                template_category=category,
+                branch=data.branch,
+                developer_id=str(current_user.id),
+            )
+        else:
+            content = await gen_service.generate_module_documentation(
+                github_service=github_adapter,
+                repository_full_name=repo.full_name,
+                directory_path=data.path or ".",
+                branch=data.branch,
+                developer_id=str(current_user.id),
+                custom_prompt=data.custom_prompt,
+            )
+    except GitHubAppError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"GitHub API error: {str(e)}",
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        raise _generation_http_error(e)
+
+    content = gen_service.ensure_renderable(content, category)
+
+    document = await doc_service.create_document(
+        workspace_id=workspace_id,
+        created_by_id=str(current_user.id),
+        title=data.title or f"{repo.name}/{data.path}".rstrip("/"),
+        content=content,
+        icon="📁" if data.link_type == "directory" else "📄",
+    )
+    link = await doc_service.create_code_link(
+        document_id=str(document.id),
+        repository_id=data.repository_id,
+        path=data.path,
+        link_type=data.link_type,
+        branch=data.branch,
+        owner_developer_id=str(current_user.id),
+        template_category=category.value,
+    )
+    # The prose was written from the tip of this branch, so that is the base
+    # the next change should be diffed against.
+    link.last_synced_at = datetime.now(timezone.utc)
+    document.generation_status = "generated"
+    document.last_generated_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(link)
+
+    return LinkedDocumentResponse(
+        document=document_to_response(document),
+        code_link=_code_link_to_response(link),
+    )
 
 
 @router.post("/generate-from-repository")
