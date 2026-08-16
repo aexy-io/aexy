@@ -186,6 +186,11 @@ class NotificationEventType(str, Enum):
     # main notification bell — so a proposal waited silently for someone to go
     # looking in the right panel.
     DOCUMENT_AI_PROPOSAL = "document_ai_proposal"
+    # Inherited responsibility, not a request. Someone who set up a doc-to-code
+    # sync has left the workspace and their syncs now answer to you — silence
+    # here means the first you hear of it is an AI proposal you did not ask for
+    # on a document you did not know you owned.
+    DOCUMENT_SYNC_OWNERSHIP_TRANSFERRED = "document_sync_ownership_transferred"
 
     # Chat
     CHAT_MENTION = "chat_mention"
@@ -567,6 +572,7 @@ NOTIFICATION_CATEGORIES: dict[str, list[str]] = {
         NotificationEventType.DOCUMENT_MENTIONED.value,
         NotificationEventType.DOCUMENT_COMMENTED.value,
         NotificationEventType.DOCUMENT_AI_PROPOSAL.value,
+        NotificationEventType.DOCUMENT_SYNC_OWNERSHIP_TRANSFERRED.value,
     ],
     "chat": [
         NotificationEventType.CHAT_MENTION.value,
@@ -724,6 +730,9 @@ DEFAULT_NOTIFICATION_PREFERENCES = {
     # A proposal sits in a review queue waiting on the document owner, so it is
     # worth an email — that queue is exactly the thing nobody thinks to check.
     NotificationEventType.DOCUMENT_AI_PROPOSAL: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    # Email too: this arrives when a colleague leaves, which is exactly when
+    # nobody is watching the bell.
+    NotificationEventType.DOCUMENT_SYNC_OWNERSHIP_TRANSFERRED: {"in_app": True, "email": True, "slack": False, "web_push": False},
     # Chat
     NotificationEventType.CHAT_MENTION: {"in_app": True, "email": True, "slack": False, "web_push": False},
     NotificationEventType.AI_CONVERSATION_SHARED: {"in_app": True, "email": True, "slack": False, "web_push": False},

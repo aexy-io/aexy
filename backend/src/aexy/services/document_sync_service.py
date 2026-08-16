@@ -6,7 +6,7 @@ from enum import Enum
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import and_, func, select, update
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -123,11 +123,13 @@ class DocumentSyncService:
     async def get_pending_sync_queue(
         self,
         limit: int = 100,
+        workspace_id: str | None = None,
     ) -> list[DocumentSyncQueue]:
         """Get pending documents in the sync queue.
 
         Args:
             limit: Maximum number of items to return.
+            workspace_id: Restrict to one workspace's documents.
 
         Returns:
             List of pending sync queue entries.
@@ -139,6 +141,15 @@ class DocumentSyncService:
             .order_by(DocumentSyncQueue.triggered_at)
             .limit(limit)
         )
+        if workspace_id is not None:
+            # Filtered in SQL rather than after the fact. `process_queue` used
+            # to take the global head of the queue and then drop the rows that
+            # belonged to other workspaces, so a workspace whose entries sat
+            # behind another's `limit` rows was never drained at all — it just
+            # looked idle.
+            stmt = stmt.join(
+                Document, DocumentSyncQueue.document_id == Document.id
+            ).where(Document.workspace_id == workspace_id)
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
@@ -236,14 +247,21 @@ class DocumentSyncService:
             link.has_pending_changes = True
             link.last_commit_sha = commit_sha
 
-            # Get document owner's sync type
+            # Route by the plan tier of whoever owns *this sync*, falling back
+            # to the document's author for links created before ownership
+            # existed. Reading the author alone was wrong in the ordinary case
+            # — the person who writes a document is often not the person who
+            # wires it to a repository — and badly wrong after a whole-repo
+            # run, where one author's tier would govern every document in it.
             document = link.document
-            if not document or not document.created_by:
+            if not document:
                 continue
 
-            sync_type = await self.get_sync_type_for_developer(
-                str(document.created_by_id)
-            )
+            sync_owner_id = link.owner_developer_id or document.created_by_id
+            if not sync_owner_id:
+                continue
+
+            sync_type = await self.get_sync_type_for_developer(str(sync_owner_id))
 
             if sync_type == SyncTriggerType.REAL_TIME:
                 # Trigger immediate regeneration
@@ -263,6 +281,255 @@ class DocumentSyncService:
 
         await self.db.commit()
         return results
+
+    async def list_documents_needing_update(
+        self,
+        workspace_id: str,
+        repository_id: str | None = None,
+        include_never_synced: bool = True,
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        """Documents whose linked source has changed since they were written.
+
+        The read side of the freshness pipeline. `handle_code_change` sets
+        `has_pending_changes` when a push touches a link's path; this turns
+        that flag into a work list somebody — or something — can act on.
+
+        Deliberately free of model calls: everything here is a join. That is
+        what makes it reasonable to expose over MCP and poll, and it is the
+        argument for detecting centrally while generating elsewhere.
+
+        Ordered oldest-first so the document that has been wrong longest is
+        the one handed out first.
+        """
+        from aexy.models.documentation import DocumentProposedEdit, ProposedEditStatus
+
+        conditions = [Document.workspace_id == workspace_id]
+        if repository_id:
+            conditions.append(DocumentCodeLink.repository_id == repository_id)
+
+        staleness = [DocumentCodeLink.has_pending_changes.is_(True)]
+        if include_never_synced:
+            staleness.append(DocumentCodeLink.last_synced_at.is_(None))
+
+        stmt = (
+            select(DocumentCodeLink)
+            .join(Document, DocumentCodeLink.document_id == Document.id)
+            .options(
+                selectinload(DocumentCodeLink.document),
+                selectinload(DocumentCodeLink.repository),
+            )
+            .where(and_(*conditions))
+            .where(or_(*staleness))
+            # Nulls first: a document linked to code and never generated from
+            # it is the most out of date thing there is, not the least.
+            .order_by(DocumentCodeLink.last_synced_at.asc().nulls_first())
+            .limit(limit)
+        )
+        links = (await self.db.execute(stmt)).scalars().all()
+        if not links:
+            return []
+
+        # One query for every pending proposal rather than one per document.
+        document_ids = [str(link.document_id) for link in links]
+        counts_stmt = (
+            select(
+                DocumentProposedEdit.document_id,
+                func.count(DocumentProposedEdit.id),
+            )
+            .where(DocumentProposedEdit.document_id.in_(document_ids))
+            .where(DocumentProposedEdit.status == ProposedEditStatus.PENDING.value)
+            .group_by(DocumentProposedEdit.document_id)
+        )
+        pending = {
+            str(document_id): count
+            for document_id, count in (await self.db.execute(counts_stmt)).all()
+        }
+
+        items: list[dict[str, Any]] = []
+        for link in links:
+            document = link.document
+            if not document:
+                continue
+            items.append(
+                {
+                    "document_id": str(document.id),
+                    "document_title": document.title,
+                    "document_icon": document.icon,
+                    "code_link_id": str(link.id),
+                    "repository_id": str(link.repository_id),
+                    "repository_full_name": (
+                        link.repository.full_name if link.repository else None
+                    ),
+                    "path": link.path,
+                    "link_type": link.link_type,
+                    "branch": link.branch,
+                    "reason": (
+                        "code_changed" if link.last_synced_at else "never_synced"
+                    ),
+                    "last_synced_at": link.last_synced_at,
+                    "last_seen_commit_sha": link.last_commit_sha,
+                    "owner_developer_id": (
+                        str(link.owner_developer_id)
+                        if link.owner_developer_id
+                        else None
+                    ),
+                    "pending_proposal_count": pending.get(str(document.id), 0),
+                }
+            )
+        return items
+
+    async def transfer_owned_syncs(
+        self,
+        departing_developer_id: str,
+        workspace_id: str,
+        new_owner_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Move every doc-to-code sync owned by a departing developer.
+
+        Called when someone is removed from a workspace. Their syncs keep
+        running — that is the point of a sync — so leaving them pointed at a
+        developer who is gone means their plan tier keeps deciding the
+        behaviour and their GitHub connection keeps being the credential
+        fallback, both of which will quietly stop working.
+
+        Defaults to the workspace owner, who is the one member who cannot
+        themselves be removed. Notifies the new owner once with a count
+        rather than once per sync: a silent transfer is worse than none,
+        because the first they would hear of it is a proposal they did not
+        ask for on a document they did not know was theirs.
+
+        Never raises — a documentation concern must not block a removal.
+        """
+        from aexy.models.workspace import Workspace
+        from aexy.services.notification_service import (
+            notify_document_sync_ownership_transferred,
+        )
+
+        try:
+            links = (
+                (
+                    await self.db.execute(
+                        select(DocumentCodeLink)
+                        .join(Document, DocumentCodeLink.document_id == Document.id)
+                        .where(DocumentCodeLink.owner_developer_id == departing_developer_id)
+                        .where(Document.workspace_id == workspace_id)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            if not links:
+                return {"transferred": 0, "new_owner_id": None}
+
+            recipient_id = new_owner_id
+            if not recipient_id:
+                workspace = (
+                    await self.db.execute(
+                        select(Workspace).where(Workspace.id == workspace_id)
+                    )
+                ).scalar_one_or_none()
+                recipient_id = str(workspace.owner_id) if workspace else None
+
+            if not recipient_id or recipient_id == departing_developer_id:
+                # Nobody sensible to hand them to. Leave the rows alone rather
+                # than nulling them: an owner who has left still identifies the
+                # installation the sync has been using, and a null owner would
+                # discard that with nothing to replace it.
+                logger.warning(
+                    f"No transfer target for {len(links)} sync(s) owned by "
+                    f"{departing_developer_id} in workspace {workspace_id}"
+                )
+                return {"transferred": 0, "new_owner_id": None}
+
+            for link in links:
+                link.owner_developer_id = recipient_id
+
+            departing = (
+                await self.db.execute(
+                    select(Developer).where(Developer.id == departing_developer_id)
+                )
+            ).scalar_one_or_none()
+            label = (departing.name if departing and departing.name else "A teammate")
+
+            await notify_document_sync_ownership_transferred(
+                self.db,
+                recipient_id=recipient_id,
+                sync_count=len(links),
+                previous_owner_label=label,
+                workspace_id=workspace_id,
+            )
+
+            logger.info(
+                f"Transferred {len(links)} sync(s) from {departing_developer_id} "
+                f"to {recipient_id} in workspace {workspace_id}"
+            )
+            return {"transferred": len(links), "new_owner_id": recipient_id}
+
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.exception(
+                f"Failed to transfer syncs for {departing_developer_id}: {exc}"
+            )
+            return {"transferred": 0, "new_owner_id": None}
+
+    async def _build_github_reader(
+        self,
+        document: Document,
+        code_link: DocumentCodeLink,
+    ):
+        """Resolve repository access for a background sync and return a
+        reader the generation service can actually call.
+
+        `DocumentGenerationService` asks for content by `(repository_full_name,
+        path, branch)`; `GitHubAppService` answers by `(installation_id, owner,
+        repo, path, ref)`. Passing the app service straight through raised
+        `TypeError` on every background regeneration — caught and logged as a
+        generic failure, so the path looked merely unlucky rather than broken.
+        The API path has always wrapped it; this is the same wrapper.
+
+        Access is resolved against the repository first and only then against
+        the sync's owner. That order is the whole point: an installation
+        reached through one person's connection disappears with that person,
+        so a repository-first lookup is what keeps a team's documentation
+        syncing after whoever set it up has left.
+        """
+        from aexy.services.github_app_service import (
+            GitHubAppService,
+            GitHubServiceAdapter,
+        )
+
+        repository = code_link.repository
+        if not repository:
+            logger.warning(f"Code link {code_link.id} has no repository — can't sync")
+            return None
+
+        app_service = GitHubAppService(self.db)
+        token_result = await app_service.get_installation_token_for_account(
+            repository.owner_login
+        )
+        if not token_result:
+            # No installation covers the account directly. Fall back to whoever
+            # owns the sync — and only then to the document's author, which is
+            # what this read before code links had an owner of their own.
+            fallback_id = code_link.owner_developer_id or document.created_by_id
+            if fallback_id:
+                token_result = await app_service.get_installation_token_for_developer(
+                    str(fallback_id), repository.owner_login
+                )
+        if not token_result:
+            logger.warning(
+                f"No GitHub installation for document {document.id} "
+                f"({repository.full_name}) — can't sync"
+            )
+            return None
+
+        _token, installation_id = token_result
+        return GitHubServiceAdapter(
+            app_service=app_service,
+            installation_id=installation_id,
+            owner=repository.owner_login,
+            repo=repository.name,
+        )
 
     async def _trigger_real_time_sync(
         self,
@@ -285,25 +552,16 @@ class DocumentSyncService:
             from aexy.services.document_generation_service import (
                 DocumentGenerationService,
             )
-            from aexy.services.github_app_service import GitHubAppService
 
             gen_service = DocumentGenerationService(self.db)
-            github_service = GitHubAppService(self.db)
 
             # Get the template category from the document or code link
             from aexy.models.documentation import TemplateCategory
 
             category = TemplateCategory.FUNCTION_DOCS
 
-            # Get installation token
-            token_result = await github_service.get_installation_token_for_developer(
-                str(document.created_by_id)
-            )
-
-            if not token_result:
-                logger.warning(
-                    f"No installation token for document {document.id} sync"
-                )
+            github_service = await self._build_github_reader(document, code_link)
+            if github_service is None:
                 return False
 
             # Generate fresh docs from the linked code and route them
@@ -358,6 +616,13 @@ class DocumentSyncService:
             )
             return None
 
+        # Automated generation still costs tokens. Attributing it to the sync
+        # owner puts it against the plan whose tier asked for the sync in the
+        # first place; passing nothing, as this used to, made the platform's
+        # single largest recurring AI cost belong to nobody and appear in no
+        # workspace's usage.
+        billed_to = code_link.owner_developer_id or document.created_by_id
+
         try:
             content = await gen_service.generate_from_repository(
                 github_service=github_service,
@@ -365,6 +630,7 @@ class DocumentSyncService:
                 path=code_link.path,
                 template_category=category,
                 branch=code_link.branch or "main",
+                developer_id=str(billed_to) if billed_to else None,
             )
         except Exception as e:
             logger.error(
@@ -399,7 +665,6 @@ class DocumentSyncService:
         from aexy.services.document_generation_service import (
             DocumentGenerationService,
         )
-        from aexy.services.github_app_service import GitHubAppService
         from sqlalchemy.orm import selectinload as _selectinload
 
         stmt = (
@@ -428,7 +693,9 @@ class DocumentSyncService:
         code_link = result2.scalar_one_or_none() or code_link
 
         gen_service = DocumentGenerationService(self.db, workspace_id=workspace_id)
-        github_service = GitHubAppService(self.db)
+        github_service = await self._build_github_reader(document, code_link)
+        if github_service is None:
+            return {"status": "failed", "document_id": document_id}
 
         outcome = await self._generate_and_propose(
             document=document,
@@ -458,14 +725,13 @@ class DocumentSyncService:
         document (into the proposed-edit queue, not direct overwrite).
         Called by the Temporal `process_document_sync_queue` activity.
         """
-        queue_entries = await self.get_pending_sync_queue(limit=limit)
-        # Filter to workspace if any caller relies on that scope.
-        # Document rows already carry workspace_id; filter via the
-        # eager-loaded relationship.
+        queue_entries = await self.get_pending_sync_queue(
+            limit=limit, workspace_id=workspace_id
+        )
         results = {"processed": 0, "proposed": 0, "skipped": 0, "failed": 0}
         for entry in queue_entries:
             doc = entry.document
-            if not doc or str(doc.workspace_id) != workspace_id:
+            if not doc:
                 continue
             await self.mark_sync_processing([entry.id])
             outcome = await self.regenerate_document(

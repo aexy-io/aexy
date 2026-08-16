@@ -1519,6 +1519,43 @@ async def notify_document_ai_proposal(
     )
 
 
+async def notify_document_sync_ownership_transferred(
+    db: AsyncSession,
+    recipient_id: str,
+    sync_count: int,
+    previous_owner_label: str,
+    workspace_id: str | None = None,
+) -> int:
+    """Tell someone they have inherited doc-to-code syncs.
+
+    Sent when the person who set a sync up leaves the workspace. Nobody asked
+    for this, which is the whole reason it needs saying out loud: the syncs
+    keep running, and the proposals they generate will start arriving for
+    review from a person who never wired them up.
+    """
+    plural = "sync" if sync_count == 1 else "syncs"
+    context: dict[str, Any] = {
+        "sync_count": sync_count,
+        "previous_owner": previous_owner_label,
+        "action_url": "/docs",
+    }
+    if workspace_id:
+        context["workspace_id"] = str(workspace_id)
+
+    return await _notify_quietly(
+        db,
+        [recipient_id],
+        NotificationEventType.DOCUMENT_SYNC_OWNERSHIP_TRANSFERRED,
+        title=f"You now own {sync_count} documentation {plural}",
+        body=(
+            f"{previous_owner_label} left the workspace, so their {sync_count} "
+            f"doc-to-code {plural} moved to you. Updates they propose will come "
+            f"to you for review."
+        ),
+        context=context,
+    )
+
+
 # ============ GTM Notifications ============
 
 

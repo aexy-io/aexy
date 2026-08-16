@@ -17,6 +17,7 @@ from aexy.schemas.document import (
     DocumentCommentUpdate,
     CodeLinkCreate,
     CodeLinkResponse,
+    CodeLinkTransfer,
     CollaboratorAdd,
     CollaboratorResponse,
     CollaboratorUpdate,
@@ -24,6 +25,7 @@ from aexy.schemas.document import (
     DocumentCreate,
     DocumentListResponse,
     DocumentMoveRequest,
+    DocumentNeedsUpdateItem,
     DocumentResponse,
     DocumentTreeItem,
     DocumentUpdate,
@@ -36,8 +38,9 @@ from aexy.schemas.document import (
     TemplateUpdate,
 )
 from aexy.services.document_comment_service import DocumentCommentService
-from aexy.services.github_app_service import GitHubAppService
+from aexy.services.github_app_service import GitHubAppService, GitHubServiceAdapter
 from aexy.services.document_service import DocumentService
+from aexy.services.document_sync_service import DocumentSyncService
 from aexy.services.document_generation_service import DocumentGenerationService
 from aexy.services.proposed_edits_service import (
     ProposedEditsService,
@@ -232,6 +235,53 @@ async def get_favorites(
     )
 
     return favorites
+
+
+# ==================== Documentation work list ====================
+# NOTE: Must be before /{document_id} or "needs-update" is read as an id.
+
+
+@router.get("/needs-update", response_model=list[DocumentNeedsUpdateItem])
+async def list_documents_needing_update(
+    workspace_id: str,
+    repository_id: str | None = Query(
+        default=None, description="Restrict to one repository."
+    ),
+    include_never_synced: bool = Query(
+        default=True,
+        description="Include documents linked to code that have never been generated.",
+    ),
+    limit: int = Query(default=50, ge=1, le=200),
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """List documents whose linked source code has changed since they were written.
+
+    The work list for keeping documentation current: each item names the
+    document, the repository path it describes, the commit it has fallen
+    behind, and why it is listed. Detecting this is cheap and needs no model —
+    it is path matching against pushes — so the platform tracks it centrally
+    and leaves the writing to whoever is best placed to do it.
+
+    Intended to be picked up by a coding agent over MCP. An agent working in
+    the repository already has the source in context, so the useful division
+    is that this endpoint says *what* needs attention and the agent decides
+    what the prose should say, submitting the result through
+    `POST /{document_id}/proposed-edits` where a human reviews it.
+
+    `pending_proposal_count` is why an agent should read this before writing:
+    an item that already has a proposal waiting has been dealt with, and
+    generating another only creates a second thing for someone to review.
+    """
+    await check_workspace_permission(workspace_id, current_user, db, "viewer")
+
+    sync_service = DocumentSyncService(db)
+    return await sync_service.list_documents_needing_update(
+        workspace_id=workspace_id,
+        repository_id=repository_id,
+        include_never_synced=include_never_synced,
+        limit=limit,
+    )
 
 
 # ==================== Comments ====================
@@ -648,6 +698,7 @@ async def create_code_link(
         link_type=data.link_type,
         branch=data.branch,
         section_id=data.section_id,
+        owner_developer_id=str(current_user.id),
     )
 
     return CodeLinkResponse(
@@ -663,6 +714,9 @@ async def create_code_link(
         last_content_hash=link.last_content_hash,
         last_synced_at=link.last_synced_at,
         has_pending_changes=link.has_pending_changes,
+        owner_developer_id=(
+            str(link.owner_developer_id) if link.owner_developer_id else None
+        ),
         created_at=link.created_at,
         updated_at=link.updated_at,
     )
@@ -704,6 +758,9 @@ async def get_code_links(
             last_content_hash=link.last_content_hash,
             last_synced_at=link.last_synced_at,
             has_pending_changes=link.has_pending_changes,
+            owner_developer_id=(
+                str(link.owner_developer_id) if link.owner_developer_id else None
+            ),
             created_at=link.created_at,
             updated_at=link.updated_at,
         )
@@ -732,6 +789,78 @@ async def delete_code_link(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Code link not found",
         )
+
+
+@router.post(
+    "/{document_id}/code-links/{link_id}/transfer", response_model=CodeLinkResponse
+)
+async def transfer_code_link_owner(
+    workspace_id: str,
+    document_id: str,
+    link_id: str,
+    data: CodeLinkTransfer,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Hand a sync to someone else.
+
+    Departure is handled automatically, but people change teams long before
+    they leave, and a sync whose owner has moved on is one whose plan tier and
+    GitHub access no longer reflect who is actually looking after it.
+
+    The new owner must be a member of this workspace: ownership carries a
+    credential fallback, so handing a sync to an outsider would be a way to
+    read a repository through someone else's installation.
+    """
+    await check_workspace_permission(workspace_id, current_user, db, "member")
+
+    service = DocumentService(db)
+    document = await service.get_document(document_id, workspace_id)
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found",
+        )
+
+    workspace_service = WorkspaceService(db)
+    if not await workspace_service.check_permission(
+        workspace_id, data.owner_developer_id, "viewer"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The new owner must be a member of this workspace",
+        )
+
+    link = await service.set_code_link_owner(
+        link_id=link_id,
+        document_id=document_id,
+        owner_developer_id=data.owner_developer_id,
+    )
+    if not link:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Code link not found",
+        )
+
+    return CodeLinkResponse(
+        id=str(link.id),
+        document_id=str(link.document_id),
+        repository_id=str(link.repository_id),
+        repository_name=link.repository.full_name if link.repository else None,
+        path=link.path,
+        link_type=link.link_type,
+        branch=link.branch,
+        document_section_id=link.document_section_id,
+        last_commit_sha=link.last_commit_sha,
+        last_content_hash=link.last_content_hash,
+        last_synced_at=link.last_synced_at,
+        has_pending_changes=link.has_pending_changes,
+        owner_developer_id=(
+            str(link.owner_developer_id) if link.owner_developer_id else None
+        ),
+        created_at=link.created_at,
+        updated_at=link.updated_at,
+    )
 
 
 # ==================== Collaborators ====================
@@ -1058,55 +1187,6 @@ async def generate_from_code(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate documentation: {str(e)}",
-        )
-
-
-class GitHubServiceAdapter:
-    """Adapter to wrap GitHubAppService with the interface expected by DocumentGenerationService.
-
-    ``app_service`` was annotated as the string ``"GitHubAppService"`` while the
-    only import of that name lived inside the request handler further down, so the
-    forward reference had nothing to resolve to: a type checker could not follow it
-    and ``typing.get_type_hints`` on this class raised NameError. A real
-    module-level import fixes it rather than hiding it — the two modules do not
-    form a cycle in either direction, so the local import bought nothing here.
-    """
-
-    def __init__(self, app_service: GitHubAppService, installation_id: int, owner: str, repo: str):
-        self.app_service = app_service
-        self.installation_id = installation_id
-        self.owner = owner
-        self.repo = repo
-
-    def _normalize_path(self, path: str) -> str:
-        """Normalize path - convert '.' or '/' to empty string for root."""
-        if path in (".", "/", "./"):
-            return ""
-        return path.strip("/")
-
-    async def get_directory_contents(
-        self, repository_full_name: str, path: str, branch: str
-    ) -> list[dict]:
-        """Get directory contents."""
-        normalized_path = self._normalize_path(path)
-        return await self.app_service.get_repository_contents(
-            installation_id=self.installation_id,
-            owner=self.owner,
-            repo=self.repo,
-            path=normalized_path,
-            ref=branch,
-        )
-
-    async def get_file_content(
-        self, repository_full_name: str, path: str, branch: str
-    ) -> dict | None:
-        """Get file content."""
-        return await self.app_service.get_file_content(
-            installation_id=self.installation_id,
-            owner=self.owner,
-            repo=self.repo,
-            path=path,
-            ref=branch,
         )
 
 

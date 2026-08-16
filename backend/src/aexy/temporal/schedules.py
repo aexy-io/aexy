@@ -383,6 +383,25 @@ SCHEDULES: list[dict] = [
         "queue": TaskQueue.SYNC,
     },
 
+    # === Documentation freshness ===
+    # Daily drain of the document sync queue. `handle_code_change` puts a
+    # document here when a push touches its linked code and its owner is on
+    # the daily-batch tier; without this schedule the queue filled and
+    # nothing ever emptied it. Fans out per workspace because the activity
+    # that does the work needs a workspace id and a schedule input takes
+    # no arguments.
+    {
+        "id": "document-sync-queue",
+        "activity": "enqueue_document_sync_queues",
+        "input_module": "aexy.temporal.activities.analysis",
+        "input_class": "EnqueueDocumentSyncQueuesInput",
+        "interval": timedelta(hours=24),
+        "queue": TaskQueue.ANALYSIS,
+        # Generation is an LLM call per queued document; the 300s default
+        # would truncate the fan-out on any busy workspace.
+        "timeout_seconds": 1800,
+    },
+
     # === Repository Auto-Sync ===
     {
         "id": "check-repo-auto-sync",

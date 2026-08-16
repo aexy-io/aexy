@@ -245,6 +245,44 @@ class CodeLinkCreate(BaseModel):
     section_id: str | None = Field(default=None, max_length=100)
 
 
+class DocumentNeedsUpdateItem(BaseModel):
+    """One document whose linked code has moved on without it.
+
+    Shaped for whoever is going to act on it — an agent over MCP, or the
+    review inbox — so it carries the repository coordinates needed to go and
+    read the code, not just a document id.
+    """
+
+    document_id: str
+    document_title: str
+    document_icon: str | None = None
+
+    code_link_id: str
+    repository_id: str
+    repository_full_name: str | None = None
+    path: str
+    link_type: str
+    branch: str
+
+    # `code_changed` — a push touched this path since the last sync.
+    # `never_synced` — linked to code but never generated from it.
+    reason: str
+    last_synced_at: datetime | None = None
+    last_seen_commit_sha: str | None = None
+    owner_developer_id: str | None = None
+
+    # A proposal already waiting for review. Non-zero means this document has
+    # been dealt with and writing another update only duplicates the reviewer's
+    # work.
+    pending_proposal_count: int = 0
+
+
+class CodeLinkTransfer(BaseModel):
+    """Schema for handing a code link's sync to another member."""
+
+    owner_developer_id: str
+
+
 class CodeLinkResponse(BaseModel):
     """Schema for code link response."""
 
@@ -262,6 +300,11 @@ class CodeLinkResponse(BaseModel):
     last_content_hash: str | None = None
     last_synced_at: datetime | None = None
     has_pending_changes: bool = False
+    # Whoever set this sync up. Null means orphaned — the owner left and no
+    # transfer has run — which is worth surfacing rather than hiding, since
+    # such a sync only keeps working while the repository has an installation
+    # of its own.
+    owner_developer_id: str | None = None
     created_at: datetime
     updated_at: datetime
 

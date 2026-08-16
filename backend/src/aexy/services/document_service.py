@@ -782,8 +782,16 @@ class DocumentService:
         link_type: str = "file",
         branch: str = "main",
         section_id: str | None = None,
+        owner_developer_id: str | None = None,
     ) -> DocumentCodeLink:
-        """Create a link between a document and source code."""
+        """Create a link between a document and source code.
+
+        `owner_developer_id` is whoever set the sync up — their plan tier
+        decides how it behaves and their GitHub access is the fallback when
+        no installation covers the repository directly. Callers that have a
+        request user should always pass it; leaving it null produces a sync
+        that works only while a repository-scoped installation exists.
+        """
         link = DocumentCodeLink(
             id=str(uuid4()),
             document_id=document_id,
@@ -792,9 +800,39 @@ class DocumentService:
             link_type=link_type,
             branch=branch,
             document_section_id=section_id,
+            owner_developer_id=owner_developer_id,
         )
 
         self.db.add(link)
+        await self.db.commit()
+        await self.db.refresh(link)
+        return link
+
+    async def set_code_link_owner(
+        self,
+        link_id: str,
+        document_id: str,
+        owner_developer_id: str,
+    ) -> DocumentCodeLink | None:
+        """Point a code link's sync at a different developer.
+
+        Scoped by `document_id` as well as `link_id`: the route has already
+        checked the caller may touch this document, and matching on the link
+        alone would let that check be bypassed by passing a link belonging to
+        a document in another workspace.
+        """
+        stmt = (
+            select(DocumentCodeLink)
+            .where(DocumentCodeLink.id == link_id)
+            .where(DocumentCodeLink.document_id == document_id)
+            .options(selectinload(DocumentCodeLink.repository))
+        )
+        result = await self.db.execute(stmt)
+        link = result.scalar_one_or_none()
+        if not link:
+            return None
+
+        link.owner_developer_id = owner_developer_id
         await self.db.commit()
         await self.db.refresh(link)
         return link

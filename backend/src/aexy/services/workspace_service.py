@@ -283,6 +283,23 @@ class WorkspaceService:
 
         member.status = "removed"
         await self.db.flush()
+
+        # Hand on anything that keeps running without them. Doc-to-code syncs
+        # are owned by whoever set them up: their plan tier decides how each
+        # sync behaves and their GitHub connection is its credential fallback,
+        # so a sync left pointing at a departed member degrades silently
+        # rather than failing loudly.
+        #
+        # Deliberately here rather than in the API route: removal happens
+        # through more than one caller, and a transfer that only runs on one
+        # path is a transfer that mostly does not run.
+        from aexy.services.document_sync_service import DocumentSyncService
+
+        await DocumentSyncService(self.db).transfer_owned_syncs(
+            departing_developer_id=developer_id,
+            workspace_id=workspace_id,
+        )
+
         return True
 
     async def update_member_role(

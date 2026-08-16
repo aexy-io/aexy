@@ -1,5 +1,7 @@
 """GitHub Webhook API endpoints."""
 
+import logging
+
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +19,7 @@ from aexy.services.github_task_sync_service import GitHubTaskSyncService
 
 router = APIRouter()
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 
 # WS-082: per-source rate limiting on webhook ingestion. Combined with the
@@ -25,6 +28,66 @@ settings = get_settings()
 # workflows (each of which consumes LLM tokens).
 _GITHUB_WEBHOOK_LIMIT_PER_IP_PER_MIN = 600     # GitHub sends bursts on big pushes; generous cap.
 _AUTOMATION_WEBHOOK_LIMIT_PER_ID_PER_MIN = 60  # External system per automation.
+
+
+def _changed_paths(commits: list[dict]) -> list[str]:
+    """Every path a push touched, deduplicated, order preserved.
+
+    GitHub reports `added`, `removed` and `modified` per commit. All three
+    matter to a document: a deleted file is as much a reason to revisit the
+    prose as an edited one, and a rename arrives as a remove plus an add.
+    """
+    seen: dict[str, None] = {}
+    for commit in commits:
+        for key in ("added", "modified", "removed"):
+            for path in commit.get(key) or []:
+                seen.setdefault(path, None)
+    return list(seen)
+
+
+async def _sync_documents_for_push(db: AsyncSession, event) -> dict | None:
+    """Flag documents whose linked code this push touched.
+
+    Returns a summary for the webhook response, or None when the push is
+    irrelevant to Docs. Never raises: see the call site.
+    """
+    from sqlalchemy import select
+
+    from aexy.models.repository import Repository
+    from aexy.services.document_sync_service import DocumentSyncService
+
+    commits = event.commits or []
+    paths = _changed_paths(commits)
+    if not paths:
+        return None
+
+    head_sha = ""
+    for commit in reversed(commits):
+        head_sha = commit.get("id") or commit.get("sha") or ""
+        if head_sha:
+            break
+    if not head_sha:
+        return None
+
+    try:
+        repo = (
+            await db.execute(
+                select(Repository).where(Repository.full_name == event.repository)
+            )
+        ).scalar_one_or_none()
+        if not repo:
+            return None
+
+        return await DocumentSyncService(db).handle_code_change(
+            repository_id=str(repo.id),
+            commit_sha=head_sha,
+            changed_paths=paths,
+        )
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.exception(
+            "Document sync failed for push to %s: %s", event.repository, exc
+        )
+        return None
 
 
 async def _enforce_webhook_rate_limit(scope_key: str, limit: int, window_seconds: int = 60) -> None:
@@ -161,6 +224,20 @@ async def handle_github_webhook(
                     task_links_created += len(links)
         if task_links_created > 0:
             result["task_links_created"] = task_links_created
+
+        # Tell Docs the code moved. `handle_code_change` marks every code
+        # link whose path the push touched, then routes each linked document
+        # by its owner's plan tier — regenerate now, queue for the daily
+        # batch, or just flag it. Until this call existed the method had no
+        # callers at all, so no document ever learned that its source had
+        # changed and the whole freshness pipeline behind it was inert.
+        #
+        # Deliberately after task sync and deliberately non-fatal: a failure
+        # here must not make GitHub retry a delivery whose ingestion already
+        # succeeded.
+        doc_sync = await _sync_documents_for_push(db, event)
+        if doc_sync:
+            result["document_sync"] = doc_sync
 
     elif event.event_type == "pull_request" and event.pull_request:
         # Process PR for task references and status updates

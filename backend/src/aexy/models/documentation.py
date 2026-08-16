@@ -543,6 +543,21 @@ class DocumentCodeLink(Base):
         index=True,
     )
 
+    # Whoever set this sync up. Distinct from `documents.created_by_id`: the
+    # person who wrote a document is often not the person who wired it to a
+    # repository, and it is the latter whose plan tier decides how the sync
+    # behaves and whose GitHub access it falls back on.
+    #
+    # SET NULL rather than CASCADE — losing a developer must never delete the
+    # link between a document and the code it describes. A null owner means
+    # "orphaned", which the transfer path repairs; it does not mean "delete".
+    owner_developer_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     # Link target
     link_type: Mapped[str] = mapped_column(
         String(50), default=DocumentLinkType.FILE.value, nullable=False

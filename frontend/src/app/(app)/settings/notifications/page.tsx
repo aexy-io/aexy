@@ -135,6 +135,7 @@ export const EVENT_TYPE_LABELS: Record<string, { label: string; description: str
   document_mentioned: { label: "Mentioned in document", description: "When you're @mentioned in a document comment" },
   document_commented: { label: "Document comment", description: "When someone comments on a document you own or a thread you're in" },
   document_ai_proposal: { label: "AI proposed a doc update", description: "When an AI suggests an edit to your document and it needs review" },
+  document_sync_ownership_transferred: { label: "Doc sync handed to you", description: "When someone leaves the workspace and their doc-to-code syncs become yours" },
   // Chat
   chat_mention: { label: "Chat mention", description: "When you're @mentioned in a chat message" },
   ai_conversation_shared: { label: "AI conversation shared", description: "When someone shares an AI conversation with you" },

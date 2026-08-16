@@ -65,6 +65,12 @@ ACTIVITY_CONFIG: dict[str, dict[str, Any]] = {
     "compose_repo_health": {"retry": LLM_RETRY, "timeout": timedelta(minutes=15)},
     "embed_pr_summary": {"retry": LLM_RETRY, "timeout": timedelta(minutes=5)},
     "enqueue_workspace_weekly_digests": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=30)},
+    # Documentation freshness — the fan-out is a single query, the per-workspace
+    # drain is one LLM generation per queued document. LLM_RETRY on the latter so
+    # a rate limit is retried rather than losing the queue entry.
+    "enqueue_document_sync_queues": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)},
+    "process_document_sync_queue": {"retry": LLM_RETRY, "timeout": timedelta(minutes=30)},
+    "regenerate_document": {"retry": LLM_RETRY, "timeout": timedelta(minutes=15)},
     # Phase 4C — task-PR alignment
     "analyze_task_pr_alignment": {"retry": LLM_RETRY, "timeout": timedelta(minutes=10)},
     # Phase B — performance-review digests

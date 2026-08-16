@@ -289,6 +289,45 @@ class GitHubAppService:
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
+    async def get_installation_token_for_account(
+        self,
+        account_login: str,
+    ) -> tuple[str, int] | None:
+        """Get an installation access token for a GitHub account itself.
+
+        Every other resolution here starts from a developer — an installation
+        is reachable only through the `GitHubConnection` of the person who
+        made it. That makes an installation the property of an individual, and
+        so every background job that reads a repository stops the day that
+        individual's connection goes away, even though the installation is
+        still live and the org still has the app.
+
+        This asks the question the background jobs actually mean: does *any*
+        active installation cover this account? Callers should prefer it and
+        fall back to a named developer, not the other way round.
+
+        Returns (token, installation_id) or None if no installation covers it.
+        """
+        if not self.db:
+            raise GitHubAppError("Database session required")
+
+        stmt = (
+            select(GitHubInstallation)
+            .where(GitHubInstallation.account_login == account_login)
+            .where(GitHubInstallation.is_active == True)  # noqa: E712
+            # Oldest first: the org's original installation is the one least
+            # likely to be a short-lived personal grant.
+            .order_by(GitHubInstallation.created_at.asc())
+        )
+        result = await self.db.execute(stmt)
+        installation = result.scalars().first()
+
+        if not installation:
+            return None
+
+        token, _ = await self.get_installation_access_token(installation.installation_id)
+        return token, installation.installation_id
+
     async def get_installation_token_for_developer(
         self,
         developer_id: str,
@@ -565,3 +604,57 @@ class GitHubAppService:
                 }
                 for branch in response.json()
             ]
+
+
+class GitHubServiceAdapter:
+    """Adapt `GitHubAppService` to the content interface the document
+    generation service expects.
+
+    `DocumentGenerationService` asks for content by `(repository_full_name,
+    path, branch)`. `GitHubAppService` answers by `(installation_id, owner,
+    repo, path, ref)`. Handing the app service straight to the generation
+    service therefore fails with a `TypeError` — `installation_id` receives
+    the repository name, and `path` is never supplied at all. Both the API
+    and the background sync paths need the same bridge, so it lives beside
+    the class it wraps rather than in one caller.
+
+    Lived in `api/documents.py` until the background sync path needed it too;
+    a service importing an API module to reach it would have been backwards.
+    """
+
+    def __init__(self, app_service: GitHubAppService, installation_id: int, owner: str, repo: str):
+        self.app_service = app_service
+        self.installation_id = installation_id
+        self.owner = owner
+        self.repo = repo
+
+    def _normalize_path(self, path: str) -> str:
+        """Normalize path - convert '.' or '/' to empty string for root."""
+        if path in (".", "/", "./"):
+            return ""
+        return path.strip("/")
+
+    async def get_directory_contents(
+        self, repository_full_name: str, path: str, branch: str
+    ) -> list[dict]:
+        """Get directory contents."""
+        normalized_path = self._normalize_path(path)
+        return await self.app_service.get_repository_contents(
+            installation_id=self.installation_id,
+            owner=self.owner,
+            repo=self.repo,
+            path=normalized_path,
+            ref=branch,
+        )
+
+    async def get_file_content(
+        self, repository_full_name: str, path: str, branch: str
+    ) -> dict | None:
+        """Get file content."""
+        return await self.app_service.get_file_content(
+            installation_id=self.installation_id,
+            owner=self.owner,
+            repo=self.repo,
+            path=path,
+            ref=branch,
+        )

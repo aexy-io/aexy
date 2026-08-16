@@ -342,6 +342,11 @@ NOTIFICATION_TEMPLATES = {
         "body_template": "{actor_label} proposed an update to \"{document_title}\" — review pending",
         "email_subject": "Review pending: proposed update to {document_title}",
     },
+    NotificationEventType.DOCUMENT_SYNC_OWNERSHIP_TRANSFERRED: {
+        "title": "Documentation syncs handed to you",
+        "body_template": "{previous_owner} left the workspace, so their {sync_count} doc-to-code syncs moved to you",
+        "email_subject": "You now own {sync_count} documentation syncs",
+    },
     NotificationEventType.CHAT_MENTION: {
         "title": "Mentioned in chat",
         "body_template": "{mentioner_name} mentioned you: {snippet}",

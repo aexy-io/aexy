@@ -75,6 +75,7 @@ def get_all_activities() -> list:
         analyze_review,
         batch_profile_sync,
         batch_report_usage,
+        enqueue_document_sync_queues,
         process_document_sync_queue,
         regenerate_document,
         reset_daily_limits,
@@ -305,6 +306,7 @@ def get_all_activities() -> list:
         batch_report_usage,
         aggregate_billing_usage,
         batch_profile_sync,
+        enqueue_document_sync_queues,
         process_document_sync_queue,
         regenerate_document,
         # Sync
