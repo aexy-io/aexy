@@ -24,8 +24,14 @@ export type WorkspaceScope = "all" | string;
 /** Persisted form of the scope: follow the current workspace, or span them all. */
 export type WorkspaceScopeMode = "current" | "all";
 
-/** Which tracker a row came from. */
-export type WorkSource = "all" | "tasks" | "tickets";
+/**
+ * Which tracker a row came from.
+ *
+ * "tickets" is the form-ticket queue; "service_desk" is the desk, a separate
+ * app with its own permission — the two share a database table but not a
+ * meaning, and somebody usually works one of them, not both.
+ */
+export type WorkSource = "all" | "tasks" | "tickets" | "service_desk";
 
 /**
  * The bucket a stat tile filters to. Buckets rather than raw statuses because

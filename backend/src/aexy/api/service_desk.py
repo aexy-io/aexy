@@ -10,7 +10,7 @@ import logging
 import re
 from urllib.parse import quote
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.api.developers import get_current_developer
@@ -305,8 +305,24 @@ async def get_dashboard(workspace_id: str, db: AsyncSession = Depends(get_db), c
 
 
 @router.get("/tickets", response_model=list[ServiceDeskTicketResponse])
-async def list_tickets(workspace_id: str, db: AsyncSession = Depends(get_db), current: Developer = Depends(get_current_developer)):
-    return await ServiceDeskService(db).list_tickets(workspace_id, developer_id=current.id)
+async def list_tickets(
+    workspace_id: str,
+    assigned_to_me: bool = False,
+    limit: int | None = Query(default=None, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """Tickets on this desk that the caller may see.
+
+    `assigned_to_me` narrows to the caller's own queue — what the Home dashboard
+    asks for. It is a filter within the caller's scope, not a way around it.
+    """
+    return await ServiceDeskService(db).list_tickets(
+        workspace_id,
+        developer_id=current.id,
+        assigned_to=str(current.id) if assigned_to_me else None,
+        limit=limit,
+    )
 
 
 @router.post("/tickets/manual", status_code=status.HTTP_201_CREATED)
