@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.1] - 2026-08-17
+
+Tell us what Aexy should do next — and the first app that asks you to.
+
+### Added: feedback, and voting on it
+
+A suggestion, a problem, a question, or a request for an app we have not
+switched on. Written from one composer, reachable from the command palette, the
+feedback board, and the access grid.
+
+**The board is shared and votable.** Ten teams asking for the same thing should
+read as one item with a count rather than ten copies nobody can compare, which
+is why items are visible across workspaces. That is only acceptable if wanting
+something does not also disclose who wants it, so a row on the board carries no
+author and no workspace — only whether it is yours. Sending something counts as
+your first vote for it, because a new item sitting at zero next to a week-old
+one reads as unwanted rather than new.
+
+**Every item gets an answer.** Feedback goes to the people who build Aexy rather
+than to your own admins, and a status — triaged, planned, shipped, declined —
+notifies whoever wrote it. "Declined" is a status on purpose: an answer of no
+that is never delivered is indistinguishable from being ignored.
+
+The composer shows you the context it is attaching — the page you were on, the
+workspace — before you send, because collecting that quietly is the sort of
+thing you should be able to check first.
+
+### Changed: Learning is switched on by us, not from the access grid
+
+Learning is off everywhere and cannot be enabled from inside a workspace. It
+stays listed in the access grid, because an admin should be able to see that the
+app exists and ask for it, but the checkbox is inert and every path that could
+grant it — a member's overrides, an access template, approving a request —
+refuses it rather than only the obvious one.
+
+Asking for it opens the feedback composer instead of filing an access request.
+An access request asks your workspace's admin for something they control; nobody
+in your workspace can grant this one, so a request would have sat in a queue
+with no action available to anybody who could see it.
+
+### Fixed: the app catalog endpoint could not be read at all
+
+`get_app_list()` assumed every module has a route. The MCP modules gate groups
+of API capabilities and have nothing to navigate to, so the lookup raised and
+took the whole catalog down rather than the one module with it.
+
 ## [0.20.0] - 2026-08-17
 
 ### Added: your service desk tickets, on Home
