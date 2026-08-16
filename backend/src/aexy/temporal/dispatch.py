@@ -224,6 +224,17 @@ ACTIVITY_CONFIG: dict[str, dict[str, Any]] = {
 
 DEFAULT_CONFIG = {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)}
 
+# How long one attempt to start a workflow may take before it is a failure.
+#
+# Starting a workflow is a single gRPC call to a Temporal that is normally in the
+# same cluster, so seconds is already generous. It needs a deadline because a
+# great many callers are HTTP request handlers, and "unreachable" is not always a
+# refused connection: a wedged server, a partition, or a port forward outliving
+# what it forwarded to all complete the TCP handshake and then say nothing. With
+# no deadline those requests never return at all, and callers that carefully
+# handle a dispatch failure never get the chance to.
+START_WORKFLOW_RPC_TIMEOUT = timedelta(seconds=5)
+
 
 async def dispatch(
     activity_name: str,
@@ -231,6 +242,7 @@ async def dispatch(
     task_queue: str = TaskQueue.OPERATIONS,
     workflow_id: str | None = None,
     reject_duplicate_id: bool = False,
+    rpc_timeout: timedelta | None = None,
 ) -> str:
     """Start a single-activity workflow (fire-and-forget replacement for .delay()).
 
@@ -243,6 +255,9 @@ async def dispatch(
         input: Dataclass input for the activity.
         task_queue: Task queue to use.
         workflow_id: Optional workflow ID for idempotency.
+        rpc_timeout: Deadline for the start call itself, defaulting to
+            ``START_WORKFLOW_RPC_TIMEOUT``. Raises on expiry, like any other
+            failure to start — callers already treat that as "it did not queue".
 
     Returns:
         Workflow run ID.
@@ -265,6 +280,7 @@ async def dispatch(
         ),
         id=wf_id,
         task_queue=task_queue,
+        rpc_timeout=rpc_timeout or START_WORKFLOW_RPC_TIMEOUT,
         **(
             {"id_reuse_policy": WorkflowIDReusePolicy.REJECT_DUPLICATE}
             if reject_duplicate_id

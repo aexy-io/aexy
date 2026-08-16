@@ -26,6 +26,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.models.developer import Developer
+from aexy.models.notification import EmailNotificationLog
 from aexy.models.service_desk import ServiceDeskMailbox, ServiceDeskTicket
 from aexy.models.ticketing import Ticket, TicketResponse
 from aexy.models.workspace import Workspace, WorkspaceMember
@@ -152,6 +153,36 @@ async def test_no_channel_at_all_is_not_worth_retrying(
     outcome = await send_service_desk_email(db_session, mb, REQUESTER, "Subject", "Body")
 
     assert outcome == SEND_UNCONFIGURED
+
+
+@pytest.mark.asyncio
+async def test_mail_that_could_not_be_sent_is_still_recorded(
+    db_session: AsyncSession, monkeypatch
+):
+    """An unconfigured deployment still owes an audit trail.
+
+    Skipping the send entirely when nothing is configured is tempting and wrong:
+    the log row is how anyone answers "did this requester ever get written to?",
+    and a desk that silently stops recording attempted mail cannot be audited at
+    all. The row is the same one a provider failure writes.
+    """
+    ws = await _ws(db_session, f"audit-{uuid4().hex[:6]}")
+    mb = await _mailbox(db_session, ws)
+    _email_service(monkeypatch, configured=False)
+
+    outcome = await send_service_desk_email(db_session, mb, REQUESTER, "Subject", "Body")
+
+    assert outcome == SEND_UNCONFIGURED
+    logged = (
+        await db_session.execute(
+            select(EmailNotificationLog).where(
+                EmailNotificationLog.recipient_email == REQUESTER
+            )
+        )
+    ).scalars().all()
+    assert len(logged) == 1, "the attempt has to leave a trace"
+    assert logged[0].status == "failed"
+    assert "not configured" in (logged[0].error_message or "")
 
 
 @pytest.mark.asyncio
