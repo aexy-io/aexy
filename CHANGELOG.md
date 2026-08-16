@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.0] - 2026-08-17
+
+### Added: your service desk tickets, on Home
+
+Home listed tasks, bugs, stories and form tickets — everything on your plate
+except the queue some people spend their whole day in. Service Desk tickets are
+rows in the same table as form tickets but they are not the same thing: the desk
+is its own app, with its own permission and its own row-level visibility, and
+the generic ticket list excludes them on purpose so that turning the module off
+does not leave its tickets showing up elsewhere. So they arrive here as their
+own source rather than by loosening that exclusion.
+
+**Only the ones assigned to you.** The desk's own scope can be an entire
+account's traffic — that is a triage view, and this page is a personal one. The
+filter is applied on top of the desk's visibility rules and never instead of
+them: asking for "assigned to me" cannot surface a ticket the desk would deny
+you, so an assignment left behind when somebody moved off an account stays
+invisible to them. The "Everyone's tickets" toggle beside it still widens the
+form tickets it was built for, and deliberately does not reach across.
+
+The source is gated on Service Desk access on its own, so somebody on the desk
+and off forms sees their desk queue and no form tickets, and the reverse holds
+too. Rows open the ticket in the desk. A tracker you have no access to is left
+out of the breakdown entirely rather than shown sitting at zero, which reads as
+"none of those" rather than "not yours to see".
+
 ## [0.19.1] - 2026-08-17
 
 Switching workspace now moves the page you are on, and the changelog is

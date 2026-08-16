@@ -584,3 +584,42 @@ async def test_split_family_reassignment_is_scoped_and_atomic(
         row = await db_session.get(Ticket, ticket_id)
         await db_session.refresh(row)
         assert row.assignee_id == desk["kam_b_id"]
+
+
+@pytest.mark.asyncio
+async def test_assigned_to_me_narrows_within_the_scope_never_past_it(client, desk, tickets):
+    """The Home dashboard's filter is a filter, not a second way in.
+
+    `assigned_to_me` exists so the personal work list can ask for one person's
+    queue instead of pulling a KAM's whole account traffic. It is applied on top
+    of `resolve_scope_clause`: an Ops Lead who can see every ticket still gets
+    only their own back, and a KAM cannot reach a peer's ticket by asking for
+    tickets assigned to them — the scope clause has already excluded it.
+    """
+    ws = desk["ws"]
+    b = _sd(ws)
+
+    # A KAM: same rows either way, because their scope is already their own work.
+    scoped = await client.get(f"{b}/tickets?assigned_to_me=true", headers=desk["kam_a"])
+    assert scoped.status_code == 200, scoped.text
+    assert {t["ticket_id"] for t in scoped.json()} == {tickets["a"], tickets["finance"]}
+
+    # KAM B asking for "mine" gets theirs, and nothing of KAM A's.
+    other = await client.get(f"{b}/tickets?assigned_to_me=true", headers=desk["kam_b"])
+    assert {t["ticket_id"] for t in other.json()} == {tickets["b"]}
+
+    # The Ops Head sees every ticket unfiltered...
+    everything = await client.get(f"{b}/tickets", headers=desk["head"])
+    assert {t["ticket_id"] for t in everything.json()} == set(tickets.values())
+    # ...and none of them once they ask for their own: they are assigned to KAMs.
+    mine = await client.get(f"{b}/tickets?assigned_to_me=true", headers=desk["head"])
+    assert mine.json() == []
+
+
+@pytest.mark.asyncio
+async def test_the_desk_list_can_be_capped(client, desk, tickets):
+    """The dashboard asks for a page of work, not the desk's entire history."""
+    ws = desk["ws"]
+    capped = await client.get(f"{_sd(ws)}/tickets?limit=1", headers=desk["head"])
+    assert capped.status_code == 200, capped.text
+    assert len(capped.json()) == 1

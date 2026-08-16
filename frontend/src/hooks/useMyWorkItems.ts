@@ -3,16 +3,17 @@
 import { useMemo } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { MyAssignedTask, TicketListItem, developerApi, ticketsApi } from "@/lib/api";
+import { serviceDeskApi, type ServiceDeskTicket } from "@/lib/service-desk-api";
 import { useAuth } from "./useAuth";
 import { useWorkspace } from "./useWorkspace";
 import { useAppAccess } from "./useAppAccess";
 import { useMyWorkStore, type StatusBucket, type WorkspaceScope } from "@/stores/myWorkStore";
 
-/** A work item — task, bug, story or form ticket — as the queue renders it. */
+/** A work item — task, bug, story, form ticket or service desk ticket. */
 export type WorkItem = {
   kind: "task" | "ticket";
   /** For `kind: "task"`, which tracker it came from. Drives the row's icon. */
-  itemType: "task" | "bug" | "story" | "ticket";
+  itemType: "task" | "bug" | "story" | "ticket" | "service_desk";
   id: string;
   title: string;
   subtitle: string;
@@ -113,8 +114,12 @@ export function useMyWorkItems() {
     userId
   );
   const canSeeTickets = hasAppAccess("tickets");
+  // A separate app with its own permission and its own visibility rules, so it
+  // is gated separately: somebody on the desk and off forms should see their
+  // desk queue here, and vice versa.
+  const canSeeServiceDesk = hasAppAccess("service_desk");
 
-  const taskQueryEnabled = !!scope && source !== "tickets";
+  const taskQueryEnabled = !!scope && (source === "all" || source === "tasks");
   const taskQuery = useQuery<MyAssignedTask[]>({
     queryKey: ["myWork", scope, includeDone],
     queryFn: () =>
@@ -131,10 +136,16 @@ export function useMyWorkItems() {
   // authority, and a workspace the person can't see tickets in fails its own
   // request without taking the rest of the page down.
   const ticketWorkspaceIds = useMemo(() => {
-    if (!canSeeTickets || source === "tasks") return [];
+    if (!canSeeTickets || (source !== "all" && source !== "tickets")) return [];
     if (scope && scope !== "all") return [scope];
     return workspaceList.map((w) => w.id);
   }, [canSeeTickets, source, scope, workspaceList]);
+
+  const serviceDeskWorkspaceIds = useMemo(() => {
+    if (!canSeeServiceDesk || (source !== "all" && source !== "service_desk")) return [];
+    if (scope && scope !== "all") return [scope];
+    return workspaceList.map((w) => w.id);
+  }, [canSeeServiceDesk, source, scope, workspaceList]);
 
   const ticketQueries = useQueries({
     queries: ticketWorkspaceIds.map((workspaceId) => ({
@@ -152,6 +163,20 @@ export function useMyWorkItems() {
     })),
   });
 
+  // Always the caller's own queue, never the whole desk scope — a KAM's scope
+  // can be an entire account's traffic, which is a triage view, not a personal
+  // one. The "Everyone's tickets" toggle beside it widens the *form* tickets it
+  // was built for and deliberately does not reach across into the desk.
+  const serviceDeskQueries = useQueries({
+    queries: serviceDeskWorkspaceIds.map((workspaceId) => ({
+      queryKey: ["myWorkServiceDesk", workspaceId, userId],
+      queryFn: () =>
+        serviceDeskApi.listTickets(workspaceId, { assigned_to_me: true, limit: 100 }),
+      enabled: !!userId,
+      retry: false,
+    })),
+  });
+
   const workspaceNameById = useMemo(() => {
     const map = new Map<string, string>();
     for (const w of workspaceList) map.set(w.id, w.name);
@@ -164,12 +189,16 @@ export function useMyWorkItems() {
   const ticketSignature = ticketQueries
     .map((q) => `${q.dataUpdatedAt}:${q.errorUpdatedAt}`)
     .join(",");
+  const serviceDeskData = serviceDeskQueries.map((q) => q.data);
+  const serviceDeskSignature = serviceDeskQueries
+    .map((q) => `${q.dataUpdatedAt}:${q.errorUpdatedAt}`)
+    .join(",");
 
   /** Every item in scope, before the status bucket is applied. */
   const scopedItems = useMemo(() => {
     const items: WorkItem[] = [];
 
-    if (source !== "tickets") {
+    if (source === "all" || source === "tasks") {
       for (const task of taskQuery.data ?? []) {
         items.push({
           kind: "task",
@@ -214,18 +243,43 @@ export function useMyWorkItems() {
       }
     });
 
+    serviceDeskData.forEach((data, index) => {
+      const workspaceId = serviceDeskWorkspaceIds[index];
+      const tickets: ServiceDeskTicket[] = data ?? [];
+      for (const ticket of tickets) {
+        items.push({
+          kind: "ticket",
+          itemType: "service_desk",
+          // The detail route is keyed by the generic ticket id, not by the
+          // service-desk row's own id.
+          id: ticket.ticket_id,
+          title: ticket.subject || ticket.requester_name || ticket.requester_email || "",
+          subtitle: ticket.account_name ?? "",
+          reference: ticket.display_id,
+          status: ticket.status ?? "",
+          priority: null,
+          createdAt: ticket.created_at,
+          workspaceId,
+          workspaceName: workspaceNameById.get(workspaceId) ?? null,
+          href: `/service-desk/tickets/${ticket.ticket_id}`,
+        });
+      }
+    });
+
     const query = search.trim();
     return items
       .filter((item) => matchesSearch(item, query))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    // `ticketData` is rebuilt every render; `ticketSignature` is what actually
-    // changes when a ticket query resolves.
+    // `ticketData`/`serviceDeskData` are rebuilt every render; the signatures
+    // are what actually change when one of those queries resolves.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     source,
     taskQuery.data,
     ticketSignature,
     ticketWorkspaceIds,
+    serviceDeskSignature,
+    serviceDeskWorkspaceIds,
     workspaceNameById,
     search,
   ]);
@@ -251,6 +305,7 @@ export function useMyWorkItems() {
         bug: scopedItems.filter((i) => i.itemType === "bug").length,
         story: scopedItems.filter((i) => i.itemType === "story").length,
         ticket: scopedItems.filter((i) => i.itemType === "ticket").length,
+        service_desk: scopedItems.filter((i) => i.itemType === "service_desk").length,
       },
     }),
     [scopedItems]
@@ -259,13 +314,15 @@ export function useMyWorkItems() {
   const isLoading =
     isLoadingAccess ||
     (taskQueryEnabled && taskQuery.isLoading) ||
-    ticketQueries.some((q) => q.isLoading);
+    ticketQueries.some((q) => q.isLoading) ||
+    serviceDeskQueries.some((q) => q.isLoading);
 
   return {
     items,
     counts,
     isLoading,
     canSeeTickets,
+    canSeeServiceDesk,
     workspaces: workspaceList,
     showWorkspaceFilter,
     scope,

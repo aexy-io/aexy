@@ -1457,8 +1457,20 @@ class ServiceDeskService:
     # ----------------------------------------------------------- tickets
 
     async def list_tickets(
-        self, workspace_id: str, developer_id: str | None = None
+        self,
+        workspace_id: str,
+        developer_id: str | None = None,
+        assigned_to: str | None = None,
+        limit: int | None = None,
     ) -> list[ServiceDeskTicketResponse]:
+        """Tickets on this desk, in the caller's scope.
+
+        `assigned_to` narrows to one owner's queue. It is applied on top of the
+        scope clause, never instead of it: "assigned to me" must not become a way
+        to see a ticket the desk's own visibility rules would deny — an
+        assignment made before somebody was moved off an account would otherwise
+        keep showing them that account's ticket.
+        """
         query = (
             select(ServiceDeskTicket, Ticket, ServiceDeskAccount)
             .join(Ticket, Ticket.id == ServiceDeskTicket.ticket_id)
@@ -1470,6 +1482,10 @@ class ServiceDeskService:
             clause = await resolve_scope_clause(self.db, workspace_id, developer_id)
             if clause is not None:
                 query = query.where(clause)
+        if assigned_to is not None:
+            query = query.where(Ticket.assignee_id == assigned_to)
+        if limit is not None:
+            query = query.limit(limit)
         rows = (await self.db.execute(query)).all()
         prefix = await ticket_prefix(workspace_id=workspace_id, db=self.db)
         out: list[ServiceDeskTicketResponse] = []

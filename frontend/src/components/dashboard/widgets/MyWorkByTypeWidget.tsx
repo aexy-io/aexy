@@ -1,15 +1,28 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { BookOpen, Bug as BugIcon, CheckSquare, PieChart, Ticket } from "lucide-react";
+import {
+  BookOpen,
+  Bug as BugIcon,
+  CheckSquare,
+  LifeBuoy,
+  PieChart,
+  Ticket,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useMyWorkItems } from "@/hooks/useMyWorkItems";
 
-const ROWS: { key: "task" | "bug" | "story" | "ticket"; icon: LucideIcon; bar: string; text: string }[] = [
+const ROWS: {
+  key: "task" | "bug" | "story" | "ticket" | "service_desk";
+  icon: LucideIcon;
+  bar: string;
+  text: string;
+}[] = [
   { key: "task", icon: CheckSquare, bar: "bg-blue-500", text: "text-blue-400" },
   { key: "bug", icon: BugIcon, bar: "bg-red-500", text: "text-red-400" },
   { key: "story", icon: BookOpen, bar: "bg-purple-500", text: "text-purple-400" },
   { key: "ticket", icon: Ticket, bar: "bg-cyan-500", text: "text-cyan-400" },
+  { key: "service_desk", icon: LifeBuoy, bar: "bg-teal-500", text: "text-teal-400" },
 ];
 
 /**
@@ -21,9 +34,15 @@ const ROWS: { key: "task" | "bug" | "story" | "ticket"; icon: LucideIcon; bar: s
  */
 export function MyWorkByTypeWidget() {
   const t = useTranslations("myWork");
-  const { counts, canSeeTickets, isLoading } = useMyWorkItems();
+  const { counts, canSeeTickets, canSeeServiceDesk, isLoading } = useMyWorkItems();
 
-  const rows = ROWS.filter((row) => row.key !== "ticket" || canSeeTickets);
+  // A row for a tracker somebody has no access to would sit at zero forever and
+  // read as "no bugs" rather than "not yours to see".
+  const rows = ROWS.filter((row) => {
+    if (row.key === "ticket") return canSeeTickets;
+    if (row.key === "service_desk") return canSeeServiceDesk;
+    return true;
+  });
   const max = Math.max(1, ...rows.map((row) => counts.byType[row.key]));
 
   return (

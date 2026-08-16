@@ -28,14 +28,15 @@
     "statusLabel": "Status:",
     "assignedToMe": "Assigned to me",
     "everyonesTickets": "Everyone's tickets",
-    "onlyMineHint": "Tasks are always yours; this scopes the tickets",
+    "onlyMineHint": "Tasks and service desk tickets are always yours; this scopes the form tickets",
     "justNow": "Just now",
     "hoursAgo": "{count}h ago",
     "daysAgo": "{count}d ago",
     "sources": {
       "all": "All",
       "tasks": "Tasks",
-      "tickets": "Tickets"
+      "tickets": "Tickets",
+      "serviceDesk": "Service desk"
     },
     "stats": {
       "items": "Items",
@@ -49,7 +50,8 @@
       "task": "Task",
       "bug": "Bug",
       "story": "Story",
-      "ticket": "Ticket"
+      "ticket": "Ticket",
+      "service_desk": "Service desk"
     },
     "typeCount": {
       "task": "{count, plural, one {# task} other {# tasks}}",
