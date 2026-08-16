@@ -37,10 +37,14 @@ class ToolResult:
 
 
 class McpToolExecutor:
-    def __init__(self, app, catalog: dict[str, Any], granted: set[str]):
+    def __init__(self, app, catalog: dict[str, Any], granted: set[str], db=None):
         self._app = app
         self._catalog = catalog
         self._granted = granted
+        # Optional so the executor stays constructible in tests and scripts.
+        # Without a session there is no policy evaluation — which is the
+        # pre-governance behaviour, and is why the transport always passes one.
+        self._db = db
 
     async def call(
         self,
@@ -85,6 +89,23 @@ class McpToolExecutor:
                 "workspace.",
                 is_error=True,
             )
+
+        # Permissions are enforced by the endpoint itself, on re-entry below.
+        # This is the other question: should an agent do this unattended? A
+        # refusal here never reaches the API at all, which is the point — the
+        # call must not happen, not happen and be undone.
+        if self._db is not None:
+            from aexy.services.mcp_governance import McpGovernance
+
+            verdict = await McpGovernance(self._db).review(
+                operation=operation,
+                arguments=arguments,
+                developer_id=developer_id,
+                workspace_id=workspace_id,
+                tool_name=tool_name,
+            )
+            if not verdict.allowed:
+                return ToolResult(verdict.message or "Not permitted.", is_error=True)
 
         return await self._perform(
             operation=operation,

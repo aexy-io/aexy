@@ -124,6 +124,7 @@ from aexy.api.google_integration import callback_router as google_callback_route
 # AI Agents
 from aexy.api.agents import router as agents_router
 from aexy.api.agents import writing_style_router
+from aexy.api.agent_pending_actions import router as agent_pending_actions_router
 from aexy.api.agent_policies import router as agent_policies_router
 from aexy.api.agent_policies import audit_router as agent_audit_router
 # Automation-Agent Integration
@@ -342,6 +343,10 @@ api_router.include_router(agents_router, tags=["agents"], dependencies=[Depends(
 api_router.include_router(writing_style_router, tags=["writing-style"])
 # Agent Policy Engine
 api_router.include_router(agent_policies_router, tags=["agent-policies"], dependencies=[Depends(require_app_access("agents"))])
+# Deliberately not gated on the "agents" app: the queue holds actions from
+# any MCP client, and a workspace without that app enabled still needs to be
+# able to see and decline what an agent asked to do in it.
+api_router.include_router(agent_pending_actions_router)
 api_router.include_router(agent_audit_router, tags=["agent-audit"])
 # Automation-Agent Integration
 api_router.include_router(automation_agents_router, tags=["automation-agents"])

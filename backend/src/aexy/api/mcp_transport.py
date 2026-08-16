@@ -176,7 +176,7 @@ async def _dispatch(
 
         catalog = _catalog(request)
         granted = await _granted(db, grant, catalog)
-        executor = McpToolExecutor(request.app, catalog, granted)
+        executor = McpToolExecutor(request.app, catalog, granted, db=db)
         outcome = await executor.call(
             tool_name=name,
             arguments=params.get("arguments") or {},

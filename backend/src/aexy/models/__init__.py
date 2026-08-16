@@ -134,6 +134,7 @@ from aexy.models.notification import (
     EVENT_TYPE_TO_CATEGORY,
 )
 from aexy.models.agent_policy import (
+    AgentPendingAction,
     AgentPolicy,
     AgentPolicyDecision,
     AgentConfigAudit,
@@ -739,6 +740,7 @@ __all__ = [
     "EVENT_TYPE_TO_CATEGORY",
     # Agent Policies
     "AgentDraft",
+    "AgentPendingAction",
     "AgentPolicy",
     "AgentPolicyDecision",
     "AgentConfigAudit",
