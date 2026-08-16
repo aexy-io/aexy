@@ -28,6 +28,13 @@ and the page around them each held their own copy.
 There is one selection now, and every consumer hears about a change, so
 anything keyed to the workspace refetches where it stands.
 
+### Fixed: Automations on Home looked like a dead button
+
+The panel opened below every widget on the dashboard, which on any layout with
+more than a couple of them is off the bottom of the screen. Pressing the button
+moved nothing you could see. It opens directly under the toolbar it belongs to
+now.
+
 ### Fixed: the changelog was a narrow column of fragments
 
 Three things, none of them width alone.
