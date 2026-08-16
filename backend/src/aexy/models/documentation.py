@@ -18,7 +18,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.sql import func
+from sqlalchemy.sql import func, text
 
 from aexy.core.database import Base
 
@@ -981,7 +981,13 @@ class DocumentComment(Base):
     # anchor ids still have marks, so a thread whose passage was edited away is
     # grouped as unanchored from what the client can see. A stored flag would need
     # the server to walk TipTap JSON on every list, and would go stale between.
-    anchor_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    #
+    # Not `index=True`: that builds a standalone `ix_document_comments_anchor_id`,
+    # which nothing queries — the rail always asks for one document's anchors — and
+    # which the migration does not create, so `create_all` databases and migrated
+    # ones would disagree about their indexes. The composite partial index in
+    # `__table_args__` is the one that matches both the query and the migration.
+    anchor_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     # The passage as it read when the comment was made. Shown in the rail and in
     # the unanchored group — a thread whose text is gone is unreadable without it,
     # and it is what makes "this no longer matches the document" legible.
@@ -1032,6 +1038,18 @@ class DocumentComment(Base):
         # The panel's only read: every comment on a document, oldest first.
         Index("ix_document_comments_document_created", "document_id", "created_at"),
         Index("ix_document_comments_parent", "parent_id"),
+        # The rail's read: every anchored thread on one document. Partial, because
+        # the whole-document comments are exactly the rows this is never used for.
+        # Kept identical to migrate_document_comment_anchors.sql — a database built
+        # by create_all and one built by the migration have to agree. On SQLite the
+        # postgresql_where is ignored and this degrades to a plain composite index,
+        # which is only a test-time difference in speed, not in behaviour.
+        Index(
+            "ix_document_comments_document_anchor",
+            "document_id",
+            "anchor_id",
+            postgresql_where=text("anchor_id IS NOT NULL"),
+        ),
     )
 
 

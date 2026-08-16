@@ -15,19 +15,62 @@ one. So the things worth pinning are the seams of that decision:
   thread readable afterwards.
 """
 
+import re
 import uuid
+from pathlib import Path
 
 import pytest
 
 from aexy.api.documents import _comment_to_response
 from aexy.models.developer import Developer
-from aexy.models.documentation import Document
+from aexy.models.documentation import Document, DocumentComment
 from aexy.services.document_comment_service import DocumentCommentService
 from tests.conftest import seed_workspace
 
 pytestmark = pytest.mark.asyncio
 
 ANCHOR = "a1b2c3d4e5"
+
+
+MIGRATION = (
+    Path(__file__).resolve().parents[2]
+    / "scripts"
+    / "migrate_document_comment_anchors.sql"
+)
+
+
+def test_the_model_and_the_migration_build_the_same_indexes():
+    """Two ways to get this table exist, and they have to agree.
+
+    Tables are created from the models on startup, but an existing database gets
+    these columns from the migration instead — so a `create_all` database and a
+    migrated one are the same schema only as long as nobody edits one side alone.
+    They already diverged once: `index=True` on `anchor_id` built a standalone
+    index that the migration never creates and that nothing queries, while the
+    partial index the migration *does* create was missing from the model. Nothing
+    failed, which is exactly why this is asserted rather than trusted — the cost
+    only shows up as a query plan that is fine in development and wrong in
+    production.
+    """
+    declared = {index.name for index in DocumentComment.__table__.indexes}
+    in_migration = set(
+        re.findall(
+            r"CREATE INDEX (?:IF NOT EXISTS )?(\w+)", MIGRATION.read_text(), re.I
+        )
+    )
+    assert in_migration, "the migration creates no indexes — did the file move?"
+
+    # Every index the migration creates must be declared, or a fresh database
+    # silently lacks it.
+    assert in_migration <= declared, in_migration - declared
+    # And no index may be declared on the anchor columns that the migration does
+    # not create, or an existing database silently lacks *that* one.
+    anchor_only = {
+        index.name
+        for index in DocumentComment.__table__.indexes
+        if any(column.name in {"anchor_id", "quoted_text"} for column in index.columns)
+    }
+    assert anchor_only <= in_migration, anchor_only - in_migration
 
 
 async def _developer(db, name="Ada") -> str:
