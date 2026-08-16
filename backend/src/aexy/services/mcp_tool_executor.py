@@ -25,6 +25,9 @@ from aexy.services.mcp_catalog import CALL_TOOL, DISCOVER_TOOL
 # slow endpoint cannot pin an MCP session open indefinitely.
 REQUEST_TIMEOUT_SECONDS = 60.0
 
+# Set on every re-entry so the application can recognise its own agent traffic.
+AGENT_ACTOR_HEADER = "X-Aexy-Agent-Actor"
+
 # Discovery returns matches, not the whole catalogue: a client that asked to
 # search is trying to narrow, and 1866 operations is not narrowing.
 MAX_DISCOVER_RESULTS = 25
@@ -201,6 +204,12 @@ class McpToolExecutor:
         headers = {
             "Authorization": f"Bearer {create_access_token(developer_id)}",
             "Content-Type": "application/json",
+            # Lets an endpoint behave differently for an agent than for the
+            # person at a keyboard — routing a rewrite into review rather than
+            # applying it, say. Forging this header from outside only ever
+            # *restricts* the caller, so it is not an escalation path; the
+            # Authorization token remains the thing that grants anything.
+            AGENT_ACTOR_HEADER: "mcp",
         }
 
         transport = httpx.ASGITransport(app=self._app)

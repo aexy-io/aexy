@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.api.access_guard import ensure_app_enabled
@@ -36,6 +36,7 @@ from aexy.schemas.document import (
     LinkedDocumentResponse,
     ProposedEditReject,
     ProposedEditResponse,
+    ProposeMarkdownRequest,
     TemplateCreate,
     TemplateListResponse,
     TemplateResponse,
@@ -49,6 +50,7 @@ from aexy.services.github_app_service import (
     GitHubServiceAdapter,
 )
 from aexy.services.document_service import DocumentService
+from aexy.services.markdown_to_tiptap import MarkdownError, markdown_to_tiptap
 from aexy.services.document_sync_service import DocumentSyncService
 from aexy.services.document_generation_service import DocumentGenerationService
 from aexy.services.proposed_edits_service import (
@@ -545,15 +547,40 @@ async def get_document(
     return document_to_response(document)
 
 
+def is_agent_request(request: Request) -> bool:
+    """Did this come from an agent acting for someone, or from a person?
+
+    Set by `McpToolExecutor` on its own re-entry. A forged header only ever
+    routes the caller into review instead of writing, so it cannot be used to
+    gain anything — the bearer token is still what grants access.
+    """
+    from aexy.services.mcp_tool_executor import AGENT_ACTOR_HEADER
+
+    return bool(request.headers.get(AGENT_ACTOR_HEADER))
+
+
 @router.patch("/{document_id}", response_model=DocumentResponse)
 async def update_document(
     workspace_id: str,
     document_id: str,
     data: DocumentUpdate,
+    request: Request,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Update a document."""
+    """Update a document.
+
+    A person editing writes straight through. An agent rewriting the *body* of
+    a document that already has one does not: that content is proposed, and
+    somebody approves it. An agent has no way to know which sentences a human
+    wrote and cared about, and a silent overwrite leaves nothing to compare
+    against — the version history records what changed but never that anyone
+    disagreed.
+
+    Title, icon and visibility still apply directly for an agent. They are
+    small, obvious and trivially reversible; making someone approve a rename
+    is the kind of friction that gets a gate switched off.
+    """
     await check_workspace_permission(workspace_id, current_user, db, "member")
 
     service = DocumentService(db)
@@ -565,6 +592,24 @@ async def update_document(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Document not found",
         )
+
+    if (
+        data.content is not None
+        and is_agent_request(request)
+        and (existing.content or {}).get("content")
+    ):
+        proposed_edits = ProposedEditsService(db)
+        await proposed_edits.create_proposal(
+            document_id=document_id,
+            source=ProposedEditSource.MANUAL_AI_EDIT,
+            proposed_content=data.content,
+            proposed_by_id=str(current_user.id),
+        )
+        await db.commit()
+        # The document is returned unchanged, deliberately. An agent that read
+        # back its own write and saw its text would report success for a change
+        # nobody has approved yet.
+        return document_to_response(existing)
 
     document = await service.update_document(
         document_id=document_id,
@@ -2178,6 +2223,66 @@ def _to_proposed_edit_response(
         reviewed_at=proposal.reviewed_at,
         reason=proposal.reason,
         is_stale=is_stale,
+    )
+
+
+@router.post(
+    "/{document_id}/propose",
+    response_model=ProposedEditResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def propose_document_update(
+    workspace_id: str,
+    document_id: str,
+    data: ProposeMarkdownRequest,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Propose a rewrite of this document, written in Markdown.
+
+    The way anything that is not the editor should write a document. Send
+    Markdown; the server decides what the document becomes. Editor JSON is not
+    accepted from clients — it would mean trusting an outside writer to know a
+    schema it cannot see, and the failure is silent: one invalid node makes the
+    editor render a blank page, so a bad write looks like an empty document
+    rather than an error.
+
+    Nothing is applied. The result waits in the workspace's review queue with
+    a readable diff against the current text. For an agent this is the point:
+    you have the source in front of you and can say what the page should now
+    say, and the person who owns the page decides whether it does.
+    """
+    await check_workspace_permission(workspace_id, current_user, db, "member")
+
+    doc_service = DocumentService(db)
+    document = await doc_service.get_document(document_id, workspace_id)
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
+        )
+
+    try:
+        content = markdown_to_tiptap(data.markdown)
+    except MarkdownError as exc:
+        # Rejected at the boundary rather than saved and discovered later.
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        )
+
+    proposed_edits = ProposedEditsService(db)
+    proposal = await proposed_edits.create_proposal(
+        document_id=document_id,
+        source=ProposedEditSource.MANUAL_AI_EDIT,
+        proposed_content=content,
+        proposed_by_id=str(current_user.id),
+        diff_summary={"summary": data.summary} if data.summary else None,
+    )
+    await db.commit()
+
+    return _to_proposed_edit_response(
+        proposal,
+        is_stale=bool(proposal.base_content_sha)
+        and proposal.base_content_sha != compute_content_sha(document.content),
     )
 
 

@@ -318,6 +318,19 @@ class GenerateFromRepositoryRequest(BaseModel):
     title: str | None = Field(default=None, max_length=500)
 
 
+class ProposeMarkdownRequest(BaseModel):
+    """A proposed rewrite, written in Markdown.
+
+    Markdown rather than editor JSON on purpose: it is a format a writer can
+    produce without seeing our schema, and one the server can refuse cleanly
+    when it is wrong. Editor JSON fails silently instead — an invalid node
+    renders as a blank page.
+    """
+
+    markdown: str = Field(min_length=1)
+    summary: str | None = Field(default=None, max_length=500)
+
+
 class CodeLinkSyncModeUpdate(BaseModel):
     """How this document should react when its code changes."""
 
