@@ -166,7 +166,6 @@ from aexy.models.documentation import (
     DocumentLinkType,
     DocumentPermission,
     TemplateCategory,
-    SYSTEM_TEMPLATES,
 )
 from aexy.models.tracking import (
     DeveloperStandup,
@@ -768,7 +767,6 @@ __all__ = [
     "DocumentLinkType",
     "DocumentPermission",
     "TemplateCategory",
-    "SYSTEM_TEMPLATES",
     # Tracking
     "DeveloperStandup",
     "WorkLog",

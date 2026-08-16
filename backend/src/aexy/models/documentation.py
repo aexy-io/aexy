@@ -18,7 +18,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.sql import func
+from sqlalchemy.sql import func, text
 
 from aexy.core.database import Base
 
@@ -71,6 +71,12 @@ class TemplateCategory(str, Enum):
     GUIDES = "guides"
     CHANGELOG = "changelog"
     CUSTOM = "custom"
+    # For the documents that are not about code — a PRD, a postmortem, meeting
+    # notes. The frontend's `TemplateCategory` union and the template picker's
+    # labels have carried "general" since they were written; this enum was the
+    # side that never had it, so the two could not agree on a value the client
+    # was already prepared to send.
+    GENERAL = "general"
 
 
 class DocumentSpaceRole(str, Enum):
@@ -961,6 +967,32 @@ class DocumentComment(Base):
 
     content: Mapped[str] = mapped_column(Text, nullable=False)
 
+    # Which passage this thread is about. The same id is carried by a
+    # `commentAnchor` mark inside `Document.content`, and that pairing is the only
+    # link between the two — positions are not stored, because every edit above a
+    # comment would move them.
+    #
+    # NULL *is* the whole-document comment, which is why anchored threads and the
+    # discussion at the foot of the document share one table: the distinction is
+    # this field, not a second model. Only ever set on a root comment; a reply
+    # belongs to whatever its parent is about.
+    #
+    # There is deliberately no `is_orphaned` flag. The editor already knows which
+    # anchor ids still have marks, so a thread whose passage was edited away is
+    # grouped as unanchored from what the client can see. A stored flag would need
+    # the server to walk TipTap JSON on every list, and would go stale between.
+    #
+    # Not `index=True`: that builds a standalone `ix_document_comments_anchor_id`,
+    # which nothing queries — the rail always asks for one document's anchors — and
+    # which the migration does not create, so `create_all` databases and migrated
+    # ones would disagree about their indexes. The composite partial index in
+    # `__table_args__` is the one that matches both the query and the migration.
+    anchor_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # The passage as it read when the comment was made. Shown in the rail and in
+    # the unanchored group — a thread whose text is gone is unreadable without it,
+    # and it is what makes "this no longer matches the document" legible.
+    quoted_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     # Resolution is a property of the thread, so it is only meaningful on a root
     # comment. Resolving is not deleting — a resolved thread stays readable.
     is_resolved: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -1006,52 +1038,25 @@ class DocumentComment(Base):
         # The panel's only read: every comment on a document, oldest first.
         Index("ix_document_comments_document_created", "document_id", "created_at"),
         Index("ix_document_comments_parent", "parent_id"),
+        # The rail's read: every anchored thread on one document. Partial, because
+        # the whole-document comments are exactly the rows this is never used for.
+        # Kept identical to migrate_document_comment_anchors.sql — a database built
+        # by create_all and one built by the migration have to agree. On SQLite the
+        # postgresql_where is ignored and this degrades to a plain composite index,
+        # which is only a test-time difference in speed, not in behaviour.
+        Index(
+            "ix_document_comments_document_anchor",
+            "document_id",
+            "anchor_id",
+            postgresql_where=text("anchor_id IS NOT NULL"),
+        ),
     )
 
 
-# System templates to seed
-SYSTEM_TEMPLATES = [
-    {
-        "name": "API Reference",
-        "category": TemplateCategory.API_DOCS.value,
-        "description": "Comprehensive API documentation with endpoints, parameters, and examples",
-        "icon": "api",
-        "variables": ["repository", "path", "language", "custom_instructions"],
-        "is_system": True,
-    },
-    {
-        "name": "README",
-        "category": TemplateCategory.README.value,
-        "description": "Project README with installation, usage, and configuration",
-        "icon": "book",
-        "variables": ["repository", "path", "files", "custom_instructions"],
-        "is_system": True,
-    },
-    {
-        "name": "Function Documentation",
-        "category": TemplateCategory.FUNCTION_DOCS.value,
-        "description": "Detailed documentation for individual functions/methods",
-        "icon": "function",
-        "variables": ["file_path", "repository", "language", "custom_instructions"],
-        "is_system": True,
-    },
-    {
-        "name": "Module Overview",
-        "category": TemplateCategory.MODULE_DOCS.value,
-        "description": "Documentation for a module or directory of related code",
-        "icon": "folder",
-        "variables": ["path", "repository", "file_list", "custom_instructions"],
-        "is_system": True,
-    },
-    {
-        "name": "Getting Started Guide",
-        "category": TemplateCategory.GUIDES.value,
-        "description": "Step-by-step guide for new users",
-        "icon": "rocket",
-        "variables": ["repository", "custom_instructions"],
-        "is_system": True,
-    },
-]
+# The `SYSTEM_TEMPLATES` list that used to sit here is gone. It described
+# templates to seed as rows, was consumed by nothing, and once
+# `services/document_templates_catalog.py` became the real catalogue it was the
+# more discoverable of two competing answers to "what are the system templates".
 
 
 # ---------------------------------------------------------------------------

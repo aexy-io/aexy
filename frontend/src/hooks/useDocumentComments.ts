@@ -28,10 +28,19 @@ export function useDocumentComments(
   const invalidate = () => queryClient.invalidateQueries({ queryKey: key });
 
   const create = useMutation({
-    mutationFn: (input: { content: string; parentId?: string | null }) =>
+    mutationFn: (input: {
+      content: string;
+      parentId?: string | null;
+      // Anchors a new thread to a passage. Omitted for a reply (the parent is what
+      // the thread is about) and for a comment on the document as a whole.
+      anchorId?: string | null;
+      quotedText?: string | null;
+    }) =>
       documentApi.createComment(workspaceId!, documentId!, {
         content: input.content,
         parent_id: input.parentId ?? null,
+        anchor_id: input.anchorId ?? null,
+        quoted_text: input.quotedText ?? null,
       }),
     onSuccess: invalidate,
   });

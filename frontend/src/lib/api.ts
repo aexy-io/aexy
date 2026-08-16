@@ -6877,6 +6877,11 @@ export interface DocumentComment {
   author_name: string | null;
   author_avatar: string | null;
   content: string;
+  /** The passage this thread is about — paired with a `commentAnchor` mark in the
+   *  document. Null on a whole-document comment and on every reply. A thread whose
+   *  id has no mark left is shown as unanchored rather than dropped. */
+  anchor_id: string | null;
+  quoted_text: string | null;
   is_resolved: boolean;
   resolved_by_id: string | null;
   resolved_at: string | null;
@@ -6956,7 +6961,12 @@ export const documentApi = {
   createComment: async (
     workspaceId: string,
     documentId: string,
-    data: { content: string; parent_id?: string | null }
+    data: {
+      content: string;
+      parent_id?: string | null;
+      anchor_id?: string | null;
+      quoted_text?: string | null;
+    }
   ): Promise<DocumentComment> => {
     const response = await api.post(
       `/workspaces/${workspaceId}/documents/${documentId}/comments`,
@@ -7374,6 +7384,28 @@ export const templateApi = {
       params: { workspace_id: workspaceId },
     });
     return response.data;
+  },
+
+  /** Rename or re-body one of the workspace's own templates. System ones 404. */
+  update: async (
+    templateId: string,
+    workspaceId: string,
+    data: {
+      name?: string;
+      description?: string | null;
+      icon?: string | null;
+      content_template?: Record<string, unknown>;
+    }
+  ): Promise<DocumentTemplate> => {
+    const response = await api.patch(`/templates/${templateId}`, data, {
+      params: { workspace_id: workspaceId },
+    });
+    return response.data;
+  },
+
+  /** Retire a workspace template. Deactivates server-side, so it is recoverable. */
+  remove: async (templateId: string, workspaceId: string): Promise<void> => {
+    await api.delete(`/templates/${templateId}`, { params: { workspace_id: workspaceId } });
   },
 };
 

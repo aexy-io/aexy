@@ -9,6 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from aexy.services.activity_logger import log_activity
+from aexy.services.document_templates_catalog import (
+    SystemTemplate,
+    get_system_template,
+    is_system_template_id,
+    list_system_templates,
+)
 from aexy.models.documentation import (
     CollaborationSession,
     Document,
@@ -24,6 +30,11 @@ from aexy.models.documentation import (
     DocumentVisibility,
     TemplateCategory,
 )
+
+# Stamped on the catalogue's templates, which ship with the code and so have no
+# creation date of their own. Fixed rather than `now()` so the same template does
+# not appear to change every time it is listed.
+SYSTEM_TEMPLATE_TIMESTAMP = datetime(2026, 1, 1, tzinfo=timezone.utc)
 
 
 class DocumentService:
@@ -549,8 +560,47 @@ class DocumentService:
 
     # ==================== Templates ====================
 
+    @staticmethod
+    def _system_template_row(entry: "SystemTemplate") -> DocumentTemplate:
+        """A catalogue entry shaped like the row the API and callers expect.
+
+        Deliberately never added to the session: system templates live in code
+        (``document_templates_catalog``), and this only spares every caller and
+        every response builder from having to know that. It means the rest of this
+        service, ``create_document`` and the template endpoints all keep working
+        against one type.
+        """
+        return DocumentTemplate(
+            id=entry.id,
+            workspace_id=None,
+            name=entry.name,
+            description=entry.description,
+            category=entry.category.value,
+            icon=entry.icon,
+            content_template=entry.content,
+            prompt_template=entry.prompt,
+            system_prompt=None,
+            variables=list(entry.variables),
+            is_system=True,
+            is_active=True,
+            created_by_id=None,
+            # A code-defined template has no creation time. A fixed value keeps the
+            # response stable between requests, which `now()` would not.
+            created_at=SYSTEM_TEMPLATE_TIMESTAMP,
+            updated_at=SYSTEM_TEMPLATE_TIMESTAMP,
+        )
+
     async def get_template(self, template_id: str) -> DocumentTemplate | None:
-        """Get a template by ID."""
+        """Get a template by ID, from the catalogue or the workspace's own rows.
+
+        The catalogue is consulted first so a ``sys:`` id resolves without a query
+        — and so ``create_document(template_id=…)`` and ``duplicate_template``
+        work against system templates unchanged.
+        """
+        if is_system_template_id(template_id):
+            entry = get_system_template(template_id)
+            return self._system_template_row(entry) if entry else None
+
         stmt = select(DocumentTemplate).where(DocumentTemplate.id == template_id)
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
@@ -561,22 +611,26 @@ class DocumentService:
         category: str | None = None,
         include_system: bool = True,
     ) -> list[DocumentTemplate]:
-        """List available templates."""
-        conditions = [DocumentTemplate.is_active == True]  # noqa: E712
+        """List available templates: the code catalogue plus the workspace's own.
 
-        if workspace_id:
-            if include_system:
-                conditions.append(
-                    or_(
-                        DocumentTemplate.workspace_id == workspace_id,
-                        DocumentTemplate.is_system == True,  # noqa: E712
-                    )
-                )
-            else:
-                conditions.append(DocumentTemplate.workspace_id == workspace_id)
-        else:
-            conditions.append(DocumentTemplate.is_system == True)  # noqa: E712
+        System templates come from the catalogue rather than from rows, so they
+        are the same everywhere and change on deploy. They are listed first, in
+        the catalogue's own order (Blank first) rather than alphabetically —
+        picker order is an authoring decision.
+        """
+        system: list[DocumentTemplate] = (
+            [self._system_template_row(entry) for entry in list_system_templates(category)]
+            if include_system
+            else []
+        )
 
+        if not workspace_id:
+            return system
+
+        conditions = [
+            DocumentTemplate.is_active == True,  # noqa: E712
+            DocumentTemplate.workspace_id == workspace_id,
+        ]
         if category:
             conditions.append(DocumentTemplate.category == category)
 
@@ -585,9 +639,8 @@ class DocumentService:
             .where(and_(*conditions))
             .order_by(DocumentTemplate.name)
         )
-
         result = await self.db.execute(stmt)
-        return list(result.scalars().all())
+        return system + list(result.scalars().all())
 
     async def create_template(
         self,
@@ -646,6 +699,78 @@ class DocumentService:
             icon=original.icon,
             system_prompt=original.system_prompt,
         )
+
+    #: What a workspace may change about its own template. Anything else on the
+    #: model — `is_system`, `workspace_id`, `created_by_id` — is not the caller's
+    #: to set, so an unknown key is dropped rather than trusted.
+    EDITABLE_TEMPLATE_FIELDS = frozenset(
+        {"name", "description", "icon", "content_template", "category"}
+    )
+
+    async def update_workspace_template(
+        self,
+        template_id: str,
+        workspace_id: str,
+        fields: dict,
+    ) -> DocumentTemplate | None:
+        """Rename or re-body one of this workspace's own templates.
+
+        Scoped to ``workspace_id`` in the query rather than checked afterwards, so
+        a template id from another workspace is indistinguishable from one that
+        does not exist. System templates live in code and are not editable at all;
+        the way to change one is to fork it (``duplicate_template``).
+
+        ``fields`` carries only what the request actually sent, so a description
+        can be cleared by sending ``null`` — treating ``None`` as "leave alone"
+        would make a template's description unremovable once written.
+        """
+        if is_system_template_id(template_id):
+            return None
+
+        stmt = select(DocumentTemplate).where(
+            DocumentTemplate.id == template_id,
+            DocumentTemplate.workspace_id == workspace_id,
+        )
+        template = (await self.db.execute(stmt)).scalar_one_or_none()
+        if template is None:
+            return None
+
+        for key, value in fields.items():
+            if key in self.EDITABLE_TEMPLATE_FIELDS:
+                setattr(template, key, value)
+
+        await self.db.commit()
+        # Refreshed even though the session sets `expire_on_commit=False`. Taking
+        # it out looked like removing a redundant round trip and instead made
+        # every rename fail with `MissingGreenlet`: the endpoint builds its
+        # response in a sync function, so the first attribute that still needs
+        # loading attempts IO outside the greenlet and raises. The update itself
+        # had already committed, so the row changed and the caller saw a 500 —
+        # the worst shape a bug can take. Found by renaming one in a browser.
+        await self.db.refresh(template)
+        return template
+
+    async def delete_workspace_template(self, template_id: str, workspace_id: str) -> bool:
+        """Retire one of this workspace's templates. Returns whether it existed.
+
+        Deactivated rather than deleted: ``list_templates`` already filters on
+        ``is_active``, and a hard delete would be the one destructive action in the
+        templates surface — a mis-click that cannot be undone.
+        """
+        if is_system_template_id(template_id):
+            return False
+
+        stmt = select(DocumentTemplate).where(
+            DocumentTemplate.id == template_id,
+            DocumentTemplate.workspace_id == workspace_id,
+        )
+        template = (await self.db.execute(stmt)).scalar_one_or_none()
+        if template is None:
+            return False
+
+        template.is_active = False
+        await self.db.commit()
+        return True
 
     # ==================== Code Links ====================
 

@@ -33,6 +33,7 @@ from aexy.schemas.document import (
     TemplateCreate,
     TemplateListResponse,
     TemplateResponse,
+    TemplateUpdate,
 )
 from aexy.services.document_comment_service import DocumentCommentService
 from aexy.services.github_app_service import GitHubAppService
@@ -261,6 +262,8 @@ def _comment_to_response(comment) -> DocumentCommentResponse:
         author_name=comment.author.name if comment.author else None,
         author_avatar=comment.author.avatar_url if comment.author else None,
         content=comment.content,
+        anchor_id=comment.anchor_id,
+        quoted_text=comment.quoted_text,
         is_resolved=comment.is_resolved,
         resolved_by_id=str(comment.resolved_by_id) if comment.resolved_by_id else None,
         resolved_at=comment.resolved_at,
@@ -317,6 +320,8 @@ async def create_document_comment(
         author_id=str(current_user.id),
         content=data.content,
         parent_id=data.parent_id,
+        anchor_id=data.anchor_id,
+        quoted_text=data.quoted_text,
     )
     return _comment_to_response(comment)
 
@@ -1582,6 +1587,31 @@ async def get_ancestors(
 # ==================== Templates Router ====================
 
 
+def _template_to_response(template) -> TemplateResponse:
+    """One row — or one catalogue entry wearing a row's shape — as the API sees it.
+
+    The same fifteen lines were written out at each of the four endpoints that
+    return a template, which is three more places to forget a new field in.
+    """
+    return TemplateResponse(
+        id=str(template.id),
+        workspace_id=str(template.workspace_id) if template.workspace_id else None,
+        name=template.name,
+        description=template.description,
+        category=template.category,
+        icon=template.icon,
+        content_template=template.content_template,
+        prompt_template=template.prompt_template,
+        system_prompt=template.system_prompt,
+        variables=template.variables,
+        is_system=template.is_system,
+        is_active=template.is_active,
+        created_by_id=str(template.created_by_id) if template.created_by_id else None,
+        created_at=template.created_at,
+        updated_at=template.updated_at,
+    )
+
+
 @template_router.get("", response_model=list[TemplateListResponse])
 async def list_templates(
     workspace_id: str | None = None,
@@ -1638,23 +1668,7 @@ async def get_template(
     if template.workspace_id:
         await ensure_app_enabled(db, str(template.workspace_id), "docs")
 
-    return TemplateResponse(
-        id=str(template.id),
-        workspace_id=str(template.workspace_id) if template.workspace_id else None,
-        name=template.name,
-        description=template.description,
-        category=template.category,
-        icon=template.icon,
-        content_template=template.content_template,
-        prompt_template=template.prompt_template,
-        system_prompt=template.system_prompt,
-        variables=template.variables,
-        is_system=template.is_system,
-        is_active=template.is_active,
-        created_by_id=str(template.created_by_id) if template.created_by_id else None,
-        created_at=template.created_at,
-        updated_at=template.updated_at,
-    )
+    return _template_to_response(template)
 
 
 @template_router.post(
@@ -1692,23 +1706,7 @@ async def create_template(
         system_prompt=data.system_prompt,
     )
 
-    return TemplateResponse(
-        id=str(template.id),
-        workspace_id=str(template.workspace_id) if template.workspace_id else None,
-        name=template.name,
-        description=template.description,
-        category=template.category,
-        icon=template.icon,
-        content_template=template.content_template,
-        prompt_template=template.prompt_template,
-        system_prompt=template.system_prompt,
-        variables=template.variables,
-        is_system=template.is_system,
-        is_active=template.is_active,
-        created_by_id=str(template.created_by_id) if template.created_by_id else None,
-        created_at=template.created_at,
-        updated_at=template.updated_at,
-    )
+    return _template_to_response(template)
 
 
 @template_router.post("/{template_id}/duplicate", response_model=TemplateResponse)
@@ -1743,23 +1741,76 @@ async def duplicate_template(
             detail="Template not found",
         )
 
-    return TemplateResponse(
-        id=str(template.id),
-        workspace_id=str(template.workspace_id) if template.workspace_id else None,
-        name=template.name,
-        description=template.description,
-        category=template.category,
-        icon=template.icon,
-        content_template=template.content_template,
-        prompt_template=template.prompt_template,
-        system_prompt=template.system_prompt,
-        variables=template.variables,
-        is_system=template.is_system,
-        is_active=template.is_active,
-        created_by_id=str(template.created_by_id) if template.created_by_id else None,
-        created_at=template.created_at,
-        updated_at=template.updated_at,
+    return _template_to_response(template)
+
+
+async def _require_template_author(
+    workspace_id: str, current_user: Developer, db: AsyncSession
+) -> None:
+    """Same gate as creating one: a member may curate this workspace's templates."""
+    await ensure_app_enabled(db, workspace_id, "docs")
+    if not await WorkspaceService(db).check_permission(
+        workspace_id, str(current_user.id), "member"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have permission to manage templates in this workspace",
+        )
+
+
+@template_router.patch("/{template_id}", response_model=TemplateResponse)
+async def update_template(
+    template_id: str,
+    data: TemplateUpdate,
+    workspace_id: str = Query(...),
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Rename or re-body one of this workspace's own templates.
+
+    A system template is not editable — it ships with the code. Forking it
+    (`POST /{id}/duplicate`) is what gives a workspace a version it can change,
+    so this 404s on a `sys:` id rather than pretending to save.
+    """
+    await _require_template_author(workspace_id, current_user, db)
+
+    # `exclude_unset` so an omitted field is left alone while an explicit `null`
+    # clears it — the two are different requests and should not collapse.
+    template = await DocumentService(db).update_workspace_template(
+        template_id,
+        workspace_id,
+        data.model_dump(exclude_unset=True),
     )
+    if not template:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Template not found in this workspace",
+        )
+
+    return _template_to_response(template)
+
+
+@template_router.delete("/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_template(
+    template_id: str,
+    workspace_id: str = Query(...),
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Retire one of this workspace's templates.
+
+    Deactivates rather than deletes, so a mis-click is recoverable in the database
+    even though the UI stops offering it. System templates cannot be retired: they
+    are not rows, and hiding one per workspace would need a preference this does
+    not have.
+    """
+    await _require_template_author(workspace_id, current_user, db)
+
+    if not await DocumentService(db).delete_workspace_template(template_id, workspace_id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Template not found in this workspace",
+        )
 
 
 # =============================================================================

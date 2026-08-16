@@ -11,8 +11,18 @@ DocumentStatus = Literal["draft", "generating", "generated", "failed"]
 DocumentLinkType = Literal["file", "directory"]
 DocumentPermission = Literal["view", "comment", "edit", "admin"]
 DocumentVisibility = Literal["private", "workspace", "public"]
+# Kept in step with `TemplateCategory` in models/documentation.py and with the
+# frontend union in lib/api.ts. Three hand-maintained copies of one list, and
+# "general" was already in the frontend's before it was in either of these.
 TemplateCategory = Literal[
-    "api_docs", "readme", "function_docs", "module_docs", "guides", "changelog", "custom"
+    "api_docs",
+    "readme",
+    "function_docs",
+    "module_docs",
+    "guides",
+    "changelog",
+    "custom",
+    "general",
 ]
 DocumentSpaceRole = Literal["admin", "editor", "viewer"]
 
@@ -380,6 +390,14 @@ class DocumentCommentCreate(BaseModel):
     # service rejects a parent that is itself a reply rather than silently
     # flattening it — one level of threading is a decision, not an accident.
     parent_id: str | None = None
+    # The passage this thread is about, paired with a `commentAnchor` mark in the
+    # document's content. Absent means a comment about the document as a whole,
+    # which is what the section at the foot of the page shows. Ignored on a reply:
+    # a reply is about whatever its parent was.
+    anchor_id: str | None = Field(default=None, max_length=64)
+    # The selected text, kept so an anchored thread stays readable after the
+    # passage is edited away. Bounded because a selection can be a whole document.
+    quoted_text: str | None = Field(default=None, max_length=2000)
 
 
 class DocumentCommentUpdate(BaseModel):
@@ -404,6 +422,11 @@ class DocumentCommentResponse(BaseModel):
     # Empty for a deleted comment — the row stays so replies keep their place,
     # but the body does not come back.
     content: str
+    # Null on a whole-document comment and on every reply. The client pairs this
+    # with the `commentAnchor` marks it can see, and any thread whose id has no
+    # mark left is shown as unanchored rather than dropped.
+    anchor_id: str | None = None
+    quoted_text: str | None = None
     is_resolved: bool = False
     resolved_by_id: str | None = None
     resolved_at: datetime | None = None

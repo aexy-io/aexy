@@ -8,6 +8,8 @@ import {
   Underline as UnderlineIcon,
   Strikethrough,
   Code,
+  BookmarkPlus,
+  MessageSquarePlus,
   Heading1,
   Heading2,
   Heading3,
@@ -31,12 +33,17 @@ import { cn } from "@/lib/utils";
 
 interface EditorToolbarProps {
   editor: Editor;
+  /** Starts a thread on the current selection. Absent when the document cannot be
+   *  commented on (the read-only embed), which is also when there is no rail. */
+  onComment?: () => void;
   onSave?: () => void;
   editorMode?: "rich" | "markdown";
   onModeToggle?: () => void;
+  /** Offered when the document can become a reusable workspace template. */
+  onSaveAsTemplate?: () => void;
 }
 
-export function EditorToolbar({ editor, onSave, editorMode = "rich", onModeToggle }: EditorToolbarProps) {
+export function EditorToolbar({ editor, onComment, onSave, editorMode = "rich", onModeToggle, onSaveAsTemplate }: EditorToolbarProps) {
   // Add link
   const setLink = useCallback(() => {
     const previousUrl = editor.getAttributes("link").href;
@@ -255,8 +262,41 @@ export function EditorToolbar({ editor, onSave, editorMode = "rich", onModeToggl
         </ToolbarButton>
       </ToolbarGroup>
 
+      {onComment && (
+        <ToolbarGroup>
+          {/* Deliberately here and not a TipTap BubbleMenu — see the note further
+              down this file's sibling (DocumentEditor.tsx:431) on why that was
+              removed. A toolbar button needs no floating positioning and so cannot
+              reintroduce the reconciler crash. */}
+          <ToolbarButton
+            onClick={onComment}
+            disabled={editor.state.selection.empty}
+            tooltip={
+              editor.state.selection.empty
+                ? "Select text to comment on it"
+                : "Comment on the selection"
+            }
+          >
+            <MessageSquarePlus className="h-4 w-4" />
+          </ToolbarButton>
+        </ToolbarGroup>
+      )}
+
       {/* Spacer */}
       <div className="flex-1" />
+
+      {/* A document that works is the best description of a template. This turns
+          the one in front of you into one the workspace can reuse. */}
+      {onSaveAsTemplate && (
+        <button
+          onClick={onSaveAsTemplate}
+          className="mr-2 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
+          title="Save this document as a reusable template"
+        >
+          <BookmarkPlus className="h-4 w-4" />
+          Save as template
+        </button>
+      )}
 
       {/* Mode Toggle */}
       {onModeToggle && (

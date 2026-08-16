@@ -1,0 +1,57 @@
+{
+  "docs": {
+    "templates": {
+      "dialogLabel": "Choose a template",
+      "heading": "New document",
+      "subheading": "Start from a template, or from a blank page",
+      "close": "Close",
+      "search": "Search templates",
+      "generateHeading": "Generate from code",
+      "generateBody": "Point AI at a repository and let it draft the document",
+      "loading": "Loading templates",
+      "noMatch": "No template matches “{query}”.",
+      "workspaceBadge": "This workspace",
+      "customiseTitle": "Save an editable copy to this workspace",
+      "customiseLabel": "Customise {name}",
+      "renameTitle": "Rename",
+      "renameLabel": "Rename {name}",
+      "saveName": "Save name",
+      "cancelRename": "Cancel rename",
+      "retireTitle": "Retire — stops offering it, keeps the row",
+      "retireLabel": "Retire {name}",
+      "retireConfirm": "Retire “{name}”?",
+      "retire": "Retire",
+      "categories": {
+        "general": "Planning & process",
+        "module_docs": "Architecture",
+        "guides": "Guides & runbooks",
+        "api_docs": "API documentation",
+        "readme": "Project README",
+        "function_docs": "Function documentation",
+        "changelog": "Changelog",
+        "custom": "Custom"
+      }
+    },
+    "emptyState": {
+      "prompt": "Start writing, or pick a template:",
+      "failed": "That template could not be loaded. Your document is untouched."
+    },
+    "editor": {
+      "templateNamePrompt": "Template name",
+      "untitledTemplate": "Untitled template",
+      "savedAsTemplate": "Saved as template",
+      "saveAsTemplateFailed": "Could not save as template",
+      "markdownWarning": "In Markdown, the {count, plural, one {# commented passage appears} other {# commented passages appear}} as raw HTML. Editing or deleting that markup unpins the thread from the text — the comment itself is kept either way, with the passage it was written about."
+    },
+    "comments": {
+      "railLabel": "Comment threads",
+      "orphaned": "No longer in the document",
+      "placeholder": "Add a comment…",
+      "composerLabel": "Comment on the selected text",
+      "post": "Comment",
+      "posting": "Posting…",
+      "empty": "Select text and use the comment button to start a thread here.",
+      "documentDiscussion": "Document discussion"
+    }
+  }
+}

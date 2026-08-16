@@ -20,9 +20,17 @@ import { Markdown } from "tiptap-markdown";
 import { common, createLowlight } from "lowlight";
 import { InlineDatabase } from "./extensions/InlineDatabase";
 import { SlashCommands } from "./extensions/SlashCommands";
+import { CommentAnchor, anchorIdsInDoc, newAnchorId } from "./extensions/CommentAnchor";
+import { DocumentCommentRail, type PendingAnchor } from "./DocumentCommentRail";
 import { EditorToolbar } from "./EditorToolbar";
+import { DocumentEmptyState } from "./DocumentEmptyState";
 import { debounce } from "@/lib/utils";
+import { useTemplates } from "@/hooks/useDocuments";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { useTranslations } from "next-intl";
+import type { DocumentTemplate } from "@/lib/api";
 import {
+  AlertCircle,
   Check,
   Cloud,
   Smile,
@@ -49,6 +57,10 @@ interface DocumentEditorProps {
   /** Chromeless embed (macOS app): hide the title/breadcrumb header; the native
    * app shows the title. The toolbar + content still render. */
   embedded?: boolean;
+  /** Enables the template empty state. Omitted in the embed, which is a reader. */
+  workspaceId?: string | null;
+  /** Enables anchored comments. Omitted in the embed, which cannot comment. */
+  documentId?: string | null;
 }
 
 export function DocumentEditor({
@@ -63,7 +75,10 @@ export function DocumentEditor({
   autoSaveDelay = 1000,
   breadcrumb,
   embedded = false,
+  workspaceId,
+  documentId,
 }: DocumentEditorProps) {
+  const t = useTranslations("docs.editor");
   const [localTitle, setLocalTitle] = useState(title);
   const [localIcon, setLocalIcon] = useState(icon || "📄");
   const [isSaving, setIsSaving] = useState(false);
@@ -71,6 +86,25 @@ export function DocumentEditor({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [editorMode, setEditorMode] = useState<EditorMode>("rich");
   const [markdownContent, setMarkdownContent] = useState("");
+  const [templateFeedback, setTemplateFeedback] = useState<"saved" | "failed" | null>(
+    null,
+  );
+  const [pendingAnchor, setPendingAnchor] = useState<PendingAnchor | null>(null);
+  const [activeAnchorId, setActiveAnchorId] = useState<string | null>(null);
+  // The rail's composer text lives here so it outlives the rail's own layout —
+  // a comment being typed should not be one of the things a window resize eats.
+  const [commentDraft, setCommentDraft] = useState("");
+  // `xl` in Tailwind. The rail needs this as a value, not a class: with no gutter
+  // there is nothing to align a card into, so it renders a plain list instead.
+  const hasGutter = useMediaQuery("(min-width: 1280px)");
+  // Which anchors the document still carries. Read from the editor rather than the
+  // saved content so a thread whose text was just deleted becomes unanchored
+  // immediately, not after the next save.
+  const [liveAnchorIds, setLiveAnchorIds] = useState<string[]>([]);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  // Commenting needs a document to attach to and a reader who may write.
+  const commentsEnabled = Boolean(workspaceId && documentId && !readOnly);
+  const { createTemplate } = useTemplates(workspaceId ?? null);
 
   // Use ref for initial content to prevent editor recreation
   const initialContentRef = useRef(content);
@@ -191,6 +225,7 @@ export function DocumentEditor({
       }),
       InlineDatabase,
       SlashCommands,
+      CommentAnchor,
     ],
     content: initialContentRef.current,
     editable: !readOnly,
@@ -210,11 +245,18 @@ export function DocumentEditor({
       },
     },
     onUpdate: ({ editor }) => {
+      setLiveAnchorIds(anchorIdsInDoc(editor.getJSON()));
       if (autoSave && !readOnly) {
         debouncedSave({ content: editor.getJSON() as Record<string, unknown> });
       }
     },
   });
+
+  // Seed the live anchor set from the document as loaded. Without this every
+  // thread reads as unanchored until the first keystroke fires `onUpdate`.
+  useEffect(() => {
+    if (editor) setLiveAnchorIds(anchorIdsInDoc(editor.getJSON()));
+  }, [editor]);
 
   // Handle title change
   const handleTitleChange = useCallback(
@@ -248,6 +290,106 @@ export function DocumentEditor({
     [autoSave, debouncedSave]
   );
 
+  /**
+   * Fill an empty document from a template chosen in the empty state.
+   *
+   * Saved in one call rather than three: title, icon and content land together so
+   * a refresh mid-way cannot leave a document carrying a template's title with
+   * none of its content. The title is only taken when there is nothing to
+   * overwrite — somebody who named the document first meant that name.
+   */
+  const handleApplyTemplate = useCallback(
+    (template: DocumentTemplate) => {
+      if (!editor) return;
+      const content = template.content_template as Record<string, unknown>;
+      editor.commands.setContent(content);
+
+      const untitled = !localTitle.trim() || localTitle === "Untitled";
+      const nextTitle = untitled ? template.name : localTitle;
+      const nextIcon = template.icon || localIcon;
+      setLocalTitle(nextTitle);
+      setLocalIcon(nextIcon);
+      onTitleChange?.(nextTitle);
+      onSaveRef.current({ title: nextTitle, icon: nextIcon, content });
+      editor.commands.focus("end");
+    },
+    [editor, localTitle, localIcon, onTitleChange]
+  );
+
+  /**
+   * Turn this document into a workspace template.
+   *
+   * Named from the document's own title so the picker shows something
+   * recognisable, and prompted rather than silent because a template name is
+   * read by everybody else in the workspace. `prompt` matches how this editor
+   * already asks for a link URL — a modal for one text field would be the only
+   * one in the component.
+   */
+  const handleSaveAsTemplate = useCallback(async () => {
+    if (!editor || !workspaceId) return;
+    const name = window.prompt(
+      t("templateNamePrompt"),
+      localTitle || t("untitledTemplate"),
+    );
+    if (name === null) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    try {
+      await createTemplate.mutateAsync({
+        name: trimmed,
+        category: "custom",
+        content_template: editor.getJSON() as Record<string, unknown>,
+        // `prompt_template` is NOT NULL and feeds the AI generation path, so a
+        // template saved by hand still needs something usable there.
+        prompt_template: `Write a document following the "${trimmed}" template.\n\n{context}`,
+        variables: [],
+        icon: localIcon,
+      });
+      setTemplateFeedback("saved");
+    } catch (error) {
+      // Told, not just logged: the success path shows a badge, so a silent
+      // failure reads as "it worked" to anyone not watching a console.
+      console.error("Failed to save template:", error);
+      setTemplateFeedback("failed");
+    }
+    setTimeout(() => setTemplateFeedback(null), 4000);
+  }, [editor, workspaceId, localTitle, localIcon, createTemplate, t]);
+
+  /**
+   * Start a thread on the current selection.
+   *
+   * The mark goes in immediately so the rail has something to align to while the
+   * comment is still being typed; cancelling takes it back out. The id is generated
+   * here because the mark has to carry it before the comment row exists.
+   */
+  const handleComment = useCallback(() => {
+    if (!editor || editor.state.selection.empty) return;
+    const { from, to } = editor.state.selection;
+    const quoted = editor.state.doc.textBetween(from, to, " ").trim();
+    if (!quoted) return;
+    const anchorId = newAnchorId();
+    editor.chain().focus().setCommentAnchor(anchorId).run();
+    setPendingAnchor({ anchorId, quotedText: quoted.slice(0, 2000) });
+    setActiveAnchorId(anchorId);
+  }, [editor]);
+
+  const handleRemoveAnchor = useCallback(
+    (anchorId: string) => {
+      editor?.commands.unsetCommentAnchor(anchorId);
+      setActiveAnchorId((current) => (current === anchorId ? null : current));
+    },
+    [editor],
+  );
+
+  // Clicking a highlight focuses its thread. Delegated from the container rather
+  // than bound per mark: the marks are ProseMirror's DOM to create and destroy, and
+  // attaching listeners to them would leak on every edit.
+  const handleContentClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    const mark = (event.target as HTMLElement).closest?.("[data-comment-anchor]");
+    const anchorId = mark?.getAttribute("data-comment-anchor");
+    if (anchorId) setActiveAnchorId(anchorId);
+  }, []);
+
   // `handleManualSave` removed — autoSave covers every change path
   // (rich/markdown), the dual-affordance was an audit finding. If a
   // future force-save UX is needed, prefer keyboard (Mod+S) over a
@@ -258,6 +400,19 @@ export function DocumentEditor({
     if (!editor) return;
 
     if (editorMode === "rich") {
+      // Markdown has no way to express a comment anchor, and coming back calls
+      // `setContent`, which rebuilds the document from that Markdown — so every
+      // highlight is dropped on the return trip. The threads themselves are safe
+      // (they are rows, keyed by an id, holding the text they were written
+      // against) and reappear as "no longer in the document", but that is a
+      // surprise worth asking about rather than discovering.
+      const anchors = anchorIdsInDoc(editor.getJSON());
+      if (anchors.length > 0) {
+        const proceed = window.confirm(
+          t("markdownWarning", { count: anchors.length }),
+        );
+        if (!proceed) return;
+      }
       // Switching to markdown mode - extract markdown from editor
       try {
         const markdown = editor.storage.markdown.getMarkdown();
@@ -270,6 +425,10 @@ export function DocumentEditor({
       // Switching to rich mode - parse markdown back into editor
       try {
         editor.commands.setContent(markdownContent);
+        setLiveAnchorIds(anchorIdsInDoc(editor.getJSON()));
+        setPendingAnchor(null);
+        setCommentDraft("");
+        setActiveAnchorId(null);
         setEditorMode("rich");
       } catch (error) {
         console.error("Failed to parse markdown:", error);
@@ -277,7 +436,7 @@ export function DocumentEditor({
         // so the user doesn't lose their work
       }
     }
-  }, [editor, editorMode, markdownContent]);
+  }, [editor, editorMode, markdownContent, t]);
 
   // Handle markdown content change
   const handleMarkdownChange = useCallback(
@@ -404,6 +563,23 @@ export function DocumentEditor({
                         <span>Saved</span>
                       </div>
                     )}
+                    {/* Distinct from "Saved": that is the document, this is the
+                        template it was just copied into. */}
+                    {templateFeedback === "saved" && (
+                      <div className="flex items-center gap-1.5 text-success text-xs animate-fade-in">
+                        <Check className="h-3.5 w-3.5" />
+                        <span>{t("savedAsTemplate")}</span>
+                      </div>
+                    )}
+                    {templateFeedback === "failed" && (
+                      <div
+                        role="alert"
+                        className="flex items-center gap-1.5 text-destructive text-xs animate-fade-in"
+                      >
+                        <AlertCircle className="h-3.5 w-3.5" />
+                        <span>{t("saveAsTemplateFailed")}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -423,7 +599,11 @@ export function DocumentEditor({
             <EditorToolbar
               editor={editor}
               editorMode={editorMode}
+              onComment={commentsEnabled ? handleComment : undefined}
               onModeToggle={handleModeToggle}
+              onSaveAsTemplate={
+                workspaceId && !readOnly && !editor?.isEmpty ? handleSaveAsTemplate : undefined
+              }
             />
           </div>
         )}
@@ -441,32 +621,78 @@ export function DocumentEditor({
             steady-state selection path still crashed because each
             selection causes BubbleMenu to mount/unmount its Tippy
             instance. Top `EditorToolbar` already exposes Bold / Italic /
-            Underline / Code, so the affordance is intact. A custom
-            in-tree floating menu (via @floating-ui/react, not Tippy)
-            can be revisited later if the UX is missed. */}
+            Underline / Code, so the affordance is intact. Commenting
+            on a selection landed in that toolbar for the same reason —
+            a button needs no floating positioning, so it cannot
+            reintroduce this crash — and the thread it opens is an
+            absolutely-positioned card inside this component's own tree
+            (DocumentCommentRail), never appended to document.body. */}
       </div>
 
       {/* Editor Content */}
       <div className="flex-1 overflow-auto">
-        <div className="px-8 py-8">
-          {editorMode === "rich" ? (
-            <EditorContent
-              editor={editor}
-              className="min-h-[500px] [&_.ProseMirror]:text-foreground [&_.ProseMirror]:leading-relaxed [&_.ProseMirror]:text-[17px] [&_.ProseMirror_h1]:text-foreground [&_.ProseMirror_h2]:text-foreground [&_.ProseMirror_h3]:text-foreground [&_.ProseMirror_h1]:font-bold [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h3]:font-semibold [&_.ProseMirror_h1]:text-3xl [&_.ProseMirror_h2]:text-2xl [&_.ProseMirror_h3]:text-xl [&_.ProseMirror_h1]:mt-10 [&_.ProseMirror_h1]:mb-4 [&_.ProseMirror_h2]:mt-8 [&_.ProseMirror_h2]:mb-3 [&_.ProseMirror_h3]:mt-6 [&_.ProseMirror_h3]:mb-2 [&_.ProseMirror_h1]:tracking-tight [&_.ProseMirror_h2]:tracking-tight [&_.ProseMirror_p]:my-4 [&_.ProseMirror_p]:text-foreground [&_.ProseMirror_ul]:my-4 [&_.ProseMirror_ol]:my-4 [&_.ProseMirror_li]:my-1 [&_.ProseMirror_li]:text-foreground [&_.ProseMirror_strong]:text-foreground [&_.ProseMirror_blockquote]:border-l-4 [&_.ProseMirror_blockquote]:border-primary-500 [&_.ProseMirror_blockquote]:pl-5 [&_.ProseMirror_blockquote]:italic [&_.ProseMirror_blockquote]:text-muted-foreground [&_.ProseMirror_blockquote]:bg-muted/30 [&_.ProseMirror_blockquote]:py-3 [&_.ProseMirror_blockquote]:pr-4 [&_.ProseMirror_blockquote]:rounded-r-lg [&_.ProseMirror_code]:bg-muted [&_.ProseMirror_code]:px-1.5 [&_.ProseMirror_code]:py-0.5 [&_.ProseMirror_code]:rounded [&_.ProseMirror_code]:text-primary-400 [&_.ProseMirror_code]:text-sm [&_.ProseMirror_code]:font-mono"
-            />
-          ) : (
-            <div className="min-h-[500px]">
-              <textarea
-                value={markdownContent}
-                onChange={handleMarkdownChange}
-                disabled={readOnly}
-                placeholder="Write your content in Markdown..."
-                className="w-full min-h-[500px] bg-background/50 border border-border rounded-lg p-4 text-foreground font-mono text-sm leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent placeholder-muted-foreground"
-                spellCheck={false}
+        {/* One row from xl — document beside its margin — and one column below,
+            where the threads stack under the document instead. Stacking rather
+            than swapping keeps the rail mounted across the breakpoint, so a
+            half-written comment survives a window resize. */}
+        <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-6 px-8 py-8 xl:flex-row">
+          <div className="min-w-0 flex-1" ref={contentRef} onClick={handleContentClick}>
+            {/* Only while the page is genuinely blank, and only in rich mode —
+                `editor.isEmpty` is live, so it clears itself on the first keystroke. */}
+            {workspaceId && !readOnly && editorMode === "rich" && editor?.isEmpty && (
+              <DocumentEmptyState workspaceId={workspaceId} onApply={handleApplyTemplate} />
+            )}
+            {editorMode === "rich" ? (
+              <EditorContent
+                editor={editor}
+                className="min-h-[500px] [&_.ProseMirror]:text-foreground [&_.ProseMirror]:leading-relaxed [&_.ProseMirror]:text-[17px] [&_.ProseMirror_h1]:text-foreground [&_.ProseMirror_h2]:text-foreground [&_.ProseMirror_h3]:text-foreground [&_.ProseMirror_h1]:font-bold [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h3]:font-semibold [&_.ProseMirror_h1]:text-3xl [&_.ProseMirror_h2]:text-2xl [&_.ProseMirror_h3]:text-xl [&_.ProseMirror_h1]:mt-10 [&_.ProseMirror_h1]:mb-4 [&_.ProseMirror_h2]:mt-8 [&_.ProseMirror_h2]:mb-3 [&_.ProseMirror_h3]:mt-6 [&_.ProseMirror_h3]:mb-2 [&_.ProseMirror_h1]:tracking-tight [&_.ProseMirror_h2]:tracking-tight [&_.ProseMirror_p]:my-4 [&_.ProseMirror_p]:text-foreground [&_.ProseMirror_ul]:my-4 [&_.ProseMirror_ol]:my-4 [&_.ProseMirror_li]:my-1 [&_.ProseMirror_li]:text-foreground [&_.ProseMirror_strong]:text-foreground [&_.ProseMirror_blockquote]:border-l-4 [&_.ProseMirror_blockquote]:border-primary-500 [&_.ProseMirror_blockquote]:pl-5 [&_.ProseMirror_blockquote]:italic [&_.ProseMirror_blockquote]:text-muted-foreground [&_.ProseMirror_blockquote]:bg-muted/30 [&_.ProseMirror_blockquote]:py-3 [&_.ProseMirror_blockquote]:pr-4 [&_.ProseMirror_blockquote]:rounded-r-lg [&_.ProseMirror_code]:bg-muted [&_.ProseMirror_code]:px-1.5 [&_.ProseMirror_code]:py-0.5 [&_.ProseMirror_code]:rounded [&_.ProseMirror_code]:text-primary-400 [&_.ProseMirror_code]:text-sm [&_.ProseMirror_code]:font-mono"
               />
-              <p className="mt-2 text-xs text-muted-foreground">
-                Tip: Use Markdown syntax for formatting. Click &quot;Rich&quot; to preview and switch back to visual editing.
-              </p>
+            ) : (
+              <div className="min-h-[500px]">
+                <textarea
+                  value={markdownContent}
+                  onChange={handleMarkdownChange}
+                  disabled={readOnly}
+                  placeholder="Write your content in Markdown..."
+                  className="w-full min-h-[500px] bg-background/50 border border-border rounded-lg p-4 text-foreground font-mono text-sm leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent placeholder-muted-foreground"
+                  spellCheck={false}
+                />
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Tip: Use Markdown syntax for formatting. Click &quot;Rich&quot; to preview and switch back to visual editing.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* The margin — beside the document from xl, stacked under it below,
+              which is the whole difference between the two layouts. Only in rich
+              mode: the Markdown textarea has no marks to align to.
+
+              Mounted once. It used to be two instances hidden from each other by
+              CSS, which meant two composers with two separate drafts, two sets of
+              observers measuring the same container, and two autofocused
+              textareas racing each other. */}
+          {commentsEnabled && documentId && editorMode === "rich" && (
+            <div className="w-full xl:w-[320px] xl:shrink-0">
+              <DocumentCommentRail
+                workspaceId={workspaceId ?? null}
+                documentId={documentId}
+                contentRef={contentRef}
+                liveAnchorIds={liveAnchorIds}
+                pending={pendingAnchor}
+                onPendingCancel={() => setPendingAnchor(null)}
+                onPendingCommitted={() => setPendingAnchor(null)}
+                activeAnchorId={activeAnchorId}
+                onActiveChange={setActiveAnchorId}
+                onRemoveAnchor={handleRemoveAnchor}
+                draft={commentDraft}
+                onDraftChange={setCommentDraft}
+                // Aligning a card to a mark needs a gutter to align into, and
+                // below xl there is none — so this is a media query rather than a
+                // CSS class: the difference is what the component *does*, not
+                // just how it looks.
+                positioned={hasGutter}
+              />
             </div>
           )}
         </div>

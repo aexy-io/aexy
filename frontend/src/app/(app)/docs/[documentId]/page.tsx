@@ -185,6 +185,12 @@ export default function DocumentPage() {
         autoSave={true}
         autoSaveDelay={1000}
         embedded={embedded}
+        // Drives the template empty state. Withheld from the embed, which is a
+        // read-only view — offering to rewrite the document there would be odd.
+        workspaceId={embedded ? null : currentWorkspaceId}
+        // Drives anchored comments. Withheld from the embed for the same reason as
+        // the bottom section: an embed is a reader.
+        documentId={embedded ? null : documentId}
         breadcrumb={embedded ? undefined : <DocumentBreadcrumb workspaceId={currentWorkspaceId} documentId={documentId} />}
       />
       {/* Comments live under the document rather than in a side panel, and are

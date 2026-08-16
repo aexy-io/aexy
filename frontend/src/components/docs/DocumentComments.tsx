@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import DOMPurify from "isomorphic-dompurify";
 import {
   Check,
@@ -31,11 +32,10 @@ export function DocumentComments({
   workspaceId: string | null;
   documentId: string;
 }) {
+  const t = useTranslations("docs.comments");
   const { user } = useAuth();
   const {
     comments,
-    total,
-    unresolvedCount,
     isLoading,
     createComment,
     isCreating,
@@ -46,6 +46,12 @@ export function DocumentComments({
 
   const [draft, setDraft] = useState("");
   const [collapsed, setCollapsed] = useState(false);
+
+  // Anchored threads belong beside the passage they are about, not at the foot of
+  // the page — the rail renders those. What is left here is what this section was
+  // always for: remarks about the document as a whole.
+  const wholeDocument = comments.filter((comment) => !comment.anchor_id);
+  const wholeDocumentUnresolved = wholeDocument.filter((c) => !c.is_resolved).length;
 
   const submit = async () => {
     const content = draft.trim();
@@ -68,12 +74,14 @@ export function DocumentComments({
         )}
         <MessageSquare className="h-4 w-4 text-muted-foreground" />
         <h2 className="text-sm font-semibold">
-          Comments
-          {total > 0 ? <span className="text-muted-foreground"> · {total}</span> : null}
+          {t("documentDiscussion")}
+          {wholeDocument.length > 0 ? (
+            <span className="text-muted-foreground"> · {wholeDocument.length}</span>
+          ) : null}
         </h2>
-        {unresolvedCount > 0 && (
+        {wholeDocumentUnresolved > 0 && (
           <span className="px-1.5 py-0.5 text-[10px] font-medium bg-primary-500/20 text-primary-400 rounded-full">
-            {unresolvedCount} open
+            {wholeDocumentUnresolved} open
           </span>
         )}
       </button>
@@ -87,12 +95,12 @@ export function DocumentComments({
                   <div key={i} className="h-16 bg-muted rounded-lg animate-pulse" />
                 ))}
               </div>
-            ) : comments.length === 0 ? (
+            ) : wholeDocument.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 No comments yet. Mention someone with @ to bring them in.
               </p>
             ) : (
-              comments.map((comment) => (
+              wholeDocument.map((comment) => (
                 <Thread
                   key={comment.id}
                   comment={comment}
@@ -141,7 +149,7 @@ export function DocumentComments({
   );
 }
 
-function Thread({
+export function Thread({
   comment,
   currentUserId,
   onReply,

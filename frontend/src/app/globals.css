@@ -264,3 +264,41 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* A passage somebody has commented on.
+ *
+ * Keyed on the attribute rather than a class carried by the mark, because the
+ * mark's rendered element is what the Markdown serialiser writes out: classes
+ * on it turned every commented sentence into a wall of `<span class="rounded-sm
+ * bg-amber-400/25 …">` in the Markdown view. The attribute is all that has to
+ * survive, so it is all the mark emits, and the appearance lives here. */
+[data-comment-anchor] {
+  border-radius: 0.125rem;
+  background-color: rgb(251 191 36 / 0.25);
+  border-bottom: 2px solid rgb(245 158 11 / 0.7);
+  cursor: pointer;
+  transition: background-color 150ms;
+}
+
+[data-comment-anchor]:hover {
+  background-color: rgb(251 191 36 / 0.4);
+}
+
+[data-comment-anchor][data-active="true"] {
+  background-color: rgb(251 191 36 / 0.5);
+}
+
+/* Task list rows: checkbox and its text on one line.
+ *
+ * The editor gives every paragraph `my-4` for readable prose, but inside a task
+ * item that margin applies to the text and not to the checkbox beside it, so the
+ * label sat a clear 16px below the box it belongs to. The row is already
+ * `flex items-start`; this is the other half of making that mean anything. */
+.ProseMirror ul[data-type="taskList"] li > div > p {
+  margin: 0;
+}
+
+/* Nudge the box onto the text's optical centre rather than its box top. */
+.ProseMirror ul[data-type="taskList"] li > label {
+  margin-top: 0.2em;
+}
