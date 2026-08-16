@@ -389,9 +389,6 @@
         "gtm": {
           "modules": []
         },
-        "learning": {
-          "modules": []
-        },
         "leave": {
           "modules": []
         },
@@ -525,9 +522,6 @@
             "team_overview"
           ]
         },
-        "learning": {
-          "modules": []
-        },
         "leave": {
           "modules": []
         },
@@ -637,9 +631,6 @@
             "questions",
             "templates"
           ]
-        },
-        "learning": {
-          "modules": []
         },
         "leave": {
           "modules": []

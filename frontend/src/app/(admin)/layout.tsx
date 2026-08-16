@@ -9,6 +9,7 @@ import {
   Bell,
   Building2,
   Users,
+  MessageSquare,
   ArrowLeft,
   Shield,
   Loader2,
@@ -35,6 +36,11 @@ const adminNavItems = [
     title: "Notifications",
     href: "/admin/notifications",
     icon: Bell,
+  },
+  {
+    title: "Feedback",
+    href: "/admin/feedback",
+    icon: MessageSquare,
   },
   {
     title: "Workspaces",

@@ -28,6 +28,10 @@ class AppInfo(BaseModel):
     base_route: str
     required_permission: str | None
     modules: list[ModuleInfo]
+    # "self_serve" (the default) or "contact_support" — whether a workspace can
+    # switch this app on for itself, and where to write if it cannot.
+    availability: str = "self_serve"
+    support_contact: str | None = None
 
 
 class AppCatalogResponse(BaseModel):

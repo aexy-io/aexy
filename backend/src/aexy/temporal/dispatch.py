@@ -192,6 +192,7 @@ ACTIVITY_CONFIG: dict[str, dict[str, Any]] = {
 
     # Platform signup
     "handle_new_signup": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)},
+    "send_feedback_digest": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)},
 
     # Tracking automation (scheduled detection activities that loop over workspaces)
     "check_missed_standups": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=10)},

@@ -12,6 +12,7 @@
     "campaigns",
     "chat",
     "documents",
+    "feedback",
     "forms",
     "gtm",
     "hiring",
@@ -258,6 +259,24 @@
       "defaults": {
         "in_app": true,
         "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "feedback_status_changed": {
+      "category": "feedback",
+      "defaults": {
+        "in_app": true,
+        "email": false,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "feedback_submitted": {
+      "category": "feedback",
+      "defaults": {
+        "in_app": true,
+        "email": false,
         "slack": false,
         "web_push": false
       }

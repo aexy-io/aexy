@@ -575,6 +575,7 @@ from aexy.models.api_token import ApiToken
 from aexy.models.oauth import OAuthClient, OAuthAuthorizationCode, OAuthToken
 from aexy.models.ask import AskConversation, AskMessage, AskConversationParticipant, AskShareLink
 from aexy.models.ai_feedback import AIFeedback
+from aexy.models.feedback import Feedback, FeedbackKind, FeedbackStatus, FeedbackVote
 from aexy.models.llm_prompt_log import LLMPromptLog
 from aexy.models.llm_analysis_cache import LlmAnalysisCache
 from aexy.models.insights_snapshot import InsightsSnapshot
@@ -1175,6 +1176,10 @@ __all__ = [
     "AskShareLink",
     # AI Feedback
     "AIFeedback",
+    "Feedback",
+    "FeedbackKind",
+    "FeedbackStatus",
+    "FeedbackVote",
     # LLM Prompt Log
     "LLMPromptLog",
     # LLM Analysis Cache + Insights Snapshots (GitHub AI pipeline)
