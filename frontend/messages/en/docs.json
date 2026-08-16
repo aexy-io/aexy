@@ -52,6 +52,55 @@
       "posting": "Posting…",
       "empty": "Select text and use the comment button to start a thread here.",
       "documentDiscussion": "Document discussion"
+    },
+    "provenance": {
+      "behind": "Behind the code",
+      "inSync": "In sync as of {date}",
+      "neverGenerated": "Not generated yet",
+      "owned": "Owned",
+      "unowned": "Unowned",
+      "transfer": "Transfer",
+      "handTo": "Hand to…",
+      "behindOne": "The code behind this page has changed since it was written.",
+      "behindMany": "{count} of the linked paths have changed since this page was written.",
+      "willPropose": "An update will be proposed for review.",
+      "updateNow": "Update now",
+      "updating": "Updating…",
+      "transferred": "Sync ownership transferred",
+      "transferFailed": "Could not transfer ownership"
+    },
+    "diff": {
+      "current": "Current",
+      "proposed": "Proposed",
+      "empty": "Empty",
+      "noWordingChanged": "No wording changed — the update only touched formatting.",
+      "unchangedBlocks": "{count, plural, one {# unchanged block} other {# unchanged blocks}}",
+      "tooLarge": "This document is too long to diff here — use the section summary, or open the document to compare."
+    },
+    "review": {
+      "eyebrow": "Docs",
+      "heading": "{count, plural, one {# update} other {# updates}} waiting for review",
+      "loading": "Loading proposed updates",
+      "emptyTitle": "Nothing waiting",
+      "emptyBody": "When code changes under a document, the update it needs will show up here for review.",
+      "approveAll": "Approve all {count}",
+      "approving": "Approving…",
+      "approved": "Approved {count, plural, one {# update} other {# updates}}",
+      "approveFailed": "Could not approve these updates",
+      "staleOne": "One of these was written against an older version of its page.",
+      "staleMany": "{count} of these were written against older versions of their pages.",
+      "staleHint": "Open them individually to see what would be overwritten.",
+      "stale": "STALE",
+      "sources": {
+        "code_change_sync": "The code changed",
+        "code_change_syncBlurb": "Source these pages describe has moved on since they were written.",
+        "regenerate": "Regenerated",
+        "regenerateBlurb": "Someone asked for these to be rewritten from the source.",
+        "suggest_improvements": "Suggested improvements",
+        "suggest_improvementsBlurb": "Edits proposed against the prose itself, not the code.",
+        "manual_ai_edit": "AI edits",
+        "manual_ai_editBlurb": "Changes an assistant proposed directly."
+      }
     }
   }
 }

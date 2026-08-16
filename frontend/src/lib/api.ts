@@ -6826,8 +6826,33 @@ export interface DocumentCodeLink {
   last_content_hash: string | null;
   last_synced_at: string | null;
   has_pending_changes: boolean;
+  /** Whoever set this sync up. Null means orphaned — the owner left and no
+   *  transfer has run — which matters because ownership decides the sync's
+   *  plan tier and its GitHub credential fallback. */
+  owner_developer_id: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/** A document whose linked source has changed since it was written. */
+export interface DocumentNeedsUpdateItem {
+  document_id: string;
+  document_title: string;
+  document_icon: string | null;
+  code_link_id: string;
+  repository_id: string;
+  repository_full_name: string | null;
+  path: string;
+  link_type: string;
+  branch: string;
+  /** "code_changed" (revise) or "never_synced" (write a first draft). */
+  reason: string;
+  last_synced_at: string | null;
+  last_seen_commit_sha: string | null;
+  owner_developer_id: string | null;
+  /** Non-zero means an update is already queued for review; writing another
+   *  only hands the reviewer the same work twice. */
+  pending_proposal_count: number;
 }
 
 export interface DocumentCollaborator {
@@ -7098,6 +7123,39 @@ export const documentApi = {
     return response.data;
   },
 
+  transferCodeLinkOwner: async (
+    workspaceId: string,
+    documentId: string,
+    linkId: string,
+    ownerDeveloperId: string
+  ): Promise<DocumentCodeLink> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/documents/${documentId}/code-links/${linkId}/transfer`,
+      { owner_developer_id: ownerDeveloperId }
+    );
+    return response.data;
+  },
+
+  listDocumentsNeedingUpdate: async (
+    workspaceId: string,
+    options?: { repository_id?: string; limit?: number }
+  ): Promise<DocumentNeedsUpdateItem[]> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/documents/needs-update`,
+      { params: options }
+    );
+    return response.data;
+  },
+
+  listWorkspaceProposedEdits: async (
+    workspaceId: string
+  ): Promise<WorkspaceProposedEdit[]> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/documents/proposed-edits`
+    );
+    return response.data;
+  },
+
   deleteCodeLink: async (workspaceId: string, documentId: string, linkId: string): Promise<void> => {
     await api.delete(`/workspaces/${workspaceId}/documents/${documentId}/code-links/${linkId}`);
   },
@@ -7355,6 +7413,13 @@ export interface ProposedEdit {
   reviewed_at: string | null;
   reason: string | null;
   is_stale: boolean;
+}
+
+/** A proposal seen from the workspace queue rather than its own document,
+ *  where a UUID alone is not enough to decide anything from. */
+export interface WorkspaceProposedEdit extends ProposedEdit {
+  document_title: string;
+  document_icon: string | null;
 }
 
 // ============ Template API ============

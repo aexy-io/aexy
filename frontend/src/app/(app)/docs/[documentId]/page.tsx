@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useDocument, useDocumentCodeLinks } from "@/hooks/useDocuments";
@@ -8,9 +8,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { CollaborativeEditor } from "@/components/docs/CollaborativeEditor";
 import { DocumentEditor } from "@/components/docs/DocumentEditor";
 import { DocumentBreadcrumb } from "@/components/docs/DocumentBreadcrumb";
-import { SyncStatusPanel } from "@/components/docs/SyncStatusPanel";
 import { DocumentComments } from "@/components/docs/DocumentComments";
 import { ProposedEditsBanner } from "@/components/docs/ProposedEditsBanner";
+import { DocumentProvenance } from "@/components/docs/DocumentProvenance";
 import { Spinner } from "@/components/ui/spinner";
 import { documentApi } from "@/lib/api";
 
@@ -44,21 +44,9 @@ export default function DocumentPage() {
     isUpdating,
   } = useDocument(currentWorkspaceId, documentId);
 
-  // Surface autoupdate state: how many code-links flag pending changes,
-  // and the most recent sync. We don't currently expose a per-developer
-  // syncType from the backend, so default to "manual" — the panel still
-  // shows the pending count and a regenerate button regardless of tier.
+  // Sync state is rendered by DocumentProvenance, which reads the links
+  // directly — the page no longer needs to pre-digest them.
   const { codeLinks } = useDocumentCodeLinks(currentWorkspaceId, documentId);
-  const { pendingChanges, lastSyncedAt } = useMemo(() => {
-    const links = codeLinks ?? [];
-    const pending = links.filter((l) => l.has_pending_changes).length;
-    const lastSync = links
-      .map((l) => l.last_synced_at)
-      .filter((d): d is string => !!d)
-      .sort()
-      .pop();
-    return { pendingChanges: pending, lastSyncedAt: lastSync };
-  }, [codeLinks]);
 
   const handleManualSync = useCallback(async () => {
     if (!currentWorkspaceId || !documentId) return;
@@ -141,11 +129,6 @@ export default function DocumentPage() {
   }
 
   // Fallback to regular editor.
-  // Sync panel only renders when the doc has code links — otherwise
-  // there's nothing to be "out of date" with. Was orphaned in the
-  // component tree before this wiring.
-  const hasCodeLinks = (codeLinks?.length ?? 0) > 0;
-
   return (
     <div className="flex flex-col h-full">
       {currentWorkspaceId ? (
@@ -154,17 +137,22 @@ export default function DocumentPage() {
           <ProposedEditsBanner
             workspaceId={currentWorkspaceId}
             documentId={documentId}
+            currentContent={document.content}
           />
-          {hasCodeLinks ? (
-            <SyncStatusPanel
-              workspaceId={currentWorkspaceId}
-              documentId={documentId}
-              syncType="manual"
-              pendingChanges={pendingChanges}
-              lastSyncedAt={lastSyncedAt}
-              onManualSync={handleManualSync}
-            />
-          ) : null}
+          {/* Where this document came from, and whether it has fallen behind.
+              Only for linked documents — an unlinked one has no source to be
+              out of date with. */}
+          {/* One statement of sync state, not two. `SyncStatusPanel` said the
+              same thing in different words directly beneath this, which is the
+              duplicated-rail mistake the comment rail already made once. Its
+              one unique affordance — regenerate on demand — moved here. */}
+          <DocumentProvenance
+            workspaceId={currentWorkspaceId}
+            documentId={documentId}
+            codeLinks={codeLinks ?? []}
+            onSync={handleManualSync}
+            isSyncing={isUpdating}
+          />
         </div>
       ) : null}
       <DocumentEditor

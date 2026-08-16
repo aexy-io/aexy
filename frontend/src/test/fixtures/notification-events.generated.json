@@ -263,6 +263,15 @@
         "web_push": false
       }
     },
+    "document_sync_ownership_transferred": {
+      "category": "documents",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
     "feedback_status_changed": {
       "category": "feedback",
       "defaults": {

@@ -660,6 +660,18 @@ class ProposedEditResponse(BaseModel):
     is_stale: bool = False
 
 
+class WorkspaceProposedEdit(ProposedEditResponse):
+    """A proposal seen from outside its own document.
+
+    The per-document listing can assume the reader already knows which page
+    they are on. A workspace-wide queue cannot: without the title there is
+    nothing to decide from but a UUID.
+    """
+
+    document_title: str
+    document_icon: str | None = None
+
+
 class ProposedEditReject(BaseModel):
     """Payload for the reject endpoint. Reason is optional but
     encouraged — the FE prompts for it."""

@@ -36,6 +36,7 @@ from aexy.schemas.document import (
     TemplateListResponse,
     TemplateResponse,
     TemplateUpdate,
+    WorkspaceProposedEdit,
 )
 from aexy.services.document_comment_service import DocumentCommentService
 from aexy.services.github_app_service import GitHubAppService, GitHubServiceAdapter
@@ -238,7 +239,9 @@ async def get_favorites(
 
 
 # ==================== Documentation work list ====================
-# NOTE: Must be before /{document_id} or "needs-update" is read as an id.
+# NOTE: Both routes here MUST stay before /{document_id}, or their literal
+# path segment is read as a document id and the endpoint 404s on a lookup
+# for a document called "needs-update".
 
 
 @router.get("/needs-update", response_model=list[DocumentNeedsUpdateItem])
@@ -282,6 +285,66 @@ async def list_documents_needing_update(
         include_never_synced=include_never_synced,
         limit=limit,
     )
+
+
+@router.get("/proposed-edits", response_model=list[WorkspaceProposedEdit])
+async def list_workspace_proposed_edits(
+    workspace_id: str,
+    limit: int = Query(default=100, ge=1, le=500),
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Every AI-proposed document edit in this workspace awaiting review.
+
+    Until this existed a proposal could only be found by opening the document
+    it belonged to, so the only way to discover one was to already suspect it
+    was there. That is workable when a person regenerates a single page and
+    goes to look; it fails completely once a repository documents itself
+    module by module and a single merge leaves proposals on a dozen pages.
+
+    Oldest first — the proposal that has been waiting longest is the one
+    holding a document wrong for the longest.
+    """
+    await check_workspace_permission(workspace_id, current_user, db, "member")
+
+    from sqlalchemy import select as _select
+    from sqlalchemy.orm import selectinload as _selectinload
+
+    from aexy.models.documentation import Document as _Doc
+    from aexy.models.documentation import DocumentProposedEdit as _DPE
+    from aexy.models.documentation import ProposedEditStatus as _Status
+
+    stmt = (
+        _select(_DPE)
+        .join(_Doc, _DPE.document_id == _Doc.id)
+        .options(_selectinload(_DPE.document))
+        .where(_Doc.workspace_id == workspace_id)
+        .where(_DPE.status == _Status.PENDING.value)
+        .order_by(_DPE.proposed_at.asc())
+        .limit(limit)
+    )
+    proposals = list((await db.execute(stmt)).scalars().all())
+
+    out: list[WorkspaceProposedEdit] = []
+    for proposal in proposals:
+        document = proposal.document
+        if not document:
+            continue
+        base = _to_proposed_edit_response(
+            proposal,
+            # Staleness is per-document and each proposal carries the sha it
+            # was written against, so it costs nothing extra here.
+            is_stale=bool(proposal.base_content_sha)
+            and proposal.base_content_sha != compute_content_sha(document.content),
+        )
+        out.append(
+            WorkspaceProposedEdit(
+                **base.model_dump(),
+                document_title=document.title,
+                document_icon=document.icon,
+            )
+        )
+    return out
 
 
 # ==================== Comments ====================
