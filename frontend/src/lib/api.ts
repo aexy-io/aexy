@@ -24225,3 +24225,113 @@ export const adminBackfillApi = {
     return response.data;
   },
 };
+
+// ============================== Feedback ==============================
+
+export type FeedbackKind = "suggestion" | "problem" | "question" | "app_request";
+export type FeedbackStatus = "new" | "triaged" | "planned" | "shipped" | "declined";
+
+/**
+ * One item as the shared board shows it.
+ *
+ * No author and no workspace: the board spans workspaces so that ten teams
+ * asking for the same thing reads as one item with a count, which only works if
+ * wanting something does not also disclose who wants it.
+ */
+export interface FeedbackItem {
+  id: string;
+  kind: FeedbackKind;
+  subject: string;
+  body: string;
+  status: FeedbackStatus;
+  vote_count: number;
+  created_at: string;
+  voted: boolean;
+  mine: boolean;
+}
+
+/** The same item with everything a platform admin needs to act on it. */
+export interface FeedbackAdminItem extends FeedbackItem {
+  workspace_id: string;
+  workspace_name: string | null;
+  developer_id: string;
+  developer_name: string | null;
+  developer_email: string | null;
+  context: Record<string, unknown>;
+  admin_note: string | null;
+  reviewed_by_id: string | null;
+  reviewed_at: string | null;
+  updated_at: string;
+}
+
+export interface FeedbackListResponse {
+  items: FeedbackItem[];
+  total: number;
+}
+
+export const feedbackApi = {
+  submit: async (
+    workspaceId: string,
+    data: {
+      kind: FeedbackKind;
+      subject: string;
+      body: string;
+      context?: Record<string, unknown>;
+    },
+  ): Promise<FeedbackItem> => {
+    const response = await api.post(`/workspaces/${workspaceId}/feedback`, data);
+    return response.data;
+  },
+
+  list: async (
+    workspaceId: string,
+    params?: { kind?: FeedbackKind; status?: FeedbackStatus; limit?: number; offset?: number },
+  ): Promise<FeedbackListResponse> => {
+    const response = await api.get(`/workspaces/${workspaceId}/feedback`, { params });
+    return response.data;
+  },
+
+  listMine: async (workspaceId: string): Promise<FeedbackListResponse> => {
+    const response = await api.get(`/workspaces/${workspaceId}/feedback/mine`);
+    return response.data;
+  },
+
+  vote: async (
+    workspaceId: string,
+    feedbackId: string,
+  ): Promise<{ feedback_id: string; voted: boolean; vote_count: number }> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/feedback/${feedbackId}/vote`,
+    );
+    return response.data;
+  },
+
+  unvote: async (
+    workspaceId: string,
+    feedbackId: string,
+  ): Promise<{ feedback_id: string; voted: boolean; vote_count: number }> => {
+    const response = await api.delete(
+      `/workspaces/${workspaceId}/feedback/${feedbackId}/vote`,
+    );
+    return response.data;
+  },
+
+  // Platform admin
+  listAll: async (params?: {
+    kind?: FeedbackKind;
+    status?: FeedbackStatus;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ items: FeedbackAdminItem[]; total: number }> => {
+    const response = await api.get("/platform-admin/feedback", { params });
+    return response.data;
+  },
+
+  review: async (
+    feedbackId: string,
+    data: { status?: FeedbackStatus; admin_note?: string },
+  ): Promise<FeedbackAdminItem> => {
+    const response = await api.patch(`/platform-admin/feedback/${feedbackId}`, data);
+    return response.data;
+  },
+};

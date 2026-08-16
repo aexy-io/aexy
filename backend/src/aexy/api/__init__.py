@@ -136,6 +136,8 @@ from aexy.api.projects import router as projects_router
 from aexy.api.public_projects import router as public_projects_router
 # App Access Control
 from aexy.api.app_access import router as app_access_router
+from aexy.api.feedback import admin_router as feedback_admin_router
+from aexy.api.feedback import router as feedback_router
 # Email Marketing
 from aexy.api.email_marketing import router as email_marketing_router
 # Email Infrastructure (Multi-domain sending, warming, routing)
@@ -351,6 +353,11 @@ api_router.include_router(projects_router, tags=["projects"])
 api_router.include_router(public_projects_router, tags=["public-projects"])
 # App Access Control
 api_router.include_router(app_access_router, tags=["app-access"], dependencies=[Depends(require_workspace_permission_for_writes("can_manage_roles"))])
+# Feedback is deliberately behind no app guard and no workspace permission:
+# every member may tell us something, including — especially — a member whose
+# workspace has the app they are asking about switched off.
+api_router.include_router(feedback_router, tags=["feedback"])
+api_router.include_router(feedback_admin_router, tags=["feedback-admin"])
 # Email Marketing
 api_router.include_router(email_marketing_router, tags=["email-marketing"], dependencies=[Depends(require_app_access("email_marketing"))])
 # Email Infrastructure (Multi-domain sending, warming, routing)

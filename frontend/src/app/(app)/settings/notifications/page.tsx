@@ -95,6 +95,9 @@ export const EVENT_TYPE_LABELS: Record<string, { label: string; description: str
   app_access_requested: { label: "Access requested", description: "When someone requests access to an app" },
   app_access_approved: { label: "Access approved", description: "When your access request is approved" },
   app_access_rejected: { label: "Access rejected", description: "When your access request is declined" },
+  // Feedback
+  feedback_submitted: { label: "Feedback submitted", description: "When somebody sends product feedback (platform admins)" },
+  feedback_status_changed: { label: "Feedback answered", description: "When feedback you sent is planned, shipped or declined" },
   // Agents
   agent_invoked: { label: "Agent working", description: "When an AI agent starts processing your request" },
   agent_tool_blocked: { label: "Agent tool blocked", description: "When an agent's tool call is blocked by a policy" },
@@ -149,6 +152,7 @@ export const CATEGORY_LABELS: Record<string, { label: string; description: strin
   insights: { label: "Insights", description: "Metric warnings and critical alerts" },
   leave: { label: "Leave", description: "Leave requests and approvals" },
   app_access: { label: "App Access", description: "Application access requests and approvals" },
+  feedback: { label: "Feedback", description: "Product feedback you sent, and what came of it" },
   agents: { label: "Agents", description: "AI agent invocations and status updates" },
   uptime: { label: "Uptime", description: "Service monitoring incidents and recovery alerts" },
   learning: { label: "Learning", description: "Learning goals, approvals, and activity completion" },

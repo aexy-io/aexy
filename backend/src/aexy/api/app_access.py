@@ -7,7 +7,12 @@ from aexy.core.database import get_db
 from aexy.api.developers import get_current_developer
 from aexy.models.developer import Developer
 from aexy.models.plan import PlanTier
-from aexy.models.app_definitions import APP_CATALOG, SYSTEM_APP_BUNDLES, get_app_list
+from aexy.models.app_definitions import (
+    APP_CATALOG,
+    SUPPORT_CONTACT_EMAIL,
+    SYSTEM_APP_BUNDLES,
+    get_app_list,
+)
 from aexy.schemas.app_access import (
     AppAccessTemplateCreate,
     AppAccessTemplateUpdate,
@@ -40,7 +45,7 @@ from aexy.schemas.app_access import (
     AppAccessRequestListResponse,
 )
 from aexy.services.workspace_service import WorkspaceService
-from aexy.services.app_access_service import AppAccessService
+from aexy.services.app_access_service import AppAccessService, AppNotSelfServeError
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/app-access", tags=["App Access"])
 
@@ -238,6 +243,17 @@ async def create_template(
             color=data.color,
         )
         return template_to_response(template)
+    except AppNotSelfServeError as e:
+        # 403 rather than 400: the request is well formed, the answer is "not
+        # from here". The app ids come back so the UI can point at the right row.
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": str(e),
+                "app_ids": e.app_ids,
+                "contact": SUPPORT_CONTACT_EMAIL,
+            },
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -309,6 +325,17 @@ async def update_template(
             **data.model_dump(exclude_unset=True),
         )
         return template_to_response(template)
+    except AppNotSelfServeError as e:
+        # 403 rather than 400: the request is well formed, the answer is "not
+        # from here". The app ids come back so the UI can point at the right row.
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": str(e),
+                "app_ids": e.app_ids,
+                "contact": SUPPORT_CONTACT_EMAIL,
+            },
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -337,6 +364,17 @@ async def delete_template(
     service = AppAccessService(db)
     try:
         await service.delete_template(template_id, workspace_id)
+    except AppNotSelfServeError as e:
+        # 403 rather than 400: the request is well formed, the answer is "not
+        # from here". The app ids come back so the UI can point at the right row.
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": str(e),
+                "app_ids": e.app_ids,
+                "contact": SUPPORT_CONTACT_EMAIL,
+            },
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -447,6 +485,17 @@ async def update_member_access(
             "developer_id": developer_id,
             "override_count": len(overrides),
         }
+    except AppNotSelfServeError as e:
+        # 403 rather than 400: the request is well formed, the answer is "not
+        # from here". The app ids come back so the UI can point at the right row.
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": str(e),
+                "app_ids": e.app_ids,
+                "contact": SUPPORT_CONTACT_EMAIL,
+            },
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -492,6 +541,17 @@ async def set_member_overrides(
             },
             reasons=data.reasons,
             actor_id=str(current_user.id),
+        )
+    except AppNotSelfServeError as e:
+        # 403 rather than 400: the request is well formed, the answer is "not
+        # from here". The app ids come back so the UI can point at the right row.
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": str(e),
+                "app_ids": e.app_ids,
+                "contact": SUPPORT_CONTACT_EMAIL,
+            },
         )
     except ValueError as e:
         raise HTTPException(
@@ -541,6 +601,17 @@ async def apply_template_to_member(
             actor_id=str(current_user.id),
         )
         return {"success": True, "developer_id": developer_id}
+    except AppNotSelfServeError as e:
+        # 403 rather than 400: the request is well formed, the answer is "not
+        # from here". The app ids come back so the UI can point at the right row.
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": str(e),
+                "app_ids": e.app_ids,
+                "contact": SUPPORT_CONTACT_EMAIL,
+            },
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -576,6 +647,17 @@ async def reset_member_to_defaults(
             developer_id=developer_id,
         )
         return {"success": True, "developer_id": developer_id}
+    except AppNotSelfServeError as e:
+        # 403 rather than 400: the request is well formed, the answer is "not
+        # from here". The app ids come back so the UI can point at the right row.
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": str(e),
+                "app_ids": e.app_ids,
+                "contact": SUPPORT_CONTACT_EMAIL,
+            },
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -615,6 +697,17 @@ async def bulk_apply_template(
             failed_count=len(data.developer_ids) - len(applied_ids),
             applied_developer_ids=applied_ids,
         )
+    except AppNotSelfServeError as e:
+        # 403 rather than 400: the request is well formed, the answer is "not
+        # from here". The app ids come back so the UI can point at the right row.
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": str(e),
+                "app_ids": e.app_ids,
+                "contact": SUPPORT_CONTACT_EMAIL,
+            },
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -652,6 +745,17 @@ async def preview_access(
             department_ids=data.department_ids,
             access_template_id=data.access_template_id,
             role=data.role,
+        )
+    except AppNotSelfServeError as e:
+        # 403 rather than 400: the request is well formed, the answer is "not
+        # from here". The app ids come back so the UI can point at the right row.
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": str(e),
+                "app_ids": e.app_ids,
+                "contact": SUPPORT_CONTACT_EMAIL,
+            },
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -867,6 +971,17 @@ async def create_access_request(
             reason=data.reason,
         )
         return _request_to_response(request)
+    except AppNotSelfServeError as e:
+        # 403 rather than 400: the request is well formed, the answer is "not
+        # from here". The app ids come back so the UI can point at the right row.
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": str(e),
+                "app_ids": e.app_ids,
+                "contact": SUPPORT_CONTACT_EMAIL,
+            },
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -951,6 +1066,17 @@ async def approve_access_request(
             notes=data.notes if data else None,
         )
         return _request_to_response(request)
+    except AppNotSelfServeError as e:
+        # 403 rather than 400: the request is well formed, the answer is "not
+        # from here". The app ids come back so the UI can point at the right row.
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": str(e),
+                "app_ids": e.app_ids,
+                "contact": SUPPORT_CONTACT_EMAIL,
+            },
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -986,6 +1112,17 @@ async def reject_access_request(
             notes=data.notes if data else None,
         )
         return _request_to_response(request)
+    except AppNotSelfServeError as e:
+        # 403 rather than 400: the request is well formed, the answer is "not
+        # from here". The app ids come back so the UI can point at the right row.
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": str(e),
+                "app_ids": e.app_ids,
+                "contact": SUPPORT_CONTACT_EMAIL,
+            },
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -1016,6 +1153,17 @@ async def withdraw_access_request(
         await service.withdraw_request(
             request_id=request_id,
             requester_id=str(current_user.id),
+        )
+    except AppNotSelfServeError as e:
+        # 403 rather than 400: the request is well formed, the answer is "not
+        # from here". The app ids come back so the UI can point at the right row.
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": str(e),
+                "app_ids": e.app_ids,
+                "contact": SUPPORT_CONTACT_EMAIL,
+            },
         )
     except ValueError as e:
         raise HTTPException(
