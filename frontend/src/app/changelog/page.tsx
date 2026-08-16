@@ -95,27 +95,43 @@ function renderInline(text: string): React.ReactNode {
   return elements.length === 1 ? elements[0] : <>{elements}</>;
 }
 
-function getSectionBadge(title: string) {
-  const styles: Record<string, string> = {
-    added:
-      "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-    changed: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-    fixed: "bg-amber-500/20 text-amber-400 border-amber-500/30",
-    removed: "bg-red-500/20 text-red-400 border-red-500/30",
-    deprecated:
-      "bg-orange-500/20 text-orange-400 border-orange-500/30",
-    security:
-      "bg-purple-500/20 text-purple-400 border-purple-500/30",
-  };
+const SECTION_STYLES: Record<string, string> = {
+  added: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+  changed: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+  fixed: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+  removed: "bg-red-500/20 text-red-400 border-red-500/30",
+  deprecated: "bg-orange-500/20 text-orange-400 border-orange-500/30",
+  security: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+};
+
+/**
+ * A section heading: the kind as a coloured pill, the rest as a heading.
+ *
+ * Entries here are written as `### Fixed: your work list showed every
+ * workspace`, and the whole string used to go in the pill — so the colour
+ * lookup never matched anything and every section came out the same grey,
+ * while the actual heading was set in 12px pill text. The kind is worth
+ * colouring; the sentence after it is a heading and should read like one.
+ */
+function SectionHeading({ title }: { title: string }) {
+  const [, kind, rest] = title.match(/^([A-Za-z]+):\s*(.+)$/) ?? [];
+  const label = kind ?? title;
   const color =
-    styles[title.toLowerCase()] ||
-    "bg-white/10 text-white/70 border-white/20";
+    SECTION_STYLES[label.toLowerCase()] || "bg-white/10 text-white/70 border-white/20";
+
   return (
-    <span
-      className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full border ${color}`}
-    >
-      {title}
-    </span>
+    <h3 className="mt-10 mb-4 first:mt-0 flex flex-wrap items-baseline gap-x-3 gap-y-2">
+      <span
+        className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full border ${color}`}
+      >
+        {label}
+      </span>
+      {rest && (
+        <span className="text-lg font-semibold text-white tracking-tight">
+          {renderInline(rest)}
+        </span>
+      )}
+    </h3>
   );
 }
 
@@ -123,11 +139,12 @@ function renderVersionContent(lines: string[]) {
   const elements: React.ReactNode[] = [];
   let key = 0;
   let listItems: React.ReactNode[] = [];
+  let paragraph: string[] = [];
 
   const flushList = () => {
     if (listItems.length > 0) {
       elements.push(
-        <ul key={key++} className="space-y-1.5 mb-3">
+        <ul key={key++} className="space-y-2.5 mb-6 max-w-[68ch]">
           {listItems}
         </ul>
       );
@@ -135,47 +152,69 @@ function renderVersionContent(lines: string[]) {
     }
   };
 
+  /**
+   * The source is hard-wrapped at about 80 columns, and each of those lines
+   * used to become its own `<p>`. That put a paragraph break every eight or
+   * nine words, which is what made the page read as a stack of fragments
+   * rather than prose — and it re-wrapped at whatever width the reader's
+   * screen happened to be, so the breaks landed mid-sentence. A paragraph is
+   * everything up to a blank line, as markdown means it.
+   */
+  const flushParagraph = () => {
+    if (paragraph.length > 0) {
+      elements.push(
+        <p
+          key={key++}
+          className="text-white/70 text-[15px] leading-[1.75] mb-5 max-w-[68ch]"
+        >
+          {renderInline(paragraph.join(" "))}
+        </p>
+      );
+      paragraph = [];
+    }
+  };
+
+  const flushAll = () => {
+    flushParagraph();
+    flushList();
+  };
+
   for (const line of lines) {
     const h3 = line.match(/^### (.+)$/);
     if (h3) {
-      flushList();
-      elements.push(
-        <div key={key++} className="mt-5 mb-3 first:mt-0">
-          {getSectionBadge(h3[1])}
-        </div>
-      );
+      flushAll();
+      elements.push(<SectionHeading key={key++} title={h3[1]} />);
       continue;
     }
 
     const h4 = line.match(/^#### (.+)$/);
     if (h4) {
-      flushList();
+      flushAll();
       elements.push(
         <h4
           key={key++}
-          className="text-[15px] font-medium text-white/90 mt-4 mb-2"
+          className="text-base font-semibold text-white/90 mt-6 mb-2"
         >
-          {h4[1]}
+          {renderInline(h4[1])}
         </h4>
       );
       continue;
     }
 
     if (line.trim() === "---") {
-      flushList();
-      elements.push(
-        <hr key={key++} className="border-white/[0.06] my-4" />
-      );
+      flushAll();
+      elements.push(<hr key={key++} className="border-white/[0.06] my-8" />);
       continue;
     }
 
     if (line.match(/^- /)) {
+      flushParagraph();
       listItems.push(
         <li
           key={key++}
-          className="text-white/60 text-sm flex items-start gap-2"
+          className="text-white/70 text-[15px] leading-[1.75] flex items-start gap-3"
         >
-          <span className="text-primary-500/70 mt-[7px] flex-shrink-0 w-1 h-1 rounded-full bg-current" />
+          <span className="text-primary-500/70 mt-[10px] flex-shrink-0 w-1.5 h-1.5 rounded-full bg-current" />
           <span>{renderInline(line.slice(2))}</span>
         </li>
       );
@@ -183,19 +222,16 @@ function renderVersionContent(lines: string[]) {
     }
 
     if (line.trim() === "") {
-      flushList();
+      flushAll();
       continue;
     }
 
+    // A continuation of the paragraph being built, not a paragraph of its own.
     flushList();
-    elements.push(
-      <p key={key++} className="text-white/60 text-sm mb-2">
-        {renderInline(line)}
-      </p>
-    );
+    paragraph.push(line.trim());
   }
 
-  flushList();
+  flushAll();
   return elements;
 }
 
@@ -204,7 +240,11 @@ export default function ChangelogPage() {
   const versions = parseVersions(content);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] overflow-hidden">
+    /* No `overflow-hidden` on this wrapper: it makes the element the scroll
+       container for everything inside, which silently disables the sticky
+       version rail. The blurred blobs it was clipping sit in their own
+       `fixed inset-0 overflow-hidden` layer below, so they stay clipped. */
+    <div className="min-h-screen bg-[#0a0a0f]">
       {/* Animated Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-primary-500/10 rounded-full blur-[120px] animate-pulse" />
@@ -229,34 +269,43 @@ export default function ChangelogPage() {
         </div>
       </section>
 
-      {/* Versions */}
+      {/* Versions.
+
+          The page is wide, the prose is not: paragraphs are capped at ~68
+          characters because that is what stays readable, and the width buys a
+          version rail beside the text instead of longer lines. On a long entry
+          the rail sticks, so you can always see which release you are reading. */}
       <section className="pb-24 px-6 relative">
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <div className="relative">
             {/* Timeline line */}
             <div className="absolute left-[15px] top-0 bottom-0 w-px bg-white/[0.06] hidden md:block" />
 
             {versions.map((version, i) => (
-              <div key={version.version} className="relative mb-10 md:pl-12">
+              <div key={version.version} className="relative mb-12 md:pl-12">
                 {/* Timeline dot */}
                 <div className="absolute left-[11px] top-2 w-[9px] h-[9px] rounded-full bg-primary-500/60 ring-4 ring-[#0a0a0f] hidden md:block" />
 
                 {/* Version card */}
-                <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl border border-white/[0.06] p-6 hover:border-white/[0.12] transition-colors">
-                  <div className="flex items-center gap-3 mb-4">
-                    <span className="text-xl font-bold text-white">
-                      v{version.version}
-                    </span>
-                    <span className="text-sm text-white/40">
-                      {version.date}
-                    </span>
-                    {i === 0 && (
-                      <span className="px-2 py-0.5 text-[11px] font-medium bg-primary-500/20 text-primary-400 rounded-full border border-primary-500/30">
-                        Latest
-                      </span>
-                    )}
+                <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl border border-white/[0.06] p-6 md:p-8 lg:p-10 hover:border-white/[0.12] transition-colors">
+                  <div className="lg:grid lg:grid-cols-[11rem_minmax(0,1fr)] lg:gap-10">
+                    <div className="mb-6 lg:mb-0">
+                      <div className="lg:sticky lg:top-28 flex flex-wrap items-baseline gap-x-3 gap-y-2 lg:block">
+                        <span className="text-2xl font-bold text-white tracking-tight lg:block">
+                          v{version.version}
+                        </span>
+                        <span className="text-sm text-white/40 lg:block lg:mt-1">
+                          {version.date}
+                        </span>
+                        {i === 0 && (
+                          <span className="px-2 py-0.5 text-[11px] font-medium bg-primary-500/20 text-primary-400 rounded-full border border-primary-500/30 lg:inline-block lg:mt-3">
+                            Latest
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="min-w-0">{renderVersionContent(version.lines)}</div>
                   </div>
-                  {renderVersionContent(version.lines)}
                 </div>
               </div>
             ))}
