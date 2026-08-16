@@ -213,38 +213,95 @@ Everything below rests on separating these:
 - **Content gate** — *post*-generation. Does a human approve this change to the record?
   `DocumentProposedEdit` already models it, for documents only.
 
-A write can pass the first and still wait on the second. Both feed one review inbox.
+A write can pass the first and still wait on the second.
+
+They are separate records, not one generalised table — the first reviews an *intent* and the
+second a *result*, and the reasoning is recorded under stage 1. Both feed one review inbox,
+which is a read-layer concern rather than a storage one; stage 1b is where that convergence
+lives.
 
 ---
 
 ## Plan
 
-### Stage 1 — The review gate, generalised
+Stages are marked with the commit that built them. Stage 1b is the outstanding piece of
+stage 1 — the part that was traded away when `ProposedChange` was rejected, and the largest
+user-facing gap in the area today.
+
+
+### Stage 1 — The review gate **(built — `b1cad54d`, `de035aa1`)**
 
 First, because everything after it writes through it.
 
-- **Generalise `DocumentProposedEdit` into `ProposedChange`**: `entity_type`, `entity_id`,
-  `proposed_content`, `base_version` (today's `base_content_sha`), `source`, `status`,
-  `diff_summary`, `proposed_by`, and the agent session that produced it. Document behaviour
-  stays byte-identical — the existing supersede-on-create, stale detection and owner
-  notification are the best-built things in this area and should be preserved exactly, not
-  reimplemented. Migrate existing rows.
 - **Evaluate `AgentPolicy` inside `McpToolExecutor.call`**, before the ASGI re-entry (F14).
   Decouple the policy foreign keys from `crm_agents` so an MCP session is a valid actor, and
-  write every decision to the existing `AgentPolicyDecision` audit log. This is mostly wiring:
-  the engine, the policy types and the notification already exist.
-- **A `REQUIRE_APPROVAL` decision becomes a `ProposedChange`, not a block.** Today the engine
-  can only refuse. Turning a refusal into a queued proposal is what makes "gate everywhere"
-  usable rather than obstructive.
-- **Three modes, set per entity type and overridable per record**: auto-apply, propose
-  (default), off. Graded by blast radius — an agent rewriting a document a human wrote should
-  always propose; a confidence score written onto a ticket can auto-apply with an audit trail.
-  A gate that blocks high-volume classification will simply be switched off wholesale, which is
-  worse than a graded one.
-- **One inbox that renders any entity type**, with a per-type summary renderer. Documents get
-  the text diff; other types get a field-level before/after.
+  write every decision to the existing `AgentPolicyDecision` audit log.
+- **A `REQUIRE_APPROVAL` decision queues the call rather than refusing it.** The engine could
+  only ever say no, and a refusal an agent cannot act on is a dead end.
+- **Three modes, overridable per record**: auto-apply, propose (default), off. Graded by blast
+  radius. A gate that blocks high-volume classification is switched off wholesale, which is
+  worse than a graded one. Shipped for documents as `DocumentSyncMode`.
+- **Reads are never gated.** A gate that made an agent ask permission to look something up
+  would be switched off within a week and take the write gate with it.
 
-### Stage 2 — The docs write contract over MCP
+#### Decision: `ProposedChange` was considered and rejected
+
+The original plan here read *"generalise `DocumentProposedEdit` into `ProposedChange`"* — one
+table with `entity_type` / `entity_id`, so any module could register as a governed entity and
+one queue would hold everything. It was not built, and the reason is worth keeping because
+otherwise it gets proposed again.
+
+**The two gates do not review the same kind of thing.** The content gate reviews a *result*:
+generation ran, produced prose, and a human compares it to the page. The policy gate fires
+*before execution*, so there is no proposed content — the call has not run, and running it to
+find out what it would produce is exactly what the gate prevents. The only thing that can be
+stored is the request, replayed verbatim on approval.
+
+That shows up in the columns. `DocumentProposedEdit` and `AgentPendingAction` share six —
+`id`, `status`, `reason`, `reviewed_by_id`, `reviewed_at`, `created_at` — against eight and ten
+that are disjoint. A merged table is 24 columns where every row leaves 8 or 10 null and the
+discriminator tells you which half to ignore, plus a data migration on the one queue in this
+area that already worked (supersede-on-create, stale detection, owner notification) in exchange
+for no behaviour it did not already have.
+
+**Revisit when a second *content-review* consumer appears** — an AI proposing new content for a
+CRM record or a workflow definition, where a human diffs before and after. Two tables of
+genuinely the same shape is when generalising pays. One pre-execution consumer and one
+post-generation consumer is not that case.
+
+Until then the convergence belongs at the **read** layer, not in storage — see stage 1b.
+
+### Stage 1b — One inbox, and a UI for held actions
+
+The cost of the decision above, paid down. There are currently two queues and only one of them
+has a screen:
+
+- `/docs/review` renders document proposals with a readable text diff.
+- `/workspaces/{id}/agent-actions` holds tool calls an agent is blocked on, and is API-only —
+  clearing one today means making an HTTP request by hand.
+
+That is the fragmentation the single-table plan was trying to avoid, and it does not need a
+single table to fix.
+
+- **One endpoint returning both kinds.** A `review_items` read model over the two tables,
+  each item carrying a `kind` (`document_proposal` / `agent_action`) and a common envelope:
+  who asked, when, why it is waiting, and a one-line summary.
+- **One page renders both**, with a per-kind body: documents keep the diff; a held action shows
+  the operation, its arguments and the policy that stopped it, in plain language — "an agent
+  wants to update 3 CRM contacts" rather than a JSON payload, which is the same mistake the
+  document diff made before it was fixed.
+- **Approve and reject in place**, including approve-all within a group. A held action replays
+  as the developer who requested it, never the approver — approval is permission to proceed,
+  not a way to lend someone your access.
+- **A count where people already look**: the sidebar entry, so the queue is discoverable
+  without visiting it. A queue nobody opens is the failure mode this whole area keeps running
+  into.
+- **Empty state that explains the mechanism**, because for most workspaces this page is empty
+  until the day it suddenly is not, and arriving at an unexplained queue of blocked robot
+  actions is its own kind of alarming.
+- Translations in both locales, per CLAUDE.md.
+
+### Stage 2 — The docs write contract over MCP **(built — `9e516800`)**
 
 - **Purpose-built tools** beside the generic `aexy_call`: list documents behind their code,
   fetch a document with its provenance, propose an update, create a document from a path *with
@@ -257,7 +314,7 @@ First, because everything after it writes through it.
 - **Attribution**: proposals carry "via <human>'s agent", or the review inbox cannot tell a
   colleague's edit from a robot's.
 
-### Stage 3 — Linked by construction
+### Stage 3 — Linked by construction **(built — `c1632d81`)**
 
 Unchanged in substance and still required: the code link is the join that detection runs on,
 whoever writes the prose.
@@ -268,7 +325,7 @@ whoever writes the prose.
 - File selection allowed; doc-type control shown only where it is honoured (F4).
 - `toast.error(getApiErrorMessage(...))` instead of `alert()` (F5).
 
-### Stage 4 — Detection, and ownership that survives departure
+### Stage 4 — Detection, and ownership that survives departure **(built — `82b06df3`)**
 
 Breaks 2, 3, 4 and F11. This is now the core product rather than plumbing.
 
@@ -283,7 +340,7 @@ Breaks 2, 3, 4 and F11. This is now the core product rather than plumbing.
   recipient: the workspace owner, overridable per workspace.
 - Read the sync tier from the sync owner, and attribute background spend to them.
 
-### Stage 5 — Cheap precision
+### Stage 5 — Cheap precision **(built — `8fa10db2`)**
 
 Under the split this is less about the LLM bill and more about the nudge being worth reading:
 "three sections reference the function you changed" beats "something changed".
@@ -299,7 +356,7 @@ Under the split this is less about the LLM bill and more about the nudge being w
 - Where server-side generation does run, use `update_documentation` with the patch rather than
   regenerating from scratch, and fix the hardcoded `FUNCTION_DOCS` category.
 
-### Stage 6 — Make "in sync / behind" visible
+### Stage 6 — Make "in sync / behind" visible **(built — `1b45f2a1`, `de035aa1`)**
 
 - Provenance strip under the title: `backend/src/aexy/services · main · in sync as of a1b2c3d`,
   or `3 commits behind` — plus the owner and a transfer action.
@@ -309,7 +366,7 @@ Under the split this is less about the LLM bill and more about the nudge being w
   commits and changed paths above it.
 - Per-document mode, which is stage 1's per-record override surfaced here.
 
-### Stage 7 — Server-side generation, as the fallback it now is
+### Stage 7 — Server-side generation, as the fallback it now is **(not started)**
 
 Much smaller than in the pre-split plan. It exists for the two cases MCP serves worst.
 
@@ -322,7 +379,7 @@ Much smaller than in the pre-split plan. It exists for the two cases MCP serves 
   still needed *here*, but only here, and they no longer gate the main flow.
 - Rate-limit or tier-gate it honestly: it is the most expensive action in the product.
 
-### Stage 8 — One GitHub relationship per document
+### Stage 8 — One GitHub relationship per document **(not started)**
 
 - Shared `resolve_repository_access` from stage 4, used by code links and GitHub sync alike.
 - Adding a code link to a document that already has a GitHub sync pre-fills repo and branch.
@@ -331,7 +388,7 @@ Much smaller than in the pre-split plan. It exists for the two cases MCP serves 
 - Skip commits matching `last_export_commit`, so a document's own export cannot trigger its
   regeneration.
 
-### Stage 9 — Discovery and language
+### Stage 9 — Discovery and language **(not started)**
 
 - "Document this" from the repository view and from a merged PR.
 - "Generate from code" in the document header.
@@ -358,8 +415,9 @@ Documentation coverage metrics; a scheduled freshness report.
 
 ## Verification
 
-- An MCP tool call that a policy marks `REQUIRE_APPROVAL` produces a `ProposedChange` and an
-  `AgentPolicyDecision` row, and does **not** mutate the record.
+- An MCP tool call that a policy marks `REQUIRE_APPROVAL` produces an `AgentPendingAction`
+  and an `AgentPolicyDecision` row, and the call never reaches the application at all — a
+  gate that ran it and undid it afterwards would satisfy a test that only read the message.
 - An MCP write to a linked document never lands directly, regardless of tool used, including
   through the generic `aexy_call` proxy.
 - Malformed Markdown from a client is rejected at the boundary; no document is ever saved in a
@@ -370,8 +428,8 @@ Documentation coverage metrics; a scheduled freshness report.
   break 4 needed and did not have.
 - Deactivating a sync owner transfers their syncs, notifies the new owner, and regeneration
   still succeeds on repository-scoped credentials.
-- Document proposal behaviour after the `ProposedChange` migration is identical to before:
-  supersede-on-create, stale detection, owner notification.
+- Document proposal behaviour is untouched: supersede-on-create, stale detection, owner
+  notification. Preserved by not migrating that table at all — see the stage 1 decision.
 - Browser: agent proposes an update over MCP → it appears in the inbox attributed to the human
   behind the agent → the diff is readable → approving changes only that document. Check at
   1280px and 375px.
@@ -418,8 +476,8 @@ place — anything derived from a working tree — and is a poor trade nearly ev
 
 ### What every module gains regardless
 
-- **The gate.** Once `ProposedChange` and MCP policy evaluation exist (stage 1), any module can
-  register as a governed entity type. Automations arguably needs it most: an AI-authored or
+- **The gate.** With MCP policy evaluation in place (stage 1), any module's writes can be
+  governed without touching that module. Automations arguably needs it most: an AI-authored or
   AI-modified workflow should never activate without approval, whoever generated it.
 - **Read traffic over MCP.** An agent mid-session asking which sprint task a branch belongs to,
   whether the author is on call, what a ticket actually said, or which documents cover a
