@@ -17,8 +17,11 @@ from aexy.schemas.document import TemplateListResponse
 from aexy.services.document_service import DocumentService
 from aexy.services.document_templates_catalog import (
     SYSTEM_TEMPLATES,
+    _empty_text_nodes,
     get_system_template,
     is_system_template_id,
+    p,
+    table,
 )
 from tests.conftest import requires_postgres, seed_workspace
 
@@ -47,6 +50,40 @@ def test_every_template_is_usable_content():
         # is the one deliberate exception and still carries its empty paragraph.
         assert template.content["content"], template.slug
         assert template.prompt.strip(), template.slug
+
+
+def test_no_template_contains_an_empty_text_node():
+    """ProseMirror forbids these, and its failure mode is silence.
+
+    A `{"type": "text", "text": ""}` anywhere at any depth makes TipTap reject
+    the *entire* document: it warns to the browser console and renders an empty
+    editor. Nothing throws, no request fails, and every test here passed — five
+    of the nine templates shipped blank, and only opening one in a browser showed
+    it. They came from `p("")`, which is simply how a blank table cell reads.
+
+    So the rule is asserted directly rather than trusted to the builders: it
+    holds however a future template is written.
+    """
+    for template in SYSTEM_TEMPLATES:
+        empty = _empty_text_nodes(template.content)
+        assert not empty, (
+            f"{template.slug} would render as a blank document; "
+            f"empty text nodes at {empty}"
+        )
+
+
+def test_a_blank_table_cell_is_an_empty_paragraph_not_an_empty_text_node():
+    """The specific shape that broke it, pinned at the builder."""
+    assert p("") == {"type": "paragraph"}
+    assert p() == {"type": "paragraph"}
+    # And a real string still becomes a text node, or this "fix" would be a mute.
+    assert p("Owner")["content"] == [{"type": "text", "text": "Owner"}]
+    # `table` builds its body rows entirely out of blank cells, which is exactly
+    # how every affected template got there.
+    built = table(["Measure", "Today"], rows=2)
+    assert not _empty_text_nodes(built)
+    body_cell = built["content"][1]["content"][0]
+    assert body_cell["content"] == [{"type": "paragraph"}]
 
 
 def test_every_catalogue_category_survives_the_response_schema():

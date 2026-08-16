@@ -218,6 +218,25 @@ describe("DocumentCommentRail", () => {
     expect(container.textContent).toContain("Is this still true?");
   });
 
+  it("does not call a resolved thread's passage missing — resolving retires it on purpose", async () => {
+    // Resolving removes the highlight deliberately, so the thread lands in the
+    // same "no mark" state as one whose passage was edited away. Telling somebody
+    // their text is gone the instant they tick a thread off reads as data loss.
+    mocks.comments = [
+      comment({
+        id: "c-done",
+        anchor_id: "anchor-retired",
+        quoted_text: "a settled passage",
+        is_resolved: true,
+      }),
+    ];
+
+    await render();
+
+    expect(container.textContent).not.toContain("No longer in the document");
+    expect(container.textContent).toContain("Is this still true?");
+  });
+
   it("keeps an anchored thread out of the unanchored group while its mark is live", async () => {
     mocks.comments = [comment({ id: "c-live", anchor_id: "anchor-live", quoted_text: "a passage" })];
 

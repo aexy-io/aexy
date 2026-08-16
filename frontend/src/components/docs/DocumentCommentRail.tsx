@@ -92,11 +92,20 @@ export function DocumentCommentRail({
   const [contentHeight, setContentHeight] = useState(0);
   const cardHeights = useRef<Record<string, number>>({});
 
-  const { live, orphaned } = useMemo(() => {
+  const { live, orphaned, settled } = useMemo(() => {
     const anchored = comments.filter((comment) => comment.anchor_id);
+    const unmarked = anchored.filter(
+      (comment) => !liveAnchorIds.includes(comment.anchor_id!),
+    );
     return {
       live: anchored.filter((comment) => liveAnchorIds.includes(comment.anchor_id!)),
-      orphaned: anchored.filter((comment) => !liveAnchorIds.includes(comment.anchor_id!)),
+      // A thread loses its mark two ways, and they do not mean the same thing.
+      // Resolving retires the highlight on purpose, so telling somebody their
+      // passage is "no longer in the document" the instant they tick a thread
+      // off reads as data loss. Only an unresolved thread that lost its passage
+      // is a surprise worth flagging.
+      orphaned: unmarked.filter((comment) => !comment.is_resolved),
+      settled: unmarked.filter((comment) => comment.is_resolved),
     };
   }, [comments, liveAnchorIds]);
 
@@ -306,7 +315,19 @@ export function DocumentCommentRail({
         )}
       </div>
 
-      {!pending && live.length === 0 && orphaned.length === 0 && (
+      {/* Settled threads: resolved, so their highlight was retired on purpose.
+          No heading and no alarm — `Thread` already collapses a resolved thread
+          to its first line, so these sit quietly at the end where the record of
+          the conversation stays reachable. */}
+      {settled.length > 0 && (
+        <div className="mt-4 space-y-2">
+          {settled.map((comment) => (
+            <Thread key={comment.id} {...threadProps(comment)} />
+          ))}
+        </div>
+      )}
+
+      {!pending && live.length === 0 && orphaned.length === 0 && settled.length === 0 && (
         <p className="flex items-start gap-2 text-xs text-muted-foreground">
           <MessageSquarePlus className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
           {t("empty")}

@@ -739,10 +739,15 @@ class DocumentService:
             if key in self.EDITABLE_TEMPLATE_FIELDS:
                 setattr(template, key, value)
 
-        # No `refresh` afterwards: the session is configured with
-        # `expire_on_commit=False`, so the instance is still readable and a
-        # re-select would only cost a round trip.
         await self.db.commit()
+        # Refreshed even though the session sets `expire_on_commit=False`. Taking
+        # it out looked like removing a redundant round trip and instead made
+        # every rename fail with `MissingGreenlet`: the endpoint builds its
+        # response in a sync function, so the first attribute that still needs
+        # loading attempts IO outside the greenlet and raises. The update itself
+        # had already committed, so the row changed and the caller saw a 500 —
+        # the worst shape a bug can take. Found by renaming one in a browser.
+        await self.db.refresh(template)
         return template
 
     async def delete_workspace_template(self, template_id: str, workspace_id: str) -> bool:

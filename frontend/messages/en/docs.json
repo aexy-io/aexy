@@ -41,7 +41,7 @@
       "untitledTemplate": "Untitled template",
       "savedAsTemplate": "Saved as template",
       "saveAsTemplateFailed": "Could not save as template",
-      "markdownWarning": "Markdown cannot carry comment highlights, so switching will unpin {count, plural, one {# comment thread} other {# comment threads}} from the text. The comments are kept, with the passage they were written about."
+      "markdownWarning": "In Markdown, the {count, plural, one {# commented passage appears} other {# commented passages appear}} as raw HTML. Editing or deleting that markup unpins the thread from the text — the comment itself is kept either way, with the passage it was written about."
     },
     "comments": {
       "railLabel": "Comment threads",

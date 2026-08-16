@@ -70,16 +70,14 @@ export const CommentAnchor = Mark.create({
   },
 
   renderHTML({ HTMLAttributes }) {
-    return [
-      "span",
-      mergeAttributes(HTMLAttributes, {
-        // Styling lives here rather than in the editor's className soup so the
-        // highlight travels with the mark, including into the read-only embed.
-        class:
-          "rounded-sm bg-amber-400/25 border-b-2 border-amber-500/70 cursor-pointer transition-colors hover:bg-amber-400/40 data-[active=true]:bg-amber-400/50",
-      }),
-      0,
-    ];
+    // Only the data attribute. Appearance is a `[data-comment-anchor]` rule in
+    // globals.css rather than classes here, because this element is what the
+    // Markdown serialiser writes out verbatim: with classes on it, switching to
+    // Markdown wrapped the commented sentence in `<span class="rounded-sm
+    // bg-amber-400/25 border-b-2 …">`, which is unreadable in the one view whose
+    // entire purpose is being readable. The attribute alone still round-trips,
+    // so the highlight survives the trip through Markdown.
+    return ["span", mergeAttributes(HTMLAttributes), 0];
   },
 
   addCommands() {

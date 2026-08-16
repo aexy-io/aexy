@@ -191,6 +191,12 @@ async def test_a_field_the_caller_may_not_set_is_dropped(monkeypatch):
         async def commit():
             return None
 
+        @staticmethod
+        async def refresh(_instance):
+            # Real one re-reads the row; here the object is the row. Present at
+            # all because the service must refresh — see the note on the call.
+            return None
+
     await DocumentService(db=FakeDb()).update_workspace_template(
         TEMPLATE,
         WORKSPACE,

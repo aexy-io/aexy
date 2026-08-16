@@ -43,10 +43,20 @@ def h(level: int, value: str) -> dict:
 
 
 def p(*parts: str | dict) -> dict:
-    """A paragraph. Bare strings become plain text; pass ``_text`` for marks."""
-    content = [_text(part) if isinstance(part, str) else part for part in parts]
-    # TipTap treats a paragraph with an empty content array as an empty
-    # paragraph, which is what a blank line in a template should be.
+    """A paragraph. Bare strings become plain text; pass ``_text`` for marks.
+
+    Empty strings are dropped rather than becoming text nodes. ProseMirror's
+    schema forbids an empty text node — `RangeError: Empty text nodes are not
+    allowed` — and TipTap's response to invalid content is to warn to the console
+    and render an *entirely blank document*. So one `p("")` in a table cell,
+    which is just how a blank cell reads here, silently cost the whole template.
+    """
+    content = [
+        _text(part) if isinstance(part, str) else part
+        for part in parts
+        if not (isinstance(part, str) and part == "")
+    ]
+    # A paragraph with no content is the empty paragraph a blank line wants.
     return {"type": "paragraph", "content": content} if content else {"type": "paragraph"}
 
 
@@ -422,6 +432,25 @@ def get_system_template(template_id: str | None) -> SystemTemplate | None:
     return _BY_ID.get(str(template_id).strip()) if template_id else None
 
 
+def _empty_text_nodes(node: object, path: str = "doc") -> list[str]:
+    """Where a document carries a text node with no text.
+
+    ProseMirror's schema forbids these, and TipTap's reaction to content it
+    cannot parse is a console warning plus an *entirely blank editor* — so a
+    single one, anywhere at any depth, costs the whole template with no error
+    that anybody sees. Five of nine templates shipped this way because their
+    tables had blank cells.
+    """
+    if not isinstance(node, dict):
+        return []
+    found: list[str] = []
+    if node.get("type") == "text" and not node.get("text"):
+        found.append(path)
+    for index, child in enumerate(node.get("content") or []):
+        found += _empty_text_nodes(child, f"{path}>{node.get('type')}[{index}]")
+    return found
+
+
 def _validate() -> None:
     """Fail at import on an authoring mistake rather than in the picker.
 
@@ -437,6 +466,12 @@ def _validate() -> None:
             raise ValueError(f"system template {template.slug!r} has no prompt")
         if template.content.get("type") != "doc" or not template.content.get("content"):
             raise ValueError(f"system template {template.slug!r} has no content")
+        empty = _empty_text_nodes(template.content)
+        if empty:
+            raise ValueError(
+                f"system template {template.slug!r} has empty text nodes, which "
+                f"make TipTap render the whole document blank: {empty[:3]}"
+            )
 
 
 _validate()
