@@ -3,6 +3,7 @@
  * Defines the two sidebar layout versions users can switch between
  */
 
+import type { SidebarBadgeKey } from "@/hooks/useSidebarBadges";
 import {
     LayoutDashboard,
     Target,
@@ -81,6 +82,10 @@ export interface SidebarItemConfig {
     icon: LucideIcon;
     items?: SidebarItemConfig[];
     personas?: string[]; // e.g. ["developer","manager"] — omit for all personas
+    /** Name of a count to show beside the label. Resolved by
+     *  `useSidebarBadges` — the config says what to show, not where the
+     *  number comes from, so navigation stays free of data fetching. */
+    badge?: SidebarBadgeKey;
 }
 
 export interface SidebarSectionConfig {
@@ -391,7 +396,7 @@ export const GROUPED_LAYOUT: SidebarLayoutConfig = {
             label: "Knowledge",
             items: [
                 { href: "/docs", label: "Docs", icon: FileText },
-                { href: "/review", label: "Review", icon: GitMerge },
+                { href: "/review", label: "Review", icon: GitMerge, badge: "review" },
                 { href: "/docs/drive", label: "Drive", icon: HardDrive },
                 { href: "/tables", label: "Tables", icon: Table2 },
                 { href: "/forms", label: "Forms", icon: FormInput },
@@ -521,7 +526,7 @@ export const FLAT_LAYOUT: SidebarLayoutConfig = {
                     items: leaveItems,
                 },
                 { href: "/docs", label: "Docs", icon: FileText },
-                { href: "/review", label: "Review", icon: GitMerge },
+                { href: "/review", label: "Review", icon: GitMerge, badge: "review" },
                 { href: "/docs/drive", label: "Drive", icon: HardDrive },
                 { href: "/tables", label: "Tables", icon: Table2 },
                 { href: "/forms", label: "Forms", icon: FormInput },
