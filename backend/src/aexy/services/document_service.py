@@ -783,6 +783,7 @@ class DocumentService:
         branch: str = "main",
         section_id: str | None = None,
         owner_developer_id: str | None = None,
+        template_category: str | None = None,
     ) -> DocumentCodeLink:
         """Create a link between a document and source code.
 
@@ -801,6 +802,7 @@ class DocumentService:
             branch=branch,
             document_section_id=section_id,
             owner_developer_id=owner_developer_id,
+            template_category=template_category,
         )
 
         self.db.add(link)

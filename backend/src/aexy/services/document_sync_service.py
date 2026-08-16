@@ -30,6 +30,97 @@ class SyncTriggerType(str, Enum):
     MANUAL = "manual"  # Free: User-initiated only
 
 
+# Paths whose changing tells a reader of the documentation nothing.
+#
+# This is the cheapest saving in the pipeline and the one that matters most at
+# scale: once a repository is documented module by module, most pushes touch
+# *some* module, and without this filter each one buys a full regeneration —
+# an LLM call, a proposal, and a person asked to review a document whose
+# meaning did not change because a lockfile moved.
+#
+# Conservative on purpose. Anything not clearly noise is treated as
+# substantive: a missed skip costs one generation, a wrong skip means a
+# document stays wrong and nobody is told.
+_NOISE_FILENAMES = frozenset(
+    {
+        "package-lock.json",
+        "yarn.lock",
+        "pnpm-lock.yaml",
+        "poetry.lock",
+        "uv.lock",
+        "Cargo.lock",
+        "Gemfile.lock",
+        "composer.lock",
+        "go.sum",
+        "requirements.txt.lock",
+    }
+)
+
+_NOISE_DIRECTORIES = ("node_modules/", "vendor/", "dist/", "build/", ".git/")
+
+_NOISE_SUFFIXES = (
+    ".min.js",
+    ".min.css",
+    ".map",
+    ".snap",
+    ".lock",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".svg",
+    ".ico",
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".pdf",
+)
+
+
+def _category_for_link(code_link):
+    """The kind of document this link produces.
+
+    Both sync paths hardcoded `FUNCTION_DOCS`, so re-syncing a module document
+    rewrote it as function docs — the document silently changed kind, and the
+    author's only clue was that the proposal read nothing like the page.
+    Falls back to the old constant when the link predates the column.
+    """
+    from aexy.models.documentation import TemplateCategory
+
+    stored = getattr(code_link, "template_category", None)
+    if stored:
+        try:
+            return TemplateCategory(stored)
+        except ValueError:
+            logger.warning(
+                f"Code link {code_link.id} has unknown category {stored!r}"
+            )
+    return TemplateCategory.FUNCTION_DOCS
+
+
+def is_substantive_path(path: str) -> bool:
+    """Could a change to this file alter what the documentation should say?
+
+    Lockfiles, build output, vendored trees and binary assets cannot: they
+    change constantly and describe nothing a reader of the prose cares about.
+    """
+    normalised = path.strip().lstrip("./")
+    if not normalised:
+        return False
+
+    filename = normalised.rsplit("/", 1)[-1]
+    if filename in _NOISE_FILENAMES:
+        return False
+    if any(
+        normalised.startswith(directory) or f"/{directory}" in normalised
+        for directory in _NOISE_DIRECTORIES
+    ):
+        return False
+    if normalised.endswith(_NOISE_SUFFIXES):
+        return False
+    return True
+
+
 class DocumentSyncService:
     """Service for orchestrating document sync based on plan tier."""
 
@@ -217,6 +308,24 @@ class DocumentSyncService:
         Returns:
             Summary of actions taken.
         """
+        # Drop the noise before anything is matched, flagged or generated. A
+        # push of nothing but lockfiles reaches here regularly and must cost a
+        # filter rather than one LLM call per document it happens to sit under.
+        substantive_paths = [p for p in changed_paths if is_substantive_path(p)]
+        if not substantive_paths:
+            logger.info(
+                f"Push {commit_sha[:8]} to repository {repository_id} touched "
+                f"{len(changed_paths)} path(s), none substantive — skipping"
+            )
+            return {
+                "real_time_synced": [],
+                "queued_for_batch": [],
+                "marked_pending": [],
+                "no_match": 0,
+                "skipped_non_substantive": len(changed_paths),
+            }
+        changed_paths = substantive_paths
+
         results = {
             "real_time_synced": [],
             "queued_for_batch": [],
@@ -554,11 +663,7 @@ class DocumentSyncService:
             )
 
             gen_service = DocumentGenerationService(self.db)
-
-            # Get the template category from the document or code link
-            from aexy.models.documentation import TemplateCategory
-
-            category = TemplateCategory.FUNCTION_DOCS
+            category = _category_for_link(code_link)
 
             github_service = await self._build_github_reader(document, code_link)
             if github_service is None:
@@ -568,7 +673,7 @@ class DocumentSyncService:
             # into the proposed-edit review queue. The user approves
             # before content lands — replaces the old "mark pending"
             # stub that never produced anything to act on.
-            await self._generate_and_propose(
+            outcome = await self._generate_and_propose(
                 document=document,
                 code_link=code_link,
                 category=category,
@@ -583,6 +688,11 @@ class DocumentSyncService:
             code_link.last_commit_sha = commit_sha
             code_link.has_pending_changes = False
             code_link.last_synced_at = datetime.now(timezone.utc)
+            if outcome is not None:
+                # Only advance the base when there is prose written from this
+                # commit. Moving it on a failure would make the next sync diff
+                # against a version that was never written.
+                code_link.last_synced_commit_sha = commit_sha
 
             logger.info(
                 f"Real-time sync produced a proposal for document {document.id}"
@@ -592,6 +702,93 @@ class DocumentSyncService:
         except Exception as e:
             logger.error(f"Failed to trigger real-time sync: {e}")
             return False
+
+    async def _revise(
+        self,
+        document,
+        code_link,
+        gen_service,
+        github_service,
+        developer_id: str | None,
+    ) -> dict[str, Any] | None:
+        """Revise the existing prose against what changed, or return None.
+
+        A code change is a *diff*, and the document already says most of what
+        it should. Rewriting the whole thing from source — which is what this
+        path did — is both the most expensive option and the one most likely
+        to discard good prose nothing asked to change.
+
+        `update_documentation` and its `DOC_UPDATE_PROMPT` were already here,
+        used only by the apply-a-suggestion route, which passes empty strings
+        for both code arguments. The one caller that genuinely has an old
+        version and a new version was not using it.
+
+        Returns None — meaning "fall back to a full regeneration" — whenever a
+        revision would be guesswork: no base commit recorded, nothing written
+        yet, or the fetch failed. Guessing a base produces a diff against a
+        version that never existed, which is worse than paying for a rewrite.
+        """
+        base_sha = getattr(code_link, "last_synced_commit_sha", None)
+        if not base_sha:
+            return None
+
+        head_sha = code_link.last_commit_sha
+        if not head_sha or head_sha == base_sha:
+            return None
+
+        existing = document.content
+        if not existing or not existing.get("content"):
+            # Nothing to revise. A first draft is a generation, not an edit.
+            return None
+
+        compare = getattr(github_service, "compare_commits", None)
+        if compare is None:
+            return None
+
+        try:
+            diff = await compare(
+                code_link.repository.full_name, base_sha, head_sha, code_link.path
+            )
+        except Exception as e:
+            logger.warning(
+                f"compare {base_sha[:8]}..{head_sha[:8]} failed for doc "
+                f"{document.id}: {e} — regenerating in full"
+            )
+            return None
+
+        if not diff or not diff.get("patch"):
+            return None
+
+        try:
+            result = await gen_service.update_documentation(
+                existing_doc=existing,
+                old_code="",
+                new_code=diff["patch"],
+                language=None,
+                changes_summary=diff.get("summary"),
+                developer_id=developer_id,
+            )
+        except Exception as e:
+            logger.warning(
+                f"Incremental update failed for doc {document.id}: {e} "
+                f"— regenerating in full"
+            )
+            return None
+
+        # `update_documentation` answers with {"updated_doc": ..., "changes_made":
+        # [...]} rather than a bare document, and falls back to echoing the input
+        # when the model's reply will not parse. An echo is not an update.
+        revised = result.get("updated_doc") if isinstance(result, dict) else None
+        if not isinstance(revised, dict) or not revised.get("content"):
+            return None
+        if revised == existing:
+            return None
+
+        logger.info(
+            f"Revised doc {document.id} from {base_sha[:8]}..{head_sha[:8]} "
+            f"instead of regenerating"
+        )
+        return revised
 
     async def _generate_and_propose(
         self,
@@ -622,21 +819,30 @@ class DocumentSyncService:
         # single largest recurring AI cost belong to nobody and appear in no
         # workspace's usage.
         billed_to = code_link.owner_developer_id or document.created_by_id
+        developer_id = str(billed_to) if billed_to else None
 
-        try:
-            content = await gen_service.generate_from_repository(
-                github_service=github_service,
-                repository_full_name=code_link.repository.full_name,
-                path=code_link.path,
-                template_category=category,
-                branch=code_link.branch or "main",
-                developer_id=str(billed_to) if billed_to else None,
-            )
-        except Exception as e:
-            logger.error(
-                f"generate_from_repository failed for doc {document.id}: {e}"
-            )
-            return None
+        content = await self._revise(
+            document=document,
+            code_link=code_link,
+            gen_service=gen_service,
+            github_service=github_service,
+            developer_id=developer_id,
+        )
+        if content is None:
+            try:
+                content = await gen_service.generate_from_repository(
+                    github_service=github_service,
+                    repository_full_name=code_link.repository.full_name,
+                    path=code_link.path,
+                    template_category=category,
+                    branch=code_link.branch or "main",
+                    developer_id=developer_id,
+                )
+            except Exception as e:
+                logger.error(
+                    f"generate_from_repository failed for doc {document.id}: {e}"
+                )
+                return None
 
         proposed_edits = ProposedEditsService(self.db)
         proposal = await proposed_edits.create_proposal(
@@ -661,7 +867,7 @@ class DocumentSyncService:
         log; never raises so a single bad doc doesn't poison the
         queue.
         """
-        from aexy.models.documentation import Document, DocumentCodeLink, TemplateCategory
+        from aexy.models.documentation import Document, DocumentCodeLink
         from aexy.services.document_generation_service import (
             DocumentGenerationService,
         )
@@ -700,7 +906,7 @@ class DocumentSyncService:
         outcome = await self._generate_and_propose(
             document=document,
             code_link=code_link,
-            category=TemplateCategory.FUNCTION_DOCS,
+            category=_category_for_link(code_link),
             gen_service=gen_service,
             github_service=github_service,
             source="code_change_sync",
@@ -710,6 +916,9 @@ class DocumentSyncService:
         # Clear the dirty flag — the proposal IS the new dirty state.
         code_link.has_pending_changes = False
         code_link.last_synced_at = datetime.now(timezone.utc)
+        # The prose now reflects the newest commit we have seen touch this path.
+        if code_link.last_commit_sha:
+            code_link.last_synced_commit_sha = code_link.last_commit_sha
         return {
             "status": "proposed",
             "document_id": document_id,

@@ -494,6 +494,83 @@ class GitHubAppService:
                     }
                 ]
 
+    async def compare_commits(
+        self,
+        installation_id: int,
+        owner: str,
+        repo: str,
+        base: str,
+        head: str,
+        path_prefix: str = "",
+        max_patch_chars: int = 40_000,
+    ) -> dict[str, Any] | None:
+        """What changed between two commits, narrowed to one path.
+
+        The point is what it *doesn't* return. Documentation only needs the
+        patch for the files it describes, so sending whole file trees to a
+        model — which is what regenerating from source does — pays for context
+        that was already correct. A one-function change is a few hundred
+        tokens this way and tens of thousands the other.
+
+        `max_patch_chars` bounds the result rather than truncating silently:
+        past that size a rewrite is both cheaper and better than patching, so
+        the caller is told to regenerate instead by receiving None.
+
+        Returns {"patch", "summary", "files"} or None if there is nothing
+        relevant in range.
+        """
+        token, _ = await self.get_installation_access_token(installation_id)
+        url = f"{self.api_base_url}/repos/{owner}/{repo}/compare/{base}...{head}"
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                url,
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Accept": "application/vnd.github+json",
+                    "X-GitHub-Api-Version": "2022-11-28",
+                },
+            )
+
+            if response.status_code == 404:
+                return None
+            if response.status_code != 200:
+                raise GitHubAppError(
+                    f"Failed to compare commits: {response.status_code} - {response.text}"
+                )
+
+            payload = response.json()
+
+        prefix = path_prefix.strip("/")
+        parts: list[str] = []
+        names: list[str] = []
+        for entry in payload.get("files") or []:
+            filename = entry.get("filename") or ""
+            if prefix and not (
+                filename == prefix or filename.startswith(f"{prefix}/")
+            ):
+                continue
+            patch = entry.get("patch")
+            if not patch:
+                # No patch means binary, or a diff GitHub declined to render.
+                continue
+            names.append(filename)
+            parts.append(f"--- {filename}\n{patch}")
+
+        if not parts:
+            return None
+
+        combined = "\n\n".join(parts)
+        if len(combined) > max_patch_chars:
+            return None
+
+        commit_count = len(payload.get("commits") or [])
+        summary = (
+            f"{commit_count} commit(s) touched {len(names)} file(s) under "
+            f"{prefix or 'the repository root'}: {', '.join(names[:10])}"
+        )
+        return {"patch": combined, "summary": summary, "files": names}
+
     async def get_file_content(
         self,
         installation_id: int,
@@ -657,4 +734,17 @@ class GitHubServiceAdapter:
             repo=self.repo,
             path=path,
             ref=branch,
+        )
+
+    async def compare_commits(
+        self, repository_full_name: str, base: str, head: str, path_prefix: str = ""
+    ) -> dict | None:
+        """What changed between two commits, under one path."""
+        return await self.app_service.compare_commits(
+            installation_id=self.installation_id,
+            owner=self.owner,
+            repo=self.repo,
+            base=base,
+            head=head,
+            path_prefix=path_prefix,
         )

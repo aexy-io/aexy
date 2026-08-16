@@ -565,8 +565,27 @@ class DocumentCodeLink(Base):
     path: Mapped[str] = mapped_column(String(1000), nullable=False)  # Relative path
     branch: Mapped[str] = mapped_column(String(255), default="main", nullable=False)
 
-    # Change tracking
+    # What kind of document this link produces. Regeneration used to hardcode
+    # FUNCTION_DOCS, so re-syncing a module document quietly turned it into
+    # function docs — the document changed kind without anyone asking.
+    template_category: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    # Change tracking. Two commits, not one, because they answer different
+    # questions and the single field could only hold one of the answers:
+    #
+    #   last_commit_sha        the newest commit we have seen touch this path
+    #   last_synced_commit_sha the commit the document was actually written from
+    #
+    # `handle_code_change` overwrites the first the moment a push arrives. When
+    # that was the only column, the base disappeared before anything could use
+    # it, so there was no way to ask "what changed since this document was
+    # written?" — only "what is the latest commit?". A null base means we do
+    # not know, and callers fall back to regenerating in full rather than
+    # guessing a diff.
     last_commit_sha: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    last_synced_commit_sha: Mapped[str | None] = mapped_column(
+        String(40), nullable=True
+    )
     last_content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     last_synced_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
