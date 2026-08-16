@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.1] - 2026-08-17
+
+Switching workspace now moves the page you are on, and the changelog is
+readable.
+
+### Fixed: switching workspace left the page showing the old one
+
+The selected workspace was component state inside `useWorkspace`, so each of
+the roughly 270 places that ask for it kept its own copy of the answer.
+Switching re-rendered whichever component owned the switcher and wrote the
+choice to storage; everything else went on querying the workspace you had just
+left until something happened to remount it.
+
+Navigating hid it, because a page freshly mounted reads the stored choice — so
+for as long as the landing page was a set of charts about you rather than a
+list scoped to a workspace, it mostly went unnoticed. Home is a list scoped to a
+workspace, the switcher sits beside it, and nothing remounts: the page simply
+did not respond. Its own workspace selector was no better, since the widgets
+and the page around them each held their own copy.
+
+There is one selection now, and every consumer hears about a change, so
+anything keyed to the workspace refetches where it stands.
+
+### Fixed: the changelog was a narrow column of fragments
+
+Three things, none of them width alone.
+
+Entries here are hard-wrapped at about eighty columns, and each of those lines
+was being rendered as its own paragraph — so the text broke every eight or nine
+words, at whatever point the source happened to wrap rather than where the
+sentence ended. A paragraph is everything up to a blank line now, as the format
+means it.
+
+Section headings passed their whole title — "Fixed: most of the list was not
+clickable" — to a lookup keyed on "fixed" or "added", so the colour coding never
+matched anything: every section came out the same grey, with the heading itself
+set in the twelve-pixel type of the pill it sat in. The kind is a coloured pill
+now and the sentence after it is a heading.
+
+The column is wider, and the width went to a version rail that stays with you
+down a long entry rather than to longer lines — prose stops being readable much
+past seventy characters, so widening the text would have been the wrong use of
+the space.
+
+### Fixed: the frontend lockfile version
+
+Three releases behind at 0.14.0, where it had been left by whichever release
+last bumped `package.json` without it.
+
 ## [0.19.0] - 2026-08-16
 
 The work assigned to you is now the first thing you see, and the four things
