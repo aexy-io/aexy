@@ -5,6 +5,88 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.0] - 2026-08-16
+
+The work assigned to you is now the first thing you see, and the four things
+about that list which quietly did not work.
+
+### Changed: Home is your work; the old dashboard is Insights
+
+Landing on Aexy showed language proficiency charts and a growth trajectory.
+Useful once a quarter, but not what anyone opens the app to find out. What you
+came for — the tasks, bugs, stories and tickets on your plate — was at
+`/my-work`, behind a nav item most people never clicked, beside a second nav
+item that opened the same list under a different name.
+
+So My Work is Home, at `/dashboard`, and the widget dashboard it replaced is
+Insights, at `/dashboard/overview`. `/my-work` and `/tickets` redirect there, so
+bookmarks and the links scattered through the command palette, the app header,
+the `t` shortcut and several widgets all still land somewhere sensible. The
+duplicate nav entry is gone rather than moved: two items opening one list is
+what this navigation keeps being cleaned up for.
+
+Home is built from the same widget system as Insights — same registry, same
+drag-to-reorder, same customize modal — so it can be shaped like any other
+dashboard. Three new widgets (the stat tiles, the work queue, a breakdown by
+tracker) share one filter store, which is what lets a tile scope the queue below
+it even after the two have been reordered or one has been hidden. Layouts are
+per surface: rearranging Home leaves Insights untouched, and the other way
+round.
+
+Widgets that read their data from the Insights page are kept off Home's picker.
+Rendered without it they show "Top: undefined", or throw when a handler that was
+never passed gets called — a widget offered and then broken is worse than one
+not offered.
+
+### Fixed: your work list showed every workspace at once
+
+`GET /developers/me/assigned-tasks` filtered by assignee and nothing else. For
+anyone in more than one workspace that meant both workspaces' work in a single
+undifferentiated list, with no way to say which one they meant — and no way to
+tell, looking at a row, which one it came from.
+
+The list is scoped to a workspace now, each row says which, and a workspace the
+caller is not a member of is refused rather than quietly returning nothing. The
+selector appears once you are in two or more workspaces and follows the
+workspace switcher rather than remembering a workspace of its own, because a
+dashboard showing one workspace while the header names another is the same
+confusion in a new place. "All workspaces" stays, as something you choose.
+
+### Fixed: most of the list was not clickable
+
+A task opened its board only when it knew both its sprint and its project. Bugs
+and stories never opened anything at all, because the API never sent the ids a
+link needs. The rows looked interactive throughout and, for most of them, did
+nothing.
+
+Every row is a link now — so middle-click and cmd-click work, which they never
+did while rows were click handlers — and each one resolves somewhere: a task
+through the resolver that finds its own board, a bug to its board's detail panel
+through a new deep link, a story to its epic.
+
+### Fixed: the counts at the top were decoration
+
+Four cards told you three things were in progress and gave you no way to see
+which three. Each is a filter now, pressing the active one clears it, and the
+counts stay whole while filtered so you can still see what else is waiting.
+
+### Removed: Manage Forms, from the page about your own work
+
+Ticket form configuration is settings, and it sat on a page that answers "what
+is on my plate?". It is still in settings. The workspace-wide ticket triage
+queue some people rely on survives as the assigned-to-me toggle, and ticket
+automations open on request instead of holding a permanent tab.
+
+### Migration
+
+`migrate_dashboard_surfaces.sql` adds a `surfaces` column to
+`dashboard_preferences`, where the layouts of dashboards other than the default
+one live. There is one preferences row per person and it also carries sidebar
+state, so a second dashboard could not simply take a row of its own — every
+sidebar lookup selects by developer alone and would have started finding two.
+Empty by default: an absent entry means "never customised", which the API reads
+as the surface's own built-in layout.
+
 ## [0.18.2] - 2026-08-13
 
 A month-end engineering report built from what the repo sync already knows —
