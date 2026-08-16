@@ -420,7 +420,8 @@ class DocumentSyncService:
         Ordered oldest-first so the document that has been wrong longest is
         the one handed out first.
         """
-        from aexy.models.documentation import DocumentProposedEdit, ProposedEditStatus
+        from aexy.models.documentation import ProposedEditStatus
+        from aexy.models.proposed_change import ProposedChange as DocumentProposedEdit
 
         conditions = [Document.workspace_id == workspace_id]
         if repository_id:
@@ -452,12 +453,12 @@ class DocumentSyncService:
         document_ids = [str(link.document_id) for link in links]
         counts_stmt = (
             select(
-                DocumentProposedEdit.document_id,
+                DocumentProposedEdit.entity_id,
                 func.count(DocumentProposedEdit.id),
             )
-            .where(DocumentProposedEdit.document_id.in_(document_ids))
+            .where(DocumentProposedEdit.entity_id.in_(document_ids))
             .where(DocumentProposedEdit.status == ProposedEditStatus.PENDING.value)
-            .group_by(DocumentProposedEdit.document_id)
+            .group_by(DocumentProposedEdit.entity_id)
         )
         pending = {
             str(document_id): count

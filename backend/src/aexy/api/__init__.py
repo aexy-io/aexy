@@ -125,6 +125,7 @@ from aexy.api.google_integration import callback_router as google_callback_route
 from aexy.api.agents import router as agents_router
 from aexy.api.agents import writing_style_router
 from aexy.api.agent_pending_actions import router as agent_pending_actions_router
+from aexy.api.review_items import router as review_items_router
 from aexy.api.agent_policies import router as agent_policies_router
 from aexy.api.agent_policies import audit_router as agent_audit_router
 # Automation-Agent Integration
@@ -347,6 +348,7 @@ api_router.include_router(agent_policies_router, tags=["agent-policies"], depend
 # any MCP client, and a workspace without that app enabled still needs to be
 # able to see and decline what an agent asked to do in it.
 api_router.include_router(agent_pending_actions_router)
+api_router.include_router(review_items_router)
 api_router.include_router(agent_audit_router, tags=["agent-audit"])
 # Automation-Agent Integration
 api_router.include_router(automation_agents_router, tags=["automation-agents"])

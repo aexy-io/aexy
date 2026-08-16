@@ -28,12 +28,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.models.agent_policy import (
-    AgentPendingAction,
     AgentPolicy,
     AgentPolicyDecision,
-    PendingActionStatus,
     PolicyDecisionType,
 )
+from aexy.models.proposed_change import ChangeKind, ChangeStatus, ProposedChange
 
 logger = logging.getLogger(__name__)
 
@@ -211,19 +210,27 @@ class McpGovernance:
         operation: dict[str, Any],
         arguments: dict[str, Any],
         result: Any,
-    ) -> AgentPendingAction:
-        pending = AgentPendingAction(
+    ) -> ProposedChange:
+        pending = ProposedChange(
             id=str(uuid4()),
+            kind=ChangeKind.ACTION.value,
+            entity_type="agent_action",
+            # Null on purpose: a call stopped before it ran has not told us
+            # what it would have touched, and naming a target here would be a
+            # guess the reviewer might believe.
+            entity_id=None,
             workspace_id=workspace_id,
             requested_by_id=developer_id,
-            tool_name=tool_name,
-            action=operation["action"],
-            method=operation["method"],
-            path=operation["path"],
-            arguments=arguments,
-            policy_id=result.policy_id,
+            payload={
+                "tool_name": tool_name,
+                "action": operation["action"],
+                "method": operation["method"],
+                "path": operation["path"],
+                "arguments": arguments,
+            },
+            source=result.policy_id,
             reason=result.reason,
-            status=PendingActionStatus.PENDING.value,
+            status=ChangeStatus.PENDING.value,
         )
         self.db.add(pending)
         await self.db.flush()

@@ -321,7 +321,7 @@ async def list_workspace_proposed_edits(
     from sqlalchemy.orm import selectinload as _selectinload
 
     from aexy.models.documentation import Document as _Doc
-    from aexy.models.documentation import DocumentProposedEdit as _DPE
+    from aexy.models.proposed_change import ProposedChange as _DPE
     from aexy.models.documentation import ProposedEditStatus as _Status
 
     stmt = (
@@ -2319,12 +2319,12 @@ async def list_proposed_edits(
     else:
         from sqlalchemy import select as _select
 
-        from aexy.models.documentation import DocumentProposedEdit as _DPE
+        from aexy.models.proposed_change import ProposedChange as _DPE
 
-        stmt = _select(_DPE).where(_DPE.document_id == document_id)
+        stmt = _select(_DPE).where(_DPE.entity_type == "document").where(_DPE.entity_id == document_id)
         if status_filter != "all":
             stmt = stmt.where(_DPE.status == status_filter)
-        stmt = stmt.order_by(_DPE.proposed_at.desc())
+        stmt = stmt.order_by(_DPE.created_at.desc())
         result = await db.execute(stmt)
         proposals = list(result.scalars().all())
 

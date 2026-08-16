@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.api.developers import get_current_developer
 from aexy.core.database import get_db
-from aexy.models.agent_policy import AgentPendingAction, PendingActionStatus
+from aexy.models.proposed_change import ChangeKind, ChangeStatus, ProposedChange
 from aexy.models.developer import Developer
 from aexy.services.workspace_service import WorkspaceService
 
@@ -46,21 +46,21 @@ class RejectRequest(BaseModel):
     note: str | None = None
 
 
-def _to_response(row: AgentPendingAction) -> PendingActionResponse:
+def _to_response(row: ProposedChange) -> PendingActionResponse:
     return PendingActionResponse(
         id=str(row.id),
         workspace_id=str(row.workspace_id),
         requested_by_id=str(row.requested_by_id) if row.requested_by_id else None,
-        tool_name=row.tool_name,
-        action=row.action,
-        method=row.method,
-        path=row.path,
-        arguments=row.arguments or {},
+        tool_name=row.payload.get("tool_name", ""),
+        action=row.payload.get("action", ""),
+        method=row.payload.get("method", ""),
+        path=row.payload.get("path", ""),
+        arguments=row.payload.get("arguments") or {},
         reason=row.reason,
         status=row.status,
         reviewed_by_id=str(row.reviewed_by_id) if row.reviewed_by_id else None,
         reviewed_at=row.reviewed_at,
-        review_note=row.review_note,
+        review_note=row.reason,
         result=row.result,
         created_at=row.created_at,
     )
@@ -80,12 +80,13 @@ async def _require_member(
 
 async def _load(
     db: AsyncSession, workspace_id: str, action_id: str
-) -> AgentPendingAction:
+) -> ProposedChange:
     row = (
         await db.execute(
-            select(AgentPendingAction)
-            .where(AgentPendingAction.id == action_id)
-            .where(AgentPendingAction.workspace_id == workspace_id)
+            select(ProposedChange)
+            .where(ProposedChange.id == action_id)
+            .where(ProposedChange.workspace_id == workspace_id)
+            .where(ProposedChange.kind == ChangeKind.ACTION.value)
         )
     ).scalar_one_or_none()
     if not row:
@@ -110,12 +111,14 @@ async def list_pending_actions(
     """
     await _require_member(db, workspace_id, str(current_user.id))
 
-    stmt = select(AgentPendingAction).where(
-        AgentPendingAction.workspace_id == workspace_id
+    stmt = (
+        select(ProposedChange)
+        .where(ProposedChange.workspace_id == workspace_id)
+        .where(ProposedChange.kind == ChangeKind.ACTION.value)
     )
     if status_filter and status_filter != "all":
-        stmt = stmt.where(AgentPendingAction.status == status_filter)
-    stmt = stmt.order_by(AgentPendingAction.created_at.asc()).limit(limit)
+        stmt = stmt.where(ProposedChange.status == status_filter)
+    stmt = stmt.order_by(ProposedChange.created_at.asc()).limit(limit)
 
     rows = (await db.execute(stmt)).scalars().all()
     return [_to_response(row) for row in rows]
@@ -142,11 +145,11 @@ async def approve_pending_action(
     await _require_member(db, workspace_id, str(current_user.id), role="admin")
     row = await _load(db, workspace_id, action_id)
 
-    if row.status != PendingActionStatus.PENDING.value:
+    if row.status != ChangeStatus.PENDING.value:
         # Idempotent: a double-click must not run the call twice.
         return _to_response(row)
 
-    row.status = PendingActionStatus.APPROVED.value
+    row.status = ChangeStatus.APPROVED.value
     row.reviewed_by_id = str(current_user.id)
     row.reviewed_at = datetime.now(timezone.utc)
 
@@ -161,8 +164,8 @@ async def approve_pending_action(
     # the approved action behind itself forever.
     executor = McpToolExecutor(request.app, catalog, granted)
     outcome = await executor.call(
-        tool_name=row.tool_name,
-        arguments={**(row.arguments or {}), "action": row.action},
+        tool_name=row.payload.get("tool_name", ""),
+        arguments={**(row.payload.get("arguments") or {}), "action": row.payload.get("action")},
         developer_id=str(row.requested_by_id or current_user.id),
         workspace_id=workspace_id,
     )
@@ -188,13 +191,13 @@ async def reject_pending_action(
     await _require_member(db, workspace_id, str(current_user.id), role="admin")
     row = await _load(db, workspace_id, action_id)
 
-    if row.status != PendingActionStatus.PENDING.value:
+    if row.status != ChangeStatus.PENDING.value:
         return _to_response(row)
 
-    row.status = PendingActionStatus.REJECTED.value
+    row.status = ChangeStatus.REJECTED.value
     row.reviewed_by_id = str(current_user.id)
     row.reviewed_at = datetime.now(timezone.utc)
-    row.review_note = data.note
+    row.reason = data.note
     await db.commit()
     await db.refresh(row)
     return _to_response(row)

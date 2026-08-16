@@ -7456,6 +7456,61 @@ export interface ProposedEdit {
   is_stale: boolean;
 }
 
+/** One thing waiting on a person, whichever gate produced it. */
+export interface ReviewItem {
+  kind: "document_proposal" | "agent_action";
+  id: string;
+  title: string;
+  summary: string;
+  requested_by_id: string | null;
+  created_at: string;
+  reason: string | null;
+  /** Stale proposal, or an agent blocked until somebody answers. */
+  needs_attention: boolean;
+  document_id?: string | null;
+  document_icon?: string | null;
+  source?: string | null;
+  action?: string | null;
+  method?: string | null;
+}
+
+export interface ReviewSummaryCounts {
+  total: number;
+  document_proposals: number;
+  agent_actions: number;
+}
+
+export const reviewApi = {
+  list: async (workspaceId: string): Promise<ReviewItem[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/review`);
+    return response.data;
+  },
+
+  summary: async (workspaceId: string): Promise<ReviewSummaryCounts> => {
+    const response = await api.get(`/workspaces/${workspaceId}/review/summary`);
+    return response.data;
+  },
+
+  approveAction: async (workspaceId: string, actionId: string): Promise<unknown> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/agent-actions/${actionId}/approve`
+    );
+    return response.data;
+  },
+
+  rejectAction: async (
+    workspaceId: string,
+    actionId: string,
+    note?: string
+  ): Promise<unknown> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/agent-actions/${actionId}/reject`,
+      { note }
+    );
+    return response.data;
+  },
+};
+
 /** A proposal seen from the workspace queue rather than its own document,
  *  where a UUID alone is not enough to decide anything from. */
 export interface WorkspaceProposedEdit extends ProposedEdit {

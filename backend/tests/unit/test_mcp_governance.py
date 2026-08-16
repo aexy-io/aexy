@@ -17,12 +17,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from aexy.models.agent_policy import (
-    AgentPendingAction,
-    AgentPolicyDecision,
-    PolicyDecisionType,
-    PolicyType,
-)
+from aexy.models.agent_policy import AgentPolicyDecision, PolicyDecisionType, PolicyType
+from aexy.models.proposed_change import ChangeKind, ProposedChange
 from aexy.services.mcp_governance import McpGovernance
 from aexy.services.mcp_tool_executor import McpToolExecutor, ToolResult
 
@@ -180,9 +176,13 @@ class TestRequireApprovalQueues:
 
         assert verdict.allowed is False
         assert verdict.pending_action_id is not None
-        [pending] = db.of_type(AgentPendingAction)
-        assert pending.action == "crm.update_contact"
+        [pending] = db.of_type(ProposedChange)
+        assert pending.kind == ChangeKind.ACTION.value
+        assert pending.payload["action"] == "crm.update_contact"
         assert pending.status == "pending"
+        # Null on purpose: a call stopped before it ran has not said what it
+        # would have touched.
+        assert pending.entity_id is None
 
     async def test_the_queued_row_can_replay_the_call_exactly(self):
         """Policy runs before the call, so there is no result to review — only
@@ -198,12 +198,12 @@ class TestRequireApprovalQueues:
             tool_name="aexy_crm",
         )
 
-        [pending] = db.of_type(AgentPendingAction)
-        assert pending.method == "patch"
-        assert pending.path == WRITE_OP["path"]
-        assert pending.arguments == arguments
+        [pending] = db.of_type(ProposedChange)
+        assert pending.payload["method"] == "patch"
+        assert pending.payload["path"] == WRITE_OP["path"]
+        assert pending.payload["arguments"] == arguments
         assert pending.requested_by_id == DEV
-        assert pending.tool_name == "aexy_crm"
+        assert pending.payload["tool_name"] == "aexy_crm"
 
     async def test_the_agent_is_told_nothing_has_changed_yet(self):
         """Written for a model to relay to a person. "Blocked" sends an agent
