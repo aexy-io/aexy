@@ -128,9 +128,14 @@ export default function HomePage() {
             <button
               type="button"
               onClick={() => setShowAutomations((v) => !v)}
-              aria-pressed={showAutomations}
+              aria-expanded={showAutomations}
+              aria-controls="my-work-automations"
               data-testid="my-work-automations-toggle"
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-card hover:bg-accent text-muted-foreground hover:text-foreground border border-border transition"
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition ${
+                showAutomations
+                  ? "bg-accent text-foreground border-border"
+                  : "bg-card hover:bg-accent text-muted-foreground hover:text-foreground border-border"
+              }`}
             >
               <Zap className="h-4 w-4" />
               {t("automations")}
@@ -169,6 +174,16 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* Directly under the toolbar button that opens it, not at the foot of
+          the page. Below the widgets it was off-screen on any dashboard with
+          more than a couple of them, so pressing Automations looked like it
+          did nothing at all. */}
+      {showAutomations && canSeeTickets && (
+        <div id="my-work-automations" data-testid="my-work-automations">
+          <ModuleAutomationsPanel module="tickets" moduleLabel={t("stats.tickets")} />
+        </div>
+      )}
+
       {prefsLoading ? (
         // A skeleton, not the empty state: preferences arrive a moment after
         // the page does, and "your dashboard is empty" is a claim, not a
@@ -202,13 +217,6 @@ export default function HomePage() {
           renderWidget={renderWidget}
           getGridClass={getWidgetGridClass}
         />
-      )}
-
-      {/* Ticket automations were a tab on the old My Work page. They are
-          configuration rather than work, so they open on request instead of
-          taking a permanent slot on a dashboard about what is on your plate. */}
-      {showAutomations && canSeeTickets && (
-        <ModuleAutomationsPanel module="tickets" moduleLabel={t("stats.tickets")} />
       )}
 
       <DashboardCustomizeModal
