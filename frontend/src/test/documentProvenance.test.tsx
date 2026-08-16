@@ -33,6 +33,7 @@ const link = (overrides: Partial<DocumentCodeLink> = {}): DocumentCodeLink =>
     last_synced_at: "2026-03-01T00:00:00Z",
     has_pending_changes: false,
     owner_developer_id: "dev-1",
+    sync_mode: "propose" as const,
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-03-01T00:00:00Z",
     ...overrides,
@@ -162,6 +163,48 @@ describe("DocumentProvenance", () => {
     expect(
       behind.querySelector("[data-testid='provenance-sync-now']")
     ).not.toBeNull();
+  });
+
+  it("offers the sync mode as a first-class control", () => {
+    const container = render(
+      <DocumentProvenance
+        workspaceId="ws-1"
+        documentId="doc-1"
+        codeLinks={[link()]}
+      />
+    );
+
+    const select = container.querySelector<HTMLSelectElement>(
+      "[data-testid='provenance-sync-mode-link-1']"
+    );
+    expect(select).not.toBeNull();
+    expect(select!.value).toBe("propose");
+    expect([...select!.options].map((o) => o.value)).toEqual([
+      "propose",
+      "auto",
+      "off",
+    ]);
+  });
+
+  it("stops claiming a muted link is behind", () => {
+    // "Off" means stop watching, not merely stop proposing — a badge on a page
+    // somebody has explicitly muted is noise that teaches people to ignore
+    // badges.
+    const container = render(
+      <DocumentProvenance
+        workspaceId="ws-1"
+        documentId="doc-1"
+        codeLinks={[link({ sync_mode: "off", has_pending_changes: true })]}
+      />
+    );
+
+    expect(
+      container.querySelector("[data-testid='provenance-muted-link-1']")
+    ).not.toBeNull();
+    expect(
+      container.querySelector("[data-testid='provenance-behind-link-1']")
+    ).toBeNull();
+    expect(container.textContent).not.toContain("has changed since it was written");
   });
 
   it("counts how many linked paths have moved", () => {

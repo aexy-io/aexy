@@ -6830,9 +6830,15 @@ export interface DocumentCodeLink {
    *  transfer has run — which matters because ownership decides the sync's
    *  plan tier and its GitHub credential fallback. */
   owner_developer_id: string | null;
+  /** How this document reacts when its code changes. */
+  sync_mode: DocumentSyncMode;
   created_at: string;
   updated_at: string;
 }
+
+/** propose = queue for review; auto = apply derived updates unattended;
+ *  off = stop watching, including the "behind" badge. */
+export type DocumentSyncMode = "propose" | "auto" | "off";
 
 /** A document whose linked source has changed since it was written. */
 export interface DocumentNeedsUpdateItem {
@@ -7120,6 +7126,19 @@ export const documentApi = {
 
   getCodeLinks: async (workspaceId: string, documentId: string): Promise<DocumentCodeLink[]> => {
     const response = await api.get(`/workspaces/${workspaceId}/documents/${documentId}/code-links`);
+    return response.data;
+  },
+
+  setCodeLinkSyncMode: async (
+    workspaceId: string,
+    documentId: string,
+    linkId: string,
+    syncMode: DocumentSyncMode
+  ): Promise<DocumentCodeLink> => {
+    const response = await api.patch(
+      `/workspaces/${workspaceId}/documents/${documentId}/code-links/${linkId}/sync-mode`,
+      { sync_mode: syncMode }
+    );
     return response.data;
   },
 

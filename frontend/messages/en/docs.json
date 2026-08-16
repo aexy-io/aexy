@@ -67,7 +67,17 @@
       "updateNow": "Update now",
       "updating": "Updating…",
       "transferred": "Sync ownership transferred",
-      "transferFailed": "Could not transfer ownership"
+      "transferFailed": "Could not transfer ownership",
+      "syncModeLabel": "When the code changes",
+      "syncModePropose": "Ask me first",
+      "syncModeProposeHint": "Queue an update for review. The safe default.",
+      "syncModeAuto": "Update on its own",
+      "syncModeAutoHint": "Apply updates without asking. A full rewrite still asks, so hand-written prose is never overwritten unseen.",
+      "syncModeOff": "Leave it alone",
+      "syncModeOffHint": "Stop watching this path, including the behind-the-code badge.",
+      "syncModeSaved": "Sync setting saved",
+      "syncModeFailed": "Could not change the sync setting",
+      "muted": "Not watched"
     },
     "diff": {
       "current": "Current",

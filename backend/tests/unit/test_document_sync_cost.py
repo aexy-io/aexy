@@ -144,6 +144,7 @@ def revise_setup(
     )
     code_link = SimpleNamespace(
         id="link-1",
+        sync_mode="propose",
         repository=SimpleNamespace(full_name="acme/widgets"),
         path="src/pkg",
         branch="main",
@@ -267,7 +268,11 @@ class TestTheExpensivePathIsTheFallback:
             source="code_change_sync",
         )
 
-        assert outcome == {"proposal_id": "prop-1", "content": REVISED}
+        assert outcome == {
+            "proposal_id": "prop-1",
+            "content": REVISED,
+            "applied": False,
+        }
         gen.generate_from_repository.assert_not_awaited()
 
     @pytest.mark.asyncio
@@ -294,3 +299,130 @@ class TestTheExpensivePathIsTheFallback:
 
         assert outcome is not None
         gen.generate_from_repository.assert_awaited_once()
+
+
+class TestSyncMode:
+    """Per-document control over what a code change does.
+
+    A single policy across every document is one somebody eventually switches
+    off wholesale, and an off switch that takes the audit trail with it is
+    worse than a setting nobody likes.
+    """
+
+    @pytest.mark.asyncio
+    async def test_a_muted_link_is_skipped_before_matching(self):
+        """"Off" means stop watching, not merely stop proposing: leaving the
+        badge on a page nobody wants updated turns it into noise."""
+        svc = make_service()
+        muted = SimpleNamespace(
+            id="l1",
+            sync_mode="off",
+            path="src/pkg",
+            link_type="directory",
+            has_pending_changes=False,
+            document=SimpleNamespace(id="d1", created_by_id="dev-1"),
+            owner_developer_id="dev-1",
+        )
+        svc.db.execute = AsyncMock(
+            return_value=SimpleNamespace(
+                scalars=lambda: SimpleNamespace(all=lambda: [muted])
+            )
+        )
+        svc.db.commit = AsyncMock()
+
+        result = await svc.handle_code_change(
+            repository_id="repo-1",
+            commit_sha="abc",
+            changed_paths=["src/pkg/auth.py"],
+        )
+
+        assert result["muted"] == 1
+        assert result["real_time_synced"] == []
+        # Not flagged either — the page must stop claiming to be behind.
+        assert muted.has_pending_changes is False
+
+    @pytest.mark.asyncio
+    async def test_auto_applies_a_revision_through_the_review_queue(
+        self, monkeypatch
+    ):
+        """Applied, but not silently: the proposal row is created and then
+        approved, so there is still something to look at when someone asks
+        where a paragraph went."""
+        svc, doc, link, gen, gh = revise_setup(diff=PATCH)
+        link.sync_mode = "auto"
+        service = MagicMock()
+        service.create_proposal = AsyncMock(return_value=SimpleNamespace(id="p1"))
+        service.approve = AsyncMock()
+        monkeypatch.setattr(
+            "aexy.services.proposed_edits_service.ProposedEditsService",
+            lambda db: service,
+        )
+
+        outcome = await svc._generate_and_propose(
+            document=doc,
+            code_link=link,
+            category=TemplateCategory.MODULE_DOCS,
+            gen_service=gen,
+            github_service=gh,
+            source="code_change_sync",
+        )
+
+        assert outcome["applied"] is True
+        service.approve.assert_awaited_once()
+        # Attributed to whoever turned auto-apply on — nobody clicked, but
+        # somebody authorised it.
+        assert service.approve.await_args.kwargs["reviewed_by_id"] == "dev-1"
+
+    @pytest.mark.asyncio
+    async def test_auto_still_asks_when_the_document_was_rewritten(
+        self, monkeypatch
+    ):
+        """The safety property. A revision carries every hand-written sentence
+        forward; a full regeneration cannot know one was ever there, so
+        auto-apply must not cover it."""
+        svc, doc, link, gen, gh = revise_setup(diff=PATCH, base=None)
+        link.sync_mode = "auto"
+        service = MagicMock()
+        service.create_proposal = AsyncMock(return_value=SimpleNamespace(id="p2"))
+        service.approve = AsyncMock()
+        monkeypatch.setattr(
+            "aexy.services.proposed_edits_service.ProposedEditsService",
+            lambda db: service,
+        )
+
+        outcome = await svc._generate_and_propose(
+            document=doc,
+            code_link=link,
+            category=TemplateCategory.MODULE_DOCS,
+            gen_service=gen,
+            github_service=gh,
+            source="code_change_sync",
+        )
+
+        assert outcome["applied"] is False
+        service.approve.assert_not_awaited()
+        gen.generate_from_repository.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_propose_never_applies(self, monkeypatch):
+        svc, doc, link, gen, gh = revise_setup(diff=PATCH)
+        link.sync_mode = "propose"
+        service = MagicMock()
+        service.create_proposal = AsyncMock(return_value=SimpleNamespace(id="p3"))
+        service.approve = AsyncMock()
+        monkeypatch.setattr(
+            "aexy.services.proposed_edits_service.ProposedEditsService",
+            lambda db: service,
+        )
+
+        outcome = await svc._generate_and_propose(
+            document=doc,
+            code_link=link,
+            category=TemplateCategory.MODULE_DOCS,
+            gen_service=gen,
+            github_service=gh,
+            source="code_change_sync",
+        )
+
+        assert outcome["applied"] is False
+        service.approve.assert_not_awaited()

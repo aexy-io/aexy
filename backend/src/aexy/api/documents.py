@@ -17,6 +17,7 @@ from aexy.schemas.document import (
     DocumentCommentUpdate,
     CodeLinkCreate,
     CodeLinkResponse,
+    CodeLinkSyncModeUpdate,
     CodeLinkTransfer,
     CollaboratorAdd,
     CollaboratorResponse,
@@ -733,6 +734,35 @@ async def restore_version(
 # ==================== Code Links ====================
 
 
+def _code_link_to_response(link) -> CodeLinkResponse:
+    """One shape for a code link, however it was reached.
+
+    Three byte-identical constructions had accumulated across create, list and
+    transfer; a fourth was about to. Each new column on the model meant finding
+    every copy, and the one that got missed would silently serve a default.
+    """
+    return CodeLinkResponse(
+        id=str(link.id),
+        document_id=str(link.document_id),
+        repository_id=str(link.repository_id),
+        repository_name=link.repository.full_name if link.repository else None,
+        path=link.path,
+        link_type=link.link_type,
+        branch=link.branch,
+        document_section_id=link.document_section_id,
+        last_commit_sha=link.last_commit_sha,
+        last_content_hash=link.last_content_hash,
+        last_synced_at=link.last_synced_at,
+        has_pending_changes=link.has_pending_changes,
+        owner_developer_id=(
+            str(link.owner_developer_id) if link.owner_developer_id else None
+        ),
+        sync_mode=link.sync_mode,
+        created_at=link.created_at,
+        updated_at=link.updated_at,
+    )
+
+
 @router.post("/{document_id}/code-links", response_model=CodeLinkResponse)
 async def create_code_link(
     workspace_id: str,
@@ -764,25 +794,7 @@ async def create_code_link(
         owner_developer_id=str(current_user.id),
     )
 
-    return CodeLinkResponse(
-        id=str(link.id),
-        document_id=str(link.document_id),
-        repository_id=str(link.repository_id),
-        repository_name=link.repository.full_name if link.repository else None,
-        path=link.path,
-        link_type=link.link_type,
-        branch=link.branch,
-        document_section_id=link.document_section_id,
-        last_commit_sha=link.last_commit_sha,
-        last_content_hash=link.last_content_hash,
-        last_synced_at=link.last_synced_at,
-        has_pending_changes=link.has_pending_changes,
-        owner_developer_id=(
-            str(link.owner_developer_id) if link.owner_developer_id else None
-        ),
-        created_at=link.created_at,
-        updated_at=link.updated_at,
-    )
+    return _code_link_to_response(link)
 
 
 @router.get("/{document_id}/code-links", response_model=list[CodeLinkResponse])
@@ -808,25 +820,7 @@ async def get_code_links(
     links = await service.get_code_links(document_id)
 
     return [
-        CodeLinkResponse(
-            id=str(link.id),
-            document_id=str(link.document_id),
-            repository_id=str(link.repository_id),
-            repository_name=link.repository.full_name if link.repository else None,
-            path=link.path,
-            link_type=link.link_type,
-            branch=link.branch,
-            document_section_id=link.document_section_id,
-            last_commit_sha=link.last_commit_sha,
-            last_content_hash=link.last_content_hash,
-            last_synced_at=link.last_synced_at,
-            has_pending_changes=link.has_pending_changes,
-            owner_developer_id=(
-                str(link.owner_developer_id) if link.owner_developer_id else None
-            ),
-            created_at=link.created_at,
-            updated_at=link.updated_at,
-        )
+        _code_link_to_response(link)
         for link in links
     ]
 
@@ -852,6 +846,54 @@ async def delete_code_link(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Code link not found",
         )
+
+
+@router.patch(
+    "/{document_id}/code-links/{link_id}/sync-mode", response_model=CodeLinkResponse
+)
+async def set_code_link_sync_mode(
+    workspace_id: str,
+    document_id: str,
+    link_id: str,
+    data: CodeLinkSyncModeUpdate,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Choose what happens to this document when its code changes.
+
+    `propose` queues an update for review — the default, and the only safe
+    answer for a page people have written by hand. `auto` applies updates
+    without asking, and is honoured only where the update was derived from the
+    existing prose; a full regeneration falls back to proposing, because it
+    cannot know a human wrote anything. `off` stops watching entirely,
+    including the "behind" badge — a document nobody wants updated should not
+    keep being reported as wrong.
+
+    The off switch is not a concession. A queue that fills faster than anyone
+    drains it is one people stop opening, and that costs more than the setting.
+    """
+    await check_workspace_permission(workspace_id, current_user, db, "member")
+
+    service = DocumentService(db)
+    document = await service.get_document(document_id, workspace_id)
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found",
+        )
+
+    link = await service.set_code_link_sync_mode(
+        link_id=link_id,
+        document_id=document_id,
+        sync_mode=data.sync_mode,
+    )
+    if not link:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Code link not found",
+        )
+
+    return _code_link_to_response(link)
 
 
 @router.post(
@@ -905,25 +947,7 @@ async def transfer_code_link_owner(
             detail="Code link not found",
         )
 
-    return CodeLinkResponse(
-        id=str(link.id),
-        document_id=str(link.document_id),
-        repository_id=str(link.repository_id),
-        repository_name=link.repository.full_name if link.repository else None,
-        path=link.path,
-        link_type=link.link_type,
-        branch=link.branch,
-        document_section_id=link.document_section_id,
-        last_commit_sha=link.last_commit_sha,
-        last_content_hash=link.last_content_hash,
-        last_synced_at=link.last_synced_at,
-        has_pending_changes=link.has_pending_changes,
-        owner_developer_id=(
-            str(link.owner_developer_id) if link.owner_developer_id else None
-        ),
-        created_at=link.created_at,
-        updated_at=link.updated_at,
-    )
+    return _code_link_to_response(link)
 
 
 # ==================== Collaborators ====================

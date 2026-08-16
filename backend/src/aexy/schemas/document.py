@@ -283,6 +283,12 @@ class CodeLinkTransfer(BaseModel):
     owner_developer_id: str
 
 
+class CodeLinkSyncModeUpdate(BaseModel):
+    """How this document should react when its code changes."""
+
+    sync_mode: Literal["propose", "auto", "off"]
+
+
 class CodeLinkResponse(BaseModel):
     """Schema for code link response."""
 
@@ -305,6 +311,8 @@ class CodeLinkResponse(BaseModel):
     # such a sync only keeps working while the repository has an installation
     # of its own.
     owner_developer_id: str | None = None
+    # propose (default) / auto / off — see DocumentSyncMode.
+    sync_mode: str = "propose"
     created_at: datetime
     updated_at: datetime
 

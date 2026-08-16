@@ -13,6 +13,7 @@ from sqlalchemy.orm import selectinload
 from aexy.models.documentation import (
     Document,
     DocumentCodeLink,
+    DocumentSyncMode,
     DocumentSyncQueue,
 )
 from aexy.models.developer import Developer
@@ -345,6 +346,14 @@ class DocumentSyncService:
         code_links = result.scalars().all()
 
         for link in code_links:
+            # A muted link is not merely "do not propose" — it stops being
+            # reported as behind at all. Flagging a document somebody has
+            # explicitly said they do not want updated turns the badge into
+            # noise, and a badge people learn to ignore is worse than none.
+            if link.sync_mode == DocumentSyncMode.OFF.value:
+                results["muted"] = results.get("muted", 0) + 1
+                continue
+
             # Check if any changed path matches this link
             matches = self._path_matches_link(link.path, link.link_type, changed_paths)
 
@@ -828,6 +837,11 @@ class DocumentSyncService:
             github_service=github_service,
             developer_id=developer_id,
         )
+        # Whether the existing prose was the *input* to this content, which is
+        # what makes applying it unattended defensible: a revision carries
+        # every hand-written sentence forward, a regeneration cannot know one
+        # was ever there.
+        was_revised = content is not None
         if content is None:
             try:
                 content = await gen_service.generate_from_repository(
@@ -851,7 +865,34 @@ class DocumentSyncService:
             proposed_content=content,
             # proposed_by_id stays None — system-generated.
         )
-        return {"proposal_id": proposal.id, "content": content}
+
+        # Auto-apply goes through the review queue rather than around it: the
+        # proposal row is created, then immediately approved. Same versioning,
+        # same audit trail, and a record of what landed and why — a silent
+        # write would leave nothing to look at when someone asks where a
+        # paragraph went.
+        applied = False
+        if code_link.sync_mode == DocumentSyncMode.AUTO.value:
+            if was_revised:
+                await proposed_edits.approve(
+                    proposal_id=str(proposal.id),
+                    # Attributed to whoever turned auto-apply on. Nobody
+                    # clicked, but somebody authorised it.
+                    reviewed_by_id=str(billed_to) if billed_to else None,
+                )
+                applied = True
+            else:
+                logger.info(
+                    f"Doc {document.id} is set to auto-apply, but this was a "
+                    f"full regeneration — proposing instead so hand-written "
+                    f"prose is not overwritten unseen"
+                )
+
+        return {
+            "proposal_id": proposal.id,
+            "content": content,
+            "applied": applied,
+        }
 
     async def regenerate_document(
         self,

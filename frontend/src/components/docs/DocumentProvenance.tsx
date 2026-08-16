@@ -9,11 +9,12 @@ import {
   CheckCircle2,
   UserRound,
   RefreshCw,
+  BellOff,
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { DocumentCodeLink, documentApi } from "@/lib/api";
+import { DocumentCodeLink, DocumentSyncMode, documentApi } from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/utils";
 
 interface Props {
@@ -53,9 +54,36 @@ export function DocumentProvenance({
   const [transferringId, setTransferringId] = useState<string | null>(null);
 
   const behind = useMemo(
-    () => codeLinks.filter((link) => link.has_pending_changes).length,
+    () =>
+      codeLinks.filter(
+        (link) => link.has_pending_changes && link.sync_mode !== "off"
+      ).length,
     [codeLinks]
   );
+
+  const setMode = useMutation({
+    mutationFn: ({
+      linkId,
+      syncMode,
+    }: {
+      linkId: string;
+      syncMode: DocumentSyncMode;
+    }) =>
+      documentApi.setCodeLinkSyncMode(
+        workspaceId,
+        documentId,
+        linkId,
+        syncMode
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["document", documentId, "code-links"],
+      });
+      toast.success(t("syncModeSaved"));
+    },
+    onError: (error) =>
+      toast.error(getApiErrorMessage(error, t("syncModeFailed"))),
+  });
 
   const transfer = useMutation({
     mutationFn: ({ linkId, ownerId }: { linkId: string; ownerId: string }) =>
@@ -102,7 +130,15 @@ export function DocumentProvenance({
               {link.branch}
             </span>
 
-            {stale ? (
+            {link.sync_mode === "off" ? (
+              <span
+                data-testid={`provenance-muted-${link.id}`}
+                className="flex items-center gap-1 text-muted-foreground"
+              >
+                <BellOff className="h-3 w-3" />
+                {t("muted")}
+              </span>
+            ) : stale ? (
               <span
                 data-testid={`provenance-behind-${link.id}`}
                 className="flex items-center gap-1 rounded bg-warning/15 px-1.5 py-0.5 text-warning"
@@ -136,6 +172,34 @@ export function DocumentProvenance({
                 <span className="text-warning">{t("unowned")}</span>
               )}
             </span>
+
+            {/* The off switch is the point, not an afterthought: a queue that
+                fills faster than anyone drains it is one people stop opening,
+                and that costs more than the setting. */}
+            <select
+              data-testid={`provenance-sync-mode-${link.id}`}
+              aria-label={t("syncModeLabel")}
+              value={link.sync_mode}
+              disabled={setMode.isPending}
+              title={
+                link.sync_mode === "auto"
+                  ? t("syncModeAutoHint")
+                  : link.sync_mode === "off"
+                    ? t("syncModeOffHint")
+                    : t("syncModeProposeHint")
+              }
+              onChange={(event) =>
+                setMode.mutate({
+                  linkId: link.id,
+                  syncMode: event.target.value as DocumentSyncMode,
+                })
+              }
+              className="rounded border border-border bg-background px-1 py-0.5 text-xs text-muted-foreground"
+            >
+              <option value="propose">{t("syncModePropose")}</option>
+              <option value="auto">{t("syncModeAuto")}</option>
+              <option value="off">{t("syncModeOff")}</option>
+            </select>
 
             {members?.length ? (
               transferringId === link.id ? (

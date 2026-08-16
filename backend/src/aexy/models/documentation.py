@@ -52,6 +52,28 @@ class DocumentLinkType(str, Enum):
     DIRECTORY = "directory"
 
 
+class DocumentSyncMode(str, Enum):
+    """What a document should do when the code beneath it changes.
+
+    Graded rather than on/off, because a single policy across every document
+    is one somebody eventually switches off wholesale — and an off switch
+    that takes the audit trail with it is worse than a setting nobody likes.
+
+    PROPOSE   queue the update for review. The default, and the only safe
+              answer for a page anyone has written by hand.
+    AUTO      apply it without asking. Honoured only when the update was
+              derived from the existing prose, never when it was regenerated
+              from scratch — see `DocumentSyncService`.
+    OFF       stop watching. Not merely "stop proposing": a document nobody
+              wants updated should also stop being reported as behind, or
+              the badge becomes noise that trains people to ignore badges.
+    """
+
+    PROPOSE = "propose"
+    AUTO = "auto"
+    OFF = "off"
+
+
 class DocumentPermission(str, Enum):
     """Document access permission levels."""
 
@@ -565,6 +587,11 @@ class DocumentCodeLink(Base):
     path: Mapped[str] = mapped_column(String(1000), nullable=False)  # Relative path
     branch: Mapped[str] = mapped_column(String(255), default="main", nullable=False)
 
+    # See DocumentSyncMode. Defaults to review-before-it-lands.
+    sync_mode: Mapped[str] = mapped_column(
+        String(20), default=DocumentSyncMode.PROPOSE.value, nullable=False
+    )
+
     # What kind of document this link produces. Regeneration used to hardcode
     # FUNCTION_DOCS, so re-syncing a module document quietly turned it into
     # function docs — the document changed kind without anyone asking.
@@ -622,6 +649,15 @@ class DocumentCodeLink(Base):
 
     __table_args__ = (
         Index("ix_code_links_repo_path", "repository_id", "path"),
+        # Mirrors the partial index in migrate_document_code_link_sync_mode.sql.
+        # Declared here as well so a `create_all` database and a migrated one
+        # agree about their indexes — that drift is invisible until something
+        # queries differently on the two, which is exactly how it survives.
+        Index(
+            "ix_document_code_links_active_sync",
+            "repository_id",
+            postgresql_where=text("sync_mode <> 'off'"),
+        ),
         UniqueConstraint(
             "document_id",
             "repository_id",

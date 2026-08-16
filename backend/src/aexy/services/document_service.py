@@ -24,6 +24,7 @@ from aexy.models.documentation import (
     DocumentGenerationPrompt,
     DocumentPermission,
     DocumentStatus,
+    DocumentSyncMode,
     DocumentSyncQueue,
     DocumentTemplate,
     DocumentVersion,
@@ -806,6 +807,37 @@ class DocumentService:
         )
 
         self.db.add(link)
+        await self.db.commit()
+        await self.db.refresh(link)
+        return link
+
+    async def set_code_link_sync_mode(
+        self,
+        link_id: str,
+        document_id: str,
+        sync_mode: str,
+    ) -> DocumentCodeLink | None:
+        """Set how this link reacts to code changes.
+
+        Turning a link off also clears its pending flag: "stop watching" that
+        left a stale "behind the code" badge on the page would be a setting
+        that visibly did not take effect.
+        """
+        stmt = (
+            select(DocumentCodeLink)
+            .where(DocumentCodeLink.id == link_id)
+            .where(DocumentCodeLink.document_id == document_id)
+            .options(selectinload(DocumentCodeLink.repository))
+        )
+        result = await self.db.execute(stmt)
+        link = result.scalar_one_or_none()
+        if not link:
+            return None
+
+        link.sync_mode = sync_mode
+        if sync_mode == DocumentSyncMode.OFF.value:
+            link.has_pending_changes = False
+
         await self.db.commit()
         await self.db.refresh(link)
         return link
