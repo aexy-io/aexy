@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -83,8 +83,13 @@ interface BugFormData {
 
 export default function BugsPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const projectId = params.projectId as string;
+  // `?bug=<id>` opens that bug's detail straight away. Home links here for a
+  // bug on your plate, and without this the link could only ever drop you on
+  // the board and leave you to find the row yourself.
+  const bugIdFromUrl = searchParams.get("bug");
 
   const { user } = useAuth();
   const { currentWorkspace } = useWorkspace();
@@ -128,6 +133,17 @@ export default function BugsPage() {
   });
 
   const { stats } = useBugStats(workspaceId, projectId);
+
+  // Fetched by id rather than picked out of `bugs`: a linked bug may be closed,
+  // or filtered out by whatever the board is currently showing, and either way
+  // the link has to still open it.
+  const { bug: linkedBug } = useBug(workspaceId, bugIdFromUrl);
+  const openedFromUrl = useRef(false);
+  useEffect(() => {
+    if (!linkedBug || openedFromUrl.current) return;
+    openedFromUrl.current = true;
+    setSelectedBug(linkedBug);
+  }, [linkedBug]);
 
   // Filter by search on client side
   const filteredBugs = bugs.filter((bug) => {

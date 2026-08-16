@@ -45,10 +45,10 @@ interface AppHeaderProps {
 }
 
 const appItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, color: "from-blue-500 to-blue-600" },
+  { href: "/dashboard", label: "Home", icon: ListTodo, color: "from-pink-500 to-pink-600" },
+  { href: "/dashboard/overview", label: "Insights", icon: LayoutDashboard, color: "from-blue-500 to-blue-600" },
   { href: "/tracking", label: "Tracking", icon: Target, color: "from-emerald-500 to-emerald-600" },
   { href: "/sprints", label: "Planning", icon: Calendar, color: "from-green-500 to-green-600" },
-  { href: "/my-work", label: "My Work", icon: ListTodo, color: "from-pink-500 to-pink-600" },
   { href: "/forms", label: "Forms", icon: FormInput, color: "from-violet-500 to-violet-600" },
   { href: "/docs", label: "Docs", icon: FileText, color: "from-indigo-500 to-indigo-600" },
   { href: "/reviews", label: "Reviews", icon: ClipboardCheck, color: "from-orange-500 to-orange-600" },

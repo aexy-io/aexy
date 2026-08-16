@@ -5,7 +5,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { DashboardPreferences } from '@/lib/api';
+import type { DashboardPreferences, DashboardSurface } from '@/lib/api';
 import type { PresetType } from '@/config/dashboardPresets';
 import type { WidgetSize } from '@/config/dashboardWidgets';
 
@@ -16,11 +16,20 @@ interface DashboardState {
 
   // Optimistic state (for immediate UI updates before API confirms)
   localPreferences: Partial<DashboardPreferences> | null;
+  /**
+   * Which dashboard surface `localPreferences` belongs to. Layouts are
+   * per-surface, so an untagged optimistic copy would be applied to whichever
+   * dashboard happened to read it next.
+   */
+  localPreferencesSurface: DashboardSurface | null;
 
   // Actions
   setCustomizing: (value: boolean) => void;
   setModalOpen: (value: boolean) => void;
-  setLocalPreferences: (preferences: Partial<DashboardPreferences> | null) => void;
+  setLocalPreferences: (
+    preferences: Partial<DashboardPreferences> | null,
+    surface?: DashboardSurface
+  ) => void;
 
   // Widget management (local/optimistic)
   toggleWidgetVisibility: (widgetId: string, currentWidgets: string[]) => string[];
@@ -35,11 +44,16 @@ export const useDashboardStore = create<DashboardState>()(
       isCustomizing: false,
       isModalOpen: false,
       localPreferences: null,
+      localPreferencesSurface: null,
 
       // Actions
       setCustomizing: (value) => set({ isCustomizing: value }),
       setModalOpen: (value) => set({ isModalOpen: value }),
-      setLocalPreferences: (preferences) => set({ localPreferences: preferences }),
+      setLocalPreferences: (preferences, surface = 'overview') =>
+        set({
+          localPreferences: preferences,
+          localPreferencesSurface: preferences ? surface : null,
+        }),
 
       // Widget visibility toggle (returns new array)
       toggleWidgetVisibility: (widgetId, currentWidgets) => {

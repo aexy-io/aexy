@@ -64,10 +64,11 @@ export function GlobalShortcuts() {
               d: "/dashboard",
               a: "/agents",
               s: "/sprints",
-              // /my-work, not /tickets: the latter is a redirect behind the
-              // tickets app guard, so this shortcut dead-ended for anyone
-              // without that app even though the page is theirs.
-              t: "/my-work",
+              // /dashboard, not /tickets: the personal work list is the home
+              // dashboard now, and /tickets is a redirect behind the tickets
+              // app guard, so this shortcut used to dead-end for anyone without
+              // that app even though the page is theirs.
+              t: "/dashboard",
               e: "/tracking",
               c: "/crm",
               m: "/email-marketing",

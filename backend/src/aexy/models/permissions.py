@@ -512,6 +512,12 @@ ROLE_TEMPLATES: dict[str, dict] = {
 # Empty list means visible to all authenticated users
 WIDGET_PERMISSIONS: dict[str, list[str]] = {
     # Universal widgets (no specific permissions required)
+    # My Work widgets show only what is already assigned to the person looking,
+    # and the queue gates its form-ticket source on `tickets` access itself, so
+    # there is nothing here a viewer could not already see.
+    "myWorkStats": [],
+    "myWorkQueue": [],
+    "myWorkByType": [],
     "welcome": [],
     "quickStats": [],
     "myGoals": [],

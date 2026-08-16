@@ -11,6 +11,13 @@ import {
 const API_BASE = "http://localhost:8000/api/v1";
 
 /**
+ * These cover the *insights* dashboard, which now lives at /dashboard/overview.
+ * /dashboard itself is Home — the personal work list — and is covered by
+ * my-work.spec.ts. The widget machinery under test here is shared by both, but
+ * only this surface has the persona presets and skill widgets asserted below.
+ */
+
+/**
  * Setup route interception for all dashboard API calls.
  * Injects a fake auth token and mocks all backend endpoints.
  */
@@ -20,6 +27,9 @@ async function setupDashboardMocks(page: Page, preferencesOverride?: typeof mock
   // Set auth token before navigating
   await page.addInitScript(() => {
     localStorage.setItem("token", "fake-test-token");
+    // The first-visit persona picker is a full-screen modal that swallows every
+    // click on the dashboard behind it; these tests are not about that flow.
+    localStorage.setItem("dashboard_welcome_seen", "true");
   });
 
   // IMPORTANT: Playwright matches routes in REVERSE registration order
@@ -121,6 +131,18 @@ async function setupDashboardMocks(page: Page, preferencesOverride?: typeof mock
     }
   });
 
+  // The app shell asks whether onboarding is finished before rendering any
+  // route. The catch-all's `{}` reads as "not finished", so every test in this
+  // file was landing on the onboarding wizard's error screen instead of the
+  // dashboard rather than on the page it meant to assert about.
+  await page.route(`${API_BASE}/repositories/onboarding/status`, (route) => {
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ completed: true }),
+    });
+  });
+
   // Mock GET /developers/me (registered LAST = checked FIRST by Playwright)
   await page.route(`${API_BASE}/developers/me`, (route) => {
     route.fulfill({
@@ -138,7 +160,7 @@ async function setupDashboardMocks(page: Page, preferencesOverride?: typeof mock
 test.describe("Dashboard — Widget Rendering", () => {
   test.beforeEach(async ({ page }) => {
     await setupDashboardMocks(page);
-    await page.goto("/dashboard");
+    await page.goto("/dashboard/overview");
     // Wait for the dashboard to fully load
     await page.waitForSelector("text=Welcome back", { timeout: 15000 });
   });
@@ -222,7 +244,7 @@ test.describe("Dashboard — Widget Ordering", () => {
   test("renders widgets in the order specified by widget_order", async ({ page }) => {
     // Use a specific order: workPatterns before languageProficiency
     await setupDashboardMocks(page, mockPreferencesReordered);
-    await page.goto("/dashboard");
+    await page.goto("/dashboard/overview");
     await page.waitForSelector("text=Welcome back", { timeout: 15000 });
 
     // Get all rendered widget headings in DOM order
@@ -243,7 +265,7 @@ test.describe("Dashboard — Widget Ordering", () => {
       visible_widgets: ["welcome", "quickStats"],
       widget_order: ["welcome", "quickStats"],
     });
-    await page.goto("/dashboard");
+    await page.goto("/dashboard/overview");
     await page.waitForSelector("text=Welcome back", { timeout: 15000 });
 
     // Quick Stats should be visible
@@ -262,7 +284,7 @@ test.describe("Dashboard — Widget Ordering", () => {
 test.describe("Dashboard — Edit Layout Toggle", () => {
   test.beforeEach(async ({ page }) => {
     await setupDashboardMocks(page);
-    await page.goto("/dashboard");
+    await page.goto("/dashboard/overview");
     await page.waitForSelector("text=Welcome back", { timeout: 15000 });
   });
 
@@ -303,7 +325,7 @@ test.describe("Dashboard — Edit Layout Toggle", () => {
 test.describe("Dashboard — Customize Modal", () => {
   test.beforeEach(async ({ page }) => {
     await setupDashboardMocks(page);
-    await page.goto("/dashboard");
+    await page.goto("/dashboard/overview");
     await page.waitForSelector("text=Welcome back", { timeout: 15000 });
   });
 
@@ -371,7 +393,7 @@ test.describe("Dashboard — Customize Modal", () => {
 test.describe("Dashboard — Manager Preset", () => {
   test("manager preset includes cross-cutting widgets", async ({ page }) => {
     await setupDashboardMocks(page, mockPreferencesManagerPreset);
-    await page.goto("/dashboard");
+    await page.goto("/dashboard/overview");
     await page.waitForSelector("text=Welcome back", { timeout: 15000 });
 
     // Manager preset should show AI Agents widget (cross-cutting widget added in Phase 7)
@@ -391,7 +413,7 @@ test.describe("Dashboard — Manager Preset", () => {
 test.describe("Dashboard — Grid Layout", () => {
   test.beforeEach(async ({ page }) => {
     await setupDashboardMocks(page);
-    await page.goto("/dashboard");
+    await page.goto("/dashboard/overview");
     await page.waitForSelector("text=Welcome back", { timeout: 15000 });
   });
 

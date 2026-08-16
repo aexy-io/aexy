@@ -441,6 +441,7 @@ class SprintTaskService:
         status: str | None = None,
         include_done: bool = False,
         limit: int | None = None,
+        workspace_id: str | None = None,
     ) -> list[SprintTask]:
         """Get all tasks assigned to a developer across all sprints.
 
@@ -449,6 +450,10 @@ class SprintTaskService:
             status: Optional status filter.
             include_done: Whether to include completed tasks (default: False).
             limit: Optional cap on the number of tasks returned.
+            workspace_id: Optional workspace to scope to. Tasks predating the
+                ``workspace_id`` column carry it as NULL, so those are matched
+                through their sprint instead — dropping them would silently hide
+                somebody's older work from their own list.
 
         Returns:
             List of SprintTasks assigned to the developer.
@@ -463,6 +468,14 @@ class SprintTaskService:
                 selectinload(SprintTask.sprint),
             )
         )
+
+        if workspace_id:
+            stmt = stmt.where(
+                or_(
+                    SprintTask.workspace_id == workspace_id,
+                    SprintTask.sprint.has(Sprint.workspace_id == workspace_id),
+                )
+            )
 
         if status:
             stmt = stmt.where(SprintTask.status == status)

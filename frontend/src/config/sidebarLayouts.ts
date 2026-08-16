@@ -241,7 +241,11 @@ export const GROUPED_LAYOUT: SidebarLayoutConfig = {
             id: "core",
             label: "", // No label for dashboard
             items: [
-                { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+                // Home is the personal work list — tasks, bugs, stories and
+                // tickets assigned to you. The widget dashboard it replaced is
+                // still here as Insights, one item down.
+                { href: "/dashboard", label: "Home", icon: ListTodo },
+                { href: "/dashboard/overview", label: "Insights", icon: LayoutDashboard },
                 { href: "/activity", label: "Activity", icon: Activity },
                 { href: "/chat", label: "Chat", icon: MessageCircle },
                 { href: "/community", label: "Community", icon: Globe },
@@ -279,17 +283,10 @@ export const GROUPED_LAYOUT: SidebarLayoutConfig = {
                     items: planningItems,
                     personas: ["developer", "manager", "product", "admin"],
                 },
-                {
-                    // Renamed from "Tickets", same level. It was one of two items
-                    // called "Tickets" (the other being the Service Desk's, an
-                    // unrelated system), and it opened a page headed "My Work" —
-                    // so the label now matches what the page is, and "Tickets"
-                    // unambiguously means the Service Desk.
-                    href: "/my-work",
-                    label: "My Work",
-                    icon: ListTodo,
-                    personas: ["developer", "manager", "product", "support", "admin"],
-                },
+                // The "My Work" item that sat here is gone, not moved: the page
+                // it pointed at is now Home, at the top of this sidebar. Two
+                // entries opening the same list is what this navigation keeps
+                // being cleaned up for.
                 {
                     href: "/uptime",
                     label: "Uptime",
@@ -420,7 +417,11 @@ export const FLAT_LAYOUT: SidebarLayoutConfig = {
             id: "main",
             label: "",
             items: [
-                { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+                // Home is the personal work list — tasks, bugs, stories and
+                // tickets assigned to you. The widget dashboard it replaced is
+                // still here as Insights, one item down.
+                { href: "/dashboard", label: "Home", icon: ListTodo },
+                { href: "/dashboard/overview", label: "Insights", icon: LayoutDashboard },
                 { href: "/activity", label: "Activity", icon: Activity },
                 { href: "/chat", label: "Chat", icon: MessageCircle },
                 { href: "/community", label: "Community", icon: Globe },
@@ -438,17 +439,10 @@ export const FLAT_LAYOUT: SidebarLayoutConfig = {
                     items: planningItems,
                     personas: ["developer", "manager", "product", "admin"],
                 },
-                {
-                    // Renamed from "Tickets", same level. It was one of two items
-                    // called "Tickets" (the other being the Service Desk's, an
-                    // unrelated system), and it opened a page headed "My Work" —
-                    // so the label now matches what the page is, and "Tickets"
-                    // unambiguously means the Service Desk.
-                    href: "/my-work",
-                    label: "My Work",
-                    icon: ListTodo,
-                    personas: ["developer", "manager", "product", "support", "admin"],
-                },
+                // The "My Work" item that sat here is gone, not moved: the page
+                // it pointed at is now Home, at the top of this sidebar. Two
+                // entries opening the same list is what this navigation keeps
+                // being cleaned up for.
                 {
                     href: "/uptime",
                     label: "Uptime",

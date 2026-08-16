@@ -12,10 +12,13 @@ import { useAppAccess } from "@/hooks/useAppAccess";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { PresetType } from "@/config/dashboardPresets";
+import type { DashboardSurface } from "@/lib/api";
 
 interface DashboardCustomizeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Which dashboard is being customized. Defaults to the insights dashboard. */
+  surface?: DashboardSurface;
 }
 
 type TabType = "presets" | "widgets" | "reorder";
@@ -23,8 +26,15 @@ type TabType = "presets" | "widgets" | "reorder";
 export function DashboardCustomizeModal({
   open,
   onOpenChange,
+  surface = "overview",
 }: DashboardCustomizeModalProps) {
-  const [activeTab, setActiveTab] = useState<TabType>("presets");
+  // Presets are role personas for the insights dashboard — applying "Sales" to
+  // the home dashboard would replace your work queue with a CRM pipeline. So
+  // other surfaces open on the widget list instead and never show that tab.
+  const supportsPresets = surface === "overview";
+  const [activeTab, setActiveTab] = useState<TabType>(
+    supportsPresets ? "presets" : "widgets"
+  );
 
   const {
     preferences,
@@ -34,7 +44,7 @@ export function DashboardCustomizeModal({
     toggleWidget,
     reorderWidgets,
     resetToPreset,
-  } = useDashboardPreferences();
+  } = useDashboardPreferences(surface);
 
   const handleSelectPreset = useCallback(
     async (preset: PresetType) => {
@@ -68,6 +78,8 @@ export function DashboardCustomizeModal({
   );
 
   const handleReset = useCallback(async () => {
+    // A surface without presets resets to its own built-in layout; the preset
+    // argument is ignored server-side for those.
     await resetToPreset("developer");
   }, [resetToPreset]);
 
@@ -80,7 +92,9 @@ export function DashboardCustomizeModal({
   const widgetOrder = preferences?.widget_order || visibleWidgets;
 
   const tabs: { id: TabType; label: string }[] = [
-    { id: "presets", label: "Choose Preset" },
+    ...(supportsPresets
+      ? [{ id: "presets" as const, label: "Choose Preset" }]
+      : []),
     { id: "widgets", label: "Customize Widgets" },
     { id: "reorder", label: "Reorder" },
   ];
@@ -97,7 +111,9 @@ export function DashboardCustomizeModal({
                 Customize Dashboard
               </Dialog.Title>
               <Dialog.Description className="text-sm text-muted-foreground mt-0.5">
-                Choose a preset, toggle widgets, or reorder your layout
+                {supportsPresets
+                  ? "Choose a preset, toggle widgets, or reorder your layout"
+                  : "Toggle widgets or reorder your layout"}
               </Dialog.Description>
             </div>
             <Dialog.Close asChild>
@@ -159,6 +175,9 @@ export function DashboardCustomizeModal({
                 visibleWidgets={visibleWidgets}
                 onToggleWidget={handleToggleWidget}
                 isLoading={isUpdating}
+                // Only the insights dashboard feeds widgets from its own state;
+                // every other surface renders them bare.
+                selfContainedOnly={surface !== "overview"}
               />
             ) : (
               <WidgetReorderList
