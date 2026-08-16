@@ -51,7 +51,13 @@ class DashboardPreferencesUpdate(BaseModel):
 
 
 class DashboardPreferencesResponse(BaseModel):
-    """Schema for dashboard preferences response."""
+    """Schema for dashboard preferences response.
+
+    Always describes one surface: the layout fields are the requested surface's,
+    while the sidebar and checklist fields are the person's, shared across all
+    of them. `preset_type` for a nested surface is the surface's own id until
+    somebody edits it, at which point it becomes "custom" like anywhere else.
+    """
 
     id: str
     developer_id: str

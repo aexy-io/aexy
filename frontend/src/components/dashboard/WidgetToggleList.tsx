@@ -41,12 +41,19 @@ import {
   DASHBOARD_WIDGETS,
   WIDGET_CATEGORIES,
   WidgetDefinition,
+  isSelfContainedWidget,
 } from "@/config/dashboardWidgets";
 
 interface WidgetToggleListProps {
   visibleWidgets: string[];
   onToggleWidget: (widgetId: string) => void;
   isLoading?: boolean;
+  /**
+   * Hide widgets that depend on props from the Insights dashboard. Surfaces
+   * that render widgets without props would otherwise offer them and then show
+   * an empty shell — or crash on a handler that was never passed.
+   */
+  selfContainedOnly?: boolean;
 }
 
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -87,17 +94,26 @@ export function WidgetToggleList({
   visibleWidgets,
   onToggleWidget,
   isLoading,
+  selfContainedOnly = false,
 }: WidgetToggleListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set(Object.keys(WIDGET_CATEGORIES))
   );
 
+  const offeredWidgets = useMemo(
+    () =>
+      Object.values(DASHBOARD_WIDGETS).filter(
+        (widget) => !selfContainedOnly || isSelfContainedWidget(widget.id)
+      ),
+    [selfContainedOnly]
+  );
+
   // Group widgets by category
   const widgetsByCategory = useMemo(() => {
     const grouped: Record<string, WidgetDefinition[]> = {};
 
-    Object.values(DASHBOARD_WIDGETS).forEach((widget) => {
+    offeredWidgets.forEach((widget) => {
       if (!grouped[widget.category]) {
         grouped[widget.category] = [];
       }
@@ -105,7 +121,7 @@ export function WidgetToggleList({
     });
 
     return grouped;
-  }, []);
+  }, [offeredWidgets]);
 
   // Filter widgets by search
   const filteredWidgetsByCategory = useMemo(() => {
@@ -142,7 +158,7 @@ export function WidgetToggleList({
   };
 
   const visibleCount = visibleWidgets.length;
-  const totalCount = Object.keys(DASHBOARD_WIDGETS).length;
+  const totalCount = offeredWidgets.length;
 
   return (
     <div className="space-y-4">

@@ -87,3 +87,9 @@ export { SystemHealthWidget } from "./SystemHealthWidget";
 // Team Health & Burnout widgets
 export { TeamHealthWidget } from "./TeamHealthWidget";
 export { BurnoutRiskWidget } from "./BurnoutRiskWidget";
+
+// My Work widgets — the home dashboard. They share one filter store, so the
+// stat tiles scope the queue and the breakdown even when reordered or hidden.
+export { MyWorkStatsWidget } from "./MyWorkStatsWidget";
+export { MyWorkQueueWidget } from "./MyWorkQueueWidget";
+export { MyWorkByTypeWidget } from "./MyWorkByTypeWidget";

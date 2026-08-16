@@ -118,7 +118,12 @@ export const developerApi = {
     return response.data;
   },
 
-  getMyAssignedTasks: async (params?: { status_filter?: string; include_done?: boolean }): Promise<MyAssignedTask[]> => {
+  getMyAssignedTasks: async (params?: {
+    status_filter?: string;
+    include_done?: boolean;
+    /** Omit to get every workspace's work — what "All workspaces" asks for. */
+    workspace_id?: string;
+  }): Promise<MyAssignedTask[]> => {
     const response = await api.get("/developers/me/assigned-tasks", { params });
     return response.data;
   },
@@ -131,6 +136,13 @@ export interface MyAssignedTask {
   sprint_id: string | null;
   project_id: string | null;
   sprint_name: string | null;
+  /** Which workspace this item lives in — null only for pre-migration rows. */
+  workspace_id: string | null;
+  workspace_name: string | null;
+  /** The epic a story belongs to; the only page a story can be opened from. */
+  epic_id: string | null;
+  /** "[slug:12]" for tasks, "BUG-4" / "STORY-7" for bugs and stories. */
+  reference: string | null;
   title: string;
   description: string | null;
   status: string;
@@ -13490,20 +13502,48 @@ export interface WidgetCategoryInfo {
   icon: string;
 }
 
+/**
+ * Which dashboard a layout belongs to.
+ *
+ * "overview" is the personal insights dashboard and is what every caller that
+ * omits the parameter gets. "my_work" is the home dashboard. Only the widget
+ * layout is per-surface — sidebar state and the getting-started checklist are
+ * per person and come back the same whichever surface is asked for.
+ */
+export type DashboardSurface = "overview" | "my_work";
+
+/**
+ * The default surface is left off the wire entirely rather than sent
+ * explicitly: it is what the endpoint already returns, and adding a redundant
+ * parameter would change every existing request's URL for no gain.
+ */
+const surfaceParams = (surface?: DashboardSurface) =>
+  surface && surface !== "overview" ? { surface } : undefined;
+
 export const dashboardApi = {
-  getPreferences: async (): Promise<DashboardPreferences> => {
-    const response = await api.get("/dashboard/preferences");
+  getPreferences: async (surface?: DashboardSurface): Promise<DashboardPreferences> => {
+    const response = await api.get("/dashboard/preferences", {
+      params: surfaceParams(surface),
+    });
     return response.data;
   },
 
-  updatePreferences: async (data: DashboardPreferencesUpdate): Promise<DashboardPreferences> => {
-    const response = await api.put("/dashboard/preferences", data);
+  updatePreferences: async (
+    data: DashboardPreferencesUpdate,
+    surface?: DashboardSurface
+  ): Promise<DashboardPreferences> => {
+    const response = await api.put("/dashboard/preferences", data, {
+      params: surfaceParams(surface),
+    });
     return response.data;
   },
 
-  resetPreferences: async (presetType: string = "developer"): Promise<DashboardPreferences> => {
+  resetPreferences: async (
+    presetType: string = "developer",
+    surface?: DashboardSurface
+  ): Promise<DashboardPreferences> => {
     const response = await api.post("/dashboard/preferences/reset", null, {
-      params: { preset_type: presetType },
+      params: { preset_type: presetType, ...(surfaceParams(surface) ?? {}) },
     });
     return response.data;
   },

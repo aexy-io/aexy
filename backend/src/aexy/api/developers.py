@@ -13,6 +13,7 @@ from sqlalchemy import select
 
 from aexy.core.config import get_settings
 from aexy.core.database import get_db
+from aexy.core.workspace_auth import assert_active_member
 from aexy.models.developer import Developer, GoogleConnection
 from aexy.schemas.developer import DeveloperResponse, DeveloperUpdate
 from aexy.services.api_token_service import ApiTokenService
@@ -359,6 +360,16 @@ class MyTaskResponse(BaseModel):
     sprint_id: str | None
     project_id: str | None = None
     sprint_name: str | None
+    # Which workspace the item belongs to. Without it the personal work list
+    # could only ever be "everything, everywhere" — it had no way to tell one
+    # workspace's tasks from another's, so it showed them all mixed together.
+    workspace_id: str | None = None
+    workspace_name: str | None = None
+    # The epic a story hangs off; a story has no project of its own, and the
+    # epic page is the only place it can be opened from.
+    epic_id: str | None = None
+    # Human-readable id — "[slug:12]" for tasks, "BUG-4"/"STORY-7" for the rest.
+    reference: str | None = None
     title: str
     description: str | None
     status: str
@@ -373,6 +384,7 @@ class MyTaskResponse(BaseModel):
 async def get_my_assigned_tasks(
     status_filter: str | None = None,
     include_done: bool = False,
+    workspace_id: str | None = None,
     developer_id: str = Depends(get_current_developer_id),
     db: AsyncSession = Depends(get_db),
 ) -> list[MyTaskResponse]:
@@ -380,14 +392,26 @@ async def get_my_assigned_tasks(
 
     Aggregates across the three work-item types into one "my work" list.
     Stories use `owner_id` as the assignee (a story's owner is who's responsible).
+
+    `workspace_id` scopes the list to a single workspace. Omitting it keeps the
+    every-workspace behaviour, which is what "All workspaces" in the UI asks for
+    — but it is no longer the only thing on offer: someone in several workspaces
+    was getting all of them at once with no way to say which one they meant.
     """
     from aexy.models.bug import Bug
     from aexy.models.story import UserStory
+    from aexy.models.workspace import Workspace
     from aexy.schemas.bug import TERMINAL_BUG_STATUSES
 
     # Cap each work-item type so one prolific assignee can't make this
     # endpoint return an unbounded payload.
     MAX_ITEMS_PER_TYPE = 200
+
+    if workspace_id:
+        # A workspace the caller isn't in must not act as a filter that quietly
+        # returns nothing; it is a bad request, and saying so beats an empty list
+        # that looks like "you have no work".
+        await assert_active_member(db, workspace_id, developer_id)
 
     task_service = SprintTaskService(db)
     tasks = await task_service.get_tasks_by_assignee(
@@ -395,6 +419,7 @@ async def get_my_assigned_tasks(
         status=status_filter,
         include_done=include_done,
         limit=MAX_ITEMS_PER_TYPE,
+        workspace_id=workspace_id,
     )
 
     # Resolve each task's project (team -> first project) so the frontend can
@@ -416,6 +441,12 @@ async def get_my_assigned_tasks(
         for team_id, project_id in rows.all():
             project_by_team.setdefault(str(team_id), str(project_id))
 
+    def _task_workspace_id(task) -> str | None:
+        # Tasks created before the column existed only know their workspace
+        # through the sprint they sit in.
+        wid = task.workspace_id or (task.sprint.workspace_id if task.sprint else None)
+        return str(wid) if wid else None
+
     results: list[MyTaskResponse] = [
         MyTaskResponse(
             id=str(task.id),
@@ -423,6 +454,7 @@ async def get_my_assigned_tasks(
             sprint_id=str(task.sprint_id) if task.sprint_id else None,
             project_id=project_by_team.get(_task_team_id(task) or ""),
             sprint_name=task.sprint.name if task.sprint else None,
+            workspace_id=_task_workspace_id(task),
             title=task.title,
             description=task.description,
             status=task.status,
@@ -434,6 +466,9 @@ async def get_my_assigned_tasks(
         )
         for task in tasks
     ]
+    # Parallel to `results` so the workspace slug can be folded into each task's
+    # reference once the slugs are known, without re-walking the ORM objects.
+    task_keys = [task.task_key for task in tasks]
 
     def _iso(dt) -> str:
         return dt.isoformat() if dt else ""
@@ -447,6 +482,8 @@ async def get_my_assigned_tasks(
     ]
     for model, assignee_col, done_statuses, item_type in specs:
         stmt = select(model).where(assignee_col == developer_id)
+        if workspace_id:
+            stmt = stmt.where(model.workspace_id == workspace_id)
         if status_filter:
             stmt = stmt.where(model.status == status_filter)
         elif not include_done:
@@ -459,6 +496,13 @@ async def get_my_assigned_tasks(
                     item_type=item_type,
                     sprint_id=None,
                     sprint_name=None,
+                    # A bug is opened from its project's bug board; a story from
+                    # its epic. Without these two ids the rows had nowhere to go,
+                    # which is why they were the ones that never clicked through.
+                    project_id=str(item.project_id) if item_type == "bug" and item.project_id else None,
+                    epic_id=str(item.epic_id) if item_type == "story" and item.epic_id else None,
+                    workspace_id=str(item.workspace_id) if item.workspace_id else None,
+                    reference=item.key,
                     title=item.title,
                     description=item.description,
                     status=item.status,
@@ -469,6 +513,29 @@ async def get_my_assigned_tasks(
                     updated_at=_iso(item.updated_at),
                 )
             )
+
+    # One lookup for every workspace on the page — the list can span workspaces,
+    # and a row that doesn't say which one it came from is unreadable in that mode.
+    ws_ids = {r.workspace_id for r in results if r.workspace_id}
+    if ws_ids:
+        ws_rows = await db.execute(
+            select(Workspace.id, Workspace.name, Workspace.slug).where(
+                Workspace.id.in_(ws_ids)
+            )
+        )
+        ws_by_id = {str(wid): (name, slug) for wid, name, slug in ws_rows.all()}
+        for index, item in enumerate(results):
+            meta = ws_by_id.get(item.workspace_id or "")
+            if not meta:
+                continue
+            item.workspace_name = meta[0]
+            if (
+                item.item_type == "task"
+                and meta[1]
+                and index < len(task_keys)
+                and task_keys[index] is not None
+            ):
+                item.reference = f"[{meta[1]}:{task_keys[index]}]"
 
     return results
 

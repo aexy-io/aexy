@@ -4,19 +4,46 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { dashboardApi, DashboardPreferences, DashboardPreferencesUpdate } from '@/lib/api';
+import {
+  dashboardApi,
+  DashboardPreferences,
+  DashboardPreferencesUpdate,
+  DashboardSurface,
+} from '@/lib/api';
 import { useDashboardStore } from '@/stores/dashboardStore';
 import { DASHBOARD_PRESETS, PresetType } from '@/config/dashboardPresets';
 import { WidgetSize } from '@/config/dashboardWidgets';
 import { useCallback } from 'react';
 
-const PREFERENCES_KEY = ['dashboard', 'preferences'];
 const PRESETS_KEY = ['dashboard', 'presets'];
 const WIDGETS_KEY = ['dashboard', 'widgets'];
 
-export function useDashboardPreferences() {
+/** Preferences are cached per surface — two dashboards, two layouts. */
+const preferencesKey = (surface: DashboardSurface) => ['dashboard', 'preferences', surface];
+
+/**
+ * Widget layout for one dashboard surface.
+ *
+ * `surface` decides which layout is read and written: "overview" (the default)
+ * is the personal insights dashboard, "my_work" the home dashboard. Sidebar and
+ * checklist state is shared — those live on the person, not on a dashboard.
+ */
+export function useDashboardPreferences(surface: DashboardSurface = 'overview') {
   const queryClient = useQueryClient();
-  const { setLocalPreferences, localPreferences, setModalOpen, setCustomizing } = useDashboardStore();
+  const {
+    setLocalPreferences,
+    localPreferences,
+    localPreferencesSurface,
+    setModalOpen,
+    setCustomizing,
+  } = useDashboardStore();
+  const PREFERENCES_KEY = preferencesKey(surface);
+
+  /** Optimistic write, tagged with the surface it belongs to. */
+  const setLocal = useCallback(
+    (prefs: Partial<DashboardPreferences> | null) => setLocalPreferences(prefs, surface),
+    [setLocalPreferences, surface]
+  );
 
   // Fetch preferences
   const {
@@ -26,13 +53,14 @@ export function useDashboardPreferences() {
     refetch,
   } = useQuery({
     queryKey: PREFERENCES_KEY,
-    queryFn: dashboardApi.getPreferences,
+    queryFn: () => dashboardApi.getPreferences(surface),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   // Update preferences mutation
   const updateMutation = useMutation({
-    mutationFn: dashboardApi.updatePreferences,
+    mutationFn: (data: DashboardPreferencesUpdate) =>
+      dashboardApi.updatePreferences(data, surface),
     onMutate: async (newData) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: PREFERENCES_KEY });
@@ -64,16 +92,20 @@ export function useDashboardPreferences() {
 
   // Reset preferences mutation
   const resetMutation = useMutation({
-    mutationFn: (presetType: PresetType) => dashboardApi.resetPreferences(presetType),
+    mutationFn: (presetType: PresetType) => dashboardApi.resetPreferences(presetType, surface),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: PREFERENCES_KEY });
     },
   });
 
-  // Derived state - use local preferences for immediate updates, fall back to server data
-  const effectivePreferences = localPreferences
-    ? { ...preferences, ...localPreferences }
-    : preferences;
+  // Derived state - use local preferences for immediate updates, fall back to
+  // server data. The optimistic copy is tagged with the surface that set it:
+  // the sidebar reads this hook too, and without the tag one dashboard's
+  // in-flight widget edit would briefly appear to be the other's.
+  const effectivePreferences =
+    localPreferences && localPreferencesSurface === surface
+      ? { ...preferences, ...localPreferences }
+      : preferences;
 
   // Actions
   const setPreset = useCallback(
@@ -82,7 +114,7 @@ export function useDashboardPreferences() {
       if (!preset) return;
 
       // Optimistic update
-      setLocalPreferences({
+      setLocal({
         preset_type: presetType,
         visible_widgets: preset.widgets,
         widget_order: preset.widgets,
@@ -97,9 +129,9 @@ export function useDashboardPreferences() {
         widget_sizes: {},
       });
 
-      setLocalPreferences(null);
+      setLocal(null);
     },
-    [updateMutation, setLocalPreferences]
+    [updateMutation, setLocal]
   );
 
   const toggleWidget = useCallback(
@@ -112,7 +144,7 @@ export function useDashboardPreferences() {
         : [...currentWidgets, widgetId];
 
       // Optimistic update
-      setLocalPreferences({
+      setLocal({
         visible_widgets: newWidgets,
         widget_order: newWidgets,
         preset_type: 'custom', // Switching to custom when manually editing
@@ -125,9 +157,9 @@ export function useDashboardPreferences() {
         preset_type: 'custom',
       });
 
-      setLocalPreferences(null);
+      setLocal(null);
     },
-    [effectivePreferences, updateMutation, setLocalPreferences]
+    [effectivePreferences, updateMutation, setLocal]
   );
 
   const reorderWidgets = useCallback(
@@ -143,7 +175,7 @@ export function useDashboardPreferences() {
       widgets.splice(toIndex, 0, removed);
 
       // Optimistic update
-      setLocalPreferences({
+      setLocal({
         widget_order: widgets,
         preset_type: 'custom',
       });
@@ -154,9 +186,9 @@ export function useDashboardPreferences() {
         preset_type: 'custom',
       });
 
-      setLocalPreferences(null);
+      setLocal(null);
     },
-    [effectivePreferences, updateMutation, setLocalPreferences]
+    [effectivePreferences, updateMutation, setLocal]
   );
 
   const setWidgetSize = useCallback(
@@ -169,7 +201,7 @@ export function useDashboardPreferences() {
       };
 
       // Optimistic update
-      setLocalPreferences({
+      setLocal({
         widget_sizes: newSizes,
         preset_type: 'custom',
       });
@@ -180,9 +212,9 @@ export function useDashboardPreferences() {
         preset_type: 'custom',
       });
 
-      setLocalPreferences(null);
+      setLocal(null);
     },
-    [effectivePreferences, updateMutation, setLocalPreferences]
+    [effectivePreferences, updateMutation, setLocal]
   );
 
   const updateChecklist = useCallback(
@@ -191,22 +223,22 @@ export function useDashboardPreferences() {
       if (current.includes(stepId)) return;
       const updated = [...current, stepId];
 
-      setLocalPreferences({ checklist_progress: updated });
+      setLocal({ checklist_progress: updated });
 
       await updateMutation.mutateAsync({ checklist_progress: updated });
-      setLocalPreferences(null);
+      setLocal(null);
     },
-    [effectivePreferences, updateMutation, setLocalPreferences]
+    [effectivePreferences, updateMutation, setLocal]
   );
 
   const dismissChecklist = useCallback(
     async () => {
-      setLocalPreferences({ checklist_dismissed: true });
+      setLocal({ checklist_dismissed: true });
 
       await updateMutation.mutateAsync({ checklist_dismissed: true });
-      setLocalPreferences(null);
+      setLocal(null);
     },
-    [updateMutation, setLocalPreferences]
+    [updateMutation, setLocal]
   );
 
   const resetToPreset = useCallback(
@@ -222,8 +254,8 @@ export function useDashboardPreferences() {
 
   const closeCustomizeModal = useCallback(() => {
     setModalOpen(false);
-    setLocalPreferences(null);
-  }, [setModalOpen, setLocalPreferences]);
+    setLocal(null);
+  }, [setModalOpen, setLocal]);
 
   const enterCustomizeMode = useCallback(() => {
     setCustomizing(true);
@@ -231,8 +263,8 @@ export function useDashboardPreferences() {
 
   const exitCustomizeMode = useCallback(() => {
     setCustomizing(false);
-    setLocalPreferences(null);
-  }, [setCustomizing, setLocalPreferences]);
+    setLocal(null);
+  }, [setCustomizing, setLocal]);
 
   return {
     // Data

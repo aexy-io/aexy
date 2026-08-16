@@ -19,6 +19,37 @@ export interface WidgetDefinition {
 }
 
 export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
+  // === MY WORK (home dashboard) ===
+  // Three widgets rather than one block because people move and hide them
+  // independently; they share a filter store so the tiles still scope the queue.
+  myWorkStats: {
+    id: 'myWorkStats',
+    name: 'My Work Stats',
+    category: 'myWork',
+    personas: ['all'],
+    defaultSize: 'full',
+    icon: 'LayoutDashboard',
+    description: 'Counts of your open work — each one filters the queue',
+  },
+  myWorkQueue: {
+    id: 'myWorkQueue',
+    name: 'My Work Queue',
+    category: 'myWork',
+    personas: ['all'],
+    defaultSize: 'large',
+    icon: 'ListTodo',
+    description: 'Tasks, bugs, stories and tickets assigned to you',
+  },
+  myWorkByType: {
+    id: 'myWorkByType',
+    name: 'Work by Type',
+    category: 'myWork',
+    personas: ['all'],
+    defaultSize: 'medium',
+    icon: 'PieChart',
+    description: 'How your open work splits across trackers',
+  },
+
   // === CORE / PROFILE ===
   welcome: {
     id: 'welcome',
@@ -624,6 +655,32 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
   },
 };
 
+/**
+ * Widgets that only work when their host page passes them data.
+ *
+ * Most widgets fetch what they need themselves and can be dropped on any
+ * dashboard. These read props the Insights dashboard assembles from its own
+ * state (the signed-in profile, the AI insights request), so on another surface
+ * they render "Top: undefined" or throw when a handler that was never passed is
+ * called. They stay off the widget picker for surfaces that can't feed them
+ * rather than being offered and then breaking.
+ */
+export const HOST_PROP_WIDGETS = new Set([
+  'welcome',
+  'quickStats',
+  'languageProficiency',
+  'workPatterns',
+  'domainExpertise',
+  'frameworksTools',
+  'aiInsights',
+  'softSkills',
+]);
+
+/** Whether a widget can stand on its own on any dashboard surface. */
+export function isSelfContainedWidget(widgetId: string): boolean {
+  return !HOST_PROP_WIDGETS.has(widgetId);
+}
+
 export interface WidgetCategory {
   id: string;
   name: string;
@@ -631,6 +688,7 @@ export interface WidgetCategory {
 }
 
 export const WIDGET_CATEGORIES: Record<string, WidgetCategory> = {
+  myWork: { id: 'myWork', name: 'My Work', icon: 'ListTodo' },
   profile: { id: 'profile', name: 'Profile & Goals', icon: 'User' },
   stats: { id: 'stats', name: 'Statistics', icon: 'BarChart3' },
   goals: { id: 'goals', name: 'Goals', icon: 'Target' },

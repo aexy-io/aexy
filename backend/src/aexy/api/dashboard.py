@@ -107,6 +107,13 @@ DASHBOARD_PRESETS = {
 # ========== WIDGET REGISTRY ==========
 
 DASHBOARD_WIDGETS = {
+    # My Work — the home dashboard's own widgets. They share a filter (the stat
+    # tiles scope the queue), so they are separate widgets rather than one block
+    # only because people want to move and hide them independently.
+    "myWorkStats": {"name": "My Work Stats", "category": "myWork", "personas": ["all"], "default_size": "full", "icon": "LayoutDashboard"},
+    "myWorkQueue": {"name": "My Work Queue", "category": "myWork", "personas": ["all"], "default_size": "full", "icon": "ListTodo"},
+    "myWorkByType": {"name": "Work by Type", "category": "myWork", "personas": ["all"], "default_size": "medium", "icon": "PieChart"},
+
     # Core / Profile
     "welcome": {"name": "Welcome", "category": "profile", "personas": ["all"], "default_size": "full", "icon": "User"},
     "quickStats": {"name": "Quick Stats", "category": "stats", "personas": ["all"], "default_size": "full", "icon": "BarChart3"},
@@ -182,6 +189,7 @@ DASHBOARD_WIDGETS = {
 
 
 WIDGET_CATEGORIES = {
+    "myWork": {"name": "My Work", "icon": "ListTodo"},
     "profile": {"name": "Profile & Goals", "icon": "User"},
     "stats": {"name": "Statistics", "icon": "BarChart3"},
     "goals": {"name": "Goals", "icon": "Target"},
@@ -204,6 +212,137 @@ WIDGET_CATEGORIES = {
 
 
 # ========== HELPER FUNCTIONS ==========
+
+# ========== SURFACES ==========
+
+# The default surface — the personal insights dashboard. Its layout lives in the
+# preferences row's own columns, which is what every existing client reads.
+DEFAULT_SURFACE = "overview"
+
+# Surfaces whose layout is nested under `preferences.surfaces`. Anything not
+# listed here is rejected rather than silently written, so a typo in a client
+# can't strand somebody's layout under a key nothing will ever read back.
+NESTED_SURFACES = {"my_work"}
+
+# What a surface shows before anyone customises it. Deliberately not a preset:
+# presets are personas offered in the customize modal, and adding "My Work" there
+# would let somebody apply a home-dashboard layout to their insights dashboard.
+SURFACE_DEFAULT_WIDGETS = {
+    "my_work": [
+        "myWorkStats",
+        "myWorkQueue",
+        "myWorkByType",
+        "sprintOverview",
+        "upcomingDeadlines",
+        "recentTickets",
+        "myGoals",
+    ],
+}
+
+# The layout fields a surface owns. Everything else on the row (sidebar state,
+# checklist) is per-person, not per-surface, and stays shared.
+SURFACE_FIELDS = ("preset_type", "visible_widgets", "widget_order", "widget_sizes")
+
+
+def normalize_surface(surface: str | None) -> str:
+    """Validate a surface id, defaulting to the main dashboard."""
+    if not surface or surface == DEFAULT_SURFACE:
+        return DEFAULT_SURFACE
+    if surface not in NESTED_SURFACES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown dashboard surface. Valid options: "
+            f"{[DEFAULT_SURFACE, *sorted(NESTED_SURFACES)]}",
+        )
+    return surface
+
+
+def _surface_layout(preferences: DashboardPreferences, surface: str) -> dict:
+    """The stored layout for a nested surface, or its built-in default."""
+    stored = (preferences.surfaces or {}).get(surface) or {}
+    if stored.get("visible_widgets"):
+        return {
+            "preset_type": stored.get("preset_type") or "custom",
+            "visible_widgets": stored.get("visible_widgets") or [],
+            "widget_order": stored.get("widget_order")
+            or stored.get("visible_widgets")
+            or [],
+            "widget_sizes": stored.get("widget_sizes") or {},
+        }
+    widgets = list(SURFACE_DEFAULT_WIDGETS.get(surface, []))
+    return {
+        "preset_type": surface,
+        "visible_widgets": widgets,
+        "widget_order": widgets,
+        "widget_sizes": {},
+    }
+
+
+def project_surface(
+    preferences: DashboardPreferences, surface: str
+) -> DashboardPreferences:
+    """Return `preferences` as the given surface sees it.
+
+    Nested surfaces borrow the row wholesale and swap in their own layout, so
+    one response schema covers every surface and the client needs no branching.
+    The object is expunged first: these are ORM instances, and overwriting the
+    attributes of a live one would flush the wrong surface's layout into the
+    default surface's columns.
+    """
+    if surface == DEFAULT_SURFACE:
+        return preferences
+
+    layout = _surface_layout(preferences, surface)
+    detached = DashboardPreferences(
+        id=preferences.id,
+        developer_id=preferences.developer_id,
+        layout=preferences.layout,
+        surfaces=preferences.surfaces,
+        checklist_progress=preferences.checklist_progress,
+        checklist_dismissed=preferences.checklist_dismissed,
+        sidebar_page_visits=preferences.sidebar_page_visits,
+        sidebar_pinned_items=preferences.sidebar_pinned_items,
+        sidebar_persona=preferences.sidebar_persona,
+        created_at=preferences.created_at,
+        updated_at=preferences.updated_at,
+        **layout,
+    )
+    return detached
+
+
+def apply_surface_update(
+    preferences: DashboardPreferences, surface: str, update_data: dict
+) -> dict:
+    """Route a surface's layout fields into `surfaces`, leaving the rest.
+
+    Returns the update dict with the layout fields removed, so the caller can
+    apply what's left (checklist, sidebar) to the shared columns as usual.
+    """
+    if surface == DEFAULT_SURFACE:
+        return update_data
+
+    remaining = {k: v for k, v in update_data.items() if k not in SURFACE_FIELDS}
+    stored = dict(preferences.surfaces or {})
+    layout = dict(_surface_layout(preferences, surface))
+    for field in SURFACE_FIELDS:
+        if field in update_data:
+            layout[field] = update_data[field]
+
+    # A preset switch that doesn't name its widgets means "give me this preset's
+    # defaults" — the same rule the default surface follows.
+    preset = update_data.get("preset_type")
+    if preset and preset != "custom" and update_data.get("visible_widgets") is None:
+        defaults = get_default_preferences_for_preset(preset)
+        layout["visible_widgets"] = defaults["visible_widgets"]
+        layout["widget_order"] = defaults["widget_order"]
+        layout["widget_sizes"] = {}
+
+    stored[surface] = layout
+    # Reassign rather than mutate: SQLAlchemy doesn't track in-place edits to a
+    # JSONB dict, so a mutated one is never written back.
+    preferences.surfaces = stored
+    return remaining
+
 
 def get_default_preferences_for_preset(preset_type: str) -> dict:
     """Get default widget configuration for a preset type."""
@@ -269,10 +408,17 @@ async def track_page_visits(
 
 @router.get("/preferences", response_model=DashboardPreferencesResponse)
 async def get_preferences(
+    surface: str | None = None,
     db: AsyncSession = Depends(get_db),
     current_developer: Developer = Depends(get_current_developer),
 ):
-    """Get dashboard preferences for the current user."""
+    """Get dashboard preferences for the current user.
+
+    `surface` selects which dashboard's layout to return — omitted or
+    "overview" for the personal insights dashboard, "my_work" for the home
+    dashboard. Everything outside the layout (sidebar, checklist) is shared.
+    """
+    surface = normalize_surface(surface)
     result = await db.execute(
         select(DashboardPreferences).where(
             DashboardPreferences.developer_id == str(current_developer.id)
@@ -292,16 +438,18 @@ async def get_preferences(
         await db.commit()
         await db.refresh(preferences)
 
-    return preferences
+    return project_surface(preferences, surface)
 
 
 @router.put("/preferences", response_model=DashboardPreferencesResponse)
 async def update_preferences(
     data: DashboardPreferencesUpdate,
+    surface: str | None = None,
     db: AsyncSession = Depends(get_db),
     current_developer: Developer = Depends(get_current_developer),
 ):
     """Update dashboard preferences for the current user."""
+    surface = normalize_surface(surface)
     result = await db.execute(
         select(DashboardPreferences).where(
             DashboardPreferences.developer_id == str(current_developer.id)
@@ -311,7 +459,9 @@ async def update_preferences(
 
     if not preferences:
         # Create new preferences with defaults
-        defaults = get_default_preferences_for_preset(data.preset_type or "developer")
+        defaults = get_default_preferences_for_preset(
+            data.preset_type if surface == DEFAULT_SURFACE else "developer"
+        )
         preferences = DashboardPreferences(
             developer_id=str(current_developer.id),
             **defaults,
@@ -326,12 +476,20 @@ async def update_preferences(
     # that matches nothing and would empty the sidebar.
     if update_data.get("sidebar_persona") == "":
         update_data["sidebar_persona"] = None
+    # A non-default surface keeps its layout in `surfaces`; what comes back is
+    # the shared fields, which still belong on the row itself.
+    update_data = apply_surface_update(preferences, surface, update_data)
     for field, value in update_data.items():
         setattr(preferences, field, value)
 
     # If preset_type changed to a real preset and widgets weren't explicitly set, apply preset defaults
     # Skip for 'custom' — that means user is manually reordering/resizing, not applying a preset
-    if data.preset_type and data.preset_type != "custom" and data.visible_widgets is None:
+    if (
+        surface == DEFAULT_SURFACE
+        and data.preset_type
+        and data.preset_type != "custom"
+        and data.visible_widgets is None
+    ):
         defaults = get_default_preferences_for_preset(data.preset_type)
         preferences.visible_widgets = defaults["visible_widgets"]
         preferences.widget_order = defaults["widget_order"]
@@ -339,16 +497,18 @@ async def update_preferences(
 
     await db.commit()
     await db.refresh(preferences)
-    return preferences
+    return project_surface(preferences, surface)
 
 
 @router.post("/preferences/reset", response_model=DashboardPreferencesResponse)
 async def reset_preferences(
     preset_type: str = "developer",
+    surface: str | None = None,
     db: AsyncSession = Depends(get_db),
     current_developer: Developer = Depends(get_current_developer),
 ):
     """Reset dashboard preferences to a preset default."""
+    surface = normalize_surface(surface)
     if preset_type not in DASHBOARD_PRESETS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -365,18 +525,38 @@ async def reset_preferences(
     defaults = get_default_preferences_for_preset(preset_type)
 
     if not preferences:
+        # The row has to exist either way — it carries the sidebar state too.
+        # A reset of a nested surface leaves the default surface on its own
+        # defaults rather than dragging it along to the requested preset.
         preferences = DashboardPreferences(
             developer_id=str(current_developer.id),
-            **defaults,
+            **get_default_preferences_for_preset(
+                preset_type if surface == DEFAULT_SURFACE else "developer"
+            ),
         )
         db.add(preferences)
-    else:
+
+    if surface == DEFAULT_SURFACE:
         for field, value in defaults.items():
             setattr(preferences, field, value)
+    else:
+        # Resetting a nested surface means "back to what it shipped with", not
+        # "give me the developer persona's widgets" — its default is its own.
+        widgets = list(SURFACE_DEFAULT_WIDGETS.get(surface, []))
+        apply_surface_update(
+            preferences,
+            surface,
+            {
+                "preset_type": surface,
+                "visible_widgets": widgets,
+                "widget_order": widgets,
+                "widget_sizes": {},
+            },
+        )
 
     await db.commit()
     await db.refresh(preferences)
-    return preferences
+    return project_surface(preferences, surface)
 
 
 @router.get("/presets", response_model=DashboardPresetsResponse)

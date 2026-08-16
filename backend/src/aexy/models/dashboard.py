@@ -70,6 +70,23 @@ class DashboardPreferences(Base):
         nullable=False,
     )
 
+    # Layouts for dashboard surfaces other than the default one, keyed by
+    # surface id:
+    #   { "my_work": { "preset_type", "visible_widgets", "widget_order", "widget_sizes" } }
+    #
+    # There is exactly one preferences row per developer, and it also carries
+    # sidebar state (pinned items, visit counts, chosen persona). Giving a second
+    # dashboard its own row would mean two rows per developer and a
+    # MultipleResultsFound the first time anything looked up sidebar prefs by
+    # developer alone — so additional surfaces nest here instead, and the columns
+    # above stay the default surface's layout.
+    surfaces: Mapped[dict] = mapped_column(
+        JSONB,
+        default=dict,
+        nullable=False,
+        server_default=text("'{}'"),
+    )
+
     # Getting started checklist: list of completed step IDs
     checklist_progress: Mapped[list] = mapped_column(
         JSONB,

@@ -17,7 +17,6 @@ import {
   ArrowRight,
   X,
   LayoutDashboard,
-  Ticket,
   Building2,
   CalendarCheck,
   Mail,
@@ -158,13 +157,35 @@ export function CommandPalette({ projectId, onCreateTask }: CommandPaletteProps)
     items.push(
       {
         id: "nav-dashboard",
-        label: "Dashboard",
-        description: "Go to main dashboard",
+        label: "Home",
+        description: "Tasks, bugs, stories and tickets assigned to you",
         icon: <LayoutDashboard className="h-4 w-4" />,
         shortcut: ["G", "D"],
         action: () => router.push("/dashboard"),
         category: "navigation",
-        keywords: ["home", "overview", "main"],
+        // There is no separate "My Work" entry any more — this is that page.
+        // Its old search terms live here so the words people actually type
+        // ("tickets", "my work") still find it.
+        keywords: [
+          "home",
+          "dashboard",
+          "my work",
+          "tickets",
+          "bugs",
+          "issues",
+          "support",
+          "helpdesk",
+          "main",
+        ],
+      },
+      {
+        id: "nav-insights-dashboard",
+        label: "Insights",
+        description: "Skills, growth and AI insights dashboard",
+        icon: <LayoutDashboard className="h-4 w-4" />,
+        action: () => router.push("/dashboard/overview"),
+        category: "navigation",
+        keywords: ["insights", "overview", "widgets", "skills", "growth"],
       },
       {
         id: "nav-tracking",
@@ -212,18 +233,6 @@ export function CommandPalette({ projectId, onCreateTask }: CommandPaletteProps)
         action: () => router.push("/sprints"),
         category: "navigation",
         keywords: ["sprints", "projects", "board", "kanban"],
-      },
-      {
-        id: "nav-tickets",
-        label: "My Work",
-        description: "Tasks, bugs, stories and tickets assigned to you",
-        icon: <Ticket className="h-4 w-4" />,
-        shortcut: ["G", "T"],
-        action: () => router.push("/my-work"),
-        category: "navigation",
-        // "tickets" stays searchable: it is what people will type, and the page
-        // still lists them.
-        keywords: ["support", "helpdesk", "issues", "bugs", "tickets", "my work"],
       },
       {
         id: "nav-crm",

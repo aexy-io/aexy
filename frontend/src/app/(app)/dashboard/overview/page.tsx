@@ -1,0 +1,338 @@
+"use client";
+
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { redirect } from "next/navigation";
+import { analysisApi, DeveloperInsights, SoftSkillsProfile } from "@/lib/api";
+import { useDashboardPreferences } from "@/hooks/useDashboardPreferences";
+import type { PresetType } from "@/config/dashboardPresets";
+import { useDashboardStore } from "@/stores/dashboardStore";
+import { DASHBOARD_WIDGETS } from "@/config/dashboardWidgets";
+import { getWidgetComponent, widgetRegistry } from "@/config/widgetRegistry";
+import {
+  DashboardCustomizeModal,
+  SortableWidgetGrid,
+} from "@/components/dashboard";
+import { ComingSoonWidget } from "@/components/dashboard/widgets/ComingSoonWidget";
+import { Pencil, Check, Settings2 } from "lucide-react";
+import {
+  WorkspaceChecklist,
+  useShouldShowWorkspaceChecklist,
+} from "@/components/WorkspaceChecklist";
+import { DashboardWelcome } from "@/components/dashboard/DashboardWelcome";
+
+export default function DashboardPage() {
+  const { user, isLoading, isAuthenticated } = useAuth();
+  const [insights, setInsights] = useState<DeveloperInsights | null>(null);
+  const [softSkills, setSoftSkills] = useState<SoftSkillsProfile | null>(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [softSkillsLoading, setSoftSkillsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Dashboard customization
+  const { preferences, isLoading: prefsLoading, reorderWidgets, setPreset, updateChecklist, dismissChecklist } = useDashboardPreferences();
+
+  // Getting started checklist
+  const presetType = (preferences?.preset_type || "developer") as PresetType;
+  const showChecklist = useShouldShowWorkspaceChecklist(presetType, preferences);
+  const { isModalOpen, setModalOpen, isCustomizing, setCustomizing } = useDashboardStore();
+
+  const defaultWidgetOrder = [
+    "welcome", "quickStats", "languageProficiency", "workPatterns",
+    "domainExpertise", "frameworksTools", "aiInsights", "softSkills",
+    "growthTrajectory", "peerBenchmark", "taskMatcher",
+    "trackingSummary", "sprintOverview",
+    "ticketStats", "crmPipeline",
+    "aiAgents",
+    "myGoals", "performanceReviews",
+  ];
+
+  const visibleWidgets = preferences?.visible_widgets || defaultWidgetOrder;
+  const widgetOrder = preferences?.widget_order || visibleWidgets;
+
+  // Compute the ordered list of visible widgets
+  const orderedVisibleWidgets = useMemo(() => {
+    const visibleSet = new Set(visibleWidgets);
+    // Start with widgets from the order that are also visible
+    const ordered = widgetOrder.filter((id: string) => visibleSet.has(id));
+    // Add any visible widgets not yet in the order
+    visibleWidgets.forEach((id: string) => {
+      if (!ordered.includes(id)) {
+        ordered.push(id);
+      }
+    });
+    return ordered;
+  }, [widgetOrder, visibleWidgets]);
+
+  const fetchInsights = useCallback(async () => {
+    if (!user?.id) return;
+    setInsightsLoading(true);
+    try {
+      const data = await analysisApi.getDeveloperInsights(user.id);
+      setInsights(data);
+      if (data?.soft_skills) {
+        setSoftSkills(data.soft_skills);
+      }
+    } catch (error) {
+      console.error("Failed to fetch insights:", error);
+    } finally {
+      setInsightsLoading(false);
+    }
+  }, [user?.id]);
+
+  const fetchSoftSkills = useCallback(async () => {
+    if (!user?.id) return;
+    setSoftSkillsLoading(true);
+    try {
+      const data = await analysisApi.getSoftSkills(user.id);
+      setSoftSkills(data);
+    } catch (error) {
+      console.error("Failed to fetch soft skills:", error);
+    } finally {
+      setSoftSkillsLoading(false);
+    }
+  }, [user?.id]);
+
+  const handleRefreshInsights = useCallback(async () => {
+    if (!user?.id) return;
+    setIsRefreshing(true);
+    try {
+      await analysisApi.refreshAnalysis(user.id, true);
+      await fetchInsights();
+    } catch (error) {
+      console.error("Failed to refresh insights:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [user?.id, fetchInsights]);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchInsights();
+      fetchSoftSkills();
+    }
+  }, [user?.id, fetchInsights, fetchSoftSkills]);
+
+  if (isLoading) {
+    return (
+      <div className="p-6 max-w-7xl mx-auto animate-pulse">
+        <div className="flex items-center justify-between mb-6">
+          <div className="space-y-2">
+            <div className="h-7 w-56 bg-accent rounded" />
+            <div className="h-4 w-72 bg-accent rounded" />
+          </div>
+          <div className="flex gap-2">
+            <div className="h-9 w-9 bg-accent rounded-lg" />
+            <div className="h-9 w-9 bg-accent rounded-lg" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+            <div key={i} className="bg-card border border-border rounded-xl p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="h-4 w-28 bg-accent rounded" />
+                <div className="h-4 w-4 bg-accent rounded" />
+              </div>
+              <div className="h-20 bg-accent rounded-lg" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    redirect("/");
+  }
+
+  const skillFingerprint = user?.skill_fingerprint;
+  const workPatterns = user?.work_patterns;
+
+  // Calculate quick stats
+  const totalLanguages = skillFingerprint?.languages?.length || 0;
+  const totalFrameworks = skillFingerprint?.frameworks?.length || 0;
+  const topLanguage = skillFingerprint?.languages?.[0]?.name || "N/A";
+  const avgPRSize = workPatterns?.average_pr_size || 0;
+
+  // Map widget IDs to the props they need
+  const getWidgetProps = (widgetId: string): Record<string, unknown> => {
+    switch (widgetId) {
+      case "welcome":
+        return { user, onCustomize: () => setModalOpen(true) };
+      case "quickStats":
+        return {
+          totalLanguages,
+          totalFrameworks,
+          topLanguage,
+          avgPRSize,
+          collaborationStyle: workPatterns?.collaboration_style || "N/A",
+        };
+      case "languageProficiency":
+        return { languages: skillFingerprint?.languages };
+      case "workPatterns":
+        return { workPatterns };
+      case "domainExpertise":
+        return { domains: skillFingerprint?.domains };
+      case "frameworksTools":
+        return { frameworks: skillFingerprint?.frameworks };
+      case "aiInsights":
+        return {
+          insights,
+          softSkills,
+          insightsLoading,
+          softSkillsLoading,
+          isRefreshing,
+          onRefresh: handleRefreshInsights,
+          growth: user?.growth_trajectory,
+          userId: user?.id,
+          showInsights: visibleWidgets.includes("aiInsights"),
+          showSoftSkills: visibleWidgets.includes("softSkills"),
+          showGrowth: visibleWidgets.includes("growthTrajectory"),
+          showBenchmark: visibleWidgets.includes("peerBenchmark"),
+        };
+      case "softSkills":
+        // The SoftSkillsWidget here is the Reviews & Goals section
+        return {
+          showGoals: visibleWidgets.includes("myGoals"),
+          showReviews: visibleWidgets.includes("performanceReviews"),
+        };
+      default:
+        // For widgets without special props (AIAgentsWidget, TicketStats, etc.)
+        // or unimplemented widgets (ComingSoonWidget)
+        if (!(widgetId in widgetRegistry)) {
+          return { widgetId };
+        }
+        return {};
+    }
+  };
+
+  // Widget size mapping for grid column spans
+  const getWidgetGridClass = (widgetId: string): string => {
+    const widgetSizes = preferences?.widget_sizes || {};
+    const widget = DASHBOARD_WIDGETS[widgetId];
+    const size = widgetSizes[widgetId] || widget?.defaultSize || "medium";
+
+    switch (size) {
+      case "small":
+        return "col-span-1";
+      case "medium":
+        return "col-span-1";
+      case "large":
+        return "col-span-1 sm:col-span-2";
+      case "full":
+        return "col-span-full";
+      default:
+        return "col-span-1";
+    }
+  };
+
+  // Handle reorder from SortableWidgetGrid
+  const handleReorder = (activeId: string, overId: string) => {
+    console.log("ACTIVE ID",activeId);
+    console.log("OVER ID ",overId);
+    reorderWidgets(activeId, overId);
+  };
+
+  // Render a single widget by ID
+  const renderWidget = (widgetId: string): React.ReactNode => {
+    // Skip sub-widgets that are rendered inside composite widgets
+    const compositeChildren = [
+      "growthTrajectory", "peerBenchmark", "myGoals", "performanceReviews",
+    ];
+    if (compositeChildren.includes(widgetId)) {
+      return null;
+    }
+
+    const props = getWidgetProps(widgetId);
+
+    if (!(widgetId in widgetRegistry)) {
+      return <ComingSoonWidget key={widgetId} widgetId={widgetId} />;
+    }
+
+    const Widget = widgetRegistry[widgetId];
+    return <Widget key={widgetId} {...props} />;
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto space-y-8 p-4">
+      {/* First-visit welcome with persona picker */}
+      <DashboardWelcome
+        onSelectPreset={setPreset}
+        userName={user?.name || user?.email}
+      />
+
+      {/* Dashboard Controls */}
+      <div className="flex justify-end gap-2">
+        <button
+          onClick={() => setModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-card hover:bg-accent text-muted-foreground hover:text-foreground border border-border transition"
+        >
+          <Settings2 className="w-4 h-4" />
+          Customize
+        </button>
+        <button
+          onClick={() => setCustomizing(!isCustomizing)}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
+            isCustomizing
+              ? "bg-primary text-primary-foreground hover:bg-primary/90"
+              : "bg-card hover:bg-accent text-muted-foreground hover:text-foreground border border-border"
+          }`}
+        >
+          {isCustomizing ? (
+            <>
+              <Check className="w-4 h-4" />
+              Done
+            </>
+          ) : (
+            <>
+              <Pencil className="w-4 h-4" />
+              Edit Layout
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Getting Started Checklist */}
+      {showChecklist && (
+        <WorkspaceChecklist
+          presetType={presetType}
+          completedIds={preferences?.checklist_progress || []}
+          onMarkComplete={updateChecklist}
+          onDismiss={dismissChecklist}
+        />
+      )}
+
+      {/* Dynamic Widget Rendering */}
+      {orderedVisibleWidgets.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <Settings2 className="w-12 h-12 text-muted-foreground/40 mb-4" />
+          <h3 className="text-lg font-medium text-foreground mb-2">No widgets visible</h3>
+          <p className="text-muted-foreground text-sm mb-6">
+            Your dashboard is empty. Add widgets to get started.
+          </p>
+          <button
+            onClick={() => setModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition"
+          >
+            <Settings2 className="w-4 h-4" />
+            Customize Dashboard
+          </button>
+        </div>
+      ) : (
+        <SortableWidgetGrid
+          widgetOrder={orderedVisibleWidgets}
+          onReorder={handleReorder}
+          isEditing={isCustomizing}
+          renderWidget={renderWidget}
+          getGridClass={getWidgetGridClass}
+        />
+      )}
+
+      {/* Dashboard Customize Modal */}
+      <DashboardCustomizeModal
+        open={isModalOpen}
+        onOpenChange={setModalOpen}
+      />
+    </div>
+  );
+}
