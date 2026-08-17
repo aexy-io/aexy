@@ -6664,6 +6664,10 @@ export interface DocumentTreeItem {
   visibility: DocumentVisibility;
   created_by_id: string | null;
   is_favorited: boolean;
+  /** The linked code has changed since this page was written. Muted links are
+   *  excluded server-side — "off" has to include the tree or the setting only
+   *  half takes effect. */
+  is_behind_code?: boolean;
   has_children: boolean;
   children: DocumentTreeItem[];
   created_at: string;

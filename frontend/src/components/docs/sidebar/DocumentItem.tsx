@@ -88,6 +88,20 @@ export function DocumentItem({
           {document.title || "Untitled"}
         </Link>
 
+        {/* Visible while browsing, not only after opening the page. A dot
+            rather than a word: the tree is dense and already carries a title,
+            an icon and hover actions, and the only question it needs to answer
+            here is "is this one still true?". The title attribute carries the
+            rest for anyone who wants it. */}
+        {document.is_behind_code && (
+          <span
+            data-testid={`doc-behind-${document.id}`}
+            title="The code behind this page has changed since it was written"
+            aria-label="Behind the code"
+            className="mr-1 h-1.5 w-1.5 shrink-0 rounded-full bg-warning"
+          />
+        )}
+
         {/* Action Buttons (visible on hover) */}
         <div className="absolute right-2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
           {/* Favorite Button */}

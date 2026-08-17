@@ -304,8 +304,17 @@ class DocumentService:
         include_templates: bool = False,
         visibility: str | None = None,
         space_id: str | None = None,
+        _stale_ids: set[str] | None = None,
     ) -> list[dict[str, Any]]:
-        """Get hierarchical document tree for sidebar."""
+        """Get hierarchical document tree for sidebar.
+
+        `_stale_ids` is computed once at the top of the recursion and threaded
+        down. The tree recurses per level, so asking per document whether it
+        has fallen behind its code would be a query per node — on the one
+        surface that renders on every page of the module.
+        """
+        if _stale_ids is None:
+            _stale_ids = await self._documents_behind_their_code(workspace_id)
         stmt = (
             select(Document)
             .where(
@@ -350,7 +359,13 @@ class DocumentService:
         tree = []
         for doc in documents:
             children = await self.get_document_tree(
-                workspace_id, developer_id, doc.id, include_templates, visibility, space_id
+                workspace_id,
+                developer_id,
+                doc.id,
+                include_templates,
+                visibility,
+                space_id,
+                _stale_ids=_stale_ids,
             )
             tree.append(
                 {
@@ -364,6 +379,12 @@ class DocumentService:
                     "visibility": doc.visibility,
                     "created_by_id": doc.created_by_id,
                     "is_favorited": doc.id in favorite_ids,
+                    # Visible while browsing, not only after opening the page.
+                    # A document whose sync is muted is deliberately excluded:
+                    # somebody said they did not want it updated, and a badge
+                    # they cannot clear is the kind that teaches people to
+                    # ignore badges.
+                    "is_behind_code": doc.id in _stale_ids,
                     "has_children": len(children) > 0,
                     "children": children,
                     "created_at": doc.created_at.isoformat(),
@@ -372,6 +393,24 @@ class DocumentService:
             )
 
         return tree
+
+    async def _documents_behind_their_code(self, workspace_id: str) -> set[str]:
+        """Documents in this workspace whose linked code has moved on.
+
+        One query for the whole tree. Muted links are excluded — "off" means
+        stop watching, and that has to include the tree or the setting only
+        half takes effect.
+        """
+        from aexy.models.documentation import DocumentSyncMode
+
+        rows = await self.db.execute(
+            select(DocumentCodeLink.document_id)
+            .join(Document, DocumentCodeLink.document_id == Document.id)
+            .where(Document.workspace_id == workspace_id)
+            .where(DocumentCodeLink.has_pending_changes.is_(True))
+            .where(DocumentCodeLink.sync_mode != DocumentSyncMode.OFF.value)
+        )
+        return {row[0] for row in rows.fetchall()}
 
     async def move_document(
         self,

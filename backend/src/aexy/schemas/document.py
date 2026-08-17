@@ -111,6 +111,8 @@ class DocumentTreeItem(BaseModel):
     visibility: DocumentVisibility = "workspace"
     created_by_id: str | None = None
     is_favorited: bool = False
+    # The linked code has changed since this page was written.
+    is_behind_code: bool = False
     has_children: bool = False
     children: list["DocumentTreeItem"] = Field(default_factory=list)
     created_at: str
