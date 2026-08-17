@@ -1431,20 +1431,16 @@ class AppAccessService:
         return result.scalar_one_or_none()
 
     async def _is_admin(self, member: WorkspaceMember) -> bool:
-        """Check if member is admin or owner."""
-        # Check legacy role
-        if member.role in ("admin", "owner"):
-            return True
+        """Whether this member has admin authority, by the one definition of it.
 
-        # Check custom role
-        if member.custom_role:
-            # Check if based on admin/owner template or has high priority
-            if member.custom_role.based_on_template in ("admin", "owner"):
-                return True
-            if member.custom_role.priority >= 100:
-                return True
+        This used to answer independently of `WorkspaceService.check_permission`,
+        and the two disagreed: a member holding a custom admin-equivalent role
+        was granted every app here and then refused by the endpoint behind each
+        control. Both read `role_level` now, so the answer cannot fork again.
+        """
+        from aexy.services.workspace_service import ROLE_HIERARCHY, role_level
 
-        return False
+        return role_level(member) >= ROLE_HIERARCHY["admin"]
 
     def _get_role_template_id(self, member: WorkspaceMember) -> str:
         """Get the role template ID for a member."""

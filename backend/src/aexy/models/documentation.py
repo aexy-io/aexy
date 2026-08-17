@@ -858,6 +858,13 @@ class DocumentSyncQueue(Base):
 
     # Trigger info
     triggered_by_commit: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # The pull request that merge belonged to, when its merge commit named one.
+    # Kept beside the commit so a batched document groups in the review queue the
+    # same way a real-time one does: without it, the same merge produced one pull
+    # request group for premium documents and a commit group for pro ones.
+    triggered_by_pull_request: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
     triggered_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

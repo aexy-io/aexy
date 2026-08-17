@@ -171,6 +171,7 @@ class DocumentSyncService:
         self,
         document_id: str,
         triggered_by_commit: str | None = None,
+        triggered_by_pull_request: int | None = None,
     ) -> DocumentSyncQueue | None:
         """Queue a document for batch sync.
 
@@ -179,6 +180,8 @@ class DocumentSyncService:
         Args:
             document_id: Document to queue.
             triggered_by_commit: Commit SHA that triggered the sync.
+            triggered_by_pull_request: The pull request that merge belonged to,
+                when its merge commit named one.
 
         Returns:
             Created queue entry or None if already queued.
@@ -198,6 +201,10 @@ class DocumentSyncService:
             if triggered_by_commit:
                 existing.triggered_by_commit = triggered_by_commit
                 existing.triggered_at = datetime.now(timezone.utc)
+                # Moved with the commit, and cleared when the newer push named
+                # no pull request: keeping the old number would attribute this
+                # document to a merge that is no longer why it is queued.
+                existing.triggered_by_pull_request = triggered_by_pull_request
             return existing
 
         # Create new queue entry
@@ -205,6 +212,7 @@ class DocumentSyncService:
             id=str(uuid4()),
             document_id=document_id,
             triggered_by_commit=triggered_by_commit,
+            triggered_by_pull_request=triggered_by_pull_request,
             status="pending",
         )
         self.db.add(queue_entry)
@@ -293,6 +301,7 @@ class DocumentSyncService:
         repository_id: str,
         commit_sha: str,
         changed_paths: list[str],
+        pull_request: int | None = None,
     ) -> dict[str, Any]:
         """Handle a code change event (from webhook).
 
@@ -305,6 +314,10 @@ class DocumentSyncService:
             repository_id: Repository where change occurred.
             commit_sha: Commit SHA of the change.
             changed_paths: List of file paths that changed.
+            pull_request: The pull request this push merged, when the merge
+                commit named one. Optional because a rebase merge and a direct
+                push name none, and both are ordinary — the proposal then
+                groups by commit instead.
 
         Returns:
             Summary of actions taken.
@@ -399,14 +412,20 @@ class DocumentSyncService:
                     if self._path_matches_link(link.path, link.link_type, [path])
                 ]
                 await self._trigger_real_time_sync(
-                    document, link, commit_sha, changed_paths=matched
+                    document,
+                    link,
+                    commit_sha,
+                    changed_paths=matched,
+                    pull_request=pull_request,
                 )
                 results["real_time_synced"].append(str(document.id))
 
             elif sync_type == SyncTriggerType.DAILY_BATCH:
                 # Queue for batch processing
                 await self.queue_document_for_sync(
-                    str(document.id), triggered_by_commit=commit_sha
+                    str(document.id),
+                    triggered_by_commit=commit_sha,
+                    triggered_by_pull_request=pull_request
                 )
                 results["queued_for_batch"].append(str(document.id))
 
@@ -778,6 +797,7 @@ class DocumentSyncService:
         code_link: DocumentCodeLink,
         commit_sha: str,
         changed_paths: list[str] | None = None,
+        pull_request: int | None = None,
     ) -> bool:
         """Trigger immediate regeneration for a document.
 
@@ -813,9 +833,15 @@ class DocumentSyncService:
                 gen_service=gen_service,
                 github_service=github_service,
                 source="code_change_sync",
+                # `pull_request` is what the review inbox prefers to group on:
+                # one merge leaving proposals on four documents is a decision
+                # somebody can take, where four separate commit groups are four
+                # chores. Omitted rather than set to None when unknown, so the
+                # stored trigger says only what is true.
                 trigger={
                     "commit_sha": commit_sha,
                     "paths": changed_paths or [],
+                    **({"pull_request": pull_request} if pull_request else {}),
                 },
             )
 
@@ -1036,6 +1062,41 @@ class DocumentSyncService:
             "applied": applied,
         }
 
+    async def _batch_trigger(
+        self, document_id: str, code_link: DocumentCodeLink
+    ) -> dict[str, Any] | None:
+        """Why this batched document is being regenerated.
+
+        The queue row is the record of that, and it is the only place a batched
+        document can learn which pull request it is waiting on — the Temporal
+        activity is handed a document id and nothing else. Without this a merge
+        produced a pull-request group for premium documents and a commit group
+        for the pro ones queued by the very same push.
+
+        Reads the row still in flight rather than any row: a completed one
+        describes a previous regeneration.
+        """
+        if not code_link.last_commit_sha:
+            return None
+
+        pull_request = (
+            await self.db.execute(
+                select(DocumentSyncQueue.triggered_by_pull_request)
+                .where(DocumentSyncQueue.document_id == document_id)
+                .where(DocumentSyncQueue.status.in_(("pending", "processing")))
+                .order_by(DocumentSyncQueue.triggered_at.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+
+        trigger: dict[str, Any] = {
+            "commit_sha": code_link.last_commit_sha,
+            "paths": [],
+        }
+        if pull_request:
+            trigger["pull_request"] = pull_request
+        return trigger
+
     async def regenerate_document(
         self,
         document_id: str,
@@ -1093,11 +1154,7 @@ class DocumentSyncService:
             gen_service=gen_service,
             github_service=github_service,
             source="code_change_sync",
-            trigger=(
-                {"commit_sha": code_link.last_commit_sha, "paths": []}
-                if code_link.last_commit_sha
-                else None
-            ),
+            trigger=await self._batch_trigger(document_id, code_link),
         )
         if outcome is None:
             return {"status": "failed", "document_id": document_id}

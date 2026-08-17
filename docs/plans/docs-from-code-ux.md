@@ -507,25 +507,27 @@ button, because a page that spends a model call on open is a page people stop op
   environment has no working cloud key and the one local model overruns the LM Studio provider's
   180-second read timeout, so `suggest-improvements` cannot return here. What did get exercised:
   the toolbar entry, the panel opening, the deliberate no-spend-on-open, and the loading state.
-- **Two definitions of "admin" that disagree, and a third that guards the route.**
-  `AppAccessService._is_admin` counts a custom role based on the admin template or holding
-  priority >= 100; `WorkspaceService.check_permission(..., "admin")` scores role names against a
-  fixed hierarchy containing no custom role, and since `role` and `role_id` coexist such a member
-  keeps `role="member"` and scores zero. Reproduced against the running API: `is_admin: true` from
-  `/app-access/members/{id}/effective`, 403 from `PATCH /app-access/members/{id}`, same member.
-  `7dd9a761` makes the refusal legible; deciding *which* definition is right is not a decision to
-  make while adding a toast — teaching `check_permission` about custom roles widens who passes
-  every admin gate in the product, and narrowing `_is_admin` strips access those members have
-  today. The route guard on `/settings/access` is a third answer again: it redirects such a member
-  to the marketing page.
-- **The `pull_request` trigger key is never written.** `ProposedChange`'s docstring advertises
-  `{"commit_sha", "pull_request", "paths", "label"}` and `_group` has a branch that labels a group
-  "Pull request #N", but `handle_code_change(repository_id, commit_sha, changed_paths)` takes no
-  pull request and nothing else populates the key — so grouping is always per-commit, and one
-  merged pull request touching several documented modules across four commits becomes four groups
-  rather than the one the grouping was for. GitHub's push payload carries no pull request number,
-  so closing this needs either the `pull_request` webhook event or a commit-to-pull-request
-  lookup against the `pull_requests` table that "Recently merged" already reads.
+- ~~Two definitions of "admin" that disagree.~~ **Fixed.** Both read one
+  `role_level(member)`, which resolves the custom role and takes the *higher* of it and the legacy
+  role — additive, so assigning somebody a job title cannot demote an owner. Verified against the
+  running API: the `PATCH` that returned "Admin permission required" now passes the admin gate,
+  and the refusal that remains is the granular `can_manage_roles` permission naming itself.
+  Granting it returns 200. The route guard on `/settings/access` is a third answer again, and is
+  left alone: it decides *navigation*, and narrowing it is a separate question from who may write.
+
+  What diverged: `_is_admin` counted a custom role based on the admin template or holding
+  priority >= 100, while `check_permission` scored role names against a hierarchy containing no
+  custom role — and since `role` and `role_id` coexist, such a member keeps `role="member"` and
+  scored at member level, which passes every gate except the admin ones their custom role was
+  created to grant.
+- ~~The `pull_request` trigger key is never written.~~ **Fixed.** The number comes off the merge
+  commit's own subject, which GitHub writes — `Merge pull request #N from …` and the squash form
+  `… (#N)` — and a rebase merge or direct push names none, which groups by commit as before. It is
+  threaded through `handle_code_change`, and through the batch queue on a new
+  `triggered_by_pull_request` column, because the Temporal activity that drains the queue is handed
+  a document id and nothing else: without it the same push produced a pull-request group for
+  premium documents and a commit group for the pro ones beside them.
+
 
 ## Out of scope
 

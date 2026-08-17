@@ -1,6 +1,7 @@
 """GitHub Webhook API endpoints."""
 
 import logging
+import re
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -45,6 +46,38 @@ def _changed_paths(commits: list[dict]) -> list[str]:
     return list(seen)
 
 
+# GitHub's own merge-commit subjects. A merge keeps "Merge pull request #N
+# from …"; a squash puts "(#N)" at the end of the title. A rebase merge carries
+# no reference at all, which is why the caller treats absence as ordinary.
+_MERGE_COMMIT_PR = re.compile(r"^Merge pull request #(\d{1,7})\b")
+_SQUASH_COMMIT_PR = re.compile(r"\(#(\d{1,7})\)\s*$")
+
+
+def _pull_request_from_commits(commits: list[dict]) -> int | None:
+    """The pull request a push closed, when the push says so.
+
+    A push payload has no pull request field — GitHub does not put one there —
+    so the number has to come from the merge commit's own subject, which GitHub
+    writes. Newest commit first: a push can contain several merges, and the last
+    one is the one whose review this push belongs to.
+
+    This is the only thing that ever populates `trigger["pull_request"]`, which
+    `ProposedChange` has documented and the review inbox has grouped on since it
+    was built. Without it every proposal grouped by commit, so one merge across
+    four commits became four groups of one — the opposite of the "the auth
+    rework touched these four pages" decision the grouping exists to offer.
+    """
+    for commit in reversed(commits):
+        subject = (commit.get("message") or "").strip().split("\n", 1)[0]
+        if not subject:
+            continue
+        for pattern in (_MERGE_COMMIT_PR, _SQUASH_COMMIT_PR):
+            found = pattern.search(subject)
+            if found:
+                return int(found.group(1))
+    return None
+
+
 async def _sync_documents_for_push(db: AsyncSession, event) -> dict | None:
     """Flag documents whose linked code this push touched.
 
@@ -82,6 +115,7 @@ async def _sync_documents_for_push(db: AsyncSession, event) -> dict | None:
             repository_id=str(repo.id),
             commit_sha=head_sha,
             changed_paths=paths,
+            pull_request=_pull_request_from_commits(commits),
         )
     except Exception as exc:  # pragma: no cover - defensive
         logger.exception(

@@ -256,11 +256,14 @@ class TestSyncDocumentsForPush:
 
         seen = {}
 
-        async def fake_handle_code_change(repository_id, commit_sha, changed_paths):
+        async def fake_handle_code_change(
+            repository_id, commit_sha, changed_paths, pull_request=None
+        ):
             seen.update(
                 repository_id=repository_id,
                 commit_sha=commit_sha,
                 changed_paths=changed_paths,
+                pull_request=pull_request,
             )
             return {"marked_pending": ["doc-1"], "no_match": 0}
 
@@ -283,6 +286,54 @@ class TestSyncDocumentsForPush:
         # The head commit, not the first one: the document is behind the tip.
         assert seen["commit_sha"] == "bbb"
         assert seen["changed_paths"] == ["src/pkg/one.py", "src/pkg/two.py"]
+        # Nothing in these commit messages names a pull request, and that is the
+        # ordinary case — a direct push. The proposal groups by commit.
+        assert seen["pull_request"] is None
+
+    @pytest.mark.asyncio
+    async def test_a_merge_push_carries_its_pull_request_through(self, monkeypatch):
+        """The other half of the same join. `trigger["pull_request"]` is what the
+        review inbox groups on, and until this reached the service nothing ever
+        set it — so one merge across four commits became four groups of one."""
+        repository = SimpleNamespace(id="repo-1", full_name="acme/widgets")
+        db = MagicMock()
+        db.execute = AsyncMock(
+            return_value=SimpleNamespace(scalar_one_or_none=lambda: repository)
+        )
+
+        seen = {}
+
+        async def fake_handle_code_change(
+            repository_id, commit_sha, changed_paths, pull_request=None
+        ):
+            seen.update(pull_request=pull_request)
+            return {"marked_pending": ["doc-1"], "no_match": 0}
+
+        monkeypatch.setattr(
+            DocumentSyncService,
+            "handle_code_change",
+            staticmethod(fake_handle_code_change),
+        )
+
+        event = SimpleNamespace(
+            repository="acme/widgets",
+            commits=[
+                {
+                    "id": "aaa",
+                    "message": "Expire sessions sooner",
+                    "modified": ["src/pkg/one.py"],
+                },
+                {
+                    "id": "bbb",
+                    "message": "Merge pull request #128 from acme/session-expiry",
+                    "modified": ["src/pkg/two.py"],
+                },
+            ],
+        )
+
+        await _sync_documents_for_push(db, event)
+
+        assert seen["pull_request"] == 128
 
     @pytest.mark.asyncio
     async def test_a_push_with_no_paths_does_not_query_for_a_repository(self):

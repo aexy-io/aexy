@@ -612,17 +612,22 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
         } catch (err) {
             // The spinner used to stop and nothing else happen: the failure went
             // to the console, so the app simply stayed disabled with no
-            // explanation. A 403 is the one worth naming, because the button is
-            // only rendered when `is_admin` is true — and that flag comes from
-            // `AppAccessService._is_admin`, which counts a custom admin-
-            // equivalent role, while the endpoint's `check_permission` scores a
-            // custom role name as zero. So the product can offer this control to
-            // somebody it will then refuse, and silence made that unreportable.
+            // explanation.
+            //
+            // The server's own reason first, because on a 403 it is more specific
+            // than anything guessable from here — "requires the
+            // 'can_manage_roles' permission in this workspace" names the exact
+            // missing grant, where an invented sentence about roles would talk
+            // over it. The fallback covers only a 403 that arrives with no detail
+            // at all.
             const status = (err as { response?: { status?: number } })?.response?.status;
             toast.error(
-                status === 403
-                    ? "Your role cannot change app access here. Ask a workspace owner or admin."
-                    : getApiErrorMessage(err, `Could not enable ${appId}.`)
+                getApiErrorMessage(
+                    err,
+                    status === 403
+                        ? "Your role cannot change app access here. Ask a workspace owner or admin."
+                        : `Could not enable ${appId}.`
+                )
             );
         } finally {
             setTogglingApp(null);
