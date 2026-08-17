@@ -19,7 +19,7 @@ from typing import Any
 
 import httpx
 
-from aexy.services.mcp_catalog import CALL_TOOL, DISCOVER_TOOL
+from aexy.services.mcp_catalog import CALL_TOOL, DISCOVER_TOOL, workflow_tool
 
 # An operation is normally answered well under this. The ceiling exists so a
 # slow endpoint cannot pin an MCP session open indefinitely.
@@ -31,6 +31,23 @@ AGENT_ACTOR_HEADER = "X-Aexy-Agent-Actor"
 # Discovery returns matches, not the whole catalogue: a client that asked to
 # search is trying to narrow, and 1866 operations is not narrowing.
 MAX_DISCOVER_RESULTS = 25
+
+
+def _spread(flat: dict[str, Any], mapping: dict[str, str]) -> dict[str, Any]:
+    """Turn a named tool's flat arguments into the generic call shape.
+
+    `{"workspace_id": …, "markdown": …}` becomes
+    `{"path_params": {...}, "body": {...}}`. Unmapped keys are dropped rather
+    than guessed into the body: silently forwarding an unknown field would
+    make a typo look like it worked.
+    """
+    out: dict[str, Any] = {"path_params": {}, "query": {}, "body": {}}
+    for key, value in flat.items():
+        target = mapping.get(key)
+        if target is None or value is None:
+            continue
+        out["path_params" if target == "path" else target][key] = value
+    return {section: values for section, values in out.items() if values}
 
 
 @dataclass(frozen=True)
@@ -60,7 +77,15 @@ class McpToolExecutor:
         if tool_name == DISCOVER_TOOL:
             return self._discover(arguments.get("query", ""), arguments.get("capability"))
 
-        if tool_name == CALL_TOOL:
+        workflow = workflow_tool(tool_name)
+        if workflow is not None:
+            # A named workflow binds one action and takes flat arguments, so
+            # the caller does not have to know which of path_params / query /
+            # body each value belongs in. That split is an artefact of HTTP,
+            # not something an agent should have to reason about.
+            action = workflow["action"]
+            arguments = _spread(arguments, workflow["argument_map"])
+        elif tool_name == CALL_TOOL:
             action = arguments.get("action")
         else:
             capability = self._capability_for_tool(tool_name)
