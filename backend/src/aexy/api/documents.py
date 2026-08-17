@@ -1178,14 +1178,8 @@ async def _repository_reader(db: AsyncSession, repository_id: str, developer_id:
         )
 
     app_service = GitHubAppService(db)
-    token_result = await app_service.get_installation_token_for_account(
-        repo.owner_login
-    )
-    if not token_result:
-        token_result = await app_service.get_installation_token_for_developer(
-            developer_id, repo.owner_login
-        )
-    if not token_result:
+    access = await app_service.resolve_repository_access(repo, developer_id)
+    if not access:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=(
@@ -1194,7 +1188,7 @@ async def _repository_reader(db: AsyncSession, repository_id: str, developer_id:
             ),
         )
 
-    _token, installation_id = token_result
+    installation_id, _token = access
     return repo, GitHubServiceAdapter(
         app_service=app_service,
         installation_id=installation_id,

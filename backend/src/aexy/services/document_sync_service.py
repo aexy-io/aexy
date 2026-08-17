@@ -346,6 +346,14 @@ class DocumentSyncService:
         code_links = result.scalars().all()
 
         for link in code_links:
+            # A document that publishes itself to the repository must not be
+            # woken by its own export. Without this, auto-export plus a link
+            # watching the exported path is a loop that regenerates the
+            # document from the file it just wrote.
+            if await self._is_our_own_export(link.document_id, commit_sha):
+                results["own_export"] = results.get("own_export", 0) + 1
+                continue
+
             # A muted link is not merely "do not propose" — it stops being
             # reported as behind at all. Flagging a document somebody has
             # explicitly said they do not want updated turns the badge into
@@ -600,6 +608,24 @@ class DocumentSyncService:
             )
             return {"transferred": 0, "new_owner_id": None}
 
+    async def _is_our_own_export(self, document_id: str, commit_sha: str) -> bool:
+        """Did this commit come from us publishing the document?
+
+        A document can both describe a path and publish itself to one. If the
+        published file sits under a watched path, its own export looks exactly
+        like somebody changing the code — and the document regenerates from the
+        file it just wrote, forever. `last_export_commit` is the only record of
+        which commits are ours.
+        """
+        from aexy.models.documentation import DocumentGitHubSync
+
+        rows = await self.db.execute(
+            select(DocumentGitHubSync.last_export_commit).where(
+                DocumentGitHubSync.document_id == document_id
+            )
+        )
+        return commit_sha in {row[0] for row in rows.fetchall() if row[0]}
+
     async def _build_github_reader(
         self,
         document: Document,
@@ -632,26 +658,20 @@ class DocumentSyncService:
             return None
 
         app_service = GitHubAppService(self.db)
-        token_result = await app_service.get_installation_token_for_account(
-            repository.owner_login
+        # Falls back to whoever owns the sync, and only then to the document's
+        # author — which is what this read before code links had an owner.
+        access = await app_service.resolve_repository_access(
+            repository,
+            code_link.owner_developer_id or document.created_by_id,
         )
-        if not token_result:
-            # No installation covers the account directly. Fall back to whoever
-            # owns the sync — and only then to the document's author, which is
-            # what this read before code links had an owner of their own.
-            fallback_id = code_link.owner_developer_id or document.created_by_id
-            if fallback_id:
-                token_result = await app_service.get_installation_token_for_developer(
-                    str(fallback_id), repository.owner_login
-                )
-        if not token_result:
+        if not access:
             logger.warning(
                 f"No GitHub installation for document {document.id} "
                 f"({repository.full_name}) — can't sync"
             )
             return None
 
-        _token, installation_id = token_result
+        installation_id, _token = access
         return GitHubServiceAdapter(
             app_service=app_service,
             installation_id=installation_id,

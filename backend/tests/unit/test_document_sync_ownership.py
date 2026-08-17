@@ -26,27 +26,29 @@ def make_service():
 
 
 class StubAppService:
-    """Records which resolution route was taken, and in what order."""
+    """Records what the reader asked the shared resolver for.
 
-    def __init__(self, *, account_ok: bool, developer_ok: bool):
-        self.account_ok = account_ok
-        self.developer_ok = developer_ok
+    The account-then-developer ordering now lives in
+    `resolve_repository_access` and is covered in
+    tests/unit/test_github_access_resolution.py. What matters here is *which
+    developer* the document path offers as the fallback — that is the ownership
+    decision, and it is this module's business.
+    """
+
+    def __init__(self, *, resolves: bool):
+        self.resolves = resolves
         self.calls: list[tuple] = []
 
-    async def get_installation_token_for_account(self, account_login):
-        self.calls.append(("account", account_login))
-        return ("ghs_account", 11) if self.account_ok else None
-
-    async def get_installation_token_for_developer(self, developer_id, account_login=None):
-        self.calls.append(("developer", developer_id))
-        return ("ghs_dev", 22) if self.developer_ok else None
+    async def resolve_repository_access(self, repository, developer_id=None):
+        self.calls.append((repository.owner_login, developer_id))
+        return (11, "ghs_token") if self.resolves else None
 
     async def get_file_content(self, installation_id, owner, repo, path, ref="main"):
         return {"content": "x"}
 
 
-def wire(monkeypatch, *, account_ok, developer_ok):
-    stub = StubAppService(account_ok=account_ok, developer_ok=developer_ok)
+def wire(monkeypatch, *, resolves=True):
+    stub = StubAppService(resolves=resolves)
     monkeypatch.setattr(
         "aexy.services.github_app_service.GitHubAppService", lambda db: stub
     )
@@ -68,28 +70,18 @@ def fixtures(*, owner_id="owner-dev", author_id="author-dev"):
     return document, code_link
 
 
-class TestCredentialResolutionOrder:
+class TestWhichDeveloperTheFallbackUses:
     @pytest.mark.asyncio
-    async def test_the_repository_is_asked_before_any_person(self, monkeypatch):
-        """The fix for departure: an installation covering the account works
-        no matter who is still employed."""
-        stub = wire(monkeypatch, account_ok=True, developer_ok=True)
+    async def test_the_sync_owner_is_offered_as_the_fallback(self, monkeypatch):
+        """Not the document's author: the person who wired this to a repository
+        is the one whose access should stand in for the workspace's."""
+        stub = wire(monkeypatch)
         document, code_link = fixtures()
 
         reader = await make_service()._build_github_reader(document, code_link)
 
         assert reader is not None
-        assert stub.calls == [("account", "acme")]
-
-    @pytest.mark.asyncio
-    async def test_the_sync_owner_is_the_fallback(self, monkeypatch):
-        stub = wire(monkeypatch, account_ok=False, developer_ok=True)
-        document, code_link = fixtures()
-
-        reader = await make_service()._build_github_reader(document, code_link)
-
-        assert reader is not None
-        assert stub.calls == [("account", "acme"), ("developer", "owner-dev")]
+        assert stub.calls == [("acme", "owner-dev")]
 
     @pytest.mark.asyncio
     async def test_a_link_predating_ownership_falls_back_to_the_author(
@@ -97,17 +89,17 @@ class TestCredentialResolutionOrder:
     ):
         """Rows created before the owner column existed have a null owner and
         must keep behaving exactly as they did."""
-        stub = wire(monkeypatch, account_ok=False, developer_ok=True)
+        stub = wire(monkeypatch)
         document, code_link = fixtures(owner_id=None)
 
         reader = await make_service()._build_github_reader(document, code_link)
 
         assert reader is not None
-        assert stub.calls == [("account", "acme"), ("developer", "author-dev")]
+        assert stub.calls == [("acme", "author-dev")]
 
     @pytest.mark.asyncio
     async def test_no_access_anywhere_yields_no_reader(self, monkeypatch):
-        wire(monkeypatch, account_ok=False, developer_ok=False)
+        wire(monkeypatch, resolves=False)
         document, code_link = fixtures()
 
         assert await make_service()._build_github_reader(document, code_link) is None

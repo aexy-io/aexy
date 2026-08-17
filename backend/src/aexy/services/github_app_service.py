@@ -289,6 +289,42 @@ class GitHubAppService:
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
+    async def resolve_repository_access(
+        self,
+        repository: Any,
+        developer_id: str | None = None,
+    ) -> tuple[int, str] | None:
+        """Installation access for one repository, as `(installation_id, token)`.
+
+        One resolution order for everything that reads or writes a repository:
+        the account that owns it first, then a named developer. Repository-first
+        is what survives a departure; the developer fallback is what works
+        before an org-wide installation exists.
+
+        Returns `(installation_id, token)` — that order, deliberately. The
+        underlying helpers return `(token, installation_id)`, and two callers in
+        `github_sync_service` unpacked them the other way round, passing a JWT
+        where an installation id belonged, which broke document export and
+        import outright. A single function with the id first removes the coin
+        flip: `installation_id, token = ...` is now the only shape there is.
+        """
+        account = getattr(repository, "owner_login", None)
+        if account:
+            result = await self.get_installation_token_for_account(account)
+            if result:
+                token, installation_id = result
+                return installation_id, token
+
+        if developer_id:
+            result = await self.get_installation_token_for_developer(
+                str(developer_id), account
+            )
+            if result:
+                token, installation_id = result
+                return installation_id, token
+
+        return None
+
     async def get_installation_token_for_account(
         self,
         account_login: str,

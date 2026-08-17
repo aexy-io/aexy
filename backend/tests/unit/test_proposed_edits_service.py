@@ -154,7 +154,10 @@ class TestCreateProposal:
         """The API surface passes the source as a string from the
         public schema; the service must normalise it."""
         svc, db = make_service()
-        db.get.return_value = None
+        # The document has to exist: the shared table takes its workspace from
+        # the document, so a vanished one is now refused outright rather than
+        # becoming a NOT NULL violation on flush.
+        db.get.return_value = make_doc(content={"type": "doc"})
 
         proposal = await svc.create_proposal(
             document_id="doc-1",
@@ -240,7 +243,9 @@ class TestNotificationOnCreate:
         )
 
         added_kinds = [type(call.args[0]).__name__ for call in db.add.call_args_list]
-        assert "DocumentProposedEdit" in added_kinds, added_kinds
+        # `ProposedChange` since the two review queues became one table; the
+        # document vocabulary survives on the service, not the model.
+        assert "ProposedChange" in added_kinds, added_kinds
         assert len(sent) == 1, (
             f"owner was not notified — the proposal is invisible to them: {sent}"
         )

@@ -15,6 +15,7 @@ import pytest
 
 from aexy.models.documentation import TemplateCategory
 from aexy.services.document_sync_service import (
+    SyncTriggerType,
     DocumentSyncService,
     _category_for_link,
     is_substantive_path,
@@ -316,6 +317,7 @@ class TestSyncMode:
         svc = make_service()
         muted = SimpleNamespace(
             id="l1",
+            document_id="doc-1",
             sync_mode="off",
             path="src/pkg",
             link_type="directory",
@@ -324,9 +326,10 @@ class TestSyncMode:
             owner_developer_id="dev-1",
         )
         svc.db.execute = AsyncMock(
-            return_value=SimpleNamespace(
-                scalars=lambda: SimpleNamespace(all=lambda: [muted])
-            )
+            side_effect=[
+                SimpleNamespace(scalars=lambda: SimpleNamespace(all=lambda: [muted])),
+                SimpleNamespace(fetchall=lambda: []),
+            ]
         )
         svc.db.commit = AsyncMock()
 
@@ -495,3 +498,75 @@ class TestTriggerContext:
         )
 
         assert service.create_proposal.await_args.kwargs["trigger"] is None
+
+
+class TestOwnExportDoesNotWakeTheDocument:
+    """A document can describe a path and publish itself to one.
+
+    If the published file sits under a watched path, its own export looks
+    exactly like somebody changing the code — and the document regenerates from
+    the file it just wrote, forever.
+    """
+
+    @pytest.mark.asyncio
+    async def test_a_commit_we_published_is_skipped(self):
+        svc = make_service()
+        link = SimpleNamespace(
+            id="l1",
+            document_id="doc-1",
+            sync_mode="propose",
+            path="docs",
+            link_type="directory",
+            has_pending_changes=False,
+            document=SimpleNamespace(id="doc-1", created_by_id="dev-1"),
+            owner_developer_id="dev-1",
+        )
+        # First execute: the code links. Second: this document's export commits.
+        svc.db.execute = AsyncMock(
+            side_effect=[
+                SimpleNamespace(scalars=lambda: SimpleNamespace(all=lambda: [link])),
+                SimpleNamespace(fetchall=lambda: [("ourcommit",)]),
+            ]
+        )
+        svc.db.commit = AsyncMock()
+
+        result = await svc.handle_code_change(
+            repository_id="repo-1",
+            commit_sha="ourcommit",
+            changed_paths=["docs/session.md"],
+        )
+
+        assert result["own_export"] == 1
+        assert result["real_time_synced"] == []
+        assert link.has_pending_changes is False
+
+    @pytest.mark.asyncio
+    async def test_somebody_elses_commit_still_counts(self):
+        svc = make_service()
+        link = SimpleNamespace(
+            id="l1",
+            document_id="doc-1",
+            sync_mode="propose",
+            path="docs",
+            link_type="directory",
+            has_pending_changes=False,
+            document=SimpleNamespace(id="doc-1", created_by_id="dev-1"),
+            owner_developer_id="dev-1",
+        )
+        svc.db.execute = AsyncMock(
+            side_effect=[
+                SimpleNamespace(scalars=lambda: SimpleNamespace(all=lambda: [link])),
+                SimpleNamespace(fetchall=lambda: [("ourcommit",)]),
+            ]
+        )
+        svc.db.commit = AsyncMock()
+        svc.get_sync_type_for_developer = AsyncMock(return_value=SyncTriggerType.MANUAL)
+
+        result = await svc.handle_code_change(
+            repository_id="repo-1",
+            commit_sha="somebodyelse",
+            changed_paths=["docs/session.md"],
+        )
+
+        assert "own_export" not in result
+        assert link.has_pending_changes is True

@@ -49,15 +49,12 @@ class RecordingAppService:
         self.file_calls: list[dict] = []
         self.dir_calls: list[dict] = []
 
-    async def get_installation_token_for_account(self, account_login):
-        # No account-wide installation here, so resolution falls through to the
-        # sync owner. Repository-first ordering is covered in
-        # tests/unit/test_document_sync_ownership.py.
-        return None
-
-    async def get_installation_token_for_developer(self, developer_id, account_login=None):
-        self.token_request = (developer_id, account_login)
-        return ("ghs_token", 42)
+    async def resolve_repository_access(self, repository, developer_id=None):
+        # Resolution order lives in the shared resolver and is covered in
+        # tests/unit/test_github_access_resolution.py; what this file cares
+        # about is the *shape* of the reader that comes back.
+        self.access_request = (repository.owner_login, developer_id)
+        return (42, "ghs_token")
 
     async def get_file_content(self, installation_id, owner, repo, path, ref="main"):
         self.file_calls.append(
@@ -128,17 +125,14 @@ class TestBackgroundGitHubReader:
         ]
 
     @pytest.mark.asyncio
-    async def test_installation_is_resolved_for_the_repository_owner(
-        self, reader_setup
-    ):
-        """When resolution falls through to a person, their lookup is still
-        scoped to the account owning this repository — a developer may have
-        installations on several, and only one of them can read this code."""
+    async def test_access_is_resolved_for_this_repository(self, reader_setup):
+        """The reader asks about the repository it is going to read, with the
+        sync owner as the fallback identity."""
         svc, document, code_link, app_service = reader_setup
 
         await svc._build_github_reader(document, code_link)
 
-        assert app_service.token_request == ("dev-1", "acme")
+        assert app_service.access_request == ("acme", "dev-1")
 
     @pytest.mark.asyncio
     async def test_directory_root_is_normalised(self, reader_setup):
@@ -153,7 +147,7 @@ class TestBackgroundGitHubReader:
     @pytest.mark.asyncio
     async def test_no_installation_yields_no_reader(self, reader_setup, monkeypatch):
         svc, document, code_link, app_service = reader_setup
-        app_service.get_installation_token_for_developer = AsyncMock(return_value=None)
+        app_service.resolve_repository_access = AsyncMock(return_value=None)
 
         assert await svc._build_github_reader(document, code_link) is None
 
