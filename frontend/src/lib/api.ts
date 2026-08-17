@@ -2137,6 +2137,21 @@ export interface WorkspaceRepositoryItem {
   updated_at: string;
 }
 
+/** What a repository *picker* needs, and no more.
+ *
+ *  The docs generator used to hold a full `Repository`, which forced it to read
+ *  the per-developer list — the only endpoint that returns one — and that is why
+ *  a member who had not adopted a repository themselves could not see it there.
+ *  Narrowing the type is what lets the workspace's own adoption list feed it. */
+export interface RepositoryChoice {
+  id: string;
+  name: string;
+  full_name: string;
+  description: string | null;
+  is_private: boolean;
+  language: string | null;
+}
+
 export const workspaceRepositoriesApi = {
   list: async (
     workspaceId: string,

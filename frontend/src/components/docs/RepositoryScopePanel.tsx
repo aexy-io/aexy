@@ -15,7 +15,7 @@ import {
 import {
   documentApi,
   repositoriesApi,
-  type Repository,
+  type RepositoryChoice,
 } from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/utils";
 
@@ -50,7 +50,7 @@ interface Unit {
 
 interface Props {
   workspaceId: string;
-  repository: Repository;
+  repository: RepositoryChoice;
   branch: string;
   isOpen: boolean;
   onClose: () => void;
