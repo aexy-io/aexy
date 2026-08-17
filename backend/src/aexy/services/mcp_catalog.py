@@ -48,7 +48,13 @@ PLATFORM_CAPABILITIES = {"platform", "admin", "integrations"}
 # `public` routers answer to unauthenticated visitors by design, so running them
 # on a developer's token misrepresents who is asking. `system` is liveness and
 # machine ingest, which no agent needs.
-EXCLUDED_CAPABILITIES = {"public", "system"}
+#
+# `review_gate` is the queue of changes and held tool calls waiting on a person.
+# It is excluded because an agent that can approve the queue holding its own
+# writes is not gated at all — the gate would be approving itself. A human
+# reaches these endpoints through the web app, where the reviewer is a session,
+# not a caller with a capability grant.
+EXCLUDED_CAPABILITIES = {"public", "system", "review_gate"}
 
 # Capabilities a wrongly-granted tool does lasting damage through. Defaulted off
 # rather than inherited.
@@ -219,6 +225,19 @@ TAG_TO_CAPABILITY: dict[str, str] = {
     "notifications": "platform",
     "preferences": "platform",
     "mcp": "platform",
+    # Product feedback from inside a workspace, and its platform-admin triage.
+    # Landed without a mapping, which left 15 operations outside the access model
+    # and — because the dump refuses to write while any tag is unmapped — froze
+    # the fixture for every later router too.
+    "feedback": "platform",
+    "feedback_admin": "admin",
+    # The OAuth handshake an MCP client performs before it has any grant at all.
+    # Excluded for the reason `public` is: it answers to a client, and running it
+    # on a developer's token misrepresents who is asking.
+    "mcp_oauth": "public",
+    # -- The human gate (never reachable over MCP; see EXCLUDED_CAPABILITIES) --
+    "review": "review_gate",
+    "agent_actions": "review_gate",
     # -- Admin (privileged) --------------------------------------------------
     "admin": "admin",
     "platform_admin": "admin",
@@ -454,6 +473,31 @@ WORKFLOW_TOOLS: list[dict[str, Any]] = [
             "written. Start here: each item names the repository path to read and "
             "whether an update is already queued. Detecting this costs nothing, so "
             "poll it freely."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "workspace_id": {"type": "string"},
+                "repository_id": {
+                    "type": "string",
+                    "description": "Optional. Restrict to one repository.",
+                },
+            },
+            "required": ["workspace_id"],
+        },
+        "argument_map": {"workspace_id": "path", "repository_id": "query"},
+    },
+    {
+        "name": "aexy_docs_merged_changes",
+        "capability": "mcp.docs",
+        "action": "list_merged_changes",
+        "description": (
+            "List recently merged pull requests in this workspace's repositories, "
+            "as candidates for documentation that does not exist yet. The other "
+            "half of the work list: `aexy_docs_needing_update` only finds pages "
+            "that already exist and have fallen behind. Says nothing about whether "
+            "a change is already documented — check the repository's documents "
+            "before writing."
         ),
         "input_schema": {
             "type": "object",

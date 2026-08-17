@@ -27,6 +27,7 @@ from aexy.schemas.document import (
     DocumentListResponse,
     DocumentMoveRequest,
     DocumentNeedsUpdateItem,
+    MergedChangeItem,
     DocumentResponse,
     DocumentTreeItem,
     DocumentUpdate,
@@ -250,9 +251,9 @@ async def get_favorites(
 
 
 # ==================== Documentation work list ====================
-# NOTE: Both routes here MUST stay before /{document_id}, or their literal
-# path segment is read as a document id and the endpoint 404s on a lookup
-# for a document called "needs-update".
+# NOTE: Every route here MUST stay before /{document_id}, or its literal path
+# segment is read as a document id and the endpoint 404s on a lookup for a
+# document called "needs-update".
 
 
 @router.get("/needs-update", response_model=list[DocumentNeedsUpdateItem])
@@ -294,6 +295,39 @@ async def list_documents_needing_update(
         workspace_id=workspace_id,
         repository_id=repository_id,
         include_never_synced=include_never_synced,
+        limit=limit,
+    )
+
+
+@router.get("/merged-changes", response_model=list[MergedChangeItem])
+async def list_merged_changes(
+    workspace_id: str,
+    repository_id: str | None = Query(
+        default=None, description="Restrict to one repository."
+    ),
+    limit: int = Query(default=20, ge=1, le=100),
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Recently merged pull requests, as candidates for documentation.
+
+    The counterpart to `/needs-update`, which can only find pages that already
+    exist and have fallen behind. Most documentation gaps are not stale pages —
+    they are changes nobody ever wrote about, and there was no queue for those.
+
+    Merged is the moment worth catching: the person who would know has the whole
+    change in their head, and will not in a fortnight.
+
+    Says nothing about whether a change is already documented. `pull_requests`
+    does not record the files a pull request touched, so that claim would be a
+    guess, and a wrong "already documented" is worse than no badge at all.
+    """
+    await check_workspace_permission(workspace_id, current_user, db, "viewer")
+
+    sync_service = DocumentSyncService(db)
+    return await sync_service.list_merged_changes(
+        workspace_id=workspace_id,
+        repository_id=repository_id,
         limit=limit,
     )
 

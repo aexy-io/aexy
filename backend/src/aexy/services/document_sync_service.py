@@ -515,6 +515,84 @@ class DocumentSyncService:
             )
         return items
 
+    async def list_merged_changes(
+        self,
+        workspace_id: str,
+        repository_id: str | None = None,
+        limit: int = 20,
+    ) -> list[dict[str, Any]]:
+        """Recently merged pull requests in this workspace's repositories.
+
+        The other half of the work list. `list_documents_needing_update` finds
+        pages that have fallen behind; this finds changes that were never
+        written about at all — which is the larger gap on most teams, and the
+        one nobody has a queue for.
+
+        Scoped through `workspace_repositories`, so a developer's personal
+        repositories do not leak into a workspace they were never adopted into.
+        `pull_requests.repository` holds the full name rather than an id, which
+        is what the join is on.
+        """
+        from aexy.models.activity import PullRequest
+        from aexy.models.repository import Repository, WorkspaceRepository
+
+        stmt = (
+            select(PullRequest, Repository.id, Developer.name)
+            .join(Repository, Repository.full_name == PullRequest.repository)
+            .join(
+                WorkspaceRepository,
+                WorkspaceRepository.repository_id == Repository.id,
+            )
+            .outerjoin(Developer, Developer.id == PullRequest.developer_id)
+            .where(WorkspaceRepository.workspace_id == workspace_id)
+            # Merged, not just closed: an abandoned pull request is not a change
+            # anybody needs documentation for.
+            .where(PullRequest.merged_at.isnot(None))
+            .order_by(PullRequest.merged_at.desc())
+            .limit(limit)
+        )
+        if repository_id:
+            stmt = stmt.where(Repository.id == repository_id)
+
+        rows = (await self.db.execute(stmt)).all()
+        if not rows:
+            return []
+
+        # One count per repository rather than per row: "this repository has no
+        # documentation at all" is the honest signal available here, and it is
+        # the same answer for every pull request in that repository.
+        repo_ids = {repo_id for _, repo_id, _ in rows}
+        counts = dict(
+            (
+                await self.db.execute(
+                    select(
+                        DocumentCodeLink.repository_id,
+                        func.count(func.distinct(DocumentCodeLink.document_id)),
+                    )
+                    .where(DocumentCodeLink.repository_id.in_(repo_ids))
+                    .group_by(DocumentCodeLink.repository_id)
+                )
+            ).all()
+        )
+
+        return [
+            {
+                "pull_request_id": str(pr.id),
+                "number": pr.number,
+                "title": pr.title,
+                "repository": pr.repository,
+                "repository_id": str(repo_id) if repo_id else None,
+                "merged_at": pr.merged_at,
+                "author_name": author_name,
+                "merged_by_login": pr.merged_by_login,
+                "additions": pr.additions or 0,
+                "deletions": pr.deletions or 0,
+                "files_changed": pr.files_changed or 0,
+                "repository_document_count": counts.get(repo_id, 0),
+            }
+            for pr, repo_id, author_name in rows
+        ]
+
     async def transfer_owned_syncs(
         self,
         departing_developer_id: str,

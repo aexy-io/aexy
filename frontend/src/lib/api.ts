@@ -6865,6 +6865,26 @@ export interface DocumentNeedsUpdateItem {
   pending_proposal_count: number;
 }
 
+/** A merged pull request, offered as something to write about. Carries no
+ *  claim about whether it is already documented — `pull_requests` does not
+ *  store the files a change touched, so that would be a guess. */
+export interface MergedChangeItem {
+  pull_request_id: string;
+  number: number;
+  title: string;
+  repository: string;
+  repository_id: string | null;
+  merged_at: string | null;
+  author_name: string | null;
+  merged_by_login: string | null;
+  additions: number;
+  deletions: number;
+  files_changed: number;
+  /** Documents linked to anything in this repository. Zero means the repository
+   *  has no documentation at all, which is the honest signal available here. */
+  repository_document_count: number;
+}
+
 export interface DocumentCollaborator {
   id: string;
   document_id: string;
@@ -7165,6 +7185,17 @@ export const documentApi = {
   ): Promise<DocumentNeedsUpdateItem[]> => {
     const response = await api.get(
       `/workspaces/${workspaceId}/documents/needs-update`,
+      { params: options }
+    );
+    return response.data;
+  },
+
+  listMergedChanges: async (
+    workspaceId: string,
+    options?: { repository_id?: string; limit?: number }
+  ): Promise<MergedChangeItem[]> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/documents/merged-changes`,
       { params: options }
     );
     return response.data;

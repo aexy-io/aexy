@@ -247,6 +247,39 @@ class CodeLinkCreate(BaseModel):
     section_id: str | None = Field(default=None, max_length=100)
 
 
+class MergedChangeItem(BaseModel):
+    """One merged pull request, offered as something to write about.
+
+    The sharpest moment to document a change is just after it lands, and the
+    person who would know has the whole thing in their head for about a day.
+    Carries the repository coordinates so "document this" can open the
+    generator already pointed at the right place.
+
+    Deliberately says nothing about whether the change is *already*
+    documented: `pull_requests` does not store the files a pull request
+    touched, so any such claim would be a guess, and a wrong "documented"
+    badge is worse than no badge.
+    """
+
+    pull_request_id: str
+    number: int
+    title: str
+    repository: str
+    repository_id: str | None = None
+    merged_at: datetime | None = None
+    author_name: str | None = None
+    merged_by_login: str | None = None
+    additions: int = 0
+    deletions: int = 0
+    files_changed: int = 0
+
+    # How many documents in this workspace are linked to anything in the same
+    # repository. Zero is the honest signal that this repository has no
+    # documentation at all — which is a different and more useful thing to say
+    # than guessing at whether this particular change is covered.
+    repository_document_count: int = 0
+
+
 class DocumentNeedsUpdateItem(BaseModel):
     """One document whose linked code has moved on without it.
 

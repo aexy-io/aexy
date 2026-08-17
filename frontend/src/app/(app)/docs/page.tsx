@@ -23,6 +23,7 @@ import { useWorkspace } from "@/hooks/useWorkspace";
 import { useDocuments, useTemplates } from "@/hooks/useDocuments";
 import { documentApi, repositoriesApi, Repository, TemplateListItem } from "@/lib/api";
 import { TemplateSelector } from "@/components/docs/TemplateSelector";
+import { MergedChanges } from "@/components/docs/MergedChanges";
 
 export default function DocsPage() {
   const router = useRouter();
@@ -52,11 +53,16 @@ export default function DocsPage() {
   // repository tab with that repo selected, rather than making somebody find
   // the modal and re-pick the thing they were already looking at.
   const requestedRepo = searchParams?.get("generate") ?? null;
+  // Arriving from a merged change carries what to write about as well as where
+  // to read it. Without this the generator would open on the right repository
+  // and lose the only part somebody actually typed.
+  const requestedPrompt = searchParams?.get("prompt") ?? null;
   useEffect(() => {
     if (!requestedRepo) return;
     setShowGenerateModal(true);
     setSourceMode("repo");
-  }, [requestedRepo]);
+    if (requestedPrompt) setCustomPrompt(requestedPrompt);
+  }, [requestedRepo, requestedPrompt]);
 
   // Fetch repositories when modal is open and in repo mode
   const { data: repositories, isLoading: loadingRepos } = useQuery({
@@ -319,6 +325,15 @@ export default function DocsPage() {
             </button>
           ))}
         </div>
+
+        {/* Changes that landed and may never have been written about. Above
+            templates: it is a work list, and the templates below it are a
+            starting point for whichever item you pick. */}
+        {currentWorkspaceId && (
+          <div className="mb-8 text-left">
+            <MergedChanges workspaceId={currentWorkspaceId} />
+          </div>
+        )}
 
         {/* Templates Section */}
         {!templatesLoading && templates && templates.length > 0 && (

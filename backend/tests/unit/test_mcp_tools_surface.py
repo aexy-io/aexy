@@ -32,6 +32,7 @@ from aexy.services.mcp_catalog import (
     CALL_TOOL,
     DISCOVER_TOOL,
     PLATFORM_CAPABILITIES,
+    WORKFLOW_TOOLS,
     build_tools,
     capability_for,
 )
@@ -66,7 +67,18 @@ def test_generic_tools_are_always_offered_when_anything_is_granted(catalog):
 def test_one_tool_per_granted_capability(catalog):
     granted = {"mcp.sprints", "mcp.crm", "mcp.docs"}
     tools = build_tools(catalog, granted)
-    assert _names(tools) == {DISCOVER_TOOL, CALL_TOOL, "aexy_sprints", "aexy_crm", "aexy_docs"}
+    # Plus the named docs-workflow tools, which are shortcuts into `mcp.docs`
+    # rather than capabilities of their own. This assertion passed while the
+    # fixture was stale — the operations they resolve against were missing, so
+    # they were silently withheld, which is the failure mode a named tool has.
+    workflow = {t["name"] for t in WORKFLOW_TOOLS}
+    assert _names(tools) == {
+        DISCOVER_TOOL,
+        CALL_TOOL,
+        "aexy_sprints",
+        "aexy_crm",
+        "aexy_docs",
+    } | workflow
 
 
 def test_ungranted_capabilities_are_absent_not_disabled(catalog):
@@ -236,7 +248,8 @@ async def test_holding_every_app_offers_exactly_the_catalogue(catalog):
     # ...and the reported set is the intersection the endpoint applies.
     reported = held & known
     assert reported == known
-    assert len(build_tools(catalog, reported)) == len(known) + 2  # + discover + call
+    # + discover + call + the named docs-workflow shortcuts
+    assert len(build_tools(catalog, reported)) == len(known) + 2 + len(WORKFLOW_TOOLS)
 
 
 # ---------------------------------------------------------------------------

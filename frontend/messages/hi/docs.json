@@ -135,6 +135,16 @@
       "appliesAsProposal": "लागू करने पर पुनर्लेखन समीक्षा के लिए कतार में जाता है। किसी के स्वीकृत करने तक आपका दस्तावेज़ नहीं बदलता।",
       "failed": "इस पेज की समीक्षा नहीं हो सकी",
       "applyFailed": "वह बदलाव कतार में नहीं जोड़ा जा सका"
+    },
+    "mergedChanges": {
+      "heading": "हाल में मर्ज हुए",
+      "subheading": "जो बदलाव आ चुके हैं। इनके बारे में लिखने का सबसे अच्छा समय अभी है, जब किसी को यह याद है।",
+      "documentThis": "इसका दस्तावेज़ बनाएँ",
+      "filesChanged": "{count} फ़ाइलें",
+      "noDocsForRepository": "कोई docs नहीं",
+      "noDocsForRepositoryHint": "इस workspace का कोई दस्तावेज़ इस repository से जुड़ा नहीं है।",
+      "repositoryGone": "Repository डिस्कनेक्ट है",
+      "promptFor": "#{number} में मर्ज हुए बदलाव का दस्तावेज़ बनाएँ: {title}"
     }
   }
 }

@@ -2,7 +2,7 @@
 
 The per-capability tool already reaches every operation, so these add no
 reach. They add a *route*: `aexy_docs` offers an enum of dozens of actions,
-and working out which three keep a document honest — and in what order — is
+and working out which of them keep a document honest — and in what order — is
 work the tool list can do once instead of every agent doing it badly.
 """
 
@@ -20,6 +20,13 @@ DOCS_OPS = [
         "action": "list_documents_needing_update",
         "method": "get",
         "path": "/api/v1/workspaces/{workspace_id}/documents/needs-update",
+        "summary": "",
+        "mutating": False,
+    },
+    {
+        "action": "list_merged_changes",
+        "method": "get",
+        "path": "/api/v1/workspaces/{workspace_id}/documents/merged-changes",
         "summary": "",
         "mutating": False,
     },

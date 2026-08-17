@@ -9,6 +9,7 @@ export { CollaborationAwareness, CollaborationBadge } from "./CollaborationAware
 export { GitHubSyncPanel } from "./GitHubSyncPanel";
 export { VersionHistoryPanel } from "./VersionHistoryPanel";
 export { DocumentImprovements } from "./DocumentImprovements";
+export { MergedChanges } from "./MergedChanges";
 
 // `GenerationPanel` and `SyncStatusPanel` were removed rather than mounted.
 //

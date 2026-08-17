@@ -135,6 +135,16 @@
       "appliesAsProposal": "Applying queues a rewrite for review. Your document is not changed until somebody approves it.",
       "failed": "Could not review this page",
       "applyFailed": "Could not queue that change"
+    },
+    "mergedChanges": {
+      "heading": "Recently merged",
+      "subheading": "Changes that landed. The best time to write about one is now, while somebody still has it in their head.",
+      "documentThis": "Document this",
+      "filesChanged": "{count} files",
+      "noDocsForRepository": "No docs",
+      "noDocsForRepositoryHint": "No document in this workspace is linked to anything in this repository.",
+      "repositoryGone": "Repository disconnected",
+      "promptFor": "Document the change merged in #{number}: {title}"
     }
   }
 }
