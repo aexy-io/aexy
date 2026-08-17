@@ -9,6 +9,7 @@ nothing to read, because nothing in the product ever wrote a row.
 
 from datetime import datetime, timezone
 from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import HTTPException
@@ -66,6 +67,34 @@ class FakeDocService:
             created_by_id=kwargs["created_by_id"],
             created_by=None,
             last_edited_by_id=kwargs["created_by_id"],
+            last_edited_by=None,
+            position=0,
+            created_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+            updated_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        )
+
+    async def find_code_link(self, **kwargs):
+        return None
+
+    async def get_document(self, document_id, workspace_id=None):
+        return SimpleNamespace(
+            id=DOC,
+            workspace_id=WORKSPACE,
+            parent_id=None,
+            title="Session service",
+            content=GENERATED,
+            content_text=None,
+            icon=None,
+            cover_image=None,
+            is_template=False,
+            is_published=False,
+            published_at=None,
+            visibility="workspace",
+            generation_status="generated",
+            last_generated_at=None,
+            created_by_id="dev-1",
+            created_by=None,
+            last_edited_by_id="dev-1",
             last_edited_by=None,
             position=0,
             created_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
@@ -135,7 +164,21 @@ class FakeDb:
 
 
 def wire(monkeypatch):
+    # Each test starts with nothing created, so "no document was created" is an
+    # assertion about this call rather than a leftover from the last one.
+    FakeDocService.last = None
+    FakeGenService.last = None
     monkeypatch.setattr(documents_api, "DocumentService", FakeDocService)
+
+    async def repository_or_404(db, repository_id):
+        return SimpleNamespace(
+            id=repository_id,
+            full_name="acme/widgets",
+            name="widgets",
+            owner_login="acme",
+        )
+
+    monkeypatch.setattr(documents_api, "_repository_or_404", repository_or_404)
     monkeypatch.setattr(documents_api, "DocumentGenerationService", FakeGenService)
 
     async def reader(db, repository_id, developer_id):
@@ -339,3 +382,112 @@ class TestErrorsSurvive:
         assert documents_api._generation_http_error(
             RuntimeError("something else")
         ).status_code == 500
+
+
+class TestPerModuleTree:
+    """A whole repository becomes one parent and a child per module.
+
+    Not one enormous page: the point of per-module documents is that a later
+    change to one directory revises one document instead of rewriting the
+    world.
+    """
+
+    async def test_a_child_is_hung_under_its_parent(self, monkeypatch):
+        await call(monkeypatch, parent_id="parent-doc-1")
+
+        assert FakeDocService.last.created_document["parent_id"] == "parent-doc-1"
+
+    async def test_a_document_without_a_parent_sits_at_the_top(self, monkeypatch):
+        await call(monkeypatch)
+
+        assert FakeDocService.last.created_document["parent_id"] is None
+
+
+class TestProseFromTheCaller:
+    """An agent in the working tree has read the actual files.
+
+    The server, fetching a directory listing and the first 2 KB of a README,
+    cannot say as much — so when the caller supplies prose, generation is
+    skipped entirely and costs nothing.
+    """
+
+    async def test_supplied_markdown_skips_generation(self, monkeypatch):
+        await call(monkeypatch, markdown="# Session service\n\nSigns users in.")
+
+        assert FakeGenService.last.module_calls == 0
+        assert FakeGenService.last.file_calls == 0
+
+    async def test_it_is_converted_not_stored_raw(self, monkeypatch):
+        await call(monkeypatch, markdown="# Title\n\nBody.")
+
+        content = FakeDocService.last.created_document["content"]
+        assert content["type"] == "doc"
+        assert [n["type"] for n in content["content"]] == ["heading", "paragraph"]
+
+    async def test_it_is_still_linked_to_its_path(self, monkeypatch):
+        """The link is the whole point — prose without one is a page that can
+        never be told its code changed."""
+        await call(monkeypatch, markdown="# Title\n\nBody.")
+
+        assert FakeDocService.last.created_link["path"] == "src/pkg"
+
+    async def test_markdown_that_produces_nothing_is_refused(self, monkeypatch):
+        with pytest.raises(HTTPException) as excinfo:
+            await call(monkeypatch, markdown="   \n\n ")
+
+        assert excinfo.value.status_code == 422
+        # Refused at the boundary: nothing was written.
+        assert FakeDocService.last is None or FakeDocService.last.created_document is None
+
+
+class TestRerunningIsSafe:
+    """A whole-repository pass gets re-run — after a refactor, or because the
+    first attempt was thin. A second document per module would bury the
+    reviewed one under near-duplicates nobody can tell apart."""
+
+    def _existing(self, monkeypatch):
+        wire(monkeypatch)
+        link = SimpleNamespace(
+            id="link-1",
+            document_id=DOC,
+            repository_id="repo-1",
+            repository=SimpleNamespace(full_name="acme/widgets"),
+            path="src/pkg",
+            link_type="directory",
+            branch="main",
+            document_section_id=None,
+            last_commit_sha=None,
+            last_content_hash=None,
+            last_synced_at=None,
+            has_pending_changes=False,
+            owner_developer_id="dev-1",
+            sync_mode="propose",
+            created_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+            updated_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        )
+        FakeDocService.find_code_link = AsyncMock(return_value=link)
+        return link
+
+    async def test_a_second_pass_proposes_rather_than_duplicating(
+        self, monkeypatch
+    ):
+        self._existing(monkeypatch)
+        proposals = MagicMock()
+        proposals.create_proposal = AsyncMock(return_value=SimpleNamespace(id="p1"))
+        monkeypatch.setattr(
+            documents_api, "ProposedEditsService", lambda db: proposals
+        )
+        await call(monkeypatch, markdown="# Rewritten\n\nBetter prose.")
+
+        proposals.create_proposal.assert_awaited_once()
+        assert FakeDocService.last is None or FakeDocService.last.created_document is None
+
+    async def test_a_second_pass_without_prose_says_what_to_do(self, monkeypatch):
+        """Rather than silently regenerating over somebody's reviewed page."""
+        self._existing(monkeypatch)
+
+        with pytest.raises(HTTPException) as excinfo:
+            await call(monkeypatch)
+
+        assert excinfo.value.status_code == 409
+        assert "already documented" in excinfo.value.detail

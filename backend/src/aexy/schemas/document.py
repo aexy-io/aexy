@@ -319,6 +319,18 @@ class GenerateFromRepositoryRequest(BaseModel):
     custom_prompt: str | None = None
     title: str | None = Field(default=None, max_length=500)
 
+    # Where this sits in the tree. A whole-repository pass creates one parent
+    # and a child per module, so that later a single module can be revised
+    # without rewriting the world.
+    parent_id: str | None = None
+
+    # Prose the caller already wrote, in Markdown. When present the server does
+    # not generate: an agent running in the working tree has read the actual
+    # files and can say more than a server fetching a directory listing and the
+    # first 2 KB of a README. The server's job is then the part the agent
+    # cannot do — the document, the link, and the tree.
+    markdown: str | None = None
+
 
 class ProposeMarkdownRequest(BaseModel):
     """A proposed rewrite, written in Markdown.

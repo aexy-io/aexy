@@ -506,9 +506,17 @@ WORKFLOW_TOOLS: list[dict[str, Any]] = [
         "capability": "mcp.docs",
         "action": "create_document_from_repository",
         "description": (
-            "Write a new document from a repository path and link it to that path, "
-            "so it can be told later when the code changes. Use link_type 'file' "
-            "for one file or 'directory' for a module."
+            "Write a document for a repository path and link it to that path, so "
+            "it can be told later when the code changes. Use link_type 'file' for "
+            "one file or 'directory' for a module.\n\n"
+            "Pass `markdown` with prose you have written yourself — you have read "
+            "the actual files and can say more than the server can from a "
+            "directory listing. Omit it to have the server generate instead.\n\n"
+            "To document a whole repository: create one parent document, then "
+            "call this once per module with `parent_id` set to it. Calling it "
+            "again for a path that is already documented proposes a revision to "
+            "that document rather than creating a second one, so a re-run is "
+            "safe."
         ),
         "input_schema": {
             "type": "object",
@@ -519,6 +527,16 @@ WORKFLOW_TOOLS: list[dict[str, Any]] = [
                 "link_type": {"type": "string", "enum": ["file", "directory"]},
                 "branch": {"type": "string"},
                 "title": {"type": "string"},
+                "parent_id": {
+                    "type": "string",
+                    "description": "Hang this under an existing document, for a per-module tree.",
+                },
+                "markdown": {
+                    "type": "string",
+                    "description": (
+                        "Prose you wrote. Omit to have the server generate it."
+                    ),
+                },
             },
             "required": ["workspace_id", "repository_id", "path"],
         },
@@ -529,6 +547,8 @@ WORKFLOW_TOOLS: list[dict[str, Any]] = [
             "link_type": "body",
             "branch": "body",
             "title": "body",
+            "parent_id": "body",
+            "markdown": "body",
         },
     },
 ]

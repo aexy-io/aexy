@@ -850,6 +850,29 @@ class DocumentService:
         await self.db.refresh(link)
         return link
 
+    async def find_code_link(
+        self,
+        workspace_id: str,
+        repository_id: str,
+        path: str,
+    ):
+        """The existing link for this repository path, if the workspace has one.
+
+        What makes re-running a whole-repository pass safe: without it a second
+        run creates a parallel document per module, and the reviewed one is
+        buried under near-duplicates nobody can tell apart.
+        """
+        stmt = (
+            select(DocumentCodeLink)
+            .join(Document, DocumentCodeLink.document_id == Document.id)
+            .where(Document.workspace_id == workspace_id)
+            .where(DocumentCodeLink.repository_id == repository_id)
+            .where(DocumentCodeLink.path == path)
+            .options(selectinload(DocumentCodeLink.repository))
+        )
+        result = await self.db.execute(stmt)
+        return result.scalars().first()
+
     async def set_code_link_sync_mode(
         self,
         link_id: str,

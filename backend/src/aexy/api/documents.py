@@ -1388,6 +1388,123 @@ async def generate_from_code(
         )
 
 
+async def _repository_or_404(db: AsyncSession, repository_id: str):
+    from aexy.services.repository_service import RepositoryService
+
+    repo = await RepositoryService(db).get_repository_by_id(repository_id)
+    if not repo:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Repository not found"
+        )
+    return repo
+
+
+async def _create_linked_document(
+    *,
+    db: AsyncSession,
+    doc_service: DocumentService,
+    data: GenerateFromRepositoryRequest,
+    repo,
+    content: dict,
+    category: TemplateCategory,
+    developer_id: str,
+    workspace_id: str,
+) -> LinkedDocumentResponse:
+    """The document, its link and its place in the tree, in one transaction."""
+    document = await doc_service.create_document(
+        workspace_id=workspace_id,
+        created_by_id=developer_id,
+        title=data.title or f"{repo.name}/{data.path}".rstrip("/"),
+        content=content,
+        # A whole-repository pass hangs a child under a parent overview, so one
+        # module can later be revised without touching the rest.
+        parent_id=data.parent_id,
+        icon="📁" if data.link_type == "directory" else "📄",
+    )
+    link = await doc_service.create_code_link(
+        document_id=str(document.id),
+        repository_id=data.repository_id,
+        path=data.path,
+        link_type=data.link_type,
+        branch=data.branch,
+        owner_developer_id=developer_id,
+        template_category=category.value,
+    )
+    # The prose was written from the tip of this branch, so that is the base
+    # the next change should be diffed against.
+    link.last_synced_at = datetime.now(timezone.utc)
+    document.generation_status = "generated"
+    document.last_generated_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(link)
+
+    return LinkedDocumentResponse(
+        document=document_to_response(document),
+        code_link=_code_link_to_response(link),
+    )
+
+
+async def _revise_linked_document(
+    *,
+    db: AsyncSession,
+    data: GenerateFromRepositoryRequest,
+    link,
+    gen_service: DocumentGenerationService,
+    developer_id: str,
+    workspace_id: str,
+) -> LinkedDocumentResponse:
+    """This path is already documented, so propose rather than duplicate.
+
+    Returns the existing document unchanged. The rewrite waits in the review
+    queue — a re-run over a repository somebody has already reviewed must not
+    silently replace their edits with a fresh generation, and it must not
+    create a second document for the same module either.
+    """
+    doc_service = DocumentService(db)
+    document = await doc_service.get_document(str(link.document_id), workspace_id)
+    if document is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"{data.path} is linked to a document that no longer exists. "
+                "Remove the stale link and try again."
+            ),
+        )
+
+    if data.markdown is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"{data.path} is already documented by \"{document.title}\". "
+                "Send `markdown` to propose a revision, or use the regenerate "
+                "endpoint on that document."
+            ),
+        )
+
+    try:
+        content = markdown_to_tiptap(data.markdown)
+    except MarkdownError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        )
+
+    proposed_edits = ProposedEditsService(db)
+    await proposed_edits.create_proposal(
+        document_id=str(document.id),
+        source=ProposedEditSource.MANUAL_AI_EDIT,
+        proposed_content=content,
+        proposed_by_id=developer_id,
+        diff_summary={"summary": f"Re-documented {data.path}"},
+    )
+    await db.commit()
+    await db.refresh(link)
+
+    return LinkedDocumentResponse(
+        document=document_to_response(document),
+        code_link=_code_link_to_response(link),
+    )
+
+
 @router.post(
     "/from-repository",
     response_model=LinkedDocumentResponse,
@@ -1417,6 +1534,46 @@ async def create_document_from_repository(
     doc_service = DocumentService(db)
     gen_service = DocumentGenerationService(db, workspace_id=workspace_id)
     category = TemplateCategory(data.template_category)
+
+    # Already documented? Then this is a revision, not a second document.
+    # A whole-repository pass is re-run — after a refactor, or because the
+    # first attempt was thin — and creating a parallel document per module
+    # each time would bury the reviewed one under near-duplicates nobody can
+    # tell apart.
+    existing = await doc_service.find_code_link(
+        workspace_id=workspace_id,
+        repository_id=data.repository_id,
+        path=data.path,
+    )
+    if existing is not None:
+        return await _revise_linked_document(
+            db=db,
+            data=data,
+            link=existing,
+            gen_service=gen_service,
+            developer_id=str(current_user.id),
+            workspace_id=workspace_id,
+        )
+
+    if data.markdown is not None:
+        # The caller wrote it. Nothing to generate, and nothing to pay for.
+        try:
+            content = markdown_to_tiptap(data.markdown)
+        except MarkdownError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+            )
+        repo = await _repository_or_404(db, data.repository_id)
+        return await _create_linked_document(
+            db=db,
+            doc_service=doc_service,
+            data=data,
+            repo=repo,
+            content=content,
+            category=category,
+            developer_id=str(current_user.id),
+            workspace_id=workspace_id,
+        )
 
     repo, github_adapter = await _repository_reader(
         db, repository_id=data.repository_id, developer_id=str(current_user.id)
@@ -1453,35 +1610,15 @@ async def create_document_from_repository(
     except Exception as e:
         raise _generation_http_error(e)
 
-    content = gen_service.ensure_renderable(content, category)
-
-    document = await doc_service.create_document(
+    return await _create_linked_document(
+        db=db,
+        doc_service=doc_service,
+        data=data,
+        repo=repo,
+        content=gen_service.ensure_renderable(content, category),
+        category=category,
+        developer_id=str(current_user.id),
         workspace_id=workspace_id,
-        created_by_id=str(current_user.id),
-        title=data.title or f"{repo.name}/{data.path}".rstrip("/"),
-        content=content,
-        icon="📁" if data.link_type == "directory" else "📄",
-    )
-    link = await doc_service.create_code_link(
-        document_id=str(document.id),
-        repository_id=data.repository_id,
-        path=data.path,
-        link_type=data.link_type,
-        branch=data.branch,
-        owner_developer_id=str(current_user.id),
-        template_category=category.value,
-    )
-    # The prose was written from the tip of this branch, so that is the base
-    # the next change should be diffed against.
-    link.last_synced_at = datetime.now(timezone.utc)
-    document.generation_status = "generated"
-    document.last_generated_at = datetime.now(timezone.utc)
-    await db.commit()
-    await db.refresh(link)
-
-    return LinkedDocumentResponse(
-        document=document_to_response(document),
-        code_link=_code_link_to_response(link),
     )
 
 
