@@ -487,9 +487,12 @@ button, because a page that spends a model call on open is a page people stop op
 - ~~The generator's repository list is per-developer; adoption is per-workspace.~~ **Fixed —
   `1e3c8b2b`.** Both docs pickers read the workspace's adoptions, and `/contents` and `/branches`
   resolve through `resolve_repository_access` so a member with no installation of their own can
-  read a repository their workspace adopted. `src/hooks/useRepositories.ts` still wraps the
-  per-developer list; it has no callers today, which is the only reason it is not the next
-  instance of this bug.
+  read a repository their workspace adopted. `useEnabledRepositories` was the same bug with a
+  worse consequence and a live caller — it gated the whole insights page, so a colleague who had
+  adopted nothing was told "you haven't enabled any repositories yet" while every metric that
+  existed was hidden from them. Fixed alongside the pickers, along with the prompt order: asking somebody
+  to install an app is only the right answer when there is nothing to show *and* they are the one
+  who can act.
 - **A populated improvements panel, and Apply, in the browser.** Verified by unit test only. This
   environment has no working cloud key and the one local model overruns the LM Studio provider's
   180-second read timeout, so `suggest-improvements` cannot return here. What did get exercised:

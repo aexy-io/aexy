@@ -98,7 +98,8 @@ export default function InsightsPage() {
   const tPage = useTranslations("insights.page");
   const { isLoading: authLoading, isAuthenticated } = useAuth();
   const { currentWorkspaceId } = useWorkspace();
-  const { hasEnabledRepos, hasInstallation, installUrl, isLoading: reposLoading } = useEnabledRepositories();
+  const { hasEnabledRepos, hasInstallation, installUrl, isLoading: reposLoading } =
+    useEnabledRepositories(currentWorkspaceId);
   const [periodType, setPeriodType] = useState<InsightsPeriodType>("weekly");
   const [includeInactive, setIncludeInactive] = useState(false);
   const [details, setDetails] = useState<AnalyticsDetailsContext | null>(null);
@@ -424,8 +425,11 @@ export default function InsightsPage() {
 
       <UpgradeBanner trigger="repo_limit" compact />
 
-      {/* GitHub App not installed */}
-      {!reposLoading && !hasInstallation && (
+      {/* Nothing adopted, and this person has no installation — so they are the
+          one who can fix it. Previously shown whenever the *caller* had no
+          installation, which asked a reader to install an app the workspace
+          already had, and hid insights that existed. */}
+      {!reposLoading && !hasEnabledRepos && !hasInstallation && (
         <div className="bg-muted rounded-xl p-8 border border-border text-center">
           <FolderGit2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-foreground mb-2">
@@ -454,15 +458,19 @@ export default function InsightsPage() {
         </div>
       )}
 
-      {/* Installation exists but no repos enabled */}
+      {/* The app is connected and nothing has been adopted: the honest reading
+          of an empty page. */}
       {!reposLoading && hasInstallation && !hasEnabledRepos && (
         <div className="bg-muted rounded-xl p-8 border border-border text-center">
           <FolderGit2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-foreground mb-2">
-            No repositories enabled
+            No repositories adopted
           </h3>
+          {/* A workspace fact, said as one. "You haven't enabled any
+              repositories" was addressed to whoever happened to be reading, and
+              was false for everyone but the adopter. */}
           <p className="text-muted-foreground text-sm mb-6 max-w-md mx-auto">
-            Your GitHub App is connected but you haven&apos;t enabled any repositories yet. Enable at least one repository to see team velocity, efficiency, and workload distribution.
+            Your GitHub App is connected, but this workspace has not adopted any repositories yet. Adopt at least one to see team velocity, efficiency, and workload distribution.
           </p>
           <Link
             href="/settings/repositories"
