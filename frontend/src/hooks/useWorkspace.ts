@@ -2,28 +2,81 @@
 
 import { getApiErrorMessage } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { workspaceApi, WorkspaceListItem, Workspace, CustomTaskStatus, StatusCategory, WorkspacePendingInvite, WorkspaceAppSettings } from "@/lib/api";
 import { useAuth } from "./useAuth";
 
 const CURRENT_WORKSPACE_KEY = "current_workspace_id";
 
+/**
+ * Which workspace is selected, shared by every `useWorkspace()` caller.
+ *
+ * This used to be `useState` inside the hook, which meant ~270 independent
+ * copies of the answer: switching workspace re-rendered whichever component
+ * owned the switcher and wrote localStorage, and every other component kept
+ * showing the old workspace until it happened to remount. Navigating hid it —
+ * the new page read localStorage on mount — but anything that stayed put, like
+ * the widgets on the dashboard you switched from, went on querying the
+ * workspace you just left.
+ *
+ * One module-level value with subscribers fixes that for all of them at once,
+ * without changing what the hook returns.
+ */
+let selectedWorkspaceId: string | null = null;
+let hasReadStoredWorkspace = false;
+const workspaceListeners = new Set<() => void>();
+
+function subscribeToWorkspaceId(listener: () => void): () => void {
+  workspaceListeners.add(listener);
+  return () => {
+    workspaceListeners.delete(listener);
+  };
+}
+
+function getWorkspaceIdSnapshot(): string | null {
+  // Read-through on first use rather than at module load: this module is
+  // evaluated during server rendering too, where there is no localStorage.
+  if (!hasReadStoredWorkspace && typeof window !== "undefined") {
+    selectedWorkspaceId = localStorage.getItem(CURRENT_WORKSPACE_KEY);
+    hasReadStoredWorkspace = true;
+  }
+  return selectedWorkspaceId;
+}
+
+/** Nothing is selected on the server; the client reads localStorage on mount. */
+function getWorkspaceIdServerSnapshot(): string | null {
+  return null;
+}
+
+function setSelectedWorkspaceId(workspaceId: string | null): void {
+  if (selectedWorkspaceId === workspaceId && hasReadStoredWorkspace) return;
+  selectedWorkspaceId = workspaceId;
+  hasReadStoredWorkspace = true;
+  if (typeof window !== "undefined") {
+    if (workspaceId) {
+      localStorage.setItem(CURRENT_WORKSPACE_KEY, workspaceId);
+    } else {
+      localStorage.removeItem(CURRENT_WORKSPACE_KEY);
+    }
+  }
+  for (const listener of workspaceListeners) listener();
+}
+
 export function useWorkspace() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string | null>(null);
+  const currentWorkspaceId = useSyncExternalStore(
+    subscribeToWorkspaceId,
+    getWorkspaceIdSnapshot,
+    getWorkspaceIdServerSnapshot
+  );
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Load current workspace ID from localStorage on mount
+  // The selection itself is read synchronously above; this only marks that
+  // hydration is past, so the auto-select effects don't race the stored value.
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem(CURRENT_WORKSPACE_KEY);
-      if (stored) {
-        setCurrentWorkspaceId(stored);
-      }
-      setIsInitialized(true);
-    }
+    setIsInitialized(true);
   }, []);
 
   // Fetch all workspaces the user is a member of
@@ -44,9 +97,7 @@ export function useWorkspace() {
   useEffect(() => {
     if (!isInitialized) return;
     if (workspaces && workspaces.length > 0 && !currentWorkspaceId) {
-      const firstWorkspace = workspaces[0];
-      setCurrentWorkspaceId(firstWorkspace.id);
-      localStorage.setItem(CURRENT_WORKSPACE_KEY, firstWorkspace.id);
+      setSelectedWorkspaceId(workspaces[0].id);
     }
   }, [workspaces, currentWorkspaceId, isInitialized]);
 
@@ -57,9 +108,7 @@ export function useWorkspace() {
       const exists = workspaces.some((w) => w.id === currentWorkspaceId);
       if (!exists && workspaces.length > 0) {
         // Stored workspace no longer exists, switch to first available
-        const firstWorkspace = workspaces[0];
-        setCurrentWorkspaceId(firstWorkspace.id);
-        localStorage.setItem(CURRENT_WORKSPACE_KEY, firstWorkspace.id);
+        setSelectedWorkspaceId(workspaces[0].id);
       }
     }
   }, [workspaces, currentWorkspaceId, isInitialized]);
@@ -79,8 +128,9 @@ export function useWorkspace() {
   // Switch workspace
   const switchWorkspace = useCallback(
     (workspaceId: string) => {
-      setCurrentWorkspaceId(workspaceId);
-      localStorage.setItem(CURRENT_WORKSPACE_KEY, workspaceId);
+      // Every `useWorkspace()` in the tree re-renders on this, so anything
+      // keyed by the workspace refetches without having to be remounted.
+      setSelectedWorkspaceId(workspaceId);
       // Invalidate workspace-specific queries when switching
       queryClient.invalidateQueries({ queryKey: ["workspace", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["workspaceMembers"] });
@@ -125,8 +175,7 @@ export function useWorkspace() {
       queryClient.invalidateQueries({ queryKey: ["workspaces"] });
       // If deleted workspace was current, clear selection
       if (deletedId === currentWorkspaceId) {
-        setCurrentWorkspaceId(null);
-        localStorage.removeItem(CURRENT_WORKSPACE_KEY);
+        setSelectedWorkspaceId(null);
       }
     },
     onError: (error) => {

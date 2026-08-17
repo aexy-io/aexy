@@ -28,14 +28,15 @@
     "statusLabel": "Status:",
     "assignedToMe": "मुझे असाइन किए गए",
     "everyonesTickets": "सभी के tickets",
-    "onlyMineHint": "Tasks हमेशा आपके होते हैं; यह tickets को सीमित करता है",
+    "onlyMineHint": "Tasks और service desk tickets हमेशा आपके होते हैं; यह form tickets को सीमित करता है",
     "justNow": "अभी",
     "hoursAgo": "{count} घंटे पहले",
     "daysAgo": "{count} दिन पहले",
     "sources": {
       "all": "सभी",
       "tasks": "Tasks",
-      "tickets": "Tickets"
+      "tickets": "Tickets",
+      "serviceDesk": "Service desk"
     },
     "stats": {
       "items": "आइटम",
@@ -49,7 +50,8 @@
       "task": "Task",
       "bug": "Bug",
       "story": "Story",
-      "ticket": "Ticket"
+      "ticket": "Ticket",
+      "service_desk": "Service desk"
     },
     "typeCount": {
       "task": "{count, plural, one {# task} other {# tasks}}",

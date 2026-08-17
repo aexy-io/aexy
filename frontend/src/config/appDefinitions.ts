@@ -50,6 +50,19 @@ export interface AppModule {
   route?: string;
 }
 
+/**
+ * Whether a workspace can turn an app on for itself.
+ *
+ * "contact_support" means the app is in the catalog and can be asked for, but
+ * no access path may switch it on — it is off in every bundle and the API
+ * refuses it, so the admin UI must offer asking rather than a toggle that will
+ * be rejected on save. Asking emails support rather than the workspace's own
+ * admins, who have no authority over it.
+ */
+export type AppAvailability = "self_serve" | "contact_support";
+
+export const SUPPORT_CONTACT_EMAIL = "support@aexy.io";
+
 export interface AppDefinition {
   id: string;
   name: string;
@@ -59,6 +72,8 @@ export interface AppDefinition {
   baseRoute: string;
   requiredPermission: string | null;
   modules: AppModule[];
+  /** Absent means "self_serve". */
+  availability?: AppAvailability;
 }
 
 export interface AppBundleTemplate {
@@ -210,6 +225,7 @@ export const APP_CATALOG: Record<string, AppDefinition> = {
     baseRoute: "/learning",
     requiredPermission: "can_view_learning",
     modules: [],
+    availability: "contact_support",
   },
   crm: {
     id: "crm",
@@ -582,7 +598,7 @@ export const SYSTEM_BUNDLES: AppBundleTemplate[] = [
       sprints: { enabled: true, modules: { board: true, epics: true, tasks: true, backlog: true } },
       tickets: { enabled: true },
       docs: { enabled: true },
-      learning: { enabled: true },
+      learning: { enabled: false }, // availability: "contact_support"
       oncall: { enabled: true },
       uptime: { enabled: true, modules: { monitors: true, incidents: true, history: true } },
       reviews: { enabled: false },
@@ -623,7 +639,7 @@ export const SYSTEM_BUNDLES: AppBundleTemplate[] = [
         enabled: true,
         modules: { dashboard: true, candidates: true, assessments: true, questions: true, templates: true, analytics: true },
       },
-      learning: { enabled: true },
+      learning: { enabled: false }, // availability: "contact_support"
       docs: { enabled: true },
       forms: { enabled: true },
       tracking: { enabled: false },
@@ -712,7 +728,7 @@ export const SYSTEM_BUNDLES: AppBundleTemplate[] = [
         enabled: true,
         modules: { dashboard: true, candidates: true, assessments: true, questions: true, templates: true, analytics: true },
       },
-      learning: { enabled: true },
+      learning: { enabled: false }, // availability: "contact_support"
       crm: {
         enabled: true,
         modules: { overview: true, inbox: true, agents: true, activities: true, automations: true, calendar: true },

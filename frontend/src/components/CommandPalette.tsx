@@ -31,6 +31,7 @@ import {
   ShieldCheck,
   Palmtree,
   MessageSquare,
+  MessageSquarePlus,
   Ban,
   Send,
   UserPlus,
@@ -45,6 +46,7 @@ import {
 } from "lucide-react";
 import { useCommandPalette, getModifierKey } from "@/hooks/useKeyboardShortcuts";
 import { Kbd } from "@/components/ui/kbd";
+import { useFeedbackStore } from "@/stores/feedbackStore";
 
 interface CommandItem {
   id: string;
@@ -72,6 +74,7 @@ export function CommandPalette({ projectId, onCreateTask }: CommandPaletteProps)
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const openFeedback = useFeedbackStore((state) => state.open);
 
   // Open/close handlers
   const openPalette = useCallback(() => {
@@ -233,6 +236,15 @@ export function CommandPalette({ projectId, onCreateTask }: CommandPaletteProps)
         action: () => router.push("/sprints"),
         category: "navigation",
         keywords: ["sprints", "projects", "board", "kanban"],
+      },
+      {
+        id: "nav-feedback",
+        label: "Feedback",
+        description: "Suggestions, problems, and what we are building",
+        icon: <MessageSquarePlus className="h-4 w-4" />,
+        action: () => router.push("/feedback"),
+        category: "navigation",
+        keywords: ["feedback", "roadmap", "suggestions", "ideas", "votes"],
       },
       {
         id: "nav-crm",
@@ -496,6 +508,15 @@ export function CommandPalette({ projectId, onCreateTask }: CommandPaletteProps)
 
     items.push(
       {
+        id: "action-send-feedback",
+        label: "Send Feedback",
+        description: "Tell us what Aexy should do next",
+        icon: <MessageSquarePlus className="h-4 w-4" />,
+        action: () => openFeedback(),
+        category: "actions",
+        keywords: ["feedback", "suggestion", "idea", "bug", "problem", "request", "support"],
+      },
+      {
         id: "action-new-ticket",
         label: "New Ticket",
         description: "Create a support ticket",
@@ -579,7 +600,7 @@ export function CommandPalette({ projectId, onCreateTask }: CommandPaletteProps)
     );
 
     return items;
-  }, [projectId, router, onCreateTask, closePalette]);
+  }, [projectId, router, onCreateTask, closePalette, openFeedback]);
 
   // Filter commands based on query
   const filteredCommands = useMemo(() => {

@@ -5,6 +5,134 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.1] - 2026-08-17
+
+Tell us what Aexy should do next — and the first app that asks you to.
+
+### Added: feedback, and voting on it
+
+A suggestion, a problem, a question, or a request for an app we have not
+switched on. Written from one composer, reachable from the command palette, the
+feedback board, and the access grid.
+
+**The board is shared and votable.** Ten teams asking for the same thing should
+read as one item with a count rather than ten copies nobody can compare, which
+is why items are visible across workspaces. That is only acceptable if wanting
+something does not also disclose who wants it, so a row on the board carries no
+author and no workspace — only whether it is yours. Sending something counts as
+your first vote for it, because a new item sitting at zero next to a week-old
+one reads as unwanted rather than new.
+
+**Every item gets an answer.** Feedback goes to the people who build Aexy rather
+than to your own admins, and a status — triaged, planned, shipped, declined —
+notifies whoever wrote it. "Declined" is a status on purpose: an answer of no
+that is never delivered is indistinguishable from being ignored.
+
+The composer shows you the context it is attaching — the page you were on, the
+workspace — before you send, because collecting that quietly is the sort of
+thing you should be able to check first.
+
+### Changed: Learning is switched on by us, not from the access grid
+
+Learning is off everywhere and cannot be enabled from inside a workspace. It
+stays listed in the access grid, because an admin should be able to see that the
+app exists and ask for it, but the checkbox is inert and every path that could
+grant it — a member's overrides, an access template, approving a request —
+refuses it rather than only the obvious one.
+
+Asking for it opens the feedback composer instead of filing an access request.
+An access request asks your workspace's admin for something they control; nobody
+in your workspace can grant this one, so a request would have sat in a queue
+with no action available to anybody who could see it.
+
+### Fixed: the app catalog endpoint could not be read at all
+
+`get_app_list()` assumed every module has a route. The MCP modules gate groups
+of API capabilities and have nothing to navigate to, so the lookup raised and
+took the whole catalog down rather than the one module with it.
+
+## [0.20.0] - 2026-08-17
+
+### Added: your service desk tickets, on Home
+
+Home listed tasks, bugs, stories and form tickets — everything on your plate
+except the queue some people spend their whole day in. Service Desk tickets are
+rows in the same table as form tickets but they are not the same thing: the desk
+is its own app, with its own permission and its own row-level visibility, and
+the generic ticket list excludes them on purpose so that turning the module off
+does not leave its tickets showing up elsewhere. So they arrive here as their
+own source rather than by loosening that exclusion.
+
+**Only the ones assigned to you.** The desk's own scope can be an entire
+account's traffic — that is a triage view, and this page is a personal one. The
+filter is applied on top of the desk's visibility rules and never instead of
+them: asking for "assigned to me" cannot surface a ticket the desk would deny
+you, so an assignment left behind when somebody moved off an account stays
+invisible to them. The "Everyone's tickets" toggle beside it still widens the
+form tickets it was built for, and deliberately does not reach across.
+
+The source is gated on Service Desk access on its own, so somebody on the desk
+and off forms sees their desk queue and no form tickets, and the reverse holds
+too. Rows open the ticket in the desk. A tracker you have no access to is left
+out of the breakdown entirely rather than shown sitting at zero, which reads as
+"none of those" rather than "not yours to see".
+
+## [0.19.1] - 2026-08-17
+
+Switching workspace now moves the page you are on, and the changelog is
+readable.
+
+### Fixed: switching workspace left the page showing the old one
+
+The selected workspace was component state inside `useWorkspace`, so each of
+the roughly 270 places that ask for it kept its own copy of the answer.
+Switching re-rendered whichever component owned the switcher and wrote the
+choice to storage; everything else went on querying the workspace you had just
+left until something happened to remount it.
+
+Navigating hid it, because a page freshly mounted reads the stored choice — so
+for as long as the landing page was a set of charts about you rather than a
+list scoped to a workspace, it mostly went unnoticed. Home is a list scoped to a
+workspace, the switcher sits beside it, and nothing remounts: the page simply
+did not respond. Its own workspace selector was no better, since the widgets
+and the page around them each held their own copy.
+
+There is one selection now, and every consumer hears about a change, so
+anything keyed to the workspace refetches where it stands.
+
+### Fixed: Automations on Home looked like a dead button
+
+The panel opened below every widget on the dashboard, which on any layout with
+more than a couple of them is off the bottom of the screen. Pressing the button
+moved nothing you could see. It opens directly under the toolbar it belongs to
+now.
+
+### Fixed: the changelog was a narrow column of fragments
+
+Three things, none of them width alone.
+
+Entries here are hard-wrapped at about eighty columns, and each of those lines
+was being rendered as its own paragraph — so the text broke every eight or nine
+words, at whatever point the source happened to wrap rather than where the
+sentence ended. A paragraph is everything up to a blank line now, as the format
+means it.
+
+Section headings passed their whole title — "Fixed: most of the list was not
+clickable" — to a lookup keyed on "fixed" or "added", so the colour coding never
+matched anything: every section came out the same grey, with the heading itself
+set in the twelve-pixel type of the pill it sat in. The kind is a coloured pill
+now and the sentence after it is a heading.
+
+The column is wider, and the width went to a version rail that stays with you
+down a long entry rather than to longer lines — prose stops being readable much
+past seventy characters, so widening the text would have been the wrong use of
+the space.
+
+### Fixed: the frontend lockfile version
+
+Three releases behind at 0.14.0, where it had been left by whichever release
+last bumped `package.json` without it.
+
 ## [0.19.0] - 2026-08-16
 
 The work assigned to you is now the first thing you see, and the four things

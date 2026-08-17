@@ -7,6 +7,7 @@ import {
   Bug as BugIcon,
   CheckSquare,
   ChevronRight,
+  LifeBuoy,
   ListTodo,
   Ticket,
   User,
@@ -32,6 +33,7 @@ const ITEM_TYPE_ICONS: Record<WorkItem["itemType"], { icon: LucideIcon; color: s
   bug: { icon: BugIcon, color: "text-red-400" },
   story: { icon: BookOpen, color: "text-purple-400" },
   ticket: { icon: Ticket, color: "text-cyan-400" },
+  service_desk: { icon: LifeBuoy, color: "text-teal-400" },
 };
 
 const TYPE_BADGE: Record<WorkItem["itemType"], string> = {
@@ -39,6 +41,7 @@ const TYPE_BADGE: Record<WorkItem["itemType"], string> = {
   bug: "bg-red-500/10 text-red-600 dark:text-red-300",
   story: "bg-purple-500/10 text-purple-600 dark:text-purple-300",
   ticket: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-300",
+  service_desk: "bg-teal-500/10 text-teal-600 dark:text-teal-300",
 };
 
 function statusStyle(item: WorkItem): { bg: string; text: string } {
@@ -69,7 +72,8 @@ function formatRelative(dateStr: string, t: ReturnType<typeof useTranslations>):
  */
 export function MyWorkQueueWidget() {
   const t = useTranslations("myWork");
-  const { items, isLoading, canSeeTickets, showWorkspaceFilter, scope } = useMyWorkItems();
+  const { items, isLoading, canSeeTickets, canSeeServiceDesk, showWorkspaceFilter, scope } =
+    useMyWorkItems();
   const {
     source,
     setSource,
@@ -86,6 +90,9 @@ export function MyWorkQueueWidget() {
     { id: "all", label: t("sources.all") },
     { id: "tasks", label: t("sources.tasks") },
     ...(canSeeTickets ? [{ id: "tickets" as const, label: t("sources.tickets") }] : []),
+    ...(canSeeServiceDesk
+      ? [{ id: "service_desk" as const, label: t("sources.serviceDesk") }]
+      : []),
   ];
 
   // Only worth naming the workspace on a row when the list can span more than
@@ -132,8 +139,9 @@ export function MyWorkQueueWidget() {
         />
 
         {/* The workspace-wide ticket queue the old Form Tickets tab was. Tasks
-            are always yours, so this only makes sense while tickets show. */}
-        {canSeeTickets && source !== "tasks" && (
+            are always yours, and the desk is always your own queue here, so
+            this only makes sense while form tickets are showing. */}
+        {canSeeTickets && (source === "all" || source === "tickets") && (
           <button
             type="button"
             onClick={() => setOnlyMine(!onlyMine)}

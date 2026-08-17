@@ -12,11 +12,14 @@ import { useMyWorkStore } from "@/stores/myWorkStore";
 
 const mocks = vi.hoisted(() => ({
   hasTicketAccess: true,
+  hasServiceDeskAccess: true,
   myWork: [] as unknown[],
   ticketsByWorkspace: {} as Record<string, unknown[]>,
+  serviceDeskByWorkspace: {} as Record<string, unknown[]>,
   workspaces: [{ id: "ws-1", name: "Acme" }] as { id: string; name: string }[],
   assignedTaskParams: [] as unknown[],
   ticketListCalls: [] as string[],
+  serviceDeskCalls: [] as { workspaceId: string; params: unknown }[],
   switchWorkspace: vi.fn(),
 }));
 
@@ -46,9 +49,19 @@ vi.mock("@/hooks/useWorkspace", () => ({
 
 vi.mock("@/hooks/useAppAccess", () => ({
   useAppAccess: () => ({
-    hasAppAccess: () => mocks.hasTicketAccess,
+    hasAppAccess: (appId: string) =>
+      appId === "service_desk" ? mocks.hasServiceDeskAccess : mocks.hasTicketAccess,
     isLoading: false,
   }),
+}));
+
+vi.mock("@/lib/service-desk-api", () => ({
+  serviceDeskApi: {
+    listTickets: (workspaceId: string, params: unknown) => {
+      mocks.serviceDeskCalls.push({ workspaceId, params });
+      return Promise.resolve(mocks.serviceDeskByWorkspace[workspaceId] ?? []);
+    },
+  },
 }));
 
 vi.mock("@/lib/api", () => ({
@@ -123,11 +136,14 @@ describe("My Work dashboard", () => {
 
   beforeEach(() => {
     mocks.hasTicketAccess = true;
+    mocks.hasServiceDeskAccess = true;
     mocks.myWork = [];
     mocks.ticketsByWorkspace = {};
+    mocks.serviceDeskByWorkspace = {};
     mocks.workspaces = [{ id: "ws-1", name: "Acme" }];
     mocks.assignedTaskParams = [];
     mocks.ticketListCalls = [];
+    mocks.serviceDeskCalls = [];
     useMyWorkStore.setState({
       workspaceScopeMode: "current",
       source: "all",
@@ -251,6 +267,93 @@ describe("My Work dashboard", () => {
     // Pressing the active tile again clears the filter rather than latching it.
     await act(async () => tile!.click());
     expect(container.textContent).toContain("Not started");
+  });
+
+  it("lists the service desk tickets assigned to the caller", async () => {
+    mocks.serviceDeskByWorkspace = {
+      "ws-1": [
+        {
+          id: "sd-row-1",
+          ticket_id: "tkt-77",
+          display_id: "SD-77",
+          subject: "Invoice mismatch on renewal",
+          requester_name: "Jo Customer",
+          account_name: "Initech",
+          status: "open",
+          created_at: "2026-08-04T00:00:00Z",
+        },
+      ],
+    };
+    await render(<MyWorkQueueWidget />);
+
+    expect(container.textContent).toContain("Invoice mismatch on renewal");
+    // The detail route is keyed by the generic ticket id, not the desk row's.
+    const hrefs = Array.from(container.querySelectorAll("a")).map((a) =>
+      a.getAttribute("href")
+    );
+    expect(hrefs).toContain("/service-desk/tickets/tkt-77");
+
+    // Always the caller's own queue — never the whole desk scope, which for a
+    // KAM is an account's entire traffic rather than a personal list.
+    expect(mocks.serviceDeskCalls).toContainEqual({
+      workspaceId: "ws-1",
+      params: expect.objectContaining({ assigned_to_me: true }),
+    });
+  });
+
+  it("keeps the desk out for a caller without service desk access", async () => {
+    mocks.hasServiceDeskAccess = false;
+    mocks.serviceDeskByWorkspace = {
+      "ws-1": [
+        {
+          id: "sd-row-1",
+          ticket_id: "tkt-77",
+          display_id: "SD-77",
+          subject: "Should not appear",
+          status: "open",
+          created_at: "2026-08-04T00:00:00Z",
+        },
+      ],
+    };
+    await render(<MyWorkQueueWidget />);
+
+    expect(container.textContent).not.toContain("Should not appear");
+    expect(mocks.serviceDeskCalls).toHaveLength(0);
+    expect(container.querySelector('[data-testid="work-source-service_desk"]')).toBeNull();
+  });
+
+  it("the desk source excludes tasks and form tickets", async () => {
+    mocks.myWork = [task({ title: "A task" })];
+    mocks.ticketsByWorkspace = {
+      "ws-1": [
+        {
+          id: "tk-1",
+          ticket_number: 41,
+          submitter_name: "A form ticket",
+          status: "new",
+          created_at: "2026-08-02T00:00:00Z",
+          sla_breached: false,
+        },
+      ],
+    };
+    mocks.serviceDeskByWorkspace = {
+      "ws-1": [
+        {
+          id: "sd-row-1",
+          ticket_id: "tkt-77",
+          display_id: "SD-77",
+          subject: "A desk ticket",
+          status: "open",
+          created_at: "2026-08-04T00:00:00Z",
+        },
+      ],
+    };
+    useMyWorkStore.setState({ source: "service_desk" });
+    await render(<MyWorkQueueWidget />);
+
+    expect(container.textContent).toContain("A desk ticket");
+    expect(container.textContent).not.toContain("A task");
+    expect(container.textContent).not.toContain("A form ticket");
   });
 
   it("offers the ticket source when the caller has the tickets app", async () => {

@@ -3,7 +3,13 @@
 import { useCallback, useMemo, useState } from "react";
 import { Check, ChevronDown, ChevronRight } from "lucide-react";
 
-import { APP_CATALOG, AppAccessConfig, AppCategory, getAllApps } from "@/config/appDefinitions";
+import {
+  APP_CATALOG,
+  AppAccessConfig,
+  AppCategory,
+  SUPPORT_CONTACT_EMAIL,
+  getAllApps,
+} from "@/config/appDefinitions";
 import { cn } from "@/lib/utils";
 
 /**
@@ -57,6 +63,17 @@ interface Props {
    * is a *change* rather than a restatement — the thing a bare grid cannot show.
    */
   baseline?: Record<string, boolean>;
+  /**
+   * Called when somebody asks for an app they cannot switch on themselves.
+   *
+   * Apps marked `contact_support` are shown with the checkbox disabled and this
+   * offered in its place — the API refuses to enable them, so a live checkbox
+   * would be a control that fails on save. Without this callback the app is
+   * still listed and still disabled; it just cannot be asked for from here.
+   */
+  onRequestApp?: (appId: string) => void;
+  /** App ids with a request already sent, so the button can say so. */
+  requestedApps?: readonly string[];
 }
 
 export function AppModuleGrid({
@@ -65,9 +82,12 @@ export function AppModuleGrid({
   disabled,
   lockedApps = [],
   baseline,
+  onRequestApp,
+  requestedApps = [],
 }: Props) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const locked = useMemo(() => new Set(lockedApps), [lockedApps]);
+  const requested = useMemo(() => new Set(requestedApps), [requestedApps]);
 
   const toggleApp = useCallback(
     (appId: string) => {
@@ -109,6 +129,11 @@ export function AppModuleGrid({
               const hasModules = app.modules.length > 0;
               const Icon = app.icon;
               const isLocked = locked.has(app.id);
+              // Not ours to switch on. The row stays visible — an admin should
+              // be able to see the app exists and ask for it — but the checkbox
+              // is inert, because the API will refuse it.
+              const needsSupport = app.availability === "contact_support";
+              const alreadyRequested = requested.has(app.id);
               // Only meaningful when a baseline was supplied: undefined means the
               // caller isn't editing against one, so we say nothing rather than
               // implying every app is a change.
@@ -143,13 +168,19 @@ export function AppModuleGrid({
 
                     <button
                       onClick={() => toggleApp(app.id)}
-                      disabled={disabled || isLocked}
+                      disabled={disabled || isLocked || needsSupport}
+                      title={
+                        needsSupport
+                          ? `${app.name} is switched on by Aexy — contact ${SUPPORT_CONTACT_EMAIL}`
+                          : undefined
+                      }
                       className={cn(
                         "flex h-5 w-5 items-center justify-center rounded border transition-colors",
                         isEnabled
                           ? "border-primary bg-primary text-primary-foreground"
                           : "border-muted-foreground/30",
-                        (disabled || isLocked) && "opacity-60",
+                        (disabled || isLocked || needsSupport) && "opacity-60",
+                        needsSupport && "cursor-not-allowed",
                       )}
                       aria-label={app.name}
                     >
@@ -160,13 +191,36 @@ export function AppModuleGrid({
                     <div className="min-w-0 flex-1">
                       <p className="flex items-center gap-2 text-sm font-medium">
                         {app.name}
-                        {differsFromBaseline && (
+                        {differsFromBaseline && !needsSupport && (
                           <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] uppercase text-primary">
                             changed
                           </span>
                         )}
+                        {needsSupport &&
+                          (alreadyRequested ? (
+                            <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] uppercase text-emerald-600 dark:text-emerald-400">
+                              requested
+                            </span>
+                          ) : onRequestApp ? (
+                            <button
+                              type="button"
+                              onClick={() => onRequestApp(app.id)}
+                              disabled={disabled}
+                              className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] uppercase text-primary hover:bg-primary/20 transition disabled:opacity-60"
+                            >
+                              Contact support
+                            </button>
+                          ) : (
+                            <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground">
+                              Contact support
+                            </span>
+                          ))}
                       </p>
-                      <p className="truncate text-xs text-muted-foreground">{app.description}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {needsSupport
+                          ? `${app.description} — switched on by Aexy, not from here`
+                          : app.description}
+                      </p>
                     </div>
                   </div>
 

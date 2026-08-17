@@ -57,8 +57,10 @@ from aexy.models.app_access import (
 )
 from aexy.models.app_definitions import (
     APP_CATALOG,
+    SUPPORT_CONTACT_EMAIL,
     SYSTEM_APP_BUNDLES,
     ROLE_DEFAULT_APP_ACCESS,
+    AppAvailability,
     get_default_app_access_for_role,
     validate_app_access_config,
 )
@@ -80,6 +82,56 @@ SOURCE_MEMBER_OVERRIDE = "member_override"
 # rewritten through this service or converted by
 # scripts/convert_member_access_to_deltas.py.
 MEMBER_ACCESS_VERSION = 2
+
+
+class AppNotSelfServeError(Exception):
+    """An app that only we can turn on was asked to be turned on.
+
+    Carries the app ids so the API can name them, and so the caller is told
+    which of a batch was refused rather than having the whole write rejected
+    with a generic message.
+    """
+
+    def __init__(self, app_ids: list[str]):
+        self.app_ids = app_ids
+        names = ", ".join(APP_CATALOG[a].get("name", a) for a in app_ids)
+        super().__init__(
+            f"{names} cannot be enabled from here — contact {SUPPORT_CONTACT_EMAIL}."
+        )
+
+
+def is_self_serve(app_id: str) -> bool:
+    """Whether a workspace may turn this app on for itself."""
+    definition = APP_CATALOG.get(app_id) or {}
+    return (
+        definition.get("availability", AppAvailability.SELF_SERVE)
+        == AppAvailability.SELF_SERVE
+    )
+
+
+def assert_self_serve_enablement(app_config: dict | None) -> None:
+    """Refuse any attempt to switch on an app that is not self-serve.
+
+    Every path that can grant access funnels through here — member updates,
+    overrides, templates, bundles, and request approval — because a gate applied
+    at only some of them is not a gate: the access matrix, the template editor
+    and the approve button all write the same shape, and each would otherwise be
+    its own way in.
+
+    Turning such an app *off* is always allowed: nothing about this should stop
+    somebody removing access.
+    """
+    if not app_config:
+        return
+    offenders = [
+        app_id
+        for app_id, config in app_config.items()
+        if not is_self_serve(app_id)
+        and isinstance(config, dict)
+        and config.get("enabled") is True
+    ]
+    if offenders:
+        raise AppNotSelfServeError(sorted(offenders))
 
 
 # In-process TTL cache for workspace app_settings: the app-toggle guard runs
@@ -719,6 +771,8 @@ class AppAccessService:
         if not is_valid:
             raise ValueError(f"Invalid app config: {error}")
 
+        assert_self_serve_enablement(app_config)
+
         baseline = await self._resolve_baseline(
             workspace_id, developer_id, applied_template_id
         )
@@ -754,6 +808,8 @@ class AppAccessService:
         member = await self._get_workspace_member(workspace_id, developer_id)
         if not member:
             raise ValueError("Member not found")
+
+        assert_self_serve_enablement(overrides)
 
         cleaned: dict[str, dict] = {}
         for app_id, override in (overrides or {}).items():
@@ -1151,6 +1207,9 @@ class AppAccessService:
         if not is_valid:
             raise ValueError(f"Invalid app config: {error}")
 
+        # A template is a grant waiting to be applied, so it is gated like one.
+        assert_self_serve_enablement(app_config)
+
         slug = generate_slug(name)
 
         template = AppAccessTemplate(
@@ -1202,6 +1261,7 @@ class AppAccessService:
             is_valid, error = validate_app_access_config({"apps": kwargs["app_config"]})
             if not is_valid:
                 raise ValueError(f"Invalid app config: {error}")
+            assert_self_serve_enablement(kwargs["app_config"])
 
         # Update fields
         for key, value in kwargs.items():
@@ -1436,6 +1496,13 @@ class AppAccessService:
         if app_id not in APP_CATALOG:
             raise ValueError(f"Unknown app: {app_id}")
 
+        # An access request asks this workspace's admins for something they can
+        # grant. For an app only we switch on there is nobody here to ask, so the
+        # request is refused and the UI sends the person to feedback instead —
+        # rather than filing something that would sit in an admin's queue with
+        # no action available to them.
+        assert_self_serve_enablement({app_id: {"enabled": True}})
+
         # Check for existing pending request
         existing = await self.get_pending_request(workspace_id, requester_id, app_id)
         if existing:
@@ -1534,6 +1601,11 @@ class AppAccessService:
 
         if request.status != AppAccessRequestStatus.PENDING.value:
             raise ValueError("Only pending requests can be reviewed")
+
+        # Rejecting one of these is fine — an admin saying "we are not asking for
+        # this" is a legitimate answer. Approving is not theirs to give.
+        if action == "approve":
+            assert_self_serve_enablement({request.app_id: {"enabled": True}})
 
         new_status = (
             AppAccessRequestStatus.APPROVED.value

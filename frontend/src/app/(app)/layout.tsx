@@ -7,6 +7,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { WorkspaceAppToggleGuard } from "@/components/layout/WorkspaceAppToggleGuard";
 import { GlobalShortcuts } from "@/components/GlobalShortcuts";
 import { CommandPalette } from "@/components/CommandPalette";
+import { FeedbackComposer } from "@/components/feedback/FeedbackComposer";
 import { KeyboardShortcutsHelp } from "@/components/KeyboardShortcutsHelp";
 import { ChatWebSocketProvider } from "@/contexts/ChatWebSocketContext";
 import { FloatingChatWidget } from "@/components/chat/FloatingChatWidget";
@@ -88,6 +89,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <CommandPalette />
                 <KeyboardShortcutsHelp />
                 <WorkspaceSearchPalette />
+                {/* Mounted once for the whole app: opened from the command palette,
+                    and from the access grid when somebody asks for an app we gate. */}
+                <FeedbackComposer />
                 <WorkspaceAppToggleGuard>{children}</WorkspaceAppToggleGuard>
                 <FloatingChatWidget />
             </AppShell>
