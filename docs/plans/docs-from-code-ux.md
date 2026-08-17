@@ -224,9 +224,9 @@ lives.
 
 ## Plan
 
-Stages are marked with the commit that built them. Stage 1b is the outstanding piece of
-stage 1 — the part that was traded away when `ProposedChange` was rejected, and the largest
-user-facing gap in the area today.
+Stages are marked with the commit that built them. Stages 1–6 are done; 7–9 are not started.
+Items inside a built stage that were *not* delivered are called out in place, so a stage marked
+built never implies more than it shipped.
 
 
 ### Stage 1 — The review gate **(built — `b1cad54d`, `de035aa1`)**
@@ -244,46 +244,39 @@ First, because everything after it writes through it.
 - **Reads are never gated.** A gate that made an agent ask permission to look something up
   would be switched off within a week and take the write gate with it.
 
-#### Decision: `ProposedChange` was considered and rejected
+#### Decision: `ProposedChange` — argued against, then built (`9b29ce49`)
 
-The original plan here read *"generalise `DocumentProposedEdit` into `ProposedChange`"* — one
-table with `entity_type` / `entity_id`, so any module could register as a governed entity and
-one queue would hold everything. It was not built, and the reason is worth keeping because
-otherwise it gets proposed again.
+Worth recording as a reversal rather than quietly rewriting, because the
+reasoning that changed is the useful part.
 
-**The two gates do not review the same kind of thing.** The content gate reviews a *result*:
-generation ran, produced prose, and a human compares it to the page. The policy gate fires
-*before execution*, so there is no proposed content — the call has not run, and running it to
-find out what it would produce is exactly what the gate prevents. The only thing that can be
-stored is the request, replayed verbatim on approval.
+**The argument against.** The two gates do not review the same kind of thing. The content gate
+reviews a *result*: prose exists, diff it against the page. The policy gate fires *before
+execution*, so there is nothing to review but the request — running the call to find out what
+it would produce is exactly what the gate prevents. Two different things, two tables.
 
-That shows up in the columns. `DocumentProposedEdit` and `AgentPendingAction` share six —
-`id`, `status`, `reason`, `reviewed_by_id`, `reviewed_at`, `created_at` — against eight and ten
-that are disjoint. A merged table is 24 columns where every row leaves 8 or 10 null and the
-discriminator tells you which half to ignore, plus a data migration on the one queue in this
-area that already worked (supersede-on-create, stale detection, owner notification) in exchange
-for no behaviour it did not already have.
+**Why that was only half right.** The objection was really to a *shape*: eighteen kind-specific
+columns, half null on every row, with a discriminator telling you which half to ignore. Putting
+the kind-specific part in one JSONB `payload` removes that entirely. What is left — who asked,
+when, what for, what was decided — is genuinely common to both. Six shared columns and no nulls
+per kind is a different proposition from twenty-four columns and eight nulls, and the pre- vs
+post-execution distinction survives untouched as `kind`.
 
-**Revisit when a second *content-review* consumer appears** — an AI proposing new content for a
-CRM record or a workflow definition, where a human diffs before and after. Two tables of
-genuinely the same shape is when generalising pays. One pre-execution consumer and one
-post-generation consumer is not that case.
+**What it bought.** One queue, one lifecycle, one place to add a third kind, and a review inbox
+that is a query rather than two lists merged in the client. The document queue moved without
+changing: `ProposedEditsService` keeps its own vocabulary and translates at the boundary, with
+read aliases on the model, so no caller and no test moved — which is what proves the move was
+behaviour-preserving.
 
-Until then the convergence belongs at the **read** layer, not in storage — see stage 1b.
+**What it cost.** A data migration on the one queue in this area that already worked. Both
+source tables are copied rather than dropped so a rollback is a deploy rather than a restore;
+that debt is recorded under *Owed* below.
 
-### Stage 1b — One inbox, and a UI for held actions
+### Stage 1b — One inbox, and a UI for held actions **(built — `9b29ce49`, `ed9acb0e`)**
 
-The cost of the decision above, paid down. There are currently two queues and only one of them
-has a screen:
+Before this there were two queues and only one had a screen: clearing a blocked agent action
+meant making an HTTP request by hand.
 
-- `/docs/review` renders document proposals with a readable text diff.
-- `/workspaces/{id}/agent-actions` holds tool calls an agent is blocked on, and is API-only —
-  clearing one today means making an HTTP request by hand.
-
-That is the fragmentation the single-table plan was trying to avoid, and it does not need a
-single table to fix.
-
-- **One endpoint returning both kinds.** A `review_items` read model over the two tables,
+- **One endpoint returning both kinds.** A `review_items` read model over `proposed_changes`,
   each item carrying a `kind` (`document_proposal` / `agent_action`) and a common envelope:
   who asked, when, why it is waiting, and a one-line summary.
 - **One page renders both**, with a per-kind body: documents keep the diff; a held action shows
@@ -306,7 +299,9 @@ single table to fix.
 - **Purpose-built tools** beside the generic `aexy_call`: list documents behind their code,
   fetch a document with its provenance, propose an update, create a document from a path *with
   its code link*. The generic proxy can already do most of this; named tools exist so an agent
-  discovers the right workflow instead of inventing one.
+  discovers the right workflow instead of inventing one. **Not delivered**: the endpoints exist
+  and `aexy_discover` finds them because they sit on the documents router, but there are no
+  named tools, so an agent still has to assemble the workflow itself.
 - **Markdown in, server converts.** Do not accept raw TipTap JSON from clients. Convert and
   validate server-side and reject on failure — which also closes F9 permanently, for every
   writer, rather than patching the one generation path.
@@ -360,11 +355,16 @@ Under the split this is less about the LLM bill and more about the nudge being w
 
 - Provenance strip under the title: `backend/src/aexy/services · main · in sync as of a1b2c3d`,
   or `3 commits behind` — plus the owner and a transfer action.
-- Staleness dot in the sidebar tree.
-- The review inbox from stage 1, grouped by the change that caused it, with approve-all.
-- A readable text diff replacing the two `JSON.stringify` views (F8), with the triggering
-  commits and changed paths above it.
+- A readable text diff replacing the two `JSON.stringify` views (F8).
 - Per-document mode, which is stage 1's per-record override surfaced here.
+
+**Not delivered by those commits:**
+
+- Staleness dot in the sidebar tree.
+- The review inbox, grouped by the change that caused it, with approve-all, and the triggering
+  commits shown above the diff. This needs trigger context recorded on the proposal — the
+  commit, the pull request and the changed paths — which stage 4 called for and did not
+  deliver, so there was nothing to group by.
 
 ### Stage 7 — Server-side generation, as the fallback it now is **(not started)**
 
@@ -408,6 +408,17 @@ Much smaller than in the pre-split plan. It exists for the two cases MCP serves 
   between that and a rewritten wiki.
 - **Onboarding cost** stays real, because stage 7 stays server-side. Estimate before, actual
   after.
+
+## Owed
+
+- **Drop `document_proposed_edits` and `agent_pending_actions`.** Copied into
+  `proposed_changes` rather than dropped, so a rollback stays a deploy rather than a restore.
+  Due once the shared table has carried a release: no code reads either table today, and
+  `document_proposed_edits` holds the only review history these workspaces have, which is the
+  reason to wait rather than to keep waiting indefinitely.
+- **Browser coverage for the repository file picker.** Verified by unit tests only; browsing a
+  repository tree is a live GitHub App call, so file selection and the "doc type only for
+  files" behaviour cannot be exercised locally without an installation.
 
 ## Out of scope
 
