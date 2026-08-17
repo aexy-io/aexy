@@ -115,6 +115,23 @@
         "manual_ai_edit": "AI edits",
         "manual_ai_editBlurb": "Changes an assistant proposed directly."
       }
+    },
+    "improvements": {
+      "heading": "Improve this document",
+      "close": "Close",
+      "intro": "An AI reads the page and reports what is unclear, incomplete or missing. This costs one model call.",
+      "run": "Review this page",
+      "reading": "Reading the page…",
+      "outOfTen": "out of 10",
+      "nothingToFix": "Nothing worth changing was found.",
+      "missingSections": "Sections it expected and did not find",
+      "apply": "Apply",
+      "applying": "Queueing…",
+      "queued": "Queued for review",
+      "queuedShort": "Queued",
+      "appliesAsProposal": "Applying queues a rewrite for review. Your document is not changed until somebody approves it.",
+      "failed": "Could not review this page",
+      "applyFailed": "Could not queue that change"
     }
   }
 }

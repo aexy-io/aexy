@@ -36,6 +36,7 @@ from aexy.schemas.document import (
     LinkedDocumentResponse,
     ProposedEditReject,
     ProposedEditResponse,
+    ApplySuggestionRequest,
     ProposeMarkdownRequest,
     TemplateCreate,
     TemplateListResponse,
@@ -1788,14 +1789,7 @@ async def suggest_improvements(
 async def apply_suggestion(
     workspace_id: str,
     document_id: str,
-    suggestion_summary: str = Query(
-        ...,
-        description=(
-            "Short description of the improvement to apply, copied "
-            "from `suggest_improvements`'s `improvements[].suggestion`. "
-            "Fed to the doc-update prompt as the change summary."
-        ),
-    ),
+    data: ApplySuggestionRequest,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
@@ -1827,7 +1821,7 @@ async def apply_suggestion(
             old_code="",
             new_code="",
             language=None,
-            changes_summary=suggestion_summary,
+            changes_summary=data.suggestion_summary,
             developer_id=str(current_user.id),
         )
     except Exception as e:
@@ -1846,7 +1840,7 @@ async def apply_suggestion(
         source=ProposedEditSource.SUGGEST_IMPROVEMENTS,
         proposed_content=proposed_content,
         proposed_by_id=str(current_user.id),
-        diff_summary={"suggestion": suggestion_summary},
+        diff_summary={"suggestion": data.suggestion_summary},
     )
     await db.commit()
 

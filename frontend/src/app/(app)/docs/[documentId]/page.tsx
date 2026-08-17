@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useDocument, useDocumentCodeLinks } from "@/hooks/useDocuments";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,6 +13,7 @@ import { DocumentComments } from "@/components/docs/DocumentComments";
 import { ProposedEditsBanner } from "@/components/docs/ProposedEditsBanner";
 import { DocumentProvenance } from "@/components/docs/DocumentProvenance";
 import { CodeLinkPanel } from "@/components/docs/CodeLinkPanel";
+import { DocumentImprovements } from "@/components/docs/DocumentImprovements";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import { DocumentLinkType, documentApi, workspaceApi } from "@/lib/api";
@@ -22,6 +23,7 @@ export default function DocumentPage() {
   const documentId = params?.documentId as string;
   const { currentWorkspaceId } = useWorkspace();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   // Disable collaboration until WebSocket issues are resolved
   const [collaborationEnabled] = useState(false);
 
@@ -106,6 +108,8 @@ export default function DocumentPage() {
     },
     [createCodeLink]
   );
+
+  const [showImprovements, setShowImprovements] = useState(false);
 
   const handleSave = useCallback(
     async (data: { title?: string; content?: Record<string, unknown> }) => {
@@ -237,6 +241,11 @@ export default function DocumentPage() {
             ? () => setShowCodeLink(true)
             : undefined
         }
+        onImprove={
+          !embedded && currentWorkspaceId
+            ? () => setShowImprovements(true)
+            : undefined
+        }
       />
       {currentWorkspaceId && (
         <CodeLinkPanel
@@ -245,6 +254,22 @@ export default function DocumentPage() {
           isOpen={showCodeLink}
           onClose={() => setShowCodeLink(false)}
           onLink={handleLinkToCode}
+        />
+      )}
+      {currentWorkspaceId && (
+        <DocumentImprovements
+          workspaceId={currentWorkspaceId}
+          documentId={documentId}
+          isOpen={showImprovements}
+          onClose={() => setShowImprovements(false)}
+          // Applying queues a proposal, and the banner that shows proposals is
+          // above the editor — without this it appears only on the next reload,
+          // which reads as the Apply having done nothing.
+          onProposed={() =>
+            queryClient.invalidateQueries({
+              queryKey: ["proposed-edits", currentWorkspaceId, documentId],
+            })
+          }
         />
       )}
       {/* Comments live under the document rather than in a side panel, and are

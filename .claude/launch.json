@@ -4,14 +4,23 @@
     {
       "name": "frontend",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "cwd": "frontend",
       "port": 3000
     },
     {
       "name": "mcp-frontend",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "-p", "3003"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "-p",
+        "3003"
+      ],
       "cwd": "frontend",
       "port": 3003
     },
@@ -28,6 +37,20 @@
         "3003"
       ],
       "port": 3003
+    },
+    {
+      "name": "docsfix-frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "/Users/bhanu/Documents/personal/aexy/.claude/worktrees/docs-fix/frontend",
+        "run",
+        "dev",
+        "--",
+        "-p",
+        "3004"
+      ],
+      "port": 3004
     }
   ]
 }

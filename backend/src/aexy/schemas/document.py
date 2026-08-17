@@ -332,6 +332,17 @@ class GenerateFromRepositoryRequest(BaseModel):
     markdown: str | None = None
 
 
+class ApplySuggestionRequest(BaseModel):
+    """One improvement to turn into a proposed edit.
+
+    A body rather than a query parameter: a suggestion is a sentence of prose,
+    and prose in a URL is a length limit and a log entry waiting to happen —
+    the same reason `code` moved out of the query string.
+    """
+
+    suggestion_summary: str = Field(min_length=1, max_length=2000)
+
+
 class ProposeMarkdownRequest(BaseModel):
     """A proposed rewrite, written in Markdown.
 

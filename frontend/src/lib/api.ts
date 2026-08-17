@@ -7327,6 +7327,21 @@ export const documentApi = {
     return response.data;
   },
 
+  /** Turn one improvement into a proposed edit. Nothing is applied to the
+   *  document — a judgement about prose somebody wrote is exactly the kind of
+   *  change that should be diffed and approved. */
+  applySuggestion: async (
+    workspaceId: string,
+    documentId: string,
+    suggestionSummary: string
+  ): Promise<{ status: string; document_id: string; proposed_edit_id: string }> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/documents/${documentId}/suggest-improvements/apply`,
+      { suggestion_summary: suggestionSummary }
+    );
+    return response.data;
+  },
+
   // GitHub Sync
   setupGitHubSync: async (
     workspaceId: string,
