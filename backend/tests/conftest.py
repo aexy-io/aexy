@@ -36,6 +36,53 @@ if not _IS_SQLITE and "test" not in TEST_DATABASE_URL.rsplit("/", 1)[-1].lower()
     )
 
 
+@pytest_asyncio.fixture(autouse=True)
+async def _no_engine_outlives_its_event_loop():
+    """Stop the application's process-cached engine leaking between tests.
+
+    `aexy.core.database` caches one engine per PID, on purpose — forked workers
+    need that. But pytest-asyncio gives every test its own event loop, and both
+    aiosqlite and asyncpg bind a connection to the loop that opened it. So the
+    first test to reach any of the ~40 call sites of `get_async_session` — the
+    readiness check was the one doing it — left a cached engine that every later
+    test then drove from a loop that no longer existed.
+
+    Measured before this fixture: created by
+    `test_api_health.py::test_readiness_check`, then reused across a different
+    loop in 76 subsequent tests.
+
+    What that produced was not a clean error but nondeterministic nonsense —
+    values arriving mid-flush with entirely the wrong type, surfacing as
+    `'float' object has no attribute 'replace'` inside `uuid.UUID.__init__`, or a
+    `uuid.UUID` with no `int` attribute, in whichever unrelated test happened to
+    be running. One arbitrary red test per full run, never reproducible alone.
+
+    Disposed on teardown rather than only cleared, while the loop that created
+    the connection is still the current one; best-effort because a loop already
+    closed makes disposal itself raise, and a leaked connection in a test process
+    is a great deal better than a shared one.
+    """
+    from aexy.core import database
+
+    database._engine_cache.clear()
+    database._sync_engine_cache.clear()
+    try:
+        yield
+    finally:
+        for engine, _ in list(database._engine_cache.values()):
+            try:
+                await engine.dispose()
+            except Exception:
+                pass
+        for sync_engine, _ in list(database._sync_engine_cache.values()):
+            try:
+                sync_engine.dispose()
+            except Exception:
+                pass
+        database._engine_cache.clear()
+        database._sync_engine_cache.clear()
+
+
 # Some queries are PostgreSQL-only — date_trunc above all — so the tests that
 # exercise them cannot pass against the SQLite default. Marking them keeps a
 # SQLite run green and honest instead of reporting failures the code does not
