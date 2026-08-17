@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Loader2, RefreshCw, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { getApiErrorMessage } from "@/lib/utils";
 import {
   useMemberAppAccess,
   useAppAccessTemplates,
@@ -153,8 +154,7 @@ export function MemberAppAccessModal({
       setHasChanges(false);
       toast.success("Overrides cleared — inheriting again");
     } catch (error) {
-      console.error("Failed to reset:", error);
-      toast.error("Failed to reset access");
+      toast.error(getApiErrorMessage(error, "Failed to reset access"));
     }
   }, [resetMemberToInherited, developerId, getMemberAccess]);
 
@@ -170,8 +170,7 @@ export function MemberAppAccessModal({
       onOpenChange(false);
       toast.success("App access updated successfully");
     } catch (error) {
-      console.error("Failed to save:", error);
-      toast.error("Failed to update app access");
+      toast.error(getApiErrorMessage(error, "Failed to update app access"));
     }
   }, [
     updateMemberAccess,
