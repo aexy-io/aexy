@@ -472,12 +472,19 @@ button, because a page that spends a model call on open is a page people stop op
 - **Browser coverage for the repository file picker.** Verified by unit tests only; browsing a
   repository tree is a live GitHub App call, so file selection and the "doc type only for
   files" behaviour cannot be exercised locally without an installation.
-- **A browser pass over everything after `1b45f2a1`.** The grouped review inbox, the staleness
-  dot, the trigger paths, the publishes-to line, "Document this" and "Link to code" have never
-  been rendered. The one pass that did run found a control that could not appear at all, and
-  two later commits shipped things that resolved to nothing until a test caught them — so this
-  is the highest-value outstanding work, not a formality. Now also covering the improvements
-  panel, "Recently merged", the sync-configuration panel and the whole-repository scope screen.
+- ~~A browser pass over everything after `1b45f2a1`.~~ **Done.** Rendered and checked: the
+  grouped review inbox (two proposals sharing a commit, collapsing into one "Commit abc1234 / 2
+  pages affected" group with approve-all), the trigger paths above the actions, the staleness dot
+  (present on the linked-and-behind page, absent on the unlinked one beside it), the publishes-to
+  line, the sync-configuration panel pre-filled from the code link, "Document this" carrying its
+  prompt into the generator, "Link to code" listing the workspace's repositories, "Recently
+  merged", the modal footer, and the docs page at 375px.
+
+  It earned its keep. Four defects it found are fixed in `78b79938`, `1e3c8b2b` and `7dd9a761`,
+  and a fifth here: the approve-all button rendered the literal string `review.approveAll`,
+  because the key had never been added and next-intl prints the key path when it cannot resolve
+  one — so a missing key is not an error anywhere, just debug text on a button, shipped. A guard
+  now checks every key these surfaces ask for against both locales.
 - **An unmapped-tag gate that actually runs.** `feedback`, `feedback_admin` and `mcp_oauth` had
   no capability before this branch, and because the dump script refuses to write while any tag
   is unmapped, they had frozen the catalogue fixture for every router that landed after them —
@@ -493,10 +500,32 @@ button, because a page that spends a model call on open is a page people stop op
   existed was hidden from them. Fixed alongside the pickers, along with the prompt order: asking somebody
   to install an app is only the right answer when there is nothing to show *and* they are the one
   who can act.
+- **Still unrendered, both for want of a live dependency:** the whole-repository scope screen's
+  module list and per-module retry (needs a GitHub App installation, same reason as the file
+  picker above), and:
 - **A populated improvements panel, and Apply, in the browser.** Verified by unit test only. This
   environment has no working cloud key and the one local model overruns the LM Studio provider's
   180-second read timeout, so `suggest-improvements` cannot return here. What did get exercised:
   the toolbar entry, the panel opening, the deliberate no-spend-on-open, and the loading state.
+- **Two definitions of "admin" that disagree, and a third that guards the route.**
+  `AppAccessService._is_admin` counts a custom role based on the admin template or holding
+  priority >= 100; `WorkspaceService.check_permission(..., "admin")` scores role names against a
+  fixed hierarchy containing no custom role, and since `role` and `role_id` coexist such a member
+  keeps `role="member"` and scores zero. Reproduced against the running API: `is_admin: true` from
+  `/app-access/members/{id}/effective`, 403 from `PATCH /app-access/members/{id}`, same member.
+  `7dd9a761` makes the refusal legible; deciding *which* definition is right is not a decision to
+  make while adding a toast — teaching `check_permission` about custom roles widens who passes
+  every admin gate in the product, and narrowing `_is_admin` strips access those members have
+  today. The route guard on `/settings/access` is a third answer again: it redirects such a member
+  to the marketing page.
+- **The `pull_request` trigger key is never written.** `ProposedChange`'s docstring advertises
+  `{"commit_sha", "pull_request", "paths", "label"}` and `_group` has a branch that labels a group
+  "Pull request #N", but `handle_code_change(repository_id, commit_sha, changed_paths)` takes no
+  pull request and nothing else populates the key — so grouping is always per-commit, and one
+  merged pull request touching several documented modules across four commits becomes four groups
+  rather than the one the grouping was for. GitHub's push payload carries no pull request number,
+  so closing this needs either the `pull_request` webhook event or a commit-to-pull-request
+  lookup against the `pull_requests` table that "Recently merged" already reads.
 
 ## Out of scope
 

@@ -17,6 +17,7 @@
     "approved": "Approved",
     "rejected": "Rejected",
     "failed": "That could not be completed",
-    "groupAffects": "{count, plural, one {# page affected} other {# pages affected}}"
+    "groupAffects": "{count, plural, one {# page affected} other {# pages affected}}",
+    "approveAll": "Approve all {count}"
   }
 }

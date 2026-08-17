@@ -17,6 +17,7 @@
     "approved": "स्वीकृत",
     "rejected": "अस्वीकृत",
     "failed": "यह पूरा नहीं हो सका",
-    "groupAffects": "{count, plural, one {# पेज प्रभावित} other {# पेज प्रभावित}}"
+    "groupAffects": "{count, plural, one {# पेज प्रभावित} other {# पेज प्रभावित}}",
+    "approveAll": "सभी {count} स्वीकृत करें"
   }
 }
