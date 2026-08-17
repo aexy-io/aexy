@@ -35,7 +35,10 @@ _INLINE = [
 
 _HEADING = re.compile(r"^(#{1,6})\s+(.*)$")
 _BULLET = re.compile(r"^\s*[-*+]\s+(.*)$")
-_ORDERED = re.compile(r"^\s*\d+[.)]\s+(.*)$")
+# Bounded to 1–3 digits: a year at the start of a sentence — "2024. Revenue
+# doubled." — is prose, not a list, and Markdown does not number past 999 in
+# any document worth reading.
+_ORDERED = re.compile(r"^\s*\d{1,3}[.)]\s+(.*)$")
 _QUOTE = re.compile(r"^>\s?(.*)$")
 _RULE = re.compile(r"^\s*(?:-{3,}|\*{3,}|_{3,})\s*$")
 _FENCE = re.compile(r"^\s*```\s*([\w+-]*)\s*$")

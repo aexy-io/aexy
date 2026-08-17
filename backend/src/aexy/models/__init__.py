@@ -139,7 +139,6 @@ from aexy.models.proposed_change import (
     ProposedChange,
 )
 from aexy.models.agent_policy import (
-    AgentPendingAction,
     AgentPolicy,
     AgentPolicyDecision,
     AgentConfigAudit,
@@ -745,7 +744,6 @@ __all__ = [
     "EVENT_TYPE_TO_CATEGORY",
     # Agent Policies
     "AgentDraft",
-    "AgentPendingAction",
     "ChangeKind",
     "ChangeStatus",
     "ProposedChange",

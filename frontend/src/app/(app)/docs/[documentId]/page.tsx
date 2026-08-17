@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useDocument, useDocumentCodeLinks } from "@/hooks/useDocuments";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,7 +13,7 @@ import { DocumentComments } from "@/components/docs/DocumentComments";
 import { ProposedEditsBanner } from "@/components/docs/ProposedEditsBanner";
 import { DocumentProvenance } from "@/components/docs/DocumentProvenance";
 import { Spinner } from "@/components/ui/spinner";
-import { documentApi } from "@/lib/api";
+import { documentApi, workspaceApi } from "@/lib/api";
 
 export default function DocumentPage() {
   const params = useParams();
@@ -47,6 +48,20 @@ export default function DocumentPage() {
   // Sync state is rendered by DocumentProvenance, which reads the links
   // directly — the page no longer needs to pre-digest them.
   const { codeLinks } = useDocumentCodeLinks(currentWorkspaceId, documentId);
+
+  // Ownership is only legible if the strip can name a person, and the transfer
+  // picker needs somebody to transfer *to* — without this the control renders
+  // "Owned" and no way to hand it on, which is a backend endpoint with no
+  // doorway. Only fetched when there is a link to own.
+  const { data: members = [] } = useQuery({
+    queryKey: ["workspace-members", currentWorkspaceId],
+    queryFn: () => workspaceApi.getMembers(currentWorkspaceId!),
+    enabled: Boolean(currentWorkspaceId) && (codeLinks?.length ?? 0) > 0,
+    select: (rows) =>
+      rows
+        .filter((row) => row.status === "active")
+        .map((row) => ({ id: row.developer_id, name: row.developer_name })),
+  });
 
   const handleManualSync = useCallback(async () => {
     if (!currentWorkspaceId || !documentId) return;
@@ -150,6 +165,7 @@ export default function DocumentPage() {
             workspaceId={currentWorkspaceId}
             documentId={documentId}
             codeLinks={codeLinks ?? []}
+            members={members}
             onSync={handleManualSync}
             isSyncing={isUpdating}
           />

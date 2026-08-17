@@ -157,9 +157,23 @@ async def approve_pending_action(
     from aexy.services.mcp_tool_executor import McpToolExecutor
 
     catalog = build_catalog(request.app.openapi())
-    granted = {
-        group["capability"] for group in catalog["capabilities"]
-    }
+    # The consent the call was originally made under, not everything the
+    # catalogue offers today. Granting the full set here would let an action
+    # queued while a connector had CRM access still run after that access was
+    # narrowed or withdrawn — approving is permission to proceed, not a
+    # re-grant. Rows held before this was recorded fall back to the capability
+    # the action itself belongs to, which is the narrowest honest answer.
+    stored = (row.payload or {}).get("granted")
+    if stored:
+        granted = set(stored)
+    else:
+        action = (row.payload or {}).get("action", "")
+        granted = {
+            group["capability"]
+            for group in catalog["capabilities"]
+            for op in group["operations"]
+            if op["action"] == action
+        }
     # No `db` passed: policy already ran, and a second evaluation would queue
     # the approved action behind itself forever.
     executor = McpToolExecutor(request.app, catalog, granted)

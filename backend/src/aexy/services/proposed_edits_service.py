@@ -107,7 +107,12 @@ class ProposedEditsService:
         # for any caller that supplied its own sha — a NOT NULL violation that
         # depended on which argument the caller happened to pass.
         document_obj: Document | None = await self.db.get(Document, document_id)
-        if base_content_sha is None and document_obj is not None:
+        if document_obj is None:
+            # The shared table needs the workspace, and the document is the
+            # only place it exists — so a vanished document has to be refused
+            # here rather than becoming a NOT NULL violation two frames later.
+            raise ValueError(f"Document {document_id} no longer exists")
+        if base_content_sha is None:
             base_content_sha = compute_content_sha(document_obj.content)
 
         # Create the new proposal first so we have the id for the
@@ -118,9 +123,7 @@ class ProposedEditsService:
             entity_id=document_id,
             # Denormalised from the document so the workspace queue is one
             # indexed read rather than a join it cannot generalise.
-            workspace_id=(
-                str(document_obj.workspace_id) if document_obj is not None else None
-            ),
+            workspace_id=str(document_obj.workspace_id),
             payload={"content": proposed_content},
             source=source_val,
             base_version=base_content_sha,

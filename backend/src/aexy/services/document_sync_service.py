@@ -692,17 +692,29 @@ class DocumentSyncService:
                 source="code_change_sync",
             )
 
-            # Mark the code link processed regardless — the proposal
-            # is the new dirty state. Successive code changes will
-            # create new proposals that supersede this one.
+            if outcome is None:
+                # Generation failed. The link keeps its pending flag so the
+                # next push — or the batch drain — tries again.
+                return False
+
+            # Mark the code link processed. The proposal is the new dirty
+            # state; successive code changes create proposals that supersede
+            # it.
             code_link.last_commit_sha = commit_sha
             code_link.has_pending_changes = False
             code_link.last_synced_at = datetime.now(timezone.utc)
-            if outcome is not None:
-                # Only advance the base when there is prose written from this
-                # commit. Moving it on a failure would make the next sync diff
-                # against a version that was never written.
-                code_link.last_synced_commit_sha = commit_sha
+            # Only advance the base when there is prose written from this
+            # commit. Moving it on a failure would make the next sync diff
+            # against a version that was never written.
+            code_link.last_synced_commit_sha = commit_sha
+
+            # Committed here rather than left to the caller because auto-apply
+            # writes the document through `update_document`, which commits on
+            # its own. Without this the applied content and the bookkeeping
+            # that says it was applied sit in different transactions, and a
+            # failure between them leaves a document that is up to date and a
+            # link insisting it is behind.
+            await self.db.commit()
 
             logger.info(
                 f"Real-time sync produced a proposal for document {document.id}"

@@ -6,6 +6,9 @@
  * whether the code has moved since — were invisible.
  */
 
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -205,6 +208,53 @@ describe("DocumentProvenance", () => {
       container.querySelector("[data-testid='provenance-behind-link-1']")
     ).toBeNull();
     expect(container.textContent).not.toContain("has changed since it was written");
+  });
+
+  it("names the owner when members are known", () => {
+    const container = render(
+      <DocumentProvenance
+        workspaceId="ws-1"
+        documentId="doc-1"
+        codeLinks={[link()]}
+        members={[{ id: "dev-1", name: "Sam Rivers" }]}
+      />
+    );
+
+    expect(container.textContent).toContain("Sam Rivers");
+  });
+
+  it("offers transfer only when there is somebody to transfer to", () => {
+    const withoutMembers = render(
+      <DocumentProvenance
+        workspaceId="ws-1"
+        documentId="doc-1"
+        codeLinks={[link()]}
+      />
+    );
+    expect(withoutMembers.textContent).not.toContain("Transfer");
+
+    const withMembers = render(
+      <DocumentProvenance
+        workspaceId="ws-1"
+        documentId="doc-1"
+        codeLinks={[link()]}
+        members={[{ id: "dev-2", name: "Alex Kim" }]}
+      />
+    );
+    expect(withMembers.textContent).toContain("Transfer");
+  });
+
+  it("is given members by the page that mounts it", () => {
+    // The component test above passes `members` explicitly, so it stayed green
+    // while the page never did — the transfer endpoint had a UI that could not
+    // render. This asserts the wiring rather than the capability.
+    // A plain path, not a file URL: `(app)` and `[documentId]` are
+    // percent-encoded by the URL constructor and the read fails.
+    const source = readFileSync(
+      resolve(__dirname, "../app/(app)/docs/[documentId]/page.tsx"),
+      "utf8"
+    );
+    expect(source).toMatch(/<DocumentProvenance[\s\S]*?members=\{/);
   });
 
   it("counts how many linked paths have moved", () => {

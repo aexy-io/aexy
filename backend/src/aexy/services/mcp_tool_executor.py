@@ -106,6 +106,7 @@ class McpToolExecutor:
                 developer_id=developer_id,
                 workspace_id=workspace_id,
                 tool_name=tool_name,
+                granted=self._granted,
             )
             if not verdict.allowed:
                 return ToolResult(verdict.message or "Not permitted.", is_error=True)

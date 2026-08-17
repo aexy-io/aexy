@@ -60,6 +60,7 @@ class McpGovernance:
         developer_id: str,
         workspace_id: str,
         tool_name: str,
+        granted: set[str] | None = None,
     ) -> Verdict:
         """Decide whether this call may run now, later, or not at all.
 
@@ -76,6 +77,7 @@ class McpGovernance:
                 developer_id=developer_id,
                 workspace_id=workspace_id,
                 tool_name=tool_name,
+                granted=granted,
             )
         except Exception:  # pragma: no cover - defensive
             logger.exception(
@@ -93,6 +95,7 @@ class McpGovernance:
         developer_id: str,
         workspace_id: str,
         tool_name: str,
+        granted: set[str] | None = None,
     ) -> Verdict:
         # Reads pass untouched, and cheaply: no policy load, no audit row.
         if not operation.get("mutating"):
@@ -132,6 +135,7 @@ class McpGovernance:
                 operation=operation,
                 arguments=arguments,
                 result=result,
+                granted=granted,
             )
             return Verdict(
                 allowed=False,
@@ -210,6 +214,7 @@ class McpGovernance:
         operation: dict[str, Any],
         arguments: dict[str, Any],
         result: Any,
+        granted: set[str] | None = None,
     ) -> ProposedChange:
         pending = ProposedChange(
             id=str(uuid4()),
@@ -227,6 +232,12 @@ class McpGovernance:
                 "method": operation["method"],
                 "path": operation["path"],
                 "arguments": arguments,
+                # The consent this call was made under, frozen at the moment it
+                # was held. Replaying with whatever the catalogue offers today
+                # would let an action queued under a wide grant run after that
+                # grant was narrowed or withdrawn — approval is permission to
+                # proceed, not a re-grant.
+                "granted": sorted(granted) if granted else None,
             },
             source=result.policy_id,
             reason=result.reason,

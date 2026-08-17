@@ -222,3 +222,17 @@ class TestARealDocument:
             "codeBlock",
             "blockquote",
         ]
+
+
+class TestProseThatLooksLikeMarkup:
+    def test_a_year_starting_a_sentence_is_not_a_list(self):
+        """"2024. Revenue doubled." is prose. Reading it as an ordered list
+        silently restructures a paragraph into a numbered item."""
+        doc = convert("2024. Revenue doubled.")
+
+        assert doc["content"][0]["type"] == "paragraph"
+
+    def test_a_genuine_ordered_list_still_works(self):
+        doc = convert("1. first\n2. second")
+
+        assert doc["content"][0]["type"] == "orderedList"
