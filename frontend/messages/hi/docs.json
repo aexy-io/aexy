@@ -145,6 +145,24 @@
       "noDocsForRepositoryHint": "इस workspace का कोई दस्तावेज़ इस repository से जुड़ा नहीं है।",
       "repositoryGone": "Repository डिस्कनेक्ट है",
       "promptFor": "#{number} में मर्ज हुए बदलाव का दस्तावेज़ बनाएँ: {title}"
+    },
+    "scope": {
+      "heading": "{repository} के हर module का दस्तावेज़",
+      "close": "बंद करें",
+      "cancel": "रद्द करें",
+      "closeDone": "पूर्ण",
+      "reading": "Repository पढ़ी जा रही है…",
+      "treeFailed": "यह repository पढ़ी नहीं जा सकी।",
+      "noModules": "दस्तावेज़ बनाने योग्य कोई top-level directory नहीं।",
+      "moduleSize": "{files} फ़ाइलें, {directories} dirs",
+      "willWrite": "{count} दस्तावेज़ बनेंगे — हर module का एक, एक parent पेज के नीचे। हर एक एक model call है, एक-एक करके।",
+      "start": "बनाएँ",
+      "writing": "बनाया जा रहा है…",
+      "finished": "{done} बने, {failed} विफल।",
+      "retry": "पुनः प्रयास",
+      "failedShort": "विफल",
+      "moduleFailed": "यह module नहीं लिखा जा सका",
+      "parentFailed": "Parent पेज नहीं बन सका"
     }
   }
 }

@@ -145,6 +145,24 @@
       "noDocsForRepositoryHint": "No document in this workspace is linked to anything in this repository.",
       "repositoryGone": "Repository disconnected",
       "promptFor": "Document the change merged in #{number}: {title}"
+    },
+    "scope": {
+      "heading": "Document every module in {repository}",
+      "close": "Close",
+      "cancel": "Cancel",
+      "closeDone": "Done",
+      "reading": "Reading the repository…",
+      "treeFailed": "Could not read this repository.",
+      "noModules": "No top-level directories to document.",
+      "moduleSize": "{files} files, {directories} dirs",
+      "willWrite": "Writes {count} documents — one per module, under a parent page. Each is one model call, run one at a time.",
+      "start": "Write them",
+      "writing": "Writing…",
+      "finished": "{done} written, {failed} failed.",
+      "retry": "Retry",
+      "failedShort": "Failed",
+      "moduleFailed": "Could not write this module",
+      "parentFailed": "Could not create the parent page"
     }
   }
 }

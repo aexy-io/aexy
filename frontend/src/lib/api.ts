@@ -7293,6 +7293,10 @@ export const documentApi = {
       template_category?: string;
       custom_prompt?: string;
       title?: string;
+      /** Where this sits in the tree. A whole-repository pass creates one
+       *  parent and a child per module, so a later change to one directory
+       *  revises one document instead of rewriting the world. */
+      parent_id?: string;
     }
   ): Promise<{ document: Document; code_link: DocumentCodeLink }> => {
     const response = await api.post(

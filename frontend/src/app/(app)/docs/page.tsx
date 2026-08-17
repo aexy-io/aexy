@@ -11,6 +11,7 @@ import {
   Loader2,
   FolderGit2,
   Folder,
+  FolderTree,
   File,
   ChevronRight,
   Check,
@@ -24,6 +25,7 @@ import { useDocuments, useTemplates } from "@/hooks/useDocuments";
 import { documentApi, repositoriesApi, Repository, TemplateListItem } from "@/lib/api";
 import { TemplateSelector } from "@/components/docs/TemplateSelector";
 import { MergedChanges } from "@/components/docs/MergedChanges";
+import { RepositoryScopePanel } from "@/components/docs/RepositoryScopePanel";
 
 export default function DocsPage() {
   const router = useRouter();
@@ -48,6 +50,10 @@ export default function DocsPage() {
   const [currentPath, setCurrentPath] = useState("");
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [customPrompt, setCustomPrompt] = useState("");
+  // The whole-repository run, for somebody with no coding agent to do it in the
+  // working tree. Offered beside the single-path generator rather than instead
+  // of it: one page about one module is still the common case.
+  const [showScope, setShowScope] = useState(false);
 
   // Arriving from "Document this" on a repository: open straight into the
   // repository tab with that repo selected, rather than making somebody find
@@ -706,6 +712,19 @@ export default function DocsPage() {
                 >
                   Cancel
                 </button>
+                {/* One page per module, under a parent, rather than one page
+                    about a repository — which is the only shape a later change
+                    to one directory can revise without rewriting everything. */}
+                {sourceMode === "repo" && selectedRepo && (
+                  <button
+                    onClick={() => setShowScope(true)}
+                    data-testid="generate-whole-repository"
+                    className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 font-medium text-foreground transition hover:bg-accent"
+                  >
+                    <FolderTree className="h-4 w-4" />
+                    Document every module
+                  </button>
+                )}
                 <button
                   onClick={sourceMode === "paste" ? handleGenerateFromCode : handleGenerateFromRepository}
                   disabled={
@@ -731,6 +750,21 @@ export default function DocsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {currentWorkspaceId && selectedRepo && (
+        <RepositoryScopePanel
+          workspaceId={currentWorkspaceId}
+          repository={selectedRepo}
+          branch={selectedBranch}
+          isOpen={showScope}
+          onClose={() => setShowScope(false)}
+          onFinished={(parentDocumentId) => {
+            setShowScope(false);
+            resetModal();
+            router.push(`/docs/${parentDocumentId}`);
+          }}
+        />
       )}
     </div>
   );
