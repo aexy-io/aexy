@@ -299,9 +299,12 @@ meant making an HTTP request by hand.
 - **Purpose-built tools** beside the generic `aexy_call`: list documents behind their code,
   fetch a document with its provenance, propose an update, create a document from a path *with
   its code link*. The generic proxy can already do most of this; named tools exist so an agent
-  discovers the right workflow instead of inventing one. **Not delivered**: the endpoints exist
-  and `aexy_discover` finds them because they sit on the documents router, but there are no
-  named tools, so an agent still has to assemble the workflow itself.
+  discovers the right workflow instead of inventing one. **Since delivered** (`1b45f2a1`, extended
+  in `a20c5df2`): four named tools — `aexy_docs_needing_update`, `aexy_docs_merged_changes`,
+  `aexy_docs_propose`, `aexy_docs_create_from_code` — each declaring its real payload rather than
+  `body: object`. Guarded against the real catalogue, because all three of the originals were
+  declared wrong at first and a named tool that resolves to nothing is silently withheld: absent
+  looks exactly like not-granted.
 - **Markdown in, server converts.** Do not accept raw TipTap JSON from clients. Convert and
   validate server-side and reject on failure — which also closes F9 permanently, for every
   writer, rather than patching the one generation path.
@@ -358,13 +361,13 @@ Under the split this is less about the LLM bill and more about the nudge being w
 - A readable text diff replacing the two `JSON.stringify` views (F8).
 - Per-document mode, which is stage 1's per-record override surfaced here.
 
-**Not delivered by those commits:**
+**Not delivered by those commits, both since built:**
 
-- Staleness dot in the sidebar tree.
+- Staleness dot in the sidebar tree — `f47cffcd`.
 - The review inbox, grouped by the change that caused it, with approve-all, and the triggering
-  commits shown above the diff. This needs trigger context recorded on the proposal — the
-  commit, the pull request and the changed paths — which stage 4 called for and did not
-  deliver, so there was nothing to group by.
+  commits shown above the diff — `f47cffcd`, once trigger context was recorded on the proposal
+  (the commit, the pull request and the changed paths), which stage 4 called for and did not
+  deliver, so until then there was nothing to group by.
 
 ### Stage 7 — Whole-repository generation **(built — `aeb455bb`)**
 
@@ -383,10 +386,17 @@ What the server keeps is what the agent cannot do:
 - The named MCP tool spells the multi-call shape out, because an agent inferring it from an enum
   infers a different one each time.
 
-**Not delivered:** the scope screen with module counts and a cost estimate, and per-module
-retry. Both belong to a server-side fan-out that no longer exists. Onboarding for a customer
-with no coding agent still has only the single-path generator — that is the remaining gap in
-this stage, and it is a smaller one than the fan-out would have been.
+**Since delivered (`4b4a3449`)** — the fan-out came back, in the browser rather than the server.
+"Document every module" reads the repository tree, drops build output and tooling (mirroring the
+sync layer's noise filter), shows a file count per module, and then runs one existing
+`from-repository` call per module, sequentially, under one parent. That is the scope screen, the
+per-module retry, and the onboarding path for a customer with no coding agent — all three, over an
+endpoint that already existed.
+
+**Deliberately not delivered:** the cost estimate. Modules differ in size by an order of magnitude
+and the price depends on the configured model, so the figure would be invented — and an invented
+number people plan against is worse than none. The screen states the document count and the model
+call count instead, which are facts.
 
 ### Stage 8 — One GitHub relationship per document **(built — `6e8c8ddd`, `876a83c7`)**
 
@@ -399,9 +409,15 @@ this stage, and it is a smaller one than the fan-out would have been.
 - Skip commits matching `last_export_commit`, so a document's own export cannot trigger its
   regeneration.
 
-**Not delivered:** pre-filling repository and branch from an existing sync, and any UI to
-*configure* a sync. `GitHubSyncPanel` (622 lines) is still unmounted, so the export direction is
-readable and not yet editable.
+**Since delivered (`8172b6e6`)** — `GitHubSyncPanel` opens from the provenance strip, so the export
+direction is editable and can be set up in the first place, and its form is pre-filled from the code
+link: the repository a document was written from is overwhelmingly the one it publishes back to. The
+pre-fill survives the post-save reset, because "add another sync" on the same document is still the
+same repository.
+
+**Remaining boundary:** a hand-written document with no code link has no doorway to publishing, since
+the strip is what carries it. Linking to code first is the path, and keeping one place for the whole
+GitHub relationship is why the panel was orphaned in the first place.
 
 ### Stage 9 — Discovery and language **(built — `876a83c7`)**
 
@@ -415,9 +431,22 @@ readable and not yet editable.
   deliberately.
 - `messages/{en,hi}/docs.json` and `useTranslations` for everything added.
 
-**Not delivered:** "Document this" from a merged pull request. The repository entry point covers
-the same intent; the PR one is where the intent is sharpest and needs a surface in the PR view
-that does not exist yet.
+**Since delivered (`a20c5df2`)** — "Recently merged" on the docs page, plus `aexy_docs_merged_changes`
+beside the stale-document tool. A work list rather than a button in a pull request view: there is no
+pull request view to put a button in, and a list gets worked whereas a button only helps whoever
+happens to be looking. "Document this" opens the generator with the repository chosen and the change
+named.
+
+It makes no claim about whether a change is already documented — `pull_requests` does not store the
+files a change touched, so the badge would be a guess, and a wrong "already documented" is the one
+that stops somebody writing. What it says instead is honest: this repository has no documentation at
+all, when that is true.
+
+**Also delivered (`ad607806`)** — `suggest-improvements` has a UI after all. Quality score,
+prioritised issues, sections it expected and did not find, and per-suggestion Apply that queues a
+proposal rather than editing the page: a suggestion is a model's judgement about prose a person
+wrote, which is exactly the kind of change that should be diffed and approved. Run behind an explicit
+button, because a page that spends a model call on open is a page people stop opening.
 
 ## Hazards to name
 
@@ -447,7 +476,14 @@ that does not exist yet.
   dot, the trigger paths, the publishes-to line, "Document this" and "Link to code" have never
   been rendered. The one pass that did run found a control that could not appear at all, and
   two later commits shipped things that resolved to nothing until a test caught them — so this
-  is the highest-value outstanding work, not a formality.
+  is the highest-value outstanding work, not a formality. Now also covering the improvements
+  panel, "Recently merged", the sync-configuration panel and the whole-repository scope screen.
+- **An unmapped-tag gate that actually runs.** `feedback`, `feedback_admin` and `mcp_oauth` had
+  no capability before this branch, and because the dump script refuses to write while any tag
+  is unmapped, they had frozen the catalogue fixture for every router that landed after them —
+  which is how two tool-surface assertions came to pass only because the fixture was stale.
+  `a20c5df2` maps them and regenerates, but nothing prevents the next one: whatever was meant to
+  run `--check` in CI evidently does not.
 
 ## Out of scope
 
