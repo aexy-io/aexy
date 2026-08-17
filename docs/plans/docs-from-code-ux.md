@@ -224,9 +224,9 @@ lives.
 
 ## Plan
 
-Stages are marked with the commit that built them. Stages 1–6 are done; 7–9 are not started.
-Items inside a built stage that were *not* delivered are called out in place, so a stage marked
-built never implies more than it shipped.
+Stages are marked with the commit that built them. All nine are built. Items inside a stage that
+were *not* delivered are called out in place under **Not delivered**, so a stage marked built
+never implies more than it shipped — and what is left is legible without reading the diffs.
 
 
 ### Stage 1 — The review gate **(built — `b1cad54d`, `de035aa1`)**
@@ -366,34 +366,58 @@ Under the split this is less about the LLM bill and more about the nudge being w
   commit, the pull request and the changed paths — which stage 4 called for and did not
   deliver, so there was nothing to group by.
 
-### Stage 7 — Server-side generation, as the fallback it now is **(not started)**
+### Stage 7 — Whole-repository generation **(built — `aeb455bb`)**
 
-Much smaller than in the pre-split plan. It exists for the two cases MCP serves worst.
+Reshaped once whole-repo generation moved to the CLI. The recursive traversal, ignore rules,
+module segmentation and per-module context budget all belonged to a server that did not have the
+files; an agent in the working tree has read them, so none of it was built.
 
-- **Onboarding**: a new customer documenting a repository on day one should not have to sit
-  through a long agent session. Keep whole-repo generation server-side, on Temporal, with the
-  scope screen — modules found, documents to be written, estimated time and spend, editable
-  exclusions — and per-module retry.
-- **Non-agent users**: a PM asking for a document has no coding agent.
-- The recursive traversal, ignore rules, module segmentation and per-module context budget are
-  still needed *here*, but only here, and they no longer gate the main flow.
-- Rate-limit or tier-gate it honestly: it is the most expensive action in the product.
+What the server keeps is what the agent cannot do:
 
-### Stage 8 — One GitHub relationship per document **(not started)**
+- `from-repository` accepts `markdown`, so prose the caller wrote is converted, linked and
+  filed without the server generating or paying for anything.
+- `parent_id`, so a repository becomes one parent and a child per module — a later change to one
+  directory then revises one document instead of rewriting the world.
+- A safe re-run: a path already documented gets a proposal against its existing document rather
+  than a second near-duplicate. Without `markdown` it refuses and names the document.
+- The named MCP tool spells the multi-call shape out, because an agent inferring it from an enum
+  infers a different one each time.
 
-- Shared `resolve_repository_access` from stage 4, used by code links and GitHub sync alike.
-- Adding a code link to a document that already has a GitHub sync pre-fills repo and branch.
-- One "Connected to GitHub" section showing both directions.
-- One push delivery, two consumers.
+**Not delivered:** the scope screen with module counts and a cost estimate, and per-module
+retry. Both belong to a server-side fan-out that no longer exists. Onboarding for a customer
+with no coding agent still has only the single-path generator — that is the remaining gap in
+this stage, and it is a smaller one than the fan-out would have been.
+
+### Stage 8 — One GitHub relationship per document **(built — `6e8c8ddd`, `876a83c7`)**
+
+- Shared `resolve_repository_access`, used by code links, GitHub sync, interactive generation
+  and background sync alike. Fixed a real bug in passing: `github_sync_service` unpacked
+  `(token, installation_id)` backwards in both its export and import paths, so publishing a
+  document to GitHub had never worked.
+- One "Connected to GitHub" section on the document, showing both directions — the source it
+  was written from and the file it publishes to.
 - Skip commits matching `last_export_commit`, so a document's own export cannot trigger its
   regeneration.
 
-### Stage 9 — Discovery and language **(not started)**
+**Not delivered:** pre-filling repository and branch from an existing sync, and any UI to
+*configure* a sync. `GitHubSyncPanel` (622 lines) is still unmounted, so the export direction is
+readable and not yet editable.
 
-- "Document this" from the repository view and from a merged PR.
-- "Generate from code" in the document header.
-- `GenerationPanel`'s improve mode wired to `suggest-improvements`, or deleted.
-- `messages/{en,hi}/docs.json` and `useTranslations` across the module.
+### Stage 9 — Discovery and language **(built — `876a83c7`)**
+
+- "Document this" on each adopted repository in settings, opening the docs generator with that
+  repository already selected.
+- "Link to code" in the editor toolbar, mounting `CodeLinkPanel` — 433 lines that had never
+  been reachable, and the only way a hand-written page could be connected to the code it
+  describes.
+- `GenerationPanel` deleted rather than wired: all three of its modes had live equivalents, and
+  its improve mode only ever logged to the console. `suggest-improvements` therefore has no UI,
+  deliberately.
+- `messages/{en,hi}/docs.json` and `useTranslations` for everything added.
+
+**Not delivered:** "Document this" from a merged pull request. The repository entry point covers
+the same intent; the PR one is where the intent is sharpest and needs a surface in the PR view
+that does not exist yet.
 
 ## Hazards to name
 
@@ -419,6 +443,11 @@ Much smaller than in the pre-split plan. It exists for the two cases MCP serves 
 - **Browser coverage for the repository file picker.** Verified by unit tests only; browsing a
   repository tree is a live GitHub App call, so file selection and the "doc type only for
   files" behaviour cannot be exercised locally without an installation.
+- **A browser pass over everything after `1b45f2a1`.** The grouped review inbox, the staleness
+  dot, the trigger paths, the publishes-to line, "Document this" and "Link to code" have never
+  been rendered. The one pass that did run found a control that could not appear at all, and
+  two later commits shipped things that resolved to nothing until a test caught them — so this
+  is the highest-value outstanding work, not a formality.
 
 ## Out of scope
 
