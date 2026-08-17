@@ -257,6 +257,40 @@ describe("DocumentProvenance", () => {
     expect(source).toMatch(/<DocumentProvenance[\s\S]*?members=\{/);
   });
 
+  it("offers a way into the export half, labelled for what is there", () => {
+    const onConfigurePublishing = vi.fn();
+    const container = render(
+      <DocumentProvenance
+        workspaceId="ws-1"
+        documentId="doc-1"
+        codeLinks={[link()]}
+        onConfigurePublishing={onConfigurePublishing}
+      />
+    );
+
+    const button = container.querySelector(
+      '[data-testid="provenance-configure-publishing"]'
+    ) as HTMLButtonElement;
+    // With no sync yet the control has to *offer* publishing, not "change" it.
+    expect(button.textContent).toContain("Publish to GitHub");
+    expect(container.textContent).toContain("Not published to GitHub");
+
+    act(() => button.click());
+    expect(onConfigurePublishing).toHaveBeenCalled();
+  });
+
+  it("mounts the panel that configures a sync, pre-filled from the code link", () => {
+    // `GitHubSyncPanel` was 622 lines nobody could reach: the strip reported
+    // the export direction and there was no UI to change it. Asserting the
+    // wiring, because the component test above would stay green without it.
+    const source = readFileSync(
+      resolve(__dirname, "../app/(app)/docs/[documentId]/page.tsx"),
+      "utf8"
+    );
+    expect(source).toMatch(/<GitHubSyncPanel[\s\S]*?defaultRepositoryId=\{/);
+    expect(source).toMatch(/onConfigurePublishing=\{/);
+  });
+
   it("counts how many linked paths have moved", () => {
     const container = render(
       <DocumentProvenance

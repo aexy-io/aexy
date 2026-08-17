@@ -38,6 +38,11 @@ interface Props {
    *  this page connected to the repository — and answering it in two separate
    *  panels is how one of them ends up unmounted and forgotten. */
   publishesTo?: GitHubSyncConfig[];
+  /** Opens the panel that *configures* publishing. Without it this strip can
+   *  only report an export somebody set up through the API — which is how 622
+   *  lines of `GitHubSyncPanel` sat unmounted: the direction was readable and
+   *  never editable. */
+  onConfigurePublishing?: () => void;
 }
 
 /**
@@ -60,6 +65,7 @@ export function DocumentProvenance({
   onSync,
   isSyncing,
   publishesTo,
+  onConfigurePublishing,
 }: Props) {
   const t = useTranslations("docs.provenance");
   const queryClient = useQueryClient();
@@ -287,6 +293,29 @@ export function DocumentProvenance({
           )}
         </div>
       ))}
+
+      {/* The way in to the export half. Offered next to the syncs it edits when
+          there are some, and on its own line when there are none — a document
+          written from a repository path is usually one somebody also wants
+          published back to it. */}
+      {onConfigurePublishing && (
+        <div className="flex items-center gap-2 border-t border-border/50 pt-1.5">
+          <Upload className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          {!publishesTo?.length && (
+            <span className="text-xs text-muted-foreground">
+              {t("notPublished")}
+            </span>
+          )}
+          <button
+            type="button"
+            data-testid="provenance-configure-publishing"
+            onClick={onConfigurePublishing}
+            className="ml-auto inline-flex items-center gap-1 rounded border border-border px-2 py-0.5 text-[11px] font-medium text-foreground transition hover:bg-accent"
+          >
+            {publishesTo?.length ? t("configurePublishing") : t("publishToGitHub")}
+          </button>
+        </div>
+      )}
 
       {behind > 0 && (
         <div className="flex flex-wrap items-center gap-2 pt-0.5">

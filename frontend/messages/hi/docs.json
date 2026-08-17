@@ -81,7 +81,10 @@
       "publishesTo": "यहाँ प्रकाशित होता है",
       "lastPublished": "{date} को प्रकाशित",
       "neverPublished": "अभी प्रकाशित नहीं",
-      "autoPublish": "स्वचालित"
+      "autoPublish": "स्वचालित",
+      "notPublished": "GitHub पर प्रकाशित नहीं",
+      "publishToGitHub": "GitHub पर प्रकाशित करें",
+      "configurePublishing": "बदलें"
     },
     "diff": {
       "current": "वर्तमान",

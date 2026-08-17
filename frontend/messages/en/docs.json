@@ -81,7 +81,10 @@
       "publishesTo": "Publishes to",
       "lastPublished": "Published {date}",
       "neverPublished": "Not published yet",
-      "autoPublish": "Automatic"
+      "autoPublish": "Automatic",
+      "notPublished": "Not published to GitHub",
+      "publishToGitHub": "Publish to GitHub",
+      "configurePublishing": "Change"
     },
     "diff": {
       "current": "Current",

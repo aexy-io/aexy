@@ -14,6 +14,7 @@ import { ProposedEditsBanner } from "@/components/docs/ProposedEditsBanner";
 import { DocumentProvenance } from "@/components/docs/DocumentProvenance";
 import { CodeLinkPanel } from "@/components/docs/CodeLinkPanel";
 import { DocumentImprovements } from "@/components/docs/DocumentImprovements";
+import { GitHubSyncPanel } from "@/components/docs/GitHubSyncPanel";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import { DocumentLinkType, documentApi, workspaceApi } from "@/lib/api";
@@ -60,7 +61,8 @@ export default function DocumentPage() {
   // Where this document publishes itself, if it does. Rendered beside the
   // source it was written from: both answer "how is this page connected to the
   // repository", and splitting them across two panels is how `GitHubSyncPanel`
-  // ended up unmounted and forgotten.
+  // stayed unmounted for so long. It is reached from this strip now, so both
+  // directions are read and changed in one place.
   const { data: publishesTo = [] } = useQuery({
     queryKey: ["document", documentId, "github-sync"],
     queryFn: () => documentApi.getGitHubSyncConfigs(currentWorkspaceId!, documentId),
@@ -110,6 +112,7 @@ export default function DocumentPage() {
   );
 
   const [showImprovements, setShowImprovements] = useState(false);
+  const [showPublishing, setShowPublishing] = useState(false);
 
   const handleSave = useCallback(
     async (data: { title?: string; content?: Record<string, unknown> }) => {
@@ -205,6 +208,7 @@ export default function DocumentPage() {
             publishesTo={publishesTo}
             onSync={handleManualSync}
             isSyncing={isUpdating}
+            onConfigurePublishing={() => setShowPublishing(true)}
           />
         </div>
       ) : null}
@@ -255,6 +259,28 @@ export default function DocumentPage() {
           onClose={() => setShowCodeLink(false)}
           onLink={handleLinkToCode}
         />
+      )}
+      {/* 622 lines that had never been mounted, so the export direction was
+          readable on the strip above and impossible to change. Pre-filled from
+          the code link: the repository a document was written from is
+          overwhelmingly the one it publishes back to. */}
+      {currentWorkspaceId && showPublishing && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 pt-16">
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setShowPublishing(false)}
+          />
+          <div className="relative w-full max-w-2xl">
+            <GitHubSyncPanel
+              workspaceId={currentWorkspaceId}
+              documentId={documentId}
+              documentTitle={document.title}
+              onClose={() => setShowPublishing(false)}
+              defaultRepositoryId={codeLinks?.[0]?.repository_id}
+              defaultBranch={codeLinks?.[0]?.branch}
+            />
+          </div>
+        </div>
       )}
       {currentWorkspaceId && (
         <DocumentImprovements
