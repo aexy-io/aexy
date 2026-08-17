@@ -56,6 +56,14 @@ class ReviewItem(BaseModel):
     action: str | None = None
     method: str | None = None
 
+    # What caused this, when something did. Items sharing a `group_key` were
+    # caused by the same change and are decided together — "the auth rework
+    # touched these four pages" is one decision, four unrelated documents are
+    # four chores.
+    group_key: str | None = None
+    group_label: str | None = None
+    trigger_paths: list[str] = []
+
 
 class ReviewSummary(BaseModel):
     """Counts for a badge, without fetching the queue itself."""
@@ -100,6 +108,27 @@ def _describe_proposal(proposal, document) -> str:
     if parts:
         return ", ".join(parts)
     return "Proposed rewrite"
+
+
+def _group(row: ProposedChange) -> tuple[str | None, str | None]:
+    """The change that caused this, as a key to group on and a line to show.
+
+    Returns (None, None) when nothing caused it but a person — a manual
+    regenerate belongs on its own, and inventing a group for it would imply a
+    relationship to the other items that does not exist.
+    """
+    trigger = row.trigger or {}
+    pull_request = trigger.get("pull_request")
+    if pull_request:
+        return f"pr:{pull_request}", f"Pull request #{pull_request}"
+
+    commit = trigger.get("commit_sha")
+    if commit:
+        # Short SHA in the label, full one in the key: two commits sharing a
+        # seven-character prefix would otherwise be merged into one group.
+        return f"commit:{commit}", f"Commit {commit[:7]}"
+
+    return None, None
 
 
 def _describe_action(row: ProposedChange) -> str:
@@ -172,6 +201,7 @@ async def list_review_items(
     items: list[ReviewItem] = []
 
     for row in rows:
+        group_key, group_label = _group(row)
         if row.kind == ChangeKind.CONTENT.value:
             document = documents.get(str(row.entity_id))
             if not document:
@@ -194,6 +224,9 @@ async def list_review_items(
                     document_id=str(document.id),
                     document_icon=document.icon,
                     source=row.source,
+                    group_key=group_key,
+                    group_label=group_label,
+                    trigger_paths=(row.trigger or {}).get("paths") or [],
                 )
             )
             continue
@@ -214,6 +247,9 @@ async def list_review_items(
                 needs_attention=True,
                 action=payload.get("action"),
                 method=(payload.get("method") or "").upper(),
+                group_key=group_key,
+                group_label=group_label,
+                trigger_paths=(row.trigger or {}).get("paths") or [],
             )
         )
 

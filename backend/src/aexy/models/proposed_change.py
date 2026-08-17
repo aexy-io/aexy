@@ -91,6 +91,18 @@ class ProposedChange(Base):
     # Whatever the reviewer's list should show without opening the item.
     summary: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
+    # What caused this, when something did. Shape:
+    #   {"commit_sha", "pull_request", "paths": [...], "label"}
+    #
+    # Separate from `summary` because they answer different questions —
+    # summary is "what would change", trigger is "why is this here" — and
+    # because the review queue groups by it: one merge can leave proposals on
+    # a dozen documents, and "the auth rework touched these four pages" is a
+    # decision a person can take, where a list of four unrelated documents is
+    # a chore. Null for anything a person asked for directly; nothing caused
+    # those but the person.
+    trigger: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
     status: Mapped[str] = mapped_column(
         String(20), default=ChangeStatus.PENDING.value, nullable=False
     )

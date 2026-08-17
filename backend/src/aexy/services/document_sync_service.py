@@ -382,8 +382,17 @@ class DocumentSyncService:
             sync_type = await self.get_sync_type_for_developer(str(sync_owner_id))
 
             if sync_type == SyncTriggerType.REAL_TIME:
-                # Trigger immediate regeneration
-                await self._trigger_real_time_sync(document, link, commit_sha)
+                # Only the paths that matched *this* link. The push may have
+                # touched fifty files; naming the two under this module is what
+                # makes the reason readable rather than a wall of filenames.
+                matched = [
+                    path
+                    for path in changed_paths
+                    if self._path_matches_link(link.path, link.link_type, [path])
+                ]
+                await self._trigger_real_time_sync(
+                    document, link, commit_sha, changed_paths=matched
+                )
                 results["real_time_synced"].append(str(document.id))
 
             elif sync_type == SyncTriggerType.DAILY_BATCH:
@@ -655,6 +664,7 @@ class DocumentSyncService:
         document: Document,
         code_link: DocumentCodeLink,
         commit_sha: str,
+        changed_paths: list[str] | None = None,
     ) -> bool:
         """Trigger immediate regeneration for a document.
 
@@ -690,6 +700,10 @@ class DocumentSyncService:
                 gen_service=gen_service,
                 github_service=github_service,
                 source="code_change_sync",
+                trigger={
+                    "commit_sha": commit_sha,
+                    "paths": changed_paths or [],
+                },
             )
 
             if outcome is None:
@@ -820,6 +834,7 @@ class DocumentSyncService:
         gen_service,
         github_service,
         source: str,
+        trigger: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
         """Fetch code, generate docs, create a pending proposal.
 
@@ -877,6 +892,7 @@ class DocumentSyncService:
             source=source,
             proposed_content=content,
             # proposed_by_id stays None — system-generated.
+            trigger=trigger,
         )
 
         # Auto-apply goes through the review queue rather than around it: the
@@ -964,6 +980,11 @@ class DocumentSyncService:
             gen_service=gen_service,
             github_service=github_service,
             source="code_change_sync",
+            trigger=(
+                {"commit_sha": code_link.last_commit_sha, "paths": []}
+                if code_link.last_commit_sha
+                else None
+            ),
         )
         if outcome is None:
             return {"status": "failed", "document_id": document_id}

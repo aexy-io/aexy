@@ -16,6 +16,7 @@
     "working": "चल रहा है…",
     "approved": "स्वीकृत",
     "rejected": "अस्वीकृत",
-    "failed": "यह पूरा नहीं हो सका"
+    "failed": "यह पूरा नहीं हो सका",
+    "groupAffects": "{count, plural, one {# पेज प्रभावित} other {# पेज प्रभावित}}"
   }
 }

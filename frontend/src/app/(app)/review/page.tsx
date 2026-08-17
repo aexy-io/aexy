@@ -8,7 +8,9 @@ import {
   AlertCircle,
   Bot,
   Check,
+  CheckCheck,
   FileText,
+  GitCommitHorizontal,
   Inbox,
   X,
 } from "lucide-react";
@@ -82,10 +84,159 @@ export default function ReviewPage() {
     onSettled: () => setBusyId(null),
   });
 
+  /**
+   * Grouped by what caused them, because that is the unit people reason
+   * about: "the auth rework touched these four pages" is one decision, four
+   * unrelated documents are four chores. Items nothing caused but a person
+   * stand alone rather than being collected under a heading that would imply
+   * a relationship they do not have.
+   */
+  const groups = useMemo(() => {
+    const byKey = new Map<string, { label: string; items: ReviewItem[] }>();
+    const ungrouped: ReviewItem[] = [];
+    for (const item of items) {
+      if (!item.group_key) {
+        ungrouped.push(item);
+        continue;
+      }
+      const existing = byKey.get(item.group_key);
+      if (existing) existing.items.push(item);
+      else
+        byKey.set(item.group_key, {
+          label: item.group_label ?? item.group_key,
+          items: [item],
+        });
+    }
+    // A cause with one item is not a group — a heading over a single row is
+    // furniture. It joins the ungrouped list instead.
+    const real: { key: string; label: string; items: ReviewItem[] }[] = [];
+    for (const [key, group] of byKey) {
+      if (group.items.length > 1) real.push({ key, ...group });
+      else ungrouped.push(group.items[0]);
+    }
+    ungrouped.sort((a, b) => a.created_at.localeCompare(b.created_at));
+    return { real, ungrouped };
+  }, [items]);
+
+  const approveGroup = useMutation({
+    mutationFn: async (rows: ReviewItem[]) => {
+      // Sequential: each approval writes a document version or replays a tool
+      // call, and firing a dozen at once is a burst with no way to stop
+      // partway through.
+      for (const row of rows) {
+        await (row.kind === "agent_action"
+          ? reviewApi.approveAction(currentWorkspaceId!, row.id)
+          : documentApi.approveProposedEdit(
+              currentWorkspaceId!,
+              row.document_id!,
+              row.id
+            ));
+      }
+    },
+    onSuccess: (_data, rows) => {
+      toast.success(t("approved", { count: rows.length }));
+      invalidate();
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error, t("failed"))),
+    onSettled: () => setBusyId(null),
+  });
+
   const needsAttention = useMemo(
     () => items.filter((item) => item.needs_attention).length,
     [items]
   );
+
+  /** One item, whether it sits in a group or alone. */
+  function ReviewRow({ item, bare }: { item: ReviewItem; bare?: boolean }) {
+    const isAction = item.kind === "agent_action";
+    const Icon = isAction ? Bot : FileText;
+    const busy = busyId === item.id && decide.isPending;
+    return (
+      <div
+        className={bare ? "flex items-start gap-3" : "flex items-start gap-3 py-2"}
+        data-testid={`review-row-${item.id}`}
+      >
+        <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            {item.kind === "document_proposal" && item.document_id ? (
+              <Link
+                href={`/docs/${item.document_id}`}
+                className="truncate text-sm font-medium text-foreground hover:underline"
+              >
+                {item.document_icon ?? "\ud83d\udcc4"} {item.title}
+              </Link>
+            ) : (
+              <span className="truncate font-mono text-sm text-foreground">
+                {item.method} {item.title}
+              </span>
+            )}
+            <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+              {isAction ? t("kindAction") : t("kindDocument")}
+            </span>
+          </div>
+
+          <p className="mt-0.5 text-sm text-muted-foreground">{item.summary}</p>
+
+          {/* The files that caused it. Named rather than counted: "auth.py
+              changed" tells a reviewer whether they are the right person to
+              judge this, where "2 files changed" does not. */}
+          {item.trigger_paths && item.trigger_paths.length > 0 && (
+            <p className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">
+              {item.trigger_paths.slice(0, 3).join(", ")}
+              {item.trigger_paths.length > 3
+                ? ` +${item.trigger_paths.length - 3}`
+                : ""}
+            </p>
+          )}
+
+          {item.needs_attention && (
+            <p
+              data-testid={`review-attention-${item.id}`}
+              className="mt-1 flex items-center gap-1 text-xs text-warning"
+            >
+              <AlertCircle className="h-3 w-3" />
+              {isAction ? t("agentBlocked") : t("staleWarning")}
+            </p>
+          )}
+          {item.reason && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {t("becauseOf", { reason: item.reason })}
+            </p>
+          )}
+        </div>
+
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            data-testid={`review-reject-${item.id}`}
+            disabled={busy}
+            onClick={() => {
+              setBusyId(item.id);
+              decide.mutate({ item, approve: false });
+            }}
+            className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+          >
+            <X className="h-3.5 w-3.5" />
+            {t("reject")}
+          </button>
+          <button
+            type="button"
+            data-testid={`review-approve-${item.id}`}
+            disabled={busy}
+            onClick={() => {
+              setBusyId(item.id);
+              decide.mutate({ item, approve: true });
+            }}
+            className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs font-medium text-foreground transition hover:bg-accent disabled:opacity-50"
+          >
+            <Check className="h-3.5 w-3.5" />
+            {busy ? t("working") : t("approve")}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -129,93 +280,56 @@ export default function ReviewPage() {
         )}
       </header>
 
-      <ul className="space-y-2">
-        {items.map((item) => {
-          const isAction = item.kind === "agent_action";
-          const Icon = isAction ? Bot : FileText;
-          const busy = busyId === item.id && decide.isPending;
-          return (
-            <li
-              key={item.id}
-              data-testid={`review-item-${item.id}`}
-              className="rounded-xl border border-border p-3"
+      {groups.real.map((group) => (
+        <section
+          key={group.key}
+          data-testid={`review-group-${group.key}`}
+          className="mb-4 rounded-xl border border-border"
+        >
+          <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-2.5">
+            <GitCommitHorizontal className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <div className="min-w-0 flex-1">
+              <h2 className="text-sm font-medium text-foreground">
+                {group.label}
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                {t("groupAffects", { count: group.items.length })}
+              </p>
+            </div>
+            <button
+              type="button"
+              data-testid={`review-approve-group-${group.key}`}
+              disabled={approveGroup.isPending}
+              onClick={() => {
+                setBusyId(group.key);
+                approveGroup.mutate(group.items);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-foreground transition hover:bg-accent disabled:opacity-50"
             >
-              <div className="flex items-start gap-3">
-                <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {item.kind === "document_proposal" && item.document_id ? (
-                      <Link
-                        href={`/docs/${item.document_id}`}
-                        className="truncate text-sm font-medium text-foreground hover:underline"
-                      >
-                        {item.document_icon ?? "📄"} {item.title}
-                      </Link>
-                    ) : (
-                      <span className="truncate font-mono text-sm text-foreground">
-                        {item.method} {item.title}
-                      </span>
-                    )}
-                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                      {isAction ? t("kindAction") : t("kindDocument")}
-                    </span>
-                  </div>
+              <CheckCheck className="h-3.5 w-3.5" />
+              {busyId === group.key && approveGroup.isPending
+                ? t("working")
+                : t("approveAll", { count: group.items.length })}
+            </button>
+          </div>
+          <ul className="divide-y divide-border/60 px-3 py-1">
+            {group.items.map((item) => (
+              <ReviewRow key={item.id} item={item} />
+            ))}
+          </ul>
+        </section>
+      ))}
 
-                  {/* Plain language, not a payload. The document diff spent a
-                      release rendering JSON at reviewers; repeating that for a
-                      tool call would be the same mistake in a new place. */}
-                  <p className="mt-0.5 text-sm text-muted-foreground">
-                    {item.summary}
-                  </p>
-
-                  {item.needs_attention && (
-                    <p
-                      data-testid={`review-attention-${item.id}`}
-                      className="mt-1 flex items-center gap-1 text-xs text-warning"
-                    >
-                      <AlertCircle className="h-3 w-3" />
-                      {isAction ? t("agentBlocked") : t("staleWarning")}
-                    </p>
-                  )}
-                  {item.reason && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {t("becauseOf", { reason: item.reason })}
-                    </p>
-                  )}
-                </div>
-
-                <div className="flex shrink-0 items-center gap-1">
-                  <button
-                    type="button"
-                    data-testid={`review-reject-${item.id}`}
-                    disabled={busy}
-                    onClick={() => {
-                      setBusyId(item.id);
-                      decide.mutate({ item, approve: false });
-                    }}
-                    className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                    {t("reject")}
-                  </button>
-                  <button
-                    type="button"
-                    data-testid={`review-approve-${item.id}`}
-                    disabled={busy}
-                    onClick={() => {
-                      setBusyId(item.id);
-                      decide.mutate({ item, approve: true });
-                    }}
-                    className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs font-medium text-foreground transition hover:bg-accent disabled:opacity-50"
-                  >
-                    <Check className="h-3.5 w-3.5" />
-                    {busy ? t("working") : t("approve")}
-                  </button>
-                </div>
-              </div>
-            </li>
-          );
-        })}
+      <ul className="space-y-2">
+        {groups.ungrouped.map((item) => (
+          <li
+            key={item.id}
+            data-testid={`review-item-${item.id}`}
+            className="rounded-xl border border-border p-3"
+          >
+            <ReviewRow item={item} bare />
+          </li>
+        ))}
       </ul>
     </div>
   );

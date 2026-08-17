@@ -7472,6 +7472,11 @@ export interface ReviewItem {
   source?: string | null;
   action?: string | null;
   method?: string | null;
+  /** Items sharing a group_key were caused by the same change and are decided
+   *  together. Null means nothing caused it but a person. */
+  group_key?: string | null;
+  group_label?: string | null;
+  trigger_paths?: string[];
 }
 
 export interface ReviewSummaryCounts {

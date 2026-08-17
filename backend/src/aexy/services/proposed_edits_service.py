@@ -83,6 +83,7 @@ class ProposedEditsService:
         proposed_by_id: str | None = None,
         diff_summary: dict[str, Any] | None = None,
         base_content_sha: str | None = None,
+        trigger: dict[str, Any] | None = None,
     ) -> ProposedChange:
         """Create a new pending proposal.
 
@@ -128,6 +129,11 @@ class ProposedEditsService:
             source=source_val,
             base_version=base_content_sha,
             summary=diff_summary,
+            # Why this exists, when something other than a person caused it.
+            # Recorded here because this is the only moment the cause is known
+            # — the sync service has the commit in hand and nothing downstream
+            # can reconstruct it.
+            trigger=trigger,
             status=ProposedEditStatus.PENDING.value,
             requested_by_id=proposed_by_id,
             created_at=datetime.now(timezone.utc),

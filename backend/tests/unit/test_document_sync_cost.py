@@ -426,3 +426,72 @@ class TestSyncMode:
 
         assert outcome["applied"] is False
         service.approve.assert_not_awaited()
+
+
+class TestTriggerContext:
+    """Why a proposal exists, recorded at the only moment it is known.
+
+    Without it the review queue cannot group by cause, which is what makes a
+    dozen proposals from one merge a single decision rather than a dozen
+    chores.
+    """
+
+    @pytest.mark.asyncio
+    async def test_the_commit_and_matched_paths_are_recorded(self, monkeypatch):
+        svc, doc, link, gen, gh = revise_setup(diff=PATCH)
+        service = MagicMock()
+        service.create_proposal = AsyncMock(return_value=SimpleNamespace(id="p1"))
+        monkeypatch.setattr(
+            "aexy.services.proposed_edits_service.ProposedEditsService",
+            lambda db: service,
+        )
+
+        await svc._generate_and_propose(
+            document=doc,
+            code_link=link,
+            category=TemplateCategory.MODULE_DOCS,
+            gen_service=gen,
+            github_service=gh,
+            source="code_change_sync",
+            trigger={"commit_sha": "head222", "paths": ["src/pkg/auth.py"]},
+        )
+
+        trigger = service.create_proposal.await_args.kwargs["trigger"]
+        assert trigger == {"commit_sha": "head222", "paths": ["src/pkg/auth.py"]}
+
+    @pytest.mark.asyncio
+    async def test_only_the_paths_under_this_link_are_named(self):
+        """A push may touch fifty files. Naming the two under this module is
+        what makes the reason readable rather than a wall of filenames."""
+        svc = make_service()
+        matched = [
+            path
+            for path in ["src/pkg/auth.py", "src/other/x.py", "README.md"]
+            if svc._path_matches_link("src/pkg", "directory", [path])
+        ]
+
+        assert matched == ["src/pkg/auth.py"]
+
+    @pytest.mark.asyncio
+    async def test_a_proposal_nobody_caused_has_no_trigger(self, monkeypatch):
+        """A person asking for a regenerate is not a cause worth grouping on —
+        collecting those under a heading would imply a relationship between
+        unrelated requests."""
+        svc, doc, link, gen, gh = revise_setup(diff=PATCH)
+        service = MagicMock()
+        service.create_proposal = AsyncMock(return_value=SimpleNamespace(id="p2"))
+        monkeypatch.setattr(
+            "aexy.services.proposed_edits_service.ProposedEditsService",
+            lambda db: service,
+        )
+
+        await svc._generate_and_propose(
+            document=doc,
+            code_link=link,
+            category=TemplateCategory.MODULE_DOCS,
+            gen_service=gen,
+            github_service=gh,
+            source="regenerate",
+        )
+
+        assert service.create_proposal.await_args.kwargs["trigger"] is None
