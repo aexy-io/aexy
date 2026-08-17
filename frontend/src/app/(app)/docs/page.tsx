@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
   FileText,
@@ -26,6 +26,7 @@ import { TemplateSelector } from "@/components/docs/TemplateSelector";
 
 export default function DocsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { currentWorkspaceId } = useWorkspace();
   const { createDocument, isCreating } = useDocuments(currentWorkspaceId);
   const { templates, isLoading: templatesLoading } = useTemplates(currentWorkspaceId);
@@ -46,6 +47,16 @@ export default function DocsPage() {
   const [currentPath, setCurrentPath] = useState("");
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [customPrompt, setCustomPrompt] = useState("");
+
+  // Arriving from "Document this" on a repository: open straight into the
+  // repository tab with that repo selected, rather than making somebody find
+  // the modal and re-pick the thing they were already looking at.
+  const requestedRepo = searchParams?.get("generate") ?? null;
+  useEffect(() => {
+    if (!requestedRepo) return;
+    setShowGenerateModal(true);
+    setSourceMode("repo");
+  }, [requestedRepo]);
 
   // Fetch repositories when modal is open and in repo mode
   const { data: repositories, isLoading: loadingRepos } = useQuery({
@@ -71,6 +82,16 @@ export default function DocsPage() {
       }),
     enabled: !!selectedRepo && repoStep === "browse",
   });
+
+  useEffect(() => {
+    if (!requestedRepo || !repositories) return;
+    const match = repositories.find((repo) => repo.id === requestedRepo);
+    // Silently ignore an unknown id rather than opening an empty browser: the
+    // link may outlive the repository being disconnected.
+    if (!match) return;
+    setSelectedRepo(match);
+    setRepoStep("browse");
+  }, [requestedRepo, repositories]);
 
   const handleCreateBlankDocument = useCallback(async () => {
     if (!currentWorkspaceId) return;

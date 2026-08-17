@@ -10,11 +10,17 @@ import {
   UserRound,
   RefreshCw,
   BellOff,
+  Upload,
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { DocumentCodeLink, DocumentSyncMode, documentApi } from "@/lib/api";
+import {
+  DocumentCodeLink,
+  DocumentSyncMode,
+  GitHubSyncConfig,
+  documentApi,
+} from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/utils";
 
 interface Props {
@@ -27,6 +33,11 @@ interface Props {
   /** Ask for an update now rather than waiting for the tier's schedule. */
   onSync?: () => void;
   isSyncing?: boolean;
+  /** Where this document publishes itself, if it does. Rendered beside the
+   *  source it was written from, because both are the same question — how is
+   *  this page connected to the repository — and answering it in two separate
+   *  panels is how one of them ends up unmounted and forgotten. */
+  publishesTo?: GitHubSyncConfig[];
 }
 
 /**
@@ -48,6 +59,7 @@ export function DocumentProvenance({
   members,
   onSync,
   isSyncing,
+  publishesTo,
 }: Props) {
   const t = useTranslations("docs.provenance");
   const queryClient = useQueryClient();
@@ -104,7 +116,7 @@ export function DocumentProvenance({
       toast.error(getApiErrorMessage(error, t("transferFailed"))),
   });
 
-  if (!codeLinks.length) return null;
+  if (!codeLinks.length && !publishesTo?.length) return null;
 
   return (
     <div
@@ -241,6 +253,40 @@ export function DocumentProvenance({
           </div>
         );
       })}
+
+      {/* The other direction. A document can describe a path and publish
+          itself to one, and the export is what an author needs to see when a
+          page they edited has not reached the repository yet. */}
+      {publishesTo?.map((sync) => (
+        <div
+          key={sync.id}
+          data-testid={`provenance-publishes-${sync.id}`}
+          className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-border/50 pt-1.5 text-xs"
+        >
+          <Upload className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <span className="text-muted-foreground">{t("publishesTo")}</span>
+          <span className="font-mono text-foreground">
+            {sync.repository_name ? `${sync.repository_name}/` : ""}
+            {sync.file_path}
+          </span>
+          <span className="flex items-center gap-1 text-muted-foreground">
+            <GitBranch className="h-3 w-3" />
+            {sync.branch}
+          </span>
+          <span className="ml-auto text-muted-foreground">
+            {sync.last_exported_at
+              ? t("lastPublished", {
+                  date: new Date(sync.last_exported_at).toLocaleDateString(),
+                })
+              : t("neverPublished")}
+          </span>
+          {sync.auto_export && (
+            <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+              {t("autoPublish")}
+            </span>
+          )}
+        </div>
+      ))}
 
       {behind > 0 && (
         <div className="flex flex-wrap items-center gap-2 pt-0.5">

@@ -12,8 +12,10 @@ import { DocumentBreadcrumb } from "@/components/docs/DocumentBreadcrumb";
 import { DocumentComments } from "@/components/docs/DocumentComments";
 import { ProposedEditsBanner } from "@/components/docs/ProposedEditsBanner";
 import { DocumentProvenance } from "@/components/docs/DocumentProvenance";
+import { CodeLinkPanel } from "@/components/docs/CodeLinkPanel";
+import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
-import { documentApi, workspaceApi } from "@/lib/api";
+import { DocumentLinkType, documentApi, workspaceApi } from "@/lib/api";
 
 export default function DocumentPage() {
   const params = useParams();
@@ -53,6 +55,16 @@ export default function DocumentPage() {
   // picker needs somebody to transfer *to* — without this the control renders
   // "Owned" and no way to hand it on, which is a backend endpoint with no
   // doorway. Only fetched when there is a link to own.
+  // Where this document publishes itself, if it does. Rendered beside the
+  // source it was written from: both answer "how is this page connected to the
+  // repository", and splitting them across two panels is how `GitHubSyncPanel`
+  // ended up unmounted and forgotten.
+  const { data: publishesTo = [] } = useQuery({
+    queryKey: ["document", documentId, "github-sync"],
+    queryFn: () => documentApi.getGitHubSyncConfigs(currentWorkspaceId!, documentId),
+    enabled: Boolean(currentWorkspaceId && documentId),
+  });
+
   const { data: members = [] } = useQuery({
     queryKey: ["workspace-members", currentWorkspaceId],
     queryFn: () => workspaceApi.getMembers(currentWorkspaceId!),
@@ -74,6 +86,26 @@ export default function DocumentPage() {
       console.error("Failed to regenerate document:", err);
     }
   }, [currentWorkspaceId, documentId, updateContent]);
+
+  // 433 lines of repository picker that had never been mounted. Generation
+  // creates linked documents; a page somebody typed by hand could not be
+  // connected to the code it describes from anywhere in the product.
+  const [showCodeLink, setShowCodeLink] = useState(false);
+  const { createCodeLink } = useDocumentCodeLinks(currentWorkspaceId, documentId);
+
+  const handleLinkToCode = useCallback(
+    async (data: {
+      repository_id: string;
+      path: string;
+      link_type: DocumentLinkType;
+      branch: string;
+    }) => {
+      await createCodeLink.mutateAsync(data);
+      setShowCodeLink(false);
+      toast.success("Linked to code");
+    },
+    [createCodeLink]
+  );
 
   const handleSave = useCallback(
     async (data: { title?: string; content?: Record<string, unknown> }) => {
@@ -166,6 +198,7 @@ export default function DocumentPage() {
             documentId={documentId}
             codeLinks={codeLinks ?? []}
             members={members}
+            publishesTo={publishesTo}
             onSync={handleManualSync}
             isSyncing={isUpdating}
           />
@@ -196,7 +229,24 @@ export default function DocumentPage() {
         // the bottom section: an embed is a reader.
         documentId={embedded ? null : documentId}
         breadcrumb={embedded ? undefined : <DocumentBreadcrumb workspaceId={currentWorkspaceId} documentId={documentId} />}
+        // Only when unlinked: the provenance strip owns the linked case, and
+        // two places to manage one relationship is how the panel got orphaned
+        // in the first place.
+        onLinkToCode={
+          !embedded && currentWorkspaceId && (codeLinks?.length ?? 0) === 0
+            ? () => setShowCodeLink(true)
+            : undefined
+        }
       />
+      {currentWorkspaceId && (
+        <CodeLinkPanel
+          workspaceId={currentWorkspaceId}
+          documentId={documentId}
+          isOpen={showCodeLink}
+          onClose={() => setShowCodeLink(false)}
+          onLink={handleLinkToCode}
+        />
+      )}
       {/* Comments live under the document rather than in a side panel, and are
           hidden when embedded — an embed is a read-only view of the content, so a
           comment box in it would post to a document the reader may not have open. */}

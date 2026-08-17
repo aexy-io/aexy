@@ -77,7 +77,11 @@
       "syncModeOffHint": "इस पाथ पर नज़र रखना बंद करें, कोड-से-पीछे बैज सहित।",
       "syncModeSaved": "सिंक सेटिंग सहेजी गई",
       "syncModeFailed": "सिंक सेटिंग बदली नहीं जा सकी",
-      "muted": "निगरानी नहीं"
+      "muted": "निगरानी नहीं",
+      "publishesTo": "यहाँ प्रकाशित होता है",
+      "lastPublished": "{date} को प्रकाशित",
+      "neverPublished": "अभी प्रकाशित नहीं",
+      "autoPublish": "स्वचालित"
     },
     "diff": {
       "current": "वर्तमान",

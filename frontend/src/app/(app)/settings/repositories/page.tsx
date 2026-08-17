@@ -1,9 +1,12 @@
 "use client";
 
+import Link from "next/link";
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import {
   Building2,
+  FileText,
   ChevronDown,
   ChevronRight,
   FolderGit2,
@@ -113,6 +116,20 @@ function RepoItem({ repo, onRepoToggle, onStartSync, showOwner, isSyncing }: Rep
         </div>
       </div>
       <div className="flex items-center gap-3 flex-shrink-0">
+        {/* The moment the intent forms is while looking at the repository, not
+            later in Docs — where the generator lived on a landing page you stop
+            seeing once you own documents. Only offered for adopted repos: the
+            generator cannot read one the workspace has not connected. */}
+        {repo.is_enabled && (
+          <Link
+            href={`/docs?generate=${encodeURIComponent(repo.id)}`}
+            title={`Write documentation from ${repo.name}`}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2 py-1 text-xs font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
+          >
+            <FileText className="h-3.5 w-3.5" />
+            Document this
+          </Link>
+        )}
         {repo.is_enabled && (
           <>
             <div className="text-right">

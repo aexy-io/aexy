@@ -77,7 +77,11 @@
       "syncModeOffHint": "Stop watching this path, including the behind-the-code badge.",
       "syncModeSaved": "Sync setting saved",
       "syncModeFailed": "Could not change the sync setting",
-      "muted": "Not watched"
+      "muted": "Not watched",
+      "publishesTo": "Publishes to",
+      "lastPublished": "Published {date}",
+      "neverPublished": "Not published yet",
+      "autoPublish": "Automatic"
     },
     "diff": {
       "current": "Current",
