@@ -226,15 +226,21 @@ class McpToolExecutor:
             )
 
         from aexy.api.auth import create_access_token
+        from aexy.api.developers import AGENT_ACTOR
 
+        # The `actor` claim is what lets an endpoint behave differently for an
+        # agent than for the person at a keyboard — routing a rewrite into review
+        # rather than applying it. It lives in the signed token rather than a
+        # header because a header is the caller's to set: an agent holding an
+        # ordinary token and calling the REST API directly used to write straight
+        # through, which made the review gate opt-in by the agent.
         headers = {
-            "Authorization": f"Bearer {create_access_token(developer_id)}",
+            "Authorization": (
+                f"Bearer {create_access_token(developer_id, actor=AGENT_ACTOR)}"
+            ),
             "Content-Type": "application/json",
-            # Lets an endpoint behave differently for an agent than for the
-            # person at a keyboard — routing a rewrite into review rather than
-            # applying it, say. Forging this header from outside only ever
-            # *restricts* the caller, so it is not an escalation path; the
-            # Authorization token remains the thing that grants anything.
+            # Kept for logs and for anything reading request metadata. Nothing
+            # routes on it.
             AGENT_ACTOR_HEADER: "mcp",
         }
 

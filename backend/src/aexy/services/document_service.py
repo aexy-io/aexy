@@ -904,18 +904,15 @@ class DocumentService:
         await self.db.refresh(link)
         return link
 
-    async def set_code_link_owner(
-        self,
-        link_id: str,
-        document_id: str,
-        owner_developer_id: str,
+    async def get_code_link(
+        self, link_id: str, document_id: str
     ) -> DocumentCodeLink | None:
-        """Point a code link's sync at a different developer.
+        """One code link, scoped to the document the caller was checked against.
 
         Scoped by `document_id` as well as `link_id`: the route has already
         checked the caller may touch this document, and matching on the link
-        alone would let that check be bypassed by passing a link belonging to
-        a document in another workspace.
+        alone would let that check be bypassed by passing a link belonging to a
+        document in another workspace.
         """
         stmt = (
             select(DocumentCodeLink)
@@ -924,7 +921,16 @@ class DocumentService:
             .options(selectinload(DocumentCodeLink.repository))
         )
         result = await self.db.execute(stmt)
-        link = result.scalar_one_or_none()
+        return result.scalar_one_or_none()
+
+    async def set_code_link_owner(
+        self,
+        link_id: str,
+        document_id: str,
+        owner_developer_id: str,
+    ) -> DocumentCodeLink | None:
+        """Point a code link's sync at a different developer."""
+        link = await self.get_code_link(link_id, document_id)
         if not link:
             return None
 

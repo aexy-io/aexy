@@ -3,7 +3,7 @@
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from jose import JWTError, jwt
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,11 +31,23 @@ settings = get_settings()
 security = HTTPBearer()
 
 
+# Claim value marking a token minted for an agent acting on somebody's behalf.
+# See `create_access_token`.
+AGENT_ACTOR = "agent"
+
+
 async def get_current_developer_id(
+    request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: AsyncSession = Depends(get_db),
 ) -> str:
-    """Extract and validate developer ID from JWT or API token."""
+    """Extract and validate developer ID from JWT or API token.
+
+    Also records the token's `actor` claim on the request, so an endpoint can
+    tell an agent's write from a person's without trusting a header the caller
+    sets. Absent for an API token and for every human session, which is what
+    `is_agent_request` treats as "a person".
+    """
     token = credentials.credentials
 
     # API token auth (aexy_ prefix)
@@ -62,6 +74,9 @@ async def get_current_developer_id(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token",
             )
+        # Only ever from the verified payload. Assigning from a header here would
+        # hand the decision straight back to the caller.
+        request.state.token_actor = payload.get("actor")
         return developer_id
     except JWTError as e:
         raise HTTPException(

@@ -15,7 +15,7 @@ from fastapi import HTTPException
 from aexy.api import documents as documents_api
 from aexy.models.documentation import ProposedEditSource
 from aexy.schemas.document import DocumentUpdate, ProposeMarkdownRequest
-from aexy.services.mcp_tool_executor import AGENT_ACTOR_HEADER
+from aexy.api.developers import AGENT_ACTOR
 
 pytestmark = pytest.mark.asyncio
 
@@ -52,8 +52,16 @@ def document(content=EXISTING):
 
 
 def request(*, from_agent: bool):
-    headers = {AGENT_ACTOR_HEADER: "mcp"} if from_agent else {}
-    return SimpleNamespace(headers=headers)
+    """A request as the auth dependency leaves it.
+
+    The agent marker is the verified token's `actor` claim, recorded on
+    `request.state` by `get_current_developer_id`. It used to be a request
+    header — which the caller sets, so an agent holding an ordinary token and
+    calling this API directly wrote straight through, and the contract these
+    tests describe was opt-in by the agent.
+    """
+    actor = AGENT_ACTOR if from_agent else None
+    return SimpleNamespace(state=SimpleNamespace(token_actor=actor), headers={})
 
 
 @pytest.fixture(autouse=True)
@@ -257,7 +265,7 @@ class TestTheMarkdownContract:
 
 class TestTheExecutorDeclaresItself:
     def test_agent_traffic_is_labelled_on_re_entry(self):
-        """Without the header every endpoint sees an ordinary request and the
+        """Without the claim every endpoint sees an ordinary request and the
         contract silently does not apply — and no behavioural test would
         notice, because the write would simply succeed."""
         import inspect
@@ -265,10 +273,20 @@ class TestTheExecutorDeclaresItself:
         from aexy.services import mcp_tool_executor
 
         source = inspect.getsource(mcp_tool_executor)
-        assert "AGENT_ACTOR_HEADER: " in source
+        assert "actor=AGENT_ACTOR" in source
 
-    def test_a_header_from_outside_cannot_gain_anything(self):
-        """It only ever routes a caller into review instead of writing. The
-        bearer token remains the thing that grants access."""
+    def test_a_header_from_outside_decides_nothing(self):
+        """It used to be the whole signal. A forged one could only ever restrict
+        the forger — but the converse was the hole: omitting it routed an agent
+        around review entirely. The claim is inside the signature, so setting it
+        needs the secret."""
+        from aexy.services.mcp_tool_executor import AGENT_ACTOR_HEADER
+
+        forged = SimpleNamespace(
+            state=SimpleNamespace(token_actor=None),
+            headers={AGENT_ACTOR_HEADER: "mcp"},
+        )
+        assert documents_api.is_agent_request(forged) is False
+
         assert documents_api.is_agent_request(request(from_agent=True)) is True
         assert documents_api.is_agent_request(request(from_agent=False)) is False

@@ -201,10 +201,14 @@ class DocumentSyncService:
             if triggered_by_commit:
                 existing.triggered_by_commit = triggered_by_commit
                 existing.triggered_at = datetime.now(timezone.utc)
-                # Moved with the commit, and cleared when the newer push named
-                # no pull request: keeping the old number would attribute this
-                # document to a merge that is no longer why it is queued.
-                existing.triggered_by_pull_request = triggered_by_pull_request
+            # Outside the commit branch on purpose. Nesting it meant a caller
+            # passing a pull request without a commit dropped it silently, which
+            # no caller does today and is exactly the kind of coupling that
+            # breaks the day one does. Assigned unconditionally, so a newer push
+            # that named no pull request also clears a stale one — keeping it
+            # would attribute this document to a merge that is no longer why it
+            # is queued.
+            existing.triggered_by_pull_request = triggered_by_pull_request
             return existing
 
         # Create new queue entry

@@ -80,6 +80,7 @@ class AgentPolicyEngine:
         tool_name: str,
         tool_args: dict,
         execution_id: str = "",
+        policies: list[AgentPolicy] | None = None,
     ) -> PolicyEvalResult | None:
         """Evaluate loaded policies and return the first non-allow decision.
 
@@ -89,9 +90,18 @@ class AgentPolicyEngine:
         Folding the write into the decision meant the only caller that could
         record was the one the columns were designed for.
 
+        `policies` is for a caller that has already loaded them — the MCP
+        boundary does, to keep one query per call. It used to assign
+        `_cached_policies` from outside, which worked and would have gone on
+        working right up until somebody renamed a private attribute: `decide`
+        would then evaluate an empty list, return None, and the gate would allow
+        everything without raising anything. Passing them in makes that a
+        TypeError instead of a silent hole.
+
         Returns None when every policy passes.
         """
-        for policy in self._cached_policies or []:
+        candidates = policies if policies is not None else (self._cached_policies or [])
+        for policy in candidates:
             result = self._evaluate_single_policy(
                 policy, tool_name, tool_args, execution_id
             )

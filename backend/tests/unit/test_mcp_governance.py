@@ -331,3 +331,71 @@ class TestTheTransportPassesTheSession:
 
         source = inspect.getsource(mcp_transport)
         assert "McpToolExecutor(request.app, catalog, granted, db=db)" in source
+
+class TestWhenTheGateCannotDecide:
+    """A gate that fails open leaves no trace of what it let through.
+
+    Failing *closed* on its own bugs would take the whole tool surface down, so
+    allowing is right — but the allowance has to be recorded, or "did anything
+    slip past while the policy loader was broken" is answerable only by trawling
+    logs, and only if somebody thinks to look.
+    """
+
+    @pytest.mark.asyncio
+    async def test_a_failure_allows_the_call(self):
+        governance = McpGovernance(FakeDb())
+        governance._review = AsyncMock(side_effect=RuntimeError("policy loader died"))
+        governance._record_evaluation_failure = AsyncMock()
+
+        verdict = await governance.review(
+            operation={"action": "update_contact", "mutating": True},
+            arguments={},
+            developer_id="dev-1",
+            workspace_id="ws-1",
+            tool_name="aexy_crm",
+        )
+
+        assert verdict.allowed is True
+
+    @pytest.mark.asyncio
+    async def test_a_failure_is_written_to_the_decision_log(self):
+        db = FakeDb()
+        governance = McpGovernance(db)
+        governance._review = AsyncMock(side_effect=RuntimeError("policy loader died"))
+
+        await governance.review(
+            operation={"action": "update_contact", "mutating": True},
+            arguments={"id": "c-1"},
+            developer_id="dev-1",
+            workspace_id="ws-1",
+            tool_name="aexy_crm",
+        )
+
+        rows = db.of_type(AgentPolicyDecision)
+        assert len(rows) == 1
+        row = rows[0]
+        # Not "allow": these have to be countable apart from calls a policy
+        # actually permitted.
+        assert row.decision == "evaluation_failed"
+        assert row.policy_id is None
+        assert row.tool_name == "update_contact"
+        assert row.workspace_id == "ws-1"
+
+    @pytest.mark.asyncio
+    async def test_a_failure_to_record_the_failure_still_allows(self):
+        """This path runs because something already broke. Raising here would
+        turn a permitted call into a 500."""
+        db = FakeDb()
+        db.flush = AsyncMock(side_effect=RuntimeError("the database is gone too"))
+        governance = McpGovernance(db)
+        governance._review = AsyncMock(side_effect=RuntimeError("policy loader died"))
+
+        verdict = await governance.review(
+            operation={"action": "update_contact", "mutating": True},
+            arguments={},
+            developer_id="dev-1",
+            workspace_id="ws-1",
+            tool_name="aexy_crm",
+        )
+
+        assert verdict.allowed is True

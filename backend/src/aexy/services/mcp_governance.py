@@ -67,8 +67,10 @@ class McpGovernance:
         Never raises. A governance layer that can fail closed on its own bugs
         would take the whole tool surface down with it, and a governance layer
         that fails *open* silently is worse than none — so a failure is logged
-        loudly and the call is allowed, matching the behaviour before this
-        module existed.
+        loudly, written to the decision log as `evaluation_failed`, and the call
+        is allowed, matching the behaviour before this module existed. The row is
+        the part that matters: it makes "what did the gate let through while it
+        was broken" a query rather than a hope that somebody read the logs.
         """
         try:
             return await self._review(
@@ -84,6 +86,17 @@ class McpGovernance:
                 "Policy evaluation failed for %s in workspace %s — allowing",
                 operation.get("action"),
                 workspace_id,
+            )
+            # Written down as well as logged. A gate that fails open leaves no
+            # trace of what it let through, so "did anything slip past while the
+            # policy loader was broken" was a question only answerable by
+            # trawling logs — and only if somebody thought to look. This row is
+            # queryable beside the refusals.
+            await self._record_evaluation_failure(
+                workspace_id=workspace_id,
+                developer_id=developer_id,
+                action=operation.get("action") or "",
+                arguments=arguments,
             )
             return Verdict(allowed=True)
 
@@ -108,13 +121,12 @@ class McpGovernance:
         from aexy.services.agent_policy_engine import AgentPolicyEngine
 
         engine = AgentPolicyEngine(self.db)
-        engine._cached_policies = policies
         # `decide` rather than `evaluate_tool_call`: the latter writes its own
         # audit row keyed on an execution id, and an MCP call has none — the
         # empty string it would store is a foreign key to a CRM execution that
         # does not exist. It also records an ALLOW for every call, which buries
         # the refusals in a table nobody could then read.
-        result = engine.decide(operation["action"], arguments)
+        result = engine.decide(operation["action"], arguments, policies=policies)
 
         if result is None or result.decision == PolicyDecisionType.ALLOW.value:
             return Verdict(allowed=True)
@@ -174,6 +186,46 @@ class McpGovernance:
             .order_by(AgentPolicy.priority)
         )
         return list(rows.scalars().all())
+
+    async def _record_evaluation_failure(
+        self,
+        *,
+        workspace_id: str,
+        developer_id: str,
+        action: str,
+        arguments: dict[str, Any],
+    ) -> None:
+        """Note that the gate could not decide, and allowed the call anyway.
+
+        Its own best-effort try/except: this runs *because* something already
+        failed, and a governance layer that raises while recording its own
+        failure would turn a permitted call into a 500.
+
+        `policy_id` is null — no policy decided this. `decision` reads
+        `evaluation_failed` rather than `allow`, so these are countable
+        separately from calls a policy actually permitted.
+        """
+        try:
+            self.db.add(
+                AgentPolicyDecision(
+                    id=str(uuid4()),
+                    execution_id=None,
+                    actor_kind="mcp",
+                    actor_developer_id=developer_id,
+                    workspace_id=workspace_id,
+                    policy_id=None,
+                    tool_name=action,
+                    tool_args=arguments,
+                    decision="evaluation_failed",
+                    reason=(
+                        "Policy evaluation raised; the call was allowed. See the "
+                        "logged traceback for the cause."
+                    ),
+                )
+            )
+            await self.db.flush()
+        except Exception:
+            logger.exception("Could not record the policy evaluation failure")
 
     async def _record(
         self,

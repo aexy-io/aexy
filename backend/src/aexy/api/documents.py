@@ -585,13 +585,22 @@ async def get_document(
 def is_agent_request(request: Request) -> bool:
     """Did this come from an agent acting for someone, or from a person?
 
-    Set by `McpToolExecutor` on its own re-entry. A forged header only ever
-    routes the caller into review instead of writing, so it cannot be used to
-    gain anything — the bearer token is still what grants access.
-    """
-    from aexy.services.mcp_tool_executor import AGENT_ACTOR_HEADER
+    Reads the `actor` claim of the verified token, recorded on the request by
+    `get_current_developer_id`. It used to read a request header, which the
+    caller sets — so an agent holding an ordinary token and calling this API
+    directly wrote straight through, and the review gate was opt-in by the
+    agent. A forged header could only ever *restrict* the forger, so it was
+    never an escalation path; the hole was the other direction, in the promise
+    that an agent's write always lands as a proposal.
 
-    return bool(request.headers.get(AGENT_ACTOR_HEADER))
+    Only endpoints depending on `get_current_developer` (or
+    `get_current_developer_id`) can read this — those are what record the claim.
+    On an optional-auth route it would read as "a person", so an endpoint that
+    wants this decision has to require authentication first.
+    """
+    from aexy.api.developers import AGENT_ACTOR
+
+    return getattr(request.state, "token_actor", None) == AGENT_ACTOR
 
 
 @router.patch("/{document_id}", response_model=DocumentResponse)
@@ -1001,8 +1010,16 @@ async def transfer_code_link_owner(
     GitHub access no longer reflect who is actually looking after it.
 
     The new owner must be a member of this workspace: ownership carries a
-    credential fallback, so handing a sync to an outsider would be a way to
-    read a repository through someone else's installation.
+    credential fallback, so handing a sync to an outsider would be a way to read
+    a repository through someone else's installation.
+
+    Who may move it: the current owner, handing on their own sync, or an admin.
+    Any member could before, which is a wider grant than it looks — ownership
+    decides the plan tier the sync runs on and whose LLM spend it is, so an
+    unrestricted transfer is a way to bill a colleague for real-time
+    regeneration you are not entitled to, and to reach a repository through the
+    installation of whoever you assigned it to. The same reasoning already gates
+    agent-action approval to admins.
     """
     await check_workspace_permission(workspace_id, current_user, db, "member")
 
@@ -1015,6 +1032,23 @@ async def transfer_code_link_owner(
         )
 
     workspace_service = WorkspaceService(db)
+
+    link_now = await service.get_code_link(link_id, document_id)
+    if not link_now:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Code link not found",
+        )
+    is_current_owner = str(link_now.owner_developer_id or "") == str(current_user.id)
+    if not is_current_owner and not await workspace_service.check_permission(
+        workspace_id, str(current_user.id), "admin"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Only this sync's owner or a workspace admin can transfer it"
+            ),
+        )
     if not await workspace_service.check_permission(
         workspace_id, data.owner_developer_id, "viewer"
     ):
