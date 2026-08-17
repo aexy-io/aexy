@@ -17,6 +17,25 @@ class AppCategory(str, Enum):
     PRODUCTIVITY = "productivity"
 
 
+class AppAvailability(str, Enum):
+    """Whether a workspace can turn an app on for itself.
+
+    Everything is ``SELF_SERVE`` unless stated otherwise. ``CONTACT_SUPPORT``
+    means the app exists in the catalog — an admin can see it and ask for it —
+    but no access path may switch it on: it is off in every bundle, refused by
+    the API, and an attempt raises a note to support rather than a pending
+    request nobody in the workspace has the authority to approve.
+    """
+
+    SELF_SERVE = "self_serve"
+    CONTACT_SUPPORT = "contact_support"
+
+
+# Where "ask about this app" goes. Deliberately a single address rather than the
+# workspace's own admins: these apps are gated by us, not by them.
+SUPPORT_CONTACT_EMAIL = "support@aexy.io"
+
+
 class ModuleConfig(TypedDict, total=False):
     """Configuration for an app module."""
 
@@ -35,6 +54,8 @@ class AppConfig(TypedDict, total=False):
     base_route: str
     required_permission: str | None  # None means accessible to all
     modules: dict[str, ModuleConfig]
+    # Absent means AppAvailability.SELF_SERVE.
+    availability: AppAvailability
 
 
 # Master app catalog defining all apps and their modules
@@ -240,6 +261,7 @@ APP_CATALOG: dict[str, AppConfig] = {
         "base_route": "/learning",
         "required_permission": "can_view_learning",
         "modules": {},
+        "availability": AppAvailability.CONTACT_SUPPORT,
     },
     "crm": {
         "name": "CRM",
@@ -706,7 +728,7 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
             },
             "tickets": {"enabled": True, "modules": {}},
             "docs": {"enabled": True, "modules": {}},
-            "learning": {"enabled": True, "modules": {}},
+            "learning": {"enabled": False},  # AppAvailability.CONTACT_SUPPORT
             "oncall": {"enabled": True, "modules": {}},
             "uptime": {
                 "enabled": True,
@@ -773,7 +795,7 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
                     "analytics": True,
                 },
             },
-            "learning": {"enabled": True, "modules": {}},
+            "learning": {"enabled": False},  # AppAvailability.CONTACT_SUPPORT
             "compliance": {
                 "enabled": True,
                 "modules": {
@@ -925,7 +947,7 @@ SYSTEM_APP_BUNDLES: dict[str, BundleConfig] = {
                     "analytics": True,
                 },
             },
-            "learning": {"enabled": True, "modules": {}},
+            "learning": {"enabled": False},  # AppAvailability.CONTACT_SUPPORT
             "crm": {
                 "enabled": True,
                 "modules": {
@@ -1019,12 +1041,26 @@ def get_app_list() -> list[dict]:
             "category": config["category"].value,
             "base_route": config["base_route"],
             "required_permission": config.get("required_permission"),
+            # Sent so the admin UI can render the toggle it is actually allowed
+            # to offer, rather than one the API will refuse on save.
+            "availability": config.get(
+                "availability", AppAvailability.SELF_SERVE
+            ).value,
+            "support_contact": (
+                SUPPORT_CONTACT_EMAIL
+                if config.get("availability") == AppAvailability.CONTACT_SUPPORT
+                else None
+            ),
             "modules": [
                 {
                     "id": mod_id,
                     "name": mod_config["name"],
                     "description": mod_config["description"],
-                    "route": mod_config["route"],
+                    # Not every module is a page: the MCP modules gate groups of
+                    # API capabilities and have nothing to navigate to. Reading
+                    # the key directly raised KeyError for those, which took the
+                    # whole catalog endpoint down rather than one module with it.
+                    "route": mod_config.get("route", ""),
                 }
                 for mod_id, mod_config in config.get("modules", {}).items()
             ],

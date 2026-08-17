@@ -117,6 +117,11 @@ class NotificationEventType(str, Enum):
     APP_ACCESS_APPROVED = "app_access_approved"
     APP_ACCESS_REJECTED = "app_access_rejected"
 
+    # Product feedback. FEEDBACK_SUBMITTED goes to platform admins, not to the
+    # workspace's own admins — feedback is addressed to us.
+    FEEDBACK_SUBMITTED = "feedback_submitted"
+    FEEDBACK_STATUS_CHANGED = "feedback_status_changed"
+
     # Reminder related
     REMINDER_DUE = "reminder_due"  # Reminder is due
     REMINDER_ACKNOWLEDGED = "reminder_acknowledged"  # Reminder was acknowledged
@@ -515,6 +520,10 @@ NOTIFICATION_CATEGORIES: dict[str, list[str]] = {
         NotificationEventType.APP_ACCESS_APPROVED.value,
         NotificationEventType.APP_ACCESS_REJECTED.value,
     ],
+    "feedback": [
+        NotificationEventType.FEEDBACK_SUBMITTED.value,
+        NotificationEventType.FEEDBACK_STATUS_CHANGED.value,
+    ],
     "agents": [
         NotificationEventType.AGENT_INVOKED.value,
         NotificationEventType.AGENT_TOOL_BLOCKED.value,
@@ -648,6 +657,11 @@ DEFAULT_NOTIFICATION_PREFERENCES = {
     NotificationEventType.LEAVE_REQUEST_CANCELLED: {"in_app": True, "email": False, "slack": False, "web_push": False},
     # App access requests
     NotificationEventType.APP_ACCESS_REQUESTED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    # Email off by default on both: platform admins get a daily digest instead
+    # of a message per item, and an author watching their own suggestion does
+    # not need mail every time it moves a stage.
+    NotificationEventType.FEEDBACK_SUBMITTED: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    NotificationEventType.FEEDBACK_STATUS_CHANGED: {"in_app": True, "email": False, "slack": False, "web_push": False},
     NotificationEventType.APP_ACCESS_APPROVED: {"in_app": True, "email": True, "slack": False, "web_push": False},
     NotificationEventType.APP_ACCESS_REJECTED: {"in_app": True, "email": True, "slack": False, "web_push": False},
     # Reminders

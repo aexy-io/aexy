@@ -17,8 +17,9 @@ import {
   useMemberAppAccess,
   useAppAccessTemplates,
 } from "@/hooks/useAppAccess";
-import { AppAccessConfig } from "@/config/appDefinitions";
+import { APP_CATALOG, AppAccessConfig } from "@/config/appDefinitions";
 import { AppModuleGrid } from "@/components/access/AppModuleGrid";
+import { useFeedbackStore } from "@/stores/feedbackStore";
 import { MemberEffectiveAccess } from "@/lib/api";
 
 interface MemberAppAccessModalProps {
@@ -48,6 +49,29 @@ export function MemberAppAccessModal({
   const [isLoadingAccess, setIsLoadingAccess] = useState(false);
   const [effectiveAccess, setEffectiveAccess] =
     useState<MemberEffectiveAccess | null>(null);
+  // Apps asked about in this sitting, so the row can say so without a refetch.
+  const [requestedApps, setRequestedApps] = useState<string[]>([]);
+  const openFeedback = useFeedbackStore((state) => state.open);
+
+  /**
+   * Some apps are ours to switch on, not the workspace's. There is no admin
+   * here who could approve an access request for one, so the button opens the
+   * feedback composer instead — it reaches the people who can actually do it,
+   * and it is votable, so a second workspace asking makes the case stronger
+   * rather than filing a duplicate nobody can see.
+   */
+  const handleRequestApp = useCallback(
+    (appId: string) => {
+      const app = APP_CATALOG[appId];
+      openFeedback({
+        kind: "app_request",
+        subject: `Please enable ${app?.name ?? appId}`,
+        context: { app_id: appId, app_name: app?.name ?? appId },
+      });
+      setRequestedApps((prev) => (prev.includes(appId) ? prev : [...prev, appId]));
+    },
+    [openFeedback],
+  );
 
   const {
     getMemberAccess,
@@ -291,6 +315,8 @@ export function MemberAppAccessModal({
                 }}
                 disabled={isSaving}
                 lockedApps={["dashboard"]}
+                onRequestApp={handleRequestApp}
+                requestedApps={requestedApps}
               />
             </div>
           </>

@@ -362,8 +362,15 @@ export const serviceDeskApi = {
   // dashboard + tickets
   getDashboard: async (ws: string): Promise<ServiceDeskDashboard> =>
     (await api.get(`${base(ws)}/dashboard`)).data,
-  listTickets: async (ws: string): Promise<ServiceDeskTicket[]> =>
-    (await api.get(`${base(ws)}/tickets`)).data,
+  listTickets: async (
+    ws: string,
+    params?: {
+      /** Narrow to the caller's own queue, within their desk scope. */
+      assigned_to_me?: boolean;
+      limit?: number;
+    }
+  ): Promise<ServiceDeskTicket[]> =>
+    (await api.get(`${base(ws)}/tickets`, { params })).data,
   getTicket: async (ws: string, id: string): Promise<ServiceDeskTicketDetail> =>
     (await api.get(`${base(ws)}/tickets/${id}`)).data,
   /**

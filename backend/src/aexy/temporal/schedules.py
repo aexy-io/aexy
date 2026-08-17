@@ -38,6 +38,18 @@ SCHEDULES: list[dict] = [
         "interval": timedelta(hours=24),
         "queue": TaskQueue.ANALYSIS,
     },
+    # === Platform ===
+    # One mail a day with what people told us, to ADMIN_EMAILS. The in-app
+    # notices fire per item; this is the part that does not need anybody to log
+    # in. Sends nothing on a quiet day.
+    {
+        "id": "daily-feedback-digest",
+        "activity": "send_feedback_digest",
+        "input_module": "aexy.temporal.activities.platform",
+        "input_class": "SendFeedbackDigestInput",
+        "interval": timedelta(hours=24),
+        "queue": TaskQueue.ANALYSIS,
+    },
     {
         "id": "reset-daily-limits",
         "activity": "reset_daily_limits",
