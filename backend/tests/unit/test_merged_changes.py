@@ -17,7 +17,17 @@ import pytest
 from aexy.services.document_sync_service import DocumentSyncService
 
 
-def pr(*, pr_id="pr-1", number=41, title="Rework session expiry", repository="acme/widgets"):
+def row(
+    *,
+    pr_id="pr-1",
+    number=41,
+    title="Rework session expiry",
+    repository="acme/widgets",
+    repo_id="repo-1",
+    author_name="Anita",
+):
+    """One row as the query returns it — named columns, not an entity, because
+    `pull_requests` carries a 1024-dimension embedding nobody is rendering."""
     return SimpleNamespace(
         id=pr_id,
         number=number,
@@ -28,6 +38,8 @@ def pr(*, pr_id="pr-1", number=41, title="Rework session expiry", repository="ac
         additions=120,
         deletions=8,
         files_changed=6,
+        repo_id=repo_id,
+        author_name=author_name,
     )
 
 
@@ -47,7 +59,7 @@ def make_service(rows, doc_counts=()):
 class TestTheWorkList:
     @pytest.mark.asyncio
     async def test_it_reports_the_coordinates_needed_to_act(self):
-        svc = make_service([(pr(), "repo-1", "Anita")], doc_counts=[("repo-1", 3)])
+        svc = make_service([row()], doc_counts=[("repo-1", 3)])
 
         items = await svc.list_merged_changes("ws-1")
 
@@ -103,7 +115,7 @@ class TestTheWorkList:
 
     @pytest.mark.asyncio
     async def test_a_repository_with_no_documents_reads_as_zero(self):
-        svc = make_service([(pr(), "repo-1", "Anita")], doc_counts=[])
+        svc = make_service([row()], doc_counts=[])
 
         items = await svc.list_merged_changes("ws-1")
 

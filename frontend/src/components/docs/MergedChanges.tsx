@@ -52,56 +52,63 @@ export function MergedChanges({ workspaceId }: Props) {
           <li
             key={change.pull_request_id}
             data-testid={`merged-change-${change.pull_request_id}`}
-            className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-sm"
+            className="px-3 py-2 text-sm"
           >
-            <span className="font-mono text-xs text-muted-foreground">
-              {change.repository}#{change.number}
-            </span>
-            <span className="min-w-0 flex-1 truncate text-foreground">
-              {change.title}
-            </span>
-
-            {/* Size, because a two-line change and a rewrite are not the same
-                decision. */}
-            <span className="shrink-0 text-xs text-muted-foreground">
-              {t("filesChanged", { count: change.files_changed })}
-            </span>
-
-            {change.repository_document_count === 0 && (
-              <span
-                data-testid={`merged-change-undocumented-repo-${change.pull_request_id}`}
-                title={t("noDocsForRepositoryHint")}
-                className="shrink-0 rounded bg-warning/15 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-warning"
-              >
-                {t("noDocsForRepository")}
+            {/* Two lines rather than one row of six shrink-nothing items: at
+                375px that row came to 501px and the action was clipped off the
+                edge of the screen, which is worse than a taller card. */}
+            <div className="flex min-w-0 items-baseline gap-2">
+              <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                {change.repository}#{change.number}
               </span>
-            )}
-
-            {change.merged_at && (
-              <span className="shrink-0 text-xs text-muted-foreground">
-                {new Date(change.merged_at).toLocaleDateString()}
+              <span className="min-w-0 flex-1 truncate text-foreground">
+                {change.title}
               </span>
-            )}
+            </div>
 
-            {change.repository_id ? (
-              // Straight into the generator with the repository chosen and the
-              // change named, rather than a modal that asks you to re-find what
-              // you were just looking at.
-              <Link
-                href={`/docs?generate=${change.repository_id}&prompt=${encodeURIComponent(
-                  t("promptFor", { number: change.number, title: change.title })
-                )}`}
-                data-testid={`merged-change-document-${change.pull_request_id}`}
-                className="inline-flex shrink-0 items-center gap-1 rounded border border-border px-2 py-0.5 text-xs font-medium text-foreground transition hover:bg-accent"
-              >
-                <FileText className="h-3 w-3" />
-                {t("documentThis")}
-              </Link>
-            ) : (
-              <span className="shrink-0 text-xs text-muted-foreground">
-                {t("repositoryGone")}
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+              {/* Size, because a two-line change and a rewrite are not the same
+                  decision. */}
+              <span className="text-xs text-muted-foreground">
+                {t("filesChanged", { count: change.files_changed })}
               </span>
-            )}
+
+              {change.repository_document_count === 0 && (
+                <span
+                  data-testid={`merged-change-undocumented-repo-${change.pull_request_id}`}
+                  title={t("noDocsForRepositoryHint")}
+                  className="rounded bg-warning/15 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-warning"
+                >
+                  {t("noDocsForRepository")}
+                </span>
+              )}
+
+              {change.merged_at && (
+                <span className="text-xs text-muted-foreground">
+                  {new Date(change.merged_at).toLocaleDateString()}
+                </span>
+              )}
+
+              {change.repository_id ? (
+                // Straight into the generator with the repository chosen and the
+                // change named, rather than a modal that asks you to re-find
+                // what you were just looking at.
+                <Link
+                  href={`/docs?generate=${change.repository_id}&prompt=${encodeURIComponent(
+                    t("promptFor", { number: change.number, title: change.title })
+                  )}`}
+                  data-testid={`merged-change-document-${change.pull_request_id}`}
+                  className="ml-auto inline-flex shrink-0 items-center gap-1 rounded border border-border px-2 py-0.5 text-xs font-medium text-foreground transition hover:bg-accent"
+                >
+                  <FileText className="h-3 w-3" />
+                  {t("documentThis")}
+                </Link>
+              ) : (
+                <span className="ml-auto text-xs text-muted-foreground">
+                  {t("repositoryGone")}
+                </span>
+              )}
+            </div>
           </li>
         ))}
       </ul>

@@ -54,6 +54,7 @@ export default function DocsPage() {
   // working tree. Offered beside the single-path generator rather than instead
   // of it: one page about one module is still the common case.
   const [showScope, setShowScope] = useState(false);
+  const [unavailableRepo, setUnavailableRepo] = useState(false);
 
   // Arriving from "Document this" on a repository: open straight into the
   // repository tab with that repo selected, rather than making somebody find
@@ -98,9 +99,18 @@ export default function DocsPage() {
   useEffect(() => {
     if (!requestedRepo || !repositories) return;
     const match = repositories.find((repo) => repo.id === requestedRepo);
-    // Silently ignore an unknown id rather than opening an empty browser: the
-    // link may outlive the repository being disconnected.
-    if (!match) return;
+    if (!match) {
+      // Said rather than swallowed. This used to return silently, which put
+      // somebody who clicked "Document this" in front of an empty repository
+      // picker with no idea why — and it is reachable for an ordinary reason:
+      // adoption is workspace-scoped but this list is per-developer, so a
+      // member who did not adopt the repository themselves does not have it
+      // listed even though the whole workspace can see its merges.
+      setUnavailableRepo(true);
+      setRepoStep("select");
+      return;
+    }
+    setUnavailableRepo(false);
     setSelectedRepo(match);
     setRepoStep("browse");
   }, [requestedRepo, repositories]);
@@ -291,7 +301,11 @@ export default function DocsPage() {
 
   return (
     <div className="flex items-center justify-center h-full">
-      <div className="max-w-2xl mx-auto px-8 py-12 text-center">
+      {/* `w-full min-w-0` because this sits in a centring flex parent, where a
+          child does not shrink below its content width: at 375px the block
+          measured 567px and everything inside it — quick actions, templates, and
+          now the merged-changes list — was clipped off the right edge. */}
+      <div className="w-full min-w-0 max-w-2xl mx-auto px-4 sm:px-8 py-12 text-center">
         {/* Header — typography-first; the audit's gradient-icon-in-
             rounded-square pattern is gone. Eyebrow ("Docs"), a
             question-shaped headline that invites action, then one
@@ -521,6 +535,19 @@ export default function DocsPage() {
               ) : repoStep === "select" ? (
                 /* Repository Selection */
                 <div className="p-4">
+                  {/* The link named a repository this account cannot list.
+                      Naming that is the difference between "the button is
+                      broken" and "ask whoever adopted it, or adopt it". */}
+                  {unavailableRepo && (
+                    <div
+                      data-testid="repository-unavailable"
+                      className="mb-3 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-foreground"
+                    >
+                      That repository is not in your list. It is adopted by this
+                      workspace, but repositories are listed per person — pick
+                      another below, or connect it in Settings.
+                    </div>
+                  )}
                   {loadingRepos ? (
                     <div className="flex items-center justify-center py-12">
                       <Loader2 className="h-6 w-6 animate-spin text-primary-500" />

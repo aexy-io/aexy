@@ -536,8 +536,23 @@ class DocumentSyncService:
         from aexy.models.activity import PullRequest
         from aexy.models.repository import Repository, WorkspaceRepository
 
+        # Named columns rather than the entity: `pull_requests` carries a
+        # 1024-dimension embedding, and selecting twenty rows of that to render
+        # a list of titles is a megabyte over the wire for nothing.
         stmt = (
-            select(PullRequest, Repository.id, Developer.name)
+            select(
+                PullRequest.id,
+                PullRequest.number,
+                PullRequest.title,
+                PullRequest.repository,
+                PullRequest.merged_at,
+                PullRequest.merged_by_login,
+                PullRequest.additions,
+                PullRequest.deletions,
+                PullRequest.files_changed,
+                Repository.id.label("repo_id"),
+                Developer.name.label("author_name"),
+            )
             .join(Repository, Repository.full_name == PullRequest.repository)
             .join(
                 WorkspaceRepository,
@@ -561,7 +576,7 @@ class DocumentSyncService:
         # One count per repository rather than per row: "this repository has no
         # documentation at all" is the honest signal available here, and it is
         # the same answer for every pull request in that repository.
-        repo_ids = {repo_id for _, repo_id, _ in rows}
+        repo_ids = {row.repo_id for row in rows}
         counts = dict(
             (
                 await self.db.execute(
@@ -577,20 +592,20 @@ class DocumentSyncService:
 
         return [
             {
-                "pull_request_id": str(pr.id),
-                "number": pr.number,
-                "title": pr.title,
-                "repository": pr.repository,
-                "repository_id": str(repo_id) if repo_id else None,
-                "merged_at": pr.merged_at,
-                "author_name": author_name,
-                "merged_by_login": pr.merged_by_login,
-                "additions": pr.additions or 0,
-                "deletions": pr.deletions or 0,
-                "files_changed": pr.files_changed or 0,
-                "repository_document_count": counts.get(repo_id, 0),
+                "pull_request_id": str(row.id),
+                "number": row.number,
+                "title": row.title,
+                "repository": row.repository,
+                "repository_id": str(row.repo_id) if row.repo_id else None,
+                "merged_at": row.merged_at,
+                "author_name": row.author_name,
+                "merged_by_login": row.merged_by_login,
+                "additions": row.additions or 0,
+                "deletions": row.deletions or 0,
+                "files_changed": row.files_changed or 0,
+                "repository_document_count": counts.get(row.repo_id, 0),
             }
-            for pr, repo_id, author_name in rows
+            for row in rows
         ]
 
     async def transfer_owned_syncs(

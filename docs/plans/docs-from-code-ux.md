@@ -484,6 +484,16 @@ button, because a page that spends a model call on open is a page people stop op
   which is how two tool-surface assertions came to pass only because the fixture was stale.
   `a20c5df2` maps them and regenerates, but nothing prevents the next one: whatever was meant to
   run `--check` in CI evidently does not.
+- **The generator's repository list is per-developer; adoption is per-workspace.** Found by the
+  browser pass. `GET /repositories?enabled_only=true` reads `developer_repositories`, and adoption
+  only creates that row for *the adopter* — so a member who did not adopt a repository cannot see
+  it in the generator even though the whole workspace sees its merges and its stale documents.
+  Both "Document this" entry points now say so instead of opening an empty picker, but the honest
+  fix is for the generator to list the workspace's repositories.
+- **A populated improvements panel, and Apply, in the browser.** Verified by unit test only. This
+  environment has no working cloud key and the one local model overruns the LM Studio provider's
+  180-second read timeout, so `suggest-improvements` cannot return here. What did get exercised:
+  the toolbar entry, the panel opening, the deliberate no-spend-on-open, and the loading state.
 
 ## Out of scope
 

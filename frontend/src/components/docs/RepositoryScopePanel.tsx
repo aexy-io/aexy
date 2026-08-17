@@ -383,13 +383,17 @@ export function RepositoryScopePanel({
         </div>
 
         <div className="space-y-2 border-t border-border px-5 py-3">
-          {/* Two facts, no invented third one. */}
-          <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-            <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" />
-            {phase === "finished"
-              ? t("finished", { done: done.length, failed: failed.length })
-              : t("willWrite", { count: selected.length })}
-          </p>
+          {/* Two facts, no invented third one. Withheld when there is nothing
+              to write: "writes 0 documents" under a message saying the
+              repository could not be read is noise on top of the real answer. */}
+          {(phase === "finished" || selected.length > 0) && (
+            <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+              <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" />
+              {phase === "finished"
+                ? t("finished", { done: done.length, failed: failed.length })
+                : t("willWrite", { count: selected.length })}
+            </p>
+          )}
           <div className="flex items-center justify-end gap-2">
             <button
               type="button"
