@@ -347,6 +347,19 @@ NOTIFICATION_TEMPLATES = {
         "body_template": "{previous_owner} left the workspace, so their {sync_count} doc-to-code syncs moved to you",
         "email_subject": "You now own {sync_count} documentation syncs",
     },
+    # `screenshot_hint` is pre-rendered by the emitter — "" or "2 of them contain
+    # screenshots that may need retaking." — so `.format(**context)` cannot
+    # KeyError and the email reads identically to the bell.
+    NotificationEventType.DOCUMENT_IMPACT_PR_OPENED: {
+        "title": "Docs this pull request affects",
+        "body_template": "#{pr_number} touches code described by {document_count} page(s) in {repository}: {document_titles}. {screenshot_hint}",
+        "email_subject": "PR #{pr_number} affects {document_count} documented page(s)",
+    },
+    NotificationEventType.DOCUMENT_IMPACT_PR_MERGED: {
+        "title": "Merged — these pages are now behind",
+        "body_template": "#{pr_number} merged in {repository}. {document_count} page(s) describing the code it changed are now out of date: {document_titles}. {screenshot_hint}",
+        "email_subject": "PR #{pr_number} merged — {document_count} page(s) need updating",
+    },
     NotificationEventType.CHAT_MENTION: {
         "title": "Mentioned in chat",
         "body_template": "{mentioner_name} mentioned you: {snippet}",

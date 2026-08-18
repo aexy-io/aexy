@@ -23,6 +23,10 @@ const FILES = [
   "components/docs/MergedChanges.tsx",
   "components/docs/RepositoryScopePanel.tsx",
   "components/docs/ProposedEditReview.tsx",
+  "components/docs/impact/ImpactDocumentCard.tsx",
+  "components/docs/impact/ImpactGuidance.tsx",
+  "app/(app)/docs/impact/[repositoryId]/[prNumber]/page.tsx",
+  "components/settings/DocImpactSettings.tsx",
 ];
 
 const LOCALES = ["en", "hi"] as const;

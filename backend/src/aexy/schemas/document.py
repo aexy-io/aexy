@@ -278,6 +278,9 @@ class MergedChangeItem(BaseModel):
     # documentation at all — which is a different and more useful thing to say
     # than guessing at whether this particular change is covered.
     repository_document_count: int = 0
+    # Pages this merge was found to affect. Zero also means "not evaluated" —
+    # both cases should show no link, so they need no distinguishing here.
+    impact_affected_count: int = 0
 
 
 class DocumentNeedsUpdateItem(BaseModel):

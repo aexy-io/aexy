@@ -6167,7 +6167,9 @@ export type NotificationEventType =
   | "gtm_alert_triggered"
   | "document_shared"
   | "document_mentioned"
-  | "document_commented";
+  | "document_commented"
+  | "document_impact_pr_opened"
+  | "document_impact_pr_merged";
 
 export interface Notification {
   id: string;
@@ -6898,7 +6900,168 @@ export interface MergedChangeItem {
   /** Documents linked to anything in this repository. Zero means the repository
    *  has no documentation at all, which is the honest signal available here. */
   repository_document_count: number;
+  /** Pages this merge was found to affect. Zero also covers "never evaluated" —
+   *  both should show no link, so they need no distinguishing. */
+  impact_affected_count: number;
 }
+
+/** One image in a page, and the section it sits in.
+ *
+ *  Both fields are nullable and both stay data: a `data:` URI has no filename and
+ *  an image before the first heading has no section. The client renders the
+ *  shorter line rather than the server inventing a word it cannot translate. */
+export interface ImpactScreenshotSpot {
+  heading: string | null;
+  label: string | null;
+}
+
+export interface ImpactScreenshots {
+  count: number;
+  spots: ImpactScreenshotSpot[];
+}
+
+/** An id and its parameters — never prose.
+ *
+ *  This is what makes the guidance translatable. `/review`'s group headings are
+ *  server-rendered English and cannot be, which is the precedent being avoided. */
+export interface ImpactGuidance {
+  id: "screenshots" | "route" | "apiSurface" | "setup" | string;
+  params: Record<string, unknown>;
+}
+
+export interface ImpactLink {
+  code_link_id: string;
+  path: string;
+  link_type: string;
+  branch: string;
+  sync_mode: string;
+  template_category: string | null;
+  has_pending_changes: boolean;
+  last_synced_at: string | null;
+  owner_developer_id: string | null;
+  /** Named, not counted: "auth.py changed" tells the author whether this is
+   *  about them; "2 files changed" does not. */
+  matched_paths: string[];
+}
+
+export interface ImpactItem {
+  document_id: string;
+  document_title: string;
+  document_icon: string | null;
+  document_updated_at: string | null;
+  status: "needs_review" | "edited" | "proposal_pending" | "dismissed";
+  links: ImpactLink[];
+  screenshots: ImpactScreenshots;
+  guidance: ImpactGuidance[];
+  proposal_id: string | null;
+  dismissed_at: string | null;
+  dismissed_by_developer_id: string | null;
+  dismissed_by_name: string | null;
+  dismiss_reason: string | null;
+}
+
+/** What one pull request did to the pages that describe its code.
+ *
+ *  `analyzed: false` means it was never evaluated — a pull request from before
+ *  this shipped, or one in a repository nothing documents. That is an ordinary
+ *  state, not an error, which is why the endpoint returns 200 for it. */
+export interface DocImpactResponse {
+  analyzed: boolean;
+  repository_id: string;
+  /** "acme/app". The page needs it to say which repository, and it is the only
+   *  thing needed to link back to the pull request — GitHub's URL is derivable
+   *  from the name and the number. */
+  repository_full_name: string | null;
+  pull_request_number: number;
+  repository_document_count: number;
+  items: ImpactItem[];
+
+  impact_id: string | null;
+  pull_request_title: string | null;
+  state: "open" | "merged" | null;
+  head_sha: string | null;
+  author_developer_id: string | null;
+  author_login: string | null;
+  changed_path_count: number;
+  detected_at: string | null;
+  merged_at: string | null;
+
+  pr_comment_status: string | null;
+  pr_comment_error: string | null;
+  check_run_status: string | null;
+  check_run_error: string | null;
+}
+
+export interface DocImpactSettings {
+  enabled: boolean;
+  pr_comment_enabled: boolean;
+  check_run_enabled: boolean;
+  check_run_conclusion: "neutral" | "action_required" | string;
+  /** Set the first time a GitHub write was refused, cleared on the first success.
+   *  Drives a banner on the settings screen, because the person who can grant an
+   *  App permission is there — not reading a pull request. */
+  github_write_block_reason: string | null;
+  github_write_blocked_at: string | null;
+}
+
+export const docImpactApi = {
+  getSettings: async (workspaceId: string): Promise<DocImpactSettings> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/doc-impact/settings`
+    );
+    return response.data;
+  },
+
+  /** Partial by design: sending only what changed means a stale client cannot
+   *  silently re-disable something somebody else just turned on. */
+  updateSettings: async (
+    workspaceId: string,
+    changes: Partial<Omit<DocImpactSettings, "github_write_block_reason" | "github_write_blocked_at">>
+  ): Promise<DocImpactSettings> => {
+    const response = await api.put(
+      `/workspaces/${workspaceId}/doc-impact/settings`,
+      changes
+    );
+    return response.data;
+  },
+
+  get: async (
+    workspaceId: string,
+    repositoryId: string,
+    pullRequestNumber: number
+  ): Promise<DocImpactResponse> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/doc-impact/${repositoryId}/${pullRequestNumber}`
+    );
+    return response.data;
+  },
+
+  dismiss: async (
+    workspaceId: string,
+    repositoryId: string,
+    pullRequestNumber: number,
+    documentId: string,
+    reason?: string
+  ): Promise<DocImpactResponse> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/doc-impact/${repositoryId}/${pullRequestNumber}/documents/${documentId}/dismiss`,
+      { reason: reason || null }
+    );
+    return response.data;
+  },
+
+  undismiss: async (
+    workspaceId: string,
+    repositoryId: string,
+    pullRequestNumber: number,
+    documentId: string
+  ): Promise<DocImpactResponse> => {
+    const response = await api.delete(
+      `/workspaces/${workspaceId}/doc-impact/${repositoryId}/${pullRequestNumber}/documents/${documentId}/dismiss`
+    );
+    return response.data;
+  },
+};
 
 export interface DocumentCollaborator {
   id: string;

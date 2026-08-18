@@ -429,7 +429,35 @@ class GitHubAppService:
         installation_id = installation_data["id"]
         account = installation_data["account"]
 
-        if action == "deleted":
+        if action in ("created", "new_permissions_accepted"):
+            # The whole reason this method now has a route. `permissions` is
+            # otherwise only written during an OAuth sync, so an admin granting
+            # "Pull requests: write" produced no change here at all — and the next
+            # pull request skipped the comment because the cache still said read.
+            stmt = select(GitHubInstallation).where(
+                GitHubInstallation.installation_id == installation_id
+            )
+            result = await self.db.execute(stmt)
+            installation = result.scalar_one_or_none()
+            if installation:
+                installation.permissions = installation_data.get("permissions")
+                installation.repository_selection = (
+                    installation_data.get("repository_selection")
+                    or installation.repository_selection
+                )
+                installation.is_active = True
+                installation.suspended_at = None
+            else:
+                # A `created` for an installation we have never seen. Nothing to
+                # attach it to until somebody authenticates — `sync_user_installations`
+                # owns that join — so this is a no-op rather than a half row.
+                logger.info(
+                    "Installation %s (%s) is not linked to a connection yet",
+                    installation_id,
+                    account.get("login"),
+                )
+
+        elif action == "deleted":
             # Remove installation
             stmt = select(GitHubInstallation).where(
                 GitHubInstallation.installation_id == installation_id
@@ -529,6 +557,74 @@ class GitHubAppService:
                         "sha": data["sha"],
                     }
                 ]
+
+    async def list_pull_request_files(
+        self,
+        installation_id: int,
+        owner: str,
+        repo: str,
+        number: int,
+        max_files: int = 300,
+    ) -> tuple[list[str], bool]:
+        """The paths a pull request touches.
+
+        This read exists because there is no other source for it. The
+        `pull_request` webhook payload carries no file list — GitHub does not put
+        one there — and unlike a push there is no merge commit to diff. Locally,
+        `PullRequest.files_changed` is an integer count and nothing else. So a
+        question as basic as "which files does this PR touch" cannot be answered
+        without asking.
+
+        Needs only `pull_requests: read`, which the App already has, which is why
+        everything except writing back into the PR works today.
+
+        Returns `(paths, truncated)`. Bounded rather than paged forever: a
+        three-thousand-file pull request is not a documentation-impact question,
+        and the flag lets the page say so instead of quietly under-reporting.
+        """
+        token, _ = await self.get_installation_access_token(installation_id)
+        paths: list[str] = []
+        truncated = False
+
+        async with httpx.AsyncClient() as client:
+            page = 1
+            while len(paths) < max_files:
+                response = await client.get(
+                    f"{self.api_base_url}/repos/{owner}/{repo}/pulls/{number}/files",
+                    headers={
+                        "Authorization": f"Bearer {token}",
+                        "Accept": "application/vnd.github+json",
+                        "X-GitHub-Api-Version": "2022-11-28",
+                    },
+                    params={"per_page": 100, "page": page},
+                )
+
+                if response.status_code == 404:
+                    return [], False
+                if response.status_code != 200:
+                    raise GitHubAppError(
+                        f"Failed to list pull request files: "
+                        f"{response.status_code} - {response.text}"
+                    )
+
+                batch = response.json() or []
+                if not batch:
+                    break
+
+                for entry in batch:
+                    filename = entry.get("filename")
+                    if filename:
+                        paths.append(filename)
+
+                if len(batch) < 100:
+                    break
+                page += 1
+
+        if len(paths) > max_files:
+            truncated = True
+            paths = paths[:max_files]
+
+        return paths, truncated
 
     async def compare_commits(
         self,

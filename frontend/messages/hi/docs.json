@@ -144,7 +144,8 @@
       "noDocsForRepository": "कोई docs नहीं",
       "noDocsForRepositoryHint": "इस workspace का कोई दस्तावेज़ इस repository से जुड़ा नहीं है।",
       "repositoryGone": "Repository डिस्कनेक्ट है",
-      "promptFor": "#{number} में मर्ज हुए बदलाव का दस्तावेज़ बनाएँ: {title}"
+      "promptFor": "#{number} में मर्ज हुए बदलाव का दस्तावेज़ बनाएँ: {title}",
+      "pagesAffected": "{count, plural, one {1 पेज प्रभावित} other {# पेज प्रभावित}}"
     },
     "scope": {
       "heading": "{repository} के हर module का दस्तावेज़",
@@ -163,6 +164,54 @@
       "failedShort": "विफल",
       "moduleFailed": "यह module नहीं लिखा जा सका",
       "parentFailed": "Parent पेज नहीं बन सका"
+    },
+    "impact": {
+      "eyebrow": "दस्तावेज़ प्रभाव",
+      "openedBy": "{author} द्वारा खोला गया",
+      "stateOpen": "खुला",
+      "stateMerged": "मर्ज हो गया",
+      "coverage": "{total} बदले गए फ़ाइलों में से {matched} का वर्णन यहाँ किसी पेज में है",
+      "notCheckedTitle": "इस pull request की जाँच नहीं हुई",
+      "notCheckedNoDocs": "इस workspace का कोई पेज इस repository से जुड़ा नहीं है।",
+      "notCheckedOld": "यह दस्तावेज़ प्रभाव ट्रैक होने से पहले मर्ज हुआ था।",
+      "emptyTitle": "इस बदलाव का वर्णन कहीं नहीं है",
+      "emptyBody": "इस pull request ने जिन फ़ाइलों को लिया, उनसे जुड़ा कोई पेज नहीं है। किसी को सूचित नहीं किया गया।",
+      "emptyAction": "एक लिखें",
+      "describes": "{branch} पर {path} का वर्णन करता है",
+      "morePaths": "और {count} अन्य",
+      "muted": "म्यूट",
+      "behind": "कोड से पीछे",
+      "inSync": "{date} तक sync में",
+      "neverGenerated": "कभी generate नहीं हुआ",
+      "screenshotCount": "{count, plural, one {1 स्क्रीनशॉट} other {# स्क्रीनशॉट}}",
+      "statusEdited": "इस pull request के खुलने के बाद संपादित",
+      "statusDismissed": "{name} ने कहा कि कोई अपडेट ज़रूरी नहीं",
+      "statusDismissedUnknown": "अपडेट की ज़रूरत नहीं माना गया",
+      "statusDismissedReason": "— {reason}",
+      "open": "पेज खोलें",
+      "askUpdate": "अपडेट मांगें",
+      "askUpdateImageWarning": "generate किया गया अपडेट source से पूरा टेक्स्ट दोबारा लिखता है और इस पेज के {count, plural, one {स्क्रीनशॉट} other {# स्क्रीनशॉट}} नहीं लाएगा। अनुमोदन से पहले diff देखें।",
+      "seeProposal": "प्रतीक्षारत अपडेट देखें",
+      "noUpdateNeeded": "अपडेट की ज़रूरत नहीं",
+      "noUpdateNeededHint": "केवल इस pull request के लिए। पेज का अपना पुराना-होने का बैज बना रहेगा।",
+      "dismissReasonLabel": "क्यों? (वैकल्पिक)",
+      "cancel": "रद्द करें",
+      "undo": "पूर्ववत् करें",
+      "dismissFailed": "सहेजा नहीं जा सका। पुनः प्रयास करें।",
+      "updateRequested": "एक अपडेट तैयार हुआ है और समीक्षा की प्रतीक्षा में है।",
+      "updateFailed": "अपडेट तैयार नहीं हो सका।",
+      "prCommentBlocked": "इस pull request पर टिप्पणी पोस्ट नहीं हुई: Aexy GitHub App को “Pull requests: write” चाहिए।",
+      "prCommentBlockedAction": "Repository सेटिंग्स",
+      "guidance": {
+        "screenshots": "{count, plural, one {इस पेज में एक स्क्रीनशॉट} other {इस पेज में # स्क्रीनशॉट}}, {headings} के नीचे",
+        "screenshotsNoHeading": "{count, plural, one {इस पेज में एक स्क्रीनशॉट} other {इस पेज में # स्क्रीनशॉट}}",
+        "route": "आपके बदलाव ने {routes} स्क्रीन को छुआ — वे यही दिखाते हैं",
+        "apiSurface": "request या response का रूप बदल सकता है: {paths}",
+        "setup": "इस पेज के setup चरण अब मेल नहीं खा सकते: {paths}"
+      },
+      "errorTitle": "यह लोड नहीं हो सका",
+      "errorBody": "इस pull request का दस्तावेज़ प्रभाव प्राप्त नहीं हो सका।",
+      "retry": "पुनः प्रयास करें"
     }
   }
 }

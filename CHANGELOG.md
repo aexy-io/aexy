@@ -5,6 +5,186 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.1] - 2026-08-18
+
+Reviewing the previous entry found nine things, and one of them was the way in.
+
+### Fixed: the documentation impact page could only be reached once
+
+Its only entry points were a notification row and a pull request comment — and
+the comment is off until an admin turns it on. Clear the notification and the
+page was gone, for everybody, permanently. Merged changes on the docs list now
+link to it, with the number of pages each merge affected, so there is a way back
+that does not depend on nobody having tidied their bell.
+
+### Fixed
+
+- **A failed request said the pull request had never been checked.** Those are
+  opposite facts: one means we looked and found nothing, the other means the
+  request did not arrive. The wrong one sends you to look in the wrong place.
+- **The page never named the repository**, so "#412" was all you got — useless
+  with pull requests open in more than one — and there was no link back to the
+  pull request at all.
+- **"Ask for an update" could be double-clicked**, which meant two generated
+  proposals, two model calls, and two things for somebody to review. It also did
+  not re-read the page afterwards, so the button stayed there inviting the
+  second click.
+- **"2 of 1 changed files are described by a page here."** The matched count
+  spanned every push; the total only the latest one.
+- **Your own pull request notifications rendered as an anonymous grey bell** —
+  indistinguishable in the list from a document somebody shared with you.
+- **A pull request comment kept claiming work after everybody had answered.**
+  Mark every page as needing no update and the comment still said "2 pages
+  affected"; it now says there is nothing outstanding. It never posts a comment
+  purely to say nothing is wrong.
+
+### Fixed: accessibility on the impact card
+
+"No update needed" reveals a panel, so it announces as one now, and the panel it
+claims to control is asserted to exist. Saying no announces its outcome — the
+sighted feedback is a line appearing and the card fading, and neither reaches
+somebody who cannot see it. The reason field takes focus when it appears rather
+than leaving a keyboard user to tab past the input they just asked for.
+
+## [0.22.0] - 2026-08-18
+
+Your pull request affects three pages, and one of them is full of screenshots.
+
+### Added: documentation impact, per pull request
+
+The existing sync tells the person who *wrote* a page that its code moved, after
+the merge. This tells the person who *changed the code*, while the pull request
+is still open — the only moment when updating the page is part of the same piece
+of work rather than a separate errand.
+
+**It names what it checked.** Which pages describe the code you touched, which of
+your files matched each one, and — the part nothing here could answer before —
+how many screenshots each page carries and which sections they sit in. Images in
+a document are bare URLs somebody pasted, absent from the search index, with no
+record of what they depict; finding them at all meant walking the document.
+
+**Every line has to be earned.** A rule fires only with a signal from the change
+*and* a signal from the page. A backend-only pull request against a page full of
+screenshots says nothing about screenshots — that silence is the feature. A
+generic "remember to update the docs" is what this exists instead of.
+
+**"No update needed" is a real answer.** Per pull request, per page, attributed,
+and it suppresses the merge-time nudge for that page. Without it the only way to
+stop being asked is to mute the category, and then everything else goes quiet
+too. It deliberately does *not* clear the page's own out-of-date badge, and says
+so — that badge answers a different question.
+
+**Asking for a generated update warns you first.** Generation rewrites prose from
+the source and cannot emit an image, so on a page with screenshots it deletes
+them. The control is demoted to a text link there, with the warning next to it.
+
+### Added: optionally, in the pull request itself
+
+A workspace admin can have Aexy comment on the pull request, add a
+"Documentation impact" check to the commit, or both. One comment per pull
+request, edited in place as you push — a bot that posts on every push is the
+surest way to get an integration switched off. The check reports as neutral and
+never blocks a merge unless you ask it to.
+
+Both are **off until switched on**, and both need permissions the GitHub App does
+not request by default. Grant "Pull requests: write" or "Checks: write" and it
+starts working immediately — Aexy now handles the `installation` webhook, so
+there is nothing to re-authenticate. If a write is refused, the reason appears in
+Settings → Repositories, where the person who can fix it is; the in-app
+notification goes out regardless, because an org's App permissions are not the
+author's fault.
+
+This is a workspace setting rather than a personal preference, which is a real
+cost and is stated in the settings copy: a comment is one artifact every reviewer
+sees, so an individual author cannot opt out of it.
+
+### Fixed
+
+- **`ready_for_review` did nothing.** The webhook branched on it for real-time PR
+  analysis, but it was missing from the processable-action list, so marking a
+  draft ready produced nothing at all.
+- **The setup guide's GitHub App permissions were wrong** — read-only, and missing
+  the `contents: write` the publish path has always needed.
+
+## [0.21.0] - 2026-08-17
+
+Documentation that notices when the code it describes has moved on.
+
+### Added: a document can be linked to the code it documents
+
+A page points at a repository path — a directory, a file, a module — and keeps
+the commit it was generated from. When something merges into that path, the page
+knows it is behind.
+
+**It proposes a revision rather than rewriting itself.** The revision is made
+against the diff, not from scratch, so prose somebody wrote by hand survives a
+change to the function it describes. A document says how it wants to be kept up
+to date; "propose" is the default because a page that silently rewrote itself
+would make the last person who edited it wrong without telling them.
+
+**Nothing wakes the LLM for a whitespace commit.** The change is checked for
+whether it touches anything the document could describe before any generation
+happens, which is also what keeps a busy repository from spending a workspace's
+month of tokens on formatting.
+
+**A sync has an owner.** The tier it runs on and the LLM spend it incurs are the
+owner's, and ownership carries a GitHub credential fallback — so it transfers
+when that person leaves the workspace, and only the current owner or an admin can
+hand it to somebody else. That last part was a member-level action, which made
+it a way to bill a colleague for regeneration you were not entitled to.
+
+### Added: one queue for everything waiting on a person
+
+Proposals, agent writes awaiting approval, and comments needing an answer, in one
+place per workspace, **grouped by the change that caused them** — one merge that
+touches six documents reads as one item with six pages under it rather than six
+unrelated rows. The diff is rendered as a diff. The count fills in the sidebar
+without having to open the page, and a page that is behind its code is marked in
+the tree while you are browsing rather than after you click it.
+
+### Added: generating documentation without a coding agent
+
+Point at a repository and get a first draft: whole-repository from the server, or
+module by module from the CLI for a large codebase. The docs workflow has named
+MCP tools, so an agent asks for "the document for this path" instead of inferring
+it. `suggest-improvements` is reachable now — one suggestion at a time, each
+applicable on its own.
+
+### Changed: an agent's write always lands as a proposal
+
+The gate read a request header, which the caller sets. The hole ran the opposite
+way from the obvious one: an agent holding an ordinary workspace token could call
+the document API directly and write straight through. The marker lives in the
+signed token now, so it is the server's decision and not the client's.
+
+### Fixed
+
+- **The repository picker listed your repositories, not the workspace's.** Anyone
+  who had not personally connected GitHub saw an empty list on a workspace with
+  dozens of repositories.
+- **"admin" meant different things in different places.** A custom role based on
+  the admin template, or carrying admin priority, was admin to one check and a
+  member to another. One function decides it now.
+- **A push whose commits carry a PR number is attributed to it**, so a proposal
+  from a squash merge says which pull request it came from instead of only a SHA.
+- **Changing app access could fail silently** — a 403 left the grid looking as
+  though it had saved.
+- **A button read `review.approveAll`**, and the insights page gated on a list it
+  was not using.
+
+### Fixed: the test suite was reading a developer's own database
+
+One arbitrary test went red per full run — `'float' object has no attribute
+'replace'` from inside `uuid.UUID`, in whichever test happened to be running, and
+never reproducible on its own. Two causes, both about the process-cached engine:
+it outlived the event loop that opened it (pytest-asyncio gives each test a new
+one, and aiosqlite connections are loop-bound), and it was built from
+`DATABASE_URL` rather than the test database, because `get_async_session()` is
+called directly and so cannot be redirected by a dependency override. The
+readiness check was therefore asserting that the developer's Postgres was up.
+Both are fixed, and the guard that refuses to drop a database whose name is not
+clearly a test database now covers the application's own engine too.
+
 ## [0.20.1] - 2026-08-17
 
 Tell us what Aexy should do next — and the first app that asks you to.

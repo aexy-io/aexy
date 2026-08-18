@@ -1,6 +1,24 @@
 {
   "settingsRepositories": {
     "title": "रिपॉज़िटरी",
-    "description": "कौन सी GitHub रिपॉज़िटरी सिंक और विश्लेषित होती हैं।"
+    "description": "कौन सी GitHub रिपॉज़िटरी सिंक और विश्लेषित होती हैं।",
+    "docImpact": {
+      "heading": "दस्तावेज़ प्रभाव",
+      "description": "जब कोई pull request उस कोड को छूए जिसका वर्णन यहाँ किसी पेज में है, तो उसके लेखक को बताएं — और चाहें तो pull request में भी।",
+      "enabledLabel": "लेखक को सूचित करें",
+      "enabledDescription": "ऐप में, और मर्ज होने पर ईमेल से। हर व्यक्ति notification सेटिंग्स में अपने चैनल बदल सकता है।",
+      "commentLabel": "Pull request पर टिप्पणी करें",
+      "commentDescription": "प्रति pull request एक टिप्पणी, हर push पर उसी जगह संपादित। इसके लिए Aexy GitHub App को “Pull requests: write” चाहिए।",
+      "checkLabel": "Commit पर check जोड़ें",
+      "checkDescription": "Pull request की checks सूची में दिखता है। इसके लिए “Checks: write” चाहिए।",
+      "conclusionLabel": "Check कैसे रिपोर्ट करे",
+      "conclusionNeutral": "Neutral — मर्ज कभी नहीं रोकता",
+      "conclusionBlocking": "Action required — मर्ज रोकता है",
+      "conclusionHint": "डिफ़ॉल्ट neutral। जो check किसी संभावित पुराने स्क्रीनशॉट पर फ़ेल होता है, उसे लोग non-required बना देते हैं — और तब वह नज़रअंदाज़ भी होता है और लाल भी रहता है।",
+      "sharedNote": "Pull request की टिप्पणी हर समीक्षक को दिखती है, इसलिए यह workspace सेटिंग है, व्यक्तिगत पसंद नहीं — कोई एक लेखक इससे बाहर नहीं निकल सकता।",
+      "adminOnly": "इन्हें केवल workspace admin बदल सकता है।",
+      "blockedAction": "App अनुमतियाँ देखें",
+      "saveFailed": "सहेजा नहीं जा सका। पुनः प्रयास करें।"
+    }
   }
 }

@@ -80,6 +80,7 @@ def get_all_activities() -> list:
         regenerate_document,
         reset_daily_limits,
     )
+    from aexy.temporal.activities.document_impact import evaluate_document_impact
     from aexy.temporal.activities.booking import (
         cleanup_expired_pending,
         create_calendar_event,
@@ -309,6 +310,7 @@ def get_all_activities() -> list:
         enqueue_document_sync_queues,
         process_document_sync_queue,
         regenerate_document,
+        evaluate_document_impact,
         # Sync
         sync_repository,
         sync_commits,

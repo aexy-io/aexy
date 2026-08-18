@@ -103,11 +103,23 @@ npm run dev
    - **Homepage URL**: http://localhost:3000
    - **Callback URL**: http://localhost:8000/api/auth/github/callback
    - **Webhook URL**: http://localhost:8000/api/webhooks/github (use ngrok for local dev)
-   - **Permissions**:
-     - Repository: Read access
-     - Organization: Read access
-     - Pull requests: Read access
-   - **Events**: Push, Pull request, Pull request review
+   - **Permissions** — required:
+     - Repository contents: **Read and write** (read for analysis; write is what
+       publishes a document back to the repository)
+     - Metadata: Read
+     - Organization: Read
+     - Pull requests: Read
+   - **Permissions** — optional, each enabling one feature:
+     - Pull requests: **Write** — lets Aexy comment on a pull request that
+       touches documented code. Off in every workspace until an admin turns it
+       on under Settings → Repositories → Documentation impact.
+     - Checks: **Write** — lets it add a "Documentation impact" check to the
+       commit instead of, or as well as, commenting.
+   - **Events**: Push, Pull request, Pull request review, Issues, Installation
+
+> Granting a permission to an App that is already installed requires each
+> installation to accept the change. Aexy notices when they do — it handles the
+> `installation` webhook — so nothing needs re-authenticating afterwards.
 
 4. After creation, note down:
    - App ID

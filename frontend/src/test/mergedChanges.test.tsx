@@ -56,6 +56,7 @@ const change = (overrides: Partial<MergedChangeItem> = {}): MergedChangeItem => 
   deletions: 8,
   files_changed: 6,
   repository_document_count: 3,
+  impact_affected_count: 0,
   ...overrides,
 });
 
@@ -148,5 +149,38 @@ describe("MergedChanges", () => {
     // instruction it carried.
     expect(page).toMatch(/searchParams\?\.get\("prompt"\)/);
     expect(page).toMatch(/setCustomPrompt\(requestedPrompt\)/);
+  });
+});
+
+describe("the way back into the impact page", () => {
+  it("links to it when this merge affected pages", async () => {
+    // The only durable entry point. The notification is one row somebody clears
+    // and the pull request comment is off by default, so without this link the
+    // page is reachable exactly once, and only ever by the author.
+    listMergedChanges.mockResolvedValue([
+      change({ impact_affected_count: 3 }),
+    ]);
+    renderPanel();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("merged-change-impact-pr-1")).toBeInTheDocument()
+    );
+    const link = screen.getByTestId("merged-change-impact-pr-1");
+    expect(link).toHaveAttribute("href", "/docs/impact/repo-1/41");
+    expect(link.textContent).toContain("3 pages affected");
+  });
+
+  it("shows no link when it affected none", async () => {
+    // Zero also covers "never evaluated", and a link to "nothing here describes
+    // this change" is worse than no link at all.
+    listMergedChanges.mockResolvedValue([
+      change({ impact_affected_count: 0 }),
+    ]);
+    renderPanel();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("merged-changes")).toBeInTheDocument()
+    );
+    expect(screen.queryByTestId("merged-change-impact-pr-1")).toBeNull();
   });
 });

@@ -43,14 +43,19 @@ def row(
     )
 
 
-def make_service(rows, doc_counts=()):
+def make_service(rows, doc_counts=(), impact_counts=()):
     svc = DocumentSyncService.__new__(DocumentSyncService)  # skip __init__
     svc.db = MagicMock()
     svc.limits_service = MagicMock()
+    # Three queries now, in order: the merges, the per-repository document count,
+    # and the per-pull-request count of pages each merge affected. The third is
+    # what puts a link to the impact page on this list — without it that page is
+    # reachable only from a notification somebody clears.
     svc.db.execute = AsyncMock(
         side_effect=[
             SimpleNamespace(all=lambda: rows),
             SimpleNamespace(all=lambda: list(doc_counts)),
+            SimpleNamespace(all=lambda: list(impact_counts)),
         ]
     )
     return svc
@@ -154,3 +159,53 @@ class TestDiscoverability:
 
         assert "documented" not in MergedChangeItem.model_fields
         assert "is_documented" not in MergedChangeItem.model_fields
+
+
+class TestTheWayBackIntoTheImpactPage:
+    """`impact_affected_count` is what puts a durable link on this list.
+
+    Without it the impact page is reachable from a notification row somebody
+    clears and a pull request comment that is off by default — so once the
+    notification is gone, the page is gone, for everybody.
+    """
+
+    @pytest.mark.asyncio
+    async def test_it_reports_how_many_pages_each_merge_affected(self):
+        svc = make_service(
+            [row(number=41, repo_id="repo-1")],
+            doc_counts=[("repo-1", 3)],
+            impact_counts=[("repo-1", 41, 2)],
+        )
+
+        [change] = await svc.list_merged_changes(workspace_id="ws-1")
+
+        assert change["impact_affected_count"] == 2
+
+    @pytest.mark.asyncio
+    async def test_a_merge_nobody_evaluated_reads_as_zero(self):
+        """Zero also covers "affected nothing". Both should render no link, so
+        they need no distinguishing — a link to "nothing here describes this
+        change" is worse than no link."""
+        svc = make_service(
+            [row(number=41, repo_id="repo-1")],
+            doc_counts=[("repo-1", 3)],
+            impact_counts=[],
+        )
+
+        [change] = await svc.list_merged_changes(workspace_id="ws-1")
+
+        assert change["impact_affected_count"] == 0
+
+    @pytest.mark.asyncio
+    async def test_a_count_from_another_pull_request_is_not_borrowed(self):
+        """Keyed on (repository, number). Keying on the repository alone would
+        put one merge's page count on every merge in that repository."""
+        svc = make_service(
+            [row(number=41, repo_id="repo-1")],
+            doc_counts=[("repo-1", 3)],
+            impact_counts=[("repo-1", 99, 7)],
+        )
+
+        [change] = await svc.list_merged_changes(workspace_id="ws-1")
+
+        assert change["impact_affected_count"] == 0
