@@ -5,7 +5,7 @@
       "capability": "mcp.admin",
       "app": null,
       "privileged": true,
-      "operation_count": 58,
+      "operation_count": 60,
       "operations": [
         {
           "operation_id": "admin_get_billing_summary_api_v1_platform_admin_billing_summary_get",
@@ -320,6 +320,14 @@
           "mutating": false
         },
         {
+          "operation_id": "list_all_feedback_api_v1_platform_admin_feedback_get",
+          "action": "list_all_feedback",
+          "method": "GET",
+          "path": "/api/v1/platform-admin/feedback",
+          "summary": "List All Feedback",
+          "mutating": false
+        },
+        {
           "operation_id": "list_email_logs_api_v1_platform_admin_emails_get",
           "action": "list_email_logs",
           "method": "GET",
@@ -397,6 +405,14 @@
           "method": "POST",
           "path": "/api/v1/admin/workspaces/{workspace_id}/rate-limits/reset",
           "summary": "Reset Workspace Rate Limits",
+          "mutating": true
+        },
+        {
+          "operation_id": "review_feedback_api_v1_platform_admin_feedback__feedback_id__patch",
+          "action": "review_feedback",
+          "method": "PATCH",
+          "path": "/api/v1/platform-admin/feedback/{feedback_id}",
+          "summary": "Review Feedback",
           "mutating": true
         },
         {
@@ -3597,7 +3613,7 @@
       "capability": "mcp.docs",
       "app": "docs",
       "privileged": false,
-      "operation_count": 63,
+      "operation_count": 72,
       "operations": [
         {
           "operation_id": "add_all_workspace_members_api_v1_workspaces__workspace_id__spaces__space_id__members_add_all_post",
@@ -3656,6 +3672,22 @@
           "mutating": true
         },
         {
+          "operation_id": "create_document_comment_api_v1_workspaces__workspace_id__documents__document_id__comments_post",
+          "action": "create_document_comment",
+          "method": "POST",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/{document_id}/comments",
+          "summary": "Create Document Comment",
+          "mutating": true
+        },
+        {
+          "operation_id": "create_document_from_repository_api_v1_workspaces__workspace_id__documents_from_repository_post",
+          "action": "create_document_from_repository",
+          "method": "POST",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/from-repository",
+          "summary": "Create Document From Repository",
+          "mutating": true
+        },
+        {
           "operation_id": "create_space_api_v1_workspaces__workspace_id__spaces_post",
           "action": "create_space",
           "method": "POST",
@@ -3677,6 +3709,14 @@
           "method": "DELETE",
           "path": "/api/v1/workspaces/{workspace_id}/documents/{document_id}",
           "summary": "Delete Document",
+          "mutating": true
+        },
+        {
+          "operation_id": "delete_document_comment_api_v1_workspaces__workspace_id__documents__document_id__comments__comment_id__delete",
+          "action": "delete_document_comment",
+          "method": "DELETE",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/{document_id}/comments/{comment_id}",
+          "summary": "Delete Document Comment",
           "mutating": true
         },
         {
@@ -3864,14 +3904,6 @@
           "mutating": false
         },
         {
-          "operation_id": "get_notifications_api_v1_workspaces__workspace_id__documents_notifications_get",
-          "action": "get_notifications",
-          "method": "GET",
-          "path": "/api/v1/workspaces/{workspace_id}/documents/notifications",
-          "summary": "Get Notifications",
-          "mutating": false
-        },
-        {
           "operation_id": "get_space_api_v1_workspaces__workspace_id__spaces__space_id__get",
           "action": "get_space",
           "method": "GET",
@@ -3912,6 +3944,14 @@
           "mutating": true
         },
         {
+          "operation_id": "list_document_comments_api_v1_workspaces__workspace_id__documents__document_id__comments_get",
+          "action": "list_document_comments",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/{document_id}/comments",
+          "summary": "List Document Comments",
+          "mutating": false
+        },
+        {
           "operation_id": "list_documents_api_v1_workspaces__workspace_id__documents_get",
           "action": "list_documents",
           "method": "GET",
@@ -3920,11 +3960,27 @@
           "mutating": false
         },
         {
+          "operation_id": "list_documents_needing_update_api_v1_workspaces__workspace_id__documents_needs_update_get",
+          "action": "list_documents_needing_update",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/needs-update",
+          "summary": "List Documents Needing Update",
+          "mutating": false
+        },
+        {
           "operation_id": "list_extraction_jobs_api_v1_workspaces__workspace_id__knowledge_graph_jobs_get",
           "action": "list_extraction_jobs",
           "method": "GET",
           "path": "/api/v1/workspaces/{workspace_id}/knowledge-graph/jobs",
           "summary": "List extraction jobs",
+          "mutating": false
+        },
+        {
+          "operation_id": "list_merged_changes_api_v1_workspaces__workspace_id__documents_merged_changes_get",
+          "action": "list_merged_changes",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/merged-changes",
+          "summary": "List Merged Changes",
           "mutating": false
         },
         {
@@ -3960,20 +4016,12 @@
           "mutating": false
         },
         {
-          "operation_id": "mark_all_notifications_read_api_v1_workspaces__workspace_id__documents_notifications_mark_all_read_post",
-          "action": "mark_all_notifications_read",
-          "method": "POST",
-          "path": "/api/v1/workspaces/{workspace_id}/documents/notifications/mark-all-read",
-          "summary": "Mark All Notifications Read",
-          "mutating": true
-        },
-        {
-          "operation_id": "mark_notification_read_api_v1_workspaces__workspace_id__documents_notifications__notification_id__read_post",
-          "action": "mark_notification_read",
-          "method": "POST",
-          "path": "/api/v1/workspaces/{workspace_id}/documents/notifications/{notification_id}/read",
-          "summary": "Mark Notification Read",
-          "mutating": true
+          "operation_id": "list_workspace_proposed_edits_api_v1_workspaces__workspace_id__documents_proposed_edits_get",
+          "action": "list_workspace_proposed_edits",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/proposed-edits",
+          "summary": "List Workspace Proposed Edits",
+          "mutating": false
         },
         {
           "operation_id": "move_document_api_v1_workspaces__workspace_id__documents__document_id__move_post",
@@ -3981,6 +4029,14 @@
           "method": "POST",
           "path": "/api/v1/workspaces/{workspace_id}/documents/{document_id}/move",
           "summary": "Move Document",
+          "mutating": true
+        },
+        {
+          "operation_id": "propose_document_update_api_v1_workspaces__workspace_id__documents__document_id__propose_post",
+          "action": "propose_document_update",
+          "method": "POST",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/{document_id}/propose",
+          "summary": "Propose Document Update",
           "mutating": true
         },
         {
@@ -4016,6 +4072,14 @@
           "mutating": true
         },
         {
+          "operation_id": "resolve_document_comment_api_v1_workspaces__workspace_id__documents__document_id__comments__comment_id__resolve_post",
+          "action": "resolve_document_comment",
+          "method": "POST",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/{document_id}/comments/{comment_id}/resolve",
+          "summary": "Resolve Document Comment",
+          "mutating": true
+        },
+        {
           "operation_id": "restore_version_api_v1_workspaces__workspace_id__documents__document_id__restore__version_id__post",
           "action": "restore_version",
           "method": "POST",
@@ -4038,6 +4102,14 @@
           "path": "/api/v1/workspaces/{workspace_id}/search/files",
           "summary": "Search Workspace Files",
           "mutating": false
+        },
+        {
+          "operation_id": "set_code_link_sync_mode_api_v1_workspaces__workspace_id__documents__document_id__code_links__link_id__sync_mode_patch",
+          "action": "set_code_link_sync_mode",
+          "method": "PATCH",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/{document_id}/code-links/{link_id}/sync-mode",
+          "summary": "Set Code Link Sync Mode",
+          "mutating": true
         },
         {
           "operation_id": "setup_github_sync_api_v1_workspaces__workspace_id__documents__document_id__github_sync_post",
@@ -4064,6 +4136,14 @@
           "mutating": true
         },
         {
+          "operation_id": "transfer_code_link_owner_api_v1_workspaces__workspace_id__documents__document_id__code_links__link_id__transfer_post",
+          "action": "transfer_code_link_owner",
+          "method": "POST",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/{document_id}/code-links/{link_id}/transfer",
+          "summary": "Transfer Code Link Owner",
+          "mutating": true
+        },
+        {
           "operation_id": "trigger_extraction_api_v1_workspaces__workspace_id__knowledge_graph_extract_post",
           "action": "trigger_extraction",
           "method": "POST",
@@ -4085,6 +4165,14 @@
           "method": "PATCH",
           "path": "/api/v1/workspaces/{workspace_id}/documents/{document_id}",
           "summary": "Update Document",
+          "mutating": true
+        },
+        {
+          "operation_id": "update_document_comment_api_v1_workspaces__workspace_id__documents__document_id__comments__comment_id__patch",
+          "action": "update_document_comment",
+          "method": "PATCH",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/{document_id}/comments/{comment_id}",
+          "summary": "Update Document Comment",
           "mutating": true
         },
         {
@@ -4253,7 +4341,7 @@
       "capability": "mcp.email_marketing",
       "app": "email_marketing",
       "privileged": false,
-      "operation_count": 106,
+      "operation_count": 108,
       "operations": [
         {
           "operation_id": "add_pool_member_api_v1_workspaces__workspace_id__email_infrastructure_pools__pool_id__members_post",
@@ -4464,8 +4552,16 @@
           "mutating": true
         },
         {
+          "operation_id": "delete_template_api_v1_templates__template_id__delete",
+          "action": "delete_template_templates",
+          "method": "DELETE",
+          "path": "/api/v1/templates/{template_id}",
+          "summary": "Delete Template",
+          "mutating": true
+        },
+        {
           "operation_id": "delete_template_api_v1_workspaces__workspace_id__email_marketing_templates__template_id__delete",
-          "action": "delete_template",
+          "action": "delete_template_email_marketing_templates",
           "method": "DELETE",
           "path": "/api/v1/workspaces/{workspace_id}/email-marketing/templates/{template_id}",
           "summary": "Delete Template",
@@ -5072,8 +5168,16 @@
           "mutating": true
         },
         {
+          "operation_id": "update_template_api_v1_templates__template_id__patch",
+          "action": "update_template_templates",
+          "method": "PATCH",
+          "path": "/api/v1/templates/{template_id}",
+          "summary": "Update Template",
+          "mutating": true
+        },
+        {
           "operation_id": "update_template_api_v1_workspaces__workspace_id__email_marketing_templates__template_id__patch",
-          "action": "update_template",
+          "action": "update_template_email_marketing_templates",
           "method": "PATCH",
           "path": "/api/v1/workspaces/{workspace_id}/email-marketing/templates/{template_id}",
           "summary": "Update Template",
@@ -8357,7 +8461,7 @@
       "capability": "mcp.integrations",
       "app": null,
       "privileged": false,
-      "operation_count": 75,
+      "operation_count": 81,
       "operations": [
         {
           "operation_id": "auto_map_slack_users_api_v1_slack_integration__integration_id__auto_map_users_post",
@@ -8477,6 +8581,14 @@
           "method": "POST",
           "path": "/api/v1/workspaces/{workspace_id}/integrations/google/disconnect",
           "summary": "Disconnect",
+          "mutating": true
+        },
+        {
+          "operation_id": "disconnect_google_account_api_v1_workspaces__workspace_id__integrations_google_accounts__integration_id__delete",
+          "action": "disconnect_google_account",
+          "method": "DELETE",
+          "path": "/api/v1/workspaces/{workspace_id}/integrations/google/accounts/{integration_id}",
+          "summary": "Disconnect Google Account",
           "mutating": true
         },
         {
@@ -8768,11 +8880,27 @@
           "mutating": false
         },
         {
+          "operation_id": "list_google_accounts_api_v1_workspaces__workspace_id__integrations_google_accounts_get",
+          "action": "list_google_accounts",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/integrations/google/accounts",
+          "summary": "List Google Accounts",
+          "mutating": false
+        },
+        {
           "operation_id": "list_google_sync_calendars",
           "action": "list_google_sync_calendars",
           "method": "GET",
           "path": "/api/v1/workspaces/{workspace_id}/integrations/google/calendar/calendars",
           "summary": "List Calendars",
+          "mutating": false
+        },
+        {
+          "operation_id": "list_threads_api_v1_workspaces__workspace_id__integrations_google_threads_get",
+          "action": "list_threads",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/integrations/google/threads",
+          "summary": "List Threads",
           "mutating": false
         },
         {
@@ -8789,6 +8917,14 @@
           "method": "POST",
           "path": "/api/v1/workspaces/{workspace_id}/integrations/google-calendar/sync",
           "summary": "Manual Sync",
+          "mutating": true
+        },
+        {
+          "operation_id": "mark_thread_api_v1_workspaces__workspace_id__integrations_google_threads__gmail_thread_id__mark_post",
+          "action": "mark_thread",
+          "method": "POST",
+          "path": "/api/v1/workspaces/{workspace_id}/integrations/google/threads/{gmail_thread_id}/mark",
+          "summary": "Mark Thread",
           "mutating": true
         },
         {
@@ -8928,6 +9064,14 @@
           "mutating": true
         },
         {
+          "operation_id": "unmark_thread_api_v1_workspaces__workspace_id__integrations_google_threads__gmail_thread_id__mark_delete",
+          "action": "unmark_thread",
+          "method": "DELETE",
+          "path": "/api/v1/workspaces/{workspace_id}/integrations/google/threads/{gmail_thread_id}/mark",
+          "summary": "Unmark Thread",
+          "mutating": true
+        },
+        {
           "operation_id": "update_integration_api_v1_slack_integration__integration_id__put",
           "action": "update_integration",
           "method": "PUT",
@@ -8957,6 +9101,14 @@
           "method": "PATCH",
           "path": "/api/v1/workspaces/{workspace_id}/integrations/google/settings",
           "summary": "Update Settings",
+          "mutating": true
+        },
+        {
+          "operation_id": "update_sync_mode_api_v1_workspaces__workspace_id__integrations_google_sync_mode_patch",
+          "action": "update_sync_mode",
+          "method": "PATCH",
+          "path": "/api/v1/workspaces/{workspace_id}/integrations/google/sync-mode",
+          "summary": "Update Sync Mode",
           "mutating": true
         }
       ]
@@ -10221,7 +10373,7 @@
       "capability": "mcp.platform",
       "app": null,
       "privileged": false,
-      "operation_count": 132,
+      "operation_count": 141,
       "operations": [
         {
           "operation_id": "accept_invite_api_v1_invites__token__accept_post",
@@ -10840,11 +10992,35 @@
           "mutating": false
         },
         {
+          "operation_id": "list_board_api_v1_workspaces__workspace_id__feedback_get",
+          "action": "list_board",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/feedback",
+          "summary": "List Board",
+          "mutating": false
+        },
+        {
+          "operation_id": "list_connectors_api_v1_mcp_connectors_get",
+          "action": "list_connectors",
+          "method": "GET",
+          "path": "/api/v1/mcp/connectors",
+          "summary": "List Connectors",
+          "mutating": false
+        },
+        {
           "operation_id": "list_developers_api_v1_developers__get",
           "action": "list_developers",
           "method": "GET",
           "path": "/api/v1/developers/",
           "summary": "List Developers",
+          "mutating": false
+        },
+        {
+          "operation_id": "list_mcp_tools_api_v1_workspaces__workspace_id__mcp_tools_get",
+          "action": "list_mcp_tools",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/mcp/tools",
+          "summary": "List Mcp Tools",
           "mutating": false
         },
         {
@@ -10861,6 +11037,14 @@
           "method": "GET",
           "path": "/api/v1/developers/me/email-aliases",
           "summary": "List My Email Aliases",
+          "mutating": false
+        },
+        {
+          "operation_id": "list_my_feedback_api_v1_workspaces__workspace_id__feedback_mine_get",
+          "action": "list_my_feedback",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/feedback/mine",
+          "summary": "List My Feedback",
           "mutating": false
         },
         {
@@ -10957,6 +11141,14 @@
           "method": "POST",
           "path": "/api/v1/notifications/{notification_id}/read",
           "summary": "Mark Notification Read",
+          "mutating": true
+        },
+        {
+          "operation_id": "mcp_endpoint_api_v1_mcp_post",
+          "action": "mcp_endpoint",
+          "method": "POST",
+          "path": "/api/v1/mcp",
+          "summary": "Mcp Endpoint",
           "mutating": true
         },
         {
@@ -11112,6 +11304,14 @@
           "mutating": true
         },
         {
+          "operation_id": "revoke_connector_api_v1_mcp_connectors__grant_id__delete",
+          "action": "revoke_connector",
+          "method": "DELETE",
+          "path": "/api/v1/mcp/connectors/{grant_id}",
+          "summary": "Revoke Connector",
+          "mutating": true
+        },
+        {
           "operation_id": "revoke_pending_invite_api_v1_workspaces__workspace_id__invites__invite_id__delete",
           "action": "revoke_pending_invite",
           "method": "DELETE",
@@ -11125,6 +11325,14 @@
           "method": "PUT",
           "path": "/api/v1/workspaces/{workspace_id}/app-access/members/{developer_id}/overrides",
           "summary": "Set Member Overrides",
+          "mutating": true
+        },
+        {
+          "operation_id": "submit_feedback_api_v1_workspaces__workspace_id__feedback_post",
+          "action": "submit_feedback",
+          "method": "POST",
+          "path": "/api/v1/workspaces/{workspace_id}/feedback",
+          "summary": "Submit Feedback",
           "mutating": true
         },
         {
@@ -11272,11 +11480,27 @@
           "mutating": true
         },
         {
+          "operation_id": "vote_for_feedback_api_v1_workspaces__workspace_id__feedback__feedback_id__vote_post",
+          "action": "vote_for_feedback",
+          "method": "POST",
+          "path": "/api/v1/workspaces/{workspace_id}/feedback/{feedback_id}/vote",
+          "summary": "Vote For Feedback",
+          "mutating": true
+        },
+        {
           "operation_id": "withdraw_access_request_api_v1_workspaces__workspace_id__app_access_requests__request_id__delete",
           "action": "withdraw_access_request",
           "method": "DELETE",
           "path": "/api/v1/workspaces/{workspace_id}/app-access/requests/{request_id}",
           "summary": "Withdraw Access Request",
+          "mutating": true
+        },
+        {
+          "operation_id": "withdraw_vote_api_v1_workspaces__workspace_id__feedback__feedback_id__vote_delete",
+          "action": "withdraw_vote",
+          "method": "DELETE",
+          "path": "/api/v1/workspaces/{workspace_id}/feedback/{feedback_id}/vote",
+          "summary": "Withdraw Vote",
           "mutating": true
         }
       ]
@@ -11285,7 +11509,7 @@
       "capability": "mcp.reports",
       "app": "reports",
       "privileged": false,
-      "operation_count": 27,
+      "operation_count": 29,
       "operations": [
         {
           "operation_id": "cancel_or_delete_export_api_v1_exports__job_id__delete",
@@ -11462,6 +11686,22 @@
           "path": "/api/v1/reports/templates/list",
           "summary": "List Templates",
           "mutating": false
+        },
+        {
+          "operation_id": "monthly_engineering_report_api_v1_reports_engineering_monthly_get",
+          "action": "monthly_engineering_report",
+          "method": "GET",
+          "path": "/api/v1/reports/engineering/monthly",
+          "summary": "Monthly Engineering Report",
+          "mutating": false
+        },
+        {
+          "operation_id": "refresh_engineering_report_data_api_v1_reports_engineering_monthly_refresh_post",
+          "action": "refresh_engineering_report_data",
+          "method": "POST",
+          "path": "/api/v1/reports/engineering/monthly/refresh",
+          "summary": "Refresh Engineering Report Data",
+          "mutating": true
         },
         {
           "operation_id": "reset_preferences_api_v1_dashboard_preferences_reset_post",
@@ -11853,7 +12093,7 @@
       "capability": "mcp.service_desk",
       "app": "service_desk",
       "privileged": false,
-      "operation_count": 54,
+      "operation_count": 55,
       "operations": [
         {
           "operation_id": "acknowledge_escalation_api_v1_workspaces__workspace_id__tickets__ticket_id__escalations__escalation_id__acknowledge_post",
@@ -12022,6 +12262,14 @@
           "path": "/api/v1/workspaces/{workspace_id}/service-desk/vendors/{vendor_id}",
           "summary": "Delete Vendor",
           "mutating": true
+        },
+        {
+          "operation_id": "download_ticket_attachment_api_v1_workspaces__workspace_id__service_desk_tickets__ticket_id__attachments__index__get",
+          "action": "download_ticket_attachment",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/service-desk/tickets/{ticket_id}/attachments/{index}",
+          "summary": "Download Ticket Attachment",
+          "mutating": false
         },
         {
           "operation_id": "email_stakeholder_api_v1_workspaces__workspace_id__service_desk_tickets__ticket_id__email_post",
@@ -15156,7 +15404,8 @@
   ],
   "duplicate_operation_ids": {},
   "excluded": {
-    "public": 48,
+    "public": 56,
+    "review_gate": 5,
     "system": 3
   },
   "unmapped_tags": [],

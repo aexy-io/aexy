@@ -11,6 +11,7 @@
     "billing_and_usage",
     "campaigns",
     "chat",
+    "documentation_impact",
     "documents",
     "feedback",
     "forms",
@@ -245,6 +246,24 @@
         "web_push": false
       }
     },
+    "document_impact_pr_merged": {
+      "category": "documentation_impact",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "document_impact_pr_opened": {
+      "category": "documentation_impact",
+      "defaults": {
+        "in_app": true,
+        "email": false,
+        "slack": false,
+        "web_push": false
+      }
+    },
     "document_mentioned": {
       "category": "documents",
       "defaults": {
@@ -255,6 +274,15 @@
       }
     },
     "document_shared": {
+      "category": "documents",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "document_sync_ownership_transferred": {
       "category": "documents",
       "defaults": {
         "in_app": true,

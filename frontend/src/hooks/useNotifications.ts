@@ -336,6 +336,12 @@ export function getNotificationIcon(eventType: string): string {
     case "document_mentioned":
     case "document_commented":
       return "file";
+    // Not "file": these are about a pull request of yours, not about a document
+    // somebody shared with you, and the bell is where the two would otherwise be
+    // indistinguishable.
+    case "document_impact_pr_opened":
+    case "document_impact_pr_merged":
+      return "git-merge";
     case "leave_request_submitted":
     case "leave_request_approved":
     case "leave_request_rejected":
@@ -445,6 +451,11 @@ export function getNotificationColor(eventType: string): string {
       return "text-cyan-400";
     case "document_commented":
       return "text-purple-400";
+    // Warning-coloured: something of yours needs attention, which is not what
+    // the other document events mean.
+    case "document_impact_pr_opened":
+    case "document_impact_pr_merged":
+      return "text-amber-400";
     case "leave_request_submitted":
       return "text-blue-400";
     case "leave_request_approved":

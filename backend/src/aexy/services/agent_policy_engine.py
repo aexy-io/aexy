@@ -75,6 +75,40 @@ class AgentPolicyEngine:
         self._cached_policies = list(result.scalars().all())
         return self._cached_policies
 
+    def decide(
+        self,
+        tool_name: str,
+        tool_args: dict,
+        execution_id: str = "",
+        policies: list[AgentPolicy] | None = None,
+    ) -> PolicyEvalResult | None:
+        """Evaluate loaded policies and return the first non-allow decision.
+
+        Deciding, without writing anything down. Split out because the audit
+        row's shape depends on who is calling: a CRM agent has an execution to
+        hang it on, an MCP session has a workspace and a developer instead.
+        Folding the write into the decision meant the only caller that could
+        record was the one the columns were designed for.
+
+        `policies` is for a caller that has already loaded them — the MCP
+        boundary does, to keep one query per call. It used to assign
+        `_cached_policies` from outside, which worked and would have gone on
+        working right up until somebody renamed a private attribute: `decide`
+        would then evaluate an empty list, return None, and the gate would allow
+        everything without raising anything. Passing them in makes that a
+        TypeError instead of a silent hole.
+
+        Returns None when every policy passes.
+        """
+        candidates = policies if policies is not None else (self._cached_policies or [])
+        for policy in candidates:
+            result = self._evaluate_single_policy(
+                policy, tool_name, tool_args, execution_id
+            )
+            if result is not None:
+                return result
+        return None
+
     async def evaluate_tool_call(
         self,
         execution_id: str,
@@ -86,30 +120,25 @@ class AgentPolicyEngine:
 
         Returns the first non-allow decision, or allow if all policies pass.
         """
-        policies = self._cached_policies or []
-
         confidence_score = getattr(agent, "confidence_threshold", None)
         confidence_threshold = getattr(agent, "require_approval_below", None)
 
-        for policy in policies:
-            result = self._evaluate_single_policy(
-                policy, tool_name, tool_args, execution_id
+        result = self.decide(tool_name, tool_args, execution_id)
+        if result is not None:
+            result.confidence_score = confidence_score
+            result.confidence_threshold = confidence_threshold
+            # Record the blocking decision
+            await self.record_decision(
+                execution_id=execution_id,
+                policy_id=result.policy_id,
+                tool_name=tool_name,
+                tool_args=tool_args,
+                decision=result.decision,
+                reason=result.reason,
+                confidence_score=confidence_score,
+                confidence_threshold=confidence_threshold,
             )
-            if result is not None:
-                result.confidence_score = confidence_score
-                result.confidence_threshold = confidence_threshold
-                # Record the blocking decision
-                await self.record_decision(
-                    execution_id=execution_id,
-                    policy_id=policy.id,
-                    tool_name=tool_name,
-                    tool_args=tool_args,
-                    decision=result.decision,
-                    reason=result.reason,
-                    confidence_score=confidence_score,
-                    confidence_threshold=confidence_threshold,
-                )
-                return result
+            return result
 
         # All policies passed — record allow decision
         allow_result = PolicyEvalResult(

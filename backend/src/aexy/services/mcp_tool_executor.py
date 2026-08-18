@@ -19,15 +19,35 @@ from typing import Any
 
 import httpx
 
-from aexy.services.mcp_catalog import CALL_TOOL, DISCOVER_TOOL
+from aexy.services.mcp_catalog import CALL_TOOL, DISCOVER_TOOL, workflow_tool
 
 # An operation is normally answered well under this. The ceiling exists so a
 # slow endpoint cannot pin an MCP session open indefinitely.
 REQUEST_TIMEOUT_SECONDS = 60.0
 
+# Set on every re-entry so the application can recognise its own agent traffic.
+AGENT_ACTOR_HEADER = "X-Aexy-Agent-Actor"
+
 # Discovery returns matches, not the whole catalogue: a client that asked to
 # search is trying to narrow, and 1866 operations is not narrowing.
 MAX_DISCOVER_RESULTS = 25
+
+
+def _spread(flat: dict[str, Any], mapping: dict[str, str]) -> dict[str, Any]:
+    """Turn a named tool's flat arguments into the generic call shape.
+
+    `{"workspace_id": …, "markdown": …}` becomes
+    `{"path_params": {...}, "body": {...}}`. Unmapped keys are dropped rather
+    than guessed into the body: silently forwarding an unknown field would
+    make a typo look like it worked.
+    """
+    out: dict[str, Any] = {"path_params": {}, "query": {}, "body": {}}
+    for key, value in flat.items():
+        target = mapping.get(key)
+        if target is None or value is None:
+            continue
+        out["path_params" if target == "path" else target][key] = value
+    return {section: values for section, values in out.items() if values}
 
 
 @dataclass(frozen=True)
@@ -37,10 +57,14 @@ class ToolResult:
 
 
 class McpToolExecutor:
-    def __init__(self, app, catalog: dict[str, Any], granted: set[str]):
+    def __init__(self, app, catalog: dict[str, Any], granted: set[str], db=None):
         self._app = app
         self._catalog = catalog
         self._granted = granted
+        # Optional so the executor stays constructible in tests and scripts.
+        # Without a session there is no policy evaluation — which is the
+        # pre-governance behaviour, and is why the transport always passes one.
+        self._db = db
 
     async def call(
         self,
@@ -53,7 +77,15 @@ class McpToolExecutor:
         if tool_name == DISCOVER_TOOL:
             return self._discover(arguments.get("query", ""), arguments.get("capability"))
 
-        if tool_name == CALL_TOOL:
+        workflow = workflow_tool(tool_name)
+        if workflow is not None:
+            # A named workflow binds one action and takes flat arguments, so
+            # the caller does not have to know which of path_params / query /
+            # body each value belongs in. That split is an artefact of HTTP,
+            # not something an agent should have to reason about.
+            action = workflow["action"]
+            arguments = _spread(arguments, workflow["argument_map"])
+        elif tool_name == CALL_TOOL:
             action = arguments.get("action")
         else:
             capability = self._capability_for_tool(tool_name)
@@ -85,6 +117,24 @@ class McpToolExecutor:
                 "workspace.",
                 is_error=True,
             )
+
+        # Permissions are enforced by the endpoint itself, on re-entry below.
+        # This is the other question: should an agent do this unattended? A
+        # refusal here never reaches the API at all, which is the point — the
+        # call must not happen, not happen and be undone.
+        if self._db is not None:
+            from aexy.services.mcp_governance import McpGovernance
+
+            verdict = await McpGovernance(self._db).review(
+                operation=operation,
+                arguments=arguments,
+                developer_id=developer_id,
+                workspace_id=workspace_id,
+                tool_name=tool_name,
+                granted=self._granted,
+            )
+            if not verdict.allowed:
+                return ToolResult(verdict.message or "Not permitted.", is_error=True)
 
         return await self._perform(
             operation=operation,
@@ -176,10 +226,22 @@ class McpToolExecutor:
             )
 
         from aexy.api.auth import create_access_token
+        from aexy.api.developers import AGENT_ACTOR
 
+        # The `actor` claim is what lets an endpoint behave differently for an
+        # agent than for the person at a keyboard — routing a rewrite into review
+        # rather than applying it. It lives in the signed token rather than a
+        # header because a header is the caller's to set: an agent holding an
+        # ordinary token and calling the REST API directly used to write straight
+        # through, which made the review gate opt-in by the agent.
         headers = {
-            "Authorization": f"Bearer {create_access_token(developer_id)}",
+            "Authorization": (
+                f"Bearer {create_access_token(developer_id, actor=AGENT_ACTOR)}"
+            ),
             "Content-Type": "application/json",
+            # Kept for logs and for anything reading request metadata. Nothing
+            # routes on it.
+            AGENT_ACTOR_HEADER: "mcp",
         }
 
         transport = httpx.ASGITransport(app=self._app)

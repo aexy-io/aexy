@@ -262,8 +262,14 @@ class LMStudioProvider(LLMProvider):
             error_str = str(e)
             if "429" in error_str or "Too Many Requests" in error_str:
                 raise LLMRateLimitError("LMStudio rate limit exceeded.")
-            logger.error(f"Analysis failed: {e}")
-            raise LLMAPIError(f"LMStudio analysis failed: {error_str}")
+            # `str(e)` is empty for a bare IndexError or StopIteration, and the
+            # message this produced was "LMStudio analysis failed: " — a report
+            # that names nothing, logged without a traceback, so the only way to
+            # find the cause was to read the provider and guess.
+            logger.exception("LMStudio analysis failed")
+            raise LLMAPIError(
+                f"LMStudio analysis failed: {error_str or type(e).__name__}"
+            )
 
     def _build_analysis_prompts(
         self,

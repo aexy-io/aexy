@@ -52,6 +52,28 @@ class DocumentLinkType(str, Enum):
     DIRECTORY = "directory"
 
 
+class DocumentSyncMode(str, Enum):
+    """What a document should do when the code beneath it changes.
+
+    Graded rather than on/off, because a single policy across every document
+    is one somebody eventually switches off wholesale — and an off switch
+    that takes the audit trail with it is worse than a setting nobody likes.
+
+    PROPOSE   queue the update for review. The default, and the only safe
+              answer for a page anyone has written by hand.
+    AUTO      apply it without asking. Honoured only when the update was
+              derived from the existing prose, never when it was regenerated
+              from scratch — see `DocumentSyncService`.
+    OFF       stop watching. Not merely "stop proposing": a document nobody
+              wants updated should also stop being reported as behind, or
+              the badge becomes noise that trains people to ignore badges.
+    """
+
+    PROPOSE = "propose"
+    AUTO = "auto"
+    OFF = "off"
+
+
 class DocumentPermission(str, Enum):
     """Document access permission levels."""
 
@@ -543,6 +565,21 @@ class DocumentCodeLink(Base):
         index=True,
     )
 
+    # Whoever set this sync up. Distinct from `documents.created_by_id`: the
+    # person who wrote a document is often not the person who wired it to a
+    # repository, and it is the latter whose plan tier decides how the sync
+    # behaves and whose GitHub access it falls back on.
+    #
+    # SET NULL rather than CASCADE — losing a developer must never delete the
+    # link between a document and the code it describes. A null owner means
+    # "orphaned", which the transfer path repairs; it does not mean "delete".
+    owner_developer_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     # Link target
     link_type: Mapped[str] = mapped_column(
         String(50), default=DocumentLinkType.FILE.value, nullable=False
@@ -550,8 +587,32 @@ class DocumentCodeLink(Base):
     path: Mapped[str] = mapped_column(String(1000), nullable=False)  # Relative path
     branch: Mapped[str] = mapped_column(String(255), default="main", nullable=False)
 
-    # Change tracking
+    # See DocumentSyncMode. Defaults to review-before-it-lands.
+    sync_mode: Mapped[str] = mapped_column(
+        String(20), default=DocumentSyncMode.PROPOSE.value, nullable=False
+    )
+
+    # What kind of document this link produces. Regeneration used to hardcode
+    # FUNCTION_DOCS, so re-syncing a module document quietly turned it into
+    # function docs — the document changed kind without anyone asking.
+    template_category: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    # Change tracking. Two commits, not one, because they answer different
+    # questions and the single field could only hold one of the answers:
+    #
+    #   last_commit_sha        the newest commit we have seen touch this path
+    #   last_synced_commit_sha the commit the document was actually written from
+    #
+    # `handle_code_change` overwrites the first the moment a push arrives. When
+    # that was the only column, the base disappeared before anything could use
+    # it, so there was no way to ask "what changed since this document was
+    # written?" — only "what is the latest commit?". A null base means we do
+    # not know, and callers fall back to regenerating in full rather than
+    # guessing a diff.
     last_commit_sha: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    last_synced_commit_sha: Mapped[str | None] = mapped_column(
+        String(40), nullable=True
+    )
     last_content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     last_synced_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -588,6 +649,15 @@ class DocumentCodeLink(Base):
 
     __table_args__ = (
         Index("ix_code_links_repo_path", "repository_id", "path"),
+        # Mirrors the partial index in migrate_document_code_link_sync_mode.sql.
+        # Declared here as well so a `create_all` database and a migrated one
+        # agree about their indexes — that drift is invisible until something
+        # queries differently on the two, which is exactly how it survives.
+        Index(
+            "ix_document_code_links_active_sync",
+            "repository_id",
+            postgresql_where=text("sync_mode <> 'off'"),
+        ),
         UniqueConstraint(
             "document_id",
             "repository_id",
@@ -788,6 +858,13 @@ class DocumentSyncQueue(Base):
 
     # Trigger info
     triggered_by_commit: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # The pull request that merge belonged to, when its merge commit named one.
+    # Kept beside the commit so a batched document groups in the review queue the
+    # same way a real-time one does: without it, the same merge produced one pull
+    # request group for premium documents and a commit group for pro ones.
+    triggered_by_pull_request: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
     triggered_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

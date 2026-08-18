@@ -1,0 +1,23 @@
+{
+  "review": {
+    "eyebrow": "Waiting on you",
+    "heading": "{count, plural, one {# item} other {# items}} to review",
+    "needsAttention": "{count, plural, one {# needs a closer look} other {# need a closer look}}",
+    "loading": "Loading the review queue",
+    "emptyTitle": "Nothing waiting",
+    "emptyBody": "When an AI proposes a change to a document, or a workspace policy stops an agent from acting on its own, it waits here for someone to decide.",
+    "kindDocument": "Document",
+    "kindAction": "Agent action",
+    "staleWarning": "The page changed after this was written — approving overwrites those edits.",
+    "agentBlocked": "An agent is waiting on this.",
+    "becauseOf": "Held because: {reason}",
+    "approve": "Approve",
+    "reject": "Reject",
+    "working": "Working…",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "failed": "That could not be completed",
+    "groupAffects": "{count, plural, one {# page affected} other {# pages affected}}",
+    "approveAll": "Approve all {count}"
+  }
+}

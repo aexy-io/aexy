@@ -289,6 +289,81 @@ class GitHubAppService:
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
+    async def resolve_repository_access(
+        self,
+        repository: Any,
+        developer_id: str | None = None,
+    ) -> tuple[int, str] | None:
+        """Installation access for one repository, as `(installation_id, token)`.
+
+        One resolution order for everything that reads or writes a repository:
+        the account that owns it first, then a named developer. Repository-first
+        is what survives a departure; the developer fallback is what works
+        before an org-wide installation exists.
+
+        Returns `(installation_id, token)` — that order, deliberately. The
+        underlying helpers return `(token, installation_id)`, and two callers in
+        `github_sync_service` unpacked them the other way round, passing a JWT
+        where an installation id belonged, which broke document export and
+        import outright. A single function with the id first removes the coin
+        flip: `installation_id, token = ...` is now the only shape there is.
+        """
+        account = getattr(repository, "owner_login", None)
+        if account:
+            result = await self.get_installation_token_for_account(account)
+            if result:
+                token, installation_id = result
+                return installation_id, token
+
+        if developer_id:
+            result = await self.get_installation_token_for_developer(
+                str(developer_id), account
+            )
+            if result:
+                token, installation_id = result
+                return installation_id, token
+
+        return None
+
+    async def get_installation_token_for_account(
+        self,
+        account_login: str,
+    ) -> tuple[str, int] | None:
+        """Get an installation access token for a GitHub account itself.
+
+        Every other resolution here starts from a developer — an installation
+        is reachable only through the `GitHubConnection` of the person who
+        made it. That makes an installation the property of an individual, and
+        so every background job that reads a repository stops the day that
+        individual's connection goes away, even though the installation is
+        still live and the org still has the app.
+
+        This asks the question the background jobs actually mean: does *any*
+        active installation cover this account? Callers should prefer it and
+        fall back to a named developer, not the other way round.
+
+        Returns (token, installation_id) or None if no installation covers it.
+        """
+        if not self.db:
+            raise GitHubAppError("Database session required")
+
+        stmt = (
+            select(GitHubInstallation)
+            .where(GitHubInstallation.account_login == account_login)
+            .where(GitHubInstallation.is_active == True)  # noqa: E712
+            # Oldest first: the org's original installation is the one least
+            # likely to be a short-lived personal grant.
+            .order_by(GitHubInstallation.created_at.asc())
+        )
+        result = await self.db.execute(stmt)
+        installation = result.scalars().first()
+
+        if not installation:
+            return None
+
+        token, _ = await self.get_installation_access_token(installation.installation_id)
+        return token, installation.installation_id
+
     async def get_installation_token_for_developer(
         self,
         developer_id: str,
@@ -354,7 +429,35 @@ class GitHubAppService:
         installation_id = installation_data["id"]
         account = installation_data["account"]
 
-        if action == "deleted":
+        if action in ("created", "new_permissions_accepted"):
+            # The whole reason this method now has a route. `permissions` is
+            # otherwise only written during an OAuth sync, so an admin granting
+            # "Pull requests: write" produced no change here at all — and the next
+            # pull request skipped the comment because the cache still said read.
+            stmt = select(GitHubInstallation).where(
+                GitHubInstallation.installation_id == installation_id
+            )
+            result = await self.db.execute(stmt)
+            installation = result.scalar_one_or_none()
+            if installation:
+                installation.permissions = installation_data.get("permissions")
+                installation.repository_selection = (
+                    installation_data.get("repository_selection")
+                    or installation.repository_selection
+                )
+                installation.is_active = True
+                installation.suspended_at = None
+            else:
+                # A `created` for an installation we have never seen. Nothing to
+                # attach it to until somebody authenticates — `sync_user_installations`
+                # owns that join — so this is a no-op rather than a half row.
+                logger.info(
+                    "Installation %s (%s) is not linked to a connection yet",
+                    installation_id,
+                    account.get("login"),
+                )
+
+        elif action == "deleted":
             # Remove installation
             stmt = select(GitHubInstallation).where(
                 GitHubInstallation.installation_id == installation_id
@@ -454,6 +557,151 @@ class GitHubAppService:
                         "sha": data["sha"],
                     }
                 ]
+
+    async def list_pull_request_files(
+        self,
+        installation_id: int,
+        owner: str,
+        repo: str,
+        number: int,
+        max_files: int = 300,
+    ) -> tuple[list[str], bool]:
+        """The paths a pull request touches.
+
+        This read exists because there is no other source for it. The
+        `pull_request` webhook payload carries no file list — GitHub does not put
+        one there — and unlike a push there is no merge commit to diff. Locally,
+        `PullRequest.files_changed` is an integer count and nothing else. So a
+        question as basic as "which files does this PR touch" cannot be answered
+        without asking.
+
+        Needs only `pull_requests: read`, which the App already has, which is why
+        everything except writing back into the PR works today.
+
+        Returns `(paths, truncated)`. Bounded rather than paged forever: a
+        three-thousand-file pull request is not a documentation-impact question,
+        and the flag lets the page say so instead of quietly under-reporting.
+        """
+        token, _ = await self.get_installation_access_token(installation_id)
+        paths: list[str] = []
+        truncated = False
+
+        async with httpx.AsyncClient() as client:
+            page = 1
+            while len(paths) < max_files:
+                response = await client.get(
+                    f"{self.api_base_url}/repos/{owner}/{repo}/pulls/{number}/files",
+                    headers={
+                        "Authorization": f"Bearer {token}",
+                        "Accept": "application/vnd.github+json",
+                        "X-GitHub-Api-Version": "2022-11-28",
+                    },
+                    params={"per_page": 100, "page": page},
+                )
+
+                if response.status_code == 404:
+                    return [], False
+                if response.status_code != 200:
+                    raise GitHubAppError(
+                        f"Failed to list pull request files: "
+                        f"{response.status_code} - {response.text}"
+                    )
+
+                batch = response.json() or []
+                if not batch:
+                    break
+
+                for entry in batch:
+                    filename = entry.get("filename")
+                    if filename:
+                        paths.append(filename)
+
+                if len(batch) < 100:
+                    break
+                page += 1
+
+        if len(paths) > max_files:
+            truncated = True
+            paths = paths[:max_files]
+
+        return paths, truncated
+
+    async def compare_commits(
+        self,
+        installation_id: int,
+        owner: str,
+        repo: str,
+        base: str,
+        head: str,
+        path_prefix: str = "",
+        max_patch_chars: int = 40_000,
+    ) -> dict[str, Any] | None:
+        """What changed between two commits, narrowed to one path.
+
+        The point is what it *doesn't* return. Documentation only needs the
+        patch for the files it describes, so sending whole file trees to a
+        model — which is what regenerating from source does — pays for context
+        that was already correct. A one-function change is a few hundred
+        tokens this way and tens of thousands the other.
+
+        `max_patch_chars` bounds the result rather than truncating silently:
+        past that size a rewrite is both cheaper and better than patching, so
+        the caller is told to regenerate instead by receiving None.
+
+        Returns {"patch", "summary", "files"} or None if there is nothing
+        relevant in range.
+        """
+        token, _ = await self.get_installation_access_token(installation_id)
+        url = f"{self.api_base_url}/repos/{owner}/{repo}/compare/{base}...{head}"
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                url,
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Accept": "application/vnd.github+json",
+                    "X-GitHub-Api-Version": "2022-11-28",
+                },
+            )
+
+            if response.status_code == 404:
+                return None
+            if response.status_code != 200:
+                raise GitHubAppError(
+                    f"Failed to compare commits: {response.status_code} - {response.text}"
+                )
+
+            payload = response.json()
+
+        prefix = path_prefix.strip("/")
+        parts: list[str] = []
+        names: list[str] = []
+        for entry in payload.get("files") or []:
+            filename = entry.get("filename") or ""
+            if prefix and not (
+                filename == prefix or filename.startswith(f"{prefix}/")
+            ):
+                continue
+            patch = entry.get("patch")
+            if not patch:
+                # No patch means binary, or a diff GitHub declined to render.
+                continue
+            names.append(filename)
+            parts.append(f"--- {filename}\n{patch}")
+
+        if not parts:
+            return None
+
+        combined = "\n\n".join(parts)
+        if len(combined) > max_patch_chars:
+            return None
+
+        commit_count = len(payload.get("commits") or [])
+        summary = (
+            f"{commit_count} commit(s) touched {len(names)} file(s) under "
+            f"{prefix or 'the repository root'}: {', '.join(names[:10])}"
+        )
+        return {"patch": combined, "summary": summary, "files": names}
 
     async def get_file_content(
         self,
@@ -565,3 +813,70 @@ class GitHubAppService:
                 }
                 for branch in response.json()
             ]
+
+
+class GitHubServiceAdapter:
+    """Adapt `GitHubAppService` to the content interface the document
+    generation service expects.
+
+    `DocumentGenerationService` asks for content by `(repository_full_name,
+    path, branch)`. `GitHubAppService` answers by `(installation_id, owner,
+    repo, path, ref)`. Handing the app service straight to the generation
+    service therefore fails with a `TypeError` — `installation_id` receives
+    the repository name, and `path` is never supplied at all. Both the API
+    and the background sync paths need the same bridge, so it lives beside
+    the class it wraps rather than in one caller.
+
+    Lived in `api/documents.py` until the background sync path needed it too;
+    a service importing an API module to reach it would have been backwards.
+    """
+
+    def __init__(self, app_service: GitHubAppService, installation_id: int, owner: str, repo: str):
+        self.app_service = app_service
+        self.installation_id = installation_id
+        self.owner = owner
+        self.repo = repo
+
+    def _normalize_path(self, path: str) -> str:
+        """Normalize path - convert '.' or '/' to empty string for root."""
+        if path in (".", "/", "./"):
+            return ""
+        return path.strip("/")
+
+    async def get_directory_contents(
+        self, repository_full_name: str, path: str, branch: str
+    ) -> list[dict]:
+        """Get directory contents."""
+        normalized_path = self._normalize_path(path)
+        return await self.app_service.get_repository_contents(
+            installation_id=self.installation_id,
+            owner=self.owner,
+            repo=self.repo,
+            path=normalized_path,
+            ref=branch,
+        )
+
+    async def get_file_content(
+        self, repository_full_name: str, path: str, branch: str
+    ) -> dict | None:
+        """Get file content."""
+        return await self.app_service.get_file_content(
+            installation_id=self.installation_id,
+            owner=self.owner,
+            repo=self.repo,
+            path=path,
+            ref=branch,
+        )
+
+    async def compare_commits(
+        self, repository_full_name: str, base: str, head: str, path_prefix: str = ""
+    ) -> dict | None:
+        """What changed between two commits, under one path."""
+        return await self.app_service.compare_commits(
+            installation_id=self.installation_id,
+            owner=self.owner,
+            repo=self.repo,
+            base=base,
+            head=head,
+            path_prefix=path_prefix,
+        )

@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.api.access_guard import ensure_app_enabled
@@ -17,6 +17,8 @@ from aexy.schemas.document import (
     DocumentCommentUpdate,
     CodeLinkCreate,
     CodeLinkResponse,
+    CodeLinkSyncModeUpdate,
+    CodeLinkTransfer,
     CollaboratorAdd,
     CollaboratorResponse,
     CollaboratorUpdate,
@@ -24,20 +26,34 @@ from aexy.schemas.document import (
     DocumentCreate,
     DocumentListResponse,
     DocumentMoveRequest,
+    DocumentNeedsUpdateItem,
+    MergedChangeItem,
     DocumentResponse,
     DocumentTreeItem,
     DocumentUpdate,
     DocumentVersionResponse,
+    GenerateFromCodeRequest,
+    GenerateFromRepositoryRequest,
+    LinkedDocumentResponse,
     ProposedEditReject,
     ProposedEditResponse,
+    ApplySuggestionRequest,
+    ProposeMarkdownRequest,
     TemplateCreate,
     TemplateListResponse,
     TemplateResponse,
     TemplateUpdate,
+    WorkspaceProposedEdit,
 )
 from aexy.services.document_comment_service import DocumentCommentService
-from aexy.services.github_app_service import GitHubAppService
+from aexy.services.github_app_service import (
+    GitHubAppError,
+    GitHubAppService,
+    GitHubServiceAdapter,
+)
 from aexy.services.document_service import DocumentService
+from aexy.services.markdown_to_tiptap import MarkdownError, markdown_to_tiptap
+from aexy.services.document_sync_service import DocumentSyncService
 from aexy.services.document_generation_service import DocumentGenerationService
 from aexy.services.proposed_edits_service import (
     ProposedEditsService,
@@ -234,6 +250,148 @@ async def get_favorites(
     return favorites
 
 
+# ==================== Documentation work list ====================
+# NOTE: Every route here MUST stay before /{document_id}, or its literal path
+# segment is read as a document id and the endpoint 404s on a lookup for a
+# document called "needs-update".
+
+
+@router.get("/needs-update", response_model=list[DocumentNeedsUpdateItem])
+async def list_documents_needing_update(
+    workspace_id: str,
+    repository_id: str | None = Query(
+        default=None, description="Restrict to one repository."
+    ),
+    include_never_synced: bool = Query(
+        default=True,
+        description="Include documents linked to code that have never been generated.",
+    ),
+    limit: int = Query(default=50, ge=1, le=200),
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """List documents whose linked source code has changed since they were written.
+
+    The work list for keeping documentation current: each item names the
+    document, the repository path it describes, the commit it has fallen
+    behind, and why it is listed. Detecting this is cheap and needs no model —
+    it is path matching against pushes — so the platform tracks it centrally
+    and leaves the writing to whoever is best placed to do it.
+
+    Intended to be picked up by a coding agent over MCP. An agent working in
+    the repository already has the source in context, so the useful division
+    is that this endpoint says *what* needs attention and the agent decides
+    what the prose should say, submitting the result through
+    `POST /{document_id}/proposed-edits` where a human reviews it.
+
+    `pending_proposal_count` is why an agent should read this before writing:
+    an item that already has a proposal waiting has been dealt with, and
+    generating another only creates a second thing for someone to review.
+    """
+    await check_workspace_permission(workspace_id, current_user, db, "viewer")
+
+    sync_service = DocumentSyncService(db)
+    return await sync_service.list_documents_needing_update(
+        workspace_id=workspace_id,
+        repository_id=repository_id,
+        include_never_synced=include_never_synced,
+        limit=limit,
+    )
+
+
+@router.get("/merged-changes", response_model=list[MergedChangeItem])
+async def list_merged_changes(
+    workspace_id: str,
+    repository_id: str | None = Query(
+        default=None, description="Restrict to one repository."
+    ),
+    limit: int = Query(default=20, ge=1, le=100),
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Recently merged pull requests, as candidates for documentation.
+
+    The counterpart to `/needs-update`, which can only find pages that already
+    exist and have fallen behind. Most documentation gaps are not stale pages —
+    they are changes nobody ever wrote about, and there was no queue for those.
+
+    Merged is the moment worth catching: the person who would know has the whole
+    change in their head, and will not in a fortnight.
+
+    Says nothing about whether a change is already documented. `pull_requests`
+    does not record the files a pull request touched, so that claim would be a
+    guess, and a wrong "already documented" is worse than no badge at all.
+    """
+    await check_workspace_permission(workspace_id, current_user, db, "viewer")
+
+    sync_service = DocumentSyncService(db)
+    return await sync_service.list_merged_changes(
+        workspace_id=workspace_id,
+        repository_id=repository_id,
+        limit=limit,
+    )
+
+
+@router.get("/proposed-edits", response_model=list[WorkspaceProposedEdit])
+async def list_workspace_proposed_edits(
+    workspace_id: str,
+    limit: int = Query(default=100, ge=1, le=500),
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Every AI-proposed document edit in this workspace awaiting review.
+
+    Until this existed a proposal could only be found by opening the document
+    it belonged to, so the only way to discover one was to already suspect it
+    was there. That is workable when a person regenerates a single page and
+    goes to look; it fails completely once a repository documents itself
+    module by module and a single merge leaves proposals on a dozen pages.
+
+    Oldest first — the proposal that has been waiting longest is the one
+    holding a document wrong for the longest.
+    """
+    await check_workspace_permission(workspace_id, current_user, db, "member")
+
+    from sqlalchemy import select as _select
+    from sqlalchemy.orm import selectinload as _selectinload
+
+    from aexy.models.documentation import Document as _Doc
+    from aexy.models.proposed_change import ProposedChange as _DPE
+    from aexy.models.documentation import ProposedEditStatus as _Status
+
+    stmt = (
+        _select(_DPE)
+        .join(_Doc, _DPE.document_id == _Doc.id)
+        .options(_selectinload(_DPE.document))
+        .where(_Doc.workspace_id == workspace_id)
+        .where(_DPE.status == _Status.PENDING.value)
+        .order_by(_DPE.proposed_at.asc())
+        .limit(limit)
+    )
+    proposals = list((await db.execute(stmt)).scalars().all())
+
+    out: list[WorkspaceProposedEdit] = []
+    for proposal in proposals:
+        document = proposal.document
+        if not document:
+            continue
+        base = _to_proposed_edit_response(
+            proposal,
+            # Staleness is per-document and each proposal carries the sha it
+            # was written against, so it costs nothing extra here.
+            is_stale=bool(proposal.base_content_sha)
+            and proposal.base_content_sha != compute_content_sha(document.content),
+        )
+        out.append(
+            WorkspaceProposedEdit(
+                **base.model_dump(),
+                document_title=document.title,
+                document_icon=document.icon,
+            )
+        )
+    return out
+
+
 # ==================== Comments ====================
 # NOTE: These routes MUST be before /{document_id} routes to avoid path conflicts
 
@@ -424,15 +582,49 @@ async def get_document(
     return document_to_response(document)
 
 
+def is_agent_request(request: Request) -> bool:
+    """Did this come from an agent acting for someone, or from a person?
+
+    Reads the `actor` claim of the verified token, recorded on the request by
+    `get_current_developer_id`. It used to read a request header, which the
+    caller sets — so an agent holding an ordinary token and calling this API
+    directly wrote straight through, and the review gate was opt-in by the
+    agent. A forged header could only ever *restrict* the forger, so it was
+    never an escalation path; the hole was the other direction, in the promise
+    that an agent's write always lands as a proposal.
+
+    Only endpoints depending on `get_current_developer` (or
+    `get_current_developer_id`) can read this — those are what record the claim.
+    On an optional-auth route it would read as "a person", so an endpoint that
+    wants this decision has to require authentication first.
+    """
+    from aexy.api.developers import AGENT_ACTOR
+
+    return getattr(request.state, "token_actor", None) == AGENT_ACTOR
+
+
 @router.patch("/{document_id}", response_model=DocumentResponse)
 async def update_document(
     workspace_id: str,
     document_id: str,
     data: DocumentUpdate,
+    request: Request,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Update a document."""
+    """Update a document.
+
+    A person editing writes straight through. An agent rewriting the *body* of
+    a document that already has one does not: that content is proposed, and
+    somebody approves it. An agent has no way to know which sentences a human
+    wrote and cared about, and a silent overwrite leaves nothing to compare
+    against — the version history records what changed but never that anyone
+    disagreed.
+
+    Title, icon and visibility still apply directly for an agent. They are
+    small, obvious and trivially reversible; making someone approve a rename
+    is the kind of friction that gets a gate switched off.
+    """
     await check_workspace_permission(workspace_id, current_user, db, "member")
 
     service = DocumentService(db)
@@ -444,6 +636,24 @@ async def update_document(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Document not found",
         )
+
+    if (
+        data.content is not None
+        and is_agent_request(request)
+        and (existing.content or {}).get("content")
+    ):
+        proposed_edits = ProposedEditsService(db)
+        await proposed_edits.create_proposal(
+            document_id=document_id,
+            source=ProposedEditSource.MANUAL_AI_EDIT,
+            proposed_content=data.content,
+            proposed_by_id=str(current_user.id),
+        )
+        await db.commit()
+        # The document is returned unchanged, deliberately. An agent that read
+        # back its own write and saw its text would report success for a change
+        # nobody has approved yet.
+        return document_to_response(existing)
 
     document = await service.update_document(
         document_id=document_id,
@@ -620,6 +830,35 @@ async def restore_version(
 # ==================== Code Links ====================
 
 
+def _code_link_to_response(link) -> CodeLinkResponse:
+    """One shape for a code link, however it was reached.
+
+    Three byte-identical constructions had accumulated across create, list and
+    transfer; a fourth was about to. Each new column on the model meant finding
+    every copy, and the one that got missed would silently serve a default.
+    """
+    return CodeLinkResponse(
+        id=str(link.id),
+        document_id=str(link.document_id),
+        repository_id=str(link.repository_id),
+        repository_name=link.repository.full_name if link.repository else None,
+        path=link.path,
+        link_type=link.link_type,
+        branch=link.branch,
+        document_section_id=link.document_section_id,
+        last_commit_sha=link.last_commit_sha,
+        last_content_hash=link.last_content_hash,
+        last_synced_at=link.last_synced_at,
+        has_pending_changes=link.has_pending_changes,
+        owner_developer_id=(
+            str(link.owner_developer_id) if link.owner_developer_id else None
+        ),
+        sync_mode=link.sync_mode,
+        created_at=link.created_at,
+        updated_at=link.updated_at,
+    )
+
+
 @router.post("/{document_id}/code-links", response_model=CodeLinkResponse)
 async def create_code_link(
     workspace_id: str,
@@ -648,24 +887,10 @@ async def create_code_link(
         link_type=data.link_type,
         branch=data.branch,
         section_id=data.section_id,
+        owner_developer_id=str(current_user.id),
     )
 
-    return CodeLinkResponse(
-        id=str(link.id),
-        document_id=str(link.document_id),
-        repository_id=str(link.repository_id),
-        repository_name=link.repository.full_name if link.repository else None,
-        path=link.path,
-        link_type=link.link_type,
-        branch=link.branch,
-        document_section_id=link.document_section_id,
-        last_commit_sha=link.last_commit_sha,
-        last_content_hash=link.last_content_hash,
-        last_synced_at=link.last_synced_at,
-        has_pending_changes=link.has_pending_changes,
-        created_at=link.created_at,
-        updated_at=link.updated_at,
-    )
+    return _code_link_to_response(link)
 
 
 @router.get("/{document_id}/code-links", response_model=list[CodeLinkResponse])
@@ -691,22 +916,7 @@ async def get_code_links(
     links = await service.get_code_links(document_id)
 
     return [
-        CodeLinkResponse(
-            id=str(link.id),
-            document_id=str(link.document_id),
-            repository_id=str(link.repository_id),
-            repository_name=link.repository.full_name if link.repository else None,
-            path=link.path,
-            link_type=link.link_type,
-            branch=link.branch,
-            document_section_id=link.document_section_id,
-            last_commit_sha=link.last_commit_sha,
-            last_content_hash=link.last_content_hash,
-            last_synced_at=link.last_synced_at,
-            has_pending_changes=link.has_pending_changes,
-            created_at=link.created_at,
-            updated_at=link.updated_at,
-        )
+        _code_link_to_response(link)
         for link in links
     ]
 
@@ -732,6 +942,133 @@ async def delete_code_link(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Code link not found",
         )
+
+
+@router.patch(
+    "/{document_id}/code-links/{link_id}/sync-mode", response_model=CodeLinkResponse
+)
+async def set_code_link_sync_mode(
+    workspace_id: str,
+    document_id: str,
+    link_id: str,
+    data: CodeLinkSyncModeUpdate,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Choose what happens to this document when its code changes.
+
+    `propose` queues an update for review — the default, and the only safe
+    answer for a page people have written by hand. `auto` applies updates
+    without asking, and is honoured only where the update was derived from the
+    existing prose; a full regeneration falls back to proposing, because it
+    cannot know a human wrote anything. `off` stops watching entirely,
+    including the "behind" badge — a document nobody wants updated should not
+    keep being reported as wrong.
+
+    The off switch is not a concession. A queue that fills faster than anyone
+    drains it is one people stop opening, and that costs more than the setting.
+    """
+    await check_workspace_permission(workspace_id, current_user, db, "member")
+
+    service = DocumentService(db)
+    document = await service.get_document(document_id, workspace_id)
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found",
+        )
+
+    link = await service.set_code_link_sync_mode(
+        link_id=link_id,
+        document_id=document_id,
+        sync_mode=data.sync_mode,
+    )
+    if not link:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Code link not found",
+        )
+
+    return _code_link_to_response(link)
+
+
+@router.post(
+    "/{document_id}/code-links/{link_id}/transfer", response_model=CodeLinkResponse
+)
+async def transfer_code_link_owner(
+    workspace_id: str,
+    document_id: str,
+    link_id: str,
+    data: CodeLinkTransfer,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Hand a sync to someone else.
+
+    Departure is handled automatically, but people change teams long before
+    they leave, and a sync whose owner has moved on is one whose plan tier and
+    GitHub access no longer reflect who is actually looking after it.
+
+    The new owner must be a member of this workspace: ownership carries a
+    credential fallback, so handing a sync to an outsider would be a way to read
+    a repository through someone else's installation.
+
+    Who may move it: the current owner, handing on their own sync, or an admin.
+    Any member could before, which is a wider grant than it looks — ownership
+    decides the plan tier the sync runs on and whose LLM spend it is, so an
+    unrestricted transfer is a way to bill a colleague for real-time
+    regeneration you are not entitled to, and to reach a repository through the
+    installation of whoever you assigned it to. The same reasoning already gates
+    agent-action approval to admins.
+    """
+    await check_workspace_permission(workspace_id, current_user, db, "member")
+
+    service = DocumentService(db)
+    document = await service.get_document(document_id, workspace_id)
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found",
+        )
+
+    workspace_service = WorkspaceService(db)
+
+    link_now = await service.get_code_link(link_id, document_id)
+    if not link_now:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Code link not found",
+        )
+    is_current_owner = str(link_now.owner_developer_id or "") == str(current_user.id)
+    if not is_current_owner and not await workspace_service.check_permission(
+        workspace_id, str(current_user.id), "admin"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Only this sync's owner or a workspace admin can transfer it"
+            ),
+        )
+    if not await workspace_service.check_permission(
+        workspace_id, data.owner_developer_id, "viewer"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The new owner must be a member of this workspace",
+        )
+
+    link = await service.set_code_link_owner(
+        link_id=link_id,
+        document_id=document_id,
+        owner_developer_id=data.owner_developer_id,
+    )
+    if not link:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Code link not found",
+        )
+
+    return _code_link_to_response(link)
 
 
 # ==================== Collaborators ====================
@@ -893,6 +1230,67 @@ async def remove_collaborator(
 # ==================== AI Generation ====================
 
 
+async def _repository_reader(db: AsyncSession, repository_id: str, developer_id: str):
+    """Resolve a repository and a client the generation service can call.
+
+    Access is resolved against the repository account first and the requesting
+    developer second — the same order the background sync uses, so an
+    interactive generation and an automated one succeed and fail together
+    rather than for different reasons.
+    """
+    from aexy.services.repository_service import RepositoryService
+
+    repo = await RepositoryService(db).get_repository_by_id(repository_id)
+    if not repo:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Repository not found"
+        )
+
+    app_service = GitHubAppService(db)
+    access = await app_service.resolve_repository_access(repo, developer_id)
+    if not access:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                f"No GitHub App installation covers {repo.owner_login}. "
+                "Install the app for that account first."
+            ),
+        )
+
+    installation_id, _token = access
+    return repo, GitHubServiceAdapter(
+        app_service=app_service,
+        installation_id=installation_id,
+        owner=repo.owner_login,
+        repo=repo.name,
+    )
+
+
+def _generation_http_error(exc: Exception) -> HTTPException:
+    """Map an LLM failure onto a status a caller can act on.
+
+    Rate limiting and an unavailable provider call for different responses —
+    wait, versus try later or check configuration — and collapsing both into a
+    500 tells the user to do the one thing that cannot help.
+    """
+    from aexy.llm.base import LLMAPIError, LLMRateLimitError
+
+    if isinstance(exc, LLMRateLimitError):
+        return HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="AI service rate limit exceeded. Please wait a few minutes and try again.",
+        )
+    if isinstance(exc, LLMAPIError):
+        return HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"AI service error: {str(exc)}",
+        )
+    return HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail=f"Failed to generate documentation: {str(exc)}",
+    )
+
+
 @router.post("/{document_id}/generate")
 async def generate_documentation(
     workspace_id: str,
@@ -1023,35 +1421,33 @@ async def generate_documentation(
 @router.post("/generate-from-code")
 async def generate_from_code(
     workspace_id: str,
-    code: str = Query(..., description="Source code to document"),
-    template_category: str = Query(default="function_docs"),
-    file_path: str | None = Query(default=None),
-    language: str | None = Query(default=None),
+    data: GenerateFromCodeRequest,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Generate documentation from provided source code."""
+    """Generate documentation from source code pasted into the request body.
+
+    Produces content only; nothing is saved. Pasted code has no repository
+    path to point at, so there is nothing to keep it in sync with afterwards —
+    for a document that stays current, use `/from-repository`.
+    """
     await check_workspace_permission(workspace_id, current_user, db, "member")
 
-    try:
-        category = TemplateCategory(template_category)
-    except ValueError:
-        category = TemplateCategory.FUNCTION_DOCS
-
     gen_service = DocumentGenerationService(db, workspace_id=workspace_id)
+    category = TemplateCategory(data.template_category)
 
     try:
         content = await gen_service.generate_from_code(
-            code=code,
+            code=data.code,
             template_category=category,
-            file_path=file_path,
-            language=language,
+            file_path=data.file_path,
+            language=data.language,
             developer_id=str(current_user.id),
         )
 
         return {
             "status": "success",
-            "content": content,
+            "content": gen_service.ensure_renderable(content, category),
         }
 
     except Exception as e:
@@ -1061,53 +1457,238 @@ async def generate_from_code(
         )
 
 
-class GitHubServiceAdapter:
-    """Adapter to wrap GitHubAppService with the interface expected by DocumentGenerationService.
+async def _repository_or_404(db: AsyncSession, repository_id: str):
+    from aexy.services.repository_service import RepositoryService
 
-    ``app_service`` was annotated as the string ``"GitHubAppService"`` while the
-    only import of that name lived inside the request handler further down, so the
-    forward reference had nothing to resolve to: a type checker could not follow it
-    and ``typing.get_type_hints`` on this class raised NameError. A real
-    module-level import fixes it rather than hiding it — the two modules do not
-    form a cycle in either direction, so the local import bought nothing here.
+    repo = await RepositoryService(db).get_repository_by_id(repository_id)
+    if not repo:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Repository not found"
+        )
+    return repo
+
+
+async def _create_linked_document(
+    *,
+    db: AsyncSession,
+    doc_service: DocumentService,
+    data: GenerateFromRepositoryRequest,
+    repo,
+    content: dict,
+    category: TemplateCategory,
+    developer_id: str,
+    workspace_id: str,
+) -> LinkedDocumentResponse:
+    """The document, its link and its place in the tree, in one transaction."""
+    document = await doc_service.create_document(
+        workspace_id=workspace_id,
+        created_by_id=developer_id,
+        title=data.title or f"{repo.name}/{data.path}".rstrip("/"),
+        content=content,
+        # A whole-repository pass hangs a child under a parent overview, so one
+        # module can later be revised without touching the rest.
+        parent_id=data.parent_id,
+        icon="📁" if data.link_type == "directory" else "📄",
+    )
+    link = await doc_service.create_code_link(
+        document_id=str(document.id),
+        repository_id=data.repository_id,
+        path=data.path,
+        link_type=data.link_type,
+        branch=data.branch,
+        owner_developer_id=developer_id,
+        template_category=category.value,
+    )
+    # The prose was written from the tip of this branch, so that is the base
+    # the next change should be diffed against.
+    link.last_synced_at = datetime.now(timezone.utc)
+    document.generation_status = "generated"
+    document.last_generated_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(link)
+
+    return LinkedDocumentResponse(
+        document=document_to_response(document),
+        code_link=_code_link_to_response(link),
+    )
+
+
+async def _revise_linked_document(
+    *,
+    db: AsyncSession,
+    data: GenerateFromRepositoryRequest,
+    link,
+    gen_service: DocumentGenerationService,
+    developer_id: str,
+    workspace_id: str,
+) -> LinkedDocumentResponse:
+    """This path is already documented, so propose rather than duplicate.
+
+    Returns the existing document unchanged. The rewrite waits in the review
+    queue — a re-run over a repository somebody has already reviewed must not
+    silently replace their edits with a fresh generation, and it must not
+    create a second document for the same module either.
     """
-
-    def __init__(self, app_service: GitHubAppService, installation_id: int, owner: str, repo: str):
-        self.app_service = app_service
-        self.installation_id = installation_id
-        self.owner = owner
-        self.repo = repo
-
-    def _normalize_path(self, path: str) -> str:
-        """Normalize path - convert '.' or '/' to empty string for root."""
-        if path in (".", "/", "./"):
-            return ""
-        return path.strip("/")
-
-    async def get_directory_contents(
-        self, repository_full_name: str, path: str, branch: str
-    ) -> list[dict]:
-        """Get directory contents."""
-        normalized_path = self._normalize_path(path)
-        return await self.app_service.get_repository_contents(
-            installation_id=self.installation_id,
-            owner=self.owner,
-            repo=self.repo,
-            path=normalized_path,
-            ref=branch,
+    doc_service = DocumentService(db)
+    document = await doc_service.get_document(str(link.document_id), workspace_id)
+    if document is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"{data.path} is linked to a document that no longer exists. "
+                "Remove the stale link and try again."
+            ),
         )
 
-    async def get_file_content(
-        self, repository_full_name: str, path: str, branch: str
-    ) -> dict | None:
-        """Get file content."""
-        return await self.app_service.get_file_content(
-            installation_id=self.installation_id,
-            owner=self.owner,
-            repo=self.repo,
-            path=path,
-            ref=branch,
+    if data.markdown is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"{data.path} is already documented by \"{document.title}\". "
+                "Send `markdown` to propose a revision, or use the regenerate "
+                "endpoint on that document."
+            ),
         )
+
+    try:
+        content = markdown_to_tiptap(data.markdown)
+    except MarkdownError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        )
+
+    proposed_edits = ProposedEditsService(db)
+    await proposed_edits.create_proposal(
+        document_id=str(document.id),
+        source=ProposedEditSource.MANUAL_AI_EDIT,
+        proposed_content=content,
+        proposed_by_id=developer_id,
+        diff_summary={"summary": f"Re-documented {data.path}"},
+    )
+    await db.commit()
+    await db.refresh(link)
+
+    return LinkedDocumentResponse(
+        document=document_to_response(document),
+        code_link=_code_link_to_response(link),
+    )
+
+
+@router.post(
+    "/from-repository",
+    response_model=LinkedDocumentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_document_from_repository(
+    workspace_id: str,
+    data: GenerateFromRepositoryRequest,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Write a document from a repository path, and link it to that path.
+
+    The link is the point. Generation already knows the repository, the branch
+    and the path; creating the document without recording them throws away the
+    only thing that lets it ever be told the code has moved. Every piece of
+    machinery behind this — change detection, the review queue, the freshness
+    badge, the work list an agent reads — keys off `document_code_links`, and
+    until this endpoint existed nothing in the product wrote a row to it.
+
+    One transaction, deliberately. Two client calls would leave a half-created
+    state on any failure: a document that looks generated and will never
+    notice a change, which is precisely the failure being removed.
+    """
+    await check_workspace_permission(workspace_id, current_user, db, "member")
+
+    doc_service = DocumentService(db)
+    gen_service = DocumentGenerationService(db, workspace_id=workspace_id)
+    category = TemplateCategory(data.template_category)
+
+    # Already documented? Then this is a revision, not a second document.
+    # A whole-repository pass is re-run — after a refactor, or because the
+    # first attempt was thin — and creating a parallel document per module
+    # each time would bury the reviewed one under near-duplicates nobody can
+    # tell apart.
+    existing = await doc_service.find_code_link(
+        workspace_id=workspace_id,
+        repository_id=data.repository_id,
+        path=data.path,
+    )
+    if existing is not None:
+        return await _revise_linked_document(
+            db=db,
+            data=data,
+            link=existing,
+            gen_service=gen_service,
+            developer_id=str(current_user.id),
+            workspace_id=workspace_id,
+        )
+
+    if data.markdown is not None:
+        # The caller wrote it. Nothing to generate, and nothing to pay for.
+        try:
+            content = markdown_to_tiptap(data.markdown)
+        except MarkdownError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+            )
+        repo = await _repository_or_404(db, data.repository_id)
+        return await _create_linked_document(
+            db=db,
+            doc_service=doc_service,
+            data=data,
+            repo=repo,
+            content=content,
+            category=category,
+            developer_id=str(current_user.id),
+            workspace_id=workspace_id,
+        )
+
+    repo, github_adapter = await _repository_reader(
+        db, repository_id=data.repository_id, developer_id=str(current_user.id)
+    )
+
+    try:
+        if data.link_type == "file":
+            # A single file is documented from its own contents; the category
+            # is meaningful here, which is why the UI only offers it for files.
+            content = await gen_service.generate_from_repository(
+                github_service=github_adapter,
+                repository_full_name=repo.full_name,
+                path=data.path,
+                template_category=category,
+                branch=data.branch,
+                developer_id=str(current_user.id),
+            )
+        else:
+            content = await gen_service.generate_module_documentation(
+                github_service=github_adapter,
+                repository_full_name=repo.full_name,
+                directory_path=data.path or ".",
+                branch=data.branch,
+                developer_id=str(current_user.id),
+                custom_prompt=data.custom_prompt,
+            )
+    except GitHubAppError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"GitHub API error: {str(e)}",
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        raise _generation_http_error(e)
+
+    return await _create_linked_document(
+        db=db,
+        doc_service=doc_service,
+        data=data,
+        repo=repo,
+        content=gen_service.ensure_renderable(content, category),
+        category=category,
+        developer_id=str(current_user.id),
+        workspace_id=workspace_id,
+    )
 
 
 @router.post("/generate-from-repository")
@@ -1276,14 +1857,7 @@ async def suggest_improvements(
 async def apply_suggestion(
     workspace_id: str,
     document_id: str,
-    suggestion_summary: str = Query(
-        ...,
-        description=(
-            "Short description of the improvement to apply, copied "
-            "from `suggest_improvements`'s `improvements[].suggestion`. "
-            "Fed to the doc-update prompt as the change summary."
-        ),
-    ),
+    data: ApplySuggestionRequest,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
@@ -1315,7 +1889,7 @@ async def apply_suggestion(
             old_code="",
             new_code="",
             language=None,
-            changes_summary=suggestion_summary,
+            changes_summary=data.suggestion_summary,
             developer_id=str(current_user.id),
         )
     except Exception as e:
@@ -1334,7 +1908,7 @@ async def apply_suggestion(
         source=ProposedEditSource.SUGGEST_IMPROVEMENTS,
         proposed_content=proposed_content,
         proposed_by_id=str(current_user.id),
-        diff_summary={"suggestion": suggestion_summary},
+        diff_summary={"suggestion": data.suggestion_summary},
     )
     await db.commit()
 
@@ -1845,6 +2419,66 @@ def _to_proposed_edit_response(
     )
 
 
+@router.post(
+    "/{document_id}/propose",
+    response_model=ProposedEditResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def propose_document_update(
+    workspace_id: str,
+    document_id: str,
+    data: ProposeMarkdownRequest,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Propose a rewrite of this document, written in Markdown.
+
+    The way anything that is not the editor should write a document. Send
+    Markdown; the server decides what the document becomes. Editor JSON is not
+    accepted from clients — it would mean trusting an outside writer to know a
+    schema it cannot see, and the failure is silent: one invalid node makes the
+    editor render a blank page, so a bad write looks like an empty document
+    rather than an error.
+
+    Nothing is applied. The result waits in the workspace's review queue with
+    a readable diff against the current text. For an agent this is the point:
+    you have the source in front of you and can say what the page should now
+    say, and the person who owns the page decides whether it does.
+    """
+    await check_workspace_permission(workspace_id, current_user, db, "member")
+
+    doc_service = DocumentService(db)
+    document = await doc_service.get_document(document_id, workspace_id)
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
+        )
+
+    try:
+        content = markdown_to_tiptap(data.markdown)
+    except MarkdownError as exc:
+        # Rejected at the boundary rather than saved and discovered later.
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        )
+
+    proposed_edits = ProposedEditsService(db)
+    proposal = await proposed_edits.create_proposal(
+        document_id=document_id,
+        source=ProposedEditSource.MANUAL_AI_EDIT,
+        proposed_content=content,
+        proposed_by_id=str(current_user.id),
+        diff_summary={"summary": data.summary} if data.summary else None,
+    )
+    await db.commit()
+
+    return _to_proposed_edit_response(
+        proposal,
+        is_stale=bool(proposal.base_content_sha)
+        and proposal.base_content_sha != compute_content_sha(document.content),
+    )
+
+
 @router.get(
     "/{document_id}/proposed-edits",
     response_model=list[ProposedEditResponse],
@@ -1878,12 +2512,12 @@ async def list_proposed_edits(
     else:
         from sqlalchemy import select as _select
 
-        from aexy.models.documentation import DocumentProposedEdit as _DPE
+        from aexy.models.proposed_change import ProposedChange as _DPE
 
-        stmt = _select(_DPE).where(_DPE.document_id == document_id)
+        stmt = _select(_DPE).where(_DPE.entity_type == "document").where(_DPE.entity_id == document_id)
         if status_filter != "all":
             stmt = stmt.where(_DPE.status == status_filter)
-        stmt = stmt.order_by(_DPE.proposed_at.desc())
+        stmt = stmt.order_by(_DPE.created_at.desc())
         result = await db.execute(stmt)
         proposals = list(result.scalars().all())
 

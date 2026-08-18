@@ -1,14 +1,114 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Check, X, AlertTriangle, Columns, AlignLeft, RefreshCw } from "lucide-react";
 
 import { ProposedEdit } from "@/lib/api";
+import {
+  DiffLine,
+  collapseUnchanged,
+  diffBlocks,
+  extractBlocks,
+} from "./documentDiff";
 
 type DiffMode = "summary" | "unified" | "side-by-side";
 
+/** One block of a document, styled by its heading level. */
+function BlockText({ text, level }: { text: string; level: number }) {
+  if (level > 0) {
+    return (
+      <div
+        className="font-semibold text-foreground"
+        style={{ fontSize: `${Math.max(0.75, 0.95 - level * 0.05)}rem` }}
+      >
+        {text}
+      </div>
+    );
+  }
+  return <div className="text-xs text-foreground">{text}</div>;
+}
+
+function DocumentText({ blocks }: { blocks: { text: string; level: number }[] }) {
+  const t = useTranslations("docs.diff");
+  if (!blocks.length) {
+    return <p className="text-xs text-muted-foreground">{t("empty")}</p>;
+  }
+  return (
+    <div className="space-y-1.5">
+      {blocks.map((block, index) => (
+        <BlockText key={index} text={block.text} level={block.level} />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * The unified diff.
+ *
+ * Colour is not the only signal — every changed line carries a + or − so the
+ * view survives a reviewer who cannot distinguish the two greens, and so it
+ * still reads when copied out as plain text.
+ */
+function DiffBody({
+  lines,
+}: {
+  lines: (DiffLine | { type: "gap"; count: number })[];
+}) {
+  const t = useTranslations("docs.diff");
+  if (!lines.length) {
+    return (
+      <p className="text-xs text-muted-foreground">{t("noWordingChanged")}</p>
+    );
+  }
+  return (
+    <div className="space-y-0.5">
+      {lines.map((line, index) => {
+        if (line.type === "gap") {
+          return (
+            <div
+              key={index}
+              data-testid="diff-gap"
+              className="text-[11px] text-muted-foreground py-1 pl-4 border-l-2 border-dashed border-border"
+            >
+              {t("unchangedBlocks", { count: line.count })}
+            </div>
+          );
+        }
+        const marker =
+          line.type === "added" ? "+" : line.type === "removed" ? "−" : " ";
+        const tone =
+          line.type === "added"
+            ? "bg-success/10 border-success/50"
+            : line.type === "removed"
+              ? "bg-destructive/10 border-destructive/50"
+              : "border-transparent";
+        return (
+          <div
+            key={index}
+            data-testid={`diff-line-${line.type}`}
+            className={`flex gap-2 px-2 py-0.5 rounded border-l-2 ${tone}`}
+          >
+            <span
+              aria-hidden
+              className="font-mono text-xs text-muted-foreground shrink-0 select-none"
+            >
+              {marker}
+            </span>
+            <BlockText text={line.text} level={line.level} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 interface Props {
   proposal: ProposedEdit;
+  /** The document as it stands. Without it there is nothing to diff against,
+   *  and the review degrades to reading the proposal on its own — which is
+   *  what the JSON dump used to be. */
+  currentContent?: unknown;
   onApprove: () => void;
   onReject: (reason?: string) => void;
   /** Optional: regenerate against the current document base. Only
@@ -36,13 +136,31 @@ interface Props {
  */
 export function ProposedEditReview({
   proposal,
+  currentContent,
   onApprove,
   onReject,
   onRegenerate,
   isPending,
 }: Props) {
+  const t = useTranslations("docs.diff");
   const [mode, setMode] = useState<DiffMode>("summary");
   const [showRejectForm, setShowRejectForm] = useState(false);
+
+  const currentBlocks = useMemo(
+    () => extractBlocks(currentContent),
+    [currentContent]
+  );
+  const proposedBlocks = useMemo(
+    () => extractBlocks(proposal.proposed_content),
+    [proposal.proposed_content]
+  );
+  // Null when either document is too long to diff in the browser; the section
+  // summary is the better view at that size anyway.
+  const diff = useMemo(
+    () => diffBlocks(currentBlocks, proposedBlocks),
+    [currentBlocks, proposedBlocks]
+  );
+  const tooLargeMessage = t("tooLarge");
   const [rejectReason, setRejectReason] = useState("");
 
   const summary = proposal.diff_summary ?? {};
@@ -126,31 +244,28 @@ export function ProposedEditReview({
           />
         )}
         {mode === "unified" && (
-          <pre
-            data-testid="diff-unified-view"
-            className="text-xs font-mono text-foreground whitespace-pre-wrap bg-muted/30 rounded p-2 max-h-96 overflow-auto"
-          >
-            {JSON.stringify(proposal.proposed_content, null, 2)}
-          </pre>
+          <div data-testid="diff-unified-view" className="max-h-96 overflow-auto">
+            {diff ? (
+              <DiffBody lines={collapseUnchanged(diff)} />
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                {tooLargeMessage}
+              </p>
+            )}
+          </div>
         )}
         {mode === "side-by-side" && (
           <div
             data-testid="diff-side-by-side-view"
-            className="grid grid-cols-2 gap-2 text-xs font-mono"
+            className="grid grid-cols-2 gap-2"
           >
             <div className="bg-muted/30 rounded p-2 max-h-96 overflow-auto">
-              <div className="text-muted-foreground mb-1 not-italic font-sans">
-                Current
-              </div>
-              <pre className="whitespace-pre-wrap">(use editor view to see current document)</pre>
+              <div className="text-muted-foreground text-xs mb-1">{t("current")}</div>
+              <DocumentText blocks={currentBlocks} />
             </div>
             <div className="bg-muted/30 rounded p-2 max-h-96 overflow-auto">
-              <div className="text-muted-foreground mb-1 not-italic font-sans">
-                Proposed
-              </div>
-              <pre className="whitespace-pre-wrap">
-                {JSON.stringify(proposal.proposed_content, null, 2)}
-              </pre>
+              <div className="text-muted-foreground text-xs mb-1">{t("proposed")}</div>
+              <DocumentText blocks={proposedBlocks} />
             </div>
           </div>
         )}

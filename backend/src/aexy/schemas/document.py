@@ -111,6 +111,8 @@ class DocumentTreeItem(BaseModel):
     visibility: DocumentVisibility = "workspace"
     created_by_id: str | None = None
     is_favorited: bool = False
+    # The linked code has changed since this page was written.
+    is_behind_code: bool = False
     has_children: bool = False
     children: list["DocumentTreeItem"] = Field(default_factory=list)
     created_at: str
@@ -245,6 +247,157 @@ class CodeLinkCreate(BaseModel):
     section_id: str | None = Field(default=None, max_length=100)
 
 
+class MergedChangeItem(BaseModel):
+    """One merged pull request, offered as something to write about.
+
+    The sharpest moment to document a change is just after it lands, and the
+    person who would know has the whole thing in their head for about a day.
+    Carries the repository coordinates so "document this" can open the
+    generator already pointed at the right place.
+
+    Deliberately says nothing about whether the change is *already*
+    documented: `pull_requests` does not store the files a pull request
+    touched, so any such claim would be a guess, and a wrong "documented"
+    badge is worse than no badge.
+    """
+
+    pull_request_id: str
+    number: int
+    title: str
+    repository: str
+    repository_id: str | None = None
+    merged_at: datetime | None = None
+    author_name: str | None = None
+    merged_by_login: str | None = None
+    additions: int = 0
+    deletions: int = 0
+    files_changed: int = 0
+
+    # How many documents in this workspace are linked to anything in the same
+    # repository. Zero is the honest signal that this repository has no
+    # documentation at all — which is a different and more useful thing to say
+    # than guessing at whether this particular change is covered.
+    repository_document_count: int = 0
+    # Pages this merge was found to affect. Zero also means "not evaluated" —
+    # both cases should show no link, so they need no distinguishing here.
+    impact_affected_count: int = 0
+
+
+class DocumentNeedsUpdateItem(BaseModel):
+    """One document whose linked code has moved on without it.
+
+    Shaped for whoever is going to act on it — an agent over MCP, or the
+    review inbox — so it carries the repository coordinates needed to go and
+    read the code, not just a document id.
+    """
+
+    document_id: str
+    document_title: str
+    document_icon: str | None = None
+
+    code_link_id: str
+    repository_id: str
+    repository_full_name: str | None = None
+    path: str
+    link_type: str
+    branch: str
+
+    # `code_changed` — a push touched this path since the last sync.
+    # `never_synced` — linked to code but never generated from it.
+    reason: str
+    last_synced_at: datetime | None = None
+    last_seen_commit_sha: str | None = None
+    owner_developer_id: str | None = None
+
+    # A proposal already waiting for review. Non-zero means this document has
+    # been dealt with and writing another update only duplicates the reviewer's
+    # work.
+    pending_proposal_count: int = 0
+
+
+class CodeLinkTransfer(BaseModel):
+    """Schema for handing a code link's sync to another member."""
+
+    owner_developer_id: str
+
+
+class GenerateFromCodeRequest(BaseModel):
+    """Source code to document, in the request body.
+
+    `code` used to be a query parameter. A 200-line file put roughly 8 KB in
+    the request line — past the default ceiling in nginx and in uvicorn's h11
+    limits — so pasting a real file returned 414 and the UI said "please try
+    again", which could not work because the input was the problem. It also
+    wrote the source verbatim into access logs, proxy logs and browser
+    history.
+    """
+
+    code: str = Field(min_length=1)
+    template_category: TemplateCategory = "function_docs"
+    file_path: str | None = Field(default=None, max_length=1000)
+    language: str | None = Field(default=None, max_length=50)
+
+
+class GenerateFromRepositoryRequest(BaseModel):
+    """Generate from a path in a connected repository.
+
+    `path` may name a file or a directory; `link_type` says which, and decides
+    whether the result is written from that one file or from the module around
+    it. Previously only directories were reachable, which made three of the
+    four documentation types on the screen unreachable by construction.
+    """
+
+    repository_id: str
+    path: str = Field(default="", max_length=1000)
+    link_type: DocumentLinkType = "directory"
+    branch: str = Field(default="main", max_length=255)
+    template_category: TemplateCategory = "module_docs"
+    custom_prompt: str | None = None
+    title: str | None = Field(default=None, max_length=500)
+
+    # Where this sits in the tree. A whole-repository pass creates one parent
+    # and a child per module, so that later a single module can be revised
+    # without rewriting the world.
+    parent_id: str | None = None
+
+    # Prose the caller already wrote, in Markdown. When present the server does
+    # not generate: an agent running in the working tree has read the actual
+    # files and can say more than a server fetching a directory listing and the
+    # first 2 KB of a README. The server's job is then the part the agent
+    # cannot do — the document, the link, and the tree.
+    markdown: str | None = None
+
+
+class ApplySuggestionRequest(BaseModel):
+    """One improvement to turn into a proposed edit.
+
+    A body rather than a query parameter: a suggestion is a sentence of prose,
+    and prose in a URL is a length limit and a log entry waiting to happen —
+    the same reason `code` moved out of the query string.
+    """
+
+    suggestion_summary: str = Field(min_length=1, max_length=2000)
+
+
+class ProposeMarkdownRequest(BaseModel):
+    """A proposed rewrite, written in Markdown.
+
+    Markdown rather than editor JSON on purpose: it is a format a writer can
+    produce without seeing our schema, and one the server can refuse cleanly
+    when it is wrong. Editor JSON fails silently instead — an invalid node
+    renders as a blank page.
+    """
+
+    markdown: str = Field(min_length=1)
+    summary: str | None = Field(default=None, max_length=500)
+
+
+class CodeLinkSyncModeUpdate(BaseModel):
+    """How this document should react when its code changes."""
+
+    sync_mode: Literal["propose", "auto", "off"]
+
+
 class CodeLinkResponse(BaseModel):
     """Schema for code link response."""
 
@@ -262,6 +415,13 @@ class CodeLinkResponse(BaseModel):
     last_content_hash: str | None = None
     last_synced_at: datetime | None = None
     has_pending_changes: bool = False
+    # Whoever set this sync up. Null means orphaned — the owner left and no
+    # transfer has run — which is worth surfacing rather than hiding, since
+    # such a sync only keeps working while the repository has an installation
+    # of its own.
+    owner_developer_id: str | None = None
+    # propose (default) / auto / off — see DocumentSyncMode.
+    sync_mode: str = "propose"
     created_at: datetime
     updated_at: datetime
 
@@ -276,16 +436,6 @@ class CodeChangeCheckResponse(BaseModel):
 
 
 # ==================== Generation Schemas ====================
-
-
-class GenerateFromCodeRequest(BaseModel):
-    """Schema for generating documentation from code."""
-
-    template_id: str
-    repository_id: str
-    paths: list[str] = Field(min_length=1)
-    custom_prompt: str | None = None
-    variables: dict[str, Any] = Field(default_factory=dict)
 
 
 class RegenerateDocumentRequest(BaseModel):
@@ -615,6 +765,25 @@ class ProposedEditResponse(BaseModel):
     # Computed: True when base_content_sha != document.content_sha at
     # read-time. Surfaces the merge-conflict badge in the FE.
     is_stale: bool = False
+
+
+class LinkedDocumentResponse(BaseModel):
+    """A generated document and the code link that keeps it honest."""
+
+    document: DocumentResponse
+    code_link: CodeLinkResponse
+
+
+class WorkspaceProposedEdit(ProposedEditResponse):
+    """A proposal seen from outside its own document.
+
+    The per-document listing can assume the reader already knows which page
+    they are on. A workspace-wide queue cannot: without the title there is
+    nothing to decide from but a UUID.
+    """
+
+    document_title: str
+    document_icon: str | None = None
 
 
 class ProposedEditReject(BaseModel):

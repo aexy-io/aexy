@@ -186,6 +186,23 @@ class NotificationEventType(str, Enum):
     # main notification bell — so a proposal waited silently for someone to go
     # looking in the right panel.
     DOCUMENT_AI_PROPOSAL = "document_ai_proposal"
+    # Inherited responsibility, not a request. Someone who set up a doc-to-code
+    # sync has left the workspace and their syncs now answer to you — silence
+    # here means the first you hear of it is an AI proposal you did not ask for
+    # on a document you did not know you owned.
+    DOCUMENT_SYNC_OWNERSHIP_TRANSFERRED = "document_sync_ownership_transferred"
+
+    # Documentation impact — the only two events in the product addressed to the
+    # recipient about their *own* action, which is why their emitters must not
+    # pass `actor_id`: `_notify_quietly` drops the actor.
+    #
+    # A pull request is open and touches code that documented pages describe. The
+    # moment worth catching, because the author can still fix it in this branch.
+    DOCUMENT_IMPACT_PR_OPENED = "document_impact_pr_opened"
+    # It merged and those pages are now wrong. Distinct from DOCUMENT_AI_PROPOSAL:
+    # that one tells a document's owner a proposal is waiting for review, this
+    # tells the change's author about the debt their merge just created.
+    DOCUMENT_IMPACT_PR_MERGED = "document_impact_pr_merged"
 
     # Chat
     CHAT_MENTION = "chat_mention"
@@ -567,6 +584,15 @@ NOTIFICATION_CATEGORIES: dict[str, list[str]] = {
         NotificationEventType.DOCUMENT_MENTIONED.value,
         NotificationEventType.DOCUMENT_COMMENTED.value,
         NotificationEventType.DOCUMENT_AI_PROPOSAL.value,
+        NotificationEventType.DOCUMENT_SYNC_OWNERSHIP_TRANSFERRED.value,
+    ],
+    # Its own category rather than joining "documents", for two reasons worth the
+    # two lines: turning off document comments should not silence feedback on your
+    # own pull requests as a side effect, and `slack_channel_id` is per category —
+    # so a team can route doc-impact to #docs without also routing mentions there.
+    "documentation_impact": [
+        NotificationEventType.DOCUMENT_IMPACT_PR_OPENED.value,
+        NotificationEventType.DOCUMENT_IMPACT_PR_MERGED.value,
     ],
     "chat": [
         NotificationEventType.CHAT_MENTION.value,
@@ -724,6 +750,20 @@ DEFAULT_NOTIFICATION_PREFERENCES = {
     # A proposal sits in a review queue waiting on the document owner, so it is
     # worth an email — that queue is exactly the thing nobody thinks to check.
     NotificationEventType.DOCUMENT_AI_PROPOSAL: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    # Email too: this arrives when a colleague leaves, which is exactly when
+    # nobody is watching the bell.
+    NotificationEventType.DOCUMENT_SYNC_OWNERSHIP_TRANSFERRED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    # Documentation impact
+    #
+    # Fires on every pull request that touches a documented module, which on a
+    # well-documented repository is most of them. In-app only: an email per pull
+    # request is how you teach somebody to filter your sender. The loud channels
+    # for this moment are the pull request comment and the check run, which are
+    # already in front of the author.
+    NotificationEventType.DOCUMENT_IMPACT_PR_OPENED: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    # Once per pull request, at the moment the author stops thinking about it.
+    # Email on, because the whole failure mode is that nobody is looking here.
+    NotificationEventType.DOCUMENT_IMPACT_PR_MERGED: {"in_app": True, "email": True, "slack": False, "web_push": False},
     # Chat
     NotificationEventType.CHAT_MENTION: {"in_app": True, "email": True, "slack": False, "web_push": False},
     NotificationEventType.AI_CONVERSATION_SHARED: {"in_app": True, "email": True, "slack": False, "web_push": False},

@@ -18,7 +18,12 @@ import {
   Code2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { repositoriesApi, Repository, DocumentLinkType } from "@/lib/api";
+import {
+  repositoriesApi,
+  workspaceRepositoriesApi,
+  RepositoryChoice,
+  DocumentLinkType,
+} from "@/lib/api";
 
 interface CodeLinkPanelProps {
   workspaceId: string;
@@ -49,7 +54,7 @@ export function CodeLinkPanel({
   onLink,
 }: CodeLinkPanelProps) {
   const [step, setStep] = useState<"repo" | "browse">("repo");
-  const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
+  const [selectedRepo, setSelectedRepo] = useState<RepositoryChoice | null>(null);
   const [selectedBranch, setSelectedBranch] = useState("main");
   const [currentPath, setCurrentPath] = useState("");
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
@@ -58,11 +63,25 @@ export function CodeLinkPanel({
   const [isLinking, setIsLinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch enabled repositories
+  // The workspace's adopted repositories, and the same list the docs generator
+  // shows. This read the per-developer list, which meant linking a *workspace*
+  // document to code offered only the repositories the person had listed
+  // themselves — and offered a different set from the generator two clicks away.
   const { data: repositories, isLoading: loadingRepos } = useQuery({
-    queryKey: ["repositories", "enabled"],
-    queryFn: () => repositoriesApi.listRepositories({ enabled_only: true }),
-    enabled: isOpen,
+    queryKey: ["workspace-repositories", workspaceId],
+    queryFn: () => workspaceRepositoriesApi.list(workspaceId),
+    enabled: isOpen && Boolean(workspaceId),
+    select: (rows): RepositoryChoice[] =>
+      rows
+        .filter((row) => row.is_active)
+        .map((row) => ({
+          id: row.repository.id,
+          name: row.repository.name,
+          full_name: row.repository.full_name,
+          description: row.repository.description,
+          is_private: row.repository.is_private,
+          language: row.repository.language,
+        })),
   });
 
   // Fetch branches when repo is selected
@@ -108,7 +127,7 @@ export function CodeLinkPanel({
     }
   }, [branches]);
 
-  const handleSelectRepo = useCallback((repo: Repository) => {
+  const handleSelectRepo = useCallback((repo: RepositoryChoice) => {
     setSelectedRepo(repo);
     setStep("browse");
     setCurrentPath("");

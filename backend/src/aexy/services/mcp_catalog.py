@@ -48,7 +48,13 @@ PLATFORM_CAPABILITIES = {"platform", "admin", "integrations"}
 # `public` routers answer to unauthenticated visitors by design, so running them
 # on a developer's token misrepresents who is asking. `system` is liveness and
 # machine ingest, which no agent needs.
-EXCLUDED_CAPABILITIES = {"public", "system"}
+#
+# `review_gate` is the queue of changes and held tool calls waiting on a person.
+# It is excluded because an agent that can approve the queue holding its own
+# writes is not gated at all — the gate would be approving itself. A human
+# reaches these endpoints through the web app, where the reviewer is a session,
+# not a caller with a capability grant.
+EXCLUDED_CAPABILITIES = {"public", "system", "review_gate"}
 
 # Capabilities a wrongly-granted tool does lasting damage through. Defaulted off
 # rather than inherited.
@@ -219,6 +225,19 @@ TAG_TO_CAPABILITY: dict[str, str] = {
     "notifications": "platform",
     "preferences": "platform",
     "mcp": "platform",
+    # Product feedback from inside a workspace, and its platform-admin triage.
+    # Landed without a mapping, which left 15 operations outside the access model
+    # and — because the dump refuses to write while any tag is unmapped — froze
+    # the fixture for every later router too.
+    "feedback": "platform",
+    "feedback_admin": "admin",
+    # The OAuth handshake an MCP client performs before it has any grant at all.
+    # Excluded for the reason `public` is: it answers to a client, and running it
+    # on a developer's token misrepresents who is asking.
+    "mcp_oauth": "public",
+    # -- The human gate (never reachable over MCP; see EXCLUDED_CAPABILITIES) --
+    "review": "review_gate",
+    "agent_actions": "review_gate",
     # -- Admin (privileged) --------------------------------------------------
     "admin": "admin",
     "platform_admin": "admin",
@@ -432,6 +451,161 @@ def _tool_name(capability: str) -> str:
     return f"aexy_{capability.removeprefix('mcp.')}"
 
 
+# Named tools for workflows worth spelling out.
+#
+# The per-capability tool below reaches every operation, so nothing here adds
+# reach. What it adds is a *route*: `aexy_docs` offers an enum of dozens of
+# actions and an agent has to work out which three, in which order, keep a
+# document honest. These say it. Each one carries the real body shape rather
+# than a generic `body: object`, so the first attempt is likelier to be the
+# right one.
+#
+# Deliberately few. A named tool for every endpoint would be the enum again
+# with worse ergonomics, and every extra tool costs selection accuracy on
+# every call a caller makes.
+WORKFLOW_TOOLS: list[dict[str, Any]] = [
+    {
+        "name": "aexy_docs_needing_update",
+        "capability": "mcp.docs",
+        "action": "list_documents_needing_update",
+        "description": (
+            "List documents whose linked source code has changed since they were "
+            "written. Start here: each item names the repository path to read and "
+            "whether an update is already queued. Detecting this costs nothing, so "
+            "poll it freely."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "workspace_id": {"type": "string"},
+                "repository_id": {
+                    "type": "string",
+                    "description": "Optional. Restrict to one repository.",
+                },
+            },
+            "required": ["workspace_id"],
+        },
+        "argument_map": {"workspace_id": "path", "repository_id": "query"},
+    },
+    {
+        "name": "aexy_docs_merged_changes",
+        "capability": "mcp.docs",
+        "action": "list_merged_changes",
+        "description": (
+            "List recently merged pull requests in this workspace's repositories, "
+            "as candidates for documentation that does not exist yet. The other "
+            "half of the work list: `aexy_docs_needing_update` only finds pages "
+            "that already exist and have fallen behind. Says nothing about whether "
+            "a change is already documented — check the repository's documents "
+            "before writing."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "workspace_id": {"type": "string"},
+                "repository_id": {
+                    "type": "string",
+                    "description": "Optional. Restrict to one repository.",
+                },
+            },
+            "required": ["workspace_id"],
+        },
+        "argument_map": {"workspace_id": "path", "repository_id": "query"},
+    },
+    {
+        "name": "aexy_docs_propose",
+        "capability": "mcp.docs",
+        "action": "propose_document_update",
+        "description": (
+            "Propose a rewrite of a document, in Markdown. Nothing is applied — it "
+            "waits in the workspace review queue with a diff against the current "
+            "text. This is the way to write a document: sending editor JSON is "
+            "refused, because one invalid node renders the page blank."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "workspace_id": {"type": "string"},
+                "document_id": {"type": "string"},
+                "markdown": {
+                    "type": "string",
+                    "description": "The document's new content, as Markdown.",
+                },
+                "summary": {
+                    "type": "string",
+                    "description": "One line on what changed and why. Shown to the reviewer.",
+                },
+            },
+            "required": ["workspace_id", "document_id", "markdown"],
+        },
+        "argument_map": {
+            "workspace_id": "path",
+            "document_id": "path",
+            "markdown": "body",
+            "summary": "body",
+        },
+    },
+    {
+        "name": "aexy_docs_create_from_code",
+        "capability": "mcp.docs",
+        "action": "create_document_from_repository",
+        "description": (
+            "Write a document for a repository path and link it to that path, so "
+            "it can be told later when the code changes. Use link_type 'file' for "
+            "one file or 'directory' for a module.\n\n"
+            "Pass `markdown` with prose you have written yourself — you have read "
+            "the actual files and can say more than the server can from a "
+            "directory listing. Omit it to have the server generate instead.\n\n"
+            "To document a whole repository: create one parent document, then "
+            "call this once per module with `parent_id` set to it. Calling it "
+            "again for a path that is already documented proposes a revision to "
+            "that document rather than creating a second one, so a re-run is "
+            "safe."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "workspace_id": {"type": "string"},
+                "repository_id": {"type": "string"},
+                "path": {"type": "string"},
+                "link_type": {"type": "string", "enum": ["file", "directory"]},
+                "branch": {"type": "string"},
+                "title": {"type": "string"},
+                "parent_id": {
+                    "type": "string",
+                    "description": "Hang this under an existing document, for a per-module tree.",
+                },
+                "markdown": {
+                    "type": "string",
+                    "description": (
+                        "Prose you wrote. Omit to have the server generate it."
+                    ),
+                },
+            },
+            "required": ["workspace_id", "repository_id", "path"],
+        },
+        "argument_map": {
+            "workspace_id": "path",
+            "repository_id": "body",
+            "path": "body",
+            "link_type": "body",
+            "branch": "body",
+            "title": "body",
+            "parent_id": "body",
+            "markdown": "body",
+        },
+    },
+]
+
+
+def workflow_tool(name: str) -> dict[str, Any] | None:
+    """The named workflow tool called `name`, if there is one."""
+    for tool in WORKFLOW_TOOLS:
+        if tool["name"] == name:
+            return tool
+    return None
+
+
 def _generic_tools(granted: list[CapabilityGroup]) -> list[dict[str, Any]]:
     capabilities = [g["capability"] for g in granted]
     reachable = sum(g["operation_count"] for g in granted)
@@ -505,6 +679,26 @@ def build_tools(catalog: dict[str, Any], granted_capabilities: set[str]) -> list
         return []
 
     tools = _generic_tools(granted)
+
+    # Named workflows first: an agent scanning the list should meet the route
+    # before the enum that contains it.
+    reachable_actions = {
+        op["action"] for group in granted for op in group["operations"]
+    }
+    for workflow in WORKFLOW_TOOLS:
+        if workflow["action"] not in reachable_actions:
+            # The operation is not in this caller's grants, so the shortcut to
+            # it must not be either — a tool that always refuses is worse than
+            # an absent one.
+            continue
+        tools.append(
+            {
+                "name": workflow["name"],
+                "capability": None,
+                "description": workflow["description"],
+                "input_schema": workflow["input_schema"],
+            }
+        )
 
     for group in sorted(granted, key=lambda g: g["capability"]):
         operations = group["operations"]

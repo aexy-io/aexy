@@ -1,24 +1,30 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useDocument, useDocumentCodeLinks } from "@/hooks/useDocuments";
 import { useAuth } from "@/hooks/useAuth";
 import { CollaborativeEditor } from "@/components/docs/CollaborativeEditor";
 import { DocumentEditor } from "@/components/docs/DocumentEditor";
 import { DocumentBreadcrumb } from "@/components/docs/DocumentBreadcrumb";
-import { SyncStatusPanel } from "@/components/docs/SyncStatusPanel";
 import { DocumentComments } from "@/components/docs/DocumentComments";
 import { ProposedEditsBanner } from "@/components/docs/ProposedEditsBanner";
+import { DocumentProvenance } from "@/components/docs/DocumentProvenance";
+import { CodeLinkPanel } from "@/components/docs/CodeLinkPanel";
+import { DocumentImprovements } from "@/components/docs/DocumentImprovements";
+import { GitHubSyncPanel } from "@/components/docs/GitHubSyncPanel";
+import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
-import { documentApi } from "@/lib/api";
+import { DocumentLinkType, documentApi, workspaceApi } from "@/lib/api";
 
 export default function DocumentPage() {
   const params = useParams();
   const documentId = params?.documentId as string;
   const { currentWorkspaceId } = useWorkspace();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   // Disable collaboration until WebSocket issues are resolved
   const [collaborationEnabled] = useState(false);
 
@@ -44,21 +50,34 @@ export default function DocumentPage() {
     isUpdating,
   } = useDocument(currentWorkspaceId, documentId);
 
-  // Surface autoupdate state: how many code-links flag pending changes,
-  // and the most recent sync. We don't currently expose a per-developer
-  // syncType from the backend, so default to "manual" — the panel still
-  // shows the pending count and a regenerate button regardless of tier.
+  // Sync state is rendered by DocumentProvenance, which reads the links
+  // directly — the page no longer needs to pre-digest them.
   const { codeLinks } = useDocumentCodeLinks(currentWorkspaceId, documentId);
-  const { pendingChanges, lastSyncedAt } = useMemo(() => {
-    const links = codeLinks ?? [];
-    const pending = links.filter((l) => l.has_pending_changes).length;
-    const lastSync = links
-      .map((l) => l.last_synced_at)
-      .filter((d): d is string => !!d)
-      .sort()
-      .pop();
-    return { pendingChanges: pending, lastSyncedAt: lastSync };
-  }, [codeLinks]);
+
+  // Ownership is only legible if the strip can name a person, and the transfer
+  // picker needs somebody to transfer *to* — without this the control renders
+  // "Owned" and no way to hand it on, which is a backend endpoint with no
+  // doorway. Only fetched when there is a link to own.
+  // Where this document publishes itself, if it does. Rendered beside the
+  // source it was written from: both answer "how is this page connected to the
+  // repository", and splitting them across two panels is how `GitHubSyncPanel`
+  // stayed unmounted for so long. It is reached from this strip now, so both
+  // directions are read and changed in one place.
+  const { data: publishesTo = [] } = useQuery({
+    queryKey: ["document", documentId, "github-sync"],
+    queryFn: () => documentApi.getGitHubSyncConfigs(currentWorkspaceId!, documentId),
+    enabled: Boolean(currentWorkspaceId && documentId),
+  });
+
+  const { data: members = [] } = useQuery({
+    queryKey: ["workspace-members", currentWorkspaceId],
+    queryFn: () => workspaceApi.getMembers(currentWorkspaceId!),
+    enabled: Boolean(currentWorkspaceId) && (codeLinks?.length ?? 0) > 0,
+    select: (rows) =>
+      rows
+        .filter((row) => row.status === "active")
+        .map((row) => ({ id: row.developer_id, name: row.developer_name })),
+  });
 
   const handleManualSync = useCallback(async () => {
     if (!currentWorkspaceId || !documentId) return;
@@ -71,6 +90,29 @@ export default function DocumentPage() {
       console.error("Failed to regenerate document:", err);
     }
   }, [currentWorkspaceId, documentId, updateContent]);
+
+  // 433 lines of repository picker that had never been mounted. Generation
+  // creates linked documents; a page somebody typed by hand could not be
+  // connected to the code it describes from anywhere in the product.
+  const [showCodeLink, setShowCodeLink] = useState(false);
+  const { createCodeLink } = useDocumentCodeLinks(currentWorkspaceId, documentId);
+
+  const handleLinkToCode = useCallback(
+    async (data: {
+      repository_id: string;
+      path: string;
+      link_type: DocumentLinkType;
+      branch: string;
+    }) => {
+      await createCodeLink.mutateAsync(data);
+      setShowCodeLink(false);
+      toast.success("Linked to code");
+    },
+    [createCodeLink]
+  );
+
+  const [showImprovements, setShowImprovements] = useState(false);
+  const [showPublishing, setShowPublishing] = useState(false);
 
   const handleSave = useCallback(
     async (data: { title?: string; content?: Record<string, unknown> }) => {
@@ -141,11 +183,6 @@ export default function DocumentPage() {
   }
 
   // Fallback to regular editor.
-  // Sync panel only renders when the doc has code links — otherwise
-  // there's nothing to be "out of date" with. Was orphaned in the
-  // component tree before this wiring.
-  const hasCodeLinks = (codeLinks?.length ?? 0) > 0;
-
   return (
     <div className="flex flex-col h-full">
       {currentWorkspaceId ? (
@@ -154,17 +191,25 @@ export default function DocumentPage() {
           <ProposedEditsBanner
             workspaceId={currentWorkspaceId}
             documentId={documentId}
+            currentContent={document.content}
           />
-          {hasCodeLinks ? (
-            <SyncStatusPanel
-              workspaceId={currentWorkspaceId}
-              documentId={documentId}
-              syncType="manual"
-              pendingChanges={pendingChanges}
-              lastSyncedAt={lastSyncedAt}
-              onManualSync={handleManualSync}
-            />
-          ) : null}
+          {/* Where this document came from, and whether it has fallen behind.
+              Only for linked documents — an unlinked one has no source to be
+              out of date with. */}
+          {/* One statement of sync state, not two. `SyncStatusPanel` said the
+              same thing in different words directly beneath this, which is the
+              duplicated-rail mistake the comment rail already made once. Its
+              one unique affordance — regenerate on demand — moved here. */}
+          <DocumentProvenance
+            workspaceId={currentWorkspaceId}
+            documentId={documentId}
+            codeLinks={codeLinks ?? []}
+            members={members}
+            publishesTo={publishesTo}
+            onSync={handleManualSync}
+            isSyncing={isUpdating}
+            onConfigurePublishing={() => setShowPublishing(true)}
+          />
         </div>
       ) : null}
       <DocumentEditor
@@ -192,7 +237,67 @@ export default function DocumentPage() {
         // the bottom section: an embed is a reader.
         documentId={embedded ? null : documentId}
         breadcrumb={embedded ? undefined : <DocumentBreadcrumb workspaceId={currentWorkspaceId} documentId={documentId} />}
+        // Only when unlinked: the provenance strip owns the linked case, and
+        // two places to manage one relationship is how the panel got orphaned
+        // in the first place.
+        onLinkToCode={
+          !embedded && currentWorkspaceId && (codeLinks?.length ?? 0) === 0
+            ? () => setShowCodeLink(true)
+            : undefined
+        }
+        onImprove={
+          !embedded && currentWorkspaceId
+            ? () => setShowImprovements(true)
+            : undefined
+        }
       />
+      {currentWorkspaceId && (
+        <CodeLinkPanel
+          workspaceId={currentWorkspaceId}
+          documentId={documentId}
+          isOpen={showCodeLink}
+          onClose={() => setShowCodeLink(false)}
+          onLink={handleLinkToCode}
+        />
+      )}
+      {/* 622 lines that had never been mounted, so the export direction was
+          readable on the strip above and impossible to change. Pre-filled from
+          the code link: the repository a document was written from is
+          overwhelmingly the one it publishes back to. */}
+      {currentWorkspaceId && showPublishing && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 pt-16">
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setShowPublishing(false)}
+          />
+          <div className="relative w-full max-w-2xl">
+            <GitHubSyncPanel
+              workspaceId={currentWorkspaceId}
+              documentId={documentId}
+              documentTitle={document.title}
+              onClose={() => setShowPublishing(false)}
+              defaultRepositoryId={codeLinks?.[0]?.repository_id}
+              defaultBranch={codeLinks?.[0]?.branch}
+            />
+          </div>
+        </div>
+      )}
+      {currentWorkspaceId && (
+        <DocumentImprovements
+          workspaceId={currentWorkspaceId}
+          documentId={documentId}
+          isOpen={showImprovements}
+          onClose={() => setShowImprovements(false)}
+          // Applying queues a proposal, and the banner that shows proposals is
+          // above the editor — without this it appears only on the next reload,
+          // which reads as the Apply having done nothing.
+          onProposed={() =>
+            queryClient.invalidateQueries({
+              queryKey: ["proposed-edits", currentWorkspaceId, documentId],
+            })
+          }
+        />
+      )}
       {/* Comments live under the document rather than in a side panel, and are
           hidden when embedded — an embed is a read-only view of the content, so a
           comment box in it would post to a document the reader may not have open. */}

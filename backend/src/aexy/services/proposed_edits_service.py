@@ -1,6 +1,6 @@
 """Service for the AI-suggestion approval queue.
 
-`DocumentProposedEdit` rows sit between AI output and the canonical
+`ProposedChange` rows sit between AI output and the canonical
 `Document.content`. The legacy regenerate flow used to overwrite
 content directly; this service is the new path:
 
@@ -32,10 +32,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.models.documentation import (
     Document,
-    DocumentProposedEdit,
     ProposedEditSource,
     ProposedEditStatus,
 )
+from aexy.models.proposed_change import ChangeKind, ProposedChange
 from aexy.services.document_service import DocumentService
 
 _SOURCE_LABELS = {
@@ -61,7 +61,14 @@ def compute_content_sha(content: dict[str, Any] | None) -> str:
 
 
 class ProposedEditsService:
-    """CRUD + transitions for `DocumentProposedEdit` rows."""
+    """CRUD + transitions for a document's pending content proposals.
+
+    Storage is `proposed_changes` — the one queue every gate writes to. This
+    class keeps the vocabulary the document code has always used (proposal,
+    proposed_content, base_content_sha) because that is the language of the
+    feature, and translating at the boundary meant the move to a shared table
+    changed no caller and no test.
+    """
 
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -76,7 +83,8 @@ class ProposedEditsService:
         proposed_by_id: str | None = None,
         diff_summary: dict[str, Any] | None = None,
         base_content_sha: str | None = None,
-    ) -> DocumentProposedEdit:
+        trigger: dict[str, Any] | None = None,
+    ) -> ProposedChange:
         """Create a new pending proposal.
 
         Side effects:
@@ -94,23 +102,41 @@ class ProposedEditsService:
         # calls see consistent hash. We also hold onto the document
         # so we can notify the owner at the end without a
         # second round-trip.
-        document_obj: Document | None = None
+        # Always loaded, not only when the sha is missing: the shared table
+        # needs the workspace, and taking that from the document is the only
+        # place it exists. Loading it conditionally left `workspace_id` null
+        # for any caller that supplied its own sha — a NOT NULL violation that
+        # depended on which argument the caller happened to pass.
+        document_obj: Document | None = await self.db.get(Document, document_id)
+        if document_obj is None:
+            # The shared table needs the workspace, and the document is the
+            # only place it exists — so a vanished document has to be refused
+            # here rather than becoming a NOT NULL violation two frames later.
+            raise ValueError(f"Document {document_id} no longer exists")
         if base_content_sha is None:
-            document_obj = await self.db.get(Document, document_id)
-            if document_obj is not None:
-                base_content_sha = compute_content_sha(document_obj.content)
+            base_content_sha = compute_content_sha(document_obj.content)
 
         # Create the new proposal first so we have the id for the
         # supersede reason.
-        new_proposal = DocumentProposedEdit(
-            document_id=document_id,
+        new_proposal = ProposedChange(
+            kind=ChangeKind.CONTENT.value,
+            entity_type="document",
+            entity_id=document_id,
+            # Denormalised from the document so the workspace queue is one
+            # indexed read rather than a join it cannot generalise.
+            workspace_id=str(document_obj.workspace_id),
+            payload={"content": proposed_content},
             source=source_val,
-            proposed_content=proposed_content,
-            base_content_sha=base_content_sha,
-            diff_summary=diff_summary,
+            base_version=base_content_sha,
+            summary=diff_summary,
+            # Why this exists, when something other than a person caused it.
+            # Recorded here because this is the only moment the cause is known
+            # — the sync service has the commit in hand and nothing downstream
+            # can reconstruct it.
+            trigger=trigger,
             status=ProposedEditStatus.PENDING.value,
-            proposed_by_id=proposed_by_id,
-            proposed_at=datetime.now(timezone.utc),
+            requested_by_id=proposed_by_id,
+            created_at=datetime.now(timezone.utc),
         )
         self.db.add(new_proposal)
         await self.db.flush()
@@ -118,12 +144,13 @@ class ProposedEditsService:
         # Now supersede prior pending proposals (excluding the one we
         # just created).
         stmt = (
-            update(DocumentProposedEdit)
+            update(ProposedChange)
             .where(
                 and_(
-                    DocumentProposedEdit.document_id == document_id,
-                    DocumentProposedEdit.status == ProposedEditStatus.PENDING.value,
-                    DocumentProposedEdit.id != new_proposal.id,
+                    ProposedChange.entity_type == "document",
+                    ProposedChange.entity_id == document_id,
+                    ProposedChange.status == ProposedEditStatus.PENDING.value,
+                    ProposedChange.id != new_proposal.id,
                 )
             )
             .values(
@@ -142,7 +169,7 @@ class ProposedEditsService:
 
     async def _notify_owner(
         self,
-        proposal: DocumentProposedEdit,
+        proposal: ProposedChange,
         document: Document | None,
     ) -> None:
         """Notify the document owner that a proposal needs review.
@@ -185,26 +212,26 @@ class ProposedEditsService:
     async def list_pending(
         self,
         document_id: str,
-    ) -> list[DocumentProposedEdit]:
+    ) -> list[ProposedChange]:
         """Return all `pending` proposals for a document, newest first."""
         stmt = (
-            select(DocumentProposedEdit)
+            select(ProposedChange)
             .where(
                 and_(
-                    DocumentProposedEdit.document_id == document_id,
-                    DocumentProposedEdit.status
+                    ProposedChange.entity_id == document_id,
+                    ProposedChange.status
                     == ProposedEditStatus.PENDING.value,
                 )
             )
-            .order_by(DocumentProposedEdit.proposed_at.desc())
+            .order_by(ProposedChange.created_at.desc())
         )
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
-    async def get_proposal(self, proposal_id: str) -> DocumentProposedEdit | None:
-        return await self.db.get(DocumentProposedEdit, proposal_id)
+    async def get_proposal(self, proposal_id: str) -> ProposedChange | None:
+        return await self.db.get(ProposedChange, proposal_id)
 
-    async def is_stale(self, proposal: DocumentProposedEdit) -> bool:
+    async def is_stale(self, proposal: ProposedChange) -> bool:
         """A proposal is stale when the document's current content SHA
         differs from the SHA the proposal was authored against.
         Returns False when there's no base_content_sha (legacy rows)
@@ -224,7 +251,7 @@ class ProposedEditsService:
         self,
         proposal_id: str,
         reviewed_by_id: str,
-    ) -> DocumentProposedEdit | None:
+    ) -> ProposedChange | None:
         """Apply the proposal to the document and mark it approved.
 
         Uses `DocumentService.update_document` so the existing version-
@@ -259,7 +286,7 @@ class ProposedEditsService:
         proposal_id: str,
         reviewed_by_id: str,
         reason: str | None = None,
-    ) -> DocumentProposedEdit | None:
+    ) -> ProposedChange | None:
         proposal = await self.get_proposal(proposal_id)
         if not proposal:
             return None

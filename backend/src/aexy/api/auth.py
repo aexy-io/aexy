@@ -188,13 +188,26 @@ MICROSOFT_CRM_SCOPES = MICROSOFT_AUTH_SCOPES + [
 OAUTH_STATE_PREFIX = "oauth_state:"
 
 
-def create_access_token(developer_id: str, account_type: str = "internal") -> str:
+def create_access_token(
+    developer_id: str,
+    account_type: str = "internal",
+    actor: str | None = None,
+) -> str:
     """Create a JWT access token.
 
     ``account_type`` is embedded as a claim so the isolation middleware can
     cheaply (no DB hit) block community-only accounts from internal endpoints.
     Only ``"community"`` is acted on; anything else (incl. legacy tokens without
     the claim) is treated as a normal internal user.
+
+    ``actor`` says *what* is holding the token rather than who it speaks for —
+    ``"agent"`` for a token `McpToolExecutor` mints to re-enter the app on
+    somebody's behalf. Endpoints route an agent's write into review instead of
+    applying it, and that decision used to be driven by a request header, which
+    the caller controls: an agent holding an ordinary token and calling the REST
+    API directly wrote straight through, so the review gate was opt-in by the
+    agent. A signed claim cannot be set without the secret, so the gate is now
+    the server's decision.
     """
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
     to_encode = {
@@ -203,6 +216,8 @@ def create_access_token(developer_id: str, account_type: str = "internal") -> st
         "type": "access",
         "account_type": account_type,
     }
+    if actor:
+        to_encode["actor"] = actor
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
 

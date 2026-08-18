@@ -24,6 +24,7 @@ from aexy.models.documentation import (
     DocumentGenerationPrompt,
     DocumentPermission,
     DocumentStatus,
+    DocumentSyncMode,
     DocumentSyncQueue,
     DocumentTemplate,
     DocumentVersion,
@@ -303,8 +304,17 @@ class DocumentService:
         include_templates: bool = False,
         visibility: str | None = None,
         space_id: str | None = None,
+        _stale_ids: set[str] | None = None,
     ) -> list[dict[str, Any]]:
-        """Get hierarchical document tree for sidebar."""
+        """Get hierarchical document tree for sidebar.
+
+        `_stale_ids` is computed once at the top of the recursion and threaded
+        down. The tree recurses per level, so asking per document whether it
+        has fallen behind its code would be a query per node — on the one
+        surface that renders on every page of the module.
+        """
+        if _stale_ids is None:
+            _stale_ids = await self._documents_behind_their_code(workspace_id)
         stmt = (
             select(Document)
             .where(
@@ -349,7 +359,13 @@ class DocumentService:
         tree = []
         for doc in documents:
             children = await self.get_document_tree(
-                workspace_id, developer_id, doc.id, include_templates, visibility, space_id
+                workspace_id,
+                developer_id,
+                doc.id,
+                include_templates,
+                visibility,
+                space_id,
+                _stale_ids=_stale_ids,
             )
             tree.append(
                 {
@@ -363,6 +379,12 @@ class DocumentService:
                     "visibility": doc.visibility,
                     "created_by_id": doc.created_by_id,
                     "is_favorited": doc.id in favorite_ids,
+                    # Visible while browsing, not only after opening the page.
+                    # A document whose sync is muted is deliberately excluded:
+                    # somebody said they did not want it updated, and a badge
+                    # they cannot clear is the kind that teaches people to
+                    # ignore badges.
+                    "is_behind_code": doc.id in _stale_ids,
                     "has_children": len(children) > 0,
                     "children": children,
                     "created_at": doc.created_at.isoformat(),
@@ -371,6 +393,24 @@ class DocumentService:
             )
 
         return tree
+
+    async def _documents_behind_their_code(self, workspace_id: str) -> set[str]:
+        """Documents in this workspace whose linked code has moved on.
+
+        One query for the whole tree. Muted links are excluded — "off" means
+        stop watching, and that has to include the tree or the setting only
+        half takes effect.
+        """
+        from aexy.models.documentation import DocumentSyncMode
+
+        rows = await self.db.execute(
+            select(DocumentCodeLink.document_id)
+            .join(Document, DocumentCodeLink.document_id == Document.id)
+            .where(Document.workspace_id == workspace_id)
+            .where(DocumentCodeLink.has_pending_changes.is_(True))
+            .where(DocumentCodeLink.sync_mode != DocumentSyncMode.OFF.value)
+        )
+        return {row[0] for row in rows.fetchall()}
 
     async def move_document(
         self,
@@ -782,8 +822,17 @@ class DocumentService:
         link_type: str = "file",
         branch: str = "main",
         section_id: str | None = None,
+        owner_developer_id: str | None = None,
+        template_category: str | None = None,
     ) -> DocumentCodeLink:
-        """Create a link between a document and source code."""
+        """Create a link between a document and source code.
+
+        `owner_developer_id` is whoever set the sync up — their plan tier
+        decides how it behaves and their GitHub access is the fallback when
+        no installation covers the repository directly. Callers that have a
+        request user should always pass it; leaving it null produces a sync
+        that works only while a repository-scoped installation exists.
+        """
         link = DocumentCodeLink(
             id=str(uuid4()),
             document_id=document_id,
@@ -792,9 +841,100 @@ class DocumentService:
             link_type=link_type,
             branch=branch,
             document_section_id=section_id,
+            owner_developer_id=owner_developer_id,
+            template_category=template_category,
         )
 
         self.db.add(link)
+        await self.db.commit()
+        await self.db.refresh(link)
+        return link
+
+    async def find_code_link(
+        self,
+        workspace_id: str,
+        repository_id: str,
+        path: str,
+    ):
+        """The existing link for this repository path, if the workspace has one.
+
+        What makes re-running a whole-repository pass safe: without it a second
+        run creates a parallel document per module, and the reviewed one is
+        buried under near-duplicates nobody can tell apart.
+        """
+        stmt = (
+            select(DocumentCodeLink)
+            .join(Document, DocumentCodeLink.document_id == Document.id)
+            .where(Document.workspace_id == workspace_id)
+            .where(DocumentCodeLink.repository_id == repository_id)
+            .where(DocumentCodeLink.path == path)
+            .options(selectinload(DocumentCodeLink.repository))
+        )
+        result = await self.db.execute(stmt)
+        return result.scalars().first()
+
+    async def set_code_link_sync_mode(
+        self,
+        link_id: str,
+        document_id: str,
+        sync_mode: str,
+    ) -> DocumentCodeLink | None:
+        """Set how this link reacts to code changes.
+
+        Turning a link off also clears its pending flag: "stop watching" that
+        left a stale "behind the code" badge on the page would be a setting
+        that visibly did not take effect.
+        """
+        stmt = (
+            select(DocumentCodeLink)
+            .where(DocumentCodeLink.id == link_id)
+            .where(DocumentCodeLink.document_id == document_id)
+            .options(selectinload(DocumentCodeLink.repository))
+        )
+        result = await self.db.execute(stmt)
+        link = result.scalar_one_or_none()
+        if not link:
+            return None
+
+        link.sync_mode = sync_mode
+        if sync_mode == DocumentSyncMode.OFF.value:
+            link.has_pending_changes = False
+
+        await self.db.commit()
+        await self.db.refresh(link)
+        return link
+
+    async def get_code_link(
+        self, link_id: str, document_id: str
+    ) -> DocumentCodeLink | None:
+        """One code link, scoped to the document the caller was checked against.
+
+        Scoped by `document_id` as well as `link_id`: the route has already
+        checked the caller may touch this document, and matching on the link
+        alone would let that check be bypassed by passing a link belonging to a
+        document in another workspace.
+        """
+        stmt = (
+            select(DocumentCodeLink)
+            .where(DocumentCodeLink.id == link_id)
+            .where(DocumentCodeLink.document_id == document_id)
+            .options(selectinload(DocumentCodeLink.repository))
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def set_code_link_owner(
+        self,
+        link_id: str,
+        document_id: str,
+        owner_developer_id: str,
+    ) -> DocumentCodeLink | None:
+        """Point a code link's sync at a different developer."""
+        link = await self.get_code_link(link_id, document_id)
+        if not link:
+            return None
+
+        link.owner_developer_id = owner_developer_id
         await self.db.commit()
         await self.db.refresh(link)
         return link

@@ -1,9 +1,12 @@
 "use client";
 
+import Link from "next/link";
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import {
   Building2,
+  FileText,
   ChevronDown,
   ChevronRight,
   FolderGit2,
@@ -30,7 +33,8 @@ import {
   WorkspaceRepositoryItem,
 } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
-import { useWorkspace } from "@/hooks/useWorkspace";
+import { useWorkspace, useIsWorkspaceAdmin } from "@/hooks/useWorkspace";
+import { DocImpactSettings } from "@/components/settings/DocImpactSettings";
 import { useSubscription } from "@/hooks/useSubscription";
 import { UpgradeBanner } from "@/components/UpgradeBanner";
 import { useTranslations } from "next-intl";
@@ -113,6 +117,20 @@ function RepoItem({ repo, onRepoToggle, onStartSync, showOwner, isSyncing }: Rep
         </div>
       </div>
       <div className="flex items-center gap-3 flex-shrink-0">
+        {/* The moment the intent forms is while looking at the repository, not
+            later in Docs — where the generator lived on a landing page you stop
+            seeing once you own documents. Only offered for adopted repos: the
+            generator cannot read one the workspace has not connected. */}
+        {repo.is_enabled && (
+          <Link
+            href={`/docs?generate=${encodeURIComponent(repo.id)}`}
+            title={`Write documentation from ${repo.name}`}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2 py-1 text-xs font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
+          >
+            <FileText className="h-3.5 w-3.5" />
+            Document this
+          </Link>
+        )}
         {repo.is_enabled && (
           <>
             <div className="text-right">
@@ -296,6 +314,7 @@ export default function RepositorySettingsPage() {
   const t = useTranslations("settingsRepositories");
   const { user } = useAuth();
   const { currentWorkspaceId } = useWorkspace();
+  const { isWorkspaceAdmin } = useIsWorkspaceAdmin(currentWorkspaceId);
   const { isFree, maxRepos } = useSubscription();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -895,6 +914,20 @@ export default function RepositorySettingsPage() {
                 </span>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Whether Aexy writes into this workspace's pull requests. On this page
+            rather than a route of its own: the person who can grant the GitHub App
+            these permissions is already here. Outside the installation-gated block
+            above on purpose — an admin needs to read what it asks for before
+            connecting anything, and notifying the author needs no installation. */}
+        {currentWorkspaceId && (
+          <div className="bg-card border border-border rounded-lg p-4">
+            <DocImpactSettings
+              workspaceId={currentWorkspaceId}
+              canEdit={isWorkspaceAdmin}
+            />
           </div>
         )}
       </div>

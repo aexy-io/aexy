@@ -1,21 +1,27 @@
 """Service for handling document sync based on plan tier."""
 
 import logging
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import and_, func, select, update
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from aexy.models.documentation import (
     Document,
     DocumentCodeLink,
+    DocumentSyncMode,
     DocumentSyncQueue,
 )
 from aexy.models.developer import Developer
+from aexy.models.document_impact import (
+    PullRequestDocImpact,
+    PullRequestDocImpactItem,
+)
 from aexy.models.plan import PlanTier
 from aexy.services.limits_service import LimitsService
 
@@ -28,6 +34,151 @@ class SyncTriggerType(str, Enum):
     REAL_TIME = "real_time"  # Premium: Immediate on code change
     DAILY_BATCH = "daily_batch"  # Pro: Once per day
     MANUAL = "manual"  # Free: User-initiated only
+
+
+# Paths whose changing tells a reader of the documentation nothing.
+#
+# This is the cheapest saving in the pipeline and the one that matters most at
+# scale: once a repository is documented module by module, most pushes touch
+# *some* module, and without this filter each one buys a full regeneration —
+# an LLM call, a proposal, and a person asked to review a document whose
+# meaning did not change because a lockfile moved.
+#
+# Conservative on purpose. Anything not clearly noise is treated as
+# substantive: a missed skip costs one generation, a wrong skip means a
+# document stays wrong and nobody is told.
+_NOISE_FILENAMES = frozenset(
+    {
+        "package-lock.json",
+        "yarn.lock",
+        "pnpm-lock.yaml",
+        "poetry.lock",
+        "uv.lock",
+        "Cargo.lock",
+        "Gemfile.lock",
+        "composer.lock",
+        "go.sum",
+        "requirements.txt.lock",
+    }
+)
+
+_NOISE_DIRECTORIES = ("node_modules/", "vendor/", "dist/", "build/", ".git/")
+
+_NOISE_SUFFIXES = (
+    ".min.js",
+    ".min.css",
+    ".map",
+    ".snap",
+    ".lock",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".svg",
+    ".ico",
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".pdf",
+)
+
+
+def _category_for_link(code_link):
+    """The kind of document this link produces.
+
+    Both sync paths hardcoded `FUNCTION_DOCS`, so re-syncing a module document
+    rewrote it as function docs — the document silently changed kind, and the
+    author's only clue was that the proposal read nothing like the page.
+    Falls back to the old constant when the link predates the column.
+    """
+    from aexy.models.documentation import TemplateCategory
+
+    stored = getattr(code_link, "template_category", None)
+    if stored:
+        try:
+            return TemplateCategory(stored)
+        except ValueError:
+            logger.warning(
+                f"Code link {code_link.id} has unknown category {stored!r}"
+            )
+    return TemplateCategory.FUNCTION_DOCS
+
+
+def is_substantive_path(path: str) -> bool:
+    """Could a change to this file alter what the documentation should say?
+
+    Lockfiles, build output, vendored trees and binary assets cannot: they
+    change constantly and describe nothing a reader of the prose cares about.
+    """
+    normalised = path.strip().lstrip("./")
+    if not normalised:
+        return False
+
+    filename = normalised.rsplit("/", 1)[-1]
+    if filename in _NOISE_FILENAMES:
+        return False
+    if any(
+        normalised.startswith(directory) or f"/{directory}" in normalised
+        for directory in _NOISE_DIRECTORIES
+    ):
+        return False
+    if normalised.endswith(_NOISE_SUFFIXES):
+        return False
+    return True
+
+
+def path_matches_link(
+    link_path: str, link_type: str, changed_paths: list[str]
+) -> bool:
+    """Does any of these changed paths fall under this code link?
+
+    Module level so callers other than the sync service can ask the same
+    question. Two matchers that drift is the obvious future bug here: a pull
+    request would report pages that a merge of the same files then did not
+    touch, or the reverse, and neither answer would be wrong in a way anybody
+    could see.
+    """
+    for changed_path in changed_paths:
+        if link_type == "file":
+            # Exact match for file links
+            if changed_path == link_path:
+                return True
+        else:
+            # Directory links match any file under that path
+            if changed_path.startswith(link_path + "/") or changed_path == link_path:
+                return True
+
+    return False
+
+
+@dataclass(frozen=True)
+class LinkMatch:
+    """A code link a change touched, with only the paths that touched it.
+
+    `matched_paths` is narrowed per link on purpose: a push may carry fifty
+    files, and naming the two under this module is what makes the reason
+    readable rather than a wall of filenames.
+    """
+
+    link: DocumentCodeLink
+    matched_paths: list[str]
+
+
+@dataclass(frozen=True)
+class AffectedLinks:
+    """What a set of changed paths touched in one repository, and what it did not.
+
+    The counters are here because `handle_code_change` reports them and callers
+    that only want the matches can ignore them — which is better than two
+    functions walking the same links to compute the same thing.
+    """
+
+    matches: list[LinkMatch]
+    substantive_paths: list[str]
+    skipped_non_substantive: int = 0
+    own_export: int = 0
+    muted: int = 0
+    no_match: int = 0
 
 
 class DocumentSyncService:
@@ -79,6 +230,7 @@ class DocumentSyncService:
         self,
         document_id: str,
         triggered_by_commit: str | None = None,
+        triggered_by_pull_request: int | None = None,
     ) -> DocumentSyncQueue | None:
         """Queue a document for batch sync.
 
@@ -87,6 +239,8 @@ class DocumentSyncService:
         Args:
             document_id: Document to queue.
             triggered_by_commit: Commit SHA that triggered the sync.
+            triggered_by_pull_request: The pull request that merge belonged to,
+                when its merge commit named one.
 
         Returns:
             Created queue entry or None if already queued.
@@ -106,6 +260,14 @@ class DocumentSyncService:
             if triggered_by_commit:
                 existing.triggered_by_commit = triggered_by_commit
                 existing.triggered_at = datetime.now(timezone.utc)
+            # Outside the commit branch on purpose. Nesting it meant a caller
+            # passing a pull request without a commit dropped it silently, which
+            # no caller does today and is exactly the kind of coupling that
+            # breaks the day one does. Assigned unconditionally, so a newer push
+            # that named no pull request also clears a stale one — keeping it
+            # would attribute this document to a merge that is no longer why it
+            # is queued.
+            existing.triggered_by_pull_request = triggered_by_pull_request
             return existing
 
         # Create new queue entry
@@ -113,6 +275,7 @@ class DocumentSyncService:
             id=str(uuid4()),
             document_id=document_id,
             triggered_by_commit=triggered_by_commit,
+            triggered_by_pull_request=triggered_by_pull_request,
             status="pending",
         )
         self.db.add(queue_entry)
@@ -123,11 +286,13 @@ class DocumentSyncService:
     async def get_pending_sync_queue(
         self,
         limit: int = 100,
+        workspace_id: str | None = None,
     ) -> list[DocumentSyncQueue]:
         """Get pending documents in the sync queue.
 
         Args:
             limit: Maximum number of items to return.
+            workspace_id: Restrict to one workspace's documents.
 
         Returns:
             List of pending sync queue entries.
@@ -139,6 +304,15 @@ class DocumentSyncService:
             .order_by(DocumentSyncQueue.triggered_at)
             .limit(limit)
         )
+        if workspace_id is not None:
+            # Filtered in SQL rather than after the fact. `process_queue` used
+            # to take the global head of the queue and then drop the rows that
+            # belonged to other workspaces, so a workspace whose entries sat
+            # behind another's `limit` rows was never drained at all — it just
+            # looked idle.
+            stmt = stmt.join(
+                Document, DocumentSyncQueue.document_id == Document.id
+            ).where(Document.workspace_id == workspace_id)
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
@@ -185,11 +359,95 @@ class DocumentSyncService:
         )
         await self.db.execute(stmt)
 
+    async def resolve_affected_links(
+        self,
+        repository_id: str,
+        changed_paths: list[str],
+        commit_sha: str | None = None,
+    ) -> AffectedLinks:
+        """Which code links in this repository a set of changed paths touched.
+
+        Read-only: it flags nothing, queues nothing and commits nothing. The
+        three exclusions are the interesting part, and they are the reason this
+        is shared rather than reimplemented —
+
+        * non-substantive paths, dropped before anything is matched;
+        * a commit that is our own export, which would otherwise let a document
+          that publishes itself regenerate from the file it just wrote;
+        * a muted link, which stops being reported as behind at all.
+
+        A caller that answered any of those differently would tell somebody their
+        change affected a page that the merge of the same files then left alone.
+
+        `commit_sha` is optional: the own-export check needs a specific commit,
+        and a caller asking "what would this set of paths touch" may not have
+        one. Passing it is always safe.
+        """
+        substantive_paths = [p for p in changed_paths if is_substantive_path(p)]
+        if not substantive_paths:
+            return AffectedLinks(
+                matches=[],
+                substantive_paths=[],
+                skipped_non_substantive=len(changed_paths),
+            )
+
+        stmt = (
+            select(DocumentCodeLink)
+            .options(
+                selectinload(DocumentCodeLink.document).selectinload(Document.created_by)
+            )
+            .where(DocumentCodeLink.repository_id == repository_id)
+        )
+        result = await self.db.execute(stmt)
+        code_links = result.scalars().all()
+
+        matches: list[LinkMatch] = []
+        own_export = muted = no_match = 0
+
+        for link in code_links:
+            # A document that publishes itself to the repository must not be
+            # woken by its own export. Without this, auto-export plus a link
+            # watching the exported path is a loop that regenerates the
+            # document from the file it just wrote.
+            if commit_sha and await self._is_our_own_export(
+                link.document_id, commit_sha
+            ):
+                own_export += 1
+                continue
+
+            # A muted link is not merely "do not propose" — it stops being
+            # reported as behind at all. Flagging a document somebody has
+            # explicitly said they do not want updated turns the badge into
+            # noise, and a badge people learn to ignore is worse than none.
+            if link.sync_mode == DocumentSyncMode.OFF.value:
+                muted += 1
+                continue
+
+            matched = [
+                path
+                for path in substantive_paths
+                if path_matches_link(link.path, link.link_type, [path])
+            ]
+            if not matched:
+                no_match += 1
+                continue
+
+            matches.append(LinkMatch(link=link, matched_paths=matched))
+
+        return AffectedLinks(
+            matches=matches,
+            substantive_paths=substantive_paths,
+            own_export=own_export,
+            muted=muted,
+            no_match=no_match,
+        )
+
     async def handle_code_change(
         self,
         repository_id: str,
         commit_sha: str,
         changed_paths: list[str],
+        pull_request: int | None = None,
     ) -> dict[str, Any]:
         """Handle a code change event (from webhook).
 
@@ -202,58 +460,84 @@ class DocumentSyncService:
             repository_id: Repository where change occurred.
             commit_sha: Commit SHA of the change.
             changed_paths: List of file paths that changed.
+            pull_request: The pull request this push merged, when the merge
+                commit named one. Optional because a rebase merge and a direct
+                push name none, and both are ordinary — the proposal then
+                groups by commit instead.
 
         Returns:
             Summary of actions taken.
         """
+        # Drop the noise before anything is matched, flagged or generated. A
+        # push of nothing but lockfiles reaches here regularly and must cost a
+        # filter rather than one LLM call per document it happens to sit under.
+        affected = await self.resolve_affected_links(
+            repository_id, changed_paths, commit_sha=commit_sha
+        )
+
+        if not affected.substantive_paths:
+            logger.info(
+                f"Push {commit_sha[:8]} to repository {repository_id} touched "
+                f"{len(changed_paths)} path(s), none substantive — skipping"
+            )
+            return {
+                "real_time_synced": [],
+                "queued_for_batch": [],
+                "marked_pending": [],
+                "no_match": 0,
+                "skipped_non_substantive": affected.skipped_non_substantive,
+            }
+
         results = {
             "real_time_synced": [],
             "queued_for_batch": [],
             "marked_pending": [],
-            "no_match": 0,
+            "no_match": affected.no_match,
         }
+        if affected.own_export:
+            results["own_export"] = affected.own_export
+        if affected.muted:
+            results["muted"] = affected.muted
 
-        # Find all documents linked to files in this repository
-        stmt = (
-            select(DocumentCodeLink)
-            .options(
-                selectinload(DocumentCodeLink.document).selectinload(Document.created_by)
-            )
-            .where(DocumentCodeLink.repository_id == repository_id)
-        )
-        result = await self.db.execute(stmt)
-        code_links = result.scalars().all()
-
-        for link in code_links:
-            # Check if any changed path matches this link
-            matches = self._path_matches_link(link.path, link.link_type, changed_paths)
-
-            if not matches:
-                results["no_match"] += 1
-                continue
+        for match in affected.matches:
+            link = match.link
 
             # Update link to indicate pending changes
             link.has_pending_changes = True
             link.last_commit_sha = commit_sha
 
-            # Get document owner's sync type
+            # Route by the plan tier of whoever owns *this sync*, falling back
+            # to the document's author for links created before ownership
+            # existed. Reading the author alone was wrong in the ordinary case
+            # — the person who writes a document is often not the person who
+            # wires it to a repository — and badly wrong after a whole-repo
+            # run, where one author's tier would govern every document in it.
             document = link.document
-            if not document or not document.created_by:
+            if not document:
                 continue
 
-            sync_type = await self.get_sync_type_for_developer(
-                str(document.created_by_id)
-            )
+            sync_owner_id = link.owner_developer_id or document.created_by_id
+            if not sync_owner_id:
+                continue
+
+            sync_type = await self.get_sync_type_for_developer(str(sync_owner_id))
 
             if sync_type == SyncTriggerType.REAL_TIME:
-                # Trigger immediate regeneration
-                await self._trigger_real_time_sync(document, link, commit_sha)
+                await self._trigger_real_time_sync(
+                    document,
+                    link,
+                    commit_sha,
+                    changed_paths=match.matched_paths,
+                    pull_request=pull_request,
+                )
                 results["real_time_synced"].append(str(document.id))
 
             elif sync_type == SyncTriggerType.DAILY_BATCH:
                 # Queue for batch processing
                 await self.queue_document_for_sync(
-                    str(document.id), triggered_by_commit=commit_sha
+                    str(document.id),
+                    triggered_by_commit=commit_sha,
+                    triggered_by_pull_request=pull_request
                 )
                 results["queued_for_batch"].append(str(document.id))
 
@@ -264,11 +548,415 @@ class DocumentSyncService:
         await self.db.commit()
         return results
 
+    async def list_documents_needing_update(
+        self,
+        workspace_id: str,
+        repository_id: str | None = None,
+        include_never_synced: bool = True,
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        """Documents whose linked source has changed since they were written.
+
+        The read side of the freshness pipeline. `handle_code_change` sets
+        `has_pending_changes` when a push touches a link's path; this turns
+        that flag into a work list somebody — or something — can act on.
+
+        Deliberately free of model calls: everything here is a join. That is
+        what makes it reasonable to expose over MCP and poll, and it is the
+        argument for detecting centrally while generating elsewhere.
+
+        Ordered oldest-first so the document that has been wrong longest is
+        the one handed out first.
+        """
+        from aexy.models.documentation import ProposedEditStatus
+        from aexy.models.proposed_change import ProposedChange as DocumentProposedEdit
+
+        conditions = [Document.workspace_id == workspace_id]
+        if repository_id:
+            conditions.append(DocumentCodeLink.repository_id == repository_id)
+
+        staleness = [DocumentCodeLink.has_pending_changes.is_(True)]
+        if include_never_synced:
+            staleness.append(DocumentCodeLink.last_synced_at.is_(None))
+
+        stmt = (
+            select(DocumentCodeLink)
+            .join(Document, DocumentCodeLink.document_id == Document.id)
+            .options(
+                selectinload(DocumentCodeLink.document),
+                selectinload(DocumentCodeLink.repository),
+            )
+            .where(and_(*conditions))
+            .where(or_(*staleness))
+            # Nulls first: a document linked to code and never generated from
+            # it is the most out of date thing there is, not the least.
+            .order_by(DocumentCodeLink.last_synced_at.asc().nulls_first())
+            .limit(limit)
+        )
+        links = (await self.db.execute(stmt)).scalars().all()
+        if not links:
+            return []
+
+        # One query for every pending proposal rather than one per document.
+        document_ids = [str(link.document_id) for link in links]
+        counts_stmt = (
+            select(
+                DocumentProposedEdit.entity_id,
+                func.count(DocumentProposedEdit.id),
+            )
+            .where(DocumentProposedEdit.entity_id.in_(document_ids))
+            .where(DocumentProposedEdit.status == ProposedEditStatus.PENDING.value)
+            .group_by(DocumentProposedEdit.entity_id)
+        )
+        pending = {
+            str(document_id): count
+            for document_id, count in (await self.db.execute(counts_stmt)).all()
+        }
+
+        items: list[dict[str, Any]] = []
+        for link in links:
+            document = link.document
+            if not document:
+                continue
+            items.append(
+                {
+                    "document_id": str(document.id),
+                    "document_title": document.title,
+                    "document_icon": document.icon,
+                    "code_link_id": str(link.id),
+                    "repository_id": str(link.repository_id),
+                    "repository_full_name": (
+                        link.repository.full_name if link.repository else None
+                    ),
+                    "path": link.path,
+                    "link_type": link.link_type,
+                    "branch": link.branch,
+                    "reason": (
+                        "code_changed" if link.last_synced_at else "never_synced"
+                    ),
+                    "last_synced_at": link.last_synced_at,
+                    "last_seen_commit_sha": link.last_commit_sha,
+                    "owner_developer_id": (
+                        str(link.owner_developer_id)
+                        if link.owner_developer_id
+                        else None
+                    ),
+                    "pending_proposal_count": pending.get(str(document.id), 0),
+                }
+            )
+        return items
+
+    async def list_merged_changes(
+        self,
+        workspace_id: str,
+        repository_id: str | None = None,
+        limit: int = 20,
+    ) -> list[dict[str, Any]]:
+        """Recently merged pull requests in this workspace's repositories.
+
+        The other half of the work list. `list_documents_needing_update` finds
+        pages that have fallen behind; this finds changes that were never
+        written about at all — which is the larger gap on most teams, and the
+        one nobody has a queue for.
+
+        Scoped through `workspace_repositories`, so a developer's personal
+        repositories do not leak into a workspace they were never adopted into.
+        `pull_requests.repository` holds the full name rather than an id, which
+        is what the join is on.
+        """
+        from aexy.models.activity import PullRequest
+        from aexy.models.repository import Repository, WorkspaceRepository
+
+        # Named columns rather than the entity: `pull_requests` carries a
+        # 1024-dimension embedding, and selecting twenty rows of that to render
+        # a list of titles is a megabyte over the wire for nothing.
+        stmt = (
+            select(
+                PullRequest.id,
+                PullRequest.number,
+                PullRequest.title,
+                PullRequest.repository,
+                PullRequest.merged_at,
+                PullRequest.merged_by_login,
+                PullRequest.additions,
+                PullRequest.deletions,
+                PullRequest.files_changed,
+                Repository.id.label("repo_id"),
+                Developer.name.label("author_name"),
+            )
+            .join(Repository, Repository.full_name == PullRequest.repository)
+            .join(
+                WorkspaceRepository,
+                WorkspaceRepository.repository_id == Repository.id,
+            )
+            .outerjoin(Developer, Developer.id == PullRequest.developer_id)
+            .where(WorkspaceRepository.workspace_id == workspace_id)
+            # Merged, not just closed: an abandoned pull request is not a change
+            # anybody needs documentation for.
+            .where(PullRequest.merged_at.isnot(None))
+            .order_by(PullRequest.merged_at.desc())
+            .limit(limit)
+        )
+        if repository_id:
+            stmt = stmt.where(Repository.id == repository_id)
+
+        rows = (await self.db.execute(stmt)).all()
+        if not rows:
+            return []
+
+        # One count per repository rather than per row: "this repository has no
+        # documentation at all" is the honest signal available here, and it is
+        # the same answer for every pull request in that repository.
+        repo_ids = {row.repo_id for row in rows}
+        counts = dict(
+            (
+                await self.db.execute(
+                    select(
+                        DocumentCodeLink.repository_id,
+                        func.count(func.distinct(DocumentCodeLink.document_id)),
+                    )
+                    .where(DocumentCodeLink.repository_id.in_(repo_ids))
+                    .group_by(DocumentCodeLink.repository_id)
+                )
+            ).all()
+        )
+
+        # How many pages each of these merges actually affected, when it was
+        # evaluated. This is the only durable way back into the impact page: the
+        # notification is one row somebody clears, and the pull request comment is
+        # off by default, so without this the page is reachable exactly once.
+        #
+        # A count rather than an unconditional link, because a link that leads to
+        # "nothing here describes this change" is worse than no link.
+        impact_counts: dict[tuple[str, int], int] = {}
+        pairs = [(row.repo_id, row.number) for row in rows if row.repo_id]
+        if pairs:
+            impact_rows = (
+                await self.db.execute(
+                    select(
+                        PullRequestDocImpact.repository_id,
+                        PullRequestDocImpact.pull_request_number,
+                        func.count(PullRequestDocImpactItem.id),
+                    )
+                    .join(
+                        PullRequestDocImpactItem,
+                        PullRequestDocImpactItem.impact_id
+                        == PullRequestDocImpact.id,
+                    )
+                    .where(
+                        PullRequestDocImpact.repository_id.in_(
+                            {repo_id for repo_id, _ in pairs}
+                        ),
+                        PullRequestDocImpact.pull_request_number.in_(
+                            {number for _, number in pairs}
+                        ),
+                        # Scoped, or a repository shared by two workspaces would
+                        # show one's page count on the other's list.
+                        PullRequestDocImpactItem.workspace_id == workspace_id,
+                    )
+                    .group_by(
+                        PullRequestDocImpact.repository_id,
+                        PullRequestDocImpact.pull_request_number,
+                    )
+                )
+            ).all()
+            impact_counts = {
+                (str(repo_id), number): count
+                for repo_id, number, count in impact_rows
+            }
+
+        return [
+            {
+                "pull_request_id": str(row.id),
+                "number": row.number,
+                "title": row.title,
+                "repository": row.repository,
+                "repository_id": str(row.repo_id) if row.repo_id else None,
+                "merged_at": row.merged_at,
+                "author_name": row.author_name,
+                "merged_by_login": row.merged_by_login,
+                "additions": row.additions or 0,
+                "deletions": row.deletions or 0,
+                "files_changed": row.files_changed or 0,
+                "repository_document_count": counts.get(row.repo_id, 0),
+                "impact_affected_count": impact_counts.get(
+                    (str(row.repo_id) if row.repo_id else "", row.number), 0
+                ),
+            }
+            for row in rows
+        ]
+
+    async def transfer_owned_syncs(
+        self,
+        departing_developer_id: str,
+        workspace_id: str,
+        new_owner_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Move every doc-to-code sync owned by a departing developer.
+
+        Called when someone is removed from a workspace. Their syncs keep
+        running — that is the point of a sync — so leaving them pointed at a
+        developer who is gone means their plan tier keeps deciding the
+        behaviour and their GitHub connection keeps being the credential
+        fallback, both of which will quietly stop working.
+
+        Defaults to the workspace owner, who is the one member who cannot
+        themselves be removed. Notifies the new owner once with a count
+        rather than once per sync: a silent transfer is worse than none,
+        because the first they would hear of it is a proposal they did not
+        ask for on a document they did not know was theirs.
+
+        Never raises — a documentation concern must not block a removal.
+        """
+        from aexy.models.workspace import Workspace
+        from aexy.services.notification_service import (
+            notify_document_sync_ownership_transferred,
+        )
+
+        try:
+            links = (
+                (
+                    await self.db.execute(
+                        select(DocumentCodeLink)
+                        .join(Document, DocumentCodeLink.document_id == Document.id)
+                        .where(DocumentCodeLink.owner_developer_id == departing_developer_id)
+                        .where(Document.workspace_id == workspace_id)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            if not links:
+                return {"transferred": 0, "new_owner_id": None}
+
+            recipient_id = new_owner_id
+            if not recipient_id:
+                workspace = (
+                    await self.db.execute(
+                        select(Workspace).where(Workspace.id == workspace_id)
+                    )
+                ).scalar_one_or_none()
+                recipient_id = str(workspace.owner_id) if workspace else None
+
+            if not recipient_id or recipient_id == departing_developer_id:
+                # Nobody sensible to hand them to. Leave the rows alone rather
+                # than nulling them: an owner who has left still identifies the
+                # installation the sync has been using, and a null owner would
+                # discard that with nothing to replace it.
+                logger.warning(
+                    f"No transfer target for {len(links)} sync(s) owned by "
+                    f"{departing_developer_id} in workspace {workspace_id}"
+                )
+                return {"transferred": 0, "new_owner_id": None}
+
+            for link in links:
+                link.owner_developer_id = recipient_id
+
+            departing = (
+                await self.db.execute(
+                    select(Developer).where(Developer.id == departing_developer_id)
+                )
+            ).scalar_one_or_none()
+            label = (departing.name if departing and departing.name else "A teammate")
+
+            await notify_document_sync_ownership_transferred(
+                self.db,
+                recipient_id=recipient_id,
+                sync_count=len(links),
+                previous_owner_label=label,
+                workspace_id=workspace_id,
+            )
+
+            logger.info(
+                f"Transferred {len(links)} sync(s) from {departing_developer_id} "
+                f"to {recipient_id} in workspace {workspace_id}"
+            )
+            return {"transferred": len(links), "new_owner_id": recipient_id}
+
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.exception(
+                f"Failed to transfer syncs for {departing_developer_id}: {exc}"
+            )
+            return {"transferred": 0, "new_owner_id": None}
+
+    async def _is_our_own_export(self, document_id: str, commit_sha: str) -> bool:
+        """Did this commit come from us publishing the document?
+
+        A document can both describe a path and publish itself to one. If the
+        published file sits under a watched path, its own export looks exactly
+        like somebody changing the code — and the document regenerates from the
+        file it just wrote, forever. `last_export_commit` is the only record of
+        which commits are ours.
+        """
+        from aexy.models.documentation import DocumentGitHubSync
+
+        rows = await self.db.execute(
+            select(DocumentGitHubSync.last_export_commit).where(
+                DocumentGitHubSync.document_id == document_id
+            )
+        )
+        return commit_sha in {row[0] for row in rows.fetchall() if row[0]}
+
+    async def _build_github_reader(
+        self,
+        document: Document,
+        code_link: DocumentCodeLink,
+    ):
+        """Resolve repository access for a background sync and return a
+        reader the generation service can actually call.
+
+        `DocumentGenerationService` asks for content by `(repository_full_name,
+        path, branch)`; `GitHubAppService` answers by `(installation_id, owner,
+        repo, path, ref)`. Passing the app service straight through raised
+        `TypeError` on every background regeneration — caught and logged as a
+        generic failure, so the path looked merely unlucky rather than broken.
+        The API path has always wrapped it; this is the same wrapper.
+
+        Access is resolved against the repository first and only then against
+        the sync's owner. That order is the whole point: an installation
+        reached through one person's connection disappears with that person,
+        so a repository-first lookup is what keeps a team's documentation
+        syncing after whoever set it up has left.
+        """
+        from aexy.services.github_app_service import (
+            GitHubAppService,
+            GitHubServiceAdapter,
+        )
+
+        repository = code_link.repository
+        if not repository:
+            logger.warning(f"Code link {code_link.id} has no repository — can't sync")
+            return None
+
+        app_service = GitHubAppService(self.db)
+        # Falls back to whoever owns the sync, and only then to the document's
+        # author — which is what this read before code links had an owner.
+        access = await app_service.resolve_repository_access(
+            repository,
+            code_link.owner_developer_id or document.created_by_id,
+        )
+        if not access:
+            logger.warning(
+                f"No GitHub installation for document {document.id} "
+                f"({repository.full_name}) — can't sync"
+            )
+            return None
+
+        installation_id, _token = access
+        return GitHubServiceAdapter(
+            app_service=app_service,
+            installation_id=installation_id,
+            owner=repository.owner_login,
+            repo=repository.name,
+        )
+
     async def _trigger_real_time_sync(
         self,
         document: Document,
         code_link: DocumentCodeLink,
         commit_sha: str,
+        changed_paths: list[str] | None = None,
+        pull_request: int | None = None,
     ) -> bool:
         """Trigger immediate regeneration for a document.
 
@@ -285,46 +973,60 @@ class DocumentSyncService:
             from aexy.services.document_generation_service import (
                 DocumentGenerationService,
             )
-            from aexy.services.github_app_service import GitHubAppService
 
             gen_service = DocumentGenerationService(self.db)
-            github_service = GitHubAppService(self.db)
+            category = _category_for_link(code_link)
 
-            # Get the template category from the document or code link
-            from aexy.models.documentation import TemplateCategory
-
-            category = TemplateCategory.FUNCTION_DOCS
-
-            # Get installation token
-            token_result = await github_service.get_installation_token_for_developer(
-                str(document.created_by_id)
-            )
-
-            if not token_result:
-                logger.warning(
-                    f"No installation token for document {document.id} sync"
-                )
+            github_service = await self._build_github_reader(document, code_link)
+            if github_service is None:
                 return False
 
             # Generate fresh docs from the linked code and route them
             # into the proposed-edit review queue. The user approves
             # before content lands — replaces the old "mark pending"
             # stub that never produced anything to act on.
-            await self._generate_and_propose(
+            outcome = await self._generate_and_propose(
                 document=document,
                 code_link=code_link,
                 category=category,
                 gen_service=gen_service,
                 github_service=github_service,
                 source="code_change_sync",
+                # `pull_request` is what the review inbox prefers to group on:
+                # one merge leaving proposals on four documents is a decision
+                # somebody can take, where four separate commit groups are four
+                # chores. Omitted rather than set to None when unknown, so the
+                # stored trigger says only what is true.
+                trigger={
+                    "commit_sha": commit_sha,
+                    "paths": changed_paths or [],
+                    **({"pull_request": pull_request} if pull_request else {}),
+                },
             )
 
-            # Mark the code link processed regardless — the proposal
-            # is the new dirty state. Successive code changes will
-            # create new proposals that supersede this one.
+            if outcome is None:
+                # Generation failed. The link keeps its pending flag so the
+                # next push — or the batch drain — tries again.
+                return False
+
+            # Mark the code link processed. The proposal is the new dirty
+            # state; successive code changes create proposals that supersede
+            # it.
             code_link.last_commit_sha = commit_sha
             code_link.has_pending_changes = False
             code_link.last_synced_at = datetime.now(timezone.utc)
+            # Only advance the base when there is prose written from this
+            # commit. Moving it on a failure would make the next sync diff
+            # against a version that was never written.
+            code_link.last_synced_commit_sha = commit_sha
+
+            # Committed here rather than left to the caller because auto-apply
+            # writes the document through `update_document`, which commits on
+            # its own. Without this the applied content and the bookkeeping
+            # that says it was applied sit in different transactions, and a
+            # failure between them leaves a document that is up to date and a
+            # link insisting it is behind.
+            await self.db.commit()
 
             logger.info(
                 f"Real-time sync produced a proposal for document {document.id}"
@@ -335,6 +1037,93 @@ class DocumentSyncService:
             logger.error(f"Failed to trigger real-time sync: {e}")
             return False
 
+    async def _revise(
+        self,
+        document,
+        code_link,
+        gen_service,
+        github_service,
+        developer_id: str | None,
+    ) -> dict[str, Any] | None:
+        """Revise the existing prose against what changed, or return None.
+
+        A code change is a *diff*, and the document already says most of what
+        it should. Rewriting the whole thing from source — which is what this
+        path did — is both the most expensive option and the one most likely
+        to discard good prose nothing asked to change.
+
+        `update_documentation` and its `DOC_UPDATE_PROMPT` were already here,
+        used only by the apply-a-suggestion route, which passes empty strings
+        for both code arguments. The one caller that genuinely has an old
+        version and a new version was not using it.
+
+        Returns None — meaning "fall back to a full regeneration" — whenever a
+        revision would be guesswork: no base commit recorded, nothing written
+        yet, or the fetch failed. Guessing a base produces a diff against a
+        version that never existed, which is worse than paying for a rewrite.
+        """
+        base_sha = getattr(code_link, "last_synced_commit_sha", None)
+        if not base_sha:
+            return None
+
+        head_sha = code_link.last_commit_sha
+        if not head_sha or head_sha == base_sha:
+            return None
+
+        existing = document.content
+        if not existing or not existing.get("content"):
+            # Nothing to revise. A first draft is a generation, not an edit.
+            return None
+
+        compare = getattr(github_service, "compare_commits", None)
+        if compare is None:
+            return None
+
+        try:
+            diff = await compare(
+                code_link.repository.full_name, base_sha, head_sha, code_link.path
+            )
+        except Exception as e:
+            logger.warning(
+                f"compare {base_sha[:8]}..{head_sha[:8]} failed for doc "
+                f"{document.id}: {e} — regenerating in full"
+            )
+            return None
+
+        if not diff or not diff.get("patch"):
+            return None
+
+        try:
+            result = await gen_service.update_documentation(
+                existing_doc=existing,
+                old_code="",
+                new_code=diff["patch"],
+                language=None,
+                changes_summary=diff.get("summary"),
+                developer_id=developer_id,
+            )
+        except Exception as e:
+            logger.warning(
+                f"Incremental update failed for doc {document.id}: {e} "
+                f"— regenerating in full"
+            )
+            return None
+
+        # `update_documentation` answers with {"updated_doc": ..., "changes_made":
+        # [...]} rather than a bare document, and falls back to echoing the input
+        # when the model's reply will not parse. An echo is not an update.
+        revised = result.get("updated_doc") if isinstance(result, dict) else None
+        if not isinstance(revised, dict) or not revised.get("content"):
+            return None
+        if revised == existing:
+            return None
+
+        logger.info(
+            f"Revised doc {document.id} from {base_sha[:8]}..{head_sha[:8]} "
+            f"instead of regenerating"
+        )
+        return revised
+
     async def _generate_and_propose(
         self,
         document,
@@ -343,6 +1132,7 @@ class DocumentSyncService:
         gen_service,
         github_service,
         source: str,
+        trigger: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
         """Fetch code, generate docs, create a pending proposal.
 
@@ -358,19 +1148,41 @@ class DocumentSyncService:
             )
             return None
 
-        try:
-            content = await gen_service.generate_from_repository(
-                github_service=github_service,
-                repository_full_name=code_link.repository.full_name,
-                path=code_link.path,
-                template_category=category,
-                branch=code_link.branch or "main",
-            )
-        except Exception as e:
-            logger.error(
-                f"generate_from_repository failed for doc {document.id}: {e}"
-            )
-            return None
+        # Automated generation still costs tokens. Attributing it to the sync
+        # owner puts it against the plan whose tier asked for the sync in the
+        # first place; passing nothing, as this used to, made the platform's
+        # single largest recurring AI cost belong to nobody and appear in no
+        # workspace's usage.
+        billed_to = code_link.owner_developer_id or document.created_by_id
+        developer_id = str(billed_to) if billed_to else None
+
+        content = await self._revise(
+            document=document,
+            code_link=code_link,
+            gen_service=gen_service,
+            github_service=github_service,
+            developer_id=developer_id,
+        )
+        # Whether the existing prose was the *input* to this content, which is
+        # what makes applying it unattended defensible: a revision carries
+        # every hand-written sentence forward, a regeneration cannot know one
+        # was ever there.
+        was_revised = content is not None
+        if content is None:
+            try:
+                content = await gen_service.generate_from_repository(
+                    github_service=github_service,
+                    repository_full_name=code_link.repository.full_name,
+                    path=code_link.path,
+                    template_category=category,
+                    branch=code_link.branch or "main",
+                    developer_id=developer_id,
+                )
+            except Exception as e:
+                logger.error(
+                    f"generate_from_repository failed for doc {document.id}: {e}"
+                )
+                return None
 
         proposed_edits = ProposedEditsService(self.db)
         proposal = await proposed_edits.create_proposal(
@@ -378,8 +1190,71 @@ class DocumentSyncService:
             source=source,
             proposed_content=content,
             # proposed_by_id stays None — system-generated.
+            trigger=trigger,
         )
-        return {"proposal_id": proposal.id, "content": content}
+
+        # Auto-apply goes through the review queue rather than around it: the
+        # proposal row is created, then immediately approved. Same versioning,
+        # same audit trail, and a record of what landed and why — a silent
+        # write would leave nothing to look at when someone asks where a
+        # paragraph went.
+        applied = False
+        if code_link.sync_mode == DocumentSyncMode.AUTO.value:
+            if was_revised:
+                await proposed_edits.approve(
+                    proposal_id=str(proposal.id),
+                    # Attributed to whoever turned auto-apply on. Nobody
+                    # clicked, but somebody authorised it.
+                    reviewed_by_id=str(billed_to) if billed_to else None,
+                )
+                applied = True
+            else:
+                logger.info(
+                    f"Doc {document.id} is set to auto-apply, but this was a "
+                    f"full regeneration — proposing instead so hand-written "
+                    f"prose is not overwritten unseen"
+                )
+
+        return {
+            "proposal_id": proposal.id,
+            "content": content,
+            "applied": applied,
+        }
+
+    async def _batch_trigger(
+        self, document_id: str, code_link: DocumentCodeLink
+    ) -> dict[str, Any] | None:
+        """Why this batched document is being regenerated.
+
+        The queue row is the record of that, and it is the only place a batched
+        document can learn which pull request it is waiting on — the Temporal
+        activity is handed a document id and nothing else. Without this a merge
+        produced a pull-request group for premium documents and a commit group
+        for the pro ones queued by the very same push.
+
+        Reads the row still in flight rather than any row: a completed one
+        describes a previous regeneration.
+        """
+        if not code_link.last_commit_sha:
+            return None
+
+        pull_request = (
+            await self.db.execute(
+                select(DocumentSyncQueue.triggered_by_pull_request)
+                .where(DocumentSyncQueue.document_id == document_id)
+                .where(DocumentSyncQueue.status.in_(("pending", "processing")))
+                .order_by(DocumentSyncQueue.triggered_at.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+
+        trigger: dict[str, Any] = {
+            "commit_sha": code_link.last_commit_sha,
+            "paths": [],
+        }
+        if pull_request:
+            trigger["pull_request"] = pull_request
+        return trigger
 
     async def regenerate_document(
         self,
@@ -395,11 +1270,10 @@ class DocumentSyncService:
         log; never raises so a single bad doc doesn't poison the
         queue.
         """
-        from aexy.models.documentation import Document, DocumentCodeLink, TemplateCategory
+        from aexy.models.documentation import Document, DocumentCodeLink
         from aexy.services.document_generation_service import (
             DocumentGenerationService,
         )
-        from aexy.services.github_app_service import GitHubAppService
         from sqlalchemy.orm import selectinload as _selectinload
 
         stmt = (
@@ -428,21 +1302,27 @@ class DocumentSyncService:
         code_link = result2.scalar_one_or_none() or code_link
 
         gen_service = DocumentGenerationService(self.db, workspace_id=workspace_id)
-        github_service = GitHubAppService(self.db)
+        github_service = await self._build_github_reader(document, code_link)
+        if github_service is None:
+            return {"status": "failed", "document_id": document_id}
 
         outcome = await self._generate_and_propose(
             document=document,
             code_link=code_link,
-            category=TemplateCategory.FUNCTION_DOCS,
+            category=_category_for_link(code_link),
             gen_service=gen_service,
             github_service=github_service,
             source="code_change_sync",
+            trigger=await self._batch_trigger(document_id, code_link),
         )
         if outcome is None:
             return {"status": "failed", "document_id": document_id}
         # Clear the dirty flag — the proposal IS the new dirty state.
         code_link.has_pending_changes = False
         code_link.last_synced_at = datetime.now(timezone.utc)
+        # The prose now reflects the newest commit we have seen touch this path.
+        if code_link.last_commit_sha:
+            code_link.last_synced_commit_sha = code_link.last_commit_sha
         return {
             "status": "proposed",
             "document_id": document_id,
@@ -458,14 +1338,13 @@ class DocumentSyncService:
         document (into the proposed-edit queue, not direct overwrite).
         Called by the Temporal `process_document_sync_queue` activity.
         """
-        queue_entries = await self.get_pending_sync_queue(limit=limit)
-        # Filter to workspace if any caller relies on that scope.
-        # Document rows already carry workspace_id; filter via the
-        # eager-loaded relationship.
+        queue_entries = await self.get_pending_sync_queue(
+            limit=limit, workspace_id=workspace_id
+        )
         results = {"processed": 0, "proposed": 0, "skipped": 0, "failed": 0}
         for entry in queue_entries:
             doc = entry.document
-            if not doc or str(doc.workspace_id) != workspace_id:
+            if not doc:
                 continue
             await self.mark_sync_processing([entry.id])
             outcome = await self.regenerate_document(
@@ -486,25 +1365,11 @@ class DocumentSyncService:
     ) -> bool:
         """Check if any changed path matches a code link.
 
-        Args:
-            link_path: Path in the code link.
-            link_type: Type of link (file or directory).
-            changed_paths: List of changed file paths.
-
-        Returns:
-            True if there's a match.
+        Kept as a delegate to the module-level `path_matches_link`, which is
+        where the rule now lives so that callers outside this service can ask
+        the same question and get the same answer.
         """
-        for changed_path in changed_paths:
-            if link_type == "file":
-                # Exact match for file links
-                if changed_path == link_path:
-                    return True
-            else:
-                # Directory links match any file under that path
-                if changed_path.startswith(link_path + "/") or changed_path == link_path:
-                    return True
-
-        return False
+        return path_matches_link(link_path, link_type, changed_paths)
 
     async def get_sync_status(
         self, workspace_id: str
@@ -543,7 +1408,7 @@ class DocumentSyncService:
             .where(
                 and_(
                     Document.workspace_id == workspace_id,
-                    DocumentCodeLink.has_pending_changes == True,
+                    DocumentCodeLink.has_pending_changes.is_(True),
                 )
             )
         )

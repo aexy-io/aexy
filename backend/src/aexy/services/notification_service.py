@@ -1519,6 +1519,186 @@ async def notify_document_ai_proposal(
     )
 
 
+async def notify_document_sync_ownership_transferred(
+    db: AsyncSession,
+    recipient_id: str,
+    sync_count: int,
+    previous_owner_label: str,
+    workspace_id: str | None = None,
+) -> int:
+    """Tell someone they have inherited doc-to-code syncs.
+
+    Sent when the person who set a sync up leaves the workspace. Nobody asked
+    for this, which is the whole reason it needs saying out loud: the syncs
+    keep running, and the proposals they generate will start arriving for
+    review from a person who never wired them up.
+    """
+    plural = "sync" if sync_count == 1 else "syncs"
+    context: dict[str, Any] = {
+        "sync_count": sync_count,
+        "previous_owner": previous_owner_label,
+        "action_url": "/docs",
+    }
+    if workspace_id:
+        context["workspace_id"] = str(workspace_id)
+
+    return await _notify_quietly(
+        db,
+        [recipient_id],
+        NotificationEventType.DOCUMENT_SYNC_OWNERSHIP_TRANSFERRED,
+        title=f"You now own {sync_count} documentation {plural}",
+        body=(
+            f"{previous_owner_label} left the workspace, so their {sync_count} "
+            f"doc-to-code {plural} moved to you. Updates they propose will come "
+            f"to you for review."
+        ),
+        context=context,
+    )
+
+
+def _screenshot_hint(screenshot_count: int, page_count: int) -> str:
+    """Pre-rendered so `.format(**context)` on the template cannot KeyError.
+
+    Empty when there are no screenshots. There is deliberately no "consider
+    adding screenshots" variant: an unsolicited suggestion is the first thing
+    anybody mutes.
+    """
+    if not screenshot_count:
+        return ""
+    if page_count == 1:
+        return "It contains screenshots that may need retaking."
+    return f"{screenshot_count} of them contain screenshots that may need retaking."
+
+
+async def _notify_document_impact(
+    db: AsyncSession,
+    event_type: NotificationEventType,
+    *,
+    recipient_id: str,
+    repository_id: str,
+    pr_number: int,
+    repository: str,
+    document_titles: list[str],
+    screenshot_page_count: int,
+    workspace_id: str,
+    title: str,
+    body_lead: str,
+) -> int:
+    """Shared body for the two documentation-impact events.
+
+    **No `actor_id`.** The recipient *is* the actor — they opened the pull request
+    — and `_notify_quietly` skips `recipient == actor`, so passing it would
+    deliver precisely nothing while looking correct. These are the only two
+    notifications in the product deliberately about the recipient's own action.
+
+    `workspace_id` is required rather than optional: Slack fan-out is gated on
+    `context["workspace_id"]` and skips silently without it, and the impact row
+    always has one — so this removes the failure mode instead of tolerating it.
+    """
+    shown = document_titles[:5]
+    titles = ", ".join(shown) + ("…" if len(document_titles) > len(shown) else "")
+    hint = _screenshot_hint(screenshot_page_count, len(document_titles))
+
+    context: dict[str, Any] = {
+        # The repo's dedup idiom, for grouping in the bell. The impact row is the
+        # authority for whether to send at all — this field is for reading.
+        "entity_id": f"{repository_id}:{pr_number}",
+        "pr_number": pr_number,
+        "repository": repository,
+        "document_count": len(document_titles),
+        "document_titles": titles,
+        "screenshot_hint": hint,
+        "action_url": f"/docs/impact/{repository_id}/{pr_number}",
+        "workspace_id": str(workspace_id),
+    }
+
+    body = f"{body_lead} {titles}."
+    if hint:
+        body = f"{body} {hint}"
+
+    return await _notify_quietly(
+        db,
+        [recipient_id],
+        event_type,
+        title=title,
+        body=body,
+        context=context,
+    )
+
+
+async def notify_document_impact_pr_opened(
+    db: AsyncSession,
+    recipient_id: str,
+    *,
+    repository_id: str,
+    pr_number: int,
+    repository: str,
+    document_titles: list[str],
+    screenshot_page_count: int,
+    workspace_id: str,
+) -> int:
+    """Tell a pull request's author which documented pages it affects.
+
+    Sent while the pull request is open, which is the only moment updating the
+    pages is cheap: the author is still in the change and can edit them in the
+    same branch.
+    """
+    count = len(document_titles)
+    return await _notify_document_impact(
+        db,
+        NotificationEventType.DOCUMENT_IMPACT_PR_OPENED,
+        recipient_id=recipient_id,
+        repository_id=repository_id,
+        pr_number=pr_number,
+        repository=repository,
+        document_titles=document_titles,
+        screenshot_page_count=screenshot_page_count,
+        workspace_id=workspace_id,
+        title=f"{count} page(s) describe what #{pr_number} changes",
+        body_lead=(
+            f"#{pr_number} in {repository} touches code described by "
+            f"{count} page(s):"
+        ),
+    )
+
+
+async def notify_document_impact_pr_merged(
+    db: AsyncSession,
+    recipient_id: str,
+    *,
+    repository_id: str,
+    pr_number: int,
+    repository: str,
+    document_titles: list[str],
+    screenshot_page_count: int,
+    workspace_id: str,
+) -> int:
+    """Tell a pull request's author that its merge left pages behind.
+
+    A different thing from the open-moment nudge, not a repeat of it: that one
+    was "you can still fix this here", this one is "it is now wrong". Separate
+    from DOCUMENT_AI_PROPOSAL, which goes to the *page's* owner about a proposal
+    waiting for review.
+    """
+    count = len(document_titles)
+    return await _notify_document_impact(
+        db,
+        NotificationEventType.DOCUMENT_IMPACT_PR_MERGED,
+        recipient_id=recipient_id,
+        repository_id=repository_id,
+        pr_number=pr_number,
+        repository=repository,
+        document_titles=document_titles,
+        screenshot_page_count=screenshot_page_count,
+        workspace_id=workspace_id,
+        title=f"#{pr_number} merged — {count} page(s) now behind",
+        body_lead=(
+            f"#{pr_number} merged in {repository}. {count} page(s) describing "
+            f"the code it changed are now out of date:"
+        ),
+    )
+
+
 # ============ GTM Notifications ============
 
 

@@ -1,0 +1,23 @@
+{
+  "review": {
+    "eyebrow": "आपकी प्रतीक्षा में",
+    "heading": "समीक्षा के लिए {count, plural, one {# आइटम} other {# आइटम}}",
+    "needsAttention": "{count, plural, one {# पर करीब से ध्यान दें} other {# पर करीब से ध्यान दें}}",
+    "loading": "समीक्षा कतार लोड हो रही है",
+    "emptyTitle": "कुछ भी प्रतीक्षा में नहीं",
+    "emptyBody": "जब कोई AI किसी दस्तावेज़ में बदलाव प्रस्तावित करता है, या कोई workspace policy किसी agent को स्वयं कार्य करने से रोकती है, तो वह यहाँ किसी के निर्णय की प्रतीक्षा करता है।",
+    "kindDocument": "दस्तावेज़",
+    "kindAction": "Agent कार्रवाई",
+    "staleWarning": "यह लिखे जाने के बाद पेज बदल चुका है — स्वीकृत करने पर वे संपादन अधिलेखित हो जाएंगे।",
+    "agentBlocked": "एक agent इस पर प्रतीक्षा कर रहा है।",
+    "becauseOf": "रोका गया क्योंकि: {reason}",
+    "approve": "स्वीकृत करें",
+    "reject": "अस्वीकार करें",
+    "working": "चल रहा है…",
+    "approved": "स्वीकृत",
+    "rejected": "अस्वीकृत",
+    "failed": "यह पूरा नहीं हो सका",
+    "groupAffects": "{count, plural, one {# पेज प्रभावित} other {# पेज प्रभावित}}",
+    "approveAll": "सभी {count} स्वीकृत करें"
+  }
+}

@@ -17,6 +17,11 @@ import { ProposedEditReview } from "./ProposedEditReview";
 interface Props {
   workspaceId: string;
   documentId: string;
+  /** The document's current content, passed down so each proposal can be
+   *  diffed against what is actually on the page. The page already holds it,
+   *  so taking it as a prop avoids a second fetch of a document the caller
+   *  has open in front of them. */
+  currentContent?: unknown;
 }
 
 const SOURCE_META: Record<
@@ -38,7 +43,11 @@ const SOURCE_META: Record<
  *
  * Clicking a proposal expands `ProposedEditReview` inline.
  */
-export function ProposedEditsBanner({ workspaceId, documentId }: Props) {
+export function ProposedEditsBanner({
+  workspaceId,
+  documentId,
+  currentContent,
+}: Props) {
   const queryClient = useQueryClient();
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -156,6 +165,7 @@ export function ProposedEditsBanner({ workspaceId, documentId }: Props) {
                         <div className="mt-2 mb-1">
                           <ProposedEditReview
                             proposal={p}
+                            currentContent={currentContent}
                             onApprove={() => approve.mutate(p.id)}
                             onReject={(reason) =>
                               reject.mutate({ id: p.id, reason })

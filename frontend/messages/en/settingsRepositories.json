@@ -1,6 +1,24 @@
 {
   "settingsRepositories": {
     "title": "Repositories",
-    "description": "Which GitHub repositories are synced and analysed."
+    "description": "Which GitHub repositories are synced and analysed.",
+    "docImpact": {
+      "heading": "Documentation impact",
+      "description": "When a pull request touches code that a page here describes, tell its author — and optionally say so in the pull request itself.",
+      "enabledLabel": "Notify the author",
+      "enabledDescription": "In-app, and by email when it merges. Each person can change their own channels in notification settings.",
+      "commentLabel": "Comment on the pull request",
+      "commentDescription": "One comment per pull request, edited in place as you push. Needs the Aexy GitHub App to have “Pull requests: write”.",
+      "checkLabel": "Add a check to the commit",
+      "checkDescription": "Appears in the pull request's checks list. Needs “Checks: write”.",
+      "conclusionLabel": "How the check reports",
+      "conclusionNeutral": "Neutral — never blocks a merge",
+      "conclusionBlocking": "Action required — blocks a merge",
+      "conclusionHint": "Neutral by default. A check that fails because a screenshot might be stale tends to get made non-required, and then it is both ignored and red.",
+      "sharedNote": "A pull request comment is one thing every reviewer sees, so this is a workspace setting rather than a personal preference — an individual author cannot opt out of it.",
+      "adminOnly": "Only a workspace admin can change these.",
+      "blockedAction": "Review App permissions",
+      "saveFailed": "Could not save that. Try again."
+    }
   }
 }

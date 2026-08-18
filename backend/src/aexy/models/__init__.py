@@ -133,6 +133,11 @@ from aexy.models.notification import (
     NOTIFICATION_CATEGORIES,
     EVENT_TYPE_TO_CATEGORY,
 )
+from aexy.models.proposed_change import (
+    ChangeKind,
+    ChangeStatus,
+    ProposedChange,
+)
 from aexy.models.agent_policy import (
     AgentPolicy,
     AgentPolicyDecision,
@@ -166,6 +171,16 @@ from aexy.models.documentation import (
     DocumentLinkType,
     DocumentPermission,
     TemplateCategory,
+)
+from aexy.models.workspace_doc_impact_settings import (
+    CheckRunConclusion,
+    WorkspaceDocImpactSettings,
+)
+from aexy.models.document_impact import (
+    DocImpactState,
+    GitHubWriteStatus,
+    PullRequestDocImpact,
+    PullRequestDocImpactItem,
 )
 from aexy.models.tracking import (
     DeveloperStandup,
@@ -739,6 +754,9 @@ __all__ = [
     "EVENT_TYPE_TO_CATEGORY",
     # Agent Policies
     "AgentDraft",
+    "ChangeKind",
+    "ChangeStatus",
+    "ProposedChange",
     "AgentPolicy",
     "AgentPolicyDecision",
     "AgentConfigAudit",
@@ -757,6 +775,12 @@ __all__ = [
     "DocumentVersion",
     "DocumentTemplate",
     "DocumentCodeLink",
+    "DocImpactState",
+    "GitHubWriteStatus",
+    "PullRequestDocImpact",
+    "PullRequestDocImpactItem",
+    "CheckRunConclusion",
+    "WorkspaceDocImpactSettings",
     "DocumentGenerationPrompt",
     "CollaborationSession",
     "DocumentCollaborator",

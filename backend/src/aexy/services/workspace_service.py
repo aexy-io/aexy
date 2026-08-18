@@ -31,6 +31,68 @@ def generate_slug(name: str) -> str:
     return slug[:100]
 
 
+# "community" ranks below everything: outside participants who joined via a
+# public forum. They only ever use the public endpoints; this keeps them below
+# "member" so they can never pass an internal permission gate.
+ROLE_HIERARCHY = {"owner": 4, "admin": 3, "member": 2, "viewer": 1, "community": 0}
+
+# A custom role whose template is not itself a rank. `priority` is the only
+# signal left, and 100 is what the seeded admin template uses — see the note on
+# `CustomRole.priority`.
+_ADMIN_PRIORITY = 100
+
+
+def role_level(member) -> int:
+    """How much authority a member has, as one number.
+
+    There were two answers to "is this person an admin" and they disagreed.
+    `check_permission` scored `member.role` — the legacy column, which stays
+    `"member"` when a custom role is assigned, because `role` and `role_id`
+    coexist. `AppAccessService._is_admin` scored the custom role. So a member
+    holding a custom admin-equivalent role was granted every app by the access
+    layer, shown the controls that go with them, and then refused by the
+    endpoint behind each one: `is_admin: true` from
+    `/app-access/members/{id}/effective`, 403 from `PATCH` beside it.
+
+    The data model already says which of the two is right — `role_id` is
+    documented as taking precedence over the legacy role — so this resolves the
+    custom role and takes the *higher* of the two. Higher rather than the custom
+    role alone, deliberately: a custom role is additive in intent, and letting
+    one lower an owner to whatever its template says would be a way to demote
+    somebody by assigning them a job title.
+
+    Both callers use this now, so the two answers cannot drift apart again.
+
+    Reads `member.custom_role` directly, which is safe because the relationship
+    is `lazy="selectin"` — every `WorkspaceMember` query already loads it, so
+    this costs no extra round trip and cannot be silently absent.
+    """
+    legacy = ROLE_HIERARCHY.get(getattr(member, "role", None), 0)
+
+    custom_role = getattr(member, "custom_role", None)
+    if custom_role is None:
+        return legacy
+    # A soft-deleted role confers nothing; the legacy column is what is left.
+    if getattr(custom_role, "is_active", True) is False:
+        return legacy
+
+    # The highest of every signal, not the first that answers. `_is_admin` read
+    # template *and* priority independently, so a role based on the viewer
+    # template but carrying priority 100 counted as admin there; letting the
+    # template win here would take app access away from somebody who has it
+    # today. Contradictory configuration either way — this is the reading that
+    # takes nothing away.
+    template = getattr(custom_role, "based_on_template", None)
+    from_template = ROLE_HIERARCHY.get(template, 0)
+    from_priority = (
+        ROLE_HIERARCHY["admin"]
+        if (getattr(custom_role, "priority", 0) or 0) >= _ADMIN_PRIORITY
+        else 0
+    )
+
+    return max(legacy, from_template, from_priority)
+
+
 class WorkspaceService:
     """Service for workspace CRUD and membership management."""
 
@@ -283,6 +345,23 @@ class WorkspaceService:
 
         member.status = "removed"
         await self.db.flush()
+
+        # Hand on anything that keeps running without them. Doc-to-code syncs
+        # are owned by whoever set them up: their plan tier decides how each
+        # sync behaves and their GitHub connection is its credential fallback,
+        # so a sync left pointing at a departed member degrades silently
+        # rather than failing loudly.
+        #
+        # Deliberately here rather than in the API route: removal happens
+        # through more than one caller, and a transfer that only runs on one
+        # path is a transfer that mostly does not run.
+        from aexy.services.document_sync_service import DocumentSyncService
+
+        await DocumentSyncService(self.db).transfer_owned_syncs(
+            departing_developer_id=developer_id,
+            workspace_id=workspace_id,
+        )
+
         return True
 
     async def update_member_role(
@@ -554,14 +633,7 @@ class WorkspaceService:
         if not member or member.status != "active":
             return False
 
-        # "community" ranks below everything: outside participants who joined via
-        # a public forum. They only ever use the public endpoints; this keeps
-        # them below "member" so they can never pass an internal permission gate.
-        role_hierarchy = {"owner": 4, "admin": 3, "member": 2, "viewer": 1, "community": 0}
-        member_level = role_hierarchy.get(member.role, 0)
-        required_level = role_hierarchy.get(required_role, 0)
-
-        return member_level >= required_level
+        return role_level(member) >= ROLE_HIERARCHY.get(required_role, 0)
 
     async def is_owner(self, workspace_id: str, developer_id: str) -> bool:
         """Check if a developer is the *active* workspace owner.

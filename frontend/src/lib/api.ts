@@ -2137,6 +2137,21 @@ export interface WorkspaceRepositoryItem {
   updated_at: string;
 }
 
+/** What a repository *picker* needs, and no more.
+ *
+ *  The docs generator used to hold a full `Repository`, which forced it to read
+ *  the per-developer list — the only endpoint that returns one — and that is why
+ *  a member who had not adopted a repository themselves could not see it there.
+ *  Narrowing the type is what lets the workspace's own adoption list feed it. */
+export interface RepositoryChoice {
+  id: string;
+  name: string;
+  full_name: string;
+  description: string | null;
+  is_private: boolean;
+  language: string | null;
+}
+
 export const workspaceRepositoriesApi = {
   list: async (
     workspaceId: string,
@@ -6152,7 +6167,9 @@ export type NotificationEventType =
   | "gtm_alert_triggered"
   | "document_shared"
   | "document_mentioned"
-  | "document_commented";
+  | "document_commented"
+  | "document_impact_pr_opened"
+  | "document_impact_pr_merged";
 
 export interface Notification {
   id: string;
@@ -6664,6 +6681,10 @@ export interface DocumentTreeItem {
   visibility: DocumentVisibility;
   created_by_id: string | null;
   is_favorited: boolean;
+  /** The linked code has changed since this page was written. Muted links are
+   *  excluded server-side — "off" has to include the tree or the setting only
+   *  half takes effect. */
+  is_behind_code?: boolean;
   has_children: boolean;
   children: DocumentTreeItem[];
   created_at: string;
@@ -6826,9 +6847,221 @@ export interface DocumentCodeLink {
   last_content_hash: string | null;
   last_synced_at: string | null;
   has_pending_changes: boolean;
+  /** Whoever set this sync up. Null means orphaned — the owner left and no
+   *  transfer has run — which matters because ownership decides the sync's
+   *  plan tier and its GitHub credential fallback. */
+  owner_developer_id: string | null;
+  /** How this document reacts when its code changes. */
+  sync_mode: DocumentSyncMode;
   created_at: string;
   updated_at: string;
 }
+
+/** propose = queue for review; auto = apply derived updates unattended;
+ *  off = stop watching, including the "behind" badge. */
+export type DocumentSyncMode = "propose" | "auto" | "off";
+
+/** A document whose linked source has changed since it was written. */
+export interface DocumentNeedsUpdateItem {
+  document_id: string;
+  document_title: string;
+  document_icon: string | null;
+  code_link_id: string;
+  repository_id: string;
+  repository_full_name: string | null;
+  path: string;
+  link_type: string;
+  branch: string;
+  /** "code_changed" (revise) or "never_synced" (write a first draft). */
+  reason: string;
+  last_synced_at: string | null;
+  last_seen_commit_sha: string | null;
+  owner_developer_id: string | null;
+  /** Non-zero means an update is already queued for review; writing another
+   *  only hands the reviewer the same work twice. */
+  pending_proposal_count: number;
+}
+
+/** A merged pull request, offered as something to write about. Carries no
+ *  claim about whether it is already documented — `pull_requests` does not
+ *  store the files a change touched, so that would be a guess. */
+export interface MergedChangeItem {
+  pull_request_id: string;
+  number: number;
+  title: string;
+  repository: string;
+  repository_id: string | null;
+  merged_at: string | null;
+  author_name: string | null;
+  merged_by_login: string | null;
+  additions: number;
+  deletions: number;
+  files_changed: number;
+  /** Documents linked to anything in this repository. Zero means the repository
+   *  has no documentation at all, which is the honest signal available here. */
+  repository_document_count: number;
+  /** Pages this merge was found to affect. Zero also covers "never evaluated" —
+   *  both should show no link, so they need no distinguishing. */
+  impact_affected_count: number;
+}
+
+/** One image in a page, and the section it sits in.
+ *
+ *  Both fields are nullable and both stay data: a `data:` URI has no filename and
+ *  an image before the first heading has no section. The client renders the
+ *  shorter line rather than the server inventing a word it cannot translate. */
+export interface ImpactScreenshotSpot {
+  heading: string | null;
+  label: string | null;
+}
+
+export interface ImpactScreenshots {
+  count: number;
+  spots: ImpactScreenshotSpot[];
+}
+
+/** An id and its parameters — never prose.
+ *
+ *  This is what makes the guidance translatable. `/review`'s group headings are
+ *  server-rendered English and cannot be, which is the precedent being avoided. */
+export interface ImpactGuidance {
+  id: "screenshots" | "route" | "apiSurface" | "setup" | string;
+  params: Record<string, unknown>;
+}
+
+export interface ImpactLink {
+  code_link_id: string;
+  path: string;
+  link_type: string;
+  branch: string;
+  sync_mode: string;
+  template_category: string | null;
+  has_pending_changes: boolean;
+  last_synced_at: string | null;
+  owner_developer_id: string | null;
+  /** Named, not counted: "auth.py changed" tells the author whether this is
+   *  about them; "2 files changed" does not. */
+  matched_paths: string[];
+}
+
+export interface ImpactItem {
+  document_id: string;
+  document_title: string;
+  document_icon: string | null;
+  document_updated_at: string | null;
+  status: "needs_review" | "edited" | "proposal_pending" | "dismissed";
+  links: ImpactLink[];
+  screenshots: ImpactScreenshots;
+  guidance: ImpactGuidance[];
+  proposal_id: string | null;
+  dismissed_at: string | null;
+  dismissed_by_developer_id: string | null;
+  dismissed_by_name: string | null;
+  dismiss_reason: string | null;
+}
+
+/** What one pull request did to the pages that describe its code.
+ *
+ *  `analyzed: false` means it was never evaluated — a pull request from before
+ *  this shipped, or one in a repository nothing documents. That is an ordinary
+ *  state, not an error, which is why the endpoint returns 200 for it. */
+export interface DocImpactResponse {
+  analyzed: boolean;
+  repository_id: string;
+  /** "acme/app". The page needs it to say which repository, and it is the only
+   *  thing needed to link back to the pull request — GitHub's URL is derivable
+   *  from the name and the number. */
+  repository_full_name: string | null;
+  pull_request_number: number;
+  repository_document_count: number;
+  items: ImpactItem[];
+
+  impact_id: string | null;
+  pull_request_title: string | null;
+  state: "open" | "merged" | null;
+  head_sha: string | null;
+  author_developer_id: string | null;
+  author_login: string | null;
+  changed_path_count: number;
+  detected_at: string | null;
+  merged_at: string | null;
+
+  pr_comment_status: string | null;
+  pr_comment_error: string | null;
+  check_run_status: string | null;
+  check_run_error: string | null;
+}
+
+export interface DocImpactSettings {
+  enabled: boolean;
+  pr_comment_enabled: boolean;
+  check_run_enabled: boolean;
+  check_run_conclusion: "neutral" | "action_required" | string;
+  /** Set the first time a GitHub write was refused, cleared on the first success.
+   *  Drives a banner on the settings screen, because the person who can grant an
+   *  App permission is there — not reading a pull request. */
+  github_write_block_reason: string | null;
+  github_write_blocked_at: string | null;
+}
+
+export const docImpactApi = {
+  getSettings: async (workspaceId: string): Promise<DocImpactSettings> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/doc-impact/settings`
+    );
+    return response.data;
+  },
+
+  /** Partial by design: sending only what changed means a stale client cannot
+   *  silently re-disable something somebody else just turned on. */
+  updateSettings: async (
+    workspaceId: string,
+    changes: Partial<Omit<DocImpactSettings, "github_write_block_reason" | "github_write_blocked_at">>
+  ): Promise<DocImpactSettings> => {
+    const response = await api.put(
+      `/workspaces/${workspaceId}/doc-impact/settings`,
+      changes
+    );
+    return response.data;
+  },
+
+  get: async (
+    workspaceId: string,
+    repositoryId: string,
+    pullRequestNumber: number
+  ): Promise<DocImpactResponse> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/doc-impact/${repositoryId}/${pullRequestNumber}`
+    );
+    return response.data;
+  },
+
+  dismiss: async (
+    workspaceId: string,
+    repositoryId: string,
+    pullRequestNumber: number,
+    documentId: string,
+    reason?: string
+  ): Promise<DocImpactResponse> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/doc-impact/${repositoryId}/${pullRequestNumber}/documents/${documentId}/dismiss`,
+      { reason: reason || null }
+    );
+    return response.data;
+  },
+
+  undismiss: async (
+    workspaceId: string,
+    repositoryId: string,
+    pullRequestNumber: number,
+    documentId: string
+  ): Promise<DocImpactResponse> => {
+    const response = await api.delete(
+      `/workspaces/${workspaceId}/doc-impact/${repositoryId}/${pullRequestNumber}/documents/${documentId}/dismiss`
+    );
+    return response.data;
+  },
+};
 
 export interface DocumentCollaborator {
   id: string;
@@ -7098,6 +7331,63 @@ export const documentApi = {
     return response.data;
   },
 
+  setCodeLinkSyncMode: async (
+    workspaceId: string,
+    documentId: string,
+    linkId: string,
+    syncMode: DocumentSyncMode
+  ): Promise<DocumentCodeLink> => {
+    const response = await api.patch(
+      `/workspaces/${workspaceId}/documents/${documentId}/code-links/${linkId}/sync-mode`,
+      { sync_mode: syncMode }
+    );
+    return response.data;
+  },
+
+  transferCodeLinkOwner: async (
+    workspaceId: string,
+    documentId: string,
+    linkId: string,
+    ownerDeveloperId: string
+  ): Promise<DocumentCodeLink> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/documents/${documentId}/code-links/${linkId}/transfer`,
+      { owner_developer_id: ownerDeveloperId }
+    );
+    return response.data;
+  },
+
+  listDocumentsNeedingUpdate: async (
+    workspaceId: string,
+    options?: { repository_id?: string; limit?: number }
+  ): Promise<DocumentNeedsUpdateItem[]> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/documents/needs-update`,
+      { params: options }
+    );
+    return response.data;
+  },
+
+  listMergedChanges: async (
+    workspaceId: string,
+    options?: { repository_id?: string; limit?: number }
+  ): Promise<MergedChangeItem[]> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/documents/merged-changes`,
+      { params: options }
+    );
+    return response.data;
+  },
+
+  listWorkspaceProposedEdits: async (
+    workspaceId: string
+  ): Promise<WorkspaceProposedEdit[]> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/documents/proposed-edits`
+    );
+    return response.data;
+  },
+
   deleteCodeLink: async (workspaceId: string, documentId: string, linkId: string): Promise<void> => {
     await api.delete(`/workspaces/${workspaceId}/documents/${documentId}/code-links/${linkId}`);
   },
@@ -7153,17 +7443,43 @@ export const documentApi = {
       language?: string;
     }
   ): Promise<{ status: string; content: Record<string, unknown> }> => {
+    // Body, not query params: a 200-line file exceeds the request-line limit
+    // in nginx and uvicorn, and source code in a URL lands in access logs and
+    // browser history.
     const response = await api.post(
       `/workspaces/${workspaceId}/documents/generate-from-code`,
-      null,
       {
-        params: {
-          code,
-          template_category: options?.template_category || "function_docs",
-          file_path: options?.file_path,
-          language: options?.language,
-        },
+        code,
+        template_category: options?.template_category || "function_docs",
+        file_path: options?.file_path,
+        language: options?.language,
       }
+    );
+    return response.data;
+  },
+
+  /** Generate a document from a repository path *and* link it to that path,
+   *  in one server-side transaction. The link is what lets the document ever
+   *  be told its code has changed. */
+  createDocumentFromRepository: async (
+    workspaceId: string,
+    options: {
+      repository_id: string;
+      path: string;
+      link_type: DocumentLinkType;
+      branch: string;
+      template_category?: string;
+      custom_prompt?: string;
+      title?: string;
+      /** Where this sits in the tree. A whole-repository pass creates one
+       *  parent and a child per module, so a later change to one directory
+       *  revises one document instead of rewriting the world. */
+      parent_id?: string;
+    }
+  ): Promise<{ document: Document; code_link: DocumentCodeLink }> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/documents/from-repository`,
+      options
     );
     return response.data;
   },
@@ -7220,6 +7536,21 @@ export const documentApi = {
   }> => {
     const response = await api.post(
       `/workspaces/${workspaceId}/documents/${documentId}/suggest-improvements`
+    );
+    return response.data;
+  },
+
+  /** Turn one improvement into a proposed edit. Nothing is applied to the
+   *  document — a judgement about prose somebody wrote is exactly the kind of
+   *  change that should be diffed and approved. */
+  applySuggestion: async (
+    workspaceId: string,
+    documentId: string,
+    suggestionSummary: string
+  ): Promise<{ status: string; document_id: string; proposed_edit_id: string }> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/documents/${documentId}/suggest-improvements/apply`,
+      { suggestion_summary: suggestionSummary }
     );
     return response.data;
   },
@@ -7355,6 +7686,73 @@ export interface ProposedEdit {
   reviewed_at: string | null;
   reason: string | null;
   is_stale: boolean;
+}
+
+/** One thing waiting on a person, whichever gate produced it. */
+export interface ReviewItem {
+  kind: "document_proposal" | "agent_action";
+  id: string;
+  title: string;
+  summary: string;
+  requested_by_id: string | null;
+  created_at: string;
+  reason: string | null;
+  /** Stale proposal, or an agent blocked until somebody answers. */
+  needs_attention: boolean;
+  document_id?: string | null;
+  document_icon?: string | null;
+  source?: string | null;
+  action?: string | null;
+  method?: string | null;
+  /** Items sharing a group_key were caused by the same change and are decided
+   *  together. Null means nothing caused it but a person. */
+  group_key?: string | null;
+  group_label?: string | null;
+  trigger_paths?: string[];
+}
+
+export interface ReviewSummaryCounts {
+  total: number;
+  document_proposals: number;
+  agent_actions: number;
+}
+
+export const reviewApi = {
+  list: async (workspaceId: string): Promise<ReviewItem[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/review`);
+    return response.data;
+  },
+
+  summary: async (workspaceId: string): Promise<ReviewSummaryCounts> => {
+    const response = await api.get(`/workspaces/${workspaceId}/review/summary`);
+    return response.data;
+  },
+
+  approveAction: async (workspaceId: string, actionId: string): Promise<unknown> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/agent-actions/${actionId}/approve`
+    );
+    return response.data;
+  },
+
+  rejectAction: async (
+    workspaceId: string,
+    actionId: string,
+    note?: string
+  ): Promise<unknown> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/agent-actions/${actionId}/reject`,
+      { note }
+    );
+    return response.data;
+  },
+};
+
+/** A proposal seen from the workspace queue rather than its own document,
+ *  where a UUID alone is not enough to decide anything from. */
+export interface WorkspaceProposedEdit extends ProposedEdit {
+  document_title: string;
+  document_icon: string | null;
 }
 
 // ============ Template API ============

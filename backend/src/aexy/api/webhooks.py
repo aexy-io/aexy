@@ -1,5 +1,8 @@
 """GitHub Webhook API endpoints."""
 
+import logging
+import re
+
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +20,7 @@ from aexy.services.github_task_sync_service import GitHubTaskSyncService
 
 router = APIRouter()
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 
 # WS-082: per-source rate limiting on webhook ingestion. Combined with the
@@ -25,6 +29,180 @@ settings = get_settings()
 # workflows (each of which consumes LLM tokens).
 _GITHUB_WEBHOOK_LIMIT_PER_IP_PER_MIN = 600     # GitHub sends bursts on big pushes; generous cap.
 _AUTOMATION_WEBHOOK_LIMIT_PER_ID_PER_MIN = 60  # External system per automation.
+
+
+def _changed_paths(commits: list[dict]) -> list[str]:
+    """Every path a push touched, deduplicated, order preserved.
+
+    GitHub reports `added`, `removed` and `modified` per commit. All three
+    matter to a document: a deleted file is as much a reason to revisit the
+    prose as an edited one, and a rename arrives as a remove plus an add.
+    """
+    seen: dict[str, None] = {}
+    for commit in commits:
+        for key in ("added", "modified", "removed"):
+            for path in commit.get(key) or []:
+                seen.setdefault(path, None)
+    return list(seen)
+
+
+# GitHub's own merge-commit subjects. A merge keeps "Merge pull request #N
+# from …"; a squash puts "(#N)" at the end of the title. A rebase merge carries
+# no reference at all, which is why the caller treats absence as ordinary.
+_MERGE_COMMIT_PR = re.compile(r"^Merge pull request #(\d{1,7})\b")
+_SQUASH_COMMIT_PR = re.compile(r"\(#(\d{1,7})\)\s*$")
+
+
+def _pull_request_from_commits(commits: list[dict]) -> int | None:
+    """The pull request a push closed, when the push says so.
+
+    A push payload has no pull request field — GitHub does not put one there —
+    so the number has to come from the merge commit's own subject, which GitHub
+    writes. Newest commit first: a push can contain several merges, and the last
+    one is the one whose review this push belongs to.
+
+    This is the only thing that ever populates `trigger["pull_request"]`, which
+    `ProposedChange` has documented and the review inbox has grouped on since it
+    was built. Without it every proposal grouped by commit, so one merge across
+    four commits became four groups of one — the opposite of the "the auth
+    rework touched these four pages" decision the grouping exists to offer.
+    """
+    for commit in reversed(commits):
+        subject = (commit.get("message") or "").strip().split("\n", 1)[0]
+        if not subject:
+            continue
+        for pattern in (_MERGE_COMMIT_PR, _SQUASH_COMMIT_PR):
+            found = pattern.search(subject)
+            if found:
+                return int(found.group(1))
+    return None
+
+
+async def _sync_documents_for_push(db: AsyncSession, event) -> dict | None:
+    """Flag documents whose linked code this push touched.
+
+    Returns a summary for the webhook response, or None when the push is
+    irrelevant to Docs. Never raises: see the call site.
+    """
+    from sqlalchemy import select
+
+    from aexy.models.repository import Repository
+    from aexy.services.document_sync_service import DocumentSyncService
+
+    commits = event.commits or []
+    paths = _changed_paths(commits)
+    if not paths:
+        return None
+
+    head_sha = ""
+    for commit in reversed(commits):
+        head_sha = commit.get("id") or commit.get("sha") or ""
+        if head_sha:
+            break
+    if not head_sha:
+        return None
+
+    try:
+        repo = (
+            await db.execute(
+                select(Repository).where(Repository.full_name == event.repository)
+            )
+        ).scalar_one_or_none()
+        if not repo:
+            return None
+
+        return await DocumentSyncService(db).handle_code_change(
+            repository_id=str(repo.id),
+            commit_sha=head_sha,
+            changed_paths=paths,
+            pull_request=_pull_request_from_commits(commits),
+        )
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.exception(
+            "Document sync failed for push to %s: %s", event.repository, exc
+        )
+        return None
+
+
+_DOC_IMPACT_MOMENTS = {
+    "opened": "opened",
+    "reopened": "opened",
+    "ready_for_review": "opened",
+    # Refresh the GitHub artifacts on every push, but only notify when the set of
+    # affected pages actually grew — that decision lives in the service, which
+    # holds the high-water mark.
+    "synchronize": "synchronize",
+}
+
+
+async def _dispatch_document_impact(db: AsyncSession, event, pr) -> str | None:
+    """Ask, in the background, which documented pages this pull request affects.
+
+    Dispatched rather than awaited inline: it costs a GitHub read and possibly two
+    GitHub writes, and GitHub gives a webhook ten seconds for a request that
+    already runs ingestion, task sync, document sync and profile sync.
+
+    Never raises. A pull request must still be ingested when this cannot run.
+    """
+    from sqlalchemy import select
+
+    from aexy.models.repository import Repository
+
+    payload = event.pull_request or {}
+    moment = _DOC_IMPACT_MOMENTS.get(event.action or "")
+    if event.action == "closed":
+        # Only a merge. A closed-unmerged pull request changed nothing, and saying
+        # its pages are behind would be wrong.
+        if not payload.get("merged"):
+            return None
+        moment = "merged"
+    if not moment:
+        return None
+
+    head_sha = ((payload.get("head") or {}).get("sha")) or ""
+    if not head_sha:
+        return None
+
+    try:
+        repo = (
+            await db.execute(
+                select(Repository).where(Repository.full_name == event.repository)
+            )
+        ).scalar_one_or_none()
+        if not repo:
+            return None
+
+        from aexy.temporal.activities.document_impact import EvaluateDocImpactInput
+        from aexy.temporal.dispatch import dispatch
+        from aexy.temporal.task_queues import TaskQueue
+
+        await dispatch(
+            "evaluate_document_impact",
+            EvaluateDocImpactInput(
+                repository_id=str(repo.id),
+                pull_request_number=int(payload.get("number") or 0),
+                head_sha=head_sha,
+                moment=moment,
+                title=payload.get("title"),
+                author_developer_id=str(pr.developer_id) if pr else None,
+                author_login=(payload.get("user") or {}).get("login"),
+            ),
+            task_queue=TaskQueue.INTEGRATIONS,
+            # Keyed on the sha and the moment, so a redelivered webhook for the
+            # same push collapses before it reaches the database.
+            workflow_id=(
+                f"doc-impact-{repo.id}-{payload.get('number')}-{head_sha[:12]}-{moment}"
+            ),
+        )
+        return moment
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.exception(
+            "Documentation impact dispatch failed for %s#%s: %s",
+            event.repository,
+            payload.get("number"),
+            exc,
+        )
+        return None
 
 
 async def _enforce_webhook_rate_limit(scope_key: str, limit: int, window_seconds: int = 60) -> None:
@@ -162,9 +340,26 @@ async def handle_github_webhook(
         if task_links_created > 0:
             result["task_links_created"] = task_links_created
 
+        # Tell Docs the code moved. `handle_code_change` marks every code
+        # link whose path the push touched, then routes each linked document
+        # by its owner's plan tier — regenerate now, queue for the daily
+        # batch, or just flag it. Until this call existed the method had no
+        # callers at all, so no document ever learned that its source had
+        # changed and the whole freshness pipeline behind it was inert.
+        #
+        # Deliberately after task sync and deliberately non-fatal: a failure
+        # here must not make GitHub retry a delivery whose ingestion already
+        # succeeded.
+        doc_sync = await _sync_documents_for_push(db, event)
+        if doc_sync:
+            result["document_sync"] = doc_sync
+
     elif event.event_type == "pull_request" and event.pull_request:
         # Process PR for task references and status updates
         github_id = event.pull_request.get("id")
+        # Bound before the branch: the documentation-impact dispatch below runs
+        # whether or not there is a local row to find.
+        pr = None
         if github_id:
             from aexy.models.activity import PullRequest
             from sqlalchemy import select
@@ -215,6 +410,32 @@ async def handle_github_webhook(
                         # Don't fail the webhook on a dispatch hiccup — the
                         # 30-min poll will catch up.
                         result["realtime_ai_dispatched"] = False
+
+        # Outside the `if pr:` block on purpose. This does not need the local
+        # pull request row — it needs the repository and the number, both of which
+        # are in the payload. A pull request from somebody with no account here is
+        # exactly the case where the author would otherwise be told nothing.
+        moment = await _dispatch_document_impact(db, event, pr)
+        if moment:
+            result["doc_impact_dispatched"] = moment
+
+    elif event.event_type == "installation" and event.installation:
+        # Keeps the cached App permissions honest. Without this, an admin granting
+        # "Pull requests: write" sees the pull request comment stay missing until
+        # somebody happens to re-run an OAuth sync — the feature looks broken at
+        # the exact moment they fixed it.
+        try:
+            from aexy.services.github_app_service import GitHubAppService
+
+            await GitHubAppService(db).handle_installation_webhook(
+                action=event.action or "",
+                installation_data=event.installation,
+                sender=event.sender or {},
+            )
+            result["installation_action"] = event.action
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.exception("Installation webhook failed: %s", exc)
+            result["installation_action"] = None
 
     elif event.event_type == "issues" and event.issue:
         # Auto-link tasks mentioned via [slug:key] in the issue body/title.

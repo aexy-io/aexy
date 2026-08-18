@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
   FileText,
@@ -11,18 +11,31 @@ import {
   Loader2,
   FolderGit2,
   Folder,
+  FolderTree,
   File,
   ChevronRight,
+  Check,
   ArrowLeft,
   GitBranch,
 } from "lucide-react";
+import { toast } from "sonner";
+import { getApiErrorMessage } from "@/lib/utils";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useDocuments, useTemplates } from "@/hooks/useDocuments";
-import { documentApi, repositoriesApi, Repository, TemplateListItem } from "@/lib/api";
+import {
+  documentApi,
+  repositoriesApi,
+  workspaceRepositoriesApi,
+  RepositoryChoice,
+  TemplateListItem,
+} from "@/lib/api";
 import { TemplateSelector } from "@/components/docs/TemplateSelector";
+import { MergedChanges } from "@/components/docs/MergedChanges";
+import { RepositoryScopePanel } from "@/components/docs/RepositoryScopePanel";
 
 export default function DocsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { currentWorkspaceId } = useWorkspace();
   const { createDocument, isCreating } = useDocuments(currentWorkspaceId);
   const { templates, isLoading: templatesLoading } = useTemplates(currentWorkspaceId);
@@ -38,16 +51,54 @@ export default function DocsPage() {
   // State for source mode (paste code vs repository)
   const [sourceMode, setSourceMode] = useState<"paste" | "repo">("paste");
   const [repoStep, setRepoStep] = useState<"select" | "browse">("select");
-  const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
+  const [selectedRepo, setSelectedRepo] = useState<RepositoryChoice | null>(null);
   const [selectedBranch, setSelectedBranch] = useState("main");
   const [currentPath, setCurrentPath] = useState("");
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [customPrompt, setCustomPrompt] = useState("");
+  // The whole-repository run, for somebody with no coding agent to do it in the
+  // working tree. Offered beside the single-path generator rather than instead
+  // of it: one page about one module is still the common case.
+  const [showScope, setShowScope] = useState(false);
+  const [unavailableRepo, setUnavailableRepo] = useState(false);
 
-  // Fetch repositories when modal is open and in repo mode
+  // Arriving from "Document this" on a repository: open straight into the
+  // repository tab with that repo selected, rather than making somebody find
+  // the modal and re-pick the thing they were already looking at.
+  const requestedRepo = searchParams?.get("generate") ?? null;
+  // Arriving from a merged change carries what to write about as well as where
+  // to read it. Without this the generator would open on the right repository
+  // and lose the only part somebody actually typed.
+  const requestedPrompt = searchParams?.get("prompt") ?? null;
+  useEffect(() => {
+    if (!requestedRepo) return;
+    setShowGenerateModal(true);
+    setSourceMode("repo");
+    if (requestedPrompt) setCustomPrompt(requestedPrompt);
+  }, [requestedRepo, requestedPrompt]);
+
+  // The repositories this *workspace* adopted, not the ones this developer
+  // happens to have listed. Adoption is a workspace decision and writes a
+  // per-developer row only for the adopter, so reading
+  // `/repositories?enabled_only=true` here meant a colleague could see a
+  // repository's merges and its stale documents and then find it missing from
+  // the generator — with "Document this" appearing to do nothing at all.
   const { data: repositories, isLoading: loadingRepos } = useQuery({
-    queryKey: ["repositories", "enabled"],
-    queryFn: () => repositoriesApi.listRepositories({ enabled_only: true }),
-    enabled: showGenerateModal && sourceMode === "repo",
+    queryKey: ["workspace-repositories", currentWorkspaceId],
+    queryFn: () => workspaceRepositoriesApi.list(currentWorkspaceId!),
+    enabled: Boolean(currentWorkspaceId) && showGenerateModal && sourceMode === "repo",
+    select: (rows): RepositoryChoice[] =>
+      rows
+        // An adoption somebody paused is not a repository to write about.
+        .filter((row) => row.is_active)
+        .map((row) => ({
+          id: row.repository.id,
+          name: row.repository.name,
+          full_name: row.repository.full_name,
+          description: row.repository.description,
+          is_private: row.repository.is_private,
+          language: row.repository.language,
+        })),
   });
 
   // Fetch branches when a repo is selected
@@ -58,7 +109,11 @@ export default function DocsPage() {
   });
 
   // Fetch directory contents
-  const { data: contents, isLoading: loadingContents } = useQuery({
+  const {
+    data: contents,
+    isLoading: loadingContents,
+    error: contentsError,
+  } = useQuery({
     queryKey: ["contents", selectedRepo?.id, currentPath, selectedBranch],
     queryFn: () =>
       repositoriesApi.getContents(selectedRepo!.id, {
@@ -67,6 +122,24 @@ export default function DocsPage() {
       }),
     enabled: !!selectedRepo && repoStep === "browse",
   });
+
+  useEffect(() => {
+    if (!requestedRepo || !repositories) return;
+    const match = repositories.find((repo) => repo.id === requestedRepo);
+    if (!match) {
+      // Said rather than swallowed. This used to return silently, leaving
+      // somebody who clicked "Document this" in front of an empty repository
+      // picker with no idea why. Now that the list is the workspace's own
+      // adoptions, the only way to land here is a link that outlived the
+      // adoption — so that is what it says.
+      setUnavailableRepo(true);
+      setRepoStep("select");
+      return;
+    }
+    setUnavailableRepo(false);
+    setSelectedRepo(match);
+    setRepoStep("browse");
+  }, [requestedRepo, repositories]);
 
   const handleCreateBlankDocument = useCallback(async () => {
     if (!currentWorkspaceId) return;
@@ -104,6 +177,17 @@ export default function DocsPage() {
     void handleCreateFromTemplate(template.id, template.name);
   }, [handleCreateBlankDocument, handleCreateFromTemplate]);
 
+  const resetModal = useCallback(() => {
+    setShowGenerateModal(false);
+    setSourceMode("paste");
+    setRepoStep("select");
+    setSelectedRepo(null);
+    setCurrentPath("");
+    setSelectedFile(null);
+    setCodeInput("");
+    setCustomPrompt("");
+  }, []);
+
   const handleGenerateFromCode = useCallback(async () => {
     if (!currentWorkspaceId || !codeInput.trim()) return;
 
@@ -122,66 +206,84 @@ export default function DocsPage() {
         icon: "✨",
       });
 
-      setShowGenerateModal(false);
-      setCodeInput("");
+      resetModal();
       router.push(`/docs/${result.id}`);
     } catch (error) {
-      console.error("Failed to generate documentation:", error);
-      alert("Failed to generate documentation. Please try again.");
+      toast.error(
+        getApiErrorMessage(error, "Could not generate this document")
+      );
     } finally {
       setIsGenerating(false);
     }
-  }, [createDocument, currentWorkspaceId, codeInput, codeLanguage, docType, router]);
+  }, [createDocument, currentWorkspaceId, codeInput, codeLanguage, docType, resetModal, router]);
 
   const handleGenerateFromRepository = useCallback(async () => {
     if (!currentWorkspaceId || !selectedRepo) return;
 
     setIsGenerating(true);
     try {
-      // Generate documentation from repository
-      const response = await documentApi.generateFromRepository(currentWorkspaceId, {
-        repository_id: selectedRepo.id,
-        path: currentPath,
-        branch: selectedBranch,
-        template_category: docType,
-        custom_prompt: customPrompt || undefined,
-      });
+      // One call: the server generates, creates the document and records the
+      // code link in a single transaction. Doing it as two client calls left
+      // a document that looked generated and would never notice its code
+      // changing — which is the whole failure this endpoint exists to remove.
+      const { document } = await documentApi.createDocumentFromRepository(
+        currentWorkspaceId,
+        {
+          repository_id: selectedRepo.id,
+          path: selectedFile ?? currentPath,
+          link_type: selectedFile ? "file" : "directory",
+          branch: selectedBranch,
+          template_category: selectedFile ? docType : undefined,
+          custom_prompt: customPrompt || undefined,
+        }
+      );
 
-      // Create document with generated content
-      const result = await createDocument.mutateAsync({
-        title: `${selectedRepo.name}${currentPath ? `/${currentPath}` : ""} Documentation`,
-        content: response.content,
-        icon: "📁",
-      });
-
-      // Reset modal state
-      setShowGenerateModal(false);
-      setSourceMode("paste");
-      setRepoStep("select");
-      setSelectedRepo(null);
-      setCurrentPath("");
-      setCustomPrompt("");
-      router.push(`/docs/${result.id}`);
+      resetModal();
+      router.push(`/docs/${document.id}`);
     } catch (error) {
-      console.error("Failed to generate documentation:", error);
-      alert("Failed to generate documentation. Please try again.");
+      // The backend distinguishes "install the GitHub App", "rate limited"
+      // and "AI unavailable". Collapsing those into "please try again" gave
+      // the wrong advice for all three.
+      toast.error(
+        getApiErrorMessage(error, "Could not generate this document")
+      );
     } finally {
       setIsGenerating(false);
     }
-  }, [createDocument, currentWorkspaceId, selectedRepo, currentPath, selectedBranch, docType, customPrompt, router]);
+  }, [
+    currentWorkspaceId,
+    selectedRepo,
+    selectedFile,
+    currentPath,
+    selectedBranch,
+    docType,
+    customPrompt,
+    resetModal,
+    router,
+  ]);
 
-  const handleSelectRepo = useCallback((repo: Repository) => {
+  const handleSelectRepo = useCallback((repo: RepositoryChoice) => {
     setSelectedRepo(repo);
-    setSelectedBranch(repo.sync_status === "synced" ? "main" : "main");
+    setSelectedBranch("main");
     setCurrentPath("");
     setRepoStep("browse");
   }, []);
 
-  const handleNavigateDir = useCallback((item: { name: string; type: string; path: string }) => {
-    if (item.type === "dir") {
-      setCurrentPath(item.path);
-    }
-  }, []);
+  const handleSelectItem = useCallback(
+    (item: { name: string; type: string; path: string }) => {
+      if (item.type === "dir") {
+        setCurrentPath(item.path);
+        setSelectedFile(null);
+        return;
+      }
+      // Files were unclickable, which made three of the four documentation
+      // types on this screen unreachable by construction — "Function
+      // documentation" needs a function, and you could only ever pick a
+      // directory.
+      setSelectedFile((current) => (current === item.path ? null : item.path));
+    },
+    []
+  );
 
   const handleBackToRepos = useCallback(() => {
     setRepoStep("select");
@@ -189,15 +291,6 @@ export default function DocsPage() {
     setCurrentPath("");
   }, []);
 
-  const resetModal = useCallback(() => {
-    setShowGenerateModal(false);
-    setSourceMode("paste");
-    setRepoStep("select");
-    setSelectedRepo(null);
-    setCurrentPath("");
-    setCodeInput("");
-    setCustomPrompt("");
-  }, []);
 
   // Sort contents: directories first, then files
   const sortedContents = contents
@@ -234,7 +327,11 @@ export default function DocsPage() {
 
   return (
     <div className="flex items-center justify-center h-full">
-      <div className="max-w-2xl mx-auto px-8 py-12 text-center">
+      {/* `w-full min-w-0` because this sits in a centring flex parent, where a
+          child does not shrink below its content width: at 375px the block
+          measured 567px and everything inside it — quick actions, templates, and
+          now the merged-changes list — was clipped off the right edge. */}
+      <div className="w-full min-w-0 max-w-2xl mx-auto px-4 sm:px-8 py-12 text-center">
         {/* Header — typography-first; the audit's gradient-icon-in-
             rounded-square pattern is gone. Eyebrow ("Docs"), a
             question-shaped headline that invites action, then one
@@ -274,6 +371,15 @@ export default function DocsPage() {
             </button>
           ))}
         </div>
+
+        {/* Changes that landed and may never have been written about. Above
+            templates: it is a work list, and the templates below it are a
+            starting point for whichever item you pick. */}
+        {currentWorkspaceId && (
+          <div className="mb-8 text-left">
+            <MergedChanges workspaceId={currentWorkspaceId} />
+          </div>
+        )}
 
         {/* Templates Section */}
         {!templatesLoading && templates && templates.length > 0 && (
@@ -455,6 +561,19 @@ export default function DocsPage() {
               ) : repoStep === "select" ? (
                 /* Repository Selection */
                 <div className="p-4">
+                  {/* The link named a repository this account cannot list.
+                      Naming that is the difference between "the button is
+                      broken" and "ask whoever adopted it, or adopt it". */}
+                  {unavailableRepo && (
+                    <div
+                      data-testid="repository-unavailable"
+                      className="mb-3 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-foreground"
+                    >
+                      That repository is no longer adopted by this workspace, so
+                      there is nothing to read it with. Pick another below, or
+                      adopt it again in Settings.
+                    </div>
+                  )}
                   {loadingRepos ? (
                     <div className="flex items-center justify-center py-12">
                       <Loader2 className="h-6 w-6 animate-spin text-primary-500" />
@@ -537,18 +656,31 @@ export default function DocsPage() {
                     </div>
                   </div>
 
-                  {/* Doc Type Selector */}
+                  {/* Doc type applies to a single file. Documenting a whole
+                      directory always produces module documentation, so
+                      offering four choices there would be four controls that
+                      change nothing — which is what this screen used to do. */}
                   <div className="px-4 py-2 border-b border-border space-y-3">
-                    <select
-                      value={docType}
-                      onChange={(e) => setDocType(e.target.value)}
-                      className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-primary-500"
-                    >
-                      <option value="module_docs">Module Documentation</option>
-                      <option value="api_docs">API Documentation</option>
-                      <option value="readme">README</option>
-                      <option value="function_docs">Function Documentation</option>
-                    </select>
+                    {selectedFile ? (
+                      <select
+                        value={docType}
+                        onChange={(e) => setDocType(e.target.value)}
+                        className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-primary-500"
+                      >
+                        <option value="function_docs">Function Documentation</option>
+                        <option value="api_docs">API Documentation</option>
+                        <option value="readme">README</option>
+                        <option value="module_docs">Module Documentation</option>
+                      </select>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Documenting the whole of{" "}
+                        <span className="text-foreground font-mono">
+                          {currentPath || selectedRepo?.name}
+                        </span>
+                        . Pick a single file to choose a documentation type.
+                      </p>
+                    )}
                     <div>
                       <label className="block text-xs font-medium text-muted-foreground mb-1">
                         Custom Instructions (optional)
@@ -568,34 +700,53 @@ export default function DocsPage() {
                       <div className="flex items-center justify-center py-12">
                         <Loader2 className="h-6 w-6 animate-spin text-primary-500" />
                       </div>
+                    ) : contentsError ? (
+                      // Not the same thing as an empty directory, and it used to
+                      // say so anyway: a repository nobody has an installation
+                      // for read as "This directory is empty", which invites
+                      // somebody to generate a document from nothing.
+                      <div
+                        data-testid="contents-error"
+                        className="px-4 py-12 text-center text-sm text-muted-foreground"
+                      >
+                        {getApiErrorMessage(
+                          contentsError,
+                          "Could not read this repository."
+                        )}
+                      </div>
                     ) : sortedContents.length === 0 ? (
                       <div className="text-center py-12 text-muted-foreground">
                         This directory is empty
                       </div>
                     ) : (
                       <div className="space-y-1">
-                        {sortedContents.map((item) => (
-                          <button
-                            key={item.path}
-                            onClick={() => handleNavigateDir(item)}
-                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition text-left ${
-                              item.type === "dir"
-                                ? "text-foreground hover:bg-muted"
-                                : "text-muted-foreground cursor-default"
-                            }`}
-                            disabled={item.type !== "dir"}
-                          >
-                            {item.type === "dir" ? (
-                              <Folder className="h-4 w-4 text-blue-400" />
-                            ) : (
-                              <File className="h-4 w-4 text-muted-foreground" />
-                            )}
-                            <span className="flex-1 truncate">{item.name}</span>
-                            {item.type === "dir" && (
-                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                            )}
-                          </button>
-                        ))}
+                        {sortedContents.map((item) => {
+                          const picked = selectedFile === item.path;
+                          return (
+                            <button
+                              key={item.path}
+                              onClick={() => handleSelectItem(item)}
+                              aria-pressed={item.type === "file" ? picked : undefined}
+                              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition text-left ${
+                                picked
+                                  ? "bg-primary-500/10 text-foreground ring-1 ring-primary-500/40"
+                                  : "text-foreground hover:bg-muted"
+                              }`}
+                            >
+                              {item.type === "dir" ? (
+                                <Folder className="h-4 w-4 text-blue-400" />
+                              ) : (
+                                <File className="h-4 w-4 text-muted-foreground" />
+                              )}
+                              <span className="flex-1 truncate">{item.name}</span>
+                              {item.type === "dir" ? (
+                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                              ) : picked ? (
+                                <Check className="h-4 w-4 text-primary-400" />
+                              ) : null}
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -603,20 +754,56 @@ export default function DocsPage() {
               )}
             </div>
 
-            {/* Modal Footer */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-t border-border">
-              <div className="text-sm text-muted-foreground">
-                {sourceMode === "repo" && repoStep === "browse" && (
-                  <>Generating docs for: <span className="text-foreground">{currentPath || "root"}</span></>
-                )}
-              </div>
-              <div className="flex items-center gap-3">
+            {/* Modal Footer
+                One row of three actions inside a fixed-width modal squeezed
+                every label until they wrapped — "Document every module" came out
+                over three lines and the caption broke mid-phrase, between
+                "the" and "repository root". The caption gets its own row and
+                truncates; the actions get a row that wraps as a unit and labels
+                that never break. */}
+            <div className="flex flex-col gap-3 border-t border-border p-4">
+              {sourceMode === "repo" && repoStep === "browse" && (
+                <div className="min-w-0 text-sm text-muted-foreground">
+                  <p className="truncate">
+                    Documenting{" "}
+                    <span className="font-mono text-foreground">
+                      {selectedFile || currentPath || "the repository root"}
+                    </span>
+                  </p>
+                  {/* Said plainly, because it is the difference between a page
+                      that can be kept current and one that cannot. */}
+                  <p className="text-xs">
+                    Linked to this path, so it can be updated when the code
+                    changes.
+                  </p>
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center justify-end gap-2">
                 <button
                   onClick={resetModal}
-                  className="px-4 py-2 text-foreground hover:text-foreground transition"
+                  className="rounded-lg px-3 py-2 text-sm text-muted-foreground transition hover:bg-accent hover:text-foreground"
                 >
                   Cancel
                 </button>
+
+                {/* One page per module, under a parent, rather than one page
+                    about a repository — which is the only shape a later change
+                    to one directory can revise without rewriting everything.
+                    Secondary weight: documenting one path is the common case,
+                    and this one spends a model call per module. */}
+                {sourceMode === "repo" && selectedRepo && (
+                  <button
+                    onClick={() => setShowScope(true)}
+                    data-testid="generate-whole-repository"
+                    title="One document per top-level directory, under a parent page"
+                    className="flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground transition hover:bg-accent"
+                  >
+                    <FolderTree className="h-4 w-4" />
+                    Every module
+                  </button>
+                )}
+
                 <button
                   onClick={sourceMode === "paste" ? handleGenerateFromCode : handleGenerateFromRepository}
                   disabled={
@@ -624,17 +811,17 @@ export default function DocsPage() {
                     (sourceMode === "paste" && !codeInput.trim()) ||
                     (sourceMode === "repo" && !selectedRepo)
                   }
-                  className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isGenerating ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Generating...
+                      Generating…
                     </>
                   ) : (
                     <>
                       <Sparkles className="h-4 w-4" />
-                      Generate Documentation
+                      {sourceMode === "repo" ? "Document this path" : "Generate documentation"}
                     </>
                   )}
                 </button>
@@ -642,6 +829,21 @@ export default function DocsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {currentWorkspaceId && selectedRepo && (
+        <RepositoryScopePanel
+          workspaceId={currentWorkspaceId}
+          repository={selectedRepo}
+          branch={selectedBranch}
+          isOpen={showScope}
+          onClose={() => setShowScope(false)}
+          onFinished={(parentDocumentId) => {
+            setShowScope(false);
+            resetModal();
+            router.push(`/docs/${parentDocumentId}`);
+          }}
+        />
       )}
     </div>
   );

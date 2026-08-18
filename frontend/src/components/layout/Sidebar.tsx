@@ -32,11 +32,14 @@ import { Button } from "../ui/button";
 import { useNotionDocs } from "@/hooks/useNotionDocs";
 import { useDocumentSpaces } from "@/hooks/useDocumentSpaces";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { useSidebarBadges } from "@/hooks/useSidebarBadges";
 import { useSidebarLayout } from "@/hooks/useSidebarLayout";
 import { useSidebarStore } from "@/stores/sidebarStore";
 import { useAppAccess } from "@/hooks/useAppAccess";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
+import { toast } from "sonner";
+import { getApiErrorMessage } from "@/lib/utils";
 import { useSidebarPersona, MAX_FAVORITES } from "@/hooks/useSidebarPersona";
 import { LocaleSelector } from "@/components/LocaleSelector";
 import { SidebarItemConfig, SidebarSectionConfig, SidebarLayoutConfig } from "@/config/sidebarLayouts";
@@ -181,6 +184,7 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
 
     // Docs data
     const { currentWorkspace } = useWorkspace();
+    const badges = useSidebarBadges();
     const workspaceId = currentWorkspace?.id || null;
     const { spaces, isLoading: spacesLoading } = useDocumentSpaces(workspaceId);
     const { privateTree, sharedTree, favorites, isLoading: docsLoading } = useNotionDocs(workspaceId);
@@ -288,13 +292,14 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
         const hasSubmenu = item.items && item.items.length > 0;
         const Icon = item.icon;
         const canPin = !hasSubmenu && !isCollapsed && item.href !== "/dashboard";
+        const badgeCount = item.badge ? (badges[item.badge] ?? 0) : 0;
         const isItemPinned = pinnedItems.includes(item.href);
 
         return (
             <div key={item.href} className="group/nav">
                 <div
                     className={cn(
-                        "flex items-center gap-x-3 rounded-md px-3 py-2 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground",
+                        "relative flex items-center gap-x-3 rounded-md px-3 py-2 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground",
                         active ? "bg-accent text-accent-foreground" : "text-muted-foreground",
                         isCollapsed && "justify-center px-2"
                     )}
@@ -303,6 +308,23 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
                     <Link href={item.href} className="flex-1 flex items-center gap-x-3 truncate">
                         <Icon className="h-4 w-4 shrink-0" />
                         {!isCollapsed && <span className="truncate">{item.label}</span>}
+                        {/* Collapsed, the label is gone and a number would be
+                            meaningless — so it becomes a dot that still says
+                            "there is something here". */}
+                        {badgeCount > 0 && (isCollapsed ? (
+                            <span
+                                data-testid={`sidebar-badge-dot-${item.badge}`}
+                                aria-label={`${badgeCount} waiting`}
+                                className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-primary"
+                            />
+                        ) : (
+                            <span
+                                data-testid={`sidebar-badge-${item.badge}`}
+                                className="ml-auto rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-primary"
+                            >
+                                {badgeCount > 99 ? "99+" : badgeCount}
+                            </span>
+                        ))}
                     </Link>
 
                     {!isCollapsed && hasSubmenu && (
@@ -588,7 +610,25 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
             });
             await refetchAccess();
         } catch (err) {
-            console.error("Failed to enable app:", err);
+            // The spinner used to stop and nothing else happen: the failure went
+            // to the console, so the app simply stayed disabled with no
+            // explanation.
+            //
+            // The server's own reason first, because on a 403 it is more specific
+            // than anything guessable from here — "requires the
+            // 'can_manage_roles' permission in this workspace" names the exact
+            // missing grant, where an invented sentence about roles would talk
+            // over it. The fallback covers only a 403 that arrives with no detail
+            // at all.
+            const status = (err as { response?: { status?: number } })?.response?.status;
+            toast.error(
+                getApiErrorMessage(
+                    err,
+                    status === 403
+                        ? "Your role cannot change app access here. Ask a workspace owner or admin."
+                        : `Could not enable ${appId}.`
+                )
+            );
         } finally {
             setTogglingApp(null);
         }
@@ -849,7 +889,18 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
                                                                                 setRequestingAppId(di.appId!);
                                                                                 try {
                                                                                     await createRequest({ appId: di.appId! });
-                                                                                } catch {}
+                                                                                } catch (err) {
+                                                                                    // `catch {}` here meant a failed
+                                                                                    // request looked identical to a sent
+                                                                                    // one: the icon returned to Send and
+                                                                                    // nobody was ever asked.
+                                                                                    toast.error(
+                                                                                        getApiErrorMessage(
+                                                                                            err,
+                                                                                            "Could not send that request."
+                                                                                        )
+                                                                                    );
+                                                                                }
                                                                                 setRequestingAppId(null);
                                                                             }}
                                                                             disabled={isRequesting}

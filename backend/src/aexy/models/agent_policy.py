@@ -94,9 +94,34 @@ class AgentPolicyDecision(Base):
         primary_key=True,
         default=lambda: str(uuid4()),
     )
-    execution_id: Mapped[str] = mapped_column(
+    # Nullable because governance is no longer a CRM-agent-only concern. The
+    # MCP tool surface is the door most agents now walk through, and it has no
+    # `crm_agent_executions` row to point at — so a NOT NULL column here meant
+    # a decision taken there could not be written down at all, and the audit
+    # log silently covered one caller out of two.
+    execution_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False),
         ForeignKey("crm_agent_executions.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    # Where the call came from: "crm_agent" or "mcp".
+    actor_kind: Mapped[str] = mapped_column(
+        String(20), default="crm_agent", nullable=False
+    )
+    # The human whose grant the call ran under. For an MCP session this is the
+    # only person to hold responsible — nobody clicked, but somebody's token
+    # was used.
+    actor_developer_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    workspace_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=True,
         index=True,
     )
     policy_id: Mapped[str | None] = mapped_column(
@@ -161,3 +186,11 @@ class AgentConfigAudit(Base):
         DateTime(timezone=True),
         server_default=func.now(),
     )
+
+
+# `AgentPendingAction` and `PendingActionStatus` lived here until held tool
+# calls moved into the shared `proposed_changes` table. The table itself is
+# retained for one release so a rollback is a deploy rather than a restore —
+# see migrate_proposed_changes.sql — but nothing in the application reads or
+# writes it any more, and leaving the model mapped meant `create_all` kept
+# building a table no code could reach.

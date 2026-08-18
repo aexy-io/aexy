@@ -9,6 +9,8 @@ import {
   Strikethrough,
   Code,
   BookmarkPlus,
+  FileCode2,
+  Wrench,
   MessageSquarePlus,
   Heading1,
   Heading2,
@@ -41,9 +43,13 @@ interface EditorToolbarProps {
   onModeToggle?: () => void;
   /** Offered when the document can become a reusable workspace template. */
   onSaveAsTemplate?: () => void;
+  onImprove?: () => void;
+  /** Connect this document to a repository path, so it can be told when that
+   *  code changes. Absent when the document already has a link. */
+  onLinkToCode?: () => void;
 }
 
-export function EditorToolbar({ editor, onComment, onSave, editorMode = "rich", onModeToggle, onSaveAsTemplate }: EditorToolbarProps) {
+export function EditorToolbar({ editor, onComment, onSave, editorMode = "rich", onModeToggle, onSaveAsTemplate, onLinkToCode, onImprove }: EditorToolbarProps) {
   // Add link
   const setLink = useCallback(() => {
     const previousUrl = editor.getAttributes("link").href;
@@ -295,6 +301,35 @@ export function EditorToolbar({ editor, onComment, onSave, editorMode = "rich", 
         >
           <BookmarkPlus className="h-4 w-4" />
           Save as template
+        </button>
+      )}
+
+      {/* The doorway a document written by hand never had. Generation creates
+          linked documents, but a page somebody typed could not be connected to
+          the code it describes from anywhere in the product — the panel for it
+          existed and was never mounted. */}
+      {onLinkToCode && (
+        <button
+          onClick={onLinkToCode}
+          className="mr-2 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
+          title="Link this document to a repository path so it can be kept in step with the code"
+        >
+          <FileCode2 className="h-4 w-4" />
+          Link to code
+        </button>
+      )}
+
+      {/* The reachable end of a complete backend: a quality score and a list of
+          prioritised issues whose only caller logged them to the console. */}
+      {onImprove && (
+        <button
+          onClick={onImprove}
+          data-testid="toolbar-improve"
+          className="mr-2 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
+          title="Ask AI what is unclear, incomplete or missing on this page"
+        >
+          <Wrench className="h-4 w-4" />
+          Improve
         </button>
       )}
 

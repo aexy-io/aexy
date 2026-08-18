@@ -84,6 +84,7 @@ from aexy.api.google_calendar import router as google_calendar_router
 # Documentation
 from aexy.api.documents import router as documents_router
 from aexy.api.documents import template_router as templates_router
+from aexy.api.document_impact import router as document_impact_router
 from aexy.api.collaboration import router as collaboration_router
 from aexy.api.document_spaces import router as document_spaces_router
 # Tracking
@@ -124,6 +125,8 @@ from aexy.api.google_integration import callback_router as google_callback_route
 # AI Agents
 from aexy.api.agents import router as agents_router
 from aexy.api.agents import writing_style_router
+from aexy.api.agent_pending_actions import router as agent_pending_actions_router
+from aexy.api.review_items import router as review_items_router
 from aexy.api.agent_policies import router as agent_policies_router
 from aexy.api.agent_policies import audit_router as agent_audit_router
 # Automation-Agent Integration
@@ -297,6 +300,7 @@ api_router.include_router(documents_router, tags=["documents"], dependencies=[De
 # ones, so the docs toggle is enforced per-endpoint inside documents.py
 # (ensure_app_enabled) rather than as a blanket router dependency.
 api_router.include_router(templates_router, tags=["templates"])
+api_router.include_router(document_impact_router, tags=["documentation-impact"], dependencies=[Depends(require_app_access("docs"))])
 api_router.include_router(collaboration_router, tags=["collaboration"], dependencies=[Depends(require_app_access_document_scoped("docs"))])
 api_router.include_router(document_spaces_router, tags=["document-spaces"], dependencies=[Depends(require_app_access("docs"))])
 # Tracking: most paths carry no workspace_id param, so the toggle is enforced
@@ -342,6 +346,11 @@ api_router.include_router(agents_router, tags=["agents"], dependencies=[Depends(
 api_router.include_router(writing_style_router, tags=["writing-style"])
 # Agent Policy Engine
 api_router.include_router(agent_policies_router, tags=["agent-policies"], dependencies=[Depends(require_app_access("agents"))])
+# Deliberately not gated on the "agents" app: the queue holds actions from
+# any MCP client, and a workspace without that app enabled still needs to be
+# able to see and decline what an agent asked to do in it.
+api_router.include_router(agent_pending_actions_router)
+api_router.include_router(review_items_router)
 api_router.include_router(agent_audit_router, tags=["agent-audit"])
 # Automation-Agent Integration
 api_router.include_router(automation_agents_router, tags=["automation-agents"])

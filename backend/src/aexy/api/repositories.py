@@ -440,17 +440,19 @@ async def get_repository_contents(
                 detail="Repository not found",
             )
 
-        # Get installation token for the developer
-        token_result = await app_service.get_installation_token_for_developer(
-            developer_id, repo.owner_login
-        )
-        if not token_result:
+        # Repository first, then this developer. Resolving only through the
+        # caller's own installation made browsing a personal act: a member of a
+        # workspace that had adopted the repository could not read it unless
+        # they had installed the app themselves, which is why the docs
+        # generator's repository list had to be per-developer to stay honest.
+        access = await app_service.resolve_repository_access(repo, developer_id)
+        if not access:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="No GitHub App installation found. Please install the app first.",
             )
 
-        token, installation_id = token_result
+        installation_id, _token = access
 
         # Get contents
         contents = await app_service.get_repository_contents(
@@ -549,17 +551,16 @@ async def get_repository_branches(
                 detail="Repository not found",
             )
 
-        # Get installation token for the developer
-        token_result = await app_service.get_installation_token_for_developer(
-            developer_id, repo.owner_login
-        )
-        if not token_result:
+        # Same resolution as contents: the account that owns the repository
+        # first, then this developer. See the note there.
+        access = await app_service.resolve_repository_access(repo, developer_id)
+        if not access:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="No GitHub App installation found. Please install the app first.",
             )
 
-        token, installation_id = token_result
+        installation_id, _token = access
 
         # Get branches
         branches = await app_service.get_repository_branches(

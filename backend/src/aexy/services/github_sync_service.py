@@ -147,14 +147,18 @@ class GitHubSyncService:
         if not repository:
             raise ValueError("Repository not found")
 
-        # Get installation token
-        token_result = await self.github_service.get_installation_token_for_developer(
-            developer_id
+        # One resolver for every repository read and write: the owning account
+        # first, the developer second. This call site used to unpack
+        # `(token, installation_id)` as `installation_id, token`, so it handed a
+        # JWT to a parameter expecting an integer and export never worked.
+        access = await self.github_service.resolve_repository_access(
+            repository, developer_id
         )
-        if not token_result:
-            raise ValueError("Could not get GitHub installation token")
-
-        installation_id, token = token_result
+        if not access:
+            raise ValueError(
+                f"No GitHub App installation covers {repository.owner_login}"
+            )
+        installation_id, token = access
 
         # Create or update file in GitHub
         owner, repo = repository.full_name.split("/")
@@ -251,14 +255,14 @@ class GitHubSyncService:
         if not repository:
             raise ValueError("Repository not found")
 
-        # Get installation token
-        token_result = await self.github_service.get_installation_token_for_developer(
-            developer_id
+        access = await self.github_service.resolve_repository_access(
+            repository, developer_id
         )
-        if not token_result:
-            raise ValueError("Could not get GitHub installation token")
-
-        installation_id, _ = token_result
+        if not access:
+            raise ValueError(
+                f"No GitHub App installation covers {repository.owner_login}"
+            )
+        installation_id, _token = access
 
         # Get file content from GitHub
         owner, repo = repository.full_name.split("/")

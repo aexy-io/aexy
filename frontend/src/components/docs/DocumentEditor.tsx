@@ -61,6 +61,10 @@ interface DocumentEditorProps {
   workspaceId?: string | null;
   /** Enables anchored comments. Omitted in the embed, which cannot comment. */
   documentId?: string | null;
+  /** Offer to connect this document to a repository path. Passed only when the
+   *  document has no link yet — the provenance strip owns the linked case. */
+  onLinkToCode?: () => void;
+  onImprove?: () => void;
 }
 
 export function DocumentEditor({
@@ -77,6 +81,8 @@ export function DocumentEditor({
   embedded = false,
   workspaceId,
   documentId,
+  onLinkToCode,
+  onImprove,
 }: DocumentEditorProps) {
   const t = useTranslations("docs.editor");
   const [localTitle, setLocalTitle] = useState(title);
@@ -604,6 +610,8 @@ export function DocumentEditor({
               onSaveAsTemplate={
                 workspaceId && !readOnly && !editor?.isEmpty ? handleSaveAsTemplate : undefined
               }
+              onLinkToCode={onLinkToCode}
+              onImprove={onImprove}
             />
           </div>
         )}

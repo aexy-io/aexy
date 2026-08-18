@@ -1,6 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import {
+  GitMerge,
+  GitPullRequest, useRouter } from "next/navigation";
 import {
   Bell,
   UserPlus,
@@ -39,6 +41,10 @@ const iconMap: Record<string, React.ElementType> = {
   "goal_completed": Trophy,
   "workspace_invite": Mail,
   "team_added": Users,
+  // Your pull request affects documented pages. A pull-request glyph rather than
+  // a document one: the subject is the change, not the page.
+  "document_impact_pr_opened": GitPullRequest,
+  "document_impact_pr_merged": GitMerge,
 };
 
 export function NotificationItem({

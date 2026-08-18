@@ -71,6 +71,11 @@ class BatchProfileSyncInput:
 
 
 @dataclass
+class EnqueueDocumentSyncQueuesInput:
+    pass
+
+
+@dataclass
 class ProcessDocumentSyncQueueInput:
     workspace_id: str
 
@@ -681,6 +686,51 @@ async def batch_profile_sync(input: BatchProfileSyncInput) -> dict[str, Any]:
         )
         await db.commit()
         return {"profiles_synced": count}
+
+
+@activity.defn
+async def enqueue_document_sync_queues(
+    input: EnqueueDocumentSyncQueuesInput,
+) -> dict[str, Any]:
+    """Fan out `process_document_sync_queue` to every workspace with pending work.
+
+    `process_document_sync_queue` needs a workspace id, and a Temporal schedule
+    constructs its input with no arguments — so the batch tier could not be
+    scheduled directly and, before this activity existed, was not scheduled at
+    all. The daily-batch plan tier queued documents that nothing ever drained.
+
+    Only workspaces that actually have pending entries are dispatched, so a
+    quiet day costs one query rather than one workflow per workspace.
+    """
+    from sqlalchemy import select
+
+    from aexy.models.documentation import Document, DocumentSyncQueue
+    from aexy.temporal.dispatch import dispatch
+    from aexy.temporal.task_queues import TaskQueue
+
+    async with async_session_maker() as db:
+        workspace_ids = (
+            (
+                await db.execute(
+                    select(Document.workspace_id)
+                    .join(DocumentSyncQueue, DocumentSyncQueue.document_id == Document.id)
+                    .where(DocumentSyncQueue.status == "pending")
+                    .distinct()
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+    for workspace_id in workspace_ids:
+        await dispatch(
+            "process_document_sync_queue",
+            ProcessDocumentSyncQueueInput(workspace_id=str(workspace_id)),
+            task_queue=TaskQueue.ANALYSIS,
+        )
+
+    logger.info(f"Dispatched document sync for {len(workspace_ids)} workspace(s)")
+    return {"workspaces_dispatched": len(workspace_ids)}
 
 
 @activity.defn

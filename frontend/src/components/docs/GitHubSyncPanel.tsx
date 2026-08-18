@@ -28,6 +28,12 @@ interface GitHubSyncPanelProps {
   documentId: string;
   documentTitle: string;
   onClose?: () => void;
+  /** The repository and branch this document was written *from*, when it has a
+   *  code link. Overwhelmingly the same repository it publishes back to, and
+   *  asking somebody to pick it again out of every repository in the workspace
+   *  is asking them to re-answer a question the document already records. */
+  defaultRepositoryId?: string;
+  defaultBranch?: string;
 }
 
 type SyncDirection = "export_only" | "import_only" | "bidirectional";
@@ -58,13 +64,15 @@ export function GitHubSyncPanel({
   documentId,
   documentTitle,
   onClose,
+  defaultRepositoryId,
+  defaultBranch,
 }: GitHubSyncPanelProps) {
   const queryClient = useQueryClient();
   const [isAddingSync, setIsAddingSync] = useState(false);
   const [newSync, setNewSync] = useState({
-    repository_id: "",
+    repository_id: defaultRepositoryId ?? "",
     file_path: "",
-    branch: "main",
+    branch: defaultBranch ?? "main",
     sync_direction: "bidirectional" as SyncDirection,
     auto_export: false,
     auto_import: false,
@@ -93,9 +101,9 @@ export function GitHubSyncPanel({
       });
       setIsAddingSync(false);
       setNewSync({
-        repository_id: "",
+        repository_id: defaultRepositoryId ?? "",
         file_path: "",
-        branch: "main",
+        branch: defaultBranch ?? "main",
         sync_direction: "bidirectional",
         auto_export: false,
         auto_import: false,
