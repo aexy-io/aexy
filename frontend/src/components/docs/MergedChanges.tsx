@@ -89,6 +89,22 @@ export function MergedChanges({ workspaceId }: Props) {
                 </span>
               )}
 
+              {/* The durable way into the impact page. The notification is one
+                  row somebody clears and the pull request comment is off by
+                  default, so without this the page is reachable exactly once —
+                  and only ever by the author. Rendered only when it leads
+                  somewhere: a link to "nothing here describes this change" is
+                  worse than no link. */}
+              {change.repository_id && change.impact_affected_count > 0 && (
+                <Link
+                  href={`/docs/impact/${change.repository_id}/${change.number}`}
+                  data-testid={`merged-change-impact-${change.pull_request_id}`}
+                  className="inline-flex shrink-0 items-center gap-1 text-xs text-warning hover:underline"
+                >
+                  {t("pagesAffected", { count: change.impact_affected_count })}
+                </Link>
+              )}
+
               {change.repository_id ? (
                 // Straight into the generator with the repository chosen and the
                 // change named, rather than a modal that asks you to re-find

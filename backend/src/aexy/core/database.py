@@ -11,6 +11,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, INET, JSONB
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from aexy.core.config import get_settings
 
@@ -49,6 +50,32 @@ class Base(DeclarativeBase):
 _engine_cache: dict[int, tuple] = {}
 
 
+def _pool_kwargs(url: str) -> dict:
+    """Pool arguments appropriate to the driver behind `url`.
+
+    Production is always PostgreSQL, where the settings below are the point. But
+    the test suite points `database_url` at `sqlite+aiosqlite:///:memory:` so the
+    ~40 direct callers of `get_async_session` talk to the test database instead
+    of a developer's real one — and SQLite has no connection pool to size, so
+    passing `pool_size`/`max_overflow` raises rather than being ignored.
+
+    StaticPool keeps the single in-memory connection alive; without it each
+    checkout would get a *different* empty database.
+    """
+    if url.startswith("sqlite"):
+        return {
+            "poolclass": StaticPool,
+            "connect_args": {"check_same_thread": False},
+        }
+    return {
+        "pool_pre_ping": True,
+        "pool_size": 10,
+        "max_overflow": 20,
+        "pool_recycle": 1800,
+        "pool_timeout": 30,
+    }
+
+
 def _get_engine():
     """Get or create the async engine for the current process.
 
@@ -61,11 +88,7 @@ def _get_engine():
         engine = create_async_engine(
             settings.database_url,
             echo=settings.database_echo,
-            pool_pre_ping=True,
-            pool_size=10,
-            max_overflow=20,
-            pool_recycle=1800,
-            pool_timeout=30,
+            **_pool_kwargs(settings.database_url),
         )
         session_maker = async_sessionmaker(
             engine,
@@ -201,11 +224,14 @@ def _get_sync_engine():
         # Handle case where it's already a sync URL
         if "asyncpg" not in sync_url and "+psycopg2" not in sync_url:
             sync_url = sync_url.replace("postgresql://", "postgresql+psycopg2://")
+        # Under the test suite the URL is SQLite, whose async driver create_engine
+        # refuses outright.
+        sync_url = sync_url.replace("sqlite+aiosqlite", "sqlite")
 
         sync_engine = create_engine(
             sync_url,
             echo=settings.database_echo,
-            pool_pre_ping=True,
+            **_pool_kwargs(sync_url),
         )
         sync_session_factory = sessionmaker(
             bind=sync_engine,

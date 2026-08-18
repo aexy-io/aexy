@@ -71,6 +71,10 @@ ACTIVITY_CONFIG: dict[str, dict[str, Any]] = {
     "enqueue_document_sync_queues": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=5)},
     "process_document_sync_queue": {"retry": LLM_RETRY, "timeout": timedelta(minutes=30)},
     "regenerate_document": {"retry": LLM_RETRY, "timeout": timedelta(minutes=15)},
+    # Documentation impact — no LLM at all: one GitHub read, path matching, and a
+    # notification. STANDARD_RETRY because the read is the only thing that can
+    # fail transiently, and a lost evaluation means the author is told nothing.
+    "evaluate_document_impact": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=3)},
     # Phase 4C — task-PR alignment
     "analyze_task_pr_alignment": {"retry": LLM_RETRY, "timeout": timedelta(minutes=10)},
     # Phase B — performance-review digests

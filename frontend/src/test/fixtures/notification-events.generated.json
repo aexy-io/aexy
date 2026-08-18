@@ -11,6 +11,7 @@
     "billing_and_usage",
     "campaigns",
     "chat",
+    "documentation_impact",
     "documents",
     "feedback",
     "forms",
@@ -238,6 +239,24 @@
     },
     "document_commented": {
       "category": "documents",
+      "defaults": {
+        "in_app": true,
+        "email": false,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "document_impact_pr_merged": {
+      "category": "documentation_impact",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "document_impact_pr_opened": {
+      "category": "documentation_impact",
       "defaults": {
         "in_app": true,
         "email": false,

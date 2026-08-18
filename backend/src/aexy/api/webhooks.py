@@ -124,6 +124,87 @@ async def _sync_documents_for_push(db: AsyncSession, event) -> dict | None:
         return None
 
 
+_DOC_IMPACT_MOMENTS = {
+    "opened": "opened",
+    "reopened": "opened",
+    "ready_for_review": "opened",
+    # Refresh the GitHub artifacts on every push, but only notify when the set of
+    # affected pages actually grew — that decision lives in the service, which
+    # holds the high-water mark.
+    "synchronize": "synchronize",
+}
+
+
+async def _dispatch_document_impact(db: AsyncSession, event, pr) -> str | None:
+    """Ask, in the background, which documented pages this pull request affects.
+
+    Dispatched rather than awaited inline: it costs a GitHub read and possibly two
+    GitHub writes, and GitHub gives a webhook ten seconds for a request that
+    already runs ingestion, task sync, document sync and profile sync.
+
+    Never raises. A pull request must still be ingested when this cannot run.
+    """
+    from sqlalchemy import select
+
+    from aexy.models.repository import Repository
+
+    payload = event.pull_request or {}
+    moment = _DOC_IMPACT_MOMENTS.get(event.action or "")
+    if event.action == "closed":
+        # Only a merge. A closed-unmerged pull request changed nothing, and saying
+        # its pages are behind would be wrong.
+        if not payload.get("merged"):
+            return None
+        moment = "merged"
+    if not moment:
+        return None
+
+    head_sha = ((payload.get("head") or {}).get("sha")) or ""
+    if not head_sha:
+        return None
+
+    try:
+        repo = (
+            await db.execute(
+                select(Repository).where(Repository.full_name == event.repository)
+            )
+        ).scalar_one_or_none()
+        if not repo:
+            return None
+
+        from aexy.temporal.activities.document_impact import EvaluateDocImpactInput
+        from aexy.temporal.dispatch import dispatch
+        from aexy.temporal.task_queues import TaskQueue
+
+        await dispatch(
+            "evaluate_document_impact",
+            EvaluateDocImpactInput(
+                repository_id=str(repo.id),
+                pull_request_number=int(payload.get("number") or 0),
+                head_sha=head_sha,
+                moment=moment,
+                title=payload.get("title"),
+                author_developer_id=str(pr.developer_id) if pr else None,
+                author_login=(payload.get("user") or {}).get("login"),
+            ),
+            task_queue=TaskQueue.INTEGRATIONS,
+            # Keyed on the sha and the moment, so a redelivered webhook for the
+            # same push collapses before it reaches the database.
+            workflow_id=(
+                f"doc-impact-{repo.id}-{payload.get('number')}-{head_sha[:12]}-{moment}"
+            ),
+        )
+        return moment
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.exception(
+            "Documentation impact dispatch failed for %s#%s: %s",
+            event.repository,
+            payload.get("number"),
+            exc,
+        )
+        return None
+
+
 async def _enforce_webhook_rate_limit(scope_key: str, limit: int, window_seconds: int = 60) -> None:
     """Sliding-window via Redis INCR + EXPIRE; fail-open on Redis errors."""
     try:
@@ -276,6 +357,9 @@ async def handle_github_webhook(
     elif event.event_type == "pull_request" and event.pull_request:
         # Process PR for task references and status updates
         github_id = event.pull_request.get("id")
+        # Bound before the branch: the documentation-impact dispatch below runs
+        # whether or not there is a local row to find.
+        pr = None
         if github_id:
             from aexy.models.activity import PullRequest
             from sqlalchemy import select
@@ -326,6 +410,32 @@ async def handle_github_webhook(
                         # Don't fail the webhook on a dispatch hiccup — the
                         # 30-min poll will catch up.
                         result["realtime_ai_dispatched"] = False
+
+        # Outside the `if pr:` block on purpose. This does not need the local
+        # pull request row — it needs the repository and the number, both of which
+        # are in the payload. A pull request from somebody with no account here is
+        # exactly the case where the author would otherwise be told nothing.
+        moment = await _dispatch_document_impact(db, event, pr)
+        if moment:
+            result["doc_impact_dispatched"] = moment
+
+    elif event.event_type == "installation" and event.installation:
+        # Keeps the cached App permissions honest. Without this, an admin granting
+        # "Pull requests: write" sees the pull request comment stay missing until
+        # somebody happens to re-run an OAuth sync — the feature looks broken at
+        # the exact moment they fixed it.
+        try:
+            from aexy.services.github_app_service import GitHubAppService
+
+            await GitHubAppService(db).handle_installation_webhook(
+                action=event.action or "",
+                installation_data=event.installation,
+                sender=event.sender or {},
+            )
+            result["installation_action"] = event.action
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.exception("Installation webhook failed: %s", exc)
+            result["installation_action"] = None
 
     elif event.event_type == "issues" and event.issue:
         # Auto-link tasks mentioned via [slug:key] in the issue body/title.

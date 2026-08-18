@@ -1,6 +1,7 @@
 """Service for handling document sync based on plan tier."""
 
 import logging
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
@@ -17,6 +18,10 @@ from aexy.models.documentation import (
     DocumentSyncQueue,
 )
 from aexy.models.developer import Developer
+from aexy.models.document_impact import (
+    PullRequestDocImpact,
+    PullRequestDocImpactItem,
+)
 from aexy.models.plan import PlanTier
 from aexy.services.limits_service import LimitsService
 
@@ -120,6 +125,60 @@ def is_substantive_path(path: str) -> bool:
     if normalised.endswith(_NOISE_SUFFIXES):
         return False
     return True
+
+
+def path_matches_link(
+    link_path: str, link_type: str, changed_paths: list[str]
+) -> bool:
+    """Does any of these changed paths fall under this code link?
+
+    Module level so callers other than the sync service can ask the same
+    question. Two matchers that drift is the obvious future bug here: a pull
+    request would report pages that a merge of the same files then did not
+    touch, or the reverse, and neither answer would be wrong in a way anybody
+    could see.
+    """
+    for changed_path in changed_paths:
+        if link_type == "file":
+            # Exact match for file links
+            if changed_path == link_path:
+                return True
+        else:
+            # Directory links match any file under that path
+            if changed_path.startswith(link_path + "/") or changed_path == link_path:
+                return True
+
+    return False
+
+
+@dataclass(frozen=True)
+class LinkMatch:
+    """A code link a change touched, with only the paths that touched it.
+
+    `matched_paths` is narrowed per link on purpose: a push may carry fifty
+    files, and naming the two under this module is what makes the reason
+    readable rather than a wall of filenames.
+    """
+
+    link: DocumentCodeLink
+    matched_paths: list[str]
+
+
+@dataclass(frozen=True)
+class AffectedLinks:
+    """What a set of changed paths touched in one repository, and what it did not.
+
+    The counters are here because `handle_code_change` reports them and callers
+    that only want the matches can ignore them — which is better than two
+    functions walking the same links to compute the same thing.
+    """
+
+    matches: list[LinkMatch]
+    substantive_paths: list[str]
+    skipped_non_substantive: int = 0
+    own_export: int = 0
+    muted: int = 0
+    no_match: int = 0
 
 
 class DocumentSyncService:
@@ -300,6 +359,89 @@ class DocumentSyncService:
         )
         await self.db.execute(stmt)
 
+    async def resolve_affected_links(
+        self,
+        repository_id: str,
+        changed_paths: list[str],
+        commit_sha: str | None = None,
+    ) -> AffectedLinks:
+        """Which code links in this repository a set of changed paths touched.
+
+        Read-only: it flags nothing, queues nothing and commits nothing. The
+        three exclusions are the interesting part, and they are the reason this
+        is shared rather than reimplemented —
+
+        * non-substantive paths, dropped before anything is matched;
+        * a commit that is our own export, which would otherwise let a document
+          that publishes itself regenerate from the file it just wrote;
+        * a muted link, which stops being reported as behind at all.
+
+        A caller that answered any of those differently would tell somebody their
+        change affected a page that the merge of the same files then left alone.
+
+        `commit_sha` is optional: the own-export check needs a specific commit,
+        and a caller asking "what would this set of paths touch" may not have
+        one. Passing it is always safe.
+        """
+        substantive_paths = [p for p in changed_paths if is_substantive_path(p)]
+        if not substantive_paths:
+            return AffectedLinks(
+                matches=[],
+                substantive_paths=[],
+                skipped_non_substantive=len(changed_paths),
+            )
+
+        stmt = (
+            select(DocumentCodeLink)
+            .options(
+                selectinload(DocumentCodeLink.document).selectinload(Document.created_by)
+            )
+            .where(DocumentCodeLink.repository_id == repository_id)
+        )
+        result = await self.db.execute(stmt)
+        code_links = result.scalars().all()
+
+        matches: list[LinkMatch] = []
+        own_export = muted = no_match = 0
+
+        for link in code_links:
+            # A document that publishes itself to the repository must not be
+            # woken by its own export. Without this, auto-export plus a link
+            # watching the exported path is a loop that regenerates the
+            # document from the file it just wrote.
+            if commit_sha and await self._is_our_own_export(
+                link.document_id, commit_sha
+            ):
+                own_export += 1
+                continue
+
+            # A muted link is not merely "do not propose" — it stops being
+            # reported as behind at all. Flagging a document somebody has
+            # explicitly said they do not want updated turns the badge into
+            # noise, and a badge people learn to ignore is worse than none.
+            if link.sync_mode == DocumentSyncMode.OFF.value:
+                muted += 1
+                continue
+
+            matched = [
+                path
+                for path in substantive_paths
+                if path_matches_link(link.path, link.link_type, [path])
+            ]
+            if not matched:
+                no_match += 1
+                continue
+
+            matches.append(LinkMatch(link=link, matched_paths=matched))
+
+        return AffectedLinks(
+            matches=matches,
+            substantive_paths=substantive_paths,
+            own_export=own_export,
+            muted=muted,
+            no_match=no_match,
+        )
+
     async def handle_code_change(
         self,
         repository_id: str,
@@ -329,8 +471,11 @@ class DocumentSyncService:
         # Drop the noise before anything is matched, flagged or generated. A
         # push of nothing but lockfiles reaches here regularly and must cost a
         # filter rather than one LLM call per document it happens to sit under.
-        substantive_paths = [p for p in changed_paths if is_substantive_path(p)]
-        if not substantive_paths:
+        affected = await self.resolve_affected_links(
+            repository_id, changed_paths, commit_sha=commit_sha
+        )
+
+        if not affected.substantive_paths:
             logger.info(
                 f"Push {commit_sha[:8]} to repository {repository_id} touched "
                 f"{len(changed_paths)} path(s), none substantive — skipping"
@@ -340,51 +485,22 @@ class DocumentSyncService:
                 "queued_for_batch": [],
                 "marked_pending": [],
                 "no_match": 0,
-                "skipped_non_substantive": len(changed_paths),
+                "skipped_non_substantive": affected.skipped_non_substantive,
             }
-        changed_paths = substantive_paths
 
         results = {
             "real_time_synced": [],
             "queued_for_batch": [],
             "marked_pending": [],
-            "no_match": 0,
+            "no_match": affected.no_match,
         }
+        if affected.own_export:
+            results["own_export"] = affected.own_export
+        if affected.muted:
+            results["muted"] = affected.muted
 
-        # Find all documents linked to files in this repository
-        stmt = (
-            select(DocumentCodeLink)
-            .options(
-                selectinload(DocumentCodeLink.document).selectinload(Document.created_by)
-            )
-            .where(DocumentCodeLink.repository_id == repository_id)
-        )
-        result = await self.db.execute(stmt)
-        code_links = result.scalars().all()
-
-        for link in code_links:
-            # A document that publishes itself to the repository must not be
-            # woken by its own export. Without this, auto-export plus a link
-            # watching the exported path is a loop that regenerates the
-            # document from the file it just wrote.
-            if await self._is_our_own_export(link.document_id, commit_sha):
-                results["own_export"] = results.get("own_export", 0) + 1
-                continue
-
-            # A muted link is not merely "do not propose" — it stops being
-            # reported as behind at all. Flagging a document somebody has
-            # explicitly said they do not want updated turns the badge into
-            # noise, and a badge people learn to ignore is worse than none.
-            if link.sync_mode == DocumentSyncMode.OFF.value:
-                results["muted"] = results.get("muted", 0) + 1
-                continue
-
-            # Check if any changed path matches this link
-            matches = self._path_matches_link(link.path, link.link_type, changed_paths)
-
-            if not matches:
-                results["no_match"] += 1
-                continue
+        for match in affected.matches:
+            link = match.link
 
             # Update link to indicate pending changes
             link.has_pending_changes = True
@@ -407,19 +523,11 @@ class DocumentSyncService:
             sync_type = await self.get_sync_type_for_developer(str(sync_owner_id))
 
             if sync_type == SyncTriggerType.REAL_TIME:
-                # Only the paths that matched *this* link. The push may have
-                # touched fifty files; naming the two under this module is what
-                # makes the reason readable rather than a wall of filenames.
-                matched = [
-                    path
-                    for path in changed_paths
-                    if self._path_matches_link(link.path, link.link_type, [path])
-                ]
                 await self._trigger_real_time_sync(
                     document,
                     link,
                     commit_sha,
-                    changed_paths=matched,
+                    changed_paths=match.matched_paths,
                     pull_request=pull_request,
                 )
                 results["real_time_synced"].append(str(document.id))
@@ -613,6 +721,50 @@ class DocumentSyncService:
             ).all()
         )
 
+        # How many pages each of these merges actually affected, when it was
+        # evaluated. This is the only durable way back into the impact page: the
+        # notification is one row somebody clears, and the pull request comment is
+        # off by default, so without this the page is reachable exactly once.
+        #
+        # A count rather than an unconditional link, because a link that leads to
+        # "nothing here describes this change" is worse than no link.
+        impact_counts: dict[tuple[str, int], int] = {}
+        pairs = [(row.repo_id, row.number) for row in rows if row.repo_id]
+        if pairs:
+            impact_rows = (
+                await self.db.execute(
+                    select(
+                        PullRequestDocImpact.repository_id,
+                        PullRequestDocImpact.pull_request_number,
+                        func.count(PullRequestDocImpactItem.id),
+                    )
+                    .join(
+                        PullRequestDocImpactItem,
+                        PullRequestDocImpactItem.impact_id
+                        == PullRequestDocImpact.id,
+                    )
+                    .where(
+                        PullRequestDocImpact.repository_id.in_(
+                            {repo_id for repo_id, _ in pairs}
+                        ),
+                        PullRequestDocImpact.pull_request_number.in_(
+                            {number for _, number in pairs}
+                        ),
+                        # Scoped, or a repository shared by two workspaces would
+                        # show one's page count on the other's list.
+                        PullRequestDocImpactItem.workspace_id == workspace_id,
+                    )
+                    .group_by(
+                        PullRequestDocImpact.repository_id,
+                        PullRequestDocImpact.pull_request_number,
+                    )
+                )
+            ).all()
+            impact_counts = {
+                (str(repo_id), number): count
+                for repo_id, number, count in impact_rows
+            }
+
         return [
             {
                 "pull_request_id": str(row.id),
@@ -627,6 +779,9 @@ class DocumentSyncService:
                 "deletions": row.deletions or 0,
                 "files_changed": row.files_changed or 0,
                 "repository_document_count": counts.get(row.repo_id, 0),
+                "impact_affected_count": impact_counts.get(
+                    (str(row.repo_id) if row.repo_id else "", row.number), 0
+                ),
             }
             for row in rows
         ]
@@ -1210,25 +1365,11 @@ class DocumentSyncService:
     ) -> bool:
         """Check if any changed path matches a code link.
 
-        Args:
-            link_path: Path in the code link.
-            link_type: Type of link (file or directory).
-            changed_paths: List of changed file paths.
-
-        Returns:
-            True if there's a match.
+        Kept as a delegate to the module-level `path_matches_link`, which is
+        where the rule now lives so that callers outside this service can ask
+        the same question and get the same answer.
         """
-        for changed_path in changed_paths:
-            if link_type == "file":
-                # Exact match for file links
-                if changed_path == link_path:
-                    return True
-            else:
-                # Directory links match any file under that path
-                if changed_path.startswith(link_path + "/") or changed_path == link_path:
-                    return True
-
-        return False
+        return path_matches_link(link_path, link_type, changed_paths)
 
     async def get_sync_status(
         self, workspace_id: str
@@ -1267,7 +1408,7 @@ class DocumentSyncService:
             .where(
                 and_(
                     Document.workspace_id == workspace_id,
-                    DocumentCodeLink.has_pending_changes == True,
+                    DocumentCodeLink.has_pending_changes.is_(True),
                 )
             )
         )

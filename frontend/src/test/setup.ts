@@ -88,5 +88,9 @@ vi.mock("next-intl", () => ({
         typeof lookup(namespace ? `${namespace}.${key}` : key) === "string",
     });
   },
+  // Components that format lists or dates themselves need the active locale —
+  // `Intl.ListFormat` joins differently in every language, which is the whole
+  // reason the server sends guidance as params rather than a finished sentence.
+  useLocale: () => "en",
   NextIntlClientProvider: ({ children }: { children: unknown }) => children,
 }));

@@ -33,13 +33,52 @@ class WebhookEvent:
     pull_request: dict[str, Any] | None = None
     review: dict[str, Any] | None = None
     issue: dict[str, Any] | None = None
+    installation: dict[str, Any] | None = None
 
 
-# Supported event types
-SUPPORTED_EVENTS = {"push", "pull_request", "pull_request_review", "issues"}
+# Supported event types.
+#
+# `installation` is here so that granting the App a permission takes effect
+# immediately. `GitHubAppService.handle_installation_webhook` existed with no
+# route and this set had no entry, so the cached `permissions` were only ever
+# written during an OAuth sync — meaning an admin who granted "Pull requests:
+# write" saw nothing change until somebody happened to re-authenticate. The
+# feature appeared broken at the exact moment they fixed it.
+SUPPORTED_EVENTS = {
+    "push",
+    "pull_request",
+    "pull_request_review",
+    "issues",
+    "installation",
+}
 
-# Actions that we should process
-PROCESSABLE_PR_ACTIONS = {"opened", "closed", "synchronize", "reopened", "edited"}
+# `new_permissions_accepted` is the one that closes the loop above.
+PROCESSABLE_INSTALLATION_ACTIONS = {
+    "created",
+    "deleted",
+    "suspend",
+    "unsuspend",
+    "new_permissions_accepted",
+}
+
+# Actions that we should process.
+#
+# `ready_for_review` was missing while `webhooks.py` already branched on it for
+# realtime PR analysis, so that branch was unreachable — a draft pull request
+# marked ready produced nothing at all. It is the moment a draft becomes real
+# work, which is exactly when its documentation impact is worth raising.
+#
+# The extra realtime `analyze_pr` this enables is bounded: that dispatch hashes
+# title+description into its workflow id, so an `opened` followed by an unedited
+# `ready_for_review` resolves to the same workflow and Temporal collapses it.
+PROCESSABLE_PR_ACTIONS = {
+    "opened",
+    "closed",
+    "synchronize",
+    "reopened",
+    "edited",
+    "ready_for_review",
+}
 PROCESSABLE_REVIEW_ACTIONS = {"submitted", "edited", "dismissed"}
 PROCESSABLE_ISSUE_ACTIONS = {"opened", "closed", "reopened", "edited"}
 
@@ -95,6 +134,16 @@ class WebhookHandler:
         action = payload.get("action")
         sender = payload.get("sender") or payload.get("pusher")
 
+        if event_type == "installation":
+            # No `repository` on this payload — the event is about the account.
+            return WebhookEvent(
+                event_type=event_type,
+                repository=repository,
+                action=action,
+                sender=sender,
+                installation=payload.get("installation") or {},
+            )
+
         if event_type == "push":
             return WebhookEvent(
                 event_type=event_type,
@@ -144,6 +193,9 @@ class WebhookHandler:
         Returns:
             True if event should be processed
         """
+        if event.event_type == "installation":
+            return event.action in PROCESSABLE_INSTALLATION_ACTIONS
+
         if event.event_type == "push":
             # Process pushes to main branches
             if event.ref and event.commits:

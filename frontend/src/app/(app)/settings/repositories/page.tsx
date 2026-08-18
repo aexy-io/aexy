@@ -33,7 +33,8 @@ import {
   WorkspaceRepositoryItem,
 } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
-import { useWorkspace } from "@/hooks/useWorkspace";
+import { useWorkspace, useIsWorkspaceAdmin } from "@/hooks/useWorkspace";
+import { DocImpactSettings } from "@/components/settings/DocImpactSettings";
 import { useSubscription } from "@/hooks/useSubscription";
 import { UpgradeBanner } from "@/components/UpgradeBanner";
 import { useTranslations } from "next-intl";
@@ -313,6 +314,7 @@ export default function RepositorySettingsPage() {
   const t = useTranslations("settingsRepositories");
   const { user } = useAuth();
   const { currentWorkspaceId } = useWorkspace();
+  const { isWorkspaceAdmin } = useIsWorkspaceAdmin(currentWorkspaceId);
   const { isFree, maxRepos } = useSubscription();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -912,6 +914,20 @@ export default function RepositorySettingsPage() {
                 </span>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Whether Aexy writes into this workspace's pull requests. On this page
+            rather than a route of its own: the person who can grant the GitHub App
+            these permissions is already here. Outside the installation-gated block
+            above on purpose — an admin needs to read what it asks for before
+            connecting anything, and notifying the author needs no installation. */}
+        {currentWorkspaceId && (
+          <div className="bg-card border border-border rounded-lg p-4">
+            <DocImpactSettings
+              workspaceId={currentWorkspaceId}
+              canEdit={isWorkspaceAdmin}
+            />
           </div>
         )}
       </div>

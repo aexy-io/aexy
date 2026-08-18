@@ -13,6 +13,7 @@ from sqlalchemy import text as sa_text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool, StaticPool
 
+from aexy.core.config import get_settings
 from aexy.core.database import Base, get_db
 from aexy.main import app
 
@@ -34,6 +35,22 @@ if not _IS_SQLITE and "test" not in TEST_DATABASE_URL.rsplit("/", 1)[-1].lower()
         f"{TEST_DATABASE_URL!r}: the database name must contain 'test' "
         "(e.g. aexy_test) so drop_all can't wipe a real database."
     )
+
+# The application's own engine has to point here too, and the override above
+# cannot make it: `get_async_session()` is *called*, not injected, so
+# `app.dependency_overrides[get_db]` never reaches it. Until this line, every
+# one of its ~40 call sites built an engine from `settings.database_url` — which
+# in a developer's `backend/.env` is their own Postgres.
+#
+# Demonstrated rather than assumed: with DATABASE_URL pointed at a nonexistent
+# host, `test_api_health.py::test_readiness_check` returned 503. That test was
+# asserting the developer's database was reachable, not that the code worked.
+# `integrations.py` reaches the same helper on paths that commit.
+#
+# Redirecting settings also brings those call sites under the guard above — the
+# schema a test may drop and the database the application talks to are now the
+# same one, which is the property the guard was written to protect.
+get_settings().database_url = TEST_DATABASE_URL
 
 
 @pytest_asyncio.fixture(autouse=True)

@@ -144,7 +144,8 @@
       "noDocsForRepository": "No docs",
       "noDocsForRepositoryHint": "No document in this workspace is linked to anything in this repository.",
       "repositoryGone": "Repository disconnected",
-      "promptFor": "Document the change merged in #{number}: {title}"
+      "promptFor": "Document the change merged in #{number}: {title}",
+      "pagesAffected": "{count, plural, one {1 page affected} other {# pages affected}}"
     },
     "scope": {
       "heading": "Document every module in {repository}",
@@ -163,6 +164,54 @@
       "failedShort": "Failed",
       "moduleFailed": "Could not write this module",
       "parentFailed": "Could not create the parent page"
+    },
+    "impact": {
+      "eyebrow": "Documentation impact",
+      "openedBy": "opened by {author}",
+      "stateOpen": "Open",
+      "stateMerged": "Merged",
+      "coverage": "{matched} of {total} changed files are described by a page here",
+      "notCheckedTitle": "This pull request has not been checked",
+      "notCheckedNoDocs": "No page in this workspace is linked to anything in this repository.",
+      "notCheckedOld": "It landed before documentation impact was tracked.",
+      "emptyTitle": "Nothing here describes this change",
+      "emptyBody": "No page in this workspace is linked to any file this pull request touched. Nobody was notified.",
+      "emptyAction": "Write one",
+      "describes": "Describes {path} on {branch}",
+      "morePaths": "and {count} more",
+      "muted": "Muted",
+      "behind": "Behind the code",
+      "inSync": "In sync as of {date}",
+      "neverGenerated": "Never generated",
+      "screenshotCount": "{count, plural, one {1 screenshot} other {# screenshots}}",
+      "statusEdited": "Edited since this pull request opened",
+      "statusDismissed": "{name} said no update was needed",
+      "statusDismissedUnknown": "Marked as needing no update",
+      "statusDismissedReason": "— {reason}",
+      "open": "Open the page",
+      "askUpdate": "Ask for an update",
+      "askUpdateImageWarning": "A generated update rewrites the prose from the source and will not carry the {count, plural, one {screenshot} other {# screenshots}} in this page. Check the diff before approving.",
+      "seeProposal": "See the update waiting",
+      "noUpdateNeeded": "No update needed",
+      "noUpdateNeededHint": "For this pull request only. The page keeps its own out-of-date badge.",
+      "dismissReasonLabel": "Why? (optional)",
+      "cancel": "Cancel",
+      "undo": "Undo",
+      "dismissFailed": "Could not save that. Try again.",
+      "updateRequested": "An update was drafted and is waiting for review.",
+      "updateFailed": "Could not draft an update.",
+      "prCommentBlocked": "The comment on this pull request was not posted: the Aexy GitHub App needs “Pull requests: write”.",
+      "prCommentBlockedAction": "Repository settings",
+      "guidance": {
+        "screenshots": "{count, plural, one {One screenshot} other {# screenshots}} in this page, under {headings}",
+        "screenshotsNoHeading": "{count, plural, one {One screenshot} other {# screenshots}} in this page",
+        "route": "Your change touched the {routes} screen — that is what they show",
+        "apiSurface": "The request or response shape may have moved: {paths}",
+        "setup": "The setup steps in this page may no longer match: {paths}"
+      },
+      "errorTitle": "Could not load this",
+      "errorBody": "The documentation impact for this pull request could not be fetched.",
+      "retry": "Try again"
     }
   }
 }

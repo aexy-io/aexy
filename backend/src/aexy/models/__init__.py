@@ -172,6 +172,16 @@ from aexy.models.documentation import (
     DocumentPermission,
     TemplateCategory,
 )
+from aexy.models.workspace_doc_impact_settings import (
+    CheckRunConclusion,
+    WorkspaceDocImpactSettings,
+)
+from aexy.models.document_impact import (
+    DocImpactState,
+    GitHubWriteStatus,
+    PullRequestDocImpact,
+    PullRequestDocImpactItem,
+)
 from aexy.models.tracking import (
     DeveloperStandup,
     WorkLog,
@@ -765,6 +775,12 @@ __all__ = [
     "DocumentVersion",
     "DocumentTemplate",
     "DocumentCodeLink",
+    "DocImpactState",
+    "GitHubWriteStatus",
+    "PullRequestDocImpact",
+    "PullRequestDocImpactItem",
+    "CheckRunConclusion",
+    "WorkspaceDocImpactSettings",
     "DocumentGenerationPrompt",
     "CollaborationSession",
     "DocumentCollaborator",
