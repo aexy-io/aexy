@@ -127,6 +127,13 @@
         "title": "Read attachments",
         "description": "Let AI open the files on an incoming email to help identify the request. Off by default — reading a customer's documents is a separate decision from reading the message.",
         "requiresAi": "Turn on AI email categorisation first."
+      },
+      "accuracy": {
+        "title": "How accurate has it been?",
+        "nothingYet": "Nothing classified yet. Once AI has read some tickets, this shows how often your team agreed with it.",
+        "summary": "Your team kept the AI's request type on {agreed} of {classified} tickets ({rate}) in the last {days} days.",
+        "caveat": "A ticket nobody reviewed counts as agreement, so treat this as a best case. The breakdown below is more useful: one request type doing badly usually means its name or description needs to be clearer, not that AI should be switched off.",
+        "row": "{rate} of {classified}"
       }
     },
     "autoSplit": {
@@ -291,6 +298,13 @@
       "previous": "Previous",
       "next": "Next",
       "export": "Export CSV"
+    },
+    "accountProducts": {
+      "none": "No products mapped — all tickets go to this account's owner",
+      "summary": "Products: {names}",
+      "hint": "Tickets from this account are classified against these products only. Leave an owner as “Same as account” unless someone different handles that product.",
+      "sameAsAccount": "Same as account owner",
+      "ownerFor": "Owner of {product} for {name}"
     }
   }
 }

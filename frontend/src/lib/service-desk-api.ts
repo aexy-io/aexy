@@ -65,6 +65,18 @@ export interface ApplyTemplateResult {
   terminology_applied: boolean;
 }
 
+/** What the editor sends back when it changes an account's product pairings. */
+export interface AccountProductInput {
+  product_id: string;
+  assigned_owner_id?: string | null;
+}
+
+/** One product an account is served for, optionally with its own owner. */
+export interface AccountProductLink extends AccountProductInput {
+  product_name: string | null;
+  assigned_owner_name: string | null;
+}
+
 export interface Account {
   id: string;
   workspace_id: string;
@@ -77,6 +89,9 @@ export interface Account {
   assigned_owner_email: string | null;
   is_active: boolean;
   domains: string[];
+  /** Which products this account is served for. Empty for a desk that has not
+   *  split anybody between owners, which is every desk until somebody does. */
+  products: AccountProductLink[];
   created_at: string;
 }
 
@@ -278,6 +293,23 @@ export interface TicketQuery {
   is_open?: boolean;
 }
 
+export interface AIAccuracy {
+  days: number;
+  classified: number;
+  agreed: number;
+  /** Null when nothing has been classified. A desk with no measurements has no
+   *  accuracy, and a perfect score for zero tickets is the most misleading
+   *  thing this could show someone deciding whether to trust it. */
+  agreement_rate: number | null;
+  by_request_type: {
+    request_type: string;
+    label: string;
+    classified: number;
+    agreed: number;
+    agreement_rate: number;
+  }[];
+}
+
 export interface ServiceDeskSettings {
   /** Resolved, not raw. AI reading of desk mail follows the workspace's own AI
    *  switch (Settings -> AI); the desk holds a veto, not a second opt-in. This
@@ -416,6 +448,9 @@ export const serviceDeskApi = {
     (await api.patch(`${base(ws)}/templates/${key}`, { subject, body })).data,
 
   // dashboard + tickets
+  /** Whether the classifier is worth trusting on this desk's mail. */
+  getAiAccuracy: async (ws: string, days = 90): Promise<AIAccuracy> =>
+    (await api.get(`${base(ws)}/ai-accuracy`, { params: { days } })).data,
   getDashboard: async (ws: string): Promise<ServiceDeskDashboard> =>
     (await api.get(`${base(ws)}/dashboard`)).data,
   listTickets: async (
@@ -476,9 +511,9 @@ export const serviceDeskApi = {
 
   // accounts
   listAccounts: async (ws: string): Promise<Account[]> => (await api.get(`${base(ws)}/accounts`)).data,
-  createAccount: async (ws: string, data: { name: string; assigned_owner_id?: string | null; domains?: string[] }): Promise<Account> =>
+  createAccount: async (ws: string, data: { name: string; assigned_owner_id?: string | null; domains?: string[]; products?: AccountProductInput[] }): Promise<Account> =>
     (await api.post(`${base(ws)}/accounts`, data)).data,
-  updateAccount: async (ws: string, id: string, data: Partial<{ name: string; assigned_owner_id: string | null; domains: string[]; is_active: boolean }>): Promise<Account> =>
+  updateAccount: async (ws: string, id: string, data: Partial<{ name: string; assigned_owner_id: string | null; domains: string[]; products: AccountProductInput[]; is_active: boolean }>): Promise<Account> =>
     (await api.patch(`${base(ws)}/accounts/${id}`, data)).data,
   deleteAccount: async (ws: string, id: string): Promise<void> => { await api.delete(`${base(ws)}/accounts/${id}`); },
 

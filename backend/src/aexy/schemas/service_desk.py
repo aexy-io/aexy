@@ -141,10 +141,27 @@ class ApplyIndustryTemplateResponse(BaseModel):
 
 # ==================== Accounts ====================
 
+class AccountProductInput(BaseModel):
+    """One product an account is served for, optionally with its own owner."""
+
+    product_id: str
+    # Overrides the account's owner for tickets classified as this product.
+    # Omitted by every desk that does not split a partner between people.
+    assigned_owner_id: str | None = None
+
+
+class AccountProductLink(AccountProductInput):
+    """The same pairing, resolved for display."""
+
+    product_name: str | None = None
+    assigned_owner_name: str | None = None
+
+
 class AccountCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     assigned_owner_id: str | None = None
     domains: list[str] = Field(default_factory=list)
+    products: list[AccountProductInput] = Field(default_factory=list)
     is_active: bool = True
 
 
@@ -152,6 +169,10 @@ class AccountUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=255)
     assigned_owner_id: str | None = None
     domains: list[str] | None = None
+    # A complete replacement of the pairings when supplied, like `domains` — the
+    # editor sends the whole set, and "add one" and "remove one" as separate
+    # verbs would need the client to know what it is diffing against.
+    products: list[AccountProductInput] | None = None
     is_active: bool | None = None
 
 
@@ -171,6 +192,9 @@ class AccountResponse(BaseModel):
     assigned_owner_email: str | None = None
     is_active: bool = True
     domains: list[str] = Field(default_factory=list)
+    # Which products this account is served for. Empty for a desk that has not
+    # split anybody, which is every desk until somebody does.
+    products: list[AccountProductLink] = Field(default_factory=list)
     created_at: datetime
 
 
@@ -379,6 +403,29 @@ class TicketFilters(BaseModel):
         ):
             raise ValueError("created_to must not be earlier than created_from")
         return self
+
+
+class RequestTypeAccuracy(BaseModel):
+    request_type: str
+    label: str
+    classified: int
+    agreed: int
+    agreement_rate: float
+
+
+class AIAccuracy(BaseModel):
+    """How often this desk's people agreed with the classifier.
+
+    ``agreement_rate`` is None when nothing has been classified — a desk with no
+    measurements has no accuracy, and rendering a perfect score for zero tickets
+    is the most misleading thing this could report.
+    """
+
+    days: int
+    classified: int
+    agreed: int
+    agreement_rate: float | None = None
+    by_request_type: list[RequestTypeAccuracy] = Field(default_factory=list)
 
 
 class TicketCount(BaseModel):

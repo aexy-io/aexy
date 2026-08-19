@@ -127,6 +127,13 @@
         "title": "Attachments पढ़ें",
         "description": "AI को incoming email की files खोलने दें ताकि request पहचानने में मदद मिले। डिफ़ॉल्ट रूप से बंद — ग्राहक के documents पढ़ना, message पढ़ने से अलग निर्णय है।",
         "requiresAi": "पहले AI email categorisation चालू करें।"
+      },
+      "accuracy": {
+        "title": "यह कितना सटीक रहा है?",
+        "nothingYet": "अभी तक कुछ classify नहीं हुआ। जब AI कुछ tickets पढ़ लेगा, तब यहाँ दिखेगा कि आपकी team कितनी बार उससे सहमत रही।",
+        "summary": "पिछले {days} दिनों में आपकी team ने {classified} में से {agreed} tickets पर AI का request type वैसे ही रखा ({rate})।",
+        "caveat": "जिस ticket को किसी ने देखा ही नहीं, वह भी सहमति में गिना जाता है — इसलिए इसे अधिकतम संभव आँकड़ा मानें। नीचे का breakdown ज़्यादा काम का है: किसी एक request type का ख़राब प्रदर्शन अक्सर उसके नाम या विवरण के अस्पष्ट होने का संकेत है, AI बंद करने का नहीं।",
+        "row": "{classified} में से {rate}"
       }
     },
     "autoSplit": {
@@ -291,6 +298,13 @@
       "previous": "पिछला",
       "next": "अगला",
       "export": "CSV export करें"
+    },
+    "accountProducts": {
+      "none": "कोई product mapped नहीं — सभी tickets इस account के owner को जाते हैं",
+      "summary": "Products: {names}",
+      "hint": "इस account की tickets केवल इन्हीं products के विरुद्ध classify होती हैं। जब तक उस product को कोई और न देखता हो, owner को “Account जैसा ही” रहने दें।",
+      "sameAsAccount": "Account owner जैसा ही",
+      "ownerFor": "{name} के लिए {product} का owner"
     }
   }
 }

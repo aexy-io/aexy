@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import {
+  useAiAccuracy,
   useVendors,
   useProducts,
   useMailboxes,
@@ -19,6 +20,8 @@ import {
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import {
   Account,
+  AccountProductInput,
+  Product,
   ServiceDeskSettingsPatch,
   ServiceDeskTemplate,
   Stakeholder,
@@ -676,6 +679,8 @@ export function AiSections() {
         )}
       </Section>
 
+      <AiAccuracyPanel />
+
       {/* Auto-split — only ever acts on AI-read email */}
       <Section title={t("autoSplit.title")}>
         <ToggleRow
@@ -696,6 +701,77 @@ export function AiSections() {
         )}
       </Section>
     </>
+  );
+}
+
+/**
+ * How often this desk's people agreed with the classifier.
+ *
+ * The number a desk needs to decide whether to keep AI on, and one it cannot
+ * arrive at by feel — a correction overwrites the request type, so being right
+ * and being quietly fixed look identical from the ticket list.
+ *
+ * Read as a floor rather than a measurement: a ticket nobody looked at counts as
+ * agreement, so the true figure is no better than this one. The per-type
+ * breakdown is where the action is — one bad request type inside a good overall
+ * number is a labelling problem, not a reason to switch AI off.
+ */
+function AiAccuracyPanel() {
+  const t = useTranslations("serviceDesk");
+  const accuracy = useAiAccuracy();
+  const data = accuracy.data;
+
+  if (accuracy.isLoading) return null;
+  // Nothing measured yet. Saying so is useful; rendering 0% or 100% is not.
+  if (!data || data.classified === 0) {
+    return (
+      <Section title={t("ai.accuracy.title")}>
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          {t("ai.accuracy.nothingYet")}
+        </p>
+      </Section>
+    );
+  }
+
+  const percent = (rate: number) => `${Math.round(rate * 100)}%`;
+
+  return (
+    <Section title={t("ai.accuracy.title")}>
+      <p className="max-w-2xl text-sm text-muted-foreground">
+        {t("ai.accuracy.summary", {
+          rate: percent(data.agreement_rate ?? 0),
+          agreed: data.agreed,
+          classified: data.classified,
+          days: data.days,
+        })}
+      </p>
+      <p className="max-w-2xl text-xs text-muted-foreground">{t("ai.accuracy.caveat")}</p>
+      <div className="space-y-1">
+        {data.by_request_type.map((row) => (
+          <div key={row.request_type} className="flex items-center gap-3 text-sm">
+            <span className="w-40 shrink-0 truncate">{row.label}</span>
+            <div className="h-1.5 w-32 overflow-hidden rounded-full bg-muted">
+              <div
+                className={
+                  row.agreement_rate >= 0.8
+                    ? "h-full bg-emerald-500"
+                    : row.agreement_rate >= 0.5
+                      ? "h-full bg-amber-500"
+                      : "h-full bg-destructive"
+                }
+                style={{ width: `${Math.round(row.agreement_rate * 100)}%` }}
+              />
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {t("ai.accuracy.row", {
+                rate: percent(row.agreement_rate),
+                classified: row.classified,
+              })}
+            </span>
+          </div>
+        ))}
+      </div>
+    </Section>
   );
 }
 
@@ -945,19 +1021,31 @@ export function IdentitySections() {
  * consequence is invisible from here: intake falls back to an arbitrary member
  * of the desk department, and the ticket looks deliberately assigned.
  */
+/** The shape `useWorkspaceMembers` hands back, named so two components can share it. */
+type WorkspaceMemberOption = {
+  developer_id: string;
+  developer_name?: string | null;
+  developer_email?: string | null;
+  status: string;
+};
+
 function AccountRow({
   account,
   canManage,
   members,
+  products,
   saving,
   onSaveOwner,
+  onSaveProducts,
   onDelete,
 }: {
   account: Account;
   canManage: boolean;
-  members: { developer_id: string; developer_name?: string | null; developer_email?: string | null; status: string }[];
+  members: WorkspaceMemberOption[];
+  products: Product[];
   saving: boolean;
   onSaveOwner: (ownerId: string | null) => void;
+  onSaveProducts: (products: AccountProductInput[]) => void;
   onDelete: () => void;
 }) {
   const t = useTranslations("serviceDesk");
@@ -973,6 +1061,9 @@ function AccountRow({
             {d}
           </Badge>
         ))}
+        {/* Subdomains are matched automatically, so `mail.partner.com` needs no
+            row of its own. Said here because the list is where somebody would
+            otherwise add one. */}
         {canManage ? (
           <select
             value={account.assigned_owner_id ?? ""}
@@ -1007,7 +1098,127 @@ function AccountRow({
           {t("settings.unownedAccountWarning")}
         </p>
       )}
+      <AccountProducts
+        account={account}
+        products={products}
+        members={members}
+        canManage={canManage}
+        saving={saving}
+        onSave={onSaveProducts}
+      />
     </Row>
+  );
+}
+
+/**
+ * Which products an account is served for, and who owns each of them.
+ *
+ * An account carries one owner, which says a partner is one person's to look
+ * after. Desks split them — the same partner's motor work belongs to one owner
+ * and its health work to another — and the only way to express that used to be
+ * two accounts sharing a domain, which the sender matcher then resolved
+ * arbitrarily.
+ *
+ * Collapsed to a summary line until somebody opens it: most desks never split
+ * anybody, and a table of checkboxes on every row would bury the domains and
+ * the owner, which are what this list is read for.
+ */
+function AccountProducts({
+  account,
+  products,
+  members,
+  canManage,
+  saving,
+  onSave,
+}: {
+  account: Account;
+  products: Product[];
+  members: WorkspaceMemberOption[];
+  canManage: boolean;
+  saving: boolean;
+  onSave: (products: AccountProductInput[]) => void;
+}) {
+  const t = useTranslations("serviceDesk");
+  const [open, setOpen] = useState(false);
+  const linked = new Map(account.products.map((p) => [p.product_id, p]));
+
+  const toggle = (productId: string, on: boolean) => {
+    const next = on
+      ? [...account.products, { product_id: productId, assigned_owner_id: null }]
+      : account.products.filter((p) => p.product_id !== productId);
+    onSave(next.map((p) => ({ product_id: p.product_id, assigned_owner_id: p.assigned_owner_id })));
+  };
+
+  const setOwner = (productId: string, ownerId: string | null) => {
+    onSave(
+      account.products.map((p) => ({
+        product_id: p.product_id,
+        assigned_owner_id: p.product_id === productId ? ownerId : p.assigned_owner_id,
+      })),
+    );
+  };
+
+  if (products.length === 0) return null;
+
+  return (
+    <div className="mt-1">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="text-xs text-muted-foreground underline underline-offset-2"
+      >
+        {account.products.length === 0
+          ? t("accountProducts.none")
+          : t("accountProducts.summary", {
+              names: account.products.map((p) => p.product_name).join(", "),
+            })}
+      </button>
+      {open && (
+        <div className="mt-2 space-y-1 rounded-md border border-border p-2">
+          <p className="text-xs text-muted-foreground">{t("accountProducts.hint")}</p>
+          {products.map((product) => {
+            const link = linked.get(product.id);
+            return (
+              <div key={product.id} className="flex flex-wrap items-center gap-2 text-sm">
+                <label className="flex items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    checked={!!link}
+                    disabled={!canManage || saving}
+                    onChange={(e) => toggle(product.id, e.target.checked)}
+                  />
+                  {product.name}
+                </label>
+                {/* The owner dropdown only exists for a product this account is
+                    actually served for — offering it otherwise would ask who
+                    owns work the partner does not send. */}
+                {link && (
+                  <select
+                    value={link.assigned_owner_id ?? ""}
+                    disabled={!canManage || saving}
+                    aria-label={t("accountProducts.ownerFor", {
+                      product: product.name,
+                      name: account.name,
+                    })}
+                    onChange={(e) => setOwner(product.id, e.target.value || null)}
+                    className="h-7 max-w-[200px] rounded-md border border-input bg-background px-2 text-xs"
+                  >
+                    <option value="">{t("accountProducts.sameAsAccount")}</option>
+                    {members
+                      .filter((member) => member.status === "active")
+                      .map((member) => (
+                        <option key={member.developer_id} value={member.developer_id}>
+                          {member.developer_name || member.developer_email || member.developer_id}
+                        </option>
+                      ))}
+                  </select>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1091,9 +1302,13 @@ export function MasterDataSections() {
             account={p}
             canManage={canManage}
             members={members}
+            products={products.data ?? []}
             saving={m.updateAccount.isPending}
             onSaveOwner={(ownerId) =>
               m.updateAccount.mutate({ id: p.id, data: { assigned_owner_id: ownerId } })
+            }
+            onSaveProducts={(next) =>
+              m.updateAccount.mutate({ id: p.id, data: { products: next } })
             }
             onDelete={() => m.deleteAccount.mutate(p.id)}
           />

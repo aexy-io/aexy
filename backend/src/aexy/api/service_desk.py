@@ -50,6 +50,7 @@ from aexy.schemas.service_desk import (
     ServiceDeskTemplateUpdate,
     ServiceDeskTicketDetail,
     StakeholderEmailRequest,
+    AIAccuracy,
     ServiceDeskTicketResponse,
     TicketCount,
     TicketFilters,
@@ -340,6 +341,22 @@ async def list_tickets(
 # Registered before `/tickets/{ticket_id}`: FastAPI matches in declaration order,
 # and a literal path declared after a parameterised one is never reached — the
 # request arrives as a lookup for a ticket called "count".
+@router.get("/ai-accuracy", response_model=AIAccuracy)
+async def ai_accuracy(
+    workspace_id: str,
+    days: int = Query(default=90, ge=1, le=365),
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """Whether the classifier is worth trusting on this desk's mail.
+
+    Workspace-wide rather than scoped to the caller's own tickets: it answers a
+    question about the desk's configuration, not about anyone's queue, and a
+    per-KAM sample would be too small to mean anything.
+    """
+    return await ServiceDeskTicketService(db).ai_accuracy(workspace_id, days=days)
+
+
 @router.get("/tickets/count", response_model=TicketCount)
 async def count_tickets(
     workspace_id: str,

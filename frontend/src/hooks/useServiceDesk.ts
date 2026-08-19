@@ -25,6 +25,7 @@ import {
   ServiceDeskSettings,
   ServiceDeskSettingsPatch,
   ServiceDeskTemplate,
+  AIAccuracy,
   ServiceDeskTicket,
   TicketQuery,
   ServiceDeskTicketDetail,
@@ -124,6 +125,16 @@ export function useServiceDeskTickets(query?: TicketQuery) {
     // previous one's rows from cache until the refetch landed.
     queryKey: [...keys.tickets(ws ?? ""), query ?? {}],
     queryFn: () => serviceDeskApi.listTickets(ws!, query),
+    enabled: !!ws,
+  });
+}
+
+/** Whether the classifier is worth trusting on this desk's mail. */
+export function useAiAccuracy(days = 90) {
+  const ws = useWs();
+  return useQuery<AIAccuracy>({
+    queryKey: ["service-desk", "ai-accuracy", ws ?? "", days],
+    queryFn: () => serviceDeskApi.getAiAccuracy(ws!, days),
     enabled: !!ws,
   });
 }

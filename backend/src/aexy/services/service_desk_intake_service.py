@@ -34,6 +34,7 @@ from aexy.models.service_desk import (
     ServiceDeskMailbox,
     ServiceDeskAccount,
     ServiceDeskAccountDomain,
+    ServiceDeskAccountProduct,
     ServiceDeskTicket,
     TicketOrigin,
     TicketPendingSegment,
@@ -84,6 +85,11 @@ _SPLIT_MIN_CONFIDENCE = 0.85
 # master data.
 # Below this the model is guessing, so a human is asked to confirm the fields.
 _LOW_CONFIDENCE = 0.6
+
+# How many past corrections are shown to the classifier. Small on purpose: they
+# are prompt text, so every extra example is paid for on every classification,
+# and beyond a handful they crowd out the message actually being read.
+_MAX_CORRECTION_EXAMPLES = 8
 _AI_MATCH_MIN_CONFIDENCE = 0.85
 _AI_MATCH_MAX_CANDIDATES = 20
 
@@ -985,6 +991,25 @@ class ServiceDeskIntakeService:
             # A caller that already has those answers from a person clears it.
             sd.needs_triage = True
 
+        # Now that the product is known, ask whether this account/product pairing
+        # names its own owner. Assignment had to happen before classification —
+        # the ticket row comes first — so this is the point at which a partner
+        # split between two people is actually routed to the right one.
+        reroute = await self.product_owner(sd.account_id, sd.product_id)
+        if reroute and reroute != ticket.assignee_id:
+            ticket.assignee_id = reroute
+            self.db.add(
+                TicketResponse(
+                    id=str(uuid4()),
+                    ticket_id=ticket.id,
+                    content=(
+                        f"Reassigned on classification: this {taxonomy.term('account')} has a "
+                        f"separate owner for this {taxonomy.term('product')}."
+                    ),
+                    is_internal=True,
+                )
+            )
+
         children: list[Ticket] = []
         if len(issues) > 1 and not overflow:
             children = await self._auto_split(workspace_id, ticket, sd, email, issues, mailbox)
@@ -1184,6 +1209,111 @@ class ServiceDeskIntakeService:
         await self.db.flush()
         return child
 
+    async def _recent_corrections(self, workspace_id: str, allowed: set[str]) -> str:
+        """Recent classifications this desk overruled, as prompt examples.
+
+        A desk's vocabulary is its own: one workspace files a renewal reminder as
+        a query, another as its own request type, and a general-purpose prompt
+        gets that wrong the same way every time. These are the corrections its
+        own people already made, which is the cheapest training signal available
+        and needs no extra work from anybody.
+
+        Bounded hard, and to subjects only. The examples are prompt text, so an
+        unbounded set would grow the cost of every classification and eventually
+        push the mail being classified out of the window; and a body would carry
+        a requester's details into the prompt for every later ticket, which is a
+        different thing from reading their own mail.
+        """
+        rows = (
+            await self.db.execute(
+                select(Ticket.field_values, ServiceDeskTicket.request_type)
+                .join(Ticket, Ticket.id == ServiceDeskTicket.ticket_id)
+                .where(
+                    ServiceDeskTicket.workspace_id == workspace_id,
+                    ServiceDeskTicket.ai_request_type.is_not(None),
+                    ServiceDeskTicket.ai_request_type != ServiceDeskTicket.request_type,
+                )
+                .order_by(ServiceDeskTicket.updated_at.desc())
+                .limit(_MAX_CORRECTION_EXAMPLES)
+            )
+        ).all()
+        examples = [
+            f"- {subject[:120]} -> {request_type}"
+            for field_values, request_type in rows
+            # A retired request type would teach the model to answer with a slug
+            # the validator then rejects.
+            if request_type in allowed
+            and (subject := " ".join(str((field_values or {}).get("subject") or "").split()))
+        ]
+        if not examples:
+            return ""
+        return (
+            "This desk previously corrected these classifications; follow the same "
+            "judgement:\n" + "\n".join(examples) + "\n\n"
+        )
+
+    async def _products_for(
+        self, workspace_id: str, account_id: str | None
+    ) -> list[tuple[str, str]]:
+        """The products worth offering the classifier, as (name, id).
+
+        An account that has been paired with specific products is asked only
+        about those. It is a materially easier question — two options rather than
+        a workspace catalogue of forty — and it makes a whole class of answer
+        impossible rather than merely unlikely: a partner the desk does not serve
+        for health cannot have a ticket classified as health.
+
+        An account with no pairings, or no account at all, falls back to the
+        whole catalogue. That is every desk until somebody splits a partner, and
+        nothing about their classification changes.
+        """
+        if account_id is not None:
+            paired = (
+                await self.db.execute(
+                    select(ServiceDeskProduct.name, ServiceDeskProduct.id)
+                    .join(
+                        ServiceDeskAccountProduct,
+                        ServiceDeskAccountProduct.product_id == ServiceDeskProduct.id,
+                    )
+                    .where(
+                        ServiceDeskAccountProduct.account_id == account_id,
+                        ServiceDeskProduct.is_active.is_(True),
+                    )
+                    .order_by(ServiceDeskProduct.name)
+                )
+            ).all()
+            if paired:
+                return [(str(name), pid) for name, pid in paired]
+        rows = (
+            await self.db.execute(
+                select(ServiceDeskProduct.name, ServiceDeskProduct.id).where(
+                    ServiceDeskProduct.workspace_id == workspace_id,
+                    ServiceDeskProduct.is_active.is_(True),
+                )
+            )
+        ).all()
+        return [(str(name), pid) for name, pid in rows]
+
+    async def product_owner(
+        self, account_id: str | None, product_id: str | None
+    ) -> str | None:
+        """The owner named for this account/product pairing, if there is one.
+
+        The narrowest answer the desk has to "whose ticket is this". Falls back
+        to nothing — not to the account's owner — because the caller needs to
+        know which of the two answered, in order to say so on the timeline.
+        """
+        if not account_id or not product_id:
+            return None
+        return (
+            await self.db.execute(
+                select(ServiceDeskAccountProduct.assigned_owner_id).where(
+                    ServiceDeskAccountProduct.account_id == account_id,
+                    ServiceDeskAccountProduct.product_id == product_id,
+                )
+            )
+        ).scalars().first()
+
     async def _product_id(self, workspace_id: str, name: str | None) -> str | None:
         if not name:
             return None
@@ -1381,18 +1511,17 @@ class ServiceDeskIntakeService:
         try:
             from aexy.llm.gateway import get_llm_gateway
 
-            product_rows = (
-                await self.db.execute(
-                    select(ServiceDeskProduct.name, ServiceDeskProduct.id).where(
-                        ServiceDeskProduct.workspace_id == workspace_id,
-                        ServiceDeskProduct.is_active.is_(True),
-                    )
-                )
-            ).all()
+            product_rows = await self._products_for(workspace_id, sd.account_id)
             product_ids = {str(name).lower(): pid for name, pid in product_rows}
             product_list = (
                 ", ".join(name for name, _ in product_rows) if product_rows else "(none configured)"
             )
+
+            # One product to choose from is not a choice. Setting it here spends
+            # no tokens and cannot be got wrong, and it leaves the model the
+            # question it is actually useful for.
+            if len(product_rows) == 1:
+                sd.product_id = product_rows[0][1]
 
             # The prompt used to say "You classify insurance operations emails"
             # and name the four insurance request types inline, so a software
@@ -1408,6 +1537,7 @@ class ServiceDeskIntakeService:
             # Request" is what the model can actually reason about.
             options = ", ".join(f"{r.slug} ({r.label})" for r in taxonomy.request_types)
             product_term = taxonomy.term("products")
+            corrections = await self._recent_corrections(workspace_id, allowed)
             system = (
                 "You classify incoming service desk emails and detect independently "
                 "actionable issues. Return one issue for a batch of rows requiring the "
@@ -1430,6 +1560,7 @@ class ServiceDeskIntakeService:
             user = (
                 f"Request types: {options}\n"
                 f"{product_term}: {product_list}\n"
+                f"{corrections}"
                 f"Subject: {email.subject}\n\n{(email.body_text or '')[:2000]}\n\n"
                 "Attachment context (metadata and deliberately limited previews):\n"
                 f"{attachment_context}"
@@ -1515,13 +1646,26 @@ class ServiceDeskIntakeService:
 
     @staticmethod
     def _apply_issue(sd: ServiceDeskTicket, issue: dict, product_ids: dict[str, str]) -> None:
-        """Apply only configured classification values to the primary ticket."""
+        """Apply only configured classification values to the primary ticket.
+
+        The model's answer is written twice: once as the ticket's value, which a
+        person may overwrite, and once as ``ai_*``, which nobody does. Keeping
+        both is what makes "did a human agree with this?" answerable at all —
+        with one column, a correction is indistinguishable from a classification
+        that was right first time.
+        """
         sd.request_type = issue["request_type"]
+        sd.ai_request_type = issue["request_type"]
         sd.ai_confidence = issue["confidence"]
         if issue["confidence"] < _LOW_CONFIDENCE:
             sd.needs_triage = True
         if issue.get("product"):
             sd.product_id = product_ids.get(str(issue["product"]).lower())
+        # Recorded even when the product came from a single-product pairing
+        # rather than the model, so "the AI got the product wrong" cannot be
+        # said of a product the AI was never asked about.
+        if issue.get("product"):
+            sd.ai_product_id = sd.product_id
 
     async def acknowledge_ticket(self, ticket_id: str) -> str:
         """Acknowledge a ticket that is already committed.

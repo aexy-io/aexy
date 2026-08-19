@@ -8,7 +8,7 @@ Adds the Service-Desk-specific layer the generic ticketing module lacks:
   ``services/service_desk_industry_templates.py`` for the starting points and
   ``services/service_desk_taxonomy.py`` for the resolver.
 * **Master data** — accounts and vendors (external counterparties, identified by
-  email domain) and products.
+  email domain), products, and which products each account is served for.
 * The per-ticket extension (`ServiceDeskTicket`), the timestamped "Pending With"
   ledger (`TicketPendingSegment`), and the shared-mailbox registry.
 
@@ -183,6 +183,9 @@ class ServiceDeskAccount(Base):
     domains: Mapped[list["ServiceDeskAccountDomain"]] = relationship(
         "ServiceDeskAccountDomain", back_populates="account", cascade="all, delete-orphan", lazy="selectin"
     )
+    products: Mapped[list["ServiceDeskAccountProduct"]] = relationship(
+        "ServiceDeskAccountProduct", back_populates="account", cascade="all, delete-orphan", lazy="selectin"
+    )
     assigned_owner: Mapped["Developer"] = relationship("Developer", lazy="selectin")
 
     __table_args__ = (UniqueConstraint("workspace_id", "name", name="uq_service_desk_account_name"),)
@@ -205,6 +208,53 @@ class ServiceDeskAccountDomain(Base):
     account: Mapped["ServiceDeskAccount"] = relationship("ServiceDeskAccount", back_populates="domains")
 
     __table_args__ = (UniqueConstraint("workspace_id", "domain", name="uq_service_desk_account_domain"),)
+
+
+class ServiceDeskAccountProduct(Base):
+    """Which products an account is served for, and who owns each of them.
+
+    An account carried a single ``assigned_owner_id``, which says a partner is
+    one person's to look after. Real desks split them: the same partner's motor
+    work belongs to one owner and its health work to another, and before this the
+    only way to express that was two accounts with the same domain — which the
+    matcher would have resolved arbitrarily.
+
+    ``assigned_owner_id`` here is optional and overrides the account's when set,
+    so a desk that does not split anything never has to fill it in. The account's
+    owner remains the answer for products with no row and for mail nothing has
+    been classified as yet.
+
+    The pairing also narrows classification: a partner served for two products is
+    a much easier question than a workspace catalogue of forty, and one served
+    for exactly one needs no model at all.
+    """
+
+    __tablename__ = "service_desk_account_products"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4()))
+    workspace_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    account_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("service_desk_accounts.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    product_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("service_desk_products.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # Nullable: "this partner is served for this product" is worth recording on
+    # its own, and most desks will never name a different owner for it.
+    assigned_owner_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("developers.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    account: Mapped["ServiceDeskAccount"] = relationship("ServiceDeskAccount", back_populates="products")
+    product: Mapped["ServiceDeskProduct"] = relationship("ServiceDeskProduct", lazy="selectin")
+    assigned_owner: Mapped["Developer"] = relationship("Developer", lazy="selectin")
+
+    __table_args__ = (
+        UniqueConstraint("account_id", "product_id", name="uq_service_desk_account_product"),
+    )
 
 
 class ServiceDeskVendor(Base):
@@ -339,6 +389,20 @@ class ServiceDeskTicket(Base):
     needs_triage: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
     ai_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
 
+    # What the model originally answered, kept alongside what the ticket now
+    # says. The pair is the only way to tell an AI classification a person
+    # agreed with from one they silently corrected — `request_type` on its own
+    # cannot, because a correction overwrites it and leaves no trace.
+    #
+    # Two things read this. "Is the classifier worth trusting?", which a desk
+    # cannot answer by feel; and the classifier itself, which is shown recent
+    # corrections so it stops making the same mistake on this workspace's mail.
+    # NULL means the model never ran, which is not the same as agreeing.
+    ai_request_type: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    ai_product_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("service_desk_products.id", ondelete="SET NULL"), nullable=True
+    )
+
     # Which shared mailbox this ticket arrived on — needed to reply in-thread
     # from the right sender when a workspace runs more than one mailbox.
     mailbox_id: Mapped[str | None] = mapped_column(
@@ -360,7 +424,12 @@ class ServiceDeskTicket(Base):
         "Ticket", foreign_keys=[ticket_id], lazy="selectin"
     )
     account: Mapped["ServiceDeskAccount"] = relationship("ServiceDeskAccount", lazy="selectin")
-    product: Mapped["ServiceDeskProduct"] = relationship("ServiceDeskProduct", lazy="selectin")
+    # `ai_product_id` is a second FK to the same table, so this relationship has
+    # to say which one it travels — otherwise every join between these two
+    # tables becomes ambiguous, including the ones written years ago.
+    product: Mapped["ServiceDeskProduct"] = relationship(
+        "ServiceDeskProduct", foreign_keys=[product_id], lazy="selectin"
+    )
     vendor: Mapped["ServiceDeskVendor"] = relationship("ServiceDeskVendor", lazy="selectin")
 
 

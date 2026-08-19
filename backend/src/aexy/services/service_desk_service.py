@@ -42,6 +42,7 @@ from aexy.models.service_desk import (
     ServiceDeskRequestType,
     ServiceDeskStakeholder,
     TicketPendingSegment,
+    ServiceDeskAccountProduct,
     ServiceDeskVendor,
     ServiceDeskVendorDomain,
     ServiceDeskProduct,
@@ -65,6 +66,8 @@ from aexy.schemas.service_desk import (
     MailboxUpdate,
     ManualTicketCreate,
     AccountCreate,
+    AccountProductInput,
+    AccountProductLink,
     AccountResponse,
     AccountUpdate,
     ServiceDeskTicketResponse,
@@ -484,8 +487,77 @@ class ServiceDeskService:
             assigned_owner_email=owner.email if owner else None,
             is_active=p.is_active,
             domains=[d.domain for d in p.domains],
+            products=[
+                AccountProductLink(
+                    product_id=link.product_id,
+                    product_name=link.product.name if link.product else None,
+                    assigned_owner_id=link.assigned_owner_id,
+                    assigned_owner_name=(
+                        link.assigned_owner.name or link.assigned_owner.email
+                        if link.assigned_owner
+                        else None
+                    ),
+                )
+                for link in p.products
+            ],
             created_at=p.created_at,
         )
+
+    async def _replace_account_products(
+        self, workspace_id: str, account_id: str, products: list[AccountProductInput]
+    ) -> None:
+        """Set an account's product pairings to exactly what was supplied.
+
+        A replacement rather than add/remove verbs, matching how `domains` is
+        handled: the editor holds the whole set, and a diffing client would have
+        to know what it is diffing against.
+
+        Products are validated against this workspace's own catalogue. Without
+        that, a pairing could name another workspace's product id — the FK would
+        accept it, and this partner's routing would then depend on a row nobody
+        here can see.
+        """
+        await self.db.execute(
+            delete(ServiceDeskAccountProduct).where(
+                ServiceDeskAccountProduct.account_id == account_id
+            )
+        )
+        if not products:
+            return
+        known = set(
+            (
+                await self.db.execute(
+                    select(ServiceDeskProduct.id).where(
+                        ServiceDeskProduct.workspace_id == workspace_id,
+                        ServiceDeskProduct.id.in_([p.product_id for p in products]),
+                    )
+                )
+            ).scalars().all()
+        )
+        seen: set[str] = set()
+        for link in products:
+            if link.product_id not in known:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Unknown product {link.product_id!r} for this workspace",
+                )
+            # The unique index would catch this, but as a 500 from a flush deep
+            # in the request rather than as the answer to what was asked.
+            if link.product_id in seen:
+                raise HTTPException(
+                    status_code=422,
+                    detail="A product may be listed only once against an account",
+                )
+            seen.add(link.product_id)
+            self.db.add(
+                ServiceDeskAccountProduct(
+                    id=str(uuid4()),
+                    workspace_id=workspace_id,
+                    account_id=account_id,
+                    product_id=link.product_id,
+                    assigned_owner_id=link.assigned_owner_id,
+                )
+            )
 
     async def list_accounts(self, workspace_id: str) -> list[AccountResponse]:
         rows = (
@@ -513,6 +585,7 @@ class ServiceDeskService:
                     id=str(uuid4()), workspace_id=workspace_id, account_id=account.id, domain=_norm_domain(dom)
                 )
             )
+        await self._replace_account_products(workspace_id, account.id, data.products)
         await self.db.flush()
         await self.db.refresh(account)
         return self._account_response(account)
@@ -521,8 +594,11 @@ class ServiceDeskService:
         account = await self._get_account(workspace_id, account_id)
         payload = data.model_dump(exclude_unset=True)
         domains = payload.pop("domains", None)
+        payload.pop("products", None)
         for k, v in payload.items():
             setattr(account, k, v)
+        if data.products is not None:
+            await self._replace_account_products(workspace_id, account_id, data.products)
         if domains is not None:
             await self.db.execute(
                 delete(ServiceDeskAccountDomain).where(ServiceDeskAccountDomain.account_id == account_id)
@@ -1793,6 +1869,14 @@ class ServiceDeskService:
         # they just picked left every logged call flagged forever.
         if data.request_type is not None:
             sd.needs_triage = False
+
+        # An operator who picked both an account and a product has answered the
+        # routing question more precisely than intake could, so honour the
+        # pairing's own owner if there is one. Without this, logging a call for a
+        # partner split between two people always reached the account's owner.
+        product_owner_id = await intake.product_owner(sd.account_id, sd.product_id)
+        if product_owner_id:
+            ticket.assignee_id = product_owner_id
         await self.db.flush()
 
         # Commit before the acknowledgement goes out, so a rollback can't leave

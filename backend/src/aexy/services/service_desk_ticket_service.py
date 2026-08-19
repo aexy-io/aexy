@@ -8,7 +8,7 @@ ledger. Closing sets the ticket closed + fires the closure email.
 
 import logging
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 from fastapi import HTTPException, status
@@ -1609,6 +1609,77 @@ class ServiceDeskTicketService:
                 "thread_id": sd.thread_ref,
             }
         )
+
+    # ---------------------------------------------------------- AI accuracy
+
+    async def ai_accuracy(self, workspace_id: str, days: int = 90) -> dict:
+        """How often this desk's people agreed with the classifier.
+
+        Measured against ``ai_request_type`` — what the model actually said —
+        rather than against the ticket's current value, because a correction
+        overwrites that and leaves nothing to compare. Tickets the model never
+        read are excluded rather than counted as agreements: a desk that ran
+        without AI for a year should not appear to have a perfect classifier.
+
+        "Agreed" is a floor, not a measurement of correctness. A ticket nobody
+        looked at counts as agreement, so the real figure is no better than this
+        one — which is the honest direction for a number somebody is deciding
+        whether to trust.
+        """
+        since = datetime.now(timezone.utc) - timedelta(days=days)
+        rows = (
+            await self.db.execute(
+                select(
+                    ServiceDeskTicket.ai_request_type,
+                    ServiceDeskTicket.request_type,
+                    func.count().label("n"),
+                )
+                .where(
+                    ServiceDeskTicket.workspace_id == workspace_id,
+                    ServiceDeskTicket.ai_request_type.is_not(None),
+                    ServiceDeskTicket.created_at >= since,
+                )
+                .group_by(ServiceDeskTicket.ai_request_type, ServiceDeskTicket.request_type)
+            )
+        ).all()
+
+        per_type: dict[str, dict[str, int]] = {}
+        classified = agreed = 0
+        for ai_type, current, count in rows:
+            bucket = per_type.setdefault(ai_type, {"classified": 0, "agreed": 0})
+            bucket["classified"] += count
+            classified += count
+            if ai_type == current:
+                bucket["agreed"] += count
+                agreed += count
+
+        taxonomy = await load_taxonomy(self.db, workspace_id, seed=False)
+        labels = {r.slug: r.label for r in taxonomy.request_types}
+        return {
+            "days": days,
+            "classified": classified,
+            "agreed": agreed,
+            # None rather than 100%: a desk with nothing to measure has no
+            # accuracy, and showing a perfect score for zero tickets is the
+            # single most misleading thing this endpoint could do.
+            "agreement_rate": round(agreed / classified, 3) if classified else None,
+            "by_request_type": sorted(
+                (
+                    {
+                        "request_type": slug,
+                        # Falls back to the slug: a retired request type still
+                        # has tickets, and blanking its name loses the row.
+                        "label": labels.get(slug, slug),
+                        "classified": counts["classified"],
+                        "agreed": counts["agreed"],
+                        "agreement_rate": round(counts["agreed"] / counts["classified"], 3),
+                    }
+                    for slug, counts in per_type.items()
+                ),
+                key=lambda row: row["classified"],
+                reverse=True,
+            ),
+        }
 
     # ------------------------------------------------------------------ export
 
