@@ -224,6 +224,7 @@ def sent(monkeypatch):
         subject,
         body_text,
         thread_id,
+        body_html=None,
         attachments=None,
         cc=None,
     ):
@@ -236,6 +237,7 @@ def sent(monkeypatch):
                 "cc": cc or [],
                 "subject": subject,
                 "body": body_text,
+                "body_html": body_html,
                 "thread_id": thread_id,
                 "attachments": attachments or [],
             }

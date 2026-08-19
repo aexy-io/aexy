@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import {
+  useAiAccuracy,
+  useDigestPreview,
   useVendors,
   useProducts,
   useMailboxes,
@@ -17,12 +20,16 @@ import {
 } from "@/hooks/useServiceDesk";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import {
+  Account,
+  AccountProductInput,
+  Product,
   ServiceDeskSettingsPatch,
   ServiceDeskTemplate,
   Stakeholder,
   TestSLAOverride,
   TestStageSLA,
 } from "@/lib/service-desk-api";
+import { serviceDeskApi } from "@/lib/service-desk-api";
 import { GoogleAccountSummary, googleIntegrationApi } from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/utils";
 import { useDepartments } from "@/hooks/useOrganization";
@@ -611,20 +618,70 @@ export function AiSections() {
   const m = useServiceDeskMutations();
   const canManage = settings.data?.can_manage === true;
 
+  const workspaceAiEnabled = settings.data?.workspace_ai_enabled !== false;
+  const aiOn = !!settings.data?.ai_classification_enabled;
+
   return (
     <>
       <Section>
         <ToggleRow
           description={t("ai.description")}
-          checked={!!settings.data?.ai_classification_enabled}
-          disabled={!canManage || m.updateSettings.isPending || settings.isLoading}
+          checked={aiOn}
+          // Off at the workspace means there is nothing to decide here: the LLM
+          // gateway refuses the call whatever this says, and a toggle that
+          // silently does nothing is worse than one that cannot be moved.
+          disabled={
+            !canManage ||
+            !workspaceAiEnabled ||
+            m.updateSettings.isPending ||
+            settings.isLoading
+          }
+          onToggle={() => m.updateSettings.mutate({ ai_classification_enabled: !aiOn })}
+        />
+        {/* Where the current state came from. The desk no longer keeps its own
+            opt-in, so an "on" nobody set on this page needs to say why. */}
+        {!settings.isLoading &&
+          (workspaceAiEnabled ? (
+            <p className="text-xs text-muted-foreground">
+              {aiOn ? t("ai.inheritedOn") : t("ai.vetoed")}{" "}
+              <Link href="/settings/ai" className="underline underline-offset-2">
+                {t("ai.workspaceSettingsLink")}
+              </Link>
+            </p>
+          ) : (
+            <p className="text-xs text-amber-700 dark:text-amber-400">
+              {t("ai.workspaceOff")}{" "}
+              <Link href="/settings/ai" className="underline underline-offset-2">
+                {t("ai.workspaceSettingsLink")}
+              </Link>
+            </p>
+          ))}
+      </Section>
+
+      {/* Attachment previews — reading the customer's files, not just their
+          words. Deliberately not inherited from the workspace switch. */}
+      <Section title={t("ai.attachments.title")}>
+        <ToggleRow
+          description={t("ai.attachments.description")}
+          checked={!!settings.data?.ai_attachment_previews_enabled}
+          disabled={
+            !canManage ||
+            !aiOn ||
+            m.updateSettings.isPending ||
+            settings.isLoading
+          }
           onToggle={() =>
             m.updateSettings.mutate({
-              ai_classification_enabled: !settings.data?.ai_classification_enabled,
+              ai_attachment_previews_enabled: !settings.data?.ai_attachment_previews_enabled,
             })
           }
         />
+        {!settings.isLoading && !aiOn && (
+          <p className="text-xs text-muted-foreground">{t("ai.attachments.requiresAi")}</p>
+        )}
       </Section>
+
+      <AiAccuracyPanel />
 
       {/* Auto-split — only ever acts on AI-read email */}
       <Section title={t("autoSplit.title")}>
@@ -646,6 +703,292 @@ export function AiSections() {
         )}
       </Section>
     </>
+  );
+}
+
+/**
+ * How often this desk's people agreed with the classifier.
+ *
+ * The number a desk needs to decide whether to keep AI on, and one it cannot
+ * arrive at by feel — a correction overwrites the request type, so being right
+ * and being quietly fixed look identical from the ticket list.
+ *
+ * Read as a floor rather than a measurement: a ticket nobody looked at counts as
+ * agreement, so the true figure is no better than this one. The per-type
+ * breakdown is where the action is — one bad request type inside a good overall
+ * number is a labelling problem, not a reason to switch AI off.
+ */
+function AiAccuracyPanel() {
+  const t = useTranslations("serviceDesk");
+  const accuracy = useAiAccuracy();
+  const data = accuracy.data;
+
+  if (accuracy.isLoading) return null;
+  // Nothing measured yet. Saying so is useful; rendering 0% or 100% is not.
+  if (!data || data.classified === 0) {
+    return (
+      <Section title={t("ai.accuracy.title")}>
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          {t("ai.accuracy.nothingYet")}
+        </p>
+      </Section>
+    );
+  }
+
+  const percent = (rate: number) => `${Math.round(rate * 100)}%`;
+
+  return (
+    <Section title={t("ai.accuracy.title")}>
+      <p className="max-w-2xl text-sm text-muted-foreground">
+        {t("ai.accuracy.summary", {
+          rate: percent(data.agreement_rate ?? 0),
+          agreed: data.agreed,
+          classified: data.classified,
+          days: data.days,
+        })}
+      </p>
+      <p className="max-w-2xl text-xs text-muted-foreground">{t("ai.accuracy.caveat")}</p>
+      <div className="space-y-1">
+        {data.by_request_type.map((row) => (
+          <div key={row.request_type} className="flex items-center gap-3 text-sm">
+            <span className="w-40 shrink-0 truncate">{row.label}</span>
+            <div className="h-1.5 w-32 overflow-hidden rounded-full bg-muted">
+              <div
+                className={
+                  row.agreement_rate >= 0.8
+                    ? "h-full bg-emerald-500"
+                    : row.agreement_rate >= 0.5
+                      ? "h-full bg-amber-500"
+                      : "h-full bg-destructive"
+                }
+                style={{ width: `${Math.round(row.agreement_rate * 100)}%` }}
+              />
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {t("ai.accuracy.row", {
+                rate: percent(row.agreement_rate),
+                classified: row.classified,
+              })}
+            </span>
+          </div>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+/**
+ * The open-ticket digest: whether it goes out, when, and to whom.
+ *
+ * All of this existed in the API and none of it on any screen — `digest_hours`
+ * was reachable only by a raw PATCH, and nothing turned the digest off at all.
+ * A desk on the default schedule receives three emails a day and its only
+ * recourse was a mail filter.
+ *
+ * The preview is here rather than in a separate place because every question
+ * somebody has when they open this — who gets it, when, what does it say —
+ * otherwise takes until 5pm to answer.
+ */
+export function DigestSections() {
+  const t = useTranslations("serviceDesk");
+  const settings = useServiceDeskSettings();
+  const preview = useDigestPreview();
+  const m = useServiceDeskMutations();
+  const { currentWorkspace } = useWorkspace();
+  const { members } = useWorkspaceMembers(currentWorkspace?.id ?? null);
+  const canManage = settings.data?.can_manage === true;
+  const enabled = settings.data?.digest_enabled !== false;
+  const hours = settings.data?.digest_hours ?? [9, 13, 17];
+  const excluded = settings.data?.digest_excluded_recipients ?? [];
+  const [sending, setSending] = useState(false);
+  const [sentCount, setSentCount] = useState<number | null>(null);
+
+  const toggleHour = (hour: number) => {
+    const next = hours.includes(hour)
+      ? hours.filter((h) => h !== hour)
+      : [...hours, hour].sort((a, b) => a - b);
+    // The server refuses an empty list — the off switch is the toggle above,
+    // not an empty schedule, so that "off" is one obvious thing rather than two.
+    if (next.length === 0) return;
+    m.updateSettings.mutate({ digest_hours: next });
+  };
+
+  const sendNow = async () => {
+    if (!currentWorkspace?.id) return;
+    setSending(true);
+    try {
+      const result = await serviceDeskApi.sendDigestNow(currentWorkspace.id);
+      setSentCount(result.sent);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <>
+      <Section>
+        <ToggleRow
+          description={t("digest.description")}
+          checked={enabled}
+          disabled={!canManage || m.updateSettings.isPending || settings.isLoading}
+          onToggle={() => m.updateSettings.mutate({ digest_enabled: !enabled })}
+        />
+      </Section>
+
+      <Section title={t("digest.times")}>
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          {t("digest.timesHint", { timezone: preview.data?.timezone ?? settings.data?.timezone ?? "" })}
+        </p>
+        <div className="flex flex-wrap gap-1">
+          {Array.from({ length: 24 }, (_, hour) => (
+            <button
+              key={hour}
+              type="button"
+              disabled={!canManage || !enabled || m.updateSettings.isPending}
+              onClick={() => toggleHour(hour)}
+              className={`h-8 w-11 rounded-md border text-xs transition-colors disabled:opacity-40 ${
+                hours.includes(hour)
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-input bg-background hover:bg-accent"
+              }`}
+            >
+              {String(hour).padStart(2, "0")}:00
+            </button>
+          ))}
+        </div>
+      </Section>
+
+      <Section title={t("digest.recipients")}>
+        <p className="max-w-2xl text-sm text-muted-foreground">{t("digest.recipientsHint")}</p>
+        {members
+          .filter((member) => member.status === "active")
+          .map((member) => {
+            const off = excluded.includes(member.developer_id);
+            // Only people the desk would actually mail are worth listing, but
+            // membership is resolved server-side, so this shows the workspace
+            // and marks the ones currently receiving it.
+            const receiving = (preview.data?.recipients ?? []).includes(
+              (member.developer_email ?? "").toLowerCase(),
+            );
+            if (!receiving && !off) return null;
+            return (
+              <label key={member.developer_id} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={!off}
+                  disabled={!canManage || m.updateSettings.isPending}
+                  onChange={(e) =>
+                    m.updateSettings.mutate({
+                      digest_excluded_recipients: e.target.checked
+                        ? excluded.filter((id) => id !== member.developer_id)
+                        : [...excluded, member.developer_id],
+                    })
+                  }
+                />
+                {member.developer_name || member.developer_email}
+              </label>
+            );
+          })}
+        <ExtraRecipientsEditor
+          current={settings.data?.digest_extra_recipients ?? []}
+          canManage={canManage}
+          saving={m.updateSettings.isPending}
+          onSave={(list) => m.updateSettings.mutate({ digest_extra_recipients: list })}
+        />
+      </Section>
+
+      <Section title={t("digest.preview")}>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={sendNow} disabled={!canManage || sending || !enabled}>
+            {sending ? <Spinner size="sm" className="mr-1" /> : null}
+            {t("digest.sendNow")}
+          </Button>
+          {sentCount !== null && (
+            <span className="text-xs text-muted-foreground">
+              {t("digest.sentCount", { count: sentCount })}
+            </span>
+          )}
+        </div>
+        {preview.isLoading ? (
+          <Spinner size="sm" />
+        ) : preview.data?.body ? (
+          <>
+            <p className="text-xs font-medium">{preview.data.subject}</p>
+            <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-md border border-border bg-muted/40 p-3 text-xs">
+              {preview.data.body}
+            </pre>
+          </>
+        ) : (
+          // The caller is not on the list. Saying so beats an empty box that
+          // reads as a broken preview.
+          <p className="text-sm text-muted-foreground">{t("digest.notARecipient")}</p>
+        )}
+      </Section>
+    </>
+  );
+}
+
+/** Addresses outside the desk department that also receive the digest. */
+function ExtraRecipientsEditor({
+  current,
+  canManage,
+  saving,
+  onSave,
+}: {
+  current: string[];
+  canManage: boolean;
+  saving: boolean;
+  onSave: (list: string[]) => void;
+}) {
+  const t = useTranslations("serviceDesk");
+  const [draft, setDraft] = useState("");
+  const entry = draft.trim().toLowerCase();
+  const invalid = entry.length > 0 && !entry.includes("@");
+
+  return (
+    <div className="space-y-2 border-t border-border pt-3">
+      <p className="text-sm font-medium">{t("digest.extra")}</p>
+      {/* Said plainly: these people see every open ticket, not a subset. */}
+      <p className="max-w-2xl text-xs text-muted-foreground">{t("digest.extraHint")}</p>
+      <div className="flex flex-wrap gap-1">
+        {current.map((address) => (
+          <span
+            key={address}
+            className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs"
+          >
+            {address}
+            {canManage && (
+              <button
+                onClick={() => onSave(current.filter((a) => a !== address))}
+                aria-label={t("digest.removeRecipient", { address })}
+                className="text-muted-foreground hover:text-destructive"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            )}
+          </span>
+        ))}
+      </div>
+      {canManage && (
+        <div className="flex items-end gap-2">
+          <Input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder={t("digest.extraPlaceholder")}
+            className="max-w-[280px]"
+          />
+          <Button
+            disabled={!entry || invalid || saving || current.includes(entry)}
+            onClick={() => {
+              onSave([...current, entry]);
+              setDraft("");
+            }}
+          >
+            {t("settings.add")}
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -724,8 +1067,11 @@ export function IntakeSection() {
  * notices a desk exists to act on. So a provider's security alerts keep opening
  * tickets until somebody names the sender here.
  *
- * A registered account or vendor still wins, so a domain ignored in passing
- * cannot silence a counterparty somebody deliberately added to Master Data.
+ * How far Master Data overrides an entry depends on how it was written. A bare
+ * domain loses to a registered account or vendor, so a domain ignored in passing
+ * cannot silence a counterparty somebody deliberately added. A whole address
+ * wins outright — otherwise a partner's daily automailer, sitting on a domain
+ * mapped to that partner, could not be excluded by any setting at all.
  */
 function IgnoredSendersEditor({
   current,
@@ -838,6 +1184,26 @@ export function IdentitySections() {
         />
       </Section>
 
+      {/* Placed immediately above the templates it changes, because the effect
+          of turning it on is visible in the copy right below: {{ticket_url}}
+          starts resolving. Off by default — this is publishing, not a
+          convenience setting. */}
+      <Section title={t("publicLinks.title")}>
+        <ToggleRow
+          description={t("publicLinks.description")}
+          checked={!!settings.data?.public_ticket_links_enabled}
+          disabled={!canManage || m.updateSettings.isPending || settings.isLoading}
+          onToggle={() =>
+            m.updateSettings.mutate({
+              public_ticket_links_enabled: !settings.data?.public_ticket_links_enabled,
+            })
+          }
+        />
+        {/* Says what "off" does and does not do. It cannot unsend a URL already
+            emailed, and it leaves links an operator shared by hand alone. */}
+        <p className="text-xs text-muted-foreground">{t("publicLinks.scopeNote")}</p>
+      </Section>
+
       <Section title={t("templates.title")}>
         <p className="text-sm text-muted-foreground">{t("templates.description")}</p>
         {templates.isLoading ? (
@@ -857,6 +1223,222 @@ export function IdentitySections() {
     </>
   );
 }
+
+/**
+ * One account row: name, domains, and — the point of the change — **who owns
+ * it**.
+ *
+ * The list used to render the name and domains only. An account mapped to a KAM
+ * and an account mapped to nobody were the same row, so "assignment is not
+ * following our master data" could not be checked from the page that holds the
+ * master data; and with no edit control, correcting a mapping meant deleting the
+ * account and retyping its domains.
+ *
+ * An unowned account is called out rather than left blank, because the
+ * consequence is invisible from here: intake falls back to an arbitrary member
+ * of the desk department, and the ticket looks deliberately assigned.
+ */
+/** The shape `useWorkspaceMembers` hands back, named so two components can share it. */
+type WorkspaceMemberOption = {
+  developer_id: string;
+  developer_name?: string | null;
+  developer_email?: string | null;
+  status: string;
+};
+
+function AccountRow({
+  account,
+  canManage,
+  members,
+  products,
+  saving,
+  onSaveOwner,
+  onSaveProducts,
+  onDelete,
+}: {
+  account: Account;
+  canManage: boolean;
+  members: WorkspaceMemberOption[];
+  products: Product[];
+  saving: boolean;
+  onSaveOwner: (ownerId: string | null) => void;
+  onSaveProducts: (products: AccountProductInput[]) => void;
+  onDelete: () => void;
+}) {
+  const t = useTranslations("serviceDesk");
+  const ownerLabel =
+    account.assigned_owner_name || account.assigned_owner_email || null;
+
+  return (
+    <Row canManage={canManage} onDelete={onDelete}>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="font-medium">{account.name}</span>
+        {account.domains.map((d) => (
+          <Badge key={d} variant="secondary" className="text-[10px]">
+            {d}
+          </Badge>
+        ))}
+        {/* Subdomains are matched automatically, so `mail.partner.com` needs no
+            row of its own. Said here because the list is where somebody would
+            otherwise add one. */}
+        {canManage ? (
+          <select
+            value={account.assigned_owner_id ?? ""}
+            disabled={saving}
+            aria-label={t("settings.assignedOwnerFor", { name: account.name })}
+            onChange={(e) => onSaveOwner(e.target.value || null)}
+            className={`h-8 max-w-[220px] rounded-md border bg-background px-2 py-1 text-xs disabled:opacity-50 ${
+              account.assigned_owner_id
+                ? "border-input"
+                : "border-amber-500/60 text-amber-700 dark:text-amber-400"
+            }`}
+          >
+            <option value="">{t("settings.noAssignedOwner")}</option>
+            {members
+              .filter((member) => member.status === "active")
+              .map((member) => (
+                <option key={member.developer_id} value={member.developer_id}>
+                  {member.developer_name || member.developer_email || member.developer_id}
+                </option>
+              ))}
+          </select>
+        ) : ownerLabel ? (
+          <span className="text-xs text-muted-foreground">{ownerLabel}</span>
+        ) : (
+          <span className="text-xs text-amber-700 dark:text-amber-400">
+            {t("settings.noAssignedOwner")}
+          </span>
+        )}
+      </div>
+      {!account.assigned_owner_id && (
+        <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+          {t("settings.unownedAccountWarning")}
+        </p>
+      )}
+      <AccountProducts
+        account={account}
+        products={products}
+        members={members}
+        canManage={canManage}
+        saving={saving}
+        onSave={onSaveProducts}
+      />
+    </Row>
+  );
+}
+
+/**
+ * Which products an account is served for, and who owns each of them.
+ *
+ * An account carries one owner, which says a partner is one person's to look
+ * after. Desks split them — the same partner's motor work belongs to one owner
+ * and its health work to another — and the only way to express that used to be
+ * two accounts sharing a domain, which the sender matcher then resolved
+ * arbitrarily.
+ *
+ * Collapsed to a summary line until somebody opens it: most desks never split
+ * anybody, and a table of checkboxes on every row would bury the domains and
+ * the owner, which are what this list is read for.
+ */
+function AccountProducts({
+  account,
+  products,
+  members,
+  canManage,
+  saving,
+  onSave,
+}: {
+  account: Account;
+  products: Product[];
+  members: WorkspaceMemberOption[];
+  canManage: boolean;
+  saving: boolean;
+  onSave: (products: AccountProductInput[]) => void;
+}) {
+  const t = useTranslations("serviceDesk");
+  const [open, setOpen] = useState(false);
+  const linked = new Map(account.products.map((p) => [p.product_id, p]));
+
+  const toggle = (productId: string, on: boolean) => {
+    const next = on
+      ? [...account.products, { product_id: productId, assigned_owner_id: null }]
+      : account.products.filter((p) => p.product_id !== productId);
+    onSave(next.map((p) => ({ product_id: p.product_id, assigned_owner_id: p.assigned_owner_id })));
+  };
+
+  const setOwner = (productId: string, ownerId: string | null) => {
+    onSave(
+      account.products.map((p) => ({
+        product_id: p.product_id,
+        assigned_owner_id: p.product_id === productId ? ownerId : p.assigned_owner_id,
+      })),
+    );
+  };
+
+  if (products.length === 0) return null;
+
+  return (
+    <div className="mt-1">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="text-xs text-muted-foreground underline underline-offset-2"
+      >
+        {account.products.length === 0
+          ? t("accountProducts.none")
+          : t("accountProducts.summary", {
+              names: account.products.map((p) => p.product_name).join(", "),
+            })}
+      </button>
+      {open && (
+        <div className="mt-2 space-y-1 rounded-md border border-border p-2">
+          <p className="text-xs text-muted-foreground">{t("accountProducts.hint")}</p>
+          {products.map((product) => {
+            const link = linked.get(product.id);
+            return (
+              <div key={product.id} className="flex flex-wrap items-center gap-2 text-sm">
+                <label className="flex items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    checked={!!link}
+                    disabled={!canManage || saving}
+                    onChange={(e) => toggle(product.id, e.target.checked)}
+                  />
+                  {product.name}
+                </label>
+                {/* The owner dropdown only exists for a product this account is
+                    actually served for — offering it otherwise would ask who
+                    owns work the partner does not send. */}
+                {link && (
+                  <select
+                    value={link.assigned_owner_id ?? ""}
+                    disabled={!canManage || saving}
+                    aria-label={t("accountProducts.ownerFor", {
+                      product: product.name,
+                      name: account.name,
+                    })}
+                    onChange={(e) => setOwner(product.id, e.target.value || null)}
+                    className="h-7 max-w-[200px] rounded-md border border-input bg-background px-2 text-xs"
+                  >
+                    <option value="">{t("accountProducts.sameAsAccount")}</option>
+                    {members
+                      .filter((member) => member.status === "active")
+                      .map((member) => (
+                        <option key={member.developer_id} value={member.developer_id}>
+                          {member.developer_name || member.developer_email || member.developer_id}
+                        </option>
+                      ))}
+                  </select>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 /**
  * Accounts, vendors and products — the three tables the desk classifies
@@ -932,10 +1514,21 @@ export function MasterDataSections() {
             {t("settings.accountsEmpty")}
           </p>
         ) : (accounts.data ?? []).map((p) => (
-          <Row key={p.id} canManage={canManage} onDelete={() => m.deleteAccount.mutate(p.id)}>
-            <span className="font-medium">{p.name}</span>{" "}
-            {p.domains.map((d) => <Badge key={d} variant="secondary" className="ml-1 text-[10px]">{d}</Badge>)}
-          </Row>
+          <AccountRow
+            key={p.id}
+            account={p}
+            canManage={canManage}
+            members={members}
+            products={products.data ?? []}
+            saving={m.updateAccount.isPending}
+            onSaveOwner={(ownerId) =>
+              m.updateAccount.mutate({ id: p.id, data: { assigned_owner_id: ownerId } })
+            }
+            onSaveProducts={(next) =>
+              m.updateAccount.mutate({ id: p.id, data: { products: next } })
+            }
+            onDelete={() => m.deleteAccount.mutate(p.id)}
+          />
         ))}
       </Section>
 
@@ -1123,7 +1716,58 @@ export function MailboxesSection() {
           <span className="font-medium">{mb.address}</span> <Badge variant="secondary" className="ml-1 text-[10px]">{mb.channel}</Badge>
         </Row>
       ))}
+
+      {/* How quickly mail becomes a ticket. Shown here because this is the page
+          where somebody decides an address is intake — the wait used to be an
+          invisible 15 minutes inherited from the personal-inbox sync. */}
+      <IntakeFrequencyEditor
+        current={settings.data?.intake_poll_minutes ?? 2}
+        canManage={canManage}
+        saving={m.updateSettings.isPending}
+        onSave={(minutes) => m.updateSettings.mutate({ intake_poll_minutes: minutes })}
+      />
     </Section>
+  );
+}
+
+/** How often Gmail-backed mailboxes are checked for new mail. */
+function IntakeFrequencyEditor({
+  current,
+  canManage,
+  saving,
+  onSave,
+}: {
+  current: number;
+  canManage: boolean;
+  saving: boolean;
+  onSave: (minutes: number) => void;
+}) {
+  const t = useTranslations("serviceDesk");
+  const options = [1, 2, 5, 10, 15, 30, 60];
+
+  return (
+    <div className="space-y-2 border-t border-border pt-4">
+      <p className="text-sm font-medium">{t("intakeFrequency.title")}</p>
+      <p className="max-w-2xl text-sm text-muted-foreground">
+        {t("intakeFrequency.description")}
+      </p>
+      <select
+        value={current}
+        disabled={!canManage || saving}
+        aria-label={t("intakeFrequency.title")}
+        onChange={(e) => onSave(Number(e.target.value))}
+        className="h-10 max-w-[220px] rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-50"
+      >
+        {options.map((minutes) => (
+          <option key={minutes} value={minutes}>
+            {t("intakeFrequency.everyMinutes", { minutes })}
+          </option>
+        ))}
+      </select>
+      {/* Only ever lowers the wait: an account already syncing faster for other
+          reasons keeps its own pace, which is what the backend does too. */}
+      <p className="text-xs text-muted-foreground">{t("intakeFrequency.floorNote")}</p>
+    </div>
   );
 }
 

@@ -8,7 +8,7 @@ ledger. Closing sets the ticket closed + fires the closure email.
 
 import logging
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 from fastapi import HTTPException, status
@@ -982,6 +982,7 @@ class ServiceDeskTicketService:
         """
         from aexy.models.service_desk import ServiceDeskMailbox
         from aexy.services.service_desk_mailer import send_stakeholder_email
+        from aexy.services.service_desk_templates import strip_merge_tags
 
         sd = await self._sd(
             workspace_id, ticket_id, developer_id=scope_developer_id, for_edit=True
@@ -1014,6 +1015,11 @@ class ServiceDeskTicketService:
         display_id = render_display_id(
             await ticket_prefix(self.db, workspace_id), ticket.ticket_number
         )
+        # The compose box is prefilled from the ticket's own subject, which is
+        # whatever arrived — including an unresolved merge tag from a badly sent
+        # marketing mail. Same rule as the templated sends: the desk never emits
+        # a placeholder, wherever the text came from.
+        subject = strip_merge_tags(subject)
         subject = await force_ticket_id_into_subject(
             self.db, workspace_id, subject, ticket.ticket_number
         )
@@ -1554,7 +1560,8 @@ class ServiceDeskTicketService:
         """
         if not ticket.submitter_email:
             return
-        from aexy.services.service_desk_templates import render_sd
+        from aexy.services.service_desk_links import ensure_requester_url
+        from aexy.services.service_desk_templates import render_sd, template_references
 
         display_id = await ticket_prefix_display(self.db, workspace_id, ticket.ticket_number)
         tat = await self.compute_tat(ticket.id, ticket)
@@ -1567,6 +1574,17 @@ class ServiceDeskTicketService:
                 "requester_name": ticket.submitter_name or "there",
                 "closure_note": note or "Resolved.",
                 "overall_days": tat.overall_days,
+                # The same link the acknowledgement carried, so a requester who
+                # kept the first mail is not handed a second, different address
+                # for one ticket. Skipped entirely when this desk's closure copy
+                # does not use it — see ``template_references``.
+                "ticket_url": (
+                    await ensure_requester_url(self.db, ticket)
+                    if await template_references(
+                        self.db, workspace_id, "closure", "ticket_url"
+                    )
+                    else ""
+                ),
             },
         )
         # The template is editable, so the id cannot be left to the copy: an Ops
@@ -1591,3 +1609,204 @@ class ServiceDeskTicketService:
                 "thread_id": sd.thread_ref,
             }
         )
+
+    # ---------------------------------------------------------- AI accuracy
+
+    async def ai_accuracy(self, workspace_id: str, days: int = 90) -> dict:
+        """How often this desk's people agreed with the classifier.
+
+        Measured against ``ai_request_type`` — what the model actually said —
+        rather than against the ticket's current value, because a correction
+        overwrites that and leaves nothing to compare. Tickets the model never
+        read are excluded rather than counted as agreements: a desk that ran
+        without AI for a year should not appear to have a perfect classifier.
+
+        "Agreed" is a floor, not a measurement of correctness. A ticket nobody
+        looked at counts as agreement, so the real figure is no better than this
+        one — which is the honest direction for a number somebody is deciding
+        whether to trust.
+        """
+        since = datetime.now(timezone.utc) - timedelta(days=days)
+        rows = (
+            await self.db.execute(
+                select(
+                    ServiceDeskTicket.ai_request_type,
+                    ServiceDeskTicket.request_type,
+                    func.count().label("n"),
+                )
+                .where(
+                    ServiceDeskTicket.workspace_id == workspace_id,
+                    ServiceDeskTicket.ai_request_type.is_not(None),
+                    ServiceDeskTicket.created_at >= since,
+                )
+                .group_by(ServiceDeskTicket.ai_request_type, ServiceDeskTicket.request_type)
+            )
+        ).all()
+
+        per_type: dict[str, dict[str, int]] = {}
+        classified = agreed = 0
+        for ai_type, current, count in rows:
+            bucket = per_type.setdefault(ai_type, {"classified": 0, "agreed": 0})
+            bucket["classified"] += count
+            classified += count
+            if ai_type == current:
+                bucket["agreed"] += count
+                agreed += count
+
+        taxonomy = await load_taxonomy(self.db, workspace_id, seed=False)
+        labels = {r.slug: r.label for r in taxonomy.request_types}
+        return {
+            "days": days,
+            "classified": classified,
+            "agreed": agreed,
+            # None rather than 100%: a desk with nothing to measure has no
+            # accuracy, and showing a perfect score for zero tickets is the
+            # single most misleading thing this endpoint could do.
+            "agreement_rate": round(agreed / classified, 3) if classified else None,
+            "by_request_type": sorted(
+                (
+                    {
+                        "request_type": slug,
+                        # Falls back to the slug: a retired request type still
+                        # has tickets, and blanking its name loses the row.
+                        "label": labels.get(slug, slug),
+                        "classified": counts["classified"],
+                        "agreed": counts["agreed"],
+                        "agreement_rate": round(counts["agreed"] / counts["classified"], 3),
+                    }
+                    for slug, counts in per_type.items()
+                ),
+                key=lambda row: row["classified"],
+                reverse=True,
+            ),
+        }
+
+    # ------------------------------------------------------------------ export
+
+    # The header row, and the order the columns come out in. A named tuple of
+    # (column, accessor) rather than two parallel lists, because a report whose
+    # headings and values drift apart is worse than one that will not generate.
+    _EXPORT_COLUMNS: tuple[str, ...] = (
+        "Ticket",
+        "Created",
+        "Status",
+        "Request type",
+        "Pending with",
+        "Origin",
+        "Account",
+        "Product",
+        "Vendor",
+        "Owner",
+        "Requester name",
+        "Requester email",
+        "Subject",
+        "Needs triage",
+        "AI confidence",
+        "Working days in stage",
+        "Days open",
+        "Breaching",
+    )
+
+    async def export_csv(
+        self,
+        workspace_id: str,
+        developer_id: str | None = None,
+        assigned_to: str | None = None,
+        filters=None,
+    ) -> tuple[str, str]:
+        """The filtered ticket list as CSV text, plus a filename.
+
+        Turnaround is computed the way the digest computes it — one query for the
+        open segments and one clock for the whole export, rather than
+        ``compute_tat`` per row, which is a query per ticket and would turn a
+        month's export into thousands of round trips.
+
+        Stage age is *working* time in the workspace's own hours, because that is
+        what the desk is measured against; days open is wall clock, because that
+        is what the requester waited.
+        """
+        import csv
+        import io
+
+        from aexy.services.service_desk_service import ServiceDeskService
+
+        rows = await ServiceDeskService(self.db).list_tickets(
+            workspace_id,
+            developer_id=developer_id,
+            assigned_to=assigned_to,
+            filters=filters,
+        )
+        open_entered = dict(
+            (
+                await self.db.execute(
+                    select(
+                        TicketPendingSegment.ticket_id,
+                        TicketPendingSegment.entered_at,
+                    ).where(
+                        TicketPendingSegment.workspace_id == workspace_id,
+                        TicketPendingSegment.exited_at.is_(None),
+                    )
+                )
+            ).all()
+        )
+        created_at = {
+            ticket_id: created
+            for ticket_id, created in (
+                await self.db.execute(
+                    select(Ticket.id, Ticket.created_at).where(
+                        Ticket.id.in_([r.ticket_id for r in rows])
+                    )
+                )
+            ).all()
+        } if rows else {}
+
+        clock = await load_clock(self.db, workspace_id)
+        now = datetime.now(timezone.utc)
+
+        buffer = io.StringIO()
+        # QUOTE_ALL so a subject containing a comma, a quote or a newline cannot
+        # shift every later column of that row — a desk's subjects are whatever
+        # its requesters typed.
+        writer = csv.writer(buffer, quoting=csv.QUOTE_ALL, lineterminator="\r\n")
+        writer.writerow(self._EXPORT_COLUMNS)
+
+        for row in rows:
+            entered = open_entered.get(row.ticket_id)
+            stage_seconds = (
+                clock.seconds_between(_aware(entered), now) if entered is not None else 0
+            )
+            created = created_at.get(row.ticket_id)
+            days_open = (
+                round((now - _aware(created)).total_seconds() / 86400, 2)
+                if created is not None
+                else ""
+            )
+            writer.writerow(
+                [
+                    row.display_id or "",
+                    _aware(created).isoformat() if created is not None else "",
+                    row.status or "",
+                    row.request_type,
+                    row.pending_with,
+                    row.origin,
+                    row.account_name or "",
+                    row.product_name or "",
+                    row.vendor_name or "",
+                    row.assigned_owner_name or "",
+                    row.requester_name or "",
+                    row.requester_email or "",
+                    row.subject or "",
+                    "yes" if row.needs_triage else "no",
+                    "" if row.ai_confidence is None else round(row.ai_confidence, 2),
+                    clock.to_days(stage_seconds) if entered is not None else "",
+                    days_open,
+                    "yes" if clock.is_breaching(stage_seconds, row.pending_with) else "no",
+                ]
+            )
+
+        prefix = await ticket_prefix(self.db, workspace_id)
+        filename = f"{prefix.lower()}-tickets-{now.date().isoformat()}.csv"
+        # A BOM so Excel opens a UTF-8 file as UTF-8. Without it, a requester
+        # named in any non-Latin script arrives as mojibake in the one tool most
+        # of these exports are opened in.
+        return "﻿" + buffer.getvalue(), filename

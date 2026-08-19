@@ -50,9 +50,14 @@ from aexy.schemas.service_desk import (
     ServiceDeskTemplateUpdate,
     ServiceDeskTicketDetail,
     StakeholderEmailRequest,
+    AIAccuracy,
+    DigestPreview,
     ServiceDeskTicketResponse,
+    TicketCount,
+    TicketFilters,
     TicketFieldsUpdate,
 )
+from aexy.services.service_desk_digest_service import ServiceDeskDigestService
 from aexy.services.service_desk_service import ServiceDeskService
 from aexy.services.service_desk_ticket_service import ServiceDeskTicketService
 
@@ -102,6 +107,8 @@ async def update_settings(workspace_id: str, data: ServiceDeskSettingsUpdate, db
     return await ServiceDeskService(db).update_settings(
         workspace_id,
         ai_classification_enabled=data.ai_classification_enabled,
+        ai_attachment_previews_enabled=data.ai_attachment_previews_enabled,
+        public_ticket_links_enabled=data.public_ticket_links_enabled,
         auto_split_enabled=data.auto_split_enabled,
         working_hours_start=data.working_hours_start,
         working_hours_end=data.working_hours_end,
@@ -110,6 +117,10 @@ async def update_settings(workspace_id: str, data: ServiceDeskSettingsUpdate, db
         breach_red_days=data.breach_red_days,
         breach_amber_days=data.breach_amber_days,
         digest_hours=data.digest_hours,
+        digest_enabled_value=data.digest_enabled,
+        digest_excluded_recipients=data.digest_excluded_recipients,
+        digest_extra_recipients=data.digest_extra_recipients,
+        intake_poll_minutes=data.intake_poll_minutes,
         terminology=data.terminology,
         desk_name=data.desk_name,
         test_sla=data.test_sla,
@@ -309,19 +320,167 @@ async def list_tickets(
     workspace_id: str,
     assigned_to_me: bool = False,
     limit: int | None = Query(default=None, ge=1, le=200),
+    offset: int | None = Query(default=None, ge=0),
+    filters: TicketFilters = Depends(),
     db: AsyncSession = Depends(get_db),
     current: Developer = Depends(get_current_developer),
 ):
     """Tickets on this desk that the caller may see.
 
     `assigned_to_me` narrows to the caller's own queue — what the Home dashboard
-    asks for. It is a filter within the caller's scope, not a way around it.
+    asks for. It is a filter within the caller's scope, not a way around it, and
+    so is everything in `filters`: the visibility clause is applied first and
+    independently, so naming another owner or account cannot widen what comes
+    back.
     """
     return await ServiceDeskService(db).list_tickets(
         workspace_id,
         developer_id=current.id,
         assigned_to=str(current.id) if assigned_to_me else None,
         limit=limit,
+        offset=offset,
+        filters=filters,
+    )
+
+
+# Registered before `/tickets/{ticket_id}`: FastAPI matches in declaration order,
+# and a literal path declared after a parameterised one is never reached — the
+# request arrives as a lookup for a ticket called "count".
+@router.get("/report-options")
+async def get_report_options(
+    workspace_id: str,
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """What this desk can group by and measure, in its own vocabulary.
+
+    Served rather than hardcoded in the client so a workspace that calls its
+    accounts "Partners" gets a picker that says Partners.
+    """
+    from aexy.services.service_desk_analytics import report_options
+
+    return await report_options(db, workspace_id)
+
+
+@router.get("/analytics")
+async def get_analytics(
+    workspace_id: str,
+    dimension: str = Query(..., description="What to group by"),
+    measure: str = Query(..., description="What to compute per group"),
+    limit: int = Query(default=50, ge=1, le=200),
+    filters: TicketFilters = Depends(),
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """One grouped figure per dimension value, in the caller's own scope.
+
+    Takes the same filters as the ticket list, so a chart and the rows behind it
+    are the same question asked two ways.
+    """
+    from aexy.services.service_desk_analytics import ServiceDeskAnalytics
+
+    return await ServiceDeskAnalytics(db).aggregate(
+        workspace_id,
+        dimension=dimension,
+        measure=measure,
+        developer_id=str(current.id),
+        filters=filters,
+        limit=limit,
+    )
+
+
+@router.get("/digest/preview", response_model=DigestPreview)
+async def preview_digest(
+    workspace_id: str,
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """The caller's own digest as it would be sent right now, plus who gets one.
+
+    The caller's copy, never somebody else's: showing a KAM the desk lead's
+    whole-desk digest would mail around the row scope every other read enforces.
+    A caller who is not on the recipient list still sees the schedule and the
+    list — that is configuration, not ticket data.
+    """
+    return await ServiceDeskDigestService(db).preview(workspace_id, str(current.id))
+
+
+@router.post("/digest/send-now")
+async def send_digest_now(
+    workspace_id: str,
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(require_manage),
+):
+    """Send this desk's digest now, to everyone who would normally receive it.
+
+    Restricted to managers, because it mails every member of the desk — a
+    "preview" that goes to other people's inboxes is not something an individual
+    should be able to trigger. Ignores the schedule but not the off switch: a
+    desk that turned the digest off is not asking to be surprised by one.
+    """
+    sent = await ServiceDeskDigestService(db).send_for_workspace_now(workspace_id)
+    return {"sent": sent}
+
+
+@router.get("/ai-accuracy", response_model=AIAccuracy)
+async def ai_accuracy(
+    workspace_id: str,
+    days: int = Query(default=90, ge=1, le=365),
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """Whether the classifier is worth trusting on this desk's mail.
+
+    Workspace-wide rather than scoped to the caller's own tickets: it answers a
+    question about the desk's configuration, not about anyone's queue, and a
+    per-KAM sample would be too small to mean anything.
+    """
+    return await ServiceDeskTicketService(db).ai_accuracy(workspace_id, days=days)
+
+
+@router.get("/tickets/count", response_model=TicketCount)
+async def count_tickets(
+    workspace_id: str,
+    assigned_to_me: bool = False,
+    filters: TicketFilters = Depends(),
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """How many tickets match, for a screen paging through them."""
+    total = await ServiceDeskService(db).count_tickets(
+        workspace_id,
+        developer_id=current.id,
+        assigned_to=str(current.id) if assigned_to_me else None,
+        filters=filters,
+    )
+    return TicketCount(total=total)
+
+
+@router.get("/tickets/export.csv")
+async def export_tickets(
+    workspace_id: str,
+    assigned_to_me: bool = False,
+    filters: TicketFilters = Depends(),
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """The filtered list as CSV, with turnaround figures.
+
+    Deliberately the same scope and the same filters as the list — it is the
+    screen somebody is looking at, in a file. An export that quietly returned
+    more than the page it came from would be a permissions bug with a download
+    button on it.
+    """
+    csv_text, filename = await ServiceDeskTicketService(db).export_csv(
+        workspace_id,
+        developer_id=current.id,
+        assigned_to=str(current.id) if assigned_to_me else None,
+        filters=filters,
+    )
+    return Response(
+        content=csv_text,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

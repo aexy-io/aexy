@@ -107,6 +107,12 @@ ACTIVITY_CONFIG: dict[str, dict[str, Any]] = {
     "refresh_single_pr": {"retry": "github_sync", "timeout": timedelta(minutes=3)},
     "sync_gmail": {"retry": "google_sync", "timeout": timedelta(minutes=30), "heartbeat": timedelta(minutes=5)},
     "sync_calendar": {"retry": "google_sync", "timeout": timedelta(minutes=30)},
+    # A push notification is a nudge, not a payload: the work is one incremental
+    # history read, so the timeout is short and the retries few. A notification
+    # that cannot be served in a couple of minutes is better dropped — polling
+    # is still underneath, and Gmail will have sent another by then anyway.
+    "sync_gmail_push": {"retry": "google_sync", "timeout": timedelta(minutes=2)},
+    "renew_gmail_watches": {"retry": STANDARD_RETRY, "timeout": timedelta(minutes=10)},
 
     # Webhooks
     "deliver_webhook": {"retry": WEBHOOK_RETRY, "timeout": timedelta(minutes=2)},

@@ -65,13 +65,33 @@ export interface ApplyTemplateResult {
   terminology_applied: boolean;
 }
 
+/** What the editor sends back when it changes an account's product pairings. */
+export interface AccountProductInput {
+  product_id: string;
+  assigned_owner_id?: string | null;
+}
+
+/** One product an account is served for, optionally with its own owner. */
+export interface AccountProductLink extends AccountProductInput {
+  product_name: string | null;
+  assigned_owner_name: string | null;
+}
+
 export interface Account {
   id: string;
   workspace_id: string;
   name: string;
   assigned_owner_id: string | null;
+  /** Resolved for display. The master-data list is where somebody checks that
+   *  the mapping they made is the mapping in force, and an id is not something
+   *  a person can check. */
+  assigned_owner_name: string | null;
+  assigned_owner_email: string | null;
   is_active: boolean;
   domains: string[];
+  /** Which products this account is served for. Empty for a desk that has not
+   *  split anybody between owners, which is every desk until somebody does. */
+  products: AccountProductLink[];
   created_at: string;
 }
 
@@ -243,12 +263,83 @@ export interface ServiceDeskDashboard {
   breaching: number;
 }
 
+/**
+ * What narrows a ticket list, its count, and its export.
+ *
+ * One type for all three because the server takes one model for all three: a
+ * CSV that disagreed with the screen it was generated from would be the thing
+ * this shape exists to prevent. Every field narrows — none of them widen what
+ * the caller is allowed to see, which the server enforces separately.
+ */
+export interface TicketQuery {
+  /** Narrow to the caller's own queue, within their desk scope. */
+  assigned_to_me?: boolean;
+  limit?: number;
+  offset?: number;
+  /** ISO timestamps; both ends inclusive. */
+  created_from?: string;
+  created_to?: string;
+  account_id?: string;
+  product_id?: string;
+  vendor_id?: string;
+  request_type?: string;
+  pending_with?: string;
+  origin?: string;
+  status?: string;
+  assigned_to?: string;
+  needs_triage?: boolean;
+  /** Whether the ticket is in this workspace's terminal stage, whatever it is
+   *  called here — a report should not have to know the slug. */
+  is_open?: boolean;
+}
+
+export interface DigestPreview {
+  enabled: boolean;
+  hours: number[];
+  timezone: string;
+  recipients: string[];
+  /** The caller's own copy, rendered — never somebody else's. Null when the
+   *  caller is not on the recipient list. */
+  subject: string | null;
+  body: string | null;
+}
+
+export interface AIAccuracy {
+  days: number;
+  classified: number;
+  agreed: number;
+  /** Null when nothing has been classified. A desk with no measurements has no
+   *  accuracy, and a perfect score for zero tickets is the most misleading
+   *  thing this could show someone deciding whether to trust it. */
+  agreement_rate: number | null;
+  by_request_type: {
+    request_type: string;
+    label: string;
+    classified: number;
+    agreed: number;
+    agreement_rate: number;
+  }[];
+}
+
 export interface ServiceDeskSettings {
+  /** Resolved, not raw. AI reading of desk mail follows the workspace's own AI
+   *  switch (Settings -> AI); the desk holds a veto, not a second opt-in. This
+   *  is what is in force; `workspace_ai_enabled` says where it came from. */
   ai_classification_enabled: boolean;
+  workspace_ai_enabled: boolean;
+  /** Reading attachment bytes to build classifier previews. Its own explicit
+   *  yes — a workspace-wide "AI is fine" must not open customers' files by
+   *  inheritance. */
+  ai_attachment_previews_enabled: boolean;
+  /** Whether the desk's acknowledgement and closure carry a link to a public,
+   *  no-account view of the ticket. Off by default — turning it on serves
+   *  ticket subjects, requester names and attachments to anyone holding a URL. */
+  public_ticket_links_enabled: boolean;
   /** Senders whose mail must not become tickets. An entry with an "@" is one
    *  address; without, a whole domain. Empty by default — the list is written by
    *  hand, never inferred, because a counterparty's own no-reply address carries
-   *  notices the desk does want. Master Data always wins over an entry here. */
+   *  notices the desk does want. A whole address outranks Master Data; a bare
+   *  domain does not. */
   ignored_senders: string[];
   /** Whether intake may open a second ticket when one email carries two clearly
    *  different, high-confidence requests. Off by default — everything else
@@ -275,7 +366,16 @@ export interface ServiceDeskSettings {
   breach_red_days: number;
   breach_amber_days: number;
   /** Local hours the digest goes out, in `timezone`. Was a global IST cron. */
+  /** Whether the desk wants the open-ticket digest at all. */
+  digest_enabled: boolean;
   digest_hours: number[];
+  /** Desk-department members who asked not to receive it. */
+  digest_excluded_recipients: string[];
+  /** Addresses added by hand — they receive the desk-wide view. */
+  digest_extra_recipients: string[];
+  /** How often Gmail-backed desk mailboxes are polled, in minutes. A floor on
+   *  the integration's own interval, never a raise. */
+  intake_poll_minutes: number;
   /** Which industry template this desk started from, if any. */
   industry_template: string | null;
   /** Resolved labels for accounts/vendors/products — always fully populated. */
@@ -310,7 +410,11 @@ export interface TestSLAOverride {
 
 /** Only the fields being changed; the API leaves the rest alone. */
 export interface ServiceDeskSettingsPatch {
+  /** True clears the desk's veto so it follows the workspace switch again;
+   *  false is the veto. */
   ai_classification_enabled?: boolean;
+  ai_attachment_previews_enabled?: boolean;
+  public_ticket_links_enabled?: boolean;
   auto_split_enabled?: boolean;
   working_hours_start?: string;
   working_hours_end?: string;
@@ -318,7 +422,11 @@ export interface ServiceDeskSettingsPatch {
   timezone?: string;
   breach_red_days?: number;
   breach_amber_days?: number;
+  digest_enabled?: boolean;
   digest_hours?: number[];
+  digest_excluded_recipients?: string[];
+  digest_extra_recipients?: string[];
+  intake_poll_minutes?: number;
   /** Merged into the stored map — send only the nouns being relabelled. */
   terminology?: Record<string, string>;
   desk_name?: string;
@@ -360,17 +468,35 @@ export const serviceDeskApi = {
     (await api.patch(`${base(ws)}/templates/${key}`, { subject, body })).data,
 
   // dashboard + tickets
+  /** What the digest would say right now, and who would receive it. */
+  previewDigest: async (ws: string): Promise<DigestPreview> =>
+    (await api.get(`${base(ws)}/digest/preview`)).data,
+  /** Send it now, to everyone who normally receives it. Managers only. */
+  sendDigestNow: async (ws: string): Promise<{ sent: number }> =>
+    (await api.post(`${base(ws)}/digest/send-now`)).data,
+  /** Whether the classifier is worth trusting on this desk's mail. */
+  getAiAccuracy: async (ws: string, days = 90): Promise<AIAccuracy> =>
+    (await api.get(`${base(ws)}/ai-accuracy`, { params: { days } })).data,
   getDashboard: async (ws: string): Promise<ServiceDeskDashboard> =>
     (await api.get(`${base(ws)}/dashboard`)).data,
   listTickets: async (
     ws: string,
-    params?: {
-      /** Narrow to the caller's own queue, within their desk scope. */
-      assigned_to_me?: boolean;
-      limit?: number;
-    }
+    params?: TicketQuery
   ): Promise<ServiceDeskTicket[]> =>
     (await api.get(`${base(ws)}/tickets`, { params })).data,
+  /** How many tickets match — the list is one page of this. */
+  countTickets: async (ws: string, params?: TicketQuery): Promise<{ total: number }> =>
+    (await api.get(`${base(ws)}/tickets/count`, { params })).data,
+  /**
+   * The filtered list as a CSV file.
+   *
+   * Fetched through the same client as everything else rather than pointed at
+   * with an `<a href>`: the API is behind a bearer token the browser will not
+   * attach on a plain navigation, so a link would download an HTML 401 named
+   * `.csv` — which opens in Excel as one row of nonsense.
+   */
+  exportTicketsCsv: async (ws: string, params?: TicketQuery): Promise<Blob> =>
+    (await api.get(`${base(ws)}/tickets/export.csv`, { params, responseType: "blob" })).data,
   getTicket: async (ws: string, id: string): Promise<ServiceDeskTicketDetail> =>
     (await api.get(`${base(ws)}/tickets/${id}`)).data,
   /**
@@ -411,9 +537,9 @@ export const serviceDeskApi = {
 
   // accounts
   listAccounts: async (ws: string): Promise<Account[]> => (await api.get(`${base(ws)}/accounts`)).data,
-  createAccount: async (ws: string, data: { name: string; assigned_owner_id?: string | null; domains?: string[] }): Promise<Account> =>
+  createAccount: async (ws: string, data: { name: string; assigned_owner_id?: string | null; domains?: string[]; products?: AccountProductInput[] }): Promise<Account> =>
     (await api.post(`${base(ws)}/accounts`, data)).data,
-  updateAccount: async (ws: string, id: string, data: Partial<{ name: string; assigned_owner_id: string | null; domains: string[]; is_active: boolean }>): Promise<Account> =>
+  updateAccount: async (ws: string, id: string, data: Partial<{ name: string; assigned_owner_id: string | null; domains: string[]; products: AccountProductInput[]; is_active: boolean }>): Promise<Account> =>
     (await api.patch(`${base(ws)}/accounts/${id}`, data)).data,
   deleteAccount: async (ws: string, id: string): Promise<void> => { await api.delete(`${base(ws)}/accounts/${id}`); },
 

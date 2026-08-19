@@ -146,6 +146,7 @@ from aexy.api.email_marketing import router as email_marketing_router
 # Email Infrastructure (Multi-domain sending, warming, routing)
 from aexy.api.email_infrastructure import router as email_infrastructure_router
 from aexy.api.email_webhooks import router as email_webhooks_router
+from aexy.api.gmail_push import router as gmail_push_router
 # Email Tracking (open/click tracking - public endpoints)
 from aexy.api.email_tracking import router as email_tracking_router
 # Email Preferences (subscription management)
@@ -372,6 +373,7 @@ api_router.include_router(email_marketing_router, tags=["email-marketing"], depe
 # Email Infrastructure (Multi-domain sending, warming, routing)
 api_router.include_router(email_infrastructure_router, tags=["email-infrastructure"])
 api_router.include_router(email_webhooks_router, tags=["email-webhooks"])
+api_router.include_router(gmail_push_router)
 # Email Tracking (public endpoints for pixel/link tracking)
 api_router.include_router(email_tracking_router, tags=["email-tracking"])
 # Email Preferences (subscription management)

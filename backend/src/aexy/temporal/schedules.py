@@ -373,6 +373,20 @@ SCHEDULES: list[dict] = [
         "queue": TaskQueue.OPERATIONS,
     },
 
+    # === Gmail push renewal ===
+    # Gmail drops a `users.watch` after seven days without saying so, and a desk
+    # that registered once would go quiet a week later looking like its mail had
+    # stopped. Daily, renewing anything lapsing within two days, so a single
+    # missed run is not enough to lose push.
+    {
+        "id": "renew-gmail-watches",
+        "activity": "renew_gmail_watches",
+        "input_module": "aexy.temporal.activities.google_sync",
+        "input_class": "RenewGmailWatchesInput",
+        "interval": timedelta(hours=24),
+        "queue": TaskQueue.SYNC,
+    },
+
     # === Google Sync ===
     {
         "id": "check-gmail-auto-sync",

@@ -346,7 +346,11 @@ class EmailCampaignService:
 
             # Render template
             template_service = TemplateService(self.db)
-            subject, html_body, text_body = await template_service.render_template(template, context)
+            # Not awaited: ``render_template`` is synchronous (every other caller
+            # calls it plainly). Awaiting a tuple raised TypeError inside the
+            # broad ``except`` below, so this send path failed for reasons the
+            # error never named.
+            subject, html_body, text_body = template_service.render_template(template, context)
 
             # Inject tracking pixel and rewrite links
             from aexy.services.tracking_service import TrackingService

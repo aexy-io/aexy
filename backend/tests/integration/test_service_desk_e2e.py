@@ -73,7 +73,12 @@ async def test_master_data_and_settings(client, sd_ws):
     assert len((await client.get(b + "/accounts", headers=h)).json()) == 1
     assert len((await client.get(b + "/products", headers=h)).json()) == 1
 
-    # settings toggle (default off → on)
+    # settings toggle. The desk follows the workspace AI switch, which is on for
+    # a workspace that never configured one — so the round trip under test is
+    # off (a desk veto) and back on (clearing it), not off → on.
+    assert (await client.get(b + "/settings", headers=h)).json()["ai_classification_enabled"] is True
+    r = await client.patch(b + "/settings", headers=h, json={"ai_classification_enabled": False})
+    assert r.json()["ai_classification_enabled"] is False
     assert (await client.get(b + "/settings", headers=h)).json()["ai_classification_enabled"] is False
     r = await client.patch(b + "/settings", headers=h, json={"ai_classification_enabled": True})
     assert r.json()["ai_classification_enabled"] is True

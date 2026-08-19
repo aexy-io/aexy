@@ -141,10 +141,27 @@ class ApplyIndustryTemplateResponse(BaseModel):
 
 # ==================== Accounts ====================
 
+class AccountProductInput(BaseModel):
+    """One product an account is served for, optionally with its own owner."""
+
+    product_id: str
+    # Overrides the account's owner for tickets classified as this product.
+    # Omitted by every desk that does not split a partner between people.
+    assigned_owner_id: str | None = None
+
+
+class AccountProductLink(AccountProductInput):
+    """The same pairing, resolved for display."""
+
+    product_name: str | None = None
+    assigned_owner_name: str | None = None
+
+
 class AccountCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     assigned_owner_id: str | None = None
     domains: list[str] = Field(default_factory=list)
+    products: list[AccountProductInput] = Field(default_factory=list)
     is_active: bool = True
 
 
@@ -152,6 +169,10 @@ class AccountUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=255)
     assigned_owner_id: str | None = None
     domains: list[str] | None = None
+    # A complete replacement of the pairings when supplied, like `domains` — the
+    # editor sends the whole set, and "add one" and "remove one" as separate
+    # verbs would need the client to know what it is diffing against.
+    products: list[AccountProductInput] | None = None
     is_active: bool | None = None
 
 
@@ -162,8 +183,18 @@ class AccountResponse(BaseModel):
     workspace_id: str
     name: str
     assigned_owner_id: str | None = None
+    # Resolved for display. The list is where somebody checks that the mapping
+    # they made is the mapping in force, and an id is not something a person can
+    # check. Without it the row for a partner with no owner looked exactly like
+    # the row for one mapped correctly — and an unmapped partner is the whole
+    # reason tickets land on an arbitrary owner.
+    assigned_owner_name: str | None = None
+    assigned_owner_email: str | None = None
     is_active: bool = True
     domains: list[str] = Field(default_factory=list)
+    # Which products this account is served for. Empty for a desk that has not
+    # split anybody, which is every desk until somebody does.
+    products: list[AccountProductLink] = Field(default_factory=list)
     created_at: datetime
 
 
@@ -313,16 +344,108 @@ class ServiceDeskTicketResponse(BaseModel):
     requester_name: str | None = None
     status: str | None = None
     product_id: str | None = None
+    product_name: str | None = None
     account_id: str | None = None
     account_name: str | None = None
     vendor_id: str | None = None
+    vendor_name: str | None = None
     assigned_owner_id: str | None = None
+    assigned_owner_name: str | None = None
     request_type: TaxonomySlug
     pending_with: TaxonomySlug
     origin: TicketOrigin
     needs_triage: bool
     ai_confidence: float | None = None
     created_at: datetime
+
+
+class TicketFilters(BaseModel):
+    """What narrows a ticket list, a count, or an export.
+
+    One model for all three, taken as a FastAPI dependency, so the rows a report
+    exports are by construction the rows its screen was showing. Three parallel
+    sets of query parameters would drift, and the first symptom would be a CSV
+    that disagrees with the page somebody generated it from.
+
+    Every field is optional and every one is a *narrowing*. None of them widen
+    the caller's scope: the visibility clause is applied first and separately, so
+    asking for another owner's queue by id returns their tickets only if the
+    caller could already see them.
+    """
+
+    # Reporting is nearly always "this month", "last quarter" — a range on
+    # creation, inclusive of both ends, in UTC.
+    created_from: datetime | None = None
+    created_to: datetime | None = None
+
+    account_id: str | None = None
+    product_id: str | None = None
+    vendor_id: str | None = None
+    request_type: TaxonomySlug | None = None
+    pending_with: TaxonomySlug | None = None
+    origin: TicketOrigin | None = None
+    status: str | None = Field(None, max_length=32)
+    assigned_to: str | None = None
+    # Tickets nobody has finished classifying. The one filter that answers a
+    # question about the desk's own hygiene rather than about its work.
+    needs_triage: bool | None = None
+    # Whether the ticket is in the workspace's terminal stage. Expressed as a
+    # boolean rather than by naming the closed slug, because which slug that is
+    # differs per workspace and a report should not have to know.
+    is_open: bool | None = None
+
+    @model_validator(mode="after")
+    def _range_must_run_forwards(self):
+        if (
+            self.created_from is not None
+            and self.created_to is not None
+            and self.created_to < self.created_from
+        ):
+            raise ValueError("created_to must not be earlier than created_from")
+        return self
+
+
+class RequestTypeAccuracy(BaseModel):
+    request_type: str
+    label: str
+    classified: int
+    agreed: int
+    agreement_rate: float
+
+
+class AIAccuracy(BaseModel):
+    """How often this desk's people agreed with the classifier.
+
+    ``agreement_rate`` is None when nothing has been classified — a desk with no
+    measurements has no accuracy, and rendering a perfect score for zero tickets
+    is the most misleading thing this could report.
+    """
+
+    days: int
+    classified: int
+    agreed: int
+    agreement_rate: float | None = None
+    by_request_type: list[RequestTypeAccuracy] = Field(default_factory=list)
+
+
+class DigestPreview(BaseModel):
+    """What this desk's digest would say right now, and who would get it."""
+
+    enabled: bool
+    hours: list[int] = Field(default_factory=list)
+    timezone: str
+    recipients: list[str] = Field(default_factory=list)
+    # The caller's own copy, rendered. Not somebody else's: a preview that showed
+    # the desk lead's whole-desk digest to a KAM would mail around the row scope
+    # every other read enforces.
+    subject: str | None = None
+    body: str | None = None
+
+
+class TicketCount(BaseModel):
+    """The size of the matching set, for a screen that shows a page of it."""
+
+    total: int
 
 
 # ==================== Pending-With transitions & TAT ====================
@@ -625,7 +748,27 @@ class TestSLAOverride(BaseModel):
 class ServiceDeskSettings(BaseModel):
     """Workspace-level Service Desk settings."""
 
+    # Resolved, not raw. AI reading of desk mail follows the workspace's own AI
+    # switch (Settings -> AI); the desk holds a veto, not a second opt-in. So
+    # this is what is actually in force, and `workspace_ai_enabled` says where
+    # it came from — otherwise a desk showing "on" that nobody switched on here
+    # has nothing to explain itself with.
     ai_classification_enabled: bool = False
+    workspace_ai_enabled: bool = True
+    # Reading attachment *bytes* to build classifier previews stays its own
+    # explicit yes. Classifying a subject reads text the desk was sent anyway;
+    # opening the customer's PDF is a different question, and a workspace-wide
+    # "AI is fine" must not answer it by inheritance.
+    ai_attachment_previews_enabled: bool = False
+    # Whether the desk's acknowledgement and closure carry a link to a public,
+    # no-account view of the ticket. Off by default: turning it on is a decision
+    # to serve ticket subjects, requester names and attachments to anyone
+    # holding a URL, and no default should make that decision for a workspace.
+    #
+    # It governs *external* requesters only. A requester who is a member of the
+    # workspace is always linked to the ticket in the app, which publishes
+    # nothing — see ``service_desk_links.ensure_requester_url``.
+    public_ticket_links_enabled: bool = False
     # Senders whose mail must not become tickets — infrastructure noise a desk has
     # decided it does not track, e.g. "no-reply@accounts.google.com". An entry with
     # an "@" is one address; without, a whole domain. Empty by default: this is a
@@ -664,7 +807,25 @@ class ServiceDeskSettings(BaseModel):
     # Local hours at which the digest goes out, in `timezone`. Was a global cron
     # fixed at 09:00/13:00/17:00 Asia/Kolkata for every workspace on the
     # deployment, which paged a US desk in the middle of the night.
+    # Whether the desk wants the open-ticket digest at all. On by default — a
+    # desk that has never opened these settings is better served by being told
+    # what is open than by silence — but a real switch, which it previously was
+    # not: no value turned the digest off, so three emails a day was a mail
+    # filter's problem to solve.
+    digest_enabled: bool = True
     digest_hours: list[int] = Field(default_factory=lambda: [9, 13, 17])
+    # Members of the desk department who asked not to receive it. Membership is
+    # how work is routed, not a statement about wanting three emails a day, and
+    # leaving the department to escape the digest changes routing.
+    digest_excluded_recipients: list[str] = Field(default_factory=list)
+    # Addresses added by hand — a manager or client-services lead who wants the
+    # summary without being in the department. They receive the desk-wide view,
+    # so this is a deliberate disclosure rather than a subscription.
+    digest_extra_recipients: list[str] = Field(default_factory=list)
+    # How often Gmail-backed desk mailboxes are polled for new mail. Registering
+    # a mailbox as intake is a statement about latency; before this it silently
+    # inherited the 15-minute default a personal inbox uses.
+    intake_poll_minutes: int = 2
     # The industry template this desk started from, and the nouns it uses for the
     # three master-data tables.
     industry_template: str | None = None
@@ -696,7 +857,13 @@ _HHMM = r"^([01]\d|2[0-3]):[0-5]\d$"
 class ServiceDeskSettingsUpdate(BaseModel):
     """All fields optional so the page can PATCH any one on its own."""
 
+    # True clears the desk's veto so it follows the workspace switch again;
+    # False is the veto. There is deliberately no way to pin AI *on* for the
+    # desk while the workspace has it off — the gateway refuses that call
+    # anyway, and storing it would recreate the second source of truth.
     ai_classification_enabled: bool | None = None
+    ai_attachment_previews_enabled: bool | None = None
+    public_ticket_links_enabled: bool | None = None
     auto_split_enabled: bool | None = None
     working_hours_start: str | None = Field(None, pattern=_HHMM)
     working_hours_end: str | None = Field(None, pattern=_HHMM)
@@ -706,7 +873,11 @@ class ServiceDeskSettingsUpdate(BaseModel):
     timezone: str | None = Field(None, max_length=64)
     breach_red_days: float | None = Field(None, gt=0, le=60)
     breach_amber_days: float | None = Field(None, gt=0, le=60)
+    digest_enabled: bool | None = None
     digest_hours: list[int] | None = None
+    digest_excluded_recipients: list[str] | None = None
+    digest_extra_recipients: list[str] | None = None
+    intake_poll_minutes: int | None = Field(None, ge=1, le=60)
     terminology: dict[str, str] | None = None
     desk_name: str | None = Field(None, max_length=120)
     # A complete replacement of the list, not an addition — the settings page

@@ -25,7 +25,10 @@ import {
   ServiceDeskSettings,
   ServiceDeskSettingsPatch,
   ServiceDeskTemplate,
+  AIAccuracy,
+  DigestPreview,
   ServiceDeskTicket,
+  TicketQuery,
   ServiceDeskTicketDetail,
 } from "@/lib/service-desk-api";
 
@@ -116,11 +119,43 @@ export function useServiceDeskDashboard() {
   });
 }
 
-export function useServiceDeskTickets() {
+export function useServiceDeskTickets(query?: TicketQuery) {
   const ws = useWs();
   return useQuery<ServiceDeskTicket[]>({
-    queryKey: keys.tickets(ws ?? ""),
-    queryFn: () => serviceDeskApi.listTickets(ws!),
+    // The filters are part of the key, or every filter change would serve the
+    // previous one's rows from cache until the refetch landed.
+    queryKey: [...keys.tickets(ws ?? ""), query ?? {}],
+    queryFn: () => serviceDeskApi.listTickets(ws!, query),
+    enabled: !!ws,
+  });
+}
+
+/** What the digest would say right now, and who would receive it. */
+export function useDigestPreview() {
+  const ws = useWs();
+  return useQuery<DigestPreview>({
+    queryKey: ["service-desk", "digest-preview", ws ?? ""],
+    queryFn: () => serviceDeskApi.previewDigest(ws!),
+    enabled: !!ws,
+  });
+}
+
+/** Whether the classifier is worth trusting on this desk's mail. */
+export function useAiAccuracy(days = 90) {
+  const ws = useWs();
+  return useQuery<AIAccuracy>({
+    queryKey: ["service-desk", "ai-accuracy", ws ?? "", days],
+    queryFn: () => serviceDeskApi.getAiAccuracy(ws!, days),
+    enabled: !!ws,
+  });
+}
+
+/** How many tickets match — what the page is one page of. */
+export function useServiceDeskTicketCount(query?: TicketQuery) {
+  const ws = useWs();
+  return useQuery<{ total: number }>({
+    queryKey: [...keys.tickets(ws ?? ""), "count", query ?? {}],
+    queryFn: () => serviceDeskApi.countTickets(ws!, query),
     enabled: !!ws,
   });
 }
@@ -327,6 +362,11 @@ export function useServiceDeskMutations() {
     }),
     createAccount: useDeskMutation({
       mutationFn: (data: Parameters<typeof serviceDeskApi.createAccount>[1]) => serviceDeskApi.createAccount(ws!, data),
+      onSuccess: invalidateMaster,
+    }),
+    updateAccount: useDeskMutation({
+      mutationFn: ({ id, data }: { id: string; data: Parameters<typeof serviceDeskApi.updateAccount>[2] }) =>
+        serviceDeskApi.updateAccount(ws!, id, data),
       onSuccess: invalidateMaster,
     }),
     deleteAccount: useDeskMutation({ mutationFn: (id: string) => serviceDeskApi.deleteAccount(ws!, id), onSuccess: invalidateMaster }),
