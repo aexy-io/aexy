@@ -150,8 +150,10 @@ async def check_auto_sync_integrations(input: CheckAutoSyncInput) -> dict[str, A
 
     from datetime import datetime, timedelta, timezone
     from uuid import uuid4
-    from sqlalchemy import select, and_
+    from sqlalchemy import false, or_, select, and_
     from aexy.models.google_integration import GoogleIntegration, GoogleSyncJob
+    from aexy.models.service_desk import MailboxChannel, ServiceDeskMailbox
+    from aexy.services.service_desk_config import intake_poll_minutes
     from aexy.temporal.dispatch import dispatch
     from aexy.temporal.task_queues import TaskQueue
 
@@ -161,13 +163,39 @@ async def check_auto_sync_integrations(input: CheckAutoSyncInput) -> dict[str, A
     async with async_session_maker() as db:
         now = datetime.now(timezone.utc)
 
+        # Which integrations are somebody's Service Desk intake. A desk mailbox
+        # is not a personal inbox: mail arriving on it is a request waiting for a
+        # ticket, so it is polled on the desk's own interval rather than the
+        # 15-minute default a mailbox inherits for CRM enrichment.
+        desk_integrations: dict[str, str] = {
+            str(integration_id): str(workspace_id)
+            for integration_id, workspace_id in (
+                await db.execute(
+                    select(ServiceDeskMailbox.integration_id, ServiceDeskMailbox.workspace_id).where(
+                        ServiceDeskMailbox.is_active.is_(True),
+                        ServiceDeskMailbox.channel == MailboxChannel.GMAIL_SYNC.value,
+                        ServiceDeskMailbox.integration_id.is_not(None),
+                    )
+                )
+            ).all()
+        }
+
         # Gmail Auto-Sync
         gmail_result = await db.execute(
             select(GoogleIntegration).where(
                 and_(
                     GoogleIntegration.is_active == True,
                     GoogleIntegration.gmail_sync_enabled == True,
-                    GoogleIntegration.auto_sync_interval_minutes > 0,
+                    # `> 0` means "auto-sync switched off" for a personal inbox,
+                    # and that is right — but a desk mailbox on such an
+                    # integration then never polled at all, and the desk simply
+                    # received nothing with nothing to say why.
+                    or_(
+                        GoogleIntegration.auto_sync_interval_minutes > 0,
+                        GoogleIntegration.id.in_(list(desk_integrations))
+                        if desk_integrations
+                        else false(),
+                    ),
                 )
             )
         )
@@ -176,6 +204,12 @@ async def check_auto_sync_integrations(input: CheckAutoSyncInput) -> dict[str, A
         for integration in gmail_integrations:
             try:
                 interval = integration.auto_sync_interval_minutes
+                desk_workspace_id = desk_integrations.get(str(integration.id))
+                if desk_workspace_id is not None:
+                    desk_interval = await intake_poll_minutes(db, desk_workspace_id)
+                    # A floor, not an override: an account already polling every
+                    # minute for other reasons keeps doing so.
+                    interval = min(interval, desk_interval) if interval > 0 else desk_interval
                 last_sync = integration.gmail_last_sync_at
                 if last_sync and now < last_sync + timedelta(minutes=interval):
                     continue

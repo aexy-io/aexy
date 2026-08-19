@@ -8,7 +8,9 @@ webhook mailbox (or if Gmail send fails), it falls back to the transactional
 """
 
 import base64
+import html as html_module
 import logging
+import re
 from datetime import datetime
 from email import encoders
 from email.message import Message
@@ -41,6 +43,7 @@ __all__ = [
     "SEND_OK",
     "SEND_UNCONFIGURED",
     "desk_replied_in_thread",
+    "html_from_text",
     "send_service_desk_email",
     "send_stakeholder_email",
 ]
@@ -59,6 +62,37 @@ def _header_safe(value: str) -> str:
     return " ".join(str(value).splitlines())
 
 
+# A bare URL in running text. Deliberately stops before trailing punctuation, so
+# "see https://example.com/t/abc." does not linkify the full stop.
+_URL_RE = re.compile(r"https?://[^\s<>\"']+[^\s<>\"'.,;:!?)\]]")
+
+
+def html_from_text(body_text: str) -> str:
+    """An HTML alternative for a body the desk authored as plain text.
+
+    The Service Desk's templates are edited as one plain-text field — that is
+    what the settings page shows and what Ops writes — so there is no second,
+    HTML copy to send. Deriving one keeps the two in step by construction, and
+    is what makes the ticket link a link rather than a string the reader has to
+    select and paste.
+
+    Escaping first is not optional: the body carries a requester's own subject
+    and a KAM's closure note, so anything that looks like markup in either must
+    arrive as the characters somebody typed.
+    """
+    escaped = html_module.escape(body_text)
+    linked = _URL_RE.sub(
+        lambda m: f'<a href="{m.group(0)}">{m.group(0)}</a>', escaped
+    )
+    return (
+        '<html><body style="font-family:-apple-system,Segoe UI,Roboto,'
+        'Helvetica,Arial,sans-serif;font-size:14px;line-height:1.5;'
+        'color:#111827;white-space:pre-wrap">'
+        f"{linked}"
+        "</body></html>"
+    )
+
+
 async def _send_via_gmail(
     db: AsyncSession,
     integration_id: str,
@@ -68,6 +102,7 @@ async def _send_via_gmail(
     subject: str,
     body_text: str,
     thread_id: str | None,
+    body_html: str | None = None,
     attachments: list[tuple[str, str | None, bytes]] | None = None,
     cc: list[str] | None = None,
     auto_generated: bool = False,
@@ -86,9 +121,21 @@ async def _send_via_gmail(
             f"Gmail integration {integration_id} does not belong to workspace {workspace_id}"
         )
 
+    # multipart/alternative when there is an HTML rendering: the text part stays
+    # the canonical body (it is what Ops actually authored), and a client that
+    # prefers HTML gets the same words with the ticket link clickable. Ordered
+    # least-preferred first, as the MIME spec requires.
+    def _body_part() -> Message:
+        if not body_html:
+            return MIMEText(body_text)
+        alternative = MIMEMultipart("alternative")
+        alternative.attach(MIMEText(body_text, "plain"))
+        alternative.attach(MIMEText(body_html, "html"))
+        return alternative
+
     if attachments:
         mime: Message = MIMEMultipart()
-        mime.attach(MIMEText(body_text))
+        mime.attach(_body_part())
         for filename, content_type, raw_bytes in attachments:
             maintype, _, subtype = (content_type or "application/octet-stream").partition("/")
             part = MIMEBase(maintype or "application", subtype or "octet-stream")
@@ -97,7 +144,7 @@ async def _send_via_gmail(
             part.add_header("Content-Disposition", "attachment", filename=_header_safe(filename))
             mime.attach(part)
     else:
-        mime = MIMEText(body_text)
+        mime = _body_part()
 
     mime["To"] = _header_safe(to_email)
     if cc:
@@ -250,6 +297,7 @@ async def send_stakeholder_email(
     # could not be sent" on every send.
     return await _send_via_gmail(
         db,
+        body_html=html_from_text(body_text),
         integration_id=mailbox.integration_id,
         workspace_id=mailbox.workspace_id,
         from_address=mailbox.address,
@@ -285,6 +333,10 @@ async def send_service_desk_email(
     if not to_email:
         return SEND_UNCONFIGURED
 
+    # Derived once and used on both channels, so an acknowledgement reads the
+    # same whether it left via Gmail or the transactional sender.
+    body_html = html_from_text(body_text)
+
     gmail_attempted = False
     if (
         mailbox is not None
@@ -301,6 +353,7 @@ async def send_service_desk_email(
                 to_email=to_email,
                 subject=subject,
                 body_text=body_text,
+                body_html=body_html,
                 thread_id=thread_id,
                 auto_generated=True,
             )
@@ -323,6 +376,7 @@ async def send_service_desk_email(
             recipient_email=to_email,
             subject=subject,
             body_text=body_text,
+            body_html=body_html,
             # Same marker the Gmail path stamps: the channel a receipt happened to
             # go out on must not decide whether it can come back in as a ticket.
             auto_generated=True,

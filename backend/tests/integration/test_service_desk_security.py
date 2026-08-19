@@ -176,6 +176,13 @@ async def test_plain_member_can_read_but_not_manage(client, tenants):
     admin_settings = await client.get(f"{b}/settings", headers=tenants["admin"])
     assert admin_settings.json()["can_manage"] is True
 
+    # The desk vetoes AI first, so the refused write below has something to fail
+    # to change. The desk follows the workspace AI switch now, and that is on by
+    # default — asserting the toggle "did not move" while it reads True either
+    # way would prove nothing.
+    assert (await client.patch(f"{b}/settings", headers=tenants["admin"],
+                               json={"ai_classification_enabled": False})).status_code == 200
+
     # writes are refused
     forbidden = {
         "create account": await client.post(f"{b}/accounts", headers=h, json={"name": "Rogue", "domains": ["rogue.com"]}),

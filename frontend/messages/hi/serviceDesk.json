@@ -118,7 +118,16 @@
     "ai": {
       "title": "AI ईमेल वर्गीकरण",
       "description": "AI को आने वाले ईमेल पढ़कर अनुरोध प्रकार और Product सुझाने दें। बंद होने पर, टिकट के मालिक टिकट को मैन्युअल रूप से वर्गीकृत करते हैं।",
-      "enabled": "सक्षम"
+      "enabled": "सक्षम",
+      "inheritedOn": "इस workspace में AI enabled है, इसलिए यह चालू है। Service desk उसी setting को follow करता है।",
+      "vetoed": "सिर्फ़ service desk के लिए बंद किया गया है। इस workspace में AI बाकी जगह enabled है।",
+      "workspaceOff": "इस पूरे workspace के लिए AI बंद है, इसलिए desk भी email नहीं पढ़ सकता।",
+      "workspaceSettingsLink": "Workspace AI settings",
+      "attachments": {
+        "title": "Attachments पढ़ें",
+        "description": "AI को incoming email की files खोलने दें ताकि request पहचानने में मदद मिले। डिफ़ॉल्ट रूप से बंद — ग्राहक के documents पढ़ना, message पढ़ने से अलग निर्णय है।",
+        "requiresAi": "पहले AI email categorisation चालू करें।"
+      }
     },
     "autoSplit": {
       "title": "स्वचालित टिकट विभाजन",
@@ -197,7 +206,9 @@
       "vendorsHint": "बाहरी पक्ष जिन्हें डेस्क काम भेजता है। इन domains से आया मेल नए ग्राहक अनुरोध के बजाय मौजूदा काम पर vendor के उत्तर के रूप में पढ़ा जाता है। फिर भी वह triage में जाता है — vendor, account नहीं होता।",
       "vendorsEmpty": "अभी कोई vendor नहीं है। जो भी ज्ञात account नहीं है, उसका मेल अनजान भेजने वाले के रूप में लिया जाता है।",
       "productsHint": "टिकट किस बारे में हो सकता है। AI categorisation उसे नाम से हूबहू चुनता है और रोज़ का digest उसी के आधार पर समूह बनाता है, इसलिए AI द्वारा सुझाया ऐसा नाम जो यहाँ सूचीबद्ध नहीं है, छोड़ दिया जाता है।",
-      "productsEmpty": "अभी कोई product नहीं है, इसलिए टिकटों पर कोई tag नहीं लगता और digest उनके आधार पर समूह नहीं बना सकता।"
+      "productsEmpty": "अभी कोई product नहीं है, इसलिए टिकटों पर कोई tag नहीं लगता और digest उनके आधार पर समूह नहीं बना सकता।",
+      "assignedOwnerFor": "{name} के लिए assigned owner",
+      "unownedAccountWarning": "कोई assigned owner नहीं — इस account के tickets desk department के किसी भी सदस्य को चले जाते हैं।"
     },
     "noDepartment": "आप अभी किसी विभाग में नहीं हैं, इसलिए आपको कोई टिकट नहीं भेजा जा सकता। किसी एडमिन से Organization → Departments में जोड़ने को कहें।",
     "assignedOnly": "आपको वही टिकट दिखते हैं जो आपको सौंपे गए हैं, और अभी कोई खुला टिकट नहीं है। बाकी टिकट उनके अपने मालिक संभाल रहे हैं।",
@@ -246,13 +257,24 @@
     },
     "ignoredSenders": {
       "title": "अनदेखे भेजने वाले",
-      "description": "इन भेजने वालों की मेल से टिकट नहीं बनते। जिस infrastructure मेल को डेस्क ट्रैक नहीं करता — जैसे किसी provider के security alerts — उसका एक पता या पूरा domain जोड़ें। जोड़ने तक कुछ भी अनदेखा नहीं होता: किसी counterparty का no-reply पता अक्सर वही सूचनाएँ भेजता है जो आपको चाहिए। Master Data में मौजूद Account या Vendor यहाँ की entry पर भारी पड़ता है।",
+      "description": "इन senders की mail tickets नहीं बनती। एक पूरा address, या पूरा domain जोड़ें — किसी provider के security alerts, या partner का daily automailer। जब तक आप न जोड़ें, कुछ भी ignore नहीं होता: counterparty का no-reply address अक्सर वही notices भेजता है जो आपको चाहिए। पूरा address हमेशा जीतता है। पूरा domain नहीं: Master Data में मौजूद account या vendor फिर भी tickets खोलेगा, ताकि यूँ ही ignore किया गया domain किसी सोच-समझकर जोड़े गए counterparty को चुप न करा दे।",
       "placeholder": "no-reply@accounts.google.com या कोई domain",
       "add": "जोड़ें",
       "empty": "कुछ भी अनदेखा नहीं — हर भेजने वाला टिकट खोलता है।",
       "invalid": "ईमेल पता, या accounts.google.com जैसा domain दर्ज करें।",
       "duplicate": "पहले से सूची में है।",
       "remove": "{sender} को अनदेखा करना बंद करें"
+    },
+    "intakeFrequency": {
+      "title": "Intake frequency",
+      "description": "Gmail-backed mailboxes में नई mail कितनी बार देखी जाए। यही वह अंतराल है जिसमें email आने के बाद ticket बनता है।",
+      "everyMinutes": "हर {minutes} मिनट",
+      "floorNote": "इससे जाँच केवल और बार-बार होती है। जो account पहले से तेज़ sync कर रहा है, वह अपनी गति पर रहेगा।"
+    },
+    "publicLinks": {
+      "title": "Public ticket links",
+      "description": "अपने workspace के बाहर के लोगों को भेजी जाने वाली acknowledgement और closure emails में ticket के read-only view का link शामिल करें। इस link के लिए account ज़रूरी नहीं — URL रखने वाला कोई भी ticket का subject, requester का नाम और उसके attachments देख सकता है। डिफ़ॉल्ट रूप से बंद।",
+      "scopeNote": "Desk को लिखने वाले सहकर्मियों पर इसका असर नहीं पड़ता: उन्हें हमेशा app में ticket का link मिलता है, जिसके लिए अलग account नहीं चाहिए और कुछ भी public नहीं होता। इसे बंद करने पर नए public links बनना रुक जाते हैं और आगे की emails से हट जाते हैं — पहले भेजा जा चुका link वापस नहीं लिया जा सकता, और जो links आपने ticket से खुद share किए हैं वे वैसे ही रहते हैं।"
     }
   }
 }

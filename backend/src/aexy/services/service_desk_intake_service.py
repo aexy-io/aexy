@@ -42,6 +42,7 @@ from aexy.models.ticketing import Ticket, TicketForm, TicketResponse, TicketStat
 from aexy.models.workspace import Workspace, WorkspaceMember
 from aexy.schemas.service_desk import InboundEmail
 from aexy.services.service_desk_config import (
+    address_is_ignored,
     display_id as render_display_id,
     force_ticket_id_into_subject,
     looks_automatic,
@@ -51,6 +52,8 @@ from aexy.services.service_desk_config import (
     ticket_prefix,
     ticket_prefix_display,
 )
+from aexy.services.service_desk_links import ensure_requester_url
+from aexy.services.service_desk_templates import template_references
 from aexy.services.service_desk_mailer import OUTBOUND_MARKER_HEADER
 from aexy.services.service_desk_industry_templates import SEMANTIC_EXTERNAL
 from aexy.services.service_desk_taxonomy import external_slug_for, load_taxonomy
@@ -120,17 +123,50 @@ def _address_of(email: str | None) -> str | None:
 
 
 async def ai_classification_enabled(db: AsyncSession, workspace_id: str) -> bool:
-    """Whether this workspace has opted in to AI reading of its mail.
+    """Whether AI may read this workspace's desk mail.
 
-    Off by default, and the single gate for every AI-dependent behaviour in the
-    desk: classification, LOB/request-type inference and auto-split. Module
-    level because the Gmail sync must consult it too — attachment bytes are
-    fetched only to feed the classifier, so with AI off no file is ever read.
+    The single gate for every AI-dependent behaviour in the desk: classification,
+    LOB/request-type inference, thread matching and auto-split.
+
+    It **follows the workspace's own AI switch** (``WorkspaceAISettings.
+    ai_enabled``) rather than asking for a second, separate yes. A per-feature
+    opt-in that defaulted off meant a workspace could turn AI on, see nothing
+    happen, and have no way to tell which of two switches was the reason — and
+    the workspace-level switch already exists precisely to be the one answer to
+    "AI on our data, or not".
+
+    The desk keeps a veto, not a duplicate: an explicit ``False`` stored here is
+    a deliberate "not on the service desk" and survives the workspace switch
+    being on. Absent (the common case) means inherit. An explicit ``True`` is
+    the value written before this was inheritable; it reads as inherit, because
+    the LLM gateway refuses the call anyway when the workspace has AI off.
+    """
+    from aexy.services.workspace_ai_settings_service import is_ai_enabled
+
+    ws = await db.get(Workspace, workspace_id)
+    if ws is None:
+        return False
+    if ((ws.settings or {}).get("service_desk") or {}).get("ai_classification_enabled") is False:
+        return False
+    return await is_ai_enabled(db, workspace_id)
+
+
+async def attachment_previews_enabled(db: AsyncSession, workspace_id: str) -> bool:
+    """Whether intake may read attachment *bytes* to build classifier previews.
+
+    Deliberately its own opt-in rather than riding on ``ai_classification_enabled``.
+    Classifying a subject and a body reads text the desk was sent anyway; opening
+    the PDF attached to it is a different question about a customer's documents,
+    and inheriting a workspace-wide "AI is fine" default would answer it on
+    somebody's behalf. Off unless switched on.
     """
     ws = await db.get(Workspace, workspace_id)
     if ws is None:
         return False
-    return bool(((ws.settings or {}).get("service_desk") or {}).get("ai_classification_enabled", False))
+    sd = (ws.settings or {}).get("service_desk") or {}
+    if not bool(sd.get("ai_attachment_previews_enabled", False)):
+        return False
+    return await ai_classification_enabled(db, workspace_id)
 
 
 def is_aexy_generated(email: InboundEmail) -> bool:
@@ -273,8 +309,19 @@ class ServiceDeskIntakeService:
         to act on. Infrastructure senders like ``no-reply@accounts.google.com``
         keep opening tickets until somebody says otherwise, and then stop.
 
-        A known account or vendor still overrides the list: the master data
-        somebody maintains deliberately outranks a broad domain entry.
+        How far Master Data may override the list depends on how the entry was
+        written, because the two forms are different statements:
+
+        * A **bare domain** is broad. A registered account or vendor outranks it,
+          so a domain ignored in passing cannot silence a counterparty somebody
+          deliberately configured.
+        * A **whole address** is specific, and now wins outright. It used to lose
+          to Master Data as well, which meant a partner's daily automailer —
+          ``dailyreport@partner.com``, on a domain mapped to that partner — could
+          not be excluded by any setting the product offered. It opened a ticket
+          every day, forever, and adding it to the list did nothing. Nobody types
+          a full address into this list except after seeing that exact mail and
+          deciding it is not a request.
         """
         ws = await self.db.get(Workspace, workspace_id)
         ignored = normalise_ignored_senders(
@@ -286,6 +333,8 @@ class ServiceDeskIntakeService:
         domain = _domain_of(email.from_email)
         if not sender_is_ignored(address, domain, ignored):
             return False
+        if address_is_ignored(address, ignored):
+            return True
         if await self._match_account(workspace_id, domain, address) is not None:
             return False
         return await self._match_vendor(workspace_id, domain, address) is None
@@ -718,6 +767,13 @@ class ServiceDeskIntakeService:
         origin = TicketOrigin.EMAIL.value
         needs_triage = False
         assigned_owner_id: str | None = None
+        # Why this ticket ended up with this owner. Recorded on the timeline
+        # below whenever the answer was not Master Data, because the symptom of a
+        # missing or mistyped mapping — a ticket on a KAM who has nothing to do
+        # with the partner — is indistinguishable from a deliberate assignment
+        # once the ticket exists. "Assignment is not following our master data"
+        # is unanswerable without this.
+        assignment_note: str | None = None
 
         if domain and internal_domain and domain == internal_domain:
             # Sender is on the desk's own domain, so there is no account to infer
@@ -725,20 +781,42 @@ class ServiceDeskIntakeService:
             origin = TicketOrigin.INTERNAL.value
             needs_triage = True
             assigned_owner_id = await self._random_owner(workspace_id)
+            assignment_note = (
+                f"Assigned by fallback: {email.from_email} is on this desk's own domain, "
+                "so no account could be inferred from it. Set the account by hand to route "
+                "this ticket to its owner."
+            )
         else:
             account = await self._match_account(workspace_id, domain, address)
             if account is not None:
-                assigned_owner_id = account.assigned_owner_id or await self._random_owner(workspace_id)
+                assigned_owner_id = account.assigned_owner_id
+                if assigned_owner_id is None:
+                    assigned_owner_id = await self._random_owner(workspace_id)
+                    assignment_note = (
+                        f'Assigned by fallback: "{account.name}" matched {domain}, but has no '
+                        "assigned owner in Master Data. Set one so its tickets stop being "
+                        "distributed arbitrarily."
+                    )
             else:
                 vendor = await self._match_vendor(workspace_id, domain, address)
                 # vendor-originated or wholly unknown → triage + an arbitrary owner
                 needs_triage = True
                 assigned_owner_id = await self._random_owner(workspace_id)
+                assignment_note = (
+                    f"Assigned by fallback: no account is mapped to {domain or email.from_email}. "
+                    "Add the domain to the right account in Master Data so future mail from this "
+                    "sender reaches its owner."
+                )
 
         if assigned_owner_id is None:
             assigned_owner_id = (
                 await self.db.execute(select(Workspace.owner_id).where(Workspace.id == workspace_id))
             ).scalar_one_or_none()
+            assignment_note = (
+                (assignment_note or "Assigned by fallback.")
+                + " The desk department has no active members either, so the ticket went to the "
+                "workspace owner."
+            )
 
         form_id = await self._ensure_form(workspace_id)
 
@@ -807,6 +885,16 @@ class ServiceDeskIntakeService:
         )
         self.db.add(sd)
 
+        if assignment_note:
+            self.db.add(
+                TicketResponse(
+                    id=str(uuid4()),
+                    ticket_id=ticket.id,
+                    content=assignment_note,
+                    is_internal=True,
+                )
+            )
+
         # open the first pending-with segment (the ledger starts here)
         self.db.add(
             TicketPendingSegment(
@@ -838,15 +926,25 @@ class ServiceDeskIntakeService:
             await self.db.flush()
 
         # best-effort enrichment + receipt (never block intake).
-        # AI reading/categorisation is opt-in per workspace (default off), and an
-        # automatic response carries no request to read — classifying one would
-        # only invent a request type and an LOB for a machine's away message.
+        # AI reading/categorisation follows the workspace's AI switch (see
+        # ``ai_classification_enabled``), and an automatic response carries no
+        # request to read — classifying one would only invent a request type and
+        # an LOB for a machine's away message.
         issues: list[dict] = []
         overflow = False
         if automatic:
             sd.needs_triage = True
         elif classify and await self._ai_enabled(workspace_id):
             issues, overflow = await self._classify(workspace_id, sd, email)
+            if not issues:
+                # The classifier ran and produced nothing usable — a workspace
+                # that deactivated every request type, a response the model
+                # could not be held to, or a call that never happened. The
+                # ticket is in exactly the state the branch below describes, so
+                # it is flagged the same way. Leaving it clear reported a read
+                # that did not happen: the ticket carried the workspace default
+                # request type and no product, and looked confirmed.
+                sd.needs_triage = True
         else:
             # Nothing has read this ticket: the ticket is still created, owned and
             # clocked, but nobody has set the LOB or confirmed the request type —
@@ -1481,6 +1579,22 @@ class ServiceDeskIntakeService:
                     "subject": (ticket.field_values or {}).get("subject") or "Your request",
                     "requester_name": ticket.submitter_name or "there",
                     "additional_tickets": additional,
+                    # Resolved at queue time, not at send time: this runs inside
+                    # the ticket's own transaction, so the token is committed
+                    # with the ticket rather than written from the notification
+                    # flush that happens after the commit.
+                    #
+                    # Only when the copy actually uses it. Minting unconditionally
+                    # would publish a share token for every ticket a desk has ever
+                    # acknowledged, including desks that deliberately removed the
+                    # link from their acknowledgement.
+                    "ticket_url": (
+                        await ensure_requester_url(self.db, ticket)
+                        if await template_references(
+                            self.db, workspace_id, "receipt", "ticket_url"
+                        )
+                        else ""
+                    ),
                 },
             }
         )

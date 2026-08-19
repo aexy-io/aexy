@@ -32,6 +32,41 @@ DEFAULT_TICKET_PREFIX = "SD"
 _VALID_PREFIX = re.compile(r"^[A-Z][A-Z0-9]{0,9}$")
 
 
+# How often a Gmail-backed desk mailbox is polled for new mail, in minutes.
+#
+# A desk mailbox used to inherit ``GoogleIntegration.auto_sync_interval_minutes``
+# — the same setting a personal inbox uses, defaulting to 15 — so a request
+# waited up to a quarter of an hour before it was a ticket, and nothing on the
+# Service Desk pages said so or could change it. Registering a mailbox as an
+# intake source is a statement about latency, and this is where it is expressed.
+DEFAULT_INTAKE_POLL_MINUTES = 2
+
+# One minute is the schedule's own tick, so nothing below it can be honoured.
+# The ceiling is there to stop a desk being configured into the behaviour this
+# replaced without anyone noticing.
+MIN_INTAKE_POLL_MINUTES = 1
+MAX_INTAKE_POLL_MINUTES = 60
+
+
+def normalise_poll_minutes(value: object) -> int | None:
+    """Clamp a supplied intake interval, or None when it isn't one."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    minutes = int(value)
+    if minutes < MIN_INTAKE_POLL_MINUTES or minutes > MAX_INTAKE_POLL_MINUTES:
+        return None
+    return minutes
+
+
+async def intake_poll_minutes(db: AsyncSession, workspace_id: str) -> int:
+    """How often this workspace's desk mailboxes are polled."""
+    from aexy.models.workspace import Workspace
+
+    ws = await db.get(Workspace, workspace_id)
+    settings = ((ws.settings or {}).get("service_desk") or {}) if ws else {}
+    return normalise_poll_minutes(settings.get("intake_poll_minutes")) or DEFAULT_INTAKE_POLL_MINUTES
+
+
 def normalise_prefix(value: str | None) -> str | None:
     """Return a usable prefix, or None when the input isn't one."""
     if not value:
@@ -140,6 +175,21 @@ def sender_is_ignored(
     if not ignored:
         return False
     return any(entry == address or entry == domain for entry in ignored if entry)
+
+
+def address_is_ignored(address: str | None, ignored: list[str]) -> bool:
+    """Whether the ignore list names this *exact address*, not just its domain.
+
+    The distinction decides whether Master Data may override the entry. A bare
+    domain is a broad statement about a counterparty, and one written in passing
+    must not be able to silence a partner somebody deliberately configured. A
+    whole address is the opposite: somebody typed ``dailyreport@partner.com``,
+    which is only ever written by a person who has seen that mail and decided it
+    is not a request.
+    """
+    if not address or not ignored:
+        return False
+    return any(entry == address for entry in ignored if entry)
 
 
 def looks_automatic(headers: Mapping[str, str], subject: str | None) -> bool:

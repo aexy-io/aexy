@@ -102,6 +102,8 @@ async def update_settings(workspace_id: str, data: ServiceDeskSettingsUpdate, db
     return await ServiceDeskService(db).update_settings(
         workspace_id,
         ai_classification_enabled=data.ai_classification_enabled,
+        ai_attachment_previews_enabled=data.ai_attachment_previews_enabled,
+        public_ticket_links_enabled=data.public_ticket_links_enabled,
         auto_split_enabled=data.auto_split_enabled,
         working_hours_start=data.working_hours_start,
         working_hours_end=data.working_hours_end,
@@ -110,6 +112,7 @@ async def update_settings(workspace_id: str, data: ServiceDeskSettingsUpdate, db
         breach_red_days=data.breach_red_days,
         breach_amber_days=data.breach_amber_days,
         digest_hours=data.digest_hours,
+        intake_poll_minutes=data.intake_poll_minutes,
         terminology=data.terminology,
         desk_name=data.desk_name,
         test_sla=data.test_sla,

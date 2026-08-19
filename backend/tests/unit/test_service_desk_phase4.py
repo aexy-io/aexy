@@ -224,7 +224,13 @@ async def test_digest_skips_people_who_left_the_workspace(db_session: AsyncSessi
 
 @pytest.mark.asyncio
 async def test_ai_toggle_gates_classification(db_session: AsyncSession, monkeypatch):
-    """_classify must only run when the workspace has AI enabled."""
+    """_classify runs unless the desk has vetoed it.
+
+    The gate used to be a per-desk opt-in that defaulted off, independent of the
+    workspace's own AI switch. It follows that switch now — so a workspace with
+    AI on classifies without a second visit to this page, and turning it off
+    here is a veto that survives the workspace switch being on.
+    """
     from aexy.schemas.service_desk import InboundEmail
     from aexy.services.service_desk_intake_service import ServiceDeskIntakeService
     from aexy.services.service_desk_service import ServiceDeskService
@@ -248,17 +254,24 @@ async def test_ai_toggle_gates_classification(db_session: AsyncSession, monkeypa
         return None
 
     svc = ServiceDeskIntakeService(db_session)
-    # default OFF → no classification
+    # This workspace has never configured AI, which is "on" — so the desk reads.
     await svc.ingest(InboundEmail(to="operations@example.com", from_email="x@new.io", subject="s", message_id="ai-1"), mb, "service_desk_webhook")
     await db_session.commit()
-    assert calls == []
+    assert calls == ["classified"]
 
-    # enable at org level → classification runs
-    await ServiceDeskService(db_session).update_settings(ws.id, True)
+    # Veto it for the desk → classification stops, workspace switch untouched.
+    await ServiceDeskService(db_session).update_settings(ws.id, False)
     await db_session.commit()
     await svc.ingest(InboundEmail(to="operations@example.com", from_email="y@new.io", subject="s", message_id="ai-2"), mb, "service_desk_webhook")
     await db_session.commit()
     assert calls == ["classified"]
+
+    # Clearing the veto puts it back under the workspace switch.
+    await ServiceDeskService(db_session).update_settings(ws.id, True)
+    await db_session.commit()
+    await svc.ingest(InboundEmail(to="operations@example.com", from_email="z@new.io", subject="s", message_id="ai-3"), mb, "service_desk_webhook")
+    await db_session.commit()
+    assert calls == ["classified", "classified"]
 
 
 @pytest.mark.asyncio
@@ -271,6 +284,9 @@ async def test_auto_split_setting_defaults_off_and_is_patchable(db_session: Asyn
 
     assert (await service.get_settings(ws.id))["auto_split_enabled"] is False
 
+    # Veto AI for this desk first, so the assertion below is about patch
+    # semantics rather than about what AI defaults to.
+    await service.update_settings(ws.id, ai_classification_enabled=False)
     await service.update_settings(ws.id, auto_split_enabled=True)
     await db_session.commit()
     settings = await service.get_settings(ws.id)

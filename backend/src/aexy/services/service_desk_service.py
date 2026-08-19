@@ -25,9 +25,13 @@ from aexy.services.service_desk_clock import (
     DEFAULT_WORK_START,
 )
 from aexy.services.service_desk_config import (
+    DEFAULT_INTAKE_POLL_MINUTES,
     DEFAULT_TICKET_PREFIX,
+    MAX_INTAKE_POLL_MINUTES,
+    MIN_INTAKE_POLL_MINUTES,
     display_id,
     normalise_ignored_senders,
+    normalise_poll_minutes,
     normalise_prefix,
     ticket_prefix,
 )
@@ -443,11 +447,16 @@ class ServiceDeskService:
 
     @staticmethod
     def _account_response(p: ServiceDeskAccount) -> AccountResponse:
+        # `assigned_owner` is a selectin relationship, so naming the owner costs
+        # no extra query per row.
+        owner = p.assigned_owner
         return AccountResponse(
             id=p.id,
             workspace_id=p.workspace_id,
             name=p.name,
             assigned_owner_id=p.assigned_owner_id,
+            assigned_owner_name=owner.name if owner else None,
+            assigned_owner_email=owner.email if owner else None,
             is_active=p.is_active,
             domains=[d.domain for d in p.domains],
             created_at=p.created_at,
@@ -822,8 +831,24 @@ class ServiceDeskService:
             except ValueError:
                 pass
         desk_department = await resolve_desk_department(self.db, workspace_id)
+        # Reported resolved, not raw: the toggle shows what is actually in force,
+        # and `workspace_ai_enabled` says where that came from so the page can
+        # explain an "on" nobody set on this screen.
+        from aexy.services.service_desk_intake_service import ai_classification_enabled
+        from aexy.services.workspace_ai_settings_service import is_ai_enabled
+
+        workspace_ai_enabled = await is_ai_enabled(self.db, workspace_id)
         return {
-            "ai_classification_enabled": bool(sd.get("ai_classification_enabled", False)),
+            "ai_classification_enabled": await ai_classification_enabled(
+                self.db, workspace_id
+            ),
+            "workspace_ai_enabled": workspace_ai_enabled,
+            "ai_attachment_previews_enabled": bool(
+                sd.get("ai_attachment_previews_enabled", False)
+            ),
+            "public_ticket_links_enabled": bool(
+                sd.get("public_ticket_links_enabled", False)
+            ),
             "auto_split_enabled": bool(sd.get("auto_split_enabled", False)),
             "can_manage": bool(can_manage),
             "scope": scope,
@@ -836,6 +861,13 @@ class ServiceDeskService:
             "breach_red_days": float(sd.get("breach_red_days") or BREACH_RED_DAYS),
             "breach_amber_days": float(sd.get("breach_amber_days") or BREACH_AMBER_DAYS),
             "digest_hours": list(sd.get("digest_hours") or DEFAULT_DIGEST_HOURS),
+            # How often Gmail-backed mailboxes are polled for new mail. Resolved,
+            # so the page shows the interval actually in force rather than a
+            # blank for every desk that never chose one.
+            "intake_poll_minutes": (
+                normalise_poll_minutes(sd.get("intake_poll_minutes"))
+                or DEFAULT_INTAKE_POLL_MINUTES
+            ),
             "industry_template": sd.get("industry_template"),
             # Senders Ops has marked as noise — infrastructure mail like a
             # provider's security alerts. Empty by default: nothing is ignored
@@ -878,10 +910,16 @@ class ServiceDeskService:
         breach_red_days: float | None = None,
         breach_amber_days: float | None = None,
         digest_hours: list[int] | None = None,
+        intake_poll_minutes: int | None = None,
         terminology: dict[str, str] | None = None,
         desk_name: str | None = None,
         desk_department_id: str | None = None,
         ignored_senders: list[str] | None = None,
+        # Appended rather than placed next to the switch it belongs with: this
+        # signature is long and callers pass positionally, so inserting a
+        # parameter in the middle silently shifts every argument after it.
+        ai_attachment_previews_enabled: bool | None = None,
+        public_ticket_links_enabled: bool | None = None,
     ) -> dict:
         """Patch semantics: only the fields supplied are touched.
 
@@ -895,7 +933,25 @@ class ServiceDeskService:
         sd = dict(settings.get("service_desk") or {})
 
         if ai_classification_enabled is not None:
-            sd["ai_classification_enabled"] = bool(ai_classification_enabled)
+            if ai_classification_enabled:
+                # "On" means *stop vetoing*, not "pin this on": the desk then
+                # follows the workspace switch, which is the only place AI is
+                # governed. Storing True here would recreate the second source of
+                # truth this replaced.
+                sd.pop("ai_classification_enabled", None)
+            else:
+                sd["ai_classification_enabled"] = False
+
+        if ai_attachment_previews_enabled is not None:
+            sd["ai_attachment_previews_enabled"] = bool(ai_attachment_previews_enabled)
+
+        if public_ticket_links_enabled is not None:
+            # Switching it off stops new tokens being minted and takes the link
+            # out of the copy. It cannot retract a URL already emailed, and does
+            # not revoke links an operator created by hand from the share dialog
+            # — those are somebody's deliberate act, and the dialog is where they
+            # are withdrawn.
+            sd["public_ticket_links_enabled"] = bool(public_ticket_links_enabled)
 
         if ignored_senders is not None:
             # Audited: adding an entry stops mail becoming tickets, and the only
@@ -985,6 +1041,18 @@ class ServiceDeskService:
                 )
             sd["breach_red_days"] = red
             sd["breach_amber_days"] = amber
+
+        if intake_poll_minutes is not None:
+            minutes = normalise_poll_minutes(intake_poll_minutes)
+            if minutes is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        f"intake_poll_minutes must be between {MIN_INTAKE_POLL_MINUTES} "
+                        f"and {MAX_INTAKE_POLL_MINUTES} minutes"
+                    ),
+                )
+            sd["intake_poll_minutes"] = minutes
 
         if digest_hours is not None:
             # Sorted so the digest activity can compare against the current local

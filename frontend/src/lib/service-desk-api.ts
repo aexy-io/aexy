@@ -70,6 +70,11 @@ export interface Account {
   workspace_id: string;
   name: string;
   assigned_owner_id: string | null;
+  /** Resolved for display. The master-data list is where somebody checks that
+   *  the mapping they made is the mapping in force, and an id is not something
+   *  a person can check. */
+  assigned_owner_name: string | null;
+  assigned_owner_email: string | null;
   is_active: boolean;
   domains: string[];
   created_at: string;
@@ -244,11 +249,24 @@ export interface ServiceDeskDashboard {
 }
 
 export interface ServiceDeskSettings {
+  /** Resolved, not raw. AI reading of desk mail follows the workspace's own AI
+   *  switch (Settings -> AI); the desk holds a veto, not a second opt-in. This
+   *  is what is in force; `workspace_ai_enabled` says where it came from. */
   ai_classification_enabled: boolean;
+  workspace_ai_enabled: boolean;
+  /** Reading attachment bytes to build classifier previews. Its own explicit
+   *  yes — a workspace-wide "AI is fine" must not open customers' files by
+   *  inheritance. */
+  ai_attachment_previews_enabled: boolean;
+  /** Whether the desk's acknowledgement and closure carry a link to a public,
+   *  no-account view of the ticket. Off by default — turning it on serves
+   *  ticket subjects, requester names and attachments to anyone holding a URL. */
+  public_ticket_links_enabled: boolean;
   /** Senders whose mail must not become tickets. An entry with an "@" is one
    *  address; without, a whole domain. Empty by default — the list is written by
    *  hand, never inferred, because a counterparty's own no-reply address carries
-   *  notices the desk does want. Master Data always wins over an entry here. */
+   *  notices the desk does want. A whole address outranks Master Data; a bare
+   *  domain does not. */
   ignored_senders: string[];
   /** Whether intake may open a second ticket when one email carries two clearly
    *  different, high-confidence requests. Off by default — everything else
@@ -276,6 +294,9 @@ export interface ServiceDeskSettings {
   breach_amber_days: number;
   /** Local hours the digest goes out, in `timezone`. Was a global IST cron. */
   digest_hours: number[];
+  /** How often Gmail-backed desk mailboxes are polled, in minutes. A floor on
+   *  the integration's own interval, never a raise. */
+  intake_poll_minutes: number;
   /** Which industry template this desk started from, if any. */
   industry_template: string | null;
   /** Resolved labels for accounts/vendors/products — always fully populated. */
@@ -310,7 +331,11 @@ export interface TestSLAOverride {
 
 /** Only the fields being changed; the API leaves the rest alone. */
 export interface ServiceDeskSettingsPatch {
+  /** True clears the desk's veto so it follows the workspace switch again;
+   *  false is the veto. */
   ai_classification_enabled?: boolean;
+  ai_attachment_previews_enabled?: boolean;
+  public_ticket_links_enabled?: boolean;
   auto_split_enabled?: boolean;
   working_hours_start?: string;
   working_hours_end?: string;
@@ -319,6 +344,7 @@ export interface ServiceDeskSettingsPatch {
   breach_red_days?: number;
   breach_amber_days?: number;
   digest_hours?: number[];
+  intake_poll_minutes?: number;
   /** Merged into the stored map — send only the nouns being relabelled. */
   terminology?: Record<string, string>;
   desk_name?: string;

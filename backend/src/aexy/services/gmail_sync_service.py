@@ -1202,7 +1202,7 @@ class GmailSyncService:
         try:
             from aexy.services.service_desk_intake_service import (
                 ServiceDeskIntakeService,
-                ai_classification_enabled,
+                attachment_previews_enabled,
             )
             from aexy.schemas.service_desk import InboundEmail
 
@@ -1215,7 +1215,7 @@ class GmailSyncService:
                         integration,
                         message_id,
                         message.get("payload") or {},
-                        with_previews=await ai_classification_enabled(
+                        with_previews=await attachment_previews_enabled(
                             self.db, mailbox.workspace_id
                         ),
                     )

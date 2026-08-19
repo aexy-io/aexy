@@ -982,6 +982,7 @@ class ServiceDeskTicketService:
         """
         from aexy.models.service_desk import ServiceDeskMailbox
         from aexy.services.service_desk_mailer import send_stakeholder_email
+        from aexy.services.service_desk_templates import strip_merge_tags
 
         sd = await self._sd(
             workspace_id, ticket_id, developer_id=scope_developer_id, for_edit=True
@@ -1014,6 +1015,11 @@ class ServiceDeskTicketService:
         display_id = render_display_id(
             await ticket_prefix(self.db, workspace_id), ticket.ticket_number
         )
+        # The compose box is prefilled from the ticket's own subject, which is
+        # whatever arrived — including an unresolved merge tag from a badly sent
+        # marketing mail. Same rule as the templated sends: the desk never emits
+        # a placeholder, wherever the text came from.
+        subject = strip_merge_tags(subject)
         subject = await force_ticket_id_into_subject(
             self.db, workspace_id, subject, ticket.ticket_number
         )
@@ -1554,7 +1560,8 @@ class ServiceDeskTicketService:
         """
         if not ticket.submitter_email:
             return
-        from aexy.services.service_desk_templates import render_sd
+        from aexy.services.service_desk_links import ensure_requester_url
+        from aexy.services.service_desk_templates import render_sd, template_references
 
         display_id = await ticket_prefix_display(self.db, workspace_id, ticket.ticket_number)
         tat = await self.compute_tat(ticket.id, ticket)
@@ -1567,6 +1574,17 @@ class ServiceDeskTicketService:
                 "requester_name": ticket.submitter_name or "there",
                 "closure_note": note or "Resolved.",
                 "overall_days": tat.overall_days,
+                # The same link the acknowledgement carried, so a requester who
+                # kept the first mail is not handed a second, different address
+                # for one ticket. Skipped entirely when this desk's closure copy
+                # does not use it — see ``template_references``.
+                "ticket_url": (
+                    await ensure_requester_url(self.db, ticket)
+                    if await template_references(
+                        self.db, workspace_id, "closure", "ticket_url"
+                    )
+                    else ""
+                ),
             },
         )
         # The template is editable, so the id cannot be left to the copy: an Ops

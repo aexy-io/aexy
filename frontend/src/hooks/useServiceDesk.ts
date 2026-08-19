@@ -329,6 +329,11 @@ export function useServiceDeskMutations() {
       mutationFn: (data: Parameters<typeof serviceDeskApi.createAccount>[1]) => serviceDeskApi.createAccount(ws!, data),
       onSuccess: invalidateMaster,
     }),
+    updateAccount: useDeskMutation({
+      mutationFn: ({ id, data }: { id: string; data: Parameters<typeof serviceDeskApi.updateAccount>[2] }) =>
+        serviceDeskApi.updateAccount(ws!, id, data),
+      onSuccess: invalidateMaster,
+    }),
     deleteAccount: useDeskMutation({ mutationFn: (id: string) => serviceDeskApi.deleteAccount(ws!, id), onSuccess: invalidateMaster }),
     createVendor: useDeskMutation({
       mutationFn: (data: Parameters<typeof serviceDeskApi.createVendor>[1]) => serviceDeskApi.createVendor(ws!, data),

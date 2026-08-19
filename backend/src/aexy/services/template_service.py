@@ -58,6 +58,22 @@ class TemplateService:
         self._jinja_env.filters["upper"] = str.upper
         self._jinja_env.filters["lower"] = str.lower
 
+        # Same sandbox, no HTML escaping — for the two fields that are not HTML.
+        # A subject line is an RFC 5322 header and a text body is read as-is, so
+        # escaping them turned an ordinary apostrophe in a requester's subject
+        # into `&#39;` in the acknowledgement they received ("How&#39;s it
+        # going?"). The Service Desk sends plain text end to end, so every `'`,
+        # `&`, `<` and `"` in a subject, a closure note or a digest was mangled.
+        # Escaping stays on for `body_html`, where it is what stops a value
+        # containing markup from breaking (or injecting into) the message.
+        self._plain_jinja_env = SandboxedEnvironment(
+            loader=BaseLoader(),
+            autoescape=False,
+        )
+        self._plain_jinja_env.filters["title"] = str.title
+        self._plain_jinja_env.filters["upper"] = str.upper
+        self._plain_jinja_env.filters["lower"] = str.lower
+
         # Strict variant used ONLY for validation — StrictUndefined raises on
         # unknown merge tags so validate_template can flag typo'd/undeclared
         # variables. Rendering still uses the lenient env so a missing optional
@@ -288,8 +304,8 @@ class TemplateService:
                     full_context[name] = default
         full_context.update(context)
 
-        # Render subject
-        subject = self._render_string(template.subject_template, full_context)
+        # Render subject — never escaped; a mail header is not HTML.
+        subject = self._render_string(template.subject_template, full_context, escape=False)
 
         # Render HTML body - handle MJML templates
         html_body = template.body_html
@@ -298,10 +314,10 @@ class TemplateService:
 
         html_body = self._render_string(html_body, full_context)
 
-        # Render text body if present
+        # Render text body if present — also never escaped.
         text_body = None
         if template.body_text:
-            text_body = self._render_string(template.body_text, full_context)
+            text_body = self._render_string(template.body_text, full_context, escape=False)
 
         return subject, html_body, text_body
 
@@ -334,10 +350,16 @@ class TemplateService:
         self,
         template_string: str,
         context: dict[str, Any],
+        escape: bool = True,
     ) -> str:
-        """Render a single template string with Jinja2."""
+        """Render a single template string with Jinja2.
+
+        ``escape`` selects the environment: HTML-escaping for markup bodies,
+        verbatim for subject lines and plain-text bodies.
+        """
+        env = self._jinja_env if escape else self._plain_jinja_env
         try:
-            template = self._jinja_env.from_string(template_string)
+            template = env.from_string(template_string)
             return template.render(**context)
         except (TemplateSyntaxError, UndefinedError) as e:
             logger.warning(f"Template rendering error: {e}")

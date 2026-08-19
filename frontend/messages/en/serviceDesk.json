@@ -118,7 +118,16 @@
     "ai": {
       "title": "AI email categorisation",
       "description": "Let AI read incoming emails and suggest the Request Type and Product. When off, ticket owners classify tickets manually.",
-      "enabled": "Enabled"
+      "enabled": "Enabled",
+      "inheritedOn": "On because this workspace has AI enabled. The service desk follows that setting.",
+      "vetoed": "Turned off for the service desk only. This workspace has AI enabled elsewhere.",
+      "workspaceOff": "AI is switched off for this whole workspace, so the desk cannot read email either.",
+      "workspaceSettingsLink": "Workspace AI settings",
+      "attachments": {
+        "title": "Read attachments",
+        "description": "Let AI open the files on an incoming email to help identify the request. Off by default — reading a customer's documents is a separate decision from reading the message.",
+        "requiresAi": "Turn on AI email categorisation first."
+      }
     },
     "autoSplit": {
       "title": "Automatic ticket split",
@@ -197,7 +206,9 @@
       "vendorsHint": "Outside parties the desk sends work to. Mail from these domains is read as a vendor replying about existing work rather than a customer raising something new. It still goes to triage — a vendor is not an account.",
       "vendorsEmpty": "No vendors yet. Mail from anyone who is not a known account is treated as an unknown sender.",
       "productsHint": "What a ticket can be about. AI categorisation picks one by exact name and the daily digest groups by it, so a name the AI suggests that is not listed here is dropped.",
-      "productsEmpty": "No products yet, so tickets are not tagged with one and the digest cannot group by it."
+      "productsEmpty": "No products yet, so tickets are not tagged with one and the digest cannot group by it.",
+      "assignedOwnerFor": "Assigned owner for {name}",
+      "unownedAccountWarning": "No assigned owner — tickets from this account go to an arbitrary member of the desk department."
     },
     "noDepartment": "You're not in a department yet, so no tickets can be routed to you. Ask an admin to add you from Organization → Departments.",
     "assignedOnly": "You see the tickets assigned to you, and none are open right now. Other tickets on the desk are handled by their own owners.",
@@ -246,13 +257,24 @@
     },
     "ignoredSenders": {
       "title": "Ignored senders",
-      "description": "Mail from these senders is not turned into tickets. Add one address, or a whole domain, for infrastructure mail the desk does not track — a provider's security alerts, for instance. Nothing is ignored until you add it: a counterparty's own no-reply address often carries the notices you do want. An account or vendor in Master Data always wins over an entry here.",
+      "description": "Mail from these senders is not turned into tickets. Add one address, or a whole domain, for mail the desk does not track — a provider's security alerts, or a partner's daily automailer. Nothing is ignored until you add it: a counterparty's own no-reply address often carries the notices you do want. A whole address always wins. A whole domain does not: an account or vendor in Master Data still opens tickets, so ignoring a domain in passing cannot silence a counterparty you configured deliberately.",
       "placeholder": "no-reply@accounts.google.com or a domain",
       "add": "Add",
       "empty": "Nothing ignored — every sender opens a ticket.",
       "invalid": "Enter an email address, or a domain like accounts.google.com.",
       "duplicate": "Already on the list.",
       "remove": "Stop ignoring {sender}"
+    },
+    "intakeFrequency": {
+      "title": "Intake frequency",
+      "description": "How often Gmail-backed mailboxes are checked for new mail. This is the wait between an email arriving and a ticket existing.",
+      "everyMinutes": "Every {minutes} min",
+      "floorNote": "This only makes checks more frequent. An account already syncing faster keeps its own pace."
+    },
+    "publicLinks": {
+      "title": "Public ticket links",
+      "description": "Include a link to a read-only view of the ticket in the acknowledgement and closure emails sent to people outside your workspace. The link needs no account — anyone holding the URL can see the ticket's subject, the requester's name and its attachments. Off by default.",
+      "scopeNote": "Colleagues who write to the desk are unaffected: they always get a link to the ticket in the app, which needs no account of its own and publishes nothing. Turning this off stops new public links being created and removes them from future emails — it cannot recall a link already sent, and it leaves links you shared by hand from a ticket alone."
     }
   }
 }

@@ -226,6 +226,8 @@ class ServiceDeskDigestService:
 
     async def send_workspace_digests(self, workspace_id: str, date_label: str | None = None) -> int:
         from aexy.services.email_service import EmailService
+        from aexy.services.service_desk_links import desk_queue_url
+        from aexy.services.service_desk_mailer import html_from_text
         from aexy.services.service_desk_templates import render_sd
 
         date_label = date_label or datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -246,6 +248,10 @@ class ServiceDeskDigestService:
                     "breach_days": clock.breach_red_days,
                     "tickets_block": self.tickets_block(d),
                     "date": date_label,
+                    # The in-app queue, not a public share link: every recipient
+                    # here is a member of the workspace, and the app applies the
+                    # row scope their role actually has.
+                    "desk_url": desk_queue_url(),
                 },
             )
             try:
@@ -258,6 +264,7 @@ class ServiceDeskDigestService:
                     recipient_email=d.recipient_email,
                     subject=subject,
                     body_text=body,
+                    body_html=html_from_text(body),
                     auto_generated=True,
                 )
                 sent += 1

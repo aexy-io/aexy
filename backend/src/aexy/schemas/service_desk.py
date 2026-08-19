@@ -162,6 +162,13 @@ class AccountResponse(BaseModel):
     workspace_id: str
     name: str
     assigned_owner_id: str | None = None
+    # Resolved for display. The list is where somebody checks that the mapping
+    # they made is the mapping in force, and an id is not something a person can
+    # check. Without it the row for a partner with no owner looked exactly like
+    # the row for one mapped correctly — and an unmapped partner is the whole
+    # reason tickets land on an arbitrary owner.
+    assigned_owner_name: str | None = None
+    assigned_owner_email: str | None = None
     is_active: bool = True
     domains: list[str] = Field(default_factory=list)
     created_at: datetime
@@ -625,7 +632,27 @@ class TestSLAOverride(BaseModel):
 class ServiceDeskSettings(BaseModel):
     """Workspace-level Service Desk settings."""
 
+    # Resolved, not raw. AI reading of desk mail follows the workspace's own AI
+    # switch (Settings -> AI); the desk holds a veto, not a second opt-in. So
+    # this is what is actually in force, and `workspace_ai_enabled` says where
+    # it came from — otherwise a desk showing "on" that nobody switched on here
+    # has nothing to explain itself with.
     ai_classification_enabled: bool = False
+    workspace_ai_enabled: bool = True
+    # Reading attachment *bytes* to build classifier previews stays its own
+    # explicit yes. Classifying a subject reads text the desk was sent anyway;
+    # opening the customer's PDF is a different question, and a workspace-wide
+    # "AI is fine" must not answer it by inheritance.
+    ai_attachment_previews_enabled: bool = False
+    # Whether the desk's acknowledgement and closure carry a link to a public,
+    # no-account view of the ticket. Off by default: turning it on is a decision
+    # to serve ticket subjects, requester names and attachments to anyone
+    # holding a URL, and no default should make that decision for a workspace.
+    #
+    # It governs *external* requesters only. A requester who is a member of the
+    # workspace is always linked to the ticket in the app, which publishes
+    # nothing — see ``service_desk_links.ensure_requester_url``.
+    public_ticket_links_enabled: bool = False
     # Senders whose mail must not become tickets — infrastructure noise a desk has
     # decided it does not track, e.g. "no-reply@accounts.google.com". An entry with
     # an "@" is one address; without, a whole domain. Empty by default: this is a
@@ -665,6 +692,10 @@ class ServiceDeskSettings(BaseModel):
     # fixed at 09:00/13:00/17:00 Asia/Kolkata for every workspace on the
     # deployment, which paged a US desk in the middle of the night.
     digest_hours: list[int] = Field(default_factory=lambda: [9, 13, 17])
+    # How often Gmail-backed desk mailboxes are polled for new mail. Registering
+    # a mailbox as intake is a statement about latency; before this it silently
+    # inherited the 15-minute default a personal inbox uses.
+    intake_poll_minutes: int = 2
     # The industry template this desk started from, and the nouns it uses for the
     # three master-data tables.
     industry_template: str | None = None
@@ -696,7 +727,13 @@ _HHMM = r"^([01]\d|2[0-3]):[0-5]\d$"
 class ServiceDeskSettingsUpdate(BaseModel):
     """All fields optional so the page can PATCH any one on its own."""
 
+    # True clears the desk's veto so it follows the workspace switch again;
+    # False is the veto. There is deliberately no way to pin AI *on* for the
+    # desk while the workspace has it off — the gateway refuses that call
+    # anyway, and storing it would recreate the second source of truth.
     ai_classification_enabled: bool | None = None
+    ai_attachment_previews_enabled: bool | None = None
+    public_ticket_links_enabled: bool | None = None
     auto_split_enabled: bool | None = None
     working_hours_start: str | None = Field(None, pattern=_HHMM)
     working_hours_end: str | None = Field(None, pattern=_HHMM)
@@ -707,6 +744,7 @@ class ServiceDeskSettingsUpdate(BaseModel):
     breach_red_days: float | None = Field(None, gt=0, le=60)
     breach_amber_days: float | None = Field(None, gt=0, le=60)
     digest_hours: list[int] | None = None
+    intake_poll_minutes: int | None = Field(None, ge=1, le=60)
     terminology: dict[str, str] | None = None
     desk_name: str | None = Field(None, max_length=120)
     # A complete replacement of the list, not an addition — the settings page
