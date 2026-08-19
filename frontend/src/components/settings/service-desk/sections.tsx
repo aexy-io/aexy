@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import {
   useAiAccuracy,
+  useDigestPreview,
   useVendors,
   useProducts,
   useMailboxes,
@@ -28,6 +29,7 @@ import {
   TestSLAOverride,
   TestStageSLA,
 } from "@/lib/service-desk-api";
+import { serviceDeskApi } from "@/lib/service-desk-api";
 import { GoogleAccountSummary, googleIntegrationApi } from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/utils";
 import { useDepartments } from "@/hooks/useOrganization";
@@ -772,6 +774,221 @@ function AiAccuracyPanel() {
         ))}
       </div>
     </Section>
+  );
+}
+
+/**
+ * The open-ticket digest: whether it goes out, when, and to whom.
+ *
+ * All of this existed in the API and none of it on any screen — `digest_hours`
+ * was reachable only by a raw PATCH, and nothing turned the digest off at all.
+ * A desk on the default schedule receives three emails a day and its only
+ * recourse was a mail filter.
+ *
+ * The preview is here rather than in a separate place because every question
+ * somebody has when they open this — who gets it, when, what does it say —
+ * otherwise takes until 5pm to answer.
+ */
+export function DigestSections() {
+  const t = useTranslations("serviceDesk");
+  const settings = useServiceDeskSettings();
+  const preview = useDigestPreview();
+  const m = useServiceDeskMutations();
+  const { currentWorkspace } = useWorkspace();
+  const { members } = useWorkspaceMembers(currentWorkspace?.id ?? null);
+  const canManage = settings.data?.can_manage === true;
+  const enabled = settings.data?.digest_enabled !== false;
+  const hours = settings.data?.digest_hours ?? [9, 13, 17];
+  const excluded = settings.data?.digest_excluded_recipients ?? [];
+  const [sending, setSending] = useState(false);
+  const [sentCount, setSentCount] = useState<number | null>(null);
+
+  const toggleHour = (hour: number) => {
+    const next = hours.includes(hour)
+      ? hours.filter((h) => h !== hour)
+      : [...hours, hour].sort((a, b) => a - b);
+    // The server refuses an empty list — the off switch is the toggle above,
+    // not an empty schedule, so that "off" is one obvious thing rather than two.
+    if (next.length === 0) return;
+    m.updateSettings.mutate({ digest_hours: next });
+  };
+
+  const sendNow = async () => {
+    if (!currentWorkspace?.id) return;
+    setSending(true);
+    try {
+      const result = await serviceDeskApi.sendDigestNow(currentWorkspace.id);
+      setSentCount(result.sent);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <>
+      <Section>
+        <ToggleRow
+          description={t("digest.description")}
+          checked={enabled}
+          disabled={!canManage || m.updateSettings.isPending || settings.isLoading}
+          onToggle={() => m.updateSettings.mutate({ digest_enabled: !enabled })}
+        />
+      </Section>
+
+      <Section title={t("digest.times")}>
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          {t("digest.timesHint", { timezone: preview.data?.timezone ?? settings.data?.timezone ?? "" })}
+        </p>
+        <div className="flex flex-wrap gap-1">
+          {Array.from({ length: 24 }, (_, hour) => (
+            <button
+              key={hour}
+              type="button"
+              disabled={!canManage || !enabled || m.updateSettings.isPending}
+              onClick={() => toggleHour(hour)}
+              className={`h-8 w-11 rounded-md border text-xs transition-colors disabled:opacity-40 ${
+                hours.includes(hour)
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-input bg-background hover:bg-accent"
+              }`}
+            >
+              {String(hour).padStart(2, "0")}:00
+            </button>
+          ))}
+        </div>
+      </Section>
+
+      <Section title={t("digest.recipients")}>
+        <p className="max-w-2xl text-sm text-muted-foreground">{t("digest.recipientsHint")}</p>
+        {members
+          .filter((member) => member.status === "active")
+          .map((member) => {
+            const off = excluded.includes(member.developer_id);
+            // Only people the desk would actually mail are worth listing, but
+            // membership is resolved server-side, so this shows the workspace
+            // and marks the ones currently receiving it.
+            const receiving = (preview.data?.recipients ?? []).includes(
+              (member.developer_email ?? "").toLowerCase(),
+            );
+            if (!receiving && !off) return null;
+            return (
+              <label key={member.developer_id} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={!off}
+                  disabled={!canManage || m.updateSettings.isPending}
+                  onChange={(e) =>
+                    m.updateSettings.mutate({
+                      digest_excluded_recipients: e.target.checked
+                        ? excluded.filter((id) => id !== member.developer_id)
+                        : [...excluded, member.developer_id],
+                    })
+                  }
+                />
+                {member.developer_name || member.developer_email}
+              </label>
+            );
+          })}
+        <ExtraRecipientsEditor
+          current={settings.data?.digest_extra_recipients ?? []}
+          canManage={canManage}
+          saving={m.updateSettings.isPending}
+          onSave={(list) => m.updateSettings.mutate({ digest_extra_recipients: list })}
+        />
+      </Section>
+
+      <Section title={t("digest.preview")}>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={sendNow} disabled={!canManage || sending || !enabled}>
+            {sending ? <Spinner size="sm" className="mr-1" /> : null}
+            {t("digest.sendNow")}
+          </Button>
+          {sentCount !== null && (
+            <span className="text-xs text-muted-foreground">
+              {t("digest.sentCount", { count: sentCount })}
+            </span>
+          )}
+        </div>
+        {preview.isLoading ? (
+          <Spinner size="sm" />
+        ) : preview.data?.body ? (
+          <>
+            <p className="text-xs font-medium">{preview.data.subject}</p>
+            <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-md border border-border bg-muted/40 p-3 text-xs">
+              {preview.data.body}
+            </pre>
+          </>
+        ) : (
+          // The caller is not on the list. Saying so beats an empty box that
+          // reads as a broken preview.
+          <p className="text-sm text-muted-foreground">{t("digest.notARecipient")}</p>
+        )}
+      </Section>
+    </>
+  );
+}
+
+/** Addresses outside the desk department that also receive the digest. */
+function ExtraRecipientsEditor({
+  current,
+  canManage,
+  saving,
+  onSave,
+}: {
+  current: string[];
+  canManage: boolean;
+  saving: boolean;
+  onSave: (list: string[]) => void;
+}) {
+  const t = useTranslations("serviceDesk");
+  const [draft, setDraft] = useState("");
+  const entry = draft.trim().toLowerCase();
+  const invalid = entry.length > 0 && !entry.includes("@");
+
+  return (
+    <div className="space-y-2 border-t border-border pt-3">
+      <p className="text-sm font-medium">{t("digest.extra")}</p>
+      {/* Said plainly: these people see every open ticket, not a subset. */}
+      <p className="max-w-2xl text-xs text-muted-foreground">{t("digest.extraHint")}</p>
+      <div className="flex flex-wrap gap-1">
+        {current.map((address) => (
+          <span
+            key={address}
+            className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs"
+          >
+            {address}
+            {canManage && (
+              <button
+                onClick={() => onSave(current.filter((a) => a !== address))}
+                aria-label={t("digest.removeRecipient", { address })}
+                className="text-muted-foreground hover:text-destructive"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            )}
+          </span>
+        ))}
+      </div>
+      {canManage && (
+        <div className="flex items-end gap-2">
+          <Input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder={t("digest.extraPlaceholder")}
+            className="max-w-[280px]"
+          />
+          <Button
+            disabled={!entry || invalid || saving || current.includes(entry)}
+            onClick={() => {
+              onSave([...current, entry]);
+              setDraft("");
+            }}
+          >
+            {t("settings.add")}
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }
 

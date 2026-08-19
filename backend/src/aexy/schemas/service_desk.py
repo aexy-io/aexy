@@ -428,6 +428,20 @@ class AIAccuracy(BaseModel):
     by_request_type: list[RequestTypeAccuracy] = Field(default_factory=list)
 
 
+class DigestPreview(BaseModel):
+    """What this desk's digest would say right now, and who would get it."""
+
+    enabled: bool
+    hours: list[int] = Field(default_factory=list)
+    timezone: str
+    recipients: list[str] = Field(default_factory=list)
+    # The caller's own copy, rendered. Not somebody else's: a preview that showed
+    # the desk lead's whole-desk digest to a KAM would mail around the row scope
+    # every other read enforces.
+    subject: str | None = None
+    body: str | None = None
+
+
 class TicketCount(BaseModel):
     """The size of the matching set, for a screen that shows a page of it."""
 
@@ -793,7 +807,21 @@ class ServiceDeskSettings(BaseModel):
     # Local hours at which the digest goes out, in `timezone`. Was a global cron
     # fixed at 09:00/13:00/17:00 Asia/Kolkata for every workspace on the
     # deployment, which paged a US desk in the middle of the night.
+    # Whether the desk wants the open-ticket digest at all. On by default — a
+    # desk that has never opened these settings is better served by being told
+    # what is open than by silence — but a real switch, which it previously was
+    # not: no value turned the digest off, so three emails a day was a mail
+    # filter's problem to solve.
+    digest_enabled: bool = True
     digest_hours: list[int] = Field(default_factory=lambda: [9, 13, 17])
+    # Members of the desk department who asked not to receive it. Membership is
+    # how work is routed, not a statement about wanting three emails a day, and
+    # leaving the department to escape the digest changes routing.
+    digest_excluded_recipients: list[str] = Field(default_factory=list)
+    # Addresses added by hand — a manager or client-services lead who wants the
+    # summary without being in the department. They receive the desk-wide view,
+    # so this is a deliberate disclosure rather than a subscription.
+    digest_extra_recipients: list[str] = Field(default_factory=list)
     # How often Gmail-backed desk mailboxes are polled for new mail. Registering
     # a mailbox as intake is a statement about latency; before this it silently
     # inherited the 15-minute default a personal inbox uses.
@@ -845,7 +873,10 @@ class ServiceDeskSettingsUpdate(BaseModel):
     timezone: str | None = Field(None, max_length=64)
     breach_red_days: float | None = Field(None, gt=0, le=60)
     breach_amber_days: float | None = Field(None, gt=0, le=60)
+    digest_enabled: bool | None = None
     digest_hours: list[int] | None = None
+    digest_excluded_recipients: list[str] | None = None
+    digest_extra_recipients: list[str] | None = None
     intake_poll_minutes: int | None = Field(None, ge=1, le=60)
     terminology: dict[str, str] | None = None
     desk_name: str | None = Field(None, max_length=120)

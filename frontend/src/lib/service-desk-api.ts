@@ -293,6 +293,17 @@ export interface TicketQuery {
   is_open?: boolean;
 }
 
+export interface DigestPreview {
+  enabled: boolean;
+  hours: number[];
+  timezone: string;
+  recipients: string[];
+  /** The caller's own copy, rendered — never somebody else's. Null when the
+   *  caller is not on the recipient list. */
+  subject: string | null;
+  body: string | null;
+}
+
 export interface AIAccuracy {
   days: number;
   classified: number;
@@ -355,7 +366,13 @@ export interface ServiceDeskSettings {
   breach_red_days: number;
   breach_amber_days: number;
   /** Local hours the digest goes out, in `timezone`. Was a global IST cron. */
+  /** Whether the desk wants the open-ticket digest at all. */
+  digest_enabled: boolean;
   digest_hours: number[];
+  /** Desk-department members who asked not to receive it. */
+  digest_excluded_recipients: string[];
+  /** Addresses added by hand — they receive the desk-wide view. */
+  digest_extra_recipients: string[];
   /** How often Gmail-backed desk mailboxes are polled, in minutes. A floor on
    *  the integration's own interval, never a raise. */
   intake_poll_minutes: number;
@@ -405,7 +422,10 @@ export interface ServiceDeskSettingsPatch {
   timezone?: string;
   breach_red_days?: number;
   breach_amber_days?: number;
+  digest_enabled?: boolean;
   digest_hours?: number[];
+  digest_excluded_recipients?: string[];
+  digest_extra_recipients?: string[];
   intake_poll_minutes?: number;
   /** Merged into the stored map — send only the nouns being relabelled. */
   terminology?: Record<string, string>;
@@ -448,6 +468,12 @@ export const serviceDeskApi = {
     (await api.patch(`${base(ws)}/templates/${key}`, { subject, body })).data,
 
   // dashboard + tickets
+  /** What the digest would say right now, and who would receive it. */
+  previewDigest: async (ws: string): Promise<DigestPreview> =>
+    (await api.get(`${base(ws)}/digest/preview`)).data,
+  /** Send it now, to everyone who normally receives it. Managers only. */
+  sendDigestNow: async (ws: string): Promise<{ sent: number }> =>
+    (await api.post(`${base(ws)}/digest/send-now`)).data,
   /** Whether the classifier is worth trusting on this desk's mail. */
   getAiAccuracy: async (ws: string, days = 90): Promise<AIAccuracy> =>
     (await api.get(`${base(ws)}/ai-accuracy`, { params: { days } })).data,

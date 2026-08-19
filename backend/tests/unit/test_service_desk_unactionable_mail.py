@@ -134,9 +134,11 @@ async def test_our_own_digest_does_not_become_a_ticket(db_session: AsyncSession)
 async def test_the_digest_marks_itself_on_the_way_out(db_session: AsyncSession, monkeypatch):
     """The other half of the pair above: the send has to stamp it.
 
-    The digest is the one desk send that goes through the transactional service
-    rather than the desk mailer, which is why it was the one that came back as a
-    ticket.
+    The digest used to be the one desk send that went through the transactional
+    service directly rather than the desk mailer, which is why it was the one
+    that came back as a ticket. It goes through the mailer now like everything
+    else — and the mailer stamps the marker on both of its routes, so this holds
+    whether the desk has a connected mailbox or not.
     """
     from aexy.services import email_service as email_module
     from aexy.services.service_desk_digest_service import ServiceDeskDigestService
@@ -144,9 +146,16 @@ async def test_the_digest_marks_itself_on_the_way_out(db_session: AsyncSession, 
     ws = await _workspace(db_session, "unactionable-digest-send")
     calls: list[dict] = []
 
+    class _Log:
+        """What the real `send_templated_email` returns. The mailer reads
+        `.status` to tell a delivery failure from an unconfigured deployment, so
+        a stub returning None would report every digest as undeliverable."""
+
+        status = "sent"
+
     async def _send(self, **kwargs):
         calls.append(kwargs)
-        return None
+        return _Log()
 
     monkeypatch.setattr(email_module.EmailService, "send_templated_email", _send)
 

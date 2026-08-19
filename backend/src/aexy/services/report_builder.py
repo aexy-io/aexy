@@ -563,6 +563,7 @@ class ReportBuilderService:
         db: AsyncSession,
         developer_ids: list[str] | None = None,
         date_range: DateRange | None = None,
+        user_id: str | None = None,
     ) -> dict:
         """Fetch data for a specific widget configuration."""
         metric = widget.metric
@@ -577,6 +578,39 @@ class ReportBuilderService:
             )
 
         # Route to appropriate data fetcher based on metric
+        if metric == MetricType.SERVICE_DESK:
+            # The one metric that is not about developers. Its scope is the
+            # caller's Service Desk visibility, which is why `user_id` is
+            # threaded down here rather than resolved from `developer_ids` —
+            # a saved report must not become a way to read another KAM's queue.
+            from aexy.schemas.service_desk import TicketFilters
+            from aexy.services.service_desk_analytics import ServiceDeskAnalytics
+
+            workspace_id = config.get("workspace_id")
+            if not workspace_id:
+                return {"error": "Service desk widgets need a workspace_id in their config"}
+            if not user_id:
+                return {"error": "Service desk widgets need the requesting user"}
+            return await ServiceDeskAnalytics(db).aggregate(
+                workspace_id,
+                dimension=config.get("dimension", "account"),
+                measure=config.get("measure", "tickets"),
+                developer_id=user_id,
+                filters=TicketFilters(
+                    created_from=date_range.start_date if date_range else None,
+                    created_to=date_range.end_date if date_range else None,
+                    **{
+                        key: value
+                        for key, value in (config.get("filters") or {}).items()
+                        # The widget config is stored JSON somebody may have
+                        # hand-edited; only declared filter fields reach the query.
+                        if key in TicketFilters.model_fields
+                        and key not in {"created_from", "created_to"}
+                    },
+                ),
+                limit=config.get("limit", 50),
+            )
+
         if metric == MetricType.SKILL_COVERAGE:
             if not developer_ids:
                 return {"error": "Developer IDs required for skill heatmap"}
@@ -749,6 +783,7 @@ class ReportBuilderService:
                     db=db,
                     developer_ids=developer_ids,
                     date_range=date_range,
+                    user_id=user_id,
                 )
                 widget_data[widget.id] = {
                     "title": widget.title,

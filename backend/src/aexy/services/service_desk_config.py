@@ -204,6 +204,53 @@ def domain_candidates(domain: str | None) -> list[str]:
     ]
 
 
+def digest_enabled(service_desk_settings: Mapping[str, object]) -> bool:
+    """Whether this desk wants its open-ticket digest at all.
+
+    On by default, because a desk that has never opened these settings is better
+    served by being told what is open than by silence. But it is a real switch
+    now: there was previously no value that turned the digest off — an empty
+    hour list fell back to the default, and the API refused to store one — so
+    three emails a day was a mail filter's problem to solve.
+    """
+    return bool(service_desk_settings.get("digest_enabled", True))
+
+
+def normalise_email_list(values: object) -> list[str]:
+    """Clean a list of plain addresses, dropping anything that isn't one.
+
+    Used for the digest's extra recipients: managers who want the desk's summary
+    without being in the department that runs it. Deliberately addresses only —
+    no domains — because unlike the ignore list this one *sends* somewhere, and a
+    domain would name nobody.
+    """
+    if not isinstance(values, (list, tuple, set)):
+        return []
+    cleaned: list[str] = []
+    for value in values:
+        if not isinstance(value, str):
+            continue
+        entry = value.strip().lower()
+        if "@" not in entry or " " in entry or entry in cleaned:
+            continue
+        cleaned.append(entry)
+    return cleaned
+
+
+def normalise_id_list(values: object) -> list[str]:
+    """Clean a list of developer ids (the digest's opt-outs)."""
+    if not isinstance(values, (list, tuple, set)):
+        return []
+    cleaned: list[str] = []
+    for value in values:
+        if not isinstance(value, str):
+            continue
+        entry = value.strip()
+        if entry and entry not in cleaned:
+            cleaned.append(entry)
+    return cleaned
+
+
 def normalise_ignored_senders(values: object) -> list[str]:
     """Clean an Ops-supplied ignore list into lower-cased addresses and domains.
 

@@ -108,7 +108,10 @@ TEMPLATES: dict[str, dict] = {
     "digest": {
         "slug": "service_desk_digest",
         "name": "Service Desk — Daily Digest",
-        "subject": "Daily Open Tickets Summary — {{date}}",
+        # Not "Daily": the default schedule sends three of these a day, and an
+        # identical subject on all three made mail clients thread them together
+        # so the 5pm summary hid inside the 9am one.
+        "subject": "Open tickets — {{date}} {{time}}",
         "body": (
             "Hi {{recipient_name}},\n\n"
             "Here is today's snapshot of open tickets {{scope}}:\n"
@@ -128,6 +131,7 @@ TEMPLATES: dict[str, dict] = {
             {"name": "breaching", "default": "0"},
             {"name": "tickets_block", "default": ""},
             {"name": "date", "default": ""},
+            {"name": "time", "default": ""},
             {"name": "desk_name", "default": "Service Desk"},
             # The threshold is per workspace now, so the copy can't hardcode "2"
             # — a digest that says "over 2 working days" while the desk is set to

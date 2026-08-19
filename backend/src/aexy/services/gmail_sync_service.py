@@ -748,6 +748,63 @@ class GmailSyncService:
 
             return response.json()
 
+    # ------------------------------------------------------------- push (watch)
+
+    async def start_watch(self, integration: GoogleIntegration) -> datetime | None:
+        """Ask Gmail to push this mailbox's changes to our Pub/Sub topic.
+
+        Returns the expiry Gmail granted, or None when push is not configured
+        for this deployment — which is the ordinary state, not a failure. The
+        desk keeps polling either way; push only shortens the wait.
+
+        Registering again on an already-watched mailbox is how renewal works:
+        Gmail replaces the existing watch and hands back a new expiry, so this
+        needs no "is it already watched" branch.
+        """
+        topic = get_settings().gmail_push_topic
+        if not topic:
+            return None
+        response = await self._make_gmail_request(
+            integration,
+            "POST",
+            "/users/me/watch",
+            json={"topicName": topic, "labelIds": ["INBOX"], "labelFilterBehavior": "include"},
+        )
+        # Milliseconds since the epoch, as a string, in Gmail's response.
+        raw_expiry = (response or {}).get("expiration")
+        expires_at = (
+            datetime.fromtimestamp(int(raw_expiry) / 1000, tz=timezone.utc)
+            if raw_expiry
+            else None
+        )
+        integration.gmail_watch_expires_at = expires_at
+        # The history id Gmail reports now is the point push will resume from.
+        # Without seeding it, the first notification would ask for history since
+        # a cursor that may be days old and re-ingest everything in between.
+        cursor = await self.get_or_create_sync_cursor(integration)
+        if not cursor.history_id:
+            cursor.history_id = (response or {}).get("historyId")
+        await self.db.flush()
+        logger.info(
+            "Gmail push registered for integration %s until %s", integration.id, expires_at
+        )
+        return expires_at
+
+    async def stop_watch(self, integration: GoogleIntegration) -> None:
+        """Stop Gmail pushing for this mailbox. Never raises.
+
+        Best-effort because the only thing a failure costs is notifications for
+        a mailbox nobody is listening to any more, which the receiver already
+        has to tolerate: a watch outlives the integration it was made for
+        whenever somebody disconnects an account.
+        """
+        try:
+            await self._make_gmail_request(integration, "POST", "/users/me/stop")
+        except Exception as exc:  # noqa: BLE001
+            logger.info("Gmail push could not be stopped for %s: %s", integration.id, exc)
+        integration.gmail_watch_expires_at = None
+        await self.db.flush()
+
     async def get_or_create_sync_cursor(
         self, integration: GoogleIntegration
     ) -> EmailSyncCursor:

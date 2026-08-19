@@ -51,11 +51,13 @@ from aexy.schemas.service_desk import (
     ServiceDeskTicketDetail,
     StakeholderEmailRequest,
     AIAccuracy,
+    DigestPreview,
     ServiceDeskTicketResponse,
     TicketCount,
     TicketFilters,
     TicketFieldsUpdate,
 )
+from aexy.services.service_desk_digest_service import ServiceDeskDigestService
 from aexy.services.service_desk_service import ServiceDeskService
 from aexy.services.service_desk_ticket_service import ServiceDeskTicketService
 
@@ -115,6 +117,9 @@ async def update_settings(workspace_id: str, data: ServiceDeskSettingsUpdate, db
         breach_red_days=data.breach_red_days,
         breach_amber_days=data.breach_amber_days,
         digest_hours=data.digest_hours,
+        digest_enabled_value=data.digest_enabled,
+        digest_excluded_recipients=data.digest_excluded_recipients,
+        digest_extra_recipients=data.digest_extra_recipients,
         intake_poll_minutes=data.intake_poll_minutes,
         terminology=data.terminology,
         desk_name=data.desk_name,
@@ -341,6 +346,82 @@ async def list_tickets(
 # Registered before `/tickets/{ticket_id}`: FastAPI matches in declaration order,
 # and a literal path declared after a parameterised one is never reached — the
 # request arrives as a lookup for a ticket called "count".
+@router.get("/report-options")
+async def get_report_options(
+    workspace_id: str,
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """What this desk can group by and measure, in its own vocabulary.
+
+    Served rather than hardcoded in the client so a workspace that calls its
+    accounts "Partners" gets a picker that says Partners.
+    """
+    from aexy.services.service_desk_analytics import report_options
+
+    return await report_options(db, workspace_id)
+
+
+@router.get("/analytics")
+async def get_analytics(
+    workspace_id: str,
+    dimension: str = Query(..., description="What to group by"),
+    measure: str = Query(..., description="What to compute per group"),
+    limit: int = Query(default=50, ge=1, le=200),
+    filters: TicketFilters = Depends(),
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """One grouped figure per dimension value, in the caller's own scope.
+
+    Takes the same filters as the ticket list, so a chart and the rows behind it
+    are the same question asked two ways.
+    """
+    from aexy.services.service_desk_analytics import ServiceDeskAnalytics
+
+    return await ServiceDeskAnalytics(db).aggregate(
+        workspace_id,
+        dimension=dimension,
+        measure=measure,
+        developer_id=str(current.id),
+        filters=filters,
+        limit=limit,
+    )
+
+
+@router.get("/digest/preview", response_model=DigestPreview)
+async def preview_digest(
+    workspace_id: str,
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """The caller's own digest as it would be sent right now, plus who gets one.
+
+    The caller's copy, never somebody else's: showing a KAM the desk lead's
+    whole-desk digest would mail around the row scope every other read enforces.
+    A caller who is not on the recipient list still sees the schedule and the
+    list — that is configuration, not ticket data.
+    """
+    return await ServiceDeskDigestService(db).preview(workspace_id, str(current.id))
+
+
+@router.post("/digest/send-now")
+async def send_digest_now(
+    workspace_id: str,
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(require_manage),
+):
+    """Send this desk's digest now, to everyone who would normally receive it.
+
+    Restricted to managers, because it mails every member of the desk — a
+    "preview" that goes to other people's inboxes is not something an individual
+    should be able to trigger. Ignores the schedule but not the off switch: a
+    desk that turned the digest off is not asking to be surprised by one.
+    """
+    sent = await ServiceDeskDigestService(db).send_for_workspace_now(workspace_id)
+    return {"sent": sent}
+
+
 @router.get("/ai-accuracy", response_model=AIAccuracy)
 async def ai_accuracy(
     workspace_id: str,

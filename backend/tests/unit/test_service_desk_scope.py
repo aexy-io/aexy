@@ -338,3 +338,25 @@ async def test_a_filter_still_narrows_within_scope(db_session, desk):
     )
 
     assert {r.ticket_id for r in rows} == {desk["tickets"]["fin"]}
+
+
+@pytest.mark.asyncio
+async def test_a_chart_is_scoped_like_every_other_read(db_session, desk):
+    """A saved report must not become a way to read another KAM's queue.
+
+    Aggregation hides individual rows, which is exactly why it is worth checking:
+    a count of somebody else's tickets is still a fact about their work, and a
+    scheduled report would mail it on a timer.
+    """
+    from aexy.services.service_desk_analytics import ServiceDeskAnalytics
+
+    scoped = await ServiceDeskAnalytics(db_session).aggregate(
+        desk["ws"], "pending_with", "tickets", developer_id=desk["kam_a"]
+    )
+    whole_desk = await ServiceDeskAnalytics(db_session).aggregate(
+        desk["ws"], "pending_with", "tickets"
+    )
+
+    # kam_a is assigned two of the three tickets.
+    assert scoped["total_tickets"] == 2
+    assert whole_desk["total_tickets"] == 3

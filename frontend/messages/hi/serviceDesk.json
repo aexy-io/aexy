@@ -305,6 +305,22 @@
       "hint": "इस account की tickets केवल इन्हीं products के विरुद्ध classify होती हैं। जब तक उस product को कोई और न देखता हो, owner को “Account जैसा ही” रहने दें।",
       "sameAsAccount": "Account owner जैसा ही",
       "ownerFor": "{name} के लिए {product} का owner"
+    },
+    "digest": {
+      "title": "Open-ticket digest",
+      "description": "Desk के सभी लोगों को यह summary भेजें कि क्या-क्या अभी खुला है। डिफ़ॉल्ट रूप से चालू।",
+      "times": "भेजने के समय",
+      "timesHint": "{timezone} के स्थानीय घंटे। कम से कम एक चुनें — digest पूरी तरह बंद करने के लिए ऊपर वाला switch इस्तेमाल करें।",
+      "recipients": "किसे मिलता है",
+      "recipientsHint": "Desk department के हर व्यक्ति को उनकी अपनी open tickets मिलती हैं; desk lead को सभी। किसी का checkbox हटाने पर उन्हें mail जाना बंद हो जाता है, पर काम का routing वैसा ही रहता है।",
+      "extra": "अतिरिक्त recipients",
+      "extraHint": "Desk department के बाहर के addresses। उन्हें पूरे desk की open tickets मिलती हैं — account नाम और subjects सहित — इसलिए केवल उन्हीं को जोड़ें जिन्हें यह सब देखना चाहिए।",
+      "extraPlaceholder": "head-of-ops@example.com",
+      "removeRecipient": "{address} को भेजना बंद करें",
+      "preview": "Preview",
+      "sendNow": "अभी भेजें",
+      "sentCount": "{count, plural, =0 {कुछ नहीं भेजा गया} one {# व्यक्ति को भेजा गया} other {# लोगों को भेजा गया}}",
+      "notARecipient": "आप recipient list में नहीं हैं, इसलिए preview के लिए कुछ नहीं है। ऊपर की settings उन सभी पर लागू हैं जो list में हैं।"
     }
   }
 }

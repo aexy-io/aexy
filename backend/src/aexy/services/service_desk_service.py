@@ -26,11 +26,14 @@ from aexy.services.service_desk_clock import (
 )
 from aexy.services.service_desk_config import (
     DEFAULT_INTAKE_POLL_MINUTES,
+    digest_enabled,
     domain_is_too_broad,
     DEFAULT_TICKET_PREFIX,
     MAX_INTAKE_POLL_MINUTES,
     MIN_INTAKE_POLL_MINUTES,
     display_id,
+    normalise_email_list,
+    normalise_id_list,
     normalise_ignored_senders,
     normalise_poll_minutes,
     normalise_prefix,
@@ -961,7 +964,14 @@ class ServiceDeskService:
             "timezone": sd.get("timezone") or DEFAULT_TIMEZONE,
             "breach_red_days": float(sd.get("breach_red_days") or BREACH_RED_DAYS),
             "breach_amber_days": float(sd.get("breach_amber_days") or BREACH_AMBER_DAYS),
+            "digest_enabled": digest_enabled(sd),
             "digest_hours": list(sd.get("digest_hours") or DEFAULT_DIGEST_HOURS),
+            "digest_excluded_recipients": normalise_id_list(
+                sd.get("digest_excluded_recipients")
+            ),
+            "digest_extra_recipients": normalise_email_list(
+                sd.get("digest_extra_recipients")
+            ),
             # How often Gmail-backed mailboxes are polled for new mail. Resolved,
             # so the page shows the interval actually in force rather than a
             # blank for every desk that never chose one.
@@ -1012,6 +1022,9 @@ class ServiceDeskService:
         breach_amber_days: float | None = None,
         digest_hours: list[int] | None = None,
         intake_poll_minutes: int | None = None,
+        digest_enabled_value: bool | None = None,
+        digest_excluded_recipients: list[str] | None = None,
+        digest_extra_recipients: list[str] | None = None,
         terminology: dict[str, str] | None = None,
         desk_name: str | None = None,
         desk_department_id: str | None = None,
@@ -1142,6 +1155,24 @@ class ServiceDeskService:
                 )
             sd["breach_red_days"] = red
             sd["breach_amber_days"] = amber
+
+        if digest_enabled_value is not None:
+            sd["digest_enabled"] = bool(digest_enabled_value)
+
+        if digest_excluded_recipients is not None:
+            sd["digest_excluded_recipients"] = normalise_id_list(digest_excluded_recipients)
+
+        if digest_extra_recipients is not None:
+            # Audited: adding an address sends this workspace's whole open-ticket
+            # list, with account names and subjects, to somebody outside the
+            # department. "Who added this recipient" is the question asked
+            # afterwards.
+            cleaned_extra = normalise_email_list(digest_extra_recipients)
+            sd["digest_extra_recipients"] = cleaned_extra
+            logger.info(
+                "Service desk digest extra recipients for workspace %s set to %s by %s",
+                workspace_id, cleaned_extra, developer_id or "unknown",
+            )
 
         if intake_poll_minutes is not None:
             minutes = normalise_poll_minutes(intake_poll_minutes)

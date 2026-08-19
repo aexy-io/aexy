@@ -305,6 +305,22 @@
       "hint": "Tickets from this account are classified against these products only. Leave an owner as “Same as account” unless someone different handles that product.",
       "sameAsAccount": "Same as account owner",
       "ownerFor": "Owner of {product} for {name}"
+    },
+    "digest": {
+      "title": "Open-ticket digest",
+      "description": "Email everyone on the desk a summary of what is still open. On by default.",
+      "times": "Send times",
+      "timesHint": "Local hours in {timezone}. Pick at least one — to stop the digest entirely, use the switch above.",
+      "recipients": "Who receives it",
+      "recipientsHint": "Everyone in the desk department gets their own open tickets; the desk lead gets all of them. Uncheck someone to stop mailing them without changing how work is routed to them.",
+      "extra": "Additional recipients",
+      "extraHint": "Addresses outside the desk department. They receive the whole desk's open tickets — including account names and subjects — so add only people who should see all of it.",
+      "extraPlaceholder": "head-of-ops@example.com",
+      "removeRecipient": "Stop sending to {address}",
+      "preview": "Preview",
+      "sendNow": "Send now",
+      "sentCount": "{count, plural, =0 {Nothing sent} one {Sent to # person} other {Sent to # people}}",
+      "notARecipient": "You are not on the recipient list, so there is nothing to preview. The settings above still apply to everyone who is."
     }
   }
 }

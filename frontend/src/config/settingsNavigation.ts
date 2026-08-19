@@ -321,6 +321,15 @@ export const settingsNavigation: SettingsNavCategory[] = [
         keywords: ["prefix", "identity", "timezone", "breach", "threshold", "template", "email", "copy"],
       },
       {
+        id: "service-desk-digest",
+        label: "Open-Ticket Digest",
+        href: "/settings/service-desk/digest",
+        icon: Mail,
+        description: "Whether the open-ticket summary goes out, when, and to whom",
+        permission: PERMISSIONS.CAN_MANAGE_TICKETS,
+        keywords: ["digest", "summary", "email", "schedule", "recipients", "daily", "open tickets"],
+      },
+      {
         id: "service-desk-ai",
         label: "Desk AI",
         href: "/settings/service-desk/ai",

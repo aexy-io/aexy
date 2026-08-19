@@ -26,6 +26,7 @@ import {
   ServiceDeskSettingsPatch,
   ServiceDeskTemplate,
   AIAccuracy,
+  DigestPreview,
   ServiceDeskTicket,
   TicketQuery,
   ServiceDeskTicketDetail,
@@ -125,6 +126,16 @@ export function useServiceDeskTickets(query?: TicketQuery) {
     // previous one's rows from cache until the refetch landed.
     queryKey: [...keys.tickets(ws ?? ""), query ?? {}],
     queryFn: () => serviceDeskApi.listTickets(ws!, query),
+    enabled: !!ws,
+  });
+}
+
+/** What the digest would say right now, and who would receive it. */
+export function useDigestPreview() {
+  const ws = useWs();
+  return useQuery<DigestPreview>({
+    queryKey: ["service-desk", "digest-preview", ws ?? ""],
+    queryFn: () => serviceDeskApi.previewDigest(ws!),
     enabled: !!ws,
   });
 }

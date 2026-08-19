@@ -5,6 +5,7 @@ Replaces: aexy.processing.google_sync_tasks
 
 import logging
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Any
 
 from temporalio import activity
@@ -64,6 +65,16 @@ class SyncCalendarInput:
 
 @dataclass
 class CheckAutoSyncInput:
+    pass
+
+
+@dataclass
+class SyncGmailPushInput:
+    integration_id: str
+
+
+@dataclass
+class RenewGmailWatchesInput:
     pass
 
 
@@ -280,3 +291,92 @@ async def check_auto_sync_integrations(input: CheckAutoSyncInput) -> dict[str, A
                 logger.error(f"Failed to trigger Calendar auto-sync: {e}")
 
     return {"gmail_syncs": gmail_syncs, "calendar_syncs": calendar_syncs}
+
+
+@activity.defn
+async def sync_gmail_push(input: SyncGmailPushInput) -> dict[str, Any]:
+    """Run one incremental sync because Gmail said this mailbox changed.
+
+    The same work the poller does, reached sooner. Deliberately incremental
+    only: a push notification means "there is history since your cursor", and
+    falling back to a full sync here would let one dropped notification trigger
+    a whole-mailbox re-read on a queue meant for seconds-long jobs.
+    """
+    from aexy.core.database import get_async_session
+    from aexy.models.google_integration import GoogleIntegration
+    from aexy.services.gmail_sync_service import GmailSyncService
+
+    async with get_async_session() as session:
+        integration = await session.get(GoogleIntegration, input.integration_id)
+        if integration is None or not integration.gmail_sync_enabled:
+            return {"skipped": "integration unavailable"}
+        result = await GmailSyncService(session).start_incremental_sync(integration)
+        integration.gmail_last_sync_at = datetime.now(timezone.utc)
+    logger.info("Gmail push sync for %s: %s", input.integration_id, result)
+    return result
+
+
+@activity.defn
+async def renew_gmail_watches(input: RenewGmailWatchesInput) -> int:
+    """Re-register push subscriptions before Gmail drops them.
+
+    Gmail expires a watch after seven days and then simply stops delivering —
+    no error, no callback. A desk that registered once would go quiet a week
+    later and look like its mail had stopped arriving, so this runs daily and
+    renews anything lapsing within two days.
+
+    Registering again on a live watch is how renewal works: Gmail replaces it
+    and returns a fresh expiry, so there is nothing to tear down first.
+    """
+    from datetime import timedelta
+
+    from sqlalchemy import or_, select
+
+    from aexy.core.config import get_settings
+    from aexy.core.database import get_async_session
+    from aexy.models.google_integration import GoogleIntegration
+    from aexy.models.service_desk import MailboxChannel, ServiceDeskMailbox
+    from aexy.services.gmail_sync_service import GmailSyncService
+
+    if not get_settings().gmail_push_topic:
+        return 0
+
+    renewed = 0
+    cutoff = datetime.now(timezone.utc) + timedelta(days=2)
+    async with get_async_session() as session:
+        integrations = (
+            await session.execute(
+                select(GoogleIntegration)
+                .join(
+                    ServiceDeskMailbox,
+                    ServiceDeskMailbox.integration_id == GoogleIntegration.id,
+                )
+                .where(
+                    GoogleIntegration.is_active.is_(True),
+                    GoogleIntegration.gmail_sync_enabled.is_(True),
+                    ServiceDeskMailbox.is_active.is_(True),
+                    ServiceDeskMailbox.channel == MailboxChannel.GMAIL_SYNC.value,
+                    # Never registered, or lapsing soon. The first is how a
+                    # newly connected desk mailbox gets onto push at all.
+                    or_(
+                        GoogleIntegration.gmail_watch_expires_at.is_(None),
+                        GoogleIntegration.gmail_watch_expires_at <= cutoff,
+                    ),
+                )
+                .distinct()
+            )
+        ).scalars().all()
+
+        for integration in integrations:
+            try:
+                await GmailSyncService(session).start_watch(integration)
+                renewed += 1
+            except Exception:  # noqa: BLE001 — one bad mailbox must not stop the rest
+                logger.exception(
+                    "Gmail push: could not renew the watch for integration %s. "
+                    "This mailbox stays on the polling path.",
+                    integration.id,
+                )
+                await session.rollback()
+    logger.info("Gmail push: renewed %s watches", renewed)
+    return renewed
