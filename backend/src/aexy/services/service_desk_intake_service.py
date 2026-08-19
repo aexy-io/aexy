@@ -126,7 +126,7 @@ async def ai_classification_enabled(db: AsyncSession, workspace_id: str) -> bool
     """Whether AI may read this workspace's desk mail.
 
     The single gate for every AI-dependent behaviour in the desk: classification,
-    LOB/request-type inference, thread matching and auto-split.
+    product/request-type inference, thread matching and auto-split.
 
     It **follows the workspace's own AI switch** (``WorkspaceAISettings.
     ai_enabled``) rather than asking for a second, separate yes. A per-feature
@@ -929,7 +929,7 @@ class ServiceDeskIntakeService:
         # AI reading/categorisation follows the workspace's AI switch (see
         # ``ai_classification_enabled``), and an automatic response carries no
         # request to read — classifying one would only invent a request type and
-        # an LOB for a machine's away message.
+        # a product for a machine's away message.
         issues: list[dict] = []
         overflow = False
         if automatic:
@@ -947,10 +947,10 @@ class ServiceDeskIntakeService:
                 sd.needs_triage = True
         else:
             # Nothing has read this ticket: the ticket is still created, owned and
-            # clocked, but nobody has set the LOB or confirmed the request type —
-            # it holds the workspace's default. Flag it so the owning KAM
+            # clocked, but nobody has set the product or confirmed the request
+            # type — it holds the workspace's default. Flag it so the owner
             # completes those fields by hand rather than the desk silently
-            # reporting every ticket as a Query with no product against it.
+            # reporting every ticket as its default type with no product on it.
             # A caller that already has those answers from a person clears it.
             sd.needs_triage = True
 
