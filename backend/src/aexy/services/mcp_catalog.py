@@ -140,6 +140,7 @@ TAG_TO_CAPABILITY: dict[str, str] = {
     # -- Docs, drive & knowledge --------------------------------------------
     "documents": "docs",
     "document_spaces": "docs",
+    "documentation_impact": "docs",
     "knowledge_graph": "docs",
     "collaboration": "docs",
     "file_search": "docs",
@@ -254,6 +255,7 @@ TAG_TO_CAPABILITY: dict[str, str] = {
     # -- System (excluded) ---------------------------------------------------
     "health": "system",
     "event_ingestion": "system",
+    "gmail_push": "system",
 }
 
 

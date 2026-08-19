@@ -1656,7 +1656,7 @@ class ServiceDeskService:
 
     # ----------------------------------------------------------- tickets
 
-    async def _scoped_ticket_query(
+    async def scoped_ticket_query(
         self,
         workspace_id: str,
         developer_id: str | None,
@@ -1665,6 +1665,11 @@ class ServiceDeskService:
         selection,
     ):
         """The one place a desk ticket query is narrowed.
+
+        Public because the analytics service needs the identical clause, and a
+        second module reaching for a leading-underscore method would have made
+        this boundary a lie rather than a rule — the risk being that a chart
+        eventually gets narrowed differently from the list it sits above.
 
         Scope first, filters second, and they are different things: the scope
         clause says which rows this caller may see at all, and a filter says
@@ -1750,7 +1755,7 @@ class ServiceDeskService:
         bounded page and the count is the whole set — and because the existing
         list response is a bare array that several callers already destructure.
         """
-        query = await self._scoped_ticket_query(
+        query = await self.scoped_ticket_query(
             workspace_id,
             developer_id,
             assigned_to,
@@ -1770,7 +1775,7 @@ class ServiceDeskService:
     ) -> list[ServiceDeskTicketResponse]:
         """Tickets on this desk, in the caller's scope."""
         query = (
-            await self._scoped_ticket_query(
+            await self.scoped_ticket_query(
                 workspace_id,
                 developer_id,
                 assigned_to,

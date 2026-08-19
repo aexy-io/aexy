@@ -100,8 +100,11 @@ async def report_options(db: AsyncSession, workspace_id: str) -> dict:
     def label(dimension: Dimension) -> str:
         # The master-data dimensions are named by the workspace; the rest are
         # ours and read the same everywhere.
+        #
+        # Used verbatim, not title-cased: the terms are already display strings,
+        # and `"Lines of Business".title()` is "Lines Of Business".
         return (
-            taxonomy.term(dimension.label).title()
+            taxonomy.term(dimension.label)
             if dimension.label in {"accounts", "products", "vendors", "owners"}
             else dimension.label
         )
@@ -144,7 +147,7 @@ class ServiceDeskAnalytics:
 
         from aexy.services.service_desk_service import ServiceDeskService
 
-        query = await ServiceDeskService(self.db)._scoped_ticket_query(
+        query = await ServiceDeskService(self.db).scoped_ticket_query(
             workspace_id,
             developer_id,
             None,
@@ -197,7 +200,10 @@ class ServiceDeskAnalytics:
             ].append(
                 {
                     "is_open": closed is None or sd.pending_with != closed,
-                    "days_open": (
+                    # Seconds, converted once at the end. Named for what it
+                    # holds — a key called `days_open` carrying seconds is how a
+                    # later measure gets the unit wrong.
+                    "open_seconds": (
                         _aware(ticket.closed_at) if ticket.closed_at else now
                     ).timestamp()
                     - _aware(ticket.created_at).timestamp(),
@@ -276,7 +282,7 @@ def _measure_of(measure: str, items: list[dict]) -> float | None:
     if measure == "breaching":
         return float(sum(1 for i in items if i["breaching"]))
     if measure == "avg_days_open":
-        return round(sum(i["days_open"] for i in items) / len(items) / _DAY, 2)
+        return round(sum(i["open_seconds"] for i in items) / len(items) / _DAY, 2)
     if measure == "avg_working_days_in_stage":
         staged = [i["stage_days"] for i in items if i["stage_days"] is not None]
         return round(sum(staged) / len(staged), 2) if staged else None
