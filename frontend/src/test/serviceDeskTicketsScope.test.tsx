@@ -20,8 +20,13 @@ vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
 }));
 
+vi.mock("@/hooks/useWorkspace", () => ({
+  useWorkspace: () => ({ currentWorkspace: { id: "ws-1" } }),
+}));
+
 vi.mock("@/hooks/useServiceDesk", () => ({
   useServiceDeskTickets: () => ({ data: mocks.tickets, isLoading: false }),
+  useServiceDeskTicketCount: () => ({ data: { total: mocks.tickets.length } }),
   useServiceDeskSettings: () => ({ data: { scope: mocks.scope, can_manage: false } }),
   useServiceDeskTaxonomy: () => ({
     stakeholders: [],

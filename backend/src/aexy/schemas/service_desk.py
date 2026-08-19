@@ -320,16 +320,71 @@ class ServiceDeskTicketResponse(BaseModel):
     requester_name: str | None = None
     status: str | None = None
     product_id: str | None = None
+    product_name: str | None = None
     account_id: str | None = None
     account_name: str | None = None
     vendor_id: str | None = None
+    vendor_name: str | None = None
     assigned_owner_id: str | None = None
+    assigned_owner_name: str | None = None
     request_type: TaxonomySlug
     pending_with: TaxonomySlug
     origin: TicketOrigin
     needs_triage: bool
     ai_confidence: float | None = None
     created_at: datetime
+
+
+class TicketFilters(BaseModel):
+    """What narrows a ticket list, a count, or an export.
+
+    One model for all three, taken as a FastAPI dependency, so the rows a report
+    exports are by construction the rows its screen was showing. Three parallel
+    sets of query parameters would drift, and the first symptom would be a CSV
+    that disagrees with the page somebody generated it from.
+
+    Every field is optional and every one is a *narrowing*. None of them widen
+    the caller's scope: the visibility clause is applied first and separately, so
+    asking for another owner's queue by id returns their tickets only if the
+    caller could already see them.
+    """
+
+    # Reporting is nearly always "this month", "last quarter" — a range on
+    # creation, inclusive of both ends, in UTC.
+    created_from: datetime | None = None
+    created_to: datetime | None = None
+
+    account_id: str | None = None
+    product_id: str | None = None
+    vendor_id: str | None = None
+    request_type: TaxonomySlug | None = None
+    pending_with: TaxonomySlug | None = None
+    origin: TicketOrigin | None = None
+    status: str | None = Field(None, max_length=32)
+    assigned_to: str | None = None
+    # Tickets nobody has finished classifying. The one filter that answers a
+    # question about the desk's own hygiene rather than about its work.
+    needs_triage: bool | None = None
+    # Whether the ticket is in the workspace's terminal stage. Expressed as a
+    # boolean rather than by naming the closed slug, because which slug that is
+    # differs per workspace and a report should not have to know.
+    is_open: bool | None = None
+
+    @model_validator(mode="after")
+    def _range_must_run_forwards(self):
+        if (
+            self.created_from is not None
+            and self.created_to is not None
+            and self.created_to < self.created_from
+        ):
+            raise ValueError("created_to must not be earlier than created_from")
+        return self
+
+
+class TicketCount(BaseModel):
+    """The size of the matching set, for a screen that shows a page of it."""
+
+    total: int
 
 
 # ==================== Pending-With transitions & TAT ====================

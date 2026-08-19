@@ -44,6 +44,8 @@ from aexy.schemas.service_desk import InboundEmail
 from aexy.services.service_desk_config import (
     address_is_ignored,
     display_id as render_display_id,
+    domain_candidates,
+    forwarded_sender,
     force_ticket_id_into_subject,
     looks_automatic,
     normalise_ignored_senders,
@@ -776,16 +778,45 @@ class ServiceDeskIntakeService:
         assignment_note: str | None = None
 
         if domain and internal_domain and domain == internal_domain:
-            # Sender is on the desk's own domain, so there is no account to infer
-            # from it — someone has to confirm which account this is about.
+            # Sender is on the desk's own domain. Either a colleague wrote in, or
+            # — far more often — somebody forwarded a partner's mail to the desk,
+            # in which case the address in `From:` is the forwarder and the real
+            # requester is named in a header or in the quoted block below it.
             origin = TicketOrigin.INTERNAL.value
+            # Inferred attribution, so a human still confirms it. The value is
+            # that the *owner* is right in the meantime: without this every
+            # forwarded partner request landed on an arbitrary member of the desk
+            # and looked deliberately assigned.
             needs_triage = True
-            assigned_owner_id = await self._random_owner(workspace_id)
-            assignment_note = (
-                f"Assigned by fallback: {email.from_email} is on this desk's own domain, "
-                "so no account could be inferred from it. Set the account by hand to route "
-                "this ticket to its owner."
+            forwarded = forwarded_sender(email.headers or {}, email.body_text, internal_domain)
+            account = (
+                await self._match_account(
+                    workspace_id, _domain_of(forwarded), forwarded
+                )
+                if forwarded
+                else None
             )
+            if account is not None:
+                assigned_owner_id = account.assigned_owner_id or await self._random_owner(
+                    workspace_id
+                )
+                assignment_note = (
+                    f'Attributed to "{account.name}" from the forwarded message: '
+                    f"{email.from_email} forwarded mail originally from {forwarded}. "
+                    "Confirm this is the right account."
+                )
+                if account.assigned_owner_id is None:
+                    assignment_note += (
+                        f' "{account.name}" has no assigned owner in Master Data, so the '
+                        "owner was picked by fallback."
+                    )
+            else:
+                assigned_owner_id = await self._random_owner(workspace_id)
+                assignment_note = (
+                    f"Assigned by fallback: {email.from_email} is on this desk's own domain, "
+                    "so no account could be inferred from it. Set the account by hand to route "
+                    "this ticket to its owner."
+                )
         else:
             account = await self._match_account(workspace_id, domain, address)
             if account is not None:
@@ -1168,10 +1199,24 @@ class ServiceDeskIntakeService:
 
     # ------------------------------------------------------------- assignment
 
+    @staticmethod
+    def _match_keys(domain: str | None, address: str | None) -> list[str]:
+        """Everything a Master Data row could be keyed on for this sender.
+
+        The whole address, then the sender's domain and each parent domain above
+        it. Matching used to be exact equality on the domain, so a partner
+        writing from ``mail.partner.com`` or ``claims.partner.com`` — a regional
+        office, a marketing platform, a ticketing subdomain — was not recognised
+        as that partner at all, and the ticket went to an arbitrary owner with
+        nothing to say why. See ``domain_candidates`` for what stops this
+        reaching up into a public suffix.
+        """
+        return [key for key in ([address] if address else []) + domain_candidates(domain) if key]
+
     async def _match_account(
         self, workspace_id: str, domain: str | None, address: str | None = None
     ) -> ServiceDeskAccount | None:
-        keys = [k for k in (address, domain) if k]
+        keys = self._match_keys(domain, address)
         if not keys:
             return None
         row = (
@@ -1183,11 +1228,14 @@ class ServiceDeskIntakeService:
                     ServiceDeskAccount.is_active.is_(True),
                     func.lower(ServiceDeskAccountDomain.domain).in_(keys),
                 )
-                # A whole-address record is more specific than a domain record and
-                # must win, otherwise one gmail.com partner would swallow every
-                # plus-suffixed company keyed on the same domain.
+                # Most specific first, in two steps. A whole-address record beats
+                # any domain, otherwise one gmail.com partner would swallow every
+                # plus-suffixed company keyed on the same domain. Then the longest
+                # domain wins, so a desk can map `partner.com` to one owner and
+                # `claims.partner.com` to another and have both hold.
                 .order_by(
                     (func.lower(ServiceDeskAccountDomain.domain) == (address or "")).desc(),
+                    func.length(ServiceDeskAccountDomain.domain).desc(),
                     ServiceDeskAccount.created_at,
                     ServiceDeskAccount.id,
                 )
@@ -1198,7 +1246,7 @@ class ServiceDeskIntakeService:
     async def _match_vendor(
         self, workspace_id: str, domain: str | None, address: str | None = None
     ) -> ServiceDeskVendor | None:
-        keys = [k for k in (address, domain) if k]
+        keys = self._match_keys(domain, address)
         if not keys:
             return None
         row = (
@@ -1212,6 +1260,7 @@ class ServiceDeskIntakeService:
                 )
                 .order_by(
                     (func.lower(ServiceDeskVendorDomain.domain) == (address or "")).desc(),
+                    func.length(ServiceDeskVendorDomain.domain).desc(),
                     ServiceDeskVendor.created_at,
                     ServiceDeskVendor.id,
                 )

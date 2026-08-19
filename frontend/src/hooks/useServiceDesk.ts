@@ -26,6 +26,7 @@ import {
   ServiceDeskSettingsPatch,
   ServiceDeskTemplate,
   ServiceDeskTicket,
+  TicketQuery,
   ServiceDeskTicketDetail,
 } from "@/lib/service-desk-api";
 
@@ -116,11 +117,23 @@ export function useServiceDeskDashboard() {
   });
 }
 
-export function useServiceDeskTickets() {
+export function useServiceDeskTickets(query?: TicketQuery) {
   const ws = useWs();
   return useQuery<ServiceDeskTicket[]>({
-    queryKey: keys.tickets(ws ?? ""),
-    queryFn: () => serviceDeskApi.listTickets(ws!),
+    // The filters are part of the key, or every filter change would serve the
+    // previous one's rows from cache until the refetch landed.
+    queryKey: [...keys.tickets(ws ?? ""), query ?? {}],
+    queryFn: () => serviceDeskApi.listTickets(ws!, query),
+    enabled: !!ws,
+  });
+}
+
+/** How many tickets match — what the page is one page of. */
+export function useServiceDeskTicketCount(query?: TicketQuery) {
+  const ws = useWs();
+  return useQuery<{ total: number }>({
+    queryKey: [...keys.tickets(ws ?? ""), "count", query ?? {}],
+    queryFn: () => serviceDeskApi.countTickets(ws!, query),
     enabled: !!ws,
   });
 }

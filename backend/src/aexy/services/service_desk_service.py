@@ -26,6 +26,7 @@ from aexy.services.service_desk_clock import (
 )
 from aexy.services.service_desk_config import (
     DEFAULT_INTAKE_POLL_MINUTES,
+    domain_is_too_broad,
     DEFAULT_TICKET_PREFIX,
     MAX_INTAKE_POLL_MINUTES,
     MIN_INTAKE_POLL_MINUTES,
@@ -50,6 +51,7 @@ from aexy.models.service_desk import (
     ServiceDeskTicket,
 )
 from aexy.models.ticketing import Ticket
+from aexy.models.developer import Developer
 from aexy.models.workspace import Workspace
 from aexy.schemas.service_desk import (
     InboundEmail,
@@ -67,6 +69,7 @@ from aexy.schemas.service_desk import (
     AccountUpdate,
     ServiceDeskTicketResponse,
     TestSLAOverride,
+    TicketFilters,
 )
 
 
@@ -436,7 +439,29 @@ async def resolve_desk_department(db: AsyncSession, workspace_id: str):
 
 
 def _norm_domain(d: str) -> str:
-    return d.strip().lower().lstrip("@")
+    """Clean a domain, refusing one that would claim mail it has nothing to do with.
+
+    Matching walks up a sender's subdomains now, so ``partner.com`` also catches
+    ``mail.partner.com``. That is the point — and it is also why "com" or "co.in"
+    can no longer be saved: with subdomain matching in force, either would hand a
+    single account every sender in a registry, and every ticket after it would be
+    routed to that account's owner.
+
+    Write-time only. A row saved before this existed keeps working; what stops it
+    doing damage is that ``domain_candidates`` will not walk up into a public
+    suffix to reach it.
+    """
+    cleaned = d.strip().lower().lstrip("@").rstrip(".")
+    if domain_is_too_broad(cleaned):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"{cleaned!r} is too broad to identify one organisation. Use a full "
+                "domain such as 'partner.com' — subdomains like 'mail.partner.com' "
+                "are matched automatically."
+            ),
+        )
+    return cleaned
 
 
 class ServiceDeskService:
@@ -1524,40 +1549,147 @@ class ServiceDeskService:
 
     # ----------------------------------------------------------- tickets
 
+    async def _scoped_ticket_query(
+        self,
+        workspace_id: str,
+        developer_id: str | None,
+        assigned_to: str | None,
+        filters: TicketFilters | None,
+        selection,
+    ):
+        """The one place a desk ticket query is narrowed.
+
+        Scope first, filters second, and they are different things: the scope
+        clause says which rows this caller may see at all, and a filter says
+        which of those they asked for. Sharing this builder between the list, the
+        count and the export is what makes a CSV agree with the screen it came
+        from — and means a filter can never be added to one of the three and
+        forgotten in the others.
+        """
+        query = (
+            selection
+            .join(Ticket, Ticket.id == ServiceDeskTicket.ticket_id)
+            .outerjoin(ServiceDeskAccount, ServiceDeskAccount.id == ServiceDeskTicket.account_id)
+            .outerjoin(ServiceDeskProduct, ServiceDeskProduct.id == ServiceDeskTicket.product_id)
+            .outerjoin(ServiceDeskVendor, ServiceDeskVendor.id == ServiceDeskTicket.vendor_id)
+            .outerjoin(Developer, Developer.id == Ticket.assignee_id)
+            .where(ServiceDeskTicket.workspace_id == workspace_id)
+        )
+        if developer_id is not None:
+            clause = await resolve_scope_clause(self.db, workspace_id, developer_id)
+            if clause is not None:
+                query = query.where(clause)
+        # `assigned_to` narrows to one owner's queue. It is applied on top of the
+        # scope clause, never instead of it: "assigned to me" must not become a
+        # way to see a ticket the desk's own visibility rules would deny — an
+        # assignment made before somebody was moved off an account would
+        # otherwise keep showing them that account's ticket.
+        if assigned_to is not None:
+            query = query.where(Ticket.assignee_id == assigned_to)
+        if filters is None:
+            return query
+
+        if filters.created_from is not None:
+            query = query.where(Ticket.created_at >= filters.created_from)
+        if filters.created_to is not None:
+            query = query.where(Ticket.created_at <= filters.created_to)
+        if filters.account_id is not None:
+            query = query.where(ServiceDeskTicket.account_id == filters.account_id)
+        if filters.product_id is not None:
+            query = query.where(ServiceDeskTicket.product_id == filters.product_id)
+        if filters.vendor_id is not None:
+            query = query.where(ServiceDeskTicket.vendor_id == filters.vendor_id)
+        if filters.request_type is not None:
+            query = query.where(ServiceDeskTicket.request_type == filters.request_type)
+        if filters.pending_with is not None:
+            query = query.where(ServiceDeskTicket.pending_with == filters.pending_with)
+        if filters.origin is not None:
+            query = query.where(ServiceDeskTicket.origin == filters.origin)
+        if filters.status is not None:
+            query = query.where(Ticket.status == filters.status)
+        if filters.assigned_to is not None:
+            query = query.where(Ticket.assignee_id == filters.assigned_to)
+        if filters.needs_triage is not None:
+            query = query.where(ServiceDeskTicket.needs_triage.is_(filters.needs_triage))
+        if filters.is_open is not None:
+            # Which slug is terminal is the workspace's own answer, so a caller
+            # asking for "open" never has to know it. A desk that has retired its
+            # closed bucket has nothing to exclude, and every ticket is open.
+            taxonomy = await load_taxonomy(self.db, workspace_id, seed=False)
+            closed = taxonomy.closed_slug
+            if closed is not None:
+                query = query.where(
+                    ServiceDeskTicket.pending_with != closed
+                    if filters.is_open
+                    else ServiceDeskTicket.pending_with == closed
+                )
+            elif not filters.is_open:
+                # Asked for closed tickets on a desk with no closed stage. An
+                # unfiltered list would answer "all of them", which is the
+                # opposite of the truth.
+                query = query.where(false())
+        return query
+
+    async def count_tickets(
+        self,
+        workspace_id: str,
+        developer_id: str | None = None,
+        assigned_to: str | None = None,
+        filters: TicketFilters | None = None,
+    ) -> int:
+        """How many tickets match, for a screen that pages through them.
+
+        Its own call rather than a field on the list, because the list is a
+        bounded page and the count is the whole set — and because the existing
+        list response is a bare array that several callers already destructure.
+        """
+        query = await self._scoped_ticket_query(
+            workspace_id,
+            developer_id,
+            assigned_to,
+            filters,
+            select(func.count()).select_from(ServiceDeskTicket),
+        )
+        return int((await self.db.execute(query)).scalar() or 0)
+
     async def list_tickets(
         self,
         workspace_id: str,
         developer_id: str | None = None,
         assigned_to: str | None = None,
         limit: int | None = None,
+        offset: int | None = None,
+        filters: TicketFilters | None = None,
     ) -> list[ServiceDeskTicketResponse]:
-        """Tickets on this desk, in the caller's scope.
-
-        `assigned_to` narrows to one owner's queue. It is applied on top of the
-        scope clause, never instead of it: "assigned to me" must not become a way
-        to see a ticket the desk's own visibility rules would deny — an
-        assignment made before somebody was moved off an account would otherwise
-        keep showing them that account's ticket.
-        """
+        """Tickets on this desk, in the caller's scope."""
         query = (
-            select(ServiceDeskTicket, Ticket, ServiceDeskAccount)
-            .join(Ticket, Ticket.id == ServiceDeskTicket.ticket_id)
-            .outerjoin(ServiceDeskAccount, ServiceDeskAccount.id == ServiceDeskTicket.account_id)
-            .where(ServiceDeskTicket.workspace_id == workspace_id)
-            .order_by(Ticket.created_at.desc())
-        )
-        if developer_id is not None:
-            clause = await resolve_scope_clause(self.db, workspace_id, developer_id)
-            if clause is not None:
-                query = query.where(clause)
-        if assigned_to is not None:
-            query = query.where(Ticket.assignee_id == assigned_to)
+            await self._scoped_ticket_query(
+                workspace_id,
+                developer_id,
+                assigned_to,
+                filters,
+                select(
+                    ServiceDeskTicket,
+                    Ticket,
+                    ServiceDeskAccount.name,
+                    ServiceDeskProduct.name,
+                    ServiceDeskVendor.name,
+                    Developer.name,
+                    Developer.email,
+                ),
+            )
+        # Ordered by id as well as time so a page boundary is stable: two tickets
+        # created in the same second would otherwise be free to swap places
+        # between page 1 and page 2, showing one twice and the other never.
+        ).order_by(Ticket.created_at.desc(), ServiceDeskTicket.id.desc())
         if limit is not None:
             query = query.limit(limit)
+        if offset is not None:
+            query = query.offset(offset)
         rows = (await self.db.execute(query)).all()
         prefix = await ticket_prefix(workspace_id=workspace_id, db=self.db)
         out: list[ServiceDeskTicketResponse] = []
-        for sd, ticket, account in rows:
+        for sd, ticket, account_name, product_name, vendor_name, owner_name, owner_email in rows:
             out.append(
                 ServiceDeskTicketResponse(
                     id=sd.id,
@@ -1570,10 +1702,16 @@ class ServiceDeskService:
                     requester_name=ticket.submitter_name,
                     status=ticket.status,
                     product_id=sd.product_id,
+                    product_name=product_name,
                     account_id=sd.account_id,
-                    account_name=account.name if account else None,
+                    account_name=account_name,
                     vendor_id=sd.vendor_id,
+                    vendor_name=vendor_name,
                     assigned_owner_id=ticket.assignee_id,
+                    # Falls back to the address: a developer row synced from
+                    # GitHub may have no name, and a blank owner column in an
+                    # export reads as unassigned.
+                    assigned_owner_name=owner_name or owner_email,
                     request_type=sd.request_type,
                     pending_with=sd.pending_with,
                     origin=sd.origin,

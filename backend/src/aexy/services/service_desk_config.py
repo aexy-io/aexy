@@ -144,6 +144,66 @@ AUTO_RESPONSE_HEADER_NAMES = (
 )
 
 
+# Two-label suffixes under which anybody may register. Configuring one as an
+# account domain would make every sender in a country match that account once
+# subdomain matching is on, so the write path refuses them.
+#
+# Deliberately a short, explicit list rather than a public-suffix library: the
+# real list is thousands of entries, needs updating, and (in the usual
+# implementation) is fetched over the network at import time. These are the ones
+# a desk actually mistypes. It is a guard rail, not a boundary — a suffix that
+# slips through still needs somebody to have typed it into Master Data.
+PUBLIC_SUFFIXES: frozenset[str] = frozenset(
+    {
+        "co.in", "co.uk", "co.jp", "co.kr", "co.nz", "co.za", "co.il", "co.id",
+        "com.au", "com.br", "com.cn", "com.mx", "com.sg", "com.tr", "com.tw",
+        "net.au", "org.au", "org.uk", "ac.in", "ac.uk", "gov.in", "gov.uk",
+        "net.in", "org.in", "firm.in", "gen.in", "ind.in",
+    }
+)
+
+
+def domain_is_too_broad(domain: str) -> bool:
+    """Whether matching this domain would claim senders it has no business with.
+
+    A single label ("com") or a public suffix ("co.in") is not an organisation,
+    and with subdomain matching in force it would hand one account every sender
+    in a registry.
+    """
+    cleaned = domain.strip().lower().lstrip("@").rstrip(".")
+    if not cleaned or cleaned.count(".") == 0:
+        return True
+    return cleaned in PUBLIC_SUFFIXES
+
+
+def domain_candidates(domain: str | None) -> list[str]:
+    """A sender domain and the parent domains it belongs to, most specific first.
+
+    ``mail.eu.partner.com`` is mail from ``partner.com``, and a desk that has
+    mapped the partner should not have to enumerate its subdomains — an exact
+    equality check was why a partner writing from a regional or marketing
+    subdomain arrived unattributed and landed on an arbitrary owner.
+
+    The bare TLD is dropped and so is any known public suffix: no account should
+    ever match on "com", and ``partner.co.in`` must not also be read as mail from
+    "co.in". Dropping them here rather than only at the write path means a row
+    saved before that guard existed still cannot claim a country's mail.
+
+    The rest are returned longest-first so a caller can prefer the most specific
+    mapping, which is what lets ``partner.com`` and ``claims.partner.com``
+    coexist and point at different owners.
+    """
+    cleaned = (domain or "").strip().lower().rstrip(".").rstrip(">")
+    if not cleaned or "." not in cleaned:
+        return []
+    labels = cleaned.split(".")
+    return [
+        candidate
+        for candidate in (".".join(labels[i:]) for i in range(len(labels) - 1))
+        if candidate not in PUBLIC_SUFFIXES
+    ]
+
+
 def normalise_ignored_senders(values: object) -> list[str]:
     """Clean an Ops-supplied ignore list into lower-cased addresses and domains.
 
@@ -190,6 +250,80 @@ def address_is_ignored(address: str | None, ignored: list[str]) -> bool:
     if not address or not ignored:
         return False
     return any(entry == address for entry in ignored if entry)
+
+
+# Headers that name the person a message was originally from, when the address
+# in `From:` is a forwarder rather than the author. `Resent-From` is the RFC 5322
+# one; the `X-` names are what real forwarders and mail gateways actually emit.
+# `Reply-To` is last and least trusted — on ordinary mail it is usually the
+# sender themselves, and it only tells us anything when it points elsewhere.
+_ORIGIN_HEADERS = (
+    "resent-from",
+    "x-original-from",
+    "x-original-sender",
+    "x-forwarded-for",
+    "reply-to",
+)
+
+# The `From:` line inside a forwarded block. Gmail writes "---------- Forwarded
+# message ---------", Outlook writes "From: ... Sent: ... To:"; both put the
+# original author on a line of their own, which is all this needs.
+_QUOTED_FROM_RE = re.compile(r"^\s*(?:>\s*)*from:\s*(.+)$", re.IGNORECASE | re.MULTILINE)
+
+_ADDRESS_RE = re.compile(r"[\w.!#$%&'*+/=?^`{|}~-]+@[\w-]+(?:\.[\w-]+)+")
+
+# Only the top of the body is read. A long thread accumulates every earlier
+# message's headers, and the tenth `From:` down is not who sent this one.
+_QUOTED_SCAN_LINES = 40
+
+
+def forwarded_sender(
+    headers: Mapping[str, str], body_text: str | None, internal_domain: str | None
+) -> str | None:
+    """Who actually wrote a message that a colleague forwarded to the desk.
+
+    Mail forwarded into a shared mailbox arrives *from* the person who forwarded
+    it, so a desk on ``ops@acme.com`` sees ``acme.com`` and concludes there is no
+    account to infer — the ticket is flagged for triage and handed to an
+    arbitrary member of the desk. Every forwarded partner request lands on the
+    wrong owner, and the routing looks broken when the mapping is fine.
+
+    Sources are tried most trustworthy first: the headers a forwarder sets, then
+    the quoted ``From:`` line the mail client wrote into the body.
+
+    Two deliberate limits:
+
+    * The result is ignored unless it is on a **different domain** to the desk's
+      own. A colleague's ordinary internal mail names themselves in ``Reply-To``,
+      and attributing that to an account would be worse than not attributing it.
+    * The body is only read here — the one case where the alternative is no
+      attribution at all. Body text is written by whoever sent the mail, so it
+      decides which account a ticket is filed against and nothing else; it grants
+      no access, and the ticket stays flagged for a human either way.
+    """
+    for name in _ORIGIN_HEADERS:
+        candidate = _first_address(headers.get(name))
+        if candidate and _domain(candidate) != internal_domain:
+            return candidate
+
+    for match in _QUOTED_FROM_RE.finditer(
+        "\n".join((body_text or "").splitlines()[:_QUOTED_SCAN_LINES])
+    ):
+        candidate = _first_address(match.group(1))
+        if candidate and _domain(candidate) != internal_domain:
+            return candidate
+    return None
+
+
+def _first_address(value: str | None) -> str | None:
+    if not value:
+        return None
+    found = _ADDRESS_RE.search(value)
+    return found.group(0).lower() if found else None
+
+
+def _domain(address: str) -> str | None:
+    return address.rsplit("@", 1)[-1] if "@" in address else None
 
 
 def looks_automatic(headers: Mapping[str, str], subject: str | None) -> bool:

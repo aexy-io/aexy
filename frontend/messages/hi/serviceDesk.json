@@ -275,6 +275,22 @@
       "title": "Public ticket links",
       "description": "अपने workspace के बाहर के लोगों को भेजी जाने वाली acknowledgement और closure emails में ticket के read-only view का link शामिल करें। इस link के लिए account ज़रूरी नहीं — URL रखने वाला कोई भी ticket का subject, requester का नाम और उसके attachments देख सकता है। डिफ़ॉल्ट रूप से बंद।",
       "scopeNote": "Desk को लिखने वाले सहकर्मियों पर इसका असर नहीं पड़ता: उन्हें हमेशा app में ticket का link मिलता है, जिसके लिए अलग account नहीं चाहिए और कुछ भी public नहीं होता। इसे बंद करने पर नए public links बनना रुक जाते हैं और आगे की emails से हट जाते हैं — पहले भेजा जा चुका link वापस नहीं लिया जा सकता, और जो links आपने ticket से खुद share किए हैं वे वैसे ही रहते हैं।"
+    },
+    "filters": {
+      "from": "से",
+      "to": "तक",
+      "any": "कोई भी",
+      "product": "Product",
+      "state": "स्थिति",
+      "open": "खुले",
+      "closed": "बंद",
+      "needsTriage": "केवल triage वाले",
+      "clear": "Filters हटाएँ",
+      "matching": "{count, plural, =0 {कोई ticket नहीं} one {# ticket} other {# tickets}}",
+      "showing": "{total} में से {from}–{to} दिख रहे हैं",
+      "previous": "पिछला",
+      "next": "अगला",
+      "export": "CSV export करें"
     }
   }
 }

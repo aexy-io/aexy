@@ -51,6 +51,8 @@ from aexy.schemas.service_desk import (
     ServiceDeskTicketDetail,
     StakeholderEmailRequest,
     ServiceDeskTicketResponse,
+    TicketCount,
+    TicketFilters,
     TicketFieldsUpdate,
 )
 from aexy.services.service_desk_service import ServiceDeskService
@@ -312,19 +314,75 @@ async def list_tickets(
     workspace_id: str,
     assigned_to_me: bool = False,
     limit: int | None = Query(default=None, ge=1, le=200),
+    offset: int | None = Query(default=None, ge=0),
+    filters: TicketFilters = Depends(),
     db: AsyncSession = Depends(get_db),
     current: Developer = Depends(get_current_developer),
 ):
     """Tickets on this desk that the caller may see.
 
     `assigned_to_me` narrows to the caller's own queue — what the Home dashboard
-    asks for. It is a filter within the caller's scope, not a way around it.
+    asks for. It is a filter within the caller's scope, not a way around it, and
+    so is everything in `filters`: the visibility clause is applied first and
+    independently, so naming another owner or account cannot widen what comes
+    back.
     """
     return await ServiceDeskService(db).list_tickets(
         workspace_id,
         developer_id=current.id,
         assigned_to=str(current.id) if assigned_to_me else None,
         limit=limit,
+        offset=offset,
+        filters=filters,
+    )
+
+
+# Registered before `/tickets/{ticket_id}`: FastAPI matches in declaration order,
+# and a literal path declared after a parameterised one is never reached — the
+# request arrives as a lookup for a ticket called "count".
+@router.get("/tickets/count", response_model=TicketCount)
+async def count_tickets(
+    workspace_id: str,
+    assigned_to_me: bool = False,
+    filters: TicketFilters = Depends(),
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """How many tickets match, for a screen paging through them."""
+    total = await ServiceDeskService(db).count_tickets(
+        workspace_id,
+        developer_id=current.id,
+        assigned_to=str(current.id) if assigned_to_me else None,
+        filters=filters,
+    )
+    return TicketCount(total=total)
+
+
+@router.get("/tickets/export.csv")
+async def export_tickets(
+    workspace_id: str,
+    assigned_to_me: bool = False,
+    filters: TicketFilters = Depends(),
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """The filtered list as CSV, with turnaround figures.
+
+    Deliberately the same scope and the same filters as the list — it is the
+    screen somebody is looking at, in a file. An export that quietly returned
+    more than the page it came from would be a permissions bug with a download
+    button on it.
+    """
+    csv_text, filename = await ServiceDeskTicketService(db).export_csv(
+        workspace_id,
+        developer_id=current.id,
+        assigned_to=str(current.id) if assigned_to_me else None,
+        filters=filters,
+    )
+    return Response(
+        content=csv_text,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

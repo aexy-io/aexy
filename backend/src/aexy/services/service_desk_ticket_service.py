@@ -1609,3 +1609,133 @@ class ServiceDeskTicketService:
                 "thread_id": sd.thread_ref,
             }
         )
+
+    # ------------------------------------------------------------------ export
+
+    # The header row, and the order the columns come out in. A named tuple of
+    # (column, accessor) rather than two parallel lists, because a report whose
+    # headings and values drift apart is worse than one that will not generate.
+    _EXPORT_COLUMNS: tuple[str, ...] = (
+        "Ticket",
+        "Created",
+        "Status",
+        "Request type",
+        "Pending with",
+        "Origin",
+        "Account",
+        "Product",
+        "Vendor",
+        "Owner",
+        "Requester name",
+        "Requester email",
+        "Subject",
+        "Needs triage",
+        "AI confidence",
+        "Working days in stage",
+        "Days open",
+        "Breaching",
+    )
+
+    async def export_csv(
+        self,
+        workspace_id: str,
+        developer_id: str | None = None,
+        assigned_to: str | None = None,
+        filters=None,
+    ) -> tuple[str, str]:
+        """The filtered ticket list as CSV text, plus a filename.
+
+        Turnaround is computed the way the digest computes it — one query for the
+        open segments and one clock for the whole export, rather than
+        ``compute_tat`` per row, which is a query per ticket and would turn a
+        month's export into thousands of round trips.
+
+        Stage age is *working* time in the workspace's own hours, because that is
+        what the desk is measured against; days open is wall clock, because that
+        is what the requester waited.
+        """
+        import csv
+        import io
+
+        from aexy.services.service_desk_service import ServiceDeskService
+
+        rows = await ServiceDeskService(self.db).list_tickets(
+            workspace_id,
+            developer_id=developer_id,
+            assigned_to=assigned_to,
+            filters=filters,
+        )
+        open_entered = dict(
+            (
+                await self.db.execute(
+                    select(
+                        TicketPendingSegment.ticket_id,
+                        TicketPendingSegment.entered_at,
+                    ).where(
+                        TicketPendingSegment.workspace_id == workspace_id,
+                        TicketPendingSegment.exited_at.is_(None),
+                    )
+                )
+            ).all()
+        )
+        created_at = {
+            ticket_id: created
+            for ticket_id, created in (
+                await self.db.execute(
+                    select(Ticket.id, Ticket.created_at).where(
+                        Ticket.id.in_([r.ticket_id for r in rows])
+                    )
+                )
+            ).all()
+        } if rows else {}
+
+        clock = await load_clock(self.db, workspace_id)
+        now = datetime.now(timezone.utc)
+
+        buffer = io.StringIO()
+        # QUOTE_ALL so a subject containing a comma, a quote or a newline cannot
+        # shift every later column of that row — a desk's subjects are whatever
+        # its requesters typed.
+        writer = csv.writer(buffer, quoting=csv.QUOTE_ALL, lineterminator="\r\n")
+        writer.writerow(self._EXPORT_COLUMNS)
+
+        for row in rows:
+            entered = open_entered.get(row.ticket_id)
+            stage_seconds = (
+                clock.seconds_between(_aware(entered), now) if entered is not None else 0
+            )
+            created = created_at.get(row.ticket_id)
+            days_open = (
+                round((now - _aware(created)).total_seconds() / 86400, 2)
+                if created is not None
+                else ""
+            )
+            writer.writerow(
+                [
+                    row.display_id or "",
+                    _aware(created).isoformat() if created is not None else "",
+                    row.status or "",
+                    row.request_type,
+                    row.pending_with,
+                    row.origin,
+                    row.account_name or "",
+                    row.product_name or "",
+                    row.vendor_name or "",
+                    row.assigned_owner_name or "",
+                    row.requester_name or "",
+                    row.requester_email or "",
+                    row.subject or "",
+                    "yes" if row.needs_triage else "no",
+                    "" if row.ai_confidence is None else round(row.ai_confidence, 2),
+                    clock.to_days(stage_seconds) if entered is not None else "",
+                    days_open,
+                    "yes" if clock.is_breaching(stage_seconds, row.pending_with) else "no",
+                ]
+            )
+
+        prefix = await ticket_prefix(self.db, workspace_id)
+        filename = f"{prefix.lower()}-tickets-{now.date().isoformat()}.csv"
+        # A BOM so Excel opens a UTF-8 file as UTF-8. Without it, a requester
+        # named in any non-Latin script arrives as mojibake in the one tool most
+        # of these exports are opened in.
+        return "﻿" + buffer.getvalue(), filename

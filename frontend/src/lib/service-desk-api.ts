@@ -248,6 +248,36 @@ export interface ServiceDeskDashboard {
   breaching: number;
 }
 
+/**
+ * What narrows a ticket list, its count, and its export.
+ *
+ * One type for all three because the server takes one model for all three: a
+ * CSV that disagreed with the screen it was generated from would be the thing
+ * this shape exists to prevent. Every field narrows — none of them widen what
+ * the caller is allowed to see, which the server enforces separately.
+ */
+export interface TicketQuery {
+  /** Narrow to the caller's own queue, within their desk scope. */
+  assigned_to_me?: boolean;
+  limit?: number;
+  offset?: number;
+  /** ISO timestamps; both ends inclusive. */
+  created_from?: string;
+  created_to?: string;
+  account_id?: string;
+  product_id?: string;
+  vendor_id?: string;
+  request_type?: string;
+  pending_with?: string;
+  origin?: string;
+  status?: string;
+  assigned_to?: string;
+  needs_triage?: boolean;
+  /** Whether the ticket is in this workspace's terminal stage, whatever it is
+   *  called here — a report should not have to know the slug. */
+  is_open?: boolean;
+}
+
 export interface ServiceDeskSettings {
   /** Resolved, not raw. AI reading of desk mail follows the workspace's own AI
    *  switch (Settings -> AI); the desk holds a veto, not a second opt-in. This
@@ -390,13 +420,22 @@ export const serviceDeskApi = {
     (await api.get(`${base(ws)}/dashboard`)).data,
   listTickets: async (
     ws: string,
-    params?: {
-      /** Narrow to the caller's own queue, within their desk scope. */
-      assigned_to_me?: boolean;
-      limit?: number;
-    }
+    params?: TicketQuery
   ): Promise<ServiceDeskTicket[]> =>
     (await api.get(`${base(ws)}/tickets`, { params })).data,
+  /** How many tickets match — the list is one page of this. */
+  countTickets: async (ws: string, params?: TicketQuery): Promise<{ total: number }> =>
+    (await api.get(`${base(ws)}/tickets/count`, { params })).data,
+  /**
+   * The filtered list as a CSV file.
+   *
+   * Fetched through the same client as everything else rather than pointed at
+   * with an `<a href>`: the API is behind a bearer token the browser will not
+   * attach on a plain navigation, so a link would download an HTML 401 named
+   * `.csv` — which opens in Excel as one row of nonsense.
+   */
+  exportTicketsCsv: async (ws: string, params?: TicketQuery): Promise<Blob> =>
+    (await api.get(`${base(ws)}/tickets/export.csv`, { params, responseType: "blob" })).data,
   getTicket: async (ws: string, id: string): Promise<ServiceDeskTicketDetail> =>
     (await api.get(`${base(ws)}/tickets/${id}`)).data,
   /**
