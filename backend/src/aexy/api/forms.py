@@ -27,7 +27,6 @@ from aexy.schemas.forms import (
     FormSubmissionResponse,
     FormSubmissionListResponse,
     FormSubmissionFilters,
-    PublicFormResponse,
     PublicFormSubmission,
     PublicSubmissionResponse,
     EmailVerificationRequest,
@@ -868,56 +867,6 @@ public_router = APIRouter(
     prefix="/public/forms",
     tags=["Public Forms"],
 )
-
-
-@public_router.get("/{public_token}", response_model=PublicFormResponse)
-async def get_public_form(
-    public_token: str,
-    db: AsyncSession = Depends(get_db),
-):
-    """Get a public form for rendering."""
-    form_service = FormsService(db)
-    form = await form_service.get_form_by_public_token(public_token)
-
-    if not form:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Form not found")
-
-    fields = [
-        FormFieldResponse(
-            id=str(field.id),
-            form_id=str(field.form_id),
-            name=field.name,
-            field_key=field.field_key,
-            field_type=field.field_type,
-            placeholder=field.placeholder,
-            default_value=field.default_value,
-            help_text=field.help_text,
-            is_required=field.is_required,
-            validation_rules=field.validation_rules or {},
-            options=field.options,
-            position=field.position,
-            is_visible=field.is_visible,
-            width=field.width,
-            crm_attribute_id=None,  # Don't expose CRM mapping to public
-            external_mappings={},  # Don't expose external mappings to public
-            created_at=field.created_at,
-            updated_at=field.updated_at,
-        )
-        for field in sorted(form.fields, key=lambda f: f.position)
-        if field.is_visible
-    ]
-
-    return PublicFormResponse(
-        id=str(form.id),
-        name=form.name,
-        description=form.description,
-        auth_mode=form.auth_mode,
-        require_email=form.require_email,
-        theme=form.theme or {},
-        fields=fields,
-        conditional_rules=form.conditional_rules or [],
-        thank_you_page=form.thank_you_page or {},
-    )
 
 
 @public_router.post("/{public_token}/submit", response_model=PublicSubmissionResponse)
