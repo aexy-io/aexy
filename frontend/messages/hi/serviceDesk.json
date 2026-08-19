@@ -118,6 +118,7 @@
     "ai": {
       "title": "AI ईमेल वर्गीकरण",
       "description": "AI को आने वाले ईमेल पढ़कर अनुरोध प्रकार और Product सुझाने दें। बंद होने पर, टिकट के मालिक टिकट को मैन्युअल रूप से वर्गीकृत करते हैं।",
+      "toggle": "आने वाले ईमेल का AI से वर्गीकरण करें",
       "enabled": "सक्षम",
       "inheritedOn": "इस workspace में AI enabled है, इसलिए यह चालू है। Service desk उसी setting को follow करता है।",
       "vetoed": "सिर्फ़ service desk के लिए बंद किया गया है। इस workspace में AI बाकी जगह enabled है।",
@@ -206,7 +207,7 @@
       "delete": "हटाएं",
       "empty": "अभी यहाँ कुछ नहीं है।",
       "readOnly": "आपके पास मास्टर डेटा के लिए केवल-पढ़ने की पहुँच है। बदलाव के लिए वर्कस्पेस एडमिन या सर्विस डेस्क मैनेजर से कहें।",
-      "domainsHint": "acme.com, या bob@acme.com",
+      "domainsHint": "acme.com / bob@acme.com",
       "masterDataHint": "तीन टेबल जिनके आधार पर डेस्क आने वाले ईमेल को छाँटता है। भेजने वाले का domain तय करता है कि टिकट किस account का है और किसके पास जाएगा — जो मेल किसी से मेल नहीं खाता, वह triage में जाता है।",
       "accountsHint": "डेस्क जिनके लिए काम करता है। मेल आने पर भेजने वाले का domain यहाँ खोजा जाता है: टिकट उस account को दिया जाता है और नीचे तय किए गए owner को सौंपा जाता है। domain की जगह पूरा ईमेल पता भी दिया जा सकता है, और वह domain entry पर भारी पड़ता है — जब कई accounts एक ही provider (जैसे gmail.com) साझा करते हों तो इसका उपयोग करें।",
       "accountsEmpty": "अभी कोई account नहीं है, इसलिए हर आने वाला ईमेल triage में जाता है और उसे कोई भी owner मिल जाता है। जिन domains से अनुरोध आते हैं उन्हें जोड़ें, फिर टिकट अपने आप सही जगह पहुँचने लगेंगे।",
@@ -265,7 +266,7 @@
     "ignoredSenders": {
       "title": "अनदेखे भेजने वाले",
       "description": "इन senders की mail tickets नहीं बनती। एक पूरा address, या पूरा domain जोड़ें — किसी provider के security alerts, या partner का daily automailer। जब तक आप न जोड़ें, कुछ भी ignore नहीं होता: counterparty का no-reply address अक्सर वही notices भेजता है जो आपको चाहिए। पूरा address हमेशा जीतता है। पूरा domain नहीं: Master Data में मौजूद account या vendor फिर भी tickets खोलेगा, ताकि यूँ ही ignore किया गया domain किसी सोच-समझकर जोड़े गए counterparty को चुप न करा दे।",
-      "placeholder": "no-reply@accounts.google.com या कोई domain",
+      "placeholder": "no-reply@accounts.google.com",
       "add": "जोड़ें",
       "empty": "कुछ भी अनदेखा नहीं — हर भेजने वाला टिकट खोलता है।",
       "invalid": "ईमेल पता, या accounts.google.com जैसा domain दर्ज करें।",
@@ -309,6 +310,7 @@
     "digest": {
       "title": "Open-ticket digest",
       "description": "Desk के सभी लोगों को यह summary भेजें कि क्या-क्या अभी खुला है। डिफ़ॉल्ट रूप से चालू।",
+      "toggle": "Digest भेजें",
       "times": "भेजने के समय",
       "timesHint": "{timezone} के स्थानीय घंटे। कम से कम एक चुनें — digest पूरी तरह बंद करने के लिए ऊपर वाला switch इस्तेमाल करें।",
       "recipients": "किसे मिलता है",

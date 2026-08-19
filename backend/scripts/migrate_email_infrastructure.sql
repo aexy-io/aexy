@@ -70,7 +70,6 @@ CREATE TABLE IF NOT EXISTS warming_schedules (
     -- Schedule configuration (JSONB)
     -- [{"day": 1, "volume": 50}, {"day": 7, "volume": 1000}, ...]
     steps JSONB NOT NULL DEFAULT '[]'::jsonb,
-    total_days INTEGER NOT NULL DEFAULT 14,
 
     -- Thresholds for auto-pause
     max_bounce_rate FLOAT NOT NULL DEFAULT 0.05,
@@ -80,9 +79,11 @@ CREATE TABLE IF NOT EXISTS warming_schedules (
     -- Auto-pause behavior
     auto_pause_on_threshold BOOLEAN NOT NULL DEFAULT true,
 
+    -- Auto-adjust volume against observed reputation
+    auto_adjust_volume BOOLEAN NOT NULL DEFAULT true,
+
     -- System vs custom
     is_system BOOLEAN NOT NULL DEFAULT false,
-    is_active BOOLEAN NOT NULL DEFAULT true,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -195,7 +196,12 @@ CREATE TABLE IF NOT EXISTS dedicated_ips (
     hostname VARCHAR(255),
 
     -- Status
-    status VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending, warming, active, paused
+    --
+    -- A boolean, not a status enum, because `DedicatedIP.is_active` in
+    -- models/email_infrastructure.py is what the app reads and writes, and the
+    -- app creates this table from the model on startup. The lifecycle this once
+    -- spelled as pending/warming/active/paused lives in `warming_status`.
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
 
     -- Warming
     warming_status VARCHAR(20) NOT NULL DEFAULT 'not_started',
@@ -218,7 +224,7 @@ CREATE TABLE IF NOT EXISTS dedicated_ips (
 
 CREATE INDEX IF NOT EXISTS ix_dedicated_ip_workspace ON dedicated_ips(workspace_id);
 CREATE INDEX IF NOT EXISTS ix_dedicated_ip_provider ON dedicated_ips(provider_id);
-CREATE INDEX IF NOT EXISTS ix_dedicated_ip_status ON dedicated_ips(status);
+CREATE INDEX IF NOT EXISTS ix_dedicated_ip_active ON dedicated_ips(is_active);
 
 -- =============================================================================
 -- WARMING PROGRESS
@@ -227,7 +233,7 @@ CREATE INDEX IF NOT EXISTS ix_dedicated_ip_status ON dedicated_ips(status);
 CREATE TABLE IF NOT EXISTS warming_progress (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     domain_id UUID REFERENCES sending_domains(id) ON DELETE CASCADE,
-    ip_id UUID REFERENCES dedicated_ips(id) ON DELETE CASCADE,
+    dedicated_ip_id UUID REFERENCES dedicated_ips(id) ON DELETE CASCADE,
 
     -- Progress tracking
     day_number INTEGER NOT NULL,
@@ -256,15 +262,15 @@ CREATE TABLE IF NOT EXISTS warming_progress (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     CONSTRAINT uq_warming_progress_domain_day UNIQUE (domain_id, day_number),
-    CONSTRAINT uq_warming_progress_ip_day UNIQUE (ip_id, day_number),
+    CONSTRAINT uq_warming_progress_ip_day UNIQUE (dedicated_ip_id, day_number),
     CONSTRAINT chk_warming_progress_entity CHECK (
-        (domain_id IS NOT NULL AND ip_id IS NULL) OR
-        (domain_id IS NULL AND ip_id IS NOT NULL)
+        (domain_id IS NOT NULL AND dedicated_ip_id IS NULL) OR
+        (domain_id IS NULL AND dedicated_ip_id IS NOT NULL)
     )
 );
 
 CREATE INDEX IF NOT EXISTS ix_warming_progress_domain ON warming_progress(domain_id);
-CREATE INDEX IF NOT EXISTS ix_warming_progress_ip ON warming_progress(ip_id);
+CREATE INDEX IF NOT EXISTS ix_warming_progress_ip ON warming_progress(dedicated_ip_id);
 CREATE INDEX IF NOT EXISTS ix_warming_progress_date ON warming_progress(date);
 
 -- =============================================================================
@@ -544,7 +550,11 @@ CREATE TRIGGER update_sending_pools_updated_at
 -- INSERT SYSTEM WARMING SCHEDULES
 -- =============================================================================
 
-INSERT INTO warming_schedules (id, workspace_id, name, schedule_type, description, steps, total_days, is_system, is_active)
+INSERT INTO warming_schedules (
+    id, workspace_id, name, schedule_type, description, steps, is_system,
+    max_bounce_rate, max_complaint_rate, min_delivery_rate,
+    auto_pause_on_threshold, auto_adjust_volume
+)
 VALUES
 (
     gen_random_uuid(),
@@ -553,7 +563,10 @@ VALUES
     'conservative',
     'Safe warming schedule for new domains. Gradually increases volume over 21 days.',
     '[{"day": 1, "volume": 50}, {"day": 7, "volume": 1000}, {"day": 14, "volume": 15000}, {"day": 21, "volume": 100000}]'::jsonb,
-    21,
+    true,
+    0.05,
+    0.001,
+    0.90,
     true,
     true
 ),
@@ -564,7 +577,10 @@ VALUES
     'moderate',
     'Balanced warming schedule. Reaches full volume in 14 days.',
     '[{"day": 1, "volume": 100}, {"day": 7, "volume": 7500}, {"day": 14, "volume": 100000}]'::jsonb,
-    14,
+    true,
+    0.05,
+    0.001,
+    0.90,
     true,
     true
 ),
@@ -575,7 +591,10 @@ VALUES
     'aggressive',
     'Fast warming for domains with good reputation history. Use with caution.',
     '[{"day": 1, "volume": 200}, {"day": 4, "volume": 15000}, {"day": 7, "volume": 100000}]'::jsonb,
-    7,
+    true,
+    0.05,
+    0.001,
+    0.90,
     true,
     true
 )
