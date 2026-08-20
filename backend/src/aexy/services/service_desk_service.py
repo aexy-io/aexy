@@ -598,6 +598,41 @@ class ServiceDeskService:
         ).scalars().all()
         return [self._account_response(p) for p in rows]
 
+    async def _reject_claimed_domains(
+        self, workspace_id: str, domains: list[str], *, exclude_account_id: str | None = None
+    ) -> None:
+        """Refuse a domain another account already answers for.
+
+        A domain decides which account a ticket belongs to, so two accounts
+        claiming one has no correct answer — the unique constraint is right to
+        refuse it. It was refusing it as a 500 though, and from inside an
+        autoflush, so the message a person saw was a stack trace about a
+        constraint name rather than which entry to change.
+        """
+        wanted = {_norm_domain(d) for d in domains if _norm_domain(d)}
+        if not wanted:
+            return
+        query = (
+            select(ServiceDeskAccountDomain.domain, ServiceDeskAccount.name)
+            .join(ServiceDeskAccount, ServiceDeskAccount.id == ServiceDeskAccountDomain.account_id)
+            .where(
+                ServiceDeskAccountDomain.workspace_id == workspace_id,
+                ServiceDeskAccountDomain.domain.in_(wanted),
+            )
+        )
+        if exclude_account_id is not None:
+            query = query.where(ServiceDeskAccountDomain.account_id != exclude_account_id)
+        # The domains being written are already pending on this session; flushing
+        # them here is what raised the 500 in the first place.
+        with self.db.no_autoflush:
+            clash = (await self.db.execute(query)).first()
+        if clash is not None:
+            domain, holder = clash
+            raise HTTPException(
+                status_code=409,
+                detail=f"{domain} already belongs to {holder}. Remove it there first, or add this one to that account.",
+            )
+
     async def create_account(self, workspace_id: str, data: AccountCreate) -> AccountResponse:
         account = ServiceDeskAccount(
             id=str(uuid4()),
@@ -606,6 +641,7 @@ class ServiceDeskService:
             assigned_owner_id=data.assigned_owner_id,
             is_active=data.is_active,
         )
+        await self._reject_claimed_domains(workspace_id, data.domains)
         self.db.add(account)
         await self.db.flush()
         for dom in data.domains:
@@ -615,7 +651,16 @@ class ServiceDeskService:
                 )
             )
         await self._replace_account_products(workspace_id, account.id, data.products)
-        await self.db.flush()
+        try:
+            await self.db.flush()
+        except IntegrityError:
+            # Two people naming the same domain at once. The check above catches
+            # the ordinary case; this is the one it cannot, and the constraint is
+            # still the thing that decides.
+            raise HTTPException(
+                status_code=409,
+                detail="One of those domains was just claimed by another account. Reload and try again.",
+            ) from None
         await self.db.refresh(account)
         return self._account_response(account)
 
@@ -629,6 +674,7 @@ class ServiceDeskService:
         if data.products is not None:
             await self._replace_account_products(workspace_id, account_id, data.products)
         if domains is not None:
+            await self._reject_claimed_domains(workspace_id, domains, exclude_account_id=account_id)
             await self.db.execute(
                 delete(ServiceDeskAccountDomain).where(ServiceDeskAccountDomain.account_id == account_id)
             )
