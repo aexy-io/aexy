@@ -306,3 +306,224 @@ class _FakeDb:
 
     async def flush(self):
         return None
+
+
+class TestStoryForm:
+    """A story needs somebody it is for, and we never invent one.
+
+    This used to write "someone reading this document" into every imported story
+    — a fake stakeholder on a backlog, saying the same meaningless thing on every
+    row. Now: parsed where the document says so, asked for where it does not.
+    """
+
+    @pytest.mark.parametrize(
+        ("text", "expected"),
+        [
+            (
+                "As a finance manager, I want to export the ledger, so that I can reconcile.",
+                {
+                    "as_a": "finance manager",
+                    "i_want": "export the ledger",
+                    "so_that": "I can reconcile",
+                },
+            ),
+            # "an" as well as "a", and no punctuation at all.
+            (
+                "As an admin I need to revoke a token",
+                {"as_a": "admin", "i_want": "revoke a token"},
+            ),
+            # How people actually write it.
+            (
+                "As a reviewer, I'd like to see the redline",
+                {"as_a": "reviewer", "i_want": "see the redline"},
+            ),
+            (
+                "As a customer; I would like a receipt",
+                {"as_a": "customer", "i_want": "a receipt"},
+            ),
+            # Case is theirs to choose.
+            (
+                "AS A TESTER, I WANT REPEATABLE FIXTURES",
+                {"as_a": "TESTER", "i_want": "REPEATABLE FIXTURES"},
+            ),
+        ],
+    )
+    def test_it_reads_a_story_the_document_already_wrote(
+        self, text: str, expected: dict
+    ) -> None:
+        assert intake.parse_story_form(text) == expected
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "The system shall support CSV export.",
+            "Export the ledger before the audit.",
+            "",
+            "   ",
+            # Half a story is not a story: no persona to attribute it to.
+            "I want to export the ledger",
+            # And no want to attribute.
+            "As a finance manager",
+        ],
+    )
+    def test_it_returns_nothing_rather_than_guessing(self, text: str) -> None:
+        # The common case, and not a failure. A requirement with no persona in it
+        # has no persona, and inferring one puts words in a stakeholder's mouth.
+        assert intake.parse_story_form(text) is None
+
+    def test_the_parts_are_filled_from_the_detail(self) -> None:
+        # The title is shortened and may have cut the "so that" clause off, so
+        # the detail is read first.
+        [found] = DocxIntakeService._with_story_parts(
+            [
+                Candidate(
+                    title="Export the ledger",
+                    detail="As a finance manager, I want to export the ledger, so that I can reconcile.",
+                )
+            ]
+        )
+        assert found.as_a == "finance manager"
+        assert found.so_that == "I can reconcile"
+
+    def test_the_title_is_a_fallback(self) -> None:
+        [found] = DocxIntakeService._with_story_parts(
+            [Candidate(title="As an admin I want to revoke a token", detail="")]
+        )
+        assert found.as_a == "admin"
+
+    def test_a_plain_requirement_is_left_unattributed(self) -> None:
+        [found] = DocxIntakeService._with_story_parts(
+            [Candidate(title="Support CSV export", detail="Section 4 says so")]
+        )
+        assert found.as_a is None
+
+    def test_it_applies_to_every_source_not_just_the_model(self) -> None:
+        # A story sentence is a story sentence whether somebody typed it in a
+        # comment, tagged it with TODO, or the model repeated it back.
+        found = DocxIntakeService._with_story_parts(
+            [
+                Candidate(title="x", detail="As a reviewer, I want the redline", source="comments"),
+                Candidate(title="y", detail="As an admin, I want an audit log", source="markers"),
+                Candidate(title="z", detail="As a user, I want dark mode", source="model"),
+            ]
+        )
+        assert [c.as_a for c in found] == ["reviewer", "admin", "user"]
+
+    def test_an_already_parsed_candidate_is_left_alone(self) -> None:
+        # The client sends the parts back on create; re-deriving them would let a
+        # shortened title override what the document actually said.
+        [found] = DocxIntakeService._with_story_parts(
+            [Candidate(title="As a nobody, I want nothing", as_a="finance manager", i_want="export")]
+        )
+        assert found.as_a == "finance manager"
+
+
+class TestStoryCreationRefusesToInvent:
+    async def test_it_refuses_when_nobody_is_named(self) -> None:
+        # The fix. A placeholder here is a fake stakeholder on somebody's backlog.
+        service = DocxIntakeService(_FakeDb())
+        with pytest.raises(DocxIntakeError, match="do not say who they are for"):
+            await service.create(
+                "d1",
+                "user_story",
+                [Candidate(title="Support CSV export")],
+                CreateOptions(),
+            )
+
+    async def test_the_refusal_names_one_so_it_can_be_found(self) -> None:
+        # "3 of these do not say who they are for" is not actionable on its own.
+        service = DocxIntakeService(_FakeDb())
+        with pytest.raises(DocxIntakeError, match="Support CSV export"):
+            await service.create(
+                "d1",
+                "user_story",
+                [Candidate(title="Support CSV export")],
+                CreateOptions(),
+            )
+
+    async def test_a_supplied_persona_satisfies_it(self, monkeypatch) -> None:
+        made: list = []
+
+        class _Db(_FakeDb):
+            def add(self, row):
+                made.append(row)
+
+            async def execute(self, _q):
+                import types
+
+                return types.SimpleNamespace(scalar=lambda: 0)
+
+        service = DocxIntakeService(_Db())
+        await service.create(
+            "d1",
+            "user_story",
+            [Candidate(title="Support CSV export")],
+            CreateOptions(default_persona="finance manager"),
+        )
+        assert made[0].as_a == "finance manager"
+        assert made[0].i_want == "Support CSV export"
+
+    async def test_a_parsed_story_needs_no_persona_asked_for(self) -> None:
+        # A document written in story form should not ask a question it already
+        # answered.
+        made: list = []
+
+        class _Db(_FakeDb):
+            def add(self, row):
+                made.append(row)
+
+            async def execute(self, _q):
+                import types
+
+                return types.SimpleNamespace(scalar=lambda: 0)
+
+        service = DocxIntakeService(_Db())
+        await service.create(
+            "d1",
+            "user_story",
+            [
+                Candidate(
+                    title="Export the ledger",
+                    as_a="finance manager",
+                    i_want="export the ledger",
+                    so_that="I can reconcile",
+                )
+            ],
+            CreateOptions(),
+        )
+        assert made[0].as_a == "finance manager"
+        assert made[0].so_that == "I can reconcile"
+
+    async def test_a_mixed_batch_uses_each_where_it_applies(self) -> None:
+        # The parsed one keeps its own persona; the bare one takes the supplied.
+        made: list = []
+
+        class _Db(_FakeDb):
+            def add(self, row):
+                made.append(row)
+
+            async def execute(self, _q):
+                import types
+
+                return types.SimpleNamespace(scalar=lambda: 0)
+
+        service = DocxIntakeService(_Db())
+        await service.create(
+            "d1",
+            "user_story",
+            [
+                Candidate(title="Export", as_a="finance manager", i_want="export"),
+                Candidate(title="Support CSV export"),
+            ],
+            CreateOptions(default_persona="admin"),
+        )
+        assert [row.as_a for row in made] == ["finance manager", "admin"]
+
+    async def test_no_story_ever_gets_a_placeholder(self) -> None:
+        # The regression guard, stated as the thing that must never appear.
+        service = DocxIntakeService(_FakeDb())
+        for options in (CreateOptions(), CreateOptions(default_persona="")):
+            with pytest.raises(DocxIntakeError):
+                await service.create(
+                    "d1", "user_story", [Candidate(title="x")], options
+                )

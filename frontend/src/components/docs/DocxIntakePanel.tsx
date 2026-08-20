@@ -70,13 +70,17 @@ export function DocxIntakePanel({
   const [target, setTarget] = useState<IntakeTarget>("sprint_task");
   const [sprintId, setSprintId] = useState("");
   const [formId, setFormId] = useState("");
+  const [persona, setPersona] = useState("");
   const [candidates, setCandidates] = useState<IntakeCandidate[] | null>(null);
   // Keyed by index rather than by title: two candidates can legitimately share
   // a title once a person has edited nothing, and dropping one silently would be
   // worse than showing both.
   const [kept, setKept] = useState<Set<number>>(new Set());
 
-  const needs = intakeNeeds(target);
+  // Depends on the candidates too: a document already written as "As a …, I
+  // want …" answered the persona question itself.
+  const keptCandidates = (candidates ?? []).filter((_, index) => kept.has(index));
+  const needs = intakeNeeds(target, keptCandidates);
 
   const preview = useMutation({
     mutationFn: () => docxIntakeApi.preview(workspaceId, documentId, sources),
@@ -94,9 +98,10 @@ export function DocxIntakePanel({
     mutationFn: () =>
       docxIntakeApi.create(workspaceId, documentId, {
         target,
-        candidates: (candidates ?? []).filter((_, index) => kept.has(index)),
+        candidates: keptCandidates,
         sprint_id: needs.sprint ? sprintId || null : null,
         form_id: needs.form ? formId || null : null,
+        default_persona: needs.persona ? persona.trim() || null : null,
       }),
     onSuccess: (data) => {
       toast.success(
@@ -115,7 +120,13 @@ export function DocxIntakePanel({
   const noSprints = needs.sprint && sprints.length === 0;
   const noForms = needs.form && ticketForms.length === 0;
   const missingContext =
-    noSprints || noForms || (needs.sprint && !sprintId) || (needs.form && !formId);
+    noSprints ||
+    noForms ||
+    (needs.sprint && !sprintId) ||
+    (needs.form && !formId) ||
+    // The server refuses rather than writing a placeholder persona, so the panel
+    // has to ask before it lets the request go.
+    (needs.persona && !persona.trim());
 
   return (
     <section
@@ -279,6 +290,25 @@ export function DocxIntakePanel({
                   </label>
                 )}
 
+                {/* Asked only for the candidates the document did not
+                    attribute. A story with a placeholder persona is a fake
+                    stakeholder on a backlog, so the server refuses one — this is
+                    where that question gets answered. */}
+                {needs.persona && (
+                  <label className="text-xs">
+                    <span className="block text-muted-foreground">
+                      {t("docx.intakePersonaLabel")}
+                    </span>
+                    <input
+                      data-testid="docx-intake-persona"
+                      value={persona}
+                      onChange={(event) => setPersona(event.target.value)}
+                      placeholder={t("docx.intakePersonaPlaceholder")}
+                      className="mt-0.5 w-48 rounded-md border border-border bg-background px-2 py-1"
+                    />
+                  </label>
+                )}
+
                 {needs.form && (
                   <label className="text-xs">
                     <span className="block text-muted-foreground">
@@ -327,9 +357,11 @@ export function DocxIntakePanel({
                     ? t("docx.intakeNoSprints")
                     : noForms
                       ? t("docx.intakeNoForms")
-                      : needs.sprint
-                        ? t("docx.intakeNeedsSprint")
-                        : t("docx.intakeNeedsForm")}
+                      : needs.persona && !persona.trim()
+                        ? t("docx.intakeNeedsPersona")
+                        : needs.sprint
+                          ? t("docx.intakeNeedsSprint")
+                          : t("docx.intakeNeedsForm")}
                 </p>
               )}
             </>

@@ -91,6 +91,47 @@ Rules:
 """
 
 
+# "As a finance manager, I want to export the ledger, so that I can reconcile."
+#
+# Specs written for a tracker say this literally, and when they do there is no
+# reason to guess: the persona is on the page. Tolerant of the punctuation people
+# actually use (comma, semicolon, dash, or nothing) and of "I'd like" / "I need"
+# in place of "I want".
+_STORY_FORM = re.compile(
+    r"\bas\s+an?\s+(?P<as_a>.+?)"
+    r"[,;:\-–\s]+i\s*(?:want|need|would\s+like|'d\s+like)\s+(?:to\s+)?(?P<i_want>.+?)"
+    r"(?:[,;:\-–\s]+so\s+that\s+(?P<so_that>.+?))?"
+    r"[.\s]*$",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def parse_story_form(text: str) -> dict[str, str] | None:
+    """The three parts of a user story, if the text states them.
+
+    Returns None when it does not, which is the common case and not a failure —
+    "The system shall support CSV export" is a requirement with no persona in it,
+    and inventing one would be putting words in a stakeholder's mouth.
+    """
+    flat = " ".join((text or "").split())
+    if not flat:
+        return None
+    match = _STORY_FORM.search(flat)
+    if match is None:
+        return None
+
+    as_a = (match.group("as_a") or "").strip(" ,;:-–")
+    i_want = (match.group("i_want") or "").strip(" ,;:-–")
+    if not as_a or not i_want:
+        return None
+
+    parts = {"as_a": as_a, "i_want": i_want}
+    so_that = (match.group("so_that") or "").strip(" ,;:-–")
+    if so_that:
+        parts["so_that"] = so_that
+    return parts
+
+
 @dataclass
 class Candidate:
     """One proposed issue, and where in the document it came from.
@@ -109,6 +150,12 @@ class Candidate:
     comment_id: str | None = None
     paragraph_index: int | None = None
 
+    #: The three parts of a user story, when the document stated them. Absent
+    #: when it did not, which is why `CreateOptions.default_persona` exists.
+    as_a: str | None = None
+    i_want: str | None = None
+    so_that: str | None = None
+
 
 @dataclass
 class CreateOptions:
@@ -123,6 +170,14 @@ class CreateOptions:
     #: `ticket` only. A ticket belongs to a form — that is what defines its
     #: fields, its SLA and who it is for. There is no sensible default.
     form_id: str | None = None
+    #: `user_story` only. Who the story is for, when the document did not say.
+    #:
+    #: A story's `as_a` is required by the model, and most documents are not
+    #: written in story form — so this is asked of the person rather than guessed
+    #: at. It used to be filled with a placeholder, which put a fake stakeholder
+    #: on a backlog and made every imported story say the same meaningless thing.
+    default_persona: str | None = None
+
     #: Applied to every created row, so a batch can be found again.
     labels: list[str] = field(default_factory=list)
     assignee_id: str | None = None
@@ -183,7 +238,7 @@ class DocxIntakeService:
                 )
             )
 
-        return self._dedupe(found)[:_MAX_CANDIDATES]
+        return self._with_story_parts(self._dedupe(found))[:_MAX_CANDIDATES]
 
     def _from_comments(self, raw: bytes) -> list[Candidate]:
         """Every open comment thread as a candidate.
@@ -325,6 +380,29 @@ class DocxIntakeService:
                 )
             )
         return out
+
+    @staticmethod
+    def _with_story_parts(candidates: list[Candidate]) -> list[Candidate]:
+        """Fill in the story form wherever the text already states it.
+
+        Applied to every source, not just the model's: "As a reviewer, I want…"
+        is a story sentence whether somebody typed it in a comment, tagged it
+        with TODO, or the model repeated it back.
+
+        Reads the detail first and falls back to the title, because the title is
+        shortened and may have cut the "so that" clause off.
+        """
+        for candidate in candidates:
+            if candidate.as_a:
+                continue
+            parts = parse_story_form(candidate.detail) or parse_story_form(
+                candidate.title
+            )
+            if parts:
+                candidate.as_a = parts["as_a"]
+                candidate.i_want = parts["i_want"]
+                candidate.so_that = parts.get("so_that")
+        return candidates
 
     @staticmethod
     def _dedupe(candidates: list[Candidate]) -> list[Candidate]:
@@ -469,6 +547,20 @@ class DocxIntakeService:
     ) -> list[dict[str, Any]]:
         from aexy.models.story import UserStory
 
+        # A story needs somebody it is for. Where the document said so, that was
+        # parsed at preview; where it did not, the person is asked. Refusing is
+        # the whole fix here: this used to write "someone reading this document"
+        # into every imported story, which is a fake stakeholder on a backlog and
+        # tells a team nothing about who wanted the thing.
+        unattributed = [c for c in candidates if not c.as_a]
+        if unattributed and not options.default_persona:
+            example = unattributed[0].title
+            raise DocxIntakeError(
+                f"{len(unattributed)} of these do not say who they are for — "
+                f'for example "{example}". Say who the stories are for, or write '
+                "them in the document as \"As a …, I want …\"."
+            )
+
         created: list[dict[str, Any]] = []
         count = (
             await self.db.execute(
@@ -483,13 +575,13 @@ class DocxIntakeService:
                 workspace_id=workspace_id,
                 key=f"STORY-{count + offset:03d}",
                 title=candidate.title,
-                # `as_a`/`i_want` are required, and a document rarely says who
-                # the user is. Filled honestly rather than invented: the title
-                # carries the want, and the persona is left for a person to
-                # correct. Guessing "As a user" for a compliance requirement
-                # would be worse than admitting it is unknown.
-                as_a="someone reading this document",
-                i_want=candidate.title,
+                # Parsed from the document where it said so, otherwise the
+                # persona the person supplied. Never inferred: guessing "As a
+                # user" for a compliance requirement puts words in a
+                # stakeholder's mouth.
+                as_a=candidate.as_a or options.default_persona or "",
+                i_want=candidate.i_want or candidate.title,
+                so_that=candidate.so_that,
                 description=_body(candidate, document),
                 reporter_id=created_by_id,
                 labels=options.labels or None,

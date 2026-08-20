@@ -32,6 +32,15 @@ export interface IntakeCandidate {
   origin: string;
   comment_id: string | null;
   paragraph_index: number | null;
+
+  /**
+   * The three parts of a user story, when the document already stated them —
+   * "As a finance manager, I want to export the ledger, so that…". Sent back on
+   * create, so a document written in story form is never asked who it is for.
+   */
+  as_a: string | null;
+  i_want: string | null;
+  so_that: string | null;
 }
 
 export interface IntakeCreatedIssue {
@@ -65,6 +74,13 @@ export const docxIntakeApi = {
       candidates: IntakeCandidate[];
       sprint_id?: string | null;
       form_id?: string | null;
+      /**
+       * Who the stories are for, when the document did not say. Required only
+       * for candidates with no `as_a` of their own — a story with a placeholder
+       * persona is a fake stakeholder on a backlog, so the server refuses rather
+       * than inventing one.
+       */
+      default_persona?: string | null;
       labels?: string[];
       assignee_id?: string | null;
     }
@@ -77,16 +93,25 @@ export const docxIntakeApi = {
   },
 };
 
-/** What each target needs before it can be created. */
-export function intakeNeeds(target: IntakeTarget): {
-  sprint: boolean;
-  form: boolean;
-} {
+/**
+ * What each target needs before it can be created.
+ *
+ * `persona` depends on the candidates as well as the target: a document written
+ * as "As a …, I want …" answered the question itself, and asking again would be
+ * asking about something already on the page.
+ */
+export function intakeNeeds(
+  target: IntakeTarget,
+  candidates: readonly IntakeCandidate[] = []
+): { sprint: boolean; form: boolean; persona: boolean } {
   return {
     // A task has to live in a sprint.
     sprint: target === "sprint_task",
     // A ticket's fields, its SLA and who it is for all come from its form, so
     // there is no sensible default.
     form: target === "ticket",
+    // Only for the ones the document did not attribute.
+    persona:
+      target === "user_story" && candidates.some((candidate) => !candidate.as_a),
   };
 }

@@ -272,7 +272,10 @@
       "intakeCreated": "Created {count, plural, one {# issue} other {# issues}}",
       "intakeCreateFailed": "Could not create those issues",
       "intakeNoSprints": "No sprint is open to new work. Start or plan one on the sprint board, or choose another type.",
-      "intakeNoForms": "This workspace has no ticket forms yet. Create one in Tickets, or choose another type."
+      "intakeNoForms": "This workspace has no ticket forms yet. Create one in Tickets, or choose another type.",
+      "intakePersonaLabel": "These stories are for",
+      "intakePersonaPlaceholder": "e.g. finance manager",
+      "intakeNeedsPersona": "Say who these stories are for — a story with a placeholder persona tells a team nothing. Ones the document already wrote as \"As a …, I want …\" keep their own."
     }
   }
 }

@@ -96,6 +96,9 @@ def _candidate(title: str = "Add rate limiting", **kw) -> dict:
         "origin": kw.get("origin", "paragraph 12"),
         "comment_id": kw.get("comment_id"),
         "paragraph_index": kw.get("paragraph_index", 12),
+        "as_a": kw.get("as_a"),
+        "i_want": kw.get("i_want"),
+        "so_that": kw.get("so_that"),
     }
 
 
@@ -404,3 +407,91 @@ class TestPreviewWritesNothing:
                 f"{BASE}/intake/preview", json={"sources": ["markers"]}
             )
         assert response.status_code == 200
+
+
+class TestStoryPersona:
+    """A story needs somebody it is for, and the panel needs to be told when.
+
+    The service refuses rather than writing a placeholder. That refusal is only
+    useful if it reaches the client as its own sentence with a 422 — a 500 would
+    leave the panel unable to ask the question that fixes it.
+    """
+
+    async def test_a_parsed_story_survives_the_round_trip(
+        self, api, member, monkeypatch
+    ) -> None:
+        # A document written as "As a …, I want …" must not be asked who it is
+        # for, which means the parts have to arrive intact.
+        seen: list = []
+
+        async def _create(self, document_id, target, candidates, options, created_by_id=None):
+            seen.append((candidates, options))
+            return []
+
+        monkeypatch.setattr(intake.DocxIntakeService, "create", _create)
+
+        async with api as client:
+            await client.post(
+                f"{BASE}/intake",
+                json={
+                    "target": "user_story",
+                    "candidates": [
+                        _candidate(
+                            "Export the ledger",
+                            as_a="finance manager",
+                            i_want="export the ledger",
+                            so_that="I can reconcile",
+                        )
+                    ],
+                },
+            )
+
+        candidates, _options = seen[0]
+        assert candidates[0].as_a == "finance manager"
+        assert candidates[0].so_that == "I can reconcile"
+
+    async def test_the_persona_reaches_the_service(
+        self, api, member, monkeypatch
+    ) -> None:
+        seen: list = []
+
+        async def _create(self, document_id, target, candidates, options, created_by_id=None):
+            seen.append(options)
+            return []
+
+        monkeypatch.setattr(intake.DocxIntakeService, "create", _create)
+
+        async with api as client:
+            await client.post(
+                f"{BASE}/intake",
+                json={
+                    "target": "user_story",
+                    "candidates": [_candidate()],
+                    "default_persona": "finance manager",
+                },
+            )
+
+        assert seen[0].default_persona == "finance manager"
+
+    async def test_the_refusal_arrives_as_a_422_the_panel_can_act_on(
+        self, api, member, monkeypatch
+    ) -> None:
+        async def _create(self, *_a, **_k):
+            raise intake.DocxIntakeError(
+                '1 of these do not say who they are for — for example '
+                '"Support CSV export". Say who the stories are for.'
+            )
+
+        monkeypatch.setattr(intake.DocxIntakeService, "create", _create)
+
+        async with api as client:
+            response = await client.post(
+                f"{BASE}/intake",
+                json={"target": "user_story", "candidates": [_candidate()]},
+            )
+
+        assert response.status_code == 422
+        detail = response.json()["detail"]
+        assert "who they are for" in detail
+        # It names one, so the person can find it rather than hunting a count.
+        assert "Support CSV export" in detail

@@ -108,6 +108,12 @@ class IntakeCandidate(BaseModel):
     comment_id: str | None = None
     paragraph_index: int | None = None
 
+    #: The three parts of a user story, when the document stated them. Sent back
+    #: on create so a document written in story form needs no persona asked for.
+    as_a: str | None = None
+    i_want: str | None = None
+    so_that: str | None = None
+
 
 class IntakePreviewRequest(BaseModel):
     """Where to read from. Chosen per run, never a workspace default.
@@ -138,6 +144,9 @@ class IntakeCreateRequest(BaseModel):
 
     sprint_id: str | None = None
     form_id: str | None = None
+    #: `user_story` only: who the stories are for, when the document did not say.
+    #: Not required when every candidate carries its own parsed `as_a`.
+    default_persona: str | None = Field(default=None, max_length=255)
     labels: list[str] = Field(default_factory=list)
     assignee_id: str | None = None
 

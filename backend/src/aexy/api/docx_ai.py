@@ -332,12 +332,16 @@ async def create_docx_intake(
                     origin=c.origin,
                     comment_id=c.comment_id,
                     paragraph_index=c.paragraph_index,
+                    as_a=c.as_a,
+                    i_want=c.i_want,
+                    so_that=c.so_that,
                 )
                 for c in data.candidates
             ],
             CreateOptions(
                 sprint_id=data.sprint_id,
                 form_id=data.form_id,
+                default_persona=data.default_persona,
                 labels=data.labels,
                 assignee_id=data.assignee_id,
             ),
