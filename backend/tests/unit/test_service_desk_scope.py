@@ -360,3 +360,64 @@ async def test_a_chart_is_scoped_like_every_other_read(db_session, desk):
     # kam_a is assigned two of the three tickets.
     assert scoped["total_tickets"] == 2
     assert whole_desk["total_tickets"] == 3
+
+
+@pytest.mark.asyncio
+async def test_search_narrows_within_the_callers_scope_and_never_past_it(db_session, desk):
+    """Search is a filter, so it obeys the same rule as the rest of them.
+
+    The interesting case is a term that matches a ticket the caller cannot see:
+    it has to return nothing, not that ticket. A text box is the easiest place
+    to accidentally build a way to read another queue by guessing subjects.
+    """
+    from aexy.schemas.service_desk import TicketFilters
+    from aexy.services.service_desk_service import ServiceDeskService
+
+    svc = ServiceDeskService(db_session)
+
+    # KAM A can see their own "a" and the unassigned-to-them "fin".
+    rows = await svc.list_tickets(
+        desk["ws"], developer_id=desk["kam_a"], filters=TicketFilters(q="a")
+    )
+    assert {r.subject for r in rows} == {"a"}
+
+    # "b" belongs to KAM B. Matching its subject must not surface it.
+    assert (
+        await svc.count_tickets(
+            desk["ws"], developer_id=desk["kam_a"], filters=TicketFilters(q="b")
+        )
+        == 0
+    )
+
+
+@pytest.mark.asyncio
+async def test_search_finds_a_ticket_by_its_number_however_it_is_typed(db_session, desk):
+    """`SD-3`, `sd 3` and `3` are the same question.
+
+    The prefix is per-workspace and is not stored on the row, so the number is
+    what is matched and the letters are ignored.
+    """
+    from aexy.schemas.service_desk import TicketFilters
+    from aexy.services.service_desk_service import ServiceDeskService
+
+    svc = ServiceDeskService(db_session)
+    for typed in ("3", "SD-3", "sd 3"):
+        rows = await svc.list_tickets(
+            desk["ws"], developer_id=desk["kam_a"], filters=TicketFilters(q=typed)
+        )
+        assert [r.ticket_number for r in rows] == [3], typed
+
+
+@pytest.mark.asyncio
+async def test_a_percent_in_a_search_is_a_character_not_a_wildcard(db_session, desk):
+    """Otherwise searching for "100%" quietly returns the whole desk."""
+    from aexy.schemas.service_desk import TicketFilters
+    from aexy.services.service_desk_service import ServiceDeskService
+
+    svc = ServiceDeskService(db_session)
+    assert (
+        await svc.count_tickets(
+            desk["ws"], developer_id=desk["kam_a"], filters=TicketFilters(q="%")
+        )
+        == 0
+    )

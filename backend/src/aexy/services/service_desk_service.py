@@ -6,6 +6,7 @@ auto-assignment), plus listing service-desk tickets and manual logging.
 """
 
 import logging
+import re
 from uuid import uuid4
 
 from fastapi import HTTPException, status
@@ -1721,6 +1722,24 @@ class ServiceDeskService:
             query = query.where(Ticket.status == filters.status)
         if filters.assigned_to is not None:
             query = query.where(Ticket.assignee_id == filters.assigned_to)
+        if filters.q:
+            # LIKE metacharacters are escaped rather than rejected: somebody
+            # searching for a subject containing "100%" means the character.
+            term = filters.q.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            if term:
+                like = f"%{term}%"
+                matches = [
+                    Ticket.field_values["subject"].as_string().ilike(like, escape="\\"),
+                    Ticket.submitter_email.ilike(like, escape="\\"),
+                    Ticket.submitter_name.ilike(like, escape="\\"),
+                ]
+                # "SD-26", "sd 26" and "26" should all find ticket 26. The prefix
+                # is per-workspace and not stored on the row, so match the number
+                # and let the letters be whatever this desk calls itself.
+                digits = re.sub(r"\D", "", filters.q)
+                if digits:
+                    matches.append(Ticket.ticket_number == int(digits))
+                query = query.where(or_(*matches))
         if filters.needs_triage is not None:
             query = query.where(ServiceDeskTicket.needs_triage.is_(filters.needs_triage))
         if filters.is_open is not None:

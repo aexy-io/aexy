@@ -17,9 +17,11 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
 vi.mock("@/hooks/useWorkspace", () => ({
   useWorkspace: () => ({ currentWorkspace: { id: "ws-1" } }),
+  useWorkspaceMembers: () => ({ members: [], isLoading: false }),
 }));
 
 vi.mock("@/hooks/useServiceDesk", () => ({
+  useVendors: () => ({ data: [] }),
   useServiceDeskTickets: (query: Record<string, unknown>) => {
     mocks.queries.push(query);
     return { data: [], isLoading: false };
@@ -93,6 +95,60 @@ describe("Service Desk ticket filters", () => {
 
     expect(lastQuery()).toMatchObject({ limit: 50, offset: 0 });
     expect(lastQuery().account_id).toBeUndefined();
+  });
+
+  it("waits for a pause before asking for what is being typed", () => {
+    vi.useFakeTimers();
+    render();
+    const box = container.querySelector('input[type="search"]') as HTMLInputElement;
+    const before = mocks.queries.length;
+
+    act(() => {
+      const setter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      )!.set!;
+      // Four keystrokes in quick succession: one query, not four.
+      for (const value of ["S", "SS", "SSO", "SSO "]) {
+        setter.call(box, value);
+        box.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    });
+    expect(mocks.queries.slice(before).some((q) => q.q !== undefined)).toBe(false);
+
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    // Trimmed: the trailing space was typing, not part of the term.
+    expect(lastQuery().q).toBe("SSO");
+    vi.useRealTimers();
+  });
+
+  it("drops the term from the query when the box is emptied", () => {
+    vi.useFakeTimers();
+    render();
+    const box = container.querySelector('input[type="search"]') as HTMLInputElement;
+    const setter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      "value",
+    )!.set!;
+
+    act(() => {
+      setter.call(box, "SSO");
+      box.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    act(() => vi.advanceTimersByTime(400));
+    expect(lastQuery().q).toBe("SSO");
+
+    act(() => {
+      setter.call(box, "");
+      box.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    act(() => vi.advanceTimersByTime(400));
+    // Absent, not empty: an empty string would be sent as `q=` and read by the
+    // server as a term that matches nothing.
+    expect("q" in lastQuery()).toBe(false);
+    vi.useRealTimers();
   });
 
   it("passes a chosen account through to the query", () => {

@@ -272,6 +272,9 @@ export interface ServiceDeskDashboard {
  * the caller is allowed to see, which the server enforces separately.
  */
 export interface TicketQuery {
+  /** Free text over subject, requester and ticket number. Not the body — see
+   *  `TicketFilters.q` on the server for why. */
+  q?: string;
   /** Narrow to the caller's own queue, within their desk scope. */
   assigned_to_me?: boolean;
   limit?: number;

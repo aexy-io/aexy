@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Inbox, Plus, X } from "lucide-react";
+import { Download, Inbox, Plus, Search, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -13,9 +13,10 @@ import {
   useServiceDeskTaxonomy,
   useServiceDeskTicketCount,
   useServiceDeskTickets,
+  useVendors,
 } from "@/hooks/useServiceDesk";
 import { serviceDeskApi, TicketQuery } from "@/lib/service-desk-api";
-import { useWorkspace } from "@/hooks/useWorkspace";
+import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import {
   serviceDeskStakeholderColor,
   TICKET_STATUS_COLORS,
@@ -39,6 +40,20 @@ import {
 
 const FILTER_CLASS =
   "h-9 rounded-md border border-input bg-background px-2 py-1 text-xs";
+
+/**
+ * How long ago, in the coarsest unit that is still true.
+ *
+ * Rounded down deliberately: a ticket opened 47 hours ago reads "1d", not "2d".
+ * Rounding up would let something breach a two-day target on screen before it
+ * has breached in fact, and the desk's clocks are the server's, not this one's.
+ */
+function relativeAge(iso: string, t: (k: string, v?: Record<string, string | number | Date>) => string): string {
+  const seconds = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (seconds < 3600) return t("table.ageMinutes", { count: Math.floor(seconds / 60) });
+  if (seconds < 86400) return t("table.ageHours", { count: Math.floor(seconds / 3600) });
+  return t("table.ageDays", { count: Math.floor(seconds / 86400) });
+}
 
 function FilterField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -64,6 +79,24 @@ export default function ServiceDeskTicketsPage() {
   const PAGE_SIZE = 50;
   const [filters, setFilters] = useState<TicketQuery>({});
   const [page, setPage] = useState(0);
+  // The box holds what is being typed; `filters.q` holds what has been asked
+  // for. Committing on every keystroke would fire a query per character and
+  // make the count flicker while somebody is still mid-word.
+  const [search, setSearch] = useState("");
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setPage(0);
+      setFilters((f) => {
+        const term = search.trim();
+        if (term === (f.q ?? "")) return f;
+        const next = { ...f };
+        if (term) next.q = term;
+        else delete next.q;
+        return next;
+      });
+    }, 300);
+    return () => clearTimeout(id);
+  }, [search]);
   // Every filter change returns to the first page. Staying on page 4 of a set
   // that now has two pages shows an empty table and reads as "no results".
   const setFilter = (key: keyof TicketQuery, value: string | boolean | undefined) => {
@@ -91,8 +124,16 @@ export default function ServiceDeskTicketsPage() {
   const outOfScope = scope === "none";
   const emptyDescription =
     scope === "none" ? t("noDepartment") : scope === "assigned" ? t("assignedOnly") : t("dashboard.empty");
+  // A filtered list that matches nothing is not an empty desk. "No open tickets
+  // — new requests will appear here automatically" is actively wrong then: it
+  // says the work does not exist when it is only hidden, and the reader's next
+  // move is to clear a filter, not to wait for mail.
+  const filteredToNothing = activeFilterCount > 0;
   const products = useProducts();
   const accounts = useAccounts();
+  const vendors = useVendors();
+  const { currentWorkspace } = useWorkspace();
+  const { members } = useWorkspaceMembers(currentWorkspace?.id ?? null);
   const terms = settings.data?.terminology ?? {};
   const { createManual } = useServiceDeskMutations();
 
@@ -110,7 +151,6 @@ export default function ServiceDeskTicketsPage() {
   // dropdown isn't empty while still deferring to the server if it hasn't.
   const defaultRequestType = requestTypes.find((r) => r.is_default)?.slug ?? requestTypes[0]?.slug ?? "";
 
-  const { currentWorkspace } = useWorkspace();
   const [exporting, setExporting] = useState(false);
 
   // Fetched as a blob through the API client, not linked to: the endpoint is
@@ -179,6 +219,18 @@ export default function ServiceDeskTicketsPage() {
           server applies visibility first and separately, so a KAM choosing
           another owner here sees nothing rather than that owner's queue. */}
       <Card className="flex flex-wrap items-end gap-2 p-3">
+        <FilterField label={t("filters.search")}>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t("filters.searchHint")}
+              className={`${FILTER_CLASS} w-56 pl-7`}
+            />
+          </div>
+        </FilterField>
         <FilterField label={t("filters.from")}>
           <input
             type="date"
@@ -218,6 +270,32 @@ export default function ServiceDeskTicketsPage() {
             <option value="">{t("filters.any")}</option>
             {(products.data ?? []).map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        </FilterField>
+        <FilterField label={terms.vendor ?? t("filters.vendor")}>
+          <select
+            value={filters.vendor_id ?? ""}
+            onChange={(e) => setFilter("vendor_id", e.target.value)}
+            className={FILTER_CLASS}
+          >
+            <option value="">{t("filters.any")}</option>
+            {(vendors.data ?? []).map((v) => (
+              <option key={v.id} value={v.id}>{v.name}</option>
+            ))}
+          </select>
+        </FilterField>
+        <FilterField label={t("filters.owner")}>
+          <select
+            value={filters.assigned_to ?? ""}
+            onChange={(e) => setFilter("assigned_to", e.target.value)}
+            className={FILTER_CLASS}
+          >
+            <option value="">{t("filters.any")}</option>
+            {(members ?? []).map((m) => (
+              <option key={m.id} value={m.developer_id}>
+                {m.developer_name || m.developer_email}
+              </option>
             ))}
           </select>
         </FilterField>
@@ -261,6 +339,14 @@ export default function ServiceDeskTicketsPage() {
         <label className="flex h-9 items-center gap-1.5 text-xs text-muted-foreground">
           <input
             type="checkbox"
+            checked={filters.assigned_to_me === true}
+            onChange={(e) => setFilter("assigned_to_me", e.target.checked || undefined)}
+          />
+          {t("filters.mine")}
+        </label>
+        <label className="flex h-9 items-center gap-1.5 text-xs text-muted-foreground">
+          <input
+            type="checkbox"
             checked={filters.needs_triage === true}
             onChange={(e) => setFilter("needs_triage", e.target.checked || undefined)}
           />
@@ -272,6 +358,7 @@ export default function ServiceDeskTicketsPage() {
             size="sm"
             onClick={() => {
               setFilters({});
+              setSearch("");
               setPage(0);
             }}
           >
@@ -287,10 +374,18 @@ export default function ServiceDeskTicketsPage() {
         <div className="flex justify-center py-12"><Spinner /></div>
       ) : !tickets || tickets.length === 0 ? (
         <EmptyState
-          icon={Inbox}
-          title={t("tabs.tickets")}
-          description={emptyDescription}
-          actions={[{ label: t("manual.logTicket"), onClick: () => setOpen(true), icon: Plus }]}
+          icon={filteredToNothing ? Search : Inbox}
+          title={filteredToNothing ? t("filters.noMatchTitle") : t("tabs.tickets")}
+          description={filteredToNothing ? t("filters.noMatch") : emptyDescription}
+          actions={
+            filteredToNothing
+              ? [{
+                  label: t("filters.clear"),
+                  onClick: () => { setFilters({}); setSearch(""); setPage(0); },
+                  icon: X,
+                }]
+              : [{ label: t("manual.logTicket"), onClick: () => setOpen(true), icon: Plus }]
+          }
         />
       ) : (
         <Card className="overflow-x-auto p-4">
@@ -303,6 +398,7 @@ export default function ServiceDeskTicketsPage() {
                 <th className="px-3 py-2">{t("table.type")}</th>
                 <th className="px-3 py-2">{t("table.pendingWith")}</th>
                 <th className="px-3 py-2">{t("table.status")}</th>
+                <th className="px-3 py-2 text-right">{t("table.age")}</th>
               </tr>
             </thead>
             <tbody>
@@ -333,6 +429,13 @@ export default function ServiceDeskTicketsPage() {
                     </td>
                     <td className="px-3 py-2">
                       <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs ${sc.bg} ${sc.text}`}>{ticketFieldLabel(tk.status)}</span>
+                    </td>
+                    {/* Age, not a timestamp: the list is sorted newest first,
+                        and what a reader is scanning for is which of these has
+                        been sitting too long — a date makes them do that
+                        subtraction themselves, once per row. */}
+                    <td className="whitespace-nowrap px-3 py-2 text-right text-xs text-muted-foreground" title={new Date(tk.created_at).toLocaleString()}>
+                      {relativeAge(tk.created_at, t)}
                     </td>
                   </tr>
                 );
