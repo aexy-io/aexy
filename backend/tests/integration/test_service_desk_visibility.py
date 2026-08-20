@@ -552,12 +552,19 @@ async def test_split_family_reassignment_is_scoped_and_atomic(
 
     event.listen(db_session.sync_session, "before_flush", reject_child_update)
     try:
-        with pytest.raises(RuntimeError, match="forced child assignment failure"):
-            await client.patch(
-                f"{b}/tickets/{parent}",
-                headers=desk["head"],
-                json={"assigned_owner_id": desk["kam_a_id"]},
-            )
+        # A 500, not a raised RuntimeError. The exception is turned into a
+        # response inside the CORS layer (see ErrorResponseMiddleware), which is
+        # what a caller has always received — previously Starlette's own
+        # ServerErrorMiddleware produced the 500 and then re-raised, and only an
+        # in-process ASGI caller ever saw that second half. Asserting the status
+        # is what the client actually observes; the rollback below is the point
+        # of the test either way.
+        failed = await client.patch(
+            f"{b}/tickets/{parent}",
+            headers=desk["head"],
+            json={"assigned_owner_id": desk["kam_a_id"]},
+        )
+        assert failed.status_code == 500, failed.text
     finally:
         event.remove(db_session.sync_session, "before_flush", reject_child_update)
         await db_session.rollback()
