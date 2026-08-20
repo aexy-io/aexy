@@ -367,6 +367,12 @@
           "slug": "integrations/openobserve",
           "path": "integrations/openobserve.md",
           "description": ""
+        },
+        {
+          "title": "Docs From Code Ux",
+          "slug": "plans/docs-from-code-ux",
+          "path": "plans/docs-from-code-ux.md",
+          "description": ""
         }
       ]
     }
@@ -671,6 +677,12 @@
       "section": "Other",
       "description": "",
       "path": "integrations/openobserve.md"
+    },
+    "plans/docs-from-code-ux": {
+      "title": "Docs From Code Ux",
+      "section": "Other",
+      "description": "",
+      "path": "plans/docs-from-code-ux.md"
     }
   },
   "pager": {
@@ -1165,6 +1177,16 @@
       "prev": {
         "title": "UNIFIED_EMAIL_PLAN",
         "slug": "UNIFIED_EMAIL_PLAN"
+      },
+      "next": {
+        "title": "Docs From Code Ux",
+        "slug": "plans/docs-from-code-ux"
+      }
+    },
+    "plans/docs-from-code-ux": {
+      "prev": {
+        "title": "Openobserve",
+        "slug": "integrations/openobserve"
       },
       "next": null
     }

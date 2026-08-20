@@ -167,6 +167,35 @@ docker compose -f docker-compose.prod.yml restart nginx
 
 ---
 
+## Object storage needs a public route
+
+RustFS is `expose`-only: reachable from the other containers, not from a
+browser. Task attachments are unaffected — the backend streams them at
+`/api/v1/task-attachments/{id}` — but Drive files, compliance documents, chat
+downloads and assessment recordings are handed **presigned URLs**, and a
+presigned URL is only as good as the hostname in it.
+
+Give storage a route one of two ways:
+
+```bash
+# Run the bundled proxy (off by default), then point your edge at NGINX_HTTP_PORT
+docker compose -f docker-compose.prod.yml --profile edge up -d
+```
+
+or copy the `location /aexy-storage/` block out of `nginx/nginx.conf` into the
+proxy you already run. Two rules either way:
+
+- `S3_PUBLIC_ENDPOINT_URL` is a **bare origin** — `https://server.aexy.io`, no
+  `/storage` suffix. SigV4 signs the URI path, so a suffix signs a path the
+  origin never sees.
+- **Do not rewrite the path.** The location is named after the bucket so it can
+  be proxied through untouched; stripping a prefix invalidates every signature.
+
+If neither is in place, every file URL returns the backend's own
+`{"detail":"Not Found"}` — which looks like a missing file and isn't.
+
+---
+
 ## Common Commands
 
 ```bash
