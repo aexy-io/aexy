@@ -153,6 +153,7 @@ async def check_repo_auto_sync(input: CheckRepoAutoSyncInput) -> dict[str, Any]:
     now = datetime.now(timezone.utc)
     syncs_triggered = 0
     skipped_auth = 0
+    notified_auth: set[str] = set()
     skipped_in_flight = 0
 
     async with async_session_maker() as db:
@@ -196,6 +197,25 @@ async def check_repo_auto_sync(input: CheckRepoAutoSyncInput) -> dict[str, Any]:
             if not connection or connection.auth_status == "error":
                 skipped_auth += 1
                 wr.sync_status = "no_credentials"
+                # Once per broken account, not once per repository per hour: a
+                # developer with thirty repos would otherwise get thirty
+                # notifications an hour and mute the channel, which loses the
+                # one message that mattered.
+                if developer.id not in notified_auth:
+                    notified_auth.add(developer.id)
+                    from aexy.services.integration_health import (
+                        notify_integration_disconnected,
+                    )
+
+                    await notify_integration_disconnected(
+                        db,
+                        workspace_id=str(wr.workspace_id),
+                        provider="GitHub",
+                        account_label=developer.email or developer.name or "GitHub account",
+                        reason="GitHub refused the saved credentials",
+                        connected_by_id=str(developer.id),
+                        settings_path="/settings/identity",
+                    )
                 continue
 
             if not repo_sync_due(wr.last_sync_at, settings.get("frequency", "1h"), now):

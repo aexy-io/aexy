@@ -420,6 +420,11 @@ NOTIFICATION_TEMPLATES = {
         "body_template": "Your request for access to {app_name} was not approved",
         "email_subject": "Access Request Update: {app_name}",
     },
+    NotificationEventType.INTEGRATION_DISCONNECTED: {
+        "title": "{provider} disconnected: {account}",
+        "body_template": "{account} is no longer syncing. Reconnect it to resume.",
+        "email_subject": "Action needed: {account} stopped syncing",
+    },
     NotificationEventType.USAGE_ALERT_80: {
         "title": "Usage Alert",
         "body_template": "You've used 80% of your {resource_type}. Current usage: {current}/{limit}.",

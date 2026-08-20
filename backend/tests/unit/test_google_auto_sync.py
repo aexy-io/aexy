@@ -158,3 +158,91 @@ class TestRunningJobGuard:
         await db_session.flush()
 
         assert await self._live_job_for(db_session, account) is False
+
+
+class TestAStrandedJobDoesNotDisableAnAccountForever:
+    """A job whose worker died used to block that account's sync permanently.
+
+    Reported from production: a Postgres outage interrupted a sync, the row
+    stayed `running`, and every 60-second tick from then on saw a live job and
+    skipped. The schedule looked healthy, no error was logged anywhere, and the
+    desk simply stopped receiving mail.
+    """
+
+    async def _live_job_for(self, db, integration):
+        return await has_live_sync_job(db, integration, "gmail")
+
+    async def test_a_job_older_than_the_bound_is_reclaimed(self, db_session, workspace):
+        from datetime import datetime, timedelta, timezone
+
+        from aexy.temporal.activities.google_sync import STALE_SYNC_JOB_AFTER
+
+        account = _account(workspace.id, "desk@example.com")
+        db_session.add(account)
+        await db_session.flush()
+
+        stranded = GoogleSyncJob(
+            workspace_id=workspace.id,
+            integration_id=account.id,
+            job_type="gmail",
+            status="running",
+            started_at=datetime.now(timezone.utc) - STALE_SYNC_JOB_AFTER - timedelta(minutes=1),
+        )
+        db_session.add(stranded)
+        await db_session.flush()
+
+        assert await self._live_job_for(db_session, account) is False, (
+            "a job past the staleness bound must not keep blocking this account"
+        )
+        # And it is closed out rather than left to be reconsidered every minute.
+        await db_session.refresh(stranded)
+        assert stranded.status == "failed"
+        assert "Abandoned" in (stranded.error or "")
+
+    async def test_a_job_inside_the_bound_still_blocks(self, db_session, workspace):
+        """The guard still has to do its original job.
+
+        Reclaiming a sync that is genuinely running would start a second one
+        against the same mailbox.
+        """
+        from datetime import datetime, timedelta, timezone
+
+        account = _account(workspace.id, "busy@example.com")
+        db_session.add(account)
+        await db_session.flush()
+
+        db_session.add(
+            GoogleSyncJob(
+                workspace_id=workspace.id,
+                integration_id=account.id,
+                job_type="gmail",
+                status="running",
+                started_at=datetime.now(timezone.utc) - timedelta(minutes=2),
+            )
+        )
+        await db_session.flush()
+
+        assert await self._live_job_for(db_session, account) is True
+
+    async def test_a_job_with_no_timestamp_yet_is_treated_as_live(
+        self, db_session, workspace
+    ):
+        """A row written this instant may have neither timestamp populated.
+
+        Reclaiming it would race the worker that just picked it up.
+        """
+        account = _account(workspace.id, "fresh@example.com")
+        db_session.add(account)
+        await db_session.flush()
+
+        job = GoogleSyncJob(
+            workspace_id=workspace.id,
+            integration_id=account.id,
+            job_type="gmail",
+            status="pending",
+        )
+        job.created_at = None
+        db_session.add(job)
+        await db_session.flush()
+
+        assert await self._live_job_for(db_session, account) is True
