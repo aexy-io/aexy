@@ -476,25 +476,18 @@ BEGIN
 END $$;
 -- =============================================================================
 
-ALTER TABLE email_campaigns
-ADD COLUMN IF NOT EXISTS sending_pool_id UUID REFERENCES sending_pools(id) ON DELETE SET NULL,
-ADD COLUMN IF NOT EXISTS sending_identity_id UUID REFERENCES sending_identities(id) ON DELETE SET NULL,
-ADD COLUMN IF NOT EXISTS routing_config JSONB;
-
-CREATE INDEX IF NOT EXISTS ix_email_campaign_pool ON email_campaigns(sending_pool_id);
-CREATE INDEX IF NOT EXISTS ix_email_campaign_identity ON email_campaigns(sending_identity_id);
+-- The same three columns are added inside the IF EXISTS block above. An
+-- unguarded copy here defeated that guard: migrate_email_marketing.sql creates
+-- email_campaigns and sorts after this file, so on a fresh database the table
+-- does not exist yet and this aborted the migration — and every migration
+-- behind it.
 
 -- =============================================================================
 -- ALTER CAMPAIGN RECIPIENTS TABLE (Add sent_via fields)
 -- =============================================================================
 
-ALTER TABLE campaign_recipients
-ADD COLUMN IF NOT EXISTS sent_via_domain_id UUID REFERENCES sending_domains(id) ON DELETE SET NULL,
-ADD COLUMN IF NOT EXISTS sent_via_provider_id UUID REFERENCES email_providers(id) ON DELETE SET NULL,
-ADD COLUMN IF NOT EXISTS sent_via_ip_id UUID REFERENCES dedicated_ips(id) ON DELETE SET NULL;
-
-CREATE INDEX IF NOT EXISTS ix_campaign_recipient_domain ON campaign_recipients(sent_via_domain_id);
-CREATE INDEX IF NOT EXISTS ix_campaign_recipient_provider ON campaign_recipients(sent_via_provider_id);
+-- Guarded above, for the same reason: campaign_recipients also comes from
+-- migrate_email_marketing.sql, which runs after this file.
 
 -- =============================================================================
 -- TRIGGERS FOR UPDATED_AT
@@ -649,6 +642,36 @@ ALTER TABLE email_providers ADD COLUMN IF NOT EXISTS last_check_status VARCHAR(5
 ALTER TABLE email_providers ADD COLUMN IF NOT EXISTS last_error TEXT;
 ALTER TABLE email_providers ADD COLUMN IF NOT EXISTS max_sends_per_day INTEGER;
 ALTER TABLE email_providers ADD COLUMN IF NOT EXISTS max_sends_per_second INTEGER;
+
+-- The tables above are created by the ORM on startup when the app boots first,
+-- and by this file when migrations run first. Only the second order leaves the
+-- gaps below, and nothing else ever closes them: `create_all` creates missing
+-- tables, never missing columns. Defaults are the models' own, so a row written
+-- by either path reads the same.
+
+-- dedicated_ips
+ALTER TABLE dedicated_ips ADD COLUMN IF NOT EXISTS daily_reset_at TIMESTAMPTZ;
+ALTER TABLE dedicated_ips ADD COLUMN IF NOT EXISTS health_status VARCHAR(20) NOT NULL DEFAULT 'excellent';
+-- A list, not an object: `blacklist_status` is default=list on the model.
+ALTER TABLE dedicated_ips ADD COLUMN IF NOT EXISTS blacklist_status JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE dedicated_ips ADD COLUMN IF NOT EXISTS last_blacklist_check_at TIMESTAMPTZ;
+
+-- warming_progress
+ALTER TABLE warming_progress ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+-- domain_health
+ALTER TABLE domain_health ADD COLUMN IF NOT EXISTS rejects INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE domain_health ADD COLUMN IF NOT EXISTS unique_opens INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE domain_health ADD COLUMN IF NOT EXISTS unique_clicks INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE domain_health ADD COLUMN IF NOT EXISTS unsubscribes INTEGER NOT NULL DEFAULT 0;
+
+-- sending_pools
+ALTER TABLE sending_pools ADD COLUMN IF NOT EXISTS settings JSONB NOT NULL DEFAULT '{}'::jsonb;
+
+-- provider_event_logs
+ALTER TABLE provider_event_logs ADD COLUMN IF NOT EXISTS diagnostic_code TEXT;
+ALTER TABLE provider_event_logs ADD COLUMN IF NOT EXISTS event_timestamp TIMESTAMPTZ;
+ALTER TABLE provider_event_logs ADD COLUMN IF NOT EXISTS raw_payload JSONB NOT NULL DEFAULT '{}'::jsonb;
 
 -- sending_domains: Add missing columns
 ALTER TABLE sending_domains ADD COLUMN IF NOT EXISTS subdomain VARCHAR(100);
