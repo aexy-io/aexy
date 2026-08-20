@@ -1,6 +1,6 @@
 {
   "name": "aexy-frontend",
-  "version": "0.23.2",
+  "version": "0.23.3",
   "private": true,
   "scripts": {
     "predev": "npm run i18n:merge",

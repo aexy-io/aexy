@@ -4,6 +4,7 @@ import json
 import logging
 import hashlib
 import hmac
+from email.utils import parseaddr
 from datetime import datetime, timezone
 from typing import Any
 
@@ -713,6 +714,27 @@ def _require_inbound_credential(request: Request, form_fields: dict | None) -> N
         )
 
 
+def _recipient_addresses(*values) -> list[str]:
+    """Every address in the given To/Cc values, lower-cased, in order.
+
+    Accepts what the providers actually send: a bare string, a comma-separated
+    header, a list of strings, or a list of ``{"Email": ...}`` dicts.
+    """
+    out: list[str] = []
+    for value in values:
+        if not value:
+            continue
+        items = value if isinstance(value, list) else [value]
+        for item in items:
+            raw = item.get("Email", "") if isinstance(item, dict) else str(item)
+            # A header may carry several addresses; parseaddr only reads one.
+            for part in raw.split(","):
+                _, addr = parseaddr(part.strip())
+                if addr:
+                    out.append(addr.lower())
+    return out
+
+
 def _parse_inbound_form_data(form_data: dict) -> dict | None:
     """Parse inbound email from form data (SendGrid/Mailgun format)."""
     try:
@@ -756,6 +778,10 @@ def _parse_inbound_form_data(form_data: dict) -> dict | None:
 
         return {
             "to": to_email,
+            "recipients": _recipient_addresses(
+                form_data.get("to") or form_data.get("envelope", {}).get("to"),
+                form_data.get("cc"),
+            ),
             "from": from_email,
             "from_name": from_name,
             "subject": subject,
@@ -796,6 +822,13 @@ def _parse_inbound_json(payload: dict) -> dict | None:
 
             return {
                 "to": to_data.get("Email", payload.get("To", "")),
+                # Everyone the message reached. The desk is routinely copied
+                # rather than addressed, and matching only the first To
+                # silently drops exactly those requests.
+                "recipients": _recipient_addresses(
+                    payload.get("ToFull") or payload.get("To"),
+                    payload.get("CcFull") or payload.get("Cc"),
+                ),
                 "from": from_data.get("Email", payload.get("From", "")),
                 "from_name": from_data.get("Name"),
                 "subject": payload.get("Subject", ""),
@@ -814,6 +847,7 @@ def _parse_inbound_json(payload: dict) -> dict | None:
         # Generic JSON format
         return {
             "to": payload.get("to", ""),
+            "recipients": _recipient_addresses(payload.get("to"), payload.get("cc")),
             "from": payload.get("from", ""),
             "from_name": payload.get("from_name"),
             "subject": payload.get("subject", ""),
@@ -856,15 +890,33 @@ async def _maybe_handle_service_desk(email_data: dict) -> bool:
     from aexy.schemas.service_desk import InboundEmail
     from aexy.services.service_desk_intake_service import ServiceDeskIntakeService
 
-    to_email = (email_data.get("to") or "").strip().lower()
-    if not to_email:
+    # Every address the message reached, the plain To first so a directly
+    # addressed desk still wins when two desks are on the same mail.
+    candidates: list[str] = []
+    primary = (email_data.get("to") or "").strip().lower()
+    if primary:
+        candidates.append(primary)
+    for addr in email_data.get("recipients") or []:
+        if addr and addr not in candidates:
+            candidates.append(addr)
+    if not candidates:
         return False
 
     engine = create_async_engine(get_settings().database_url, poolclass=NullPool)
     try:
         maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
         async with maker() as session:
-            mailbox = await ServiceDeskIntakeService.find_mailbox_by_address(session, to_email)
+            mailbox = None
+            to_email = candidates[0]
+            for addr in candidates:
+                mailbox = await ServiceDeskIntakeService.find_mailbox_by_address(session, addr)
+                if mailbox is not None:
+                    # Hand intake the desk's own address, not whoever happened to
+                    # be first in the To line. Downstream reads `to` as "which
+                    # desk is this", and on a copied-in message that is a
+                    # customer's account manager.
+                    to_email = addr
+                    break
             if mailbox is None:
                 return False
             intake = ServiceDeskIntakeService(session)
