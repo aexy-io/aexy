@@ -550,6 +550,42 @@ CREATE TRIGGER update_sending_pools_updated_at
 -- INSERT SYSTEM WARMING SCHEDULES
 -- =============================================================================
 
+-- The seed below is ON CONFLICT DO NOTHING against
+-- `uq_warming_schedule_workspace_name UNIQUE (workspace_id, name)`. System rows
+-- carry `workspace_id IS NULL`, and Postgres treats NULLs as distinct in a
+-- unique constraint — so that clause never fires for them and a second run
+-- inserts a second full set. Collapse any duplicates that already exist, then
+-- add the partial index that makes the conflict clause real.
+
+-- Point anything at the surviving row before removing its twins.
+UPDATE sending_domains d SET warming_schedule_id = keep.id
+FROM warming_schedules dup
+JOIN LATERAL (
+    SELECT id FROM warming_schedules k
+    WHERE k.workspace_id IS NULL AND k.is_system AND k.name = dup.name
+    ORDER BY k.created_at, k.id LIMIT 1
+) keep ON TRUE
+WHERE d.warming_schedule_id = dup.id AND dup.workspace_id IS NULL AND dup.is_system AND dup.id <> keep.id;
+
+UPDATE dedicated_ips i SET warming_schedule_id = keep.id
+FROM warming_schedules dup
+JOIN LATERAL (
+    SELECT id FROM warming_schedules k
+    WHERE k.workspace_id IS NULL AND k.is_system AND k.name = dup.name
+    ORDER BY k.created_at, k.id LIMIT 1
+) keep ON TRUE
+WHERE i.warming_schedule_id = dup.id AND dup.workspace_id IS NULL AND dup.is_system AND dup.id <> keep.id;
+
+DELETE FROM warming_schedules dup
+USING (
+    SELECT name, (ARRAY_AGG(id ORDER BY created_at, id))[1] AS keep_id
+    FROM warming_schedules WHERE workspace_id IS NULL AND is_system GROUP BY name
+) k
+WHERE dup.workspace_id IS NULL AND dup.is_system AND dup.name = k.name AND dup.id <> k.keep_id;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_warming_schedule_system_name
+    ON warming_schedules(name) WHERE workspace_id IS NULL;
+
 INSERT INTO warming_schedules (
     id, workspace_id, name, schedule_type, description, steps, is_system,
     max_bounce_rate, max_complaint_rate, min_delivery_rate,
