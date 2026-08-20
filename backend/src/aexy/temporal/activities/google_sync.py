@@ -210,7 +210,7 @@ async def _deactivate_integration(integration_id: str, error_message: str) -> No
                     account_label=integration.google_email or "Google account",
                     reason=error_message,
                     connected_by_id=integration.connected_by_id,
-                    settings_path="/settings/integrations",
+                    settings_path="/settings/connected-accounts",
                 )
                 await db.commit()
     except Exception as e:

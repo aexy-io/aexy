@@ -214,7 +214,7 @@ async def check_repo_auto_sync(input: CheckRepoAutoSyncInput) -> dict[str, Any]:
                         account_label=developer.email or developer.name or "GitHub account",
                         reason="GitHub refused the saved credentials",
                         connected_by_id=str(developer.id),
-                        settings_path="/settings/identity",
+                        settings_path="/settings/integrations",
                     )
                 continue
 

@@ -116,7 +116,7 @@ async def _refresh_google(
                 account_label=getattr(connection, "google_email", None) or owner_ref,
                 reason="Google refused the saved credentials (invalid_grant)",
                 connected_by_id=getattr(connection, "connected_by_id", None),
-                settings_path="/settings/integrations",
+                settings_path="/settings/connected-accounts",
             )
             await db.flush()
         raise RefreshTokenRevokedError("Google refresh token is invalid or revoked")
