@@ -576,8 +576,14 @@ USING (
 ) k
 WHERE dup.workspace_id IS NULL AND dup.is_system AND dup.name = k.name AND dup.id <> k.keep_id;
 
+-- `AND is_system` is not decoration: the dedupe above only collapses system
+-- rows, so an index over every workspace_id IS NULL row could find a duplicate
+-- it had no mandate to remove — a non-system row sharing a system name — and
+-- fail. The whole file is one implicit transaction, so that failure would roll
+-- back the migration and stop every migration behind it. Constrain exactly what
+-- was deduped.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_warming_schedule_system_name
-    ON warming_schedules(name) WHERE workspace_id IS NULL;
+    ON warming_schedules(name) WHERE workspace_id IS NULL AND is_system;
 
 INSERT INTO warming_schedules (
     id, workspace_id, name, schedule_type, description, steps, is_system,
