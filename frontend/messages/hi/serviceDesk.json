@@ -37,7 +37,11 @@
       "daysInStage": "स्टेज में कार्यदिवस",
       "overallAge": "कुल उम्र",
       "status": "स्थिति",
-      "triage": "ट्राइएज"
+      "triage": "ट्राइएज",
+      "age": "आयु",
+      "ageMinutes": "{count}m",
+      "ageHours": "{count}h",
+      "ageDays": "{count}d"
     },
     "detail": {
       "back": "डैशबोर्ड पर वापस",
@@ -298,7 +302,15 @@
       "showing": "{total} में से {from}–{to} दिख रहे हैं",
       "previous": "पिछला",
       "next": "अगला",
-      "export": "CSV export करें"
+      "export": "CSV export करें",
+      "search": "खोजें",
+      "searchHint": "विषय, भेजने वाला या SD-26",
+      "vendor": "Vendor",
+      "owner": "Owner",
+      "mine": "मुझे सौंपे गए",
+      "noMatchTitle": "कोई ticket नहीं मिला",
+      "noMatch": "इन filters से इस desk पर कुछ भी मेल नहीं खाता। पूरी queue देखने के लिए इन्हें हटाएँ।",
+      "more": "और filters"
     },
     "accountProducts": {
       "none": "कोई product mapped नहीं — सभी tickets इस account के owner को जाते हैं",

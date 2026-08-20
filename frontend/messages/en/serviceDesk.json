@@ -37,7 +37,11 @@
       "daysInStage": "Working days in stage",
       "overallAge": "Overall age",
       "status": "Status",
-      "triage": "Triage"
+      "triage": "Triage",
+      "age": "Age",
+      "ageMinutes": "{count}m",
+      "ageHours": "{count}h",
+      "ageDays": "{count}d"
     },
     "detail": {
       "back": "Back to dashboard",
@@ -298,7 +302,15 @@
       "showing": "Showing {from}–{to} of {total}",
       "previous": "Previous",
       "next": "Next",
-      "export": "Export CSV"
+      "export": "Export CSV",
+      "search": "Search",
+      "searchHint": "Subject, sender or SD-26",
+      "vendor": "Vendor",
+      "owner": "Owner",
+      "mine": "Assigned to me",
+      "noMatchTitle": "No tickets match",
+      "noMatch": "Nothing on this desk matches these filters. Clear them to see the whole queue.",
+      "more": "More filters"
     },
     "accountProducts": {
       "none": "No products mapped — all tickets go to this account's owner",

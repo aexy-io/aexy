@@ -6,6 +6,7 @@ auto-assignment), plus listing service-desk tickets and manual logging.
 """
 
 import logging
+import re
 from uuid import uuid4
 
 from fastapi import HTTPException, status
@@ -468,6 +469,31 @@ def _norm_domain(d: str) -> str:
             ),
         )
     return cleaned
+
+
+_SORTABLE = {
+    "created": lambda: Ticket.created_at,
+    "ticket": lambda: Ticket.ticket_number,
+    "subject": lambda: Ticket.field_values["subject"].as_string(),
+    "account": lambda: ServiceDeskAccount.name,
+    "type": lambda: ServiceDeskTicket.request_type,
+    "pending": lambda: ServiceDeskTicket.pending_with,
+    "status": lambda: Ticket.status,
+}
+
+
+def _ticket_order(filters) -> list:
+    """The ORDER BY for a ticket list, from a validated sort key.
+
+    The key is a Literal on ``TicketFilters``, so an unknown one is refused with
+    a 422 before reaching here; the fallback covers a filters object built in
+    Python rather than parsed from a request.
+    """
+    column = _SORTABLE.get(getattr(filters, "sort", "created") or "created")
+    if column is None:
+        return [Ticket.created_at.desc()]
+    expr = column()
+    return [expr.asc() if getattr(filters, "direction", "desc") == "asc" else expr.desc()]
 
 
 class ServiceDeskService:
@@ -1721,6 +1747,24 @@ class ServiceDeskService:
             query = query.where(Ticket.status == filters.status)
         if filters.assigned_to is not None:
             query = query.where(Ticket.assignee_id == filters.assigned_to)
+        if filters.q:
+            # LIKE metacharacters are escaped rather than rejected: somebody
+            # searching for a subject containing "100%" means the character.
+            term = filters.q.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            if term:
+                like = f"%{term}%"
+                matches = [
+                    Ticket.field_values["subject"].as_string().ilike(like, escape="\\"),
+                    Ticket.submitter_email.ilike(like, escape="\\"),
+                    Ticket.submitter_name.ilike(like, escape="\\"),
+                ]
+                # "SD-26", "sd 26" and "26" should all find ticket 26. The prefix
+                # is per-workspace and not stored on the row, so match the number
+                # and let the letters be whatever this desk calls itself.
+                digits = re.sub(r"\D", "", filters.q)
+                if digits:
+                    matches.append(Ticket.ticket_number == int(digits))
+                query = query.where(or_(*matches))
         if filters.needs_triage is not None:
             query = query.where(ServiceDeskTicket.needs_triage.is_(filters.needs_triage))
         if filters.is_open is not None:
@@ -1790,10 +1834,15 @@ class ServiceDeskService:
                     Developer.email,
                 ),
             )
-        # Ordered by id as well as time so a page boundary is stable: two tickets
-        # created in the same second would otherwise be free to swap places
-        # between page 1 and page 2, showing one twice and the other never.
-        ).order_by(Ticket.created_at.desc(), ServiceDeskTicket.id.desc())
+        # A fixed set of columns, looked up rather than interpolated — the sort
+        # key arrives from a query string.
+        ).order_by(
+            *_ticket_order(filters),
+            # Ordered by id as well, so a page boundary is stable: two tickets
+            # sharing a sort value would otherwise be free to swap places
+            # between page 1 and page 2, showing one twice and the other never.
+            ServiceDeskTicket.id.desc(),
+        )
         if limit is not None:
             query = query.limit(limit)
         if offset is not None:

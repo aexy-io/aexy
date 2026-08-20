@@ -272,6 +272,13 @@ export interface ServiceDeskDashboard {
  * the caller is allowed to see, which the server enforces separately.
  */
 export interface TicketQuery {
+  /** Free text over subject, requester and ticket number. Not the body — see
+   *  `TicketFilters.q` on the server for why. */
+  q?: string;
+  /** Ordering. Lives with the filters so an export comes back in the order of
+   *  the screen it was generated from. */
+  sort?: "created" | "ticket" | "subject" | "account" | "type" | "pending" | "status";
+  direction?: "asc" | "desc";
   /** Narrow to the caller's own queue, within their desk scope. */
   assigned_to_me?: boolean;
   limit?: number;

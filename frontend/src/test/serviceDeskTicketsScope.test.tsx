@@ -22,9 +22,11 @@ vi.mock("next-intl", () => ({
 
 vi.mock("@/hooks/useWorkspace", () => ({
   useWorkspace: () => ({ currentWorkspace: { id: "ws-1" } }),
+  useWorkspaceMembers: () => ({ members: [], isLoading: false }),
 }));
 
 vi.mock("@/hooks/useServiceDesk", () => ({
+  useVendors: () => ({ data: [] }),
   useServiceDeskTickets: () => ({ data: mocks.tickets, isLoading: false }),
   useServiceDeskTicketCount: () => ({ data: { total: mocks.tickets.length } }),
   useServiceDeskSettings: () => ({ data: { scope: mocks.scope, can_manage: false } }),
