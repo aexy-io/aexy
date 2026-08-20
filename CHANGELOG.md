@@ -5,6 +5,66 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.24.2] - 2026-08-20
+
+Every task attachment was a dead link, and the reason was that nothing served
+object storage at all.
+
+### Fixed: attachments 404'd because storage had no public route
+
+A task attachment resolved to
+`https://server.aexy.io/storage/aexy-storage/task-attachments/…`, and that host
+terminates at the backend. RustFS is `expose`-only in `docker-compose.prod.yml`,
+the nginx meant to broker it was never a service in that file, and
+`nginx/nginx.conf` was mounted by nothing — so the request reached FastAPI,
+which has no such route and answered `{"detail":"Not Found"}`. A 404 that reads
+like a deleted file and means an unrouted bucket.
+
+Presigning the URL, which an earlier fix did, could not have helped: a signature
+is only worth as much as the hostname carrying it.
+
+Task attachment reads now go through `GET /api/v1/task-attachments/{id}`. The
+backend already holds an internal connection to storage, so serving the bytes
+itself removes the dependency on a proxy existing, resolving, and leaving the
+signed path alone. Three ways to serve a dead link, gone. It also turns the URL
+from a capability token that anyone holding it can redeem into a membership
+check against the task — an attachment stops being readable when someone loses
+access, rather than when the signature happens to expire.
+
+The route is keyed on the attachment alone, with no workspace, sprint or team in
+the path, so one URL stays correct when a task moves between a sprint and the
+backlog. It resolves the governing workspace from the task, falling back to the
+sprint or the team for rows written before tasks carried a workspace, and
+refuses rather than serves when it can place the file with none of them.
+
+### Fixed: the AI metadata pipeline depended on the same missing hop
+
+It presigned a URL and fetched it over HTTP — routing our own bytes out through
+a public hostname to come back in. Where that hostname doesn't reach storage,
+every extraction failed as a 404 that said nothing about the cause. It reads the
+object directly whenever it holds the key, which is every case that isn't a
+genuinely remote file.
+
+### Added: a way to publish storage for everything else
+
+Drive files, compliance documents, chat downloads and assessment recordings are
+still handed presigned URLs, and those still need storage on a reachable
+hostname. `docker-compose.prod.yml` now has an `nginx` service behind an `edge`
+profile:
+
+    docker compose -f docker-compose.prod.yml --profile edge up -d
+
+Behind a profile because most deployments already terminate TLS elsewhere, and
+starting a second thing that wants port 80 would take a site down rather than
+fix one. The alternative is copying the `location /aexy-storage/` block into the
+proxy you already run.
+
+Two rules either way, both now stated in `DEPLOY.md` and the file-uploads guide:
+`S3_PUBLIC_ENDPOINT_URL` is a bare origin, and the path is not rewritten. SigV4
+signs the URI, so a `/storage` suffix signs a path the origin never sees and a
+prefix strip invalidates every signature. Two docs had been prescribing the
+suffix.
+
 ## [0.22.1] - 2026-08-18
 
 Reviewing the previous entry found nine things, and one of them was the way in.

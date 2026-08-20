@@ -541,6 +541,22 @@ export function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, s
     }
   };
 
+  const handleOpenAttachment = async (attachmentId: string, fileName: string) => {
+    try {
+      const blob = await sprintApi.downloadTaskAttachment(attachmentId);
+      // Not a download: this opens the file in a tab for viewing, which
+      // `saveBlob` deliberately does not do. The revoke is deferred so the new
+      // tab has time to load it.
+      // eslint-disable-next-line no-restricted-syntax
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener,noreferrer");
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (err) {
+      console.error("Failed to open attachment:", err);
+      toast.error(`Couldn't open ${fileName}`);
+    }
+  };
+
   const handleDeleteAttachment = async (attachmentId: string) => {
     try {
       if (task.sprint_id) {
@@ -1005,14 +1021,13 @@ export function EditTaskModal({ task, onClose, onUpdate, onDelete, isUpdating, s
                             sourceId={a.id}
                             initialMetadata={ai}
                           >
-                            <a
-                              href={a.file_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="block max-w-[70%] truncate text-blue-400 hover:underline"
+                            <button
+                              type="button"
+                              onClick={() => handleOpenAttachment(a.id, a.file_name)}
+                              className="block max-w-[70%] truncate text-left text-blue-400 hover:underline"
                             >
                               {a.file_name}
-                            </a>
+                            </button>
                           </FileMetadataPopover>
                           <button
                             type="button"

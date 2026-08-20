@@ -15,13 +15,15 @@ import re
 from uuid import uuid4
 
 from fastapi import HTTPException, UploadFile, status
+from fastapi.responses import StreamingResponse
 
+from aexy.core.config import settings
 from aexy.models.developer import Developer
 from aexy.models.sprint import SprintTask
 from aexy.schemas.sprint import TaskAttachmentListResponse, TaskAttachmentResponse
 from aexy.services.sprint_task_service import SprintTaskService
 from aexy.services.storage_quota_service import StorageQuotaService
-from aexy.services.storage_service import get_storage_service, presign_stored_object
+from aexy.services.storage_service import get_storage_service, parse_byte_range
 
 logger = logging.getLogger(__name__)
 
@@ -37,14 +39,77 @@ def attachment_storage_key(attachment) -> str | None:
     return get_storage_service().key_from_url(attachment.file_url or "")
 
 
+def attachment_download_url(attachment_id: str) -> str:
+    """The URL a client uses to read an attachment's bytes.
+
+    Reads go through the backend rather than straight to object storage. A
+    presigned URL only works if the storage backend is published on a hostname
+    the browser can reach, which on a self-hosted deployment means an extra
+    proxy hop that has to be configured, kept in step with the bucket name, and
+    left un-rewritten so signatures still validate — three ways to serve a dead
+    link. The backend already talks to storage over the internal network, so
+    routing reads through it removes that dependency, and it turns the URL from
+    a bearer token that anyone holding it can redeem into an ordinary
+    permission check against the task.
+    """
+    return (
+        f"{settings.backend_url.rstrip('/')}"
+        f"{settings.api_v1_prefix}/task-attachments/{attachment_id}"
+    )
+
+
+def stream_attachment_object(attachment, range_header: str | None = None) -> StreamingResponse:
+    """Stream an attachment's bytes from storage without buffering them.
+
+    Honors HTTP Range (206) so a large video can be seeked rather than pulled
+    in full. Callers are responsible for authorising access to the task first.
+    """
+    key = attachment_storage_key(attachment)
+    byte_range = parse_byte_range(range_header)
+    result = (
+        get_storage_service().get_object_stream(key, byte_range=byte_range) if key else None
+    )
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Attachment file not found",
+        )
+
+    filename = (attachment.file_name or "attachment").replace('"', "")
+    headers = {
+        # Inline so an image or PDF opens in a tab; the browser still offers
+        # Save. `nosniff` because the content type came off an upload and is
+        # therefore chosen by whoever uploaded it.
+        "Content-Disposition": f'inline; filename="{filename}"',
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "private, no-store",
+        "X-Content-Type-Options": "nosniff",
+    }
+    if result["content_length"] is not None:
+        headers["Content-Length"] = str(result["content_length"])
+
+    status_code = status.HTTP_200_OK
+    if byte_range is not None and result.get("content_range"):
+        headers["Content-Range"] = result["content_range"]
+        status_code = status.HTTP_206_PARTIAL_CONTENT
+
+    return StreamingResponse(
+        result["iter"],
+        media_type=result["content_type"],
+        headers=headers,
+        status_code=status_code,
+    )
+
+
 def attachment_to_response(
     attachment, ai_row: object | None = None
 ) -> TaskAttachmentResponse:
     """Single attachment row → response, with optional AI metadata.
 
-    `file_url` is presigned per response rather than served from the column:
-    attachments are private objects, so the stored canonical URL is not
-    fetchable, and a signed URL can't be persisted because it expires.
+    `file_url` points at this API, not at object storage: the stored canonical
+    URL is not fetchable (objects are private) and a presigned one both expires
+    and depends on storage being published to the browser. See
+    `attachment_download_url`.
     """
     from aexy.models.file_metadata import SOURCE_TASK_ATTACHMENT
     from aexy.schemas.file_metadata import metadata_to_ai_response
@@ -53,10 +118,7 @@ def attachment_to_response(
         id=str(attachment.id),
         task_id=str(attachment.task_id),
         file_name=attachment.file_name,
-        file_url=(
-            presign_stored_object(attachment.storage_key, attachment.file_url)
-            or attachment.file_url
-        ),
+        file_url=attachment_download_url(str(attachment.id)),
         file_size=attachment.file_size,
         content_type=attachment.content_type,
         uploaded_by_id=str(attachment.uploaded_by_id) if attachment.uploaded_by_id else None,

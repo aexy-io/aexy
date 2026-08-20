@@ -471,6 +471,29 @@ class StorageService:
         return None
 
 
+def parse_byte_range(header: str | None) -> tuple[int, int | None] | None:
+    """Parse a single-range ``Range: bytes=start-end`` header.
+
+    Returns None when the header is absent or uses a form we do not serve
+    (suffix ranges, multi-range), which callers treat as "send the whole
+    object" — a full 200 is always a valid answer to a Range request.
+    """
+    if not header or not header.startswith("bytes="):
+        return None
+    spec = header[len("bytes="):].split(",")[0].strip()
+    start_s, sep, end_s = spec.partition("-")
+    if not sep or start_s == "":
+        return None
+    try:
+        start = int(start_s)
+        end = int(end_s) if end_s else None
+    except ValueError:
+        return None
+    if start < 0 or (end is not None and end < start):
+        return None
+    return (start, end)
+
+
 # Singleton instance
 _storage_service = None
 

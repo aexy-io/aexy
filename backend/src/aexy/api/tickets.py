@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.core.config import settings
 from aexy.core.database import get_db
-from aexy.services.storage_service import get_storage_service
+from aexy.services.storage_service import get_storage_service, parse_byte_range
 from aexy.api.developers import get_current_developer
 from aexy.models.developer import Developer
 from aexy.schemas.ticketing import (
@@ -44,32 +44,13 @@ def safe_attachment(meta: dict) -> dict:
     }
 
 
-def _parse_range(header: str | None) -> tuple[int, int | None] | None:
-    """Parse a single-range ``Range: bytes=start-end`` header. None if absent
-    or unsupported (suffix ranges/multi-range fall back to a full response)."""
-    if not header or not header.startswith("bytes="):
-        return None
-    spec = header[len("bytes="):].split(",")[0].strip()
-    start_s, sep, end_s = spec.partition("-")
-    if not sep or start_s == "":
-        return None
-    try:
-        start = int(start_s)
-        end = int(end_s) if end_s else None
-    except ValueError:
-        return None
-    if start < 0 or (end is not None and end < start):
-        return None
-    return (start, end)
-
-
 def stream_attachment(meta: dict, range_header: str | None = None) -> StreamingResponse:
     """Stream an attachment from storage without buffering it in memory.
 
     Honors HTTP Range requests (206) so large media can be seeked/resumed.
     """
     key = TicketService.attachment_key(meta)
-    byte_range = _parse_range(range_header)
+    byte_range = parse_byte_range(range_header)
     result = get_storage_service().get_object_stream(key, byte_range=byte_range) if key else None
     if result is None:
         raise HTTPException(

@@ -167,31 +167,33 @@ def _is_text_kind(resolved: ResolvedFile) -> bool:
 
 
 async def _download_bytes(resolved: ResolvedFile) -> bytes:
-    """Pull file bytes via either a public/presigned URL or via the storage
-    service when only an S3 key is known (compliance docs).
+    """Pull file bytes: straight from storage when we hold the key, over HTTP
+    when the file only exists at a remote URL.
 
-    SSRF safety: the URL is validated against an allowlist and the resolved
-    host's IPs are checked for private/loopback/link-local ranges before any
-    network call. The storage-key path is treated as trusted (we control it).
+    The key is preferred because it needs nothing but the internal storage
+    connection the backend already has. Presigning and then fetching the result
+    would route our own bytes out through whatever public hostname storage is
+    published on — a hop that has to exist, resolve, and preserve the signed
+    path, and whose absence turns every extraction into a 404 with no signal
+    that storage itself was fine.
+
+    SSRF safety applies to the URL branch: the host is checked against an
+    allowlist and its IPs rejected if private/loopback/link-local before any
+    network call. The storage-key path is trusted (we control the key).
     """
+    if resolved.file_key:
+        from aexy.services.storage_service import get_storage_service
+
+        fetched = get_storage_service().get_object(resolved.file_key)
+        if fetched is None:
+            raise ValueError(
+                f"Storage service could not read object {resolved.file_key}"
+            )
+        return fetched[0]
     if resolved.file_url:
         await _assert_safe_url(resolved.file_url)
         async with httpx.AsyncClient(timeout=120, follow_redirects=False) as client:
             resp = await client.get(resolved.file_url)
-            resp.raise_for_status()
-            return resp.content
-    if resolved.file_key:
-        from aexy.services.storage_service import get_storage_service
-
-        storage = get_storage_service()
-        # Generate a short-lived presigned GET so we can fetch it via httpx.
-        url = storage.generate_presigned_get_url(resolved.file_key, expires_in=600)
-        if not url:
-            raise ValueError(
-                f"Storage service could not generate a presigned URL for {resolved.file_key}"
-            )
-        async with httpx.AsyncClient(timeout=120, follow_redirects=False) as client:
-            resp = await client.get(url)
             resp.raise_for_status()
             return resp.content
     raise ValueError("Resolved file has neither file_url nor file_key")

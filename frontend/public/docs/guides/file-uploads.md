@@ -10,7 +10,8 @@ Aexy stores all user-uploaded binary content (task attachments, drive files, com
 | Provider-managed bucket creation | `StorageService.ensure_bucket_exists` |
 | Per-feature uploaders (CRM attachments, drive, compliance docs, etc.) | use `StorageService` as a dependency |
 | AI metadata pipeline (extract → embed → index) | `services/file_ai_pipeline.py` + Temporal `extract_file_ai_metadata` |
-| Nginx public proxy | `/storage/<key>` → `rustfs:9000/<bucket>/<key>` in prod |
+| Task attachment reads | `GET /api/v1/task-attachments/{id}` — streamed by the backend, no storage hostname involved |
+| Nginx public proxy (everything else) | `/aexy-storage/<key>` → `rustfs:9000/aexy-storage/<key>`, path passed through unrewritten |
 
 ## Configuration
 
@@ -19,7 +20,7 @@ In `.env`:
 ```bash
 # Generic S3 config (preferred)
 S3_ENDPOINT_URL=http://rustfs:9000              # Internal — used by the backend container
-S3_PUBLIC_ENDPOINT_URL=https://server.aexy.io/storage  # External — for browser-served URLs
+S3_PUBLIC_ENDPOINT_URL=https://server.aexy.io          # External origin, no path suffix
 S3_BUCKET_NAME=aexy
 S3_ACCESS_KEY_ID=...
 S3_SECRET_ACCESS_KEY=...
@@ -45,7 +46,9 @@ Both clients use `signature_version="s3v4"` with `addressing_style="path"` — r
 
 ## RustFS in docker-compose
 
-`docker-compose.yml` brings up a `rustfs` service on `:9000` with root creds from `RUSTFS_ROOT_USER` / `RUSTFS_ROOT_PASSWORD`. The same credentials feed the backend's `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY`. Nginx proxies `/storage/` → `rustfs:9000/<bucket>/` so signed URLs work cleanly behind one origin.
+`docker-compose.yml` brings up a `rustfs` service on `:9000` with root creds from `RUSTFS_ROOT_USER` / `RUSTFS_ROOT_PASSWORD`. The same credentials feed the backend's `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY`. Nginx proxies `/aexy-storage/` → `rustfs:9000/aexy-storage/` so signed URLs work cleanly behind one origin. The location name is the bucket, and the path is passed through **unrewritten**: SigV4 signs the URI, so stripping a prefix makes the origin compute a different canonical request and reject every URL with `SignatureDoesNotMatch`. For the same reason `S3_PUBLIC_ENDPOINT_URL` must be a bare origin — a `/storage` suffix signs a path the origin never sees.
+
+In `docker-compose.prod.yml` nginx sits behind the `edge` profile (`docker compose -f docker-compose.prod.yml --profile edge up -d`), because most deployments already terminate TLS elsewhere. If yours does, copy the `location /aexy-storage/` block into that proxy instead — without it RustFS is `expose`-only and no presigned URL resolves from a browser.
 
 To inspect contents:
 
@@ -118,12 +121,14 @@ There's also a workspace-level backfill activity, `backfill_workspace_file_metad
 - **Presigned URLs are capability tokens** — anyone with the URL can read/write until it expires. Keep TTLs short (5 min for downloads, ≤15 min for uploads).
 - **Allow-list MIME types** in the endpoint that issues the URL. boto3 will sign whatever you pass; the bucket doesn't enforce.
 - **Cap upload size** by including `Content-Length` range constraints in the signed URL if your library supports it, or do a HEAD after upload and reject (and delete) anything oversized.
-- **Public bucket access is off**. Nginx proxies `/storage/` but the bucket itself is private — public files go through signed-URL endpoints that omit auth, not through bucket ACLs.
+- **Public bucket access is off**. Nginx proxies `/aexy-storage/` but the bucket itself is private — public files go through signed-URL endpoints that omit auth, not through bucket ACLs.
+- **Task attachments don't use signed URLs at all.** `GET /api/v1/task-attachments/{id}` checks workspace membership and streams the object from storage over the internal network, so the URL is not a capability token and stops working the moment someone loses access.
 - **Don't store secrets in `S3_PUBLIC_ENDPOINT_URL`** — it ends up baked into HTML for the user's browser to fetch.
 
 ## Common pitfalls
 
 - **Internal vs public endpoint mismatch**: if the browser gets `http://rustfs:9000/...` as a signed URL, it can't reach it. Make sure `S3_PUBLIC_ENDPOINT_URL` is set to the externally-reachable origin.
+- **A public endpoint nothing serves**: a signed URL against a host with no route to storage returns the *backend's* 404 (`{"detail":"Not Found"}`, `server: uvicorn`), which reads like a missing file rather than a missing proxy. If every attachment 404s at once, check the proxy before the bucket.
 - **path-style addressing**: RustFS/MinIO require `addressing_style="path"`. If you build a one-off S3 client elsewhere, copy the `Config` used in `storage_service.py:46-49`.
 - **Forgetting to set `Content-Type` on PUT**: some downstream consumers (browser PDF viewer, video players) refuse to render without a proper MIME. Include it in the presigned URL signature.
 - **Leaking objects on parent deletion**: when you delete a `DriveFile` or other parent, soft-delete `FileMetadata` and **schedule the object delete** — don't do it inline, since failed deletes shouldn't block the user's UI action.

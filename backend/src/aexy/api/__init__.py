@@ -50,6 +50,7 @@ from aexy.api.sprint_analytics import router as sprint_analytics_router
 from aexy.api.retrospectives import router as retrospectives_router
 from aexy.api.planning_poker import router as planning_poker_router
 from aexy.api.project_tasks import router as project_tasks_router
+from aexy.api.task_attachments import router as task_attachments_router
 from aexy.api.workspace_tasks import router as workspace_tasks_router
 from aexy.api.task_templates import router as task_templates_router
 from aexy.api.task_links import router as task_links_router
@@ -262,6 +263,10 @@ api_router.include_router(sprint_analytics_router, tags=["sprint-analytics"], de
 api_router.include_router(planning_poker_router, tags=["planning-poker"], dependencies=[Depends(require_app_access_sprint_scoped("sprints"))])
 api_router.include_router(retrospectives_router, tags=["retrospectives"], dependencies=[Depends(require_app_access_sprint_scoped("sprints"))])
 api_router.include_router(project_tasks_router, tags=["project-tasks"])
+# Attachment reads are addressed by attachment id alone, so the route carries
+# no {workspace_id} for a guard to key off — it resolves the owning workspace
+# from the task and checks membership itself.
+api_router.include_router(task_attachments_router, tags=["task-attachments"])
 api_router.include_router(workspace_tasks_router, tags=["workspace-tasks"])
 api_router.include_router(task_templates_router, tags=["task-templates"])
 api_router.include_router(task_links_router, tags=["task-links"])
