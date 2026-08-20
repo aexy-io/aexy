@@ -625,7 +625,7 @@ export function AiSections() {
     <>
       <Section>
         <ToggleRow
-          description={t("ai.description")}
+          description={t("ai.toggle")}
           checked={aiOn}
           // Off at the workspace means there is nothing to decide here: the LLM
           // gateway refuses the call whatever this says, and a toggle that
@@ -749,7 +749,7 @@ function AiAccuracyPanel() {
       </p>
       <p className="max-w-2xl text-xs text-muted-foreground">{t("ai.accuracy.caveat")}</p>
       <div className="space-y-1">
-        {data.by_request_type.map((row) => (
+        {(data.by_request_type ?? []).map((row) => (
           <div key={row.request_type} className="flex items-center gap-3 text-sm">
             <span className="w-40 shrink-0 truncate">{row.label}</span>
             <div className="h-1.5 w-32 overflow-hidden rounded-full bg-muted">
@@ -828,7 +828,7 @@ export function DigestSections() {
     <>
       <Section>
         <ToggleRow
-          description={t("digest.description")}
+          description={t("digest.toggle")}
           checked={enabled}
           disabled={!canManage || m.updateSettings.isPending || settings.isLoading}
           onToggle={() => m.updateSettings.mutate({ digest_enabled: !enabled })}
@@ -1034,12 +1034,14 @@ export function WorkingHoursSections() {
 
 /** Which department the desk hands work to. */
 export function IntakeSection() {
+  const t = useTranslations("serviceDesk");
   const settings = useServiceDeskSettings();
   const m = useServiceDeskMutations();
   const canManage = settings.data?.can_manage === true;
 
   return (
     // Title and description live in the page header — see MailboxesSection.
+    <>
     <Section>
       <DeskDepartmentEditor
         currentId={settings.data?.desk_department_id ?? null}
@@ -1049,6 +1051,11 @@ export function IntakeSection() {
         saving={m.updateSettings.isPending}
         onSave={(departmentId) => m.updateSettings.mutate({ desk_department_id: departmentId })}
       />
+    </Section>
+    <Section title={t("ignoredSenders.title")}>
+      {/* Its own card: the description below runs long, and inside the
+          department card it read as if it explained the department picker
+          rather than the list it actually belongs to. */}
       <IgnoredSendersEditor
         current={settings.data?.ignored_senders ?? []}
         canManage={canManage}
@@ -1056,6 +1063,7 @@ export function IntakeSection() {
         onSave={(senders) => m.updateSettings.mutate({ ignored_senders: senders })}
       />
     </Section>
+    </>
   );
 }
 

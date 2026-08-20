@@ -37,27 +37,40 @@ const mockDashboard = {
   ],
   tickets: [
     {
-      ticket_id: "t-1", display_id: "BSD-1042", subject: "Policy status", lob_name: "Credit Life",
-      partner_name: "ABC Finance", request_type: "claims", pending_with: "insurer",
-      assigned_kam_id: "test-user-123", days_in_stage: 3.2, overall_days: 3.2, breach_level: "red",
+      ticket_id: "t-1", display_id: "BSD-1042", subject: "Policy status", product_name: "Credit Life",
+      account_name: "ABC Finance", request_type: "claims", pending_with: "insurer",
+      assigned_owner_id: "test-user-123", days_in_stage: 3.2, overall_days: 3.2, breach_level: "red",
       needs_triage: false, status: "in_progress",
     },
     {
-      ticket_id: "t-2", display_id: "BSD-1043", subject: "New borrower batch", lob_name: "GPA",
-      partner_name: "XYZ NBFC", request_type: "policy_issuance", pending_with: "kam",
-      assigned_kam_id: "test-user-123", days_in_stage: 0.2, overall_days: 0.2, breach_level: "green",
+      ticket_id: "t-2", display_id: "BSD-1043", subject: "New borrower batch", product_name: "GPA",
+      account_name: "XYZ NBFC", request_type: "policy_issuance", pending_with: "kam",
+      assigned_owner_id: "test-user-123", days_in_stage: 0.2, overall_days: 0.2, breach_level: "green",
       needs_triage: true, status: "new",
     },
   ],
 };
 
-const mockPartners = [
-  { id: "p-1", workspace_id: "ws-1", name: "ABC Finance", assigned_kam_id: "test-user-123", is_active: true, domains: ["abcfinance.com"], created_at: "2026-07-01T00:00:00Z" },
+const mockAccounts = [
+  {
+    id: "p-1", workspace_id: "ws-1", name: "ABC Finance", assigned_owner_id: "test-user-123",
+    assigned_owner_name: null, assigned_owner_email: null, is_active: true,
+    domains: ["abcfinance.com"], products: [], created_at: "2026-07-01T00:00:00Z",
+  },
 ];
 const mockTemplates = [
   { key: "receipt", name: "Service Desk — Receipt", subject: "{{display_id}} {{subject}}", body: "Dear {{requester_name}}…", variables: ["requester_name", "display_id", "subject"], customised: false },
   { key: "closure", name: "Service Desk — Closure", subject: "Resolved {{display_id}}", body: "…", variables: ["display_id"], customised: false },
   { key: "digest", name: "Service Desk — Daily Digest", subject: "Daily Open Tickets — {{date}}", body: "…", variables: ["date"], customised: false },
+];
+
+const mockStakeholders = [
+  { id: "s-1", workspace_id: "ws-1", slug: "kam", label: "KAM", semantics: "internal", function_key: "support", links_to: null, position: 0, is_active: true },
+  { id: "s-2", workspace_id: "ws-1", slug: "insurer", label: "Insurer", semantics: "external", function_key: null, links_to: "vendor", position: 1, is_active: true },
+];
+const mockRequestTypes = [
+  { id: "r-1", workspace_id: "ws-1", slug: "claims", label: "Claims", is_default: true, position: 0, is_active: true },
+  { id: "r-2", workspace_id: "ws-1", slug: "policy_issuance", label: "Policy Issuance", is_default: false, position: 1, is_active: true },
 ];
 
 async function setup(page: Page) {
@@ -77,6 +90,11 @@ async function setup(page: Page) {
   await page.route(`${API_BASE}/developers/me`, (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(mockUser) }),
   );
+  // Without this the `{}` catch-all reads as "onboarding incomplete" and the
+  // app redirects to the setup wizard before any settings page renders.
+  await page.route(`${API_BASE}/repositories/onboarding/status`, (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ completed: true }) }),
+  );
   // App-shell / sidebar hooks expect ARRAYS — the `{}` catch-all would crash them.
   await page.route(`${API_BASE}/notifications**`, (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: "[]" }),
@@ -88,13 +106,24 @@ async function setup(page: Page) {
       route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
 
     if (url.includes("/apps/effective") || url.includes("/app-access/")) return json(mockEffectiveAccess);
+    if (url.includes("/functions")) return json({ options: [{ key: "support", label: "Support", department_id: "d-1" }] });
+    // SettingsShell refuses to render a settings page without the permission its
+    // nav entry declares — the desk pages ask for can_manage_tickets.
+    if (url.includes("/my-permissions"))
+      return json({ permissions: ["can_manage_tickets", "can_view_tickets", "can_view_service_desk", "can_view_org", "can_manage_org"], role: "owner", is_owner: true });
     if (url.includes("/service-desk/dashboard")) return json(mockDashboard);
     if (url.includes("/service-desk/tickets")) return json(mockDashboard.tickets);
     if (url.includes("/service-desk/settings"))
       return json({ ai_classification_enabled: false, can_manage: true, scope: "all", working_hours_start: "09:30", working_hours_end: "18:30" });
-    if (url.includes("/service-desk/partners")) return json(mockPartners);
+    if (url.includes("/service-desk/accounts")) return json(mockAccounts);
     if (url.includes("/service-desk/templates")) return json(mockTemplates);
-    if (url.match(/\/service-desk\/(insurers|lobs|mailboxes)/)) return json([]);
+    if (url.includes("/service-desk/ai-accuracy")) return json({ days: 90, classified: 0, agreed: 0, agreement_rate: null, by_request_type: [] });
+    if (url.includes("/service-desk/digest")) return json({ timezone: "Asia/Kolkata", subject: "Open tickets", recipients: [], html: "" });
+    // Every remaining desk collection is a list; `{}` here is what puts the
+    // page into its error boundary.
+    if (url.includes("/service-desk/stakeholders")) return json(mockStakeholders);
+    if (url.includes("/service-desk/request-types")) return json(mockRequestTypes);
+    if (url.match(/\/service-desk\/(vendors|products|mailboxes|industry-templates)/)) return json([]);
     // App-shell / sidebar collections (must return arrays, not {})
     if (url.match(/\/(spaces|documents|members|invites|task-statuses|teams|projects|notifications)/)) return json([]);
     if (url.endsWith("/workspaces/ws-1")) return json(mockWorkspace);
@@ -130,8 +159,13 @@ test.describe("Service Desk UI", () => {
         body: JSON.stringify({
           ...mockDashboard.tickets[0], id: "sd-1", workspace_id: "ws-1", ticket_number: 1042,
           requester_email: "rahul@abcfinance.com", requester_name: "Rahul", ai_confidence: null,
-          origin: "email", insurer_id: null, lob_id: null, partner_id: "p-1", body: "Please check",
+          origin: "email", vendor_id: null, vendor_name: null, product_id: null, account_id: "p-1",
+          assigned_owner_name: "Test Developer", body: "Please check",
           linked_task_id: null, created_at: "2026-07-01T00:00:00Z",
+          // The detail page reads these directly; the response always carries
+          // them, so omitting them here crashed the page rather than the test.
+          email_recipients: [], attachments: [], correspondence: [], detected_issues: [],
+          split_done_indexes: [], can_edit: true, can_send_email: true,
           segments: [
             { id: "s1", pending_with: "kam", entered_at: "2026-07-01T10:00:00Z", exited_at: "2026-07-01T14:00:00Z", duration_seconds: 14400, changed_by_id: null, note: "Ticket created" },
             { id: "s2", pending_with: "insurer", entered_at: "2026-07-01T14:00:00Z", exited_at: null, duration_seconds: null, changed_by_id: null, note: "sent" },
@@ -150,21 +184,30 @@ test.describe("Service Desk UI", () => {
     await expect(page.getByText("Move to")).toBeVisible();
   });
 
-  test("master data page shows AI toggle and email templates", async ({ page }) => {
+  // The desk's settings are six pages under /settings/service-desk/* now, so
+  // each of these asserts against the page that actually owns its subject.
+  test("master data lists the accounts the desk sorts mail against", async ({ page }) => {
     await setup(page);
-    await page.goto("/service-desk/settings");
+    await page.goto("/settings/service-desk/master-data");
     await page.waitForSelector("text=Master Data", { timeout: 15000 });
 
-    await expect(page.getByText("AI email categorisation")).toBeVisible();
-    await expect(page.getByText("Email templates")).toBeVisible();
-    await expect(page.getByText("Service Desk — Receipt")).toBeVisible();
-    await expect(page.getByText("ABC Finance").first()).toBeVisible(); // seeded partner row
-
+    await expect(page.getByText("ABC Finance").first()).toBeVisible();
     // A manager sees the editing affordances.
-    await expect(page.getByRole("switch")).toBeEnabled();
     await expect(page.getByRole("button", { name: "Add" }).first()).toBeVisible();
-    await expect(page.getByLabel("delete").first()).toBeVisible();
     await expect(page.getByText(/read-only access/i)).toHaveCount(0);
+  });
+
+  test("AI categorisation is switched from its own page", async ({ page }) => {
+    await setup(page);
+    await page.goto("/settings/service-desk/ai");
+    await expect(page.getByRole("heading", { name: "AI email categorisation" })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("switch").first()).toBeEnabled();
+  });
+
+  test("email templates are editable from the identity page", async ({ page }) => {
+    await setup(page);
+    await page.goto("/settings/service-desk/identity");
+    await expect(page.getByText("Service Desk — Receipt")).toBeVisible({ timeout: 15000 });
   });
 
   test("ops can edit the working hours the breach clock runs on", async ({ page }) => {
@@ -190,7 +233,7 @@ test.describe("Service Desk UI", () => {
       });
     });
 
-    await page.goto("/service-desk/settings");
+    await page.goto("/settings/service-desk/hours");
     await expect(page.getByRole("heading", { name: "Working hours" })).toBeVisible({ timeout: 15000 });
 
     const from = page.locator('input[type="time"]').first();
@@ -229,19 +272,19 @@ test.describe("Service Desk UI", () => {
       }),
     );
 
-    await page.goto("/service-desk/settings");
+    await page.goto("/settings/service-desk/master-data");
     await page.waitForSelector("text=Master Data", { timeout: 15000 });
 
     // Data is still visible ...
     await expect(page.getByText("ABC Finance").first()).toBeVisible();
-    await expect(page.getByText("Service Desk — Receipt")).toBeVisible();
     // ... but nothing is editable, and the reason is stated.
     await expect(page.getByText(/read-only access/i)).toBeVisible();
-    await expect(page.getByRole("switch")).toBeDisabled();
     await expect(page.getByRole("button", { name: "Add" })).toHaveCount(0);
     await expect(page.getByLabel("delete")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Save" })).toHaveCount(0);
-    // The working hours are visible but not editable, and cannot be saved.
+
+    // The same is true of the hours, on the page that now owns them.
+    await page.goto("/settings/service-desk/hours");
+    await expect(page.getByRole("heading", { name: "Working hours" })).toBeVisible({ timeout: 15000 });
     await expect(page.locator('input[type="time"]').first()).toBeDisabled();
     await expect(page.getByRole("button", { name: "Save hours" })).toHaveCount(0);
   });
@@ -257,7 +300,7 @@ test.describe("Service Desk UI", () => {
         body: JSON.stringify({ ai_classification_enabled: false, can_manage: false, scope: "none", working_hours_start: "09:30", working_hours_end: "18:30" }),
       }),
     );
-    await page.route(`${API_BASE}/workspaces/ws-1/service-desk/tickets`, (route) =>
+    await page.route(`${API_BASE}/workspaces/ws-1/service-desk/tickets**`, (route) =>
       route.fulfill({ status: 200, contentType: "application/json", body: "[]" }),
     );
 
@@ -269,7 +312,7 @@ test.describe("Service Desk UI", () => {
     await setup(page);
     // Same empty list, but the caller IS in a department — so this is a quiet
     // day, and claiming a misconfiguration would be wrong.
-    await page.route(`${API_BASE}/workspaces/ws-1/service-desk/tickets`, (route) =>
+    await page.route(`${API_BASE}/workspaces/ws-1/service-desk/tickets**`, (route) =>
       route.fulfill({ status: 200, contentType: "application/json", body: "[]" }),
     );
 

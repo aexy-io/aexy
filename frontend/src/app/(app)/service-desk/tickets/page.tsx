@@ -23,6 +23,7 @@ import {
 } from "@/lib/statusColors";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ticketFieldLabel } from "@/components/tickets/ticketLabels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
@@ -331,7 +332,7 @@ export default function ServiceDeskTicketsPage() {
                       </span>
                     </td>
                     <td className="px-3 py-2">
-                      <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs ${sc.bg} ${sc.text}`}>{tk.status}</span>
+                      <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs ${sc.bg} ${sc.text}`}>{ticketFieldLabel(tk.status)}</span>
                     </td>
                   </tr>
                 );

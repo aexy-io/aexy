@@ -83,7 +83,7 @@ export default function ServiceDeskDashboardPage() {
   const departmentOf = (slug: string) => {
     const fk = stakeholders.find((s) => s.slug === slug)?.function_key;
     if (!fk) return null;
-    return functionCatalog?.options.find((o) => o.key === fk) ?? null;
+    return functionCatalog?.options?.find((o) => o.key === fk) ?? null;
   };
   const semanticsOf = (slug: string) => stakeholders.find((s) => s.slug === slug)?.semantics;
 

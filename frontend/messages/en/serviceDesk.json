@@ -118,6 +118,7 @@
     "ai": {
       "title": "AI email categorisation",
       "description": "Let AI read incoming emails and suggest the Request Type and Product. When off, ticket owners classify tickets manually.",
+      "toggle": "Categorise incoming email with AI",
       "enabled": "Enabled",
       "inheritedOn": "On because this workspace has AI enabled. The service desk follows that setting.",
       "vetoed": "Turned off for the service desk only. This workspace has AI enabled elsewhere.",
@@ -206,7 +207,7 @@
       "delete": "Delete",
       "empty": "Nothing here yet.",
       "readOnly": "You have read-only access to Master Data. Ask a workspace admin or service desk manager to make changes.",
-      "domainsHint": "acme.com, or bob@acme.com",
+      "domainsHint": "acme.com / bob@acme.com",
       "masterDataHint": "The three tables the desk sorts incoming email against. The sender's domain decides which account a ticket belongs to and who it lands on — mail that matches nothing goes to triage.",
       "accountsHint": "Who the desk works for. When mail arrives, its sender domain is looked up here: the ticket is attributed to that account and assigned to the owner set below. A whole email address can be used instead of a domain, and beats a domain entry — use one when several accounts share a provider like gmail.com.",
       "accountsEmpty": "No accounts yet, so every incoming email lands in triage and is given an arbitrary owner. Add the domains you receive requests from and tickets start routing themselves.",
@@ -265,7 +266,7 @@
     "ignoredSenders": {
       "title": "Ignored senders",
       "description": "Mail from these senders is not turned into tickets. Add one address, or a whole domain, for mail the desk does not track — a provider's security alerts, or a partner's daily automailer. Nothing is ignored until you add it: a counterparty's own no-reply address often carries the notices you do want. A whole address always wins. A whole domain does not: an account or vendor in Master Data still opens tickets, so ignoring a domain in passing cannot silence a counterparty you configured deliberately.",
-      "placeholder": "no-reply@accounts.google.com or a domain",
+      "placeholder": "no-reply@accounts.google.com",
       "add": "Add",
       "empty": "Nothing ignored — every sender opens a ticket.",
       "invalid": "Enter an email address, or a domain like accounts.google.com.",
@@ -309,6 +310,7 @@
     "digest": {
       "title": "Open-ticket digest",
       "description": "Email everyone on the desk a summary of what is still open. On by default.",
+      "toggle": "Send the digest",
       "times": "Send times",
       "timesHint": "Local hours in {timezone}. Pick at least one — to stop the digest entirely, use the switch above.",
       "recipients": "Who receives it",
