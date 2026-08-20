@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.24.4] - 2026-08-20
+
+### Fixed: a server error told the browser it was a CORS problem
+
+Chasing 0.24.3 turned up the reason that bug was so hard to read, and it is not
+specific to attachments. Starlette always installs its own
+`ServerErrorMiddleware` outermost — outside everything `add_middleware` adds,
+`CORSMiddleware` included. So *any* unhandled exception was answered by a
+response CORS never saw, and the browser got a 500 with no
+`Access-Control-Allow-Origin`. It cannot tell that apart from a genuine
+cross-origin refusal, so it reported one:
+
+```
+Access to XMLHttpRequest at '…' has been blocked by CORS policy:
+No 'Access-Control-Allow-Origin' header is present on the requested resource.
+```
+
+Every 500 in the application read as a CORS misconfiguration — pointing whoever
+was debugging at origins, credentials and allowed headers, none of which were
+ever wrong. It cost a full investigation once; it would have cost one every
+time.
+
+Unhandled exceptions are now turned into a 500 *inside* the CORS layer, so by
+the time CORS sees it it is an ordinary response and gets its headers like any
+other. The traceback is logged with the method and path that produced it, which
+is more than the previous behaviour gave. The response body stays
+`{"detail": "Internal server error"}` — no traceback goes to the client.
+
+The middleware chain is now `ServerError → CORS → ErrorResponse →
+CommunityIsolation → UsageTracking`, and `main.py` writes it innermost-first
+with the ordering stated, since `add_middleware` reads bottom-up and both
+properties that depend on it have been wrong at some point. A test asserts CORS
+is outermost, and another asserts community isolation still runs before metering
+— the property the previous ordering existed to protect.
+
+One existing test changed with it. The service desk's atomicity check forced a
+database failure and asserted the exception reached the caller, which only an
+in-process ASGI caller could ever observe: over HTTP that request has always
+answered 500, because Starlette's own handler produced one and then re-raised.
+It asserts the 500 now. What the test is actually for — that a failed child
+assignment rolls the whole family back — is unchanged.
+
 ## [0.24.3] - 2026-08-20
 
 ### Fixed: an attachment whose name was not ASCII returned a CORS error

@@ -10,7 +10,11 @@ from aexy.api import api_router
 from aexy.api.mcp_oauth import router as mcp_oauth_router
 from aexy.core.config import get_settings
 from aexy.core.database import engine, Base
-from aexy.middleware import CommunityIsolationMiddleware, UsageTrackingMiddleware
+from aexy.middleware import (
+    CommunityIsolationMiddleware,
+    ErrorResponseMiddleware,
+    UsageTrackingMiddleware,
+)
 from aexy.services.data_table_service import DuplicateValueError
 
 settings = get_settings()
@@ -91,15 +95,16 @@ def create_app() -> FastAPI:
     # Remove duplicates and empty strings
     allowed_origins = list(set(origin for origin in allowed_origins if origin))
 
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=allowed_origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    # Order matters, and `add_middleware` reads bottom-up: the last one added is
+    # the outermost, so these are written innermost-first. The resulting chain is
+    #
+    #     ServerError -> CORS -> ErrorResponse -> CommunityIsolation -> Usage
+    #
+    # Two things depend on that arrangement, and each is stated where it
+    # applies — bottom-up ordering is easy to read backwards, and one of these
+    # has already been got wrong once.
 
-    # Usage tracking middleware for API call metering
+    # Usage tracking middleware for API call metering.
     app.add_middleware(
         UsageTrackingMiddleware,
         redis_url=settings.redis_url,
@@ -107,13 +112,30 @@ def create_app() -> FastAPI:
         algorithm=settings.algorithm,
     )
 
-    # Wall off community-only accounts from every internal endpoint. Added last
-    # so it runs before UsageTracking (Starlette runs middleware LIFO) — a
-    # blocked community request is rejected without being metered.
+    # Wall off community-only accounts from every internal endpoint. Outside
+    # UsageTracking so a blocked community request is rejected without being
+    # metered.
     app.add_middleware(
         CommunityIsolationMiddleware,
         secret_key=settings.secret_key,
         algorithm=settings.algorithm,
+    )
+
+    # Unhandled exceptions become a 500 here rather than escaping to Starlette's
+    # own ServerErrorMiddleware, which sits outside everything below and answers
+    # without the headers CORS adds. A browser reads that headerless 500 as a
+    # CORS refusal and says so, which points whoever is debugging at the one
+    # part of the stack that was working.
+    app.add_middleware(ErrorResponseMiddleware)
+
+    # CORS is outermost, so every response that leaves — including the 500 above
+    # — carries its headers.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=allowed_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
 
     # A unique-attribute violation is a conflict, not a bad request.
