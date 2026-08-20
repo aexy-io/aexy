@@ -3438,7 +3438,43 @@ export const teamApi = {
 };
 
 // Sprint API
+/** A sprint as a picker needs it, from anywhere in the workspace. */
+export interface WorkspaceSprintListItem {
+  id: string;
+  team_id: string;
+  /**
+   * Two teams routinely have a "Sprint 24", so a cross-team list without this
+   * asks the reader to guess which one they are choosing.
+   */
+  team_name: string;
+  name: string;
+  status: SprintStatus;
+  start_date: string;
+  end_date: string;
+}
+
 export const sprintApi = {
+  /**
+   * Every sprint in the workspace, across teams.
+   *
+   * `list` below needs a team, which is right for a sprint board and wrong for
+   * anything that starts somewhere else — turning a document into tasks has a
+   * workspace and no team.
+   *
+   * Closed sprints are excluded unless asked for: offering a completed sprint is
+   * offering a mistake, since adding a task would falsify a velocity figure
+   * somebody has already reported.
+   */
+  listForWorkspace: async (
+    workspaceId: string,
+    includeClosed = false
+  ): Promise<WorkspaceSprintListItem[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/sprints`, {
+      params: includeClosed ? { include_closed: true } : {},
+    });
+    return response.data;
+  },
+
   // Sprint CRUD
   list: async (workspaceId: string, teamId: string, statusFilter?: SprintStatus): Promise<SprintListItem[]> => {
     const response = await api.get(`/workspaces/${workspaceId}/teams/${teamId}/sprints`, {

@@ -40,7 +40,16 @@ const TARGETS: IntakeTarget[] = ["sprint_task", "bug", "user_story", "ticket"];
 export interface DocxIntakePanelProps {
   workspaceId: string;
   documentId: string;
-  /** Offered when the target needs one. Empty is handled, not assumed away. */
+  /**
+   * Offered when the target needs one, qualified by team by the caller — two
+   * teams routinely have a "Sprint 24".
+   *
+   * Only the sprints open to new work, which is the server's default: offering a
+   * completed sprint is offering a mistake, since adding a task to it would
+   * falsify a velocity figure somebody has already reported. Empty means the
+   * workspace has none open, which the panel says rather than showing a dropdown
+   * that cannot be satisfied.
+   */
   sprints?: { id: string; name: string }[];
   ticketForms?: { id: string; name: string }[];
   className?: string;

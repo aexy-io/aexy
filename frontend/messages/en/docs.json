@@ -271,7 +271,7 @@
       "intakeCreate": "Create {count}",
       "intakeCreated": "Created {count, plural, one {# issue} other {# issues}}",
       "intakeCreateFailed": "Could not create those issues",
-      "intakeNoSprints": "No sprint is available here. Create these from the sprint board, or choose another type.",
+      "intakeNoSprints": "No sprint is open to new work. Start or plan one on the sprint board, or choose another type.",
       "intakeNoForms": "This workspace has no ticket forms yet. Create one in Tickets, or choose another type."
     }
   }

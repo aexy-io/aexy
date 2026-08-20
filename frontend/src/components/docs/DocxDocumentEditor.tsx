@@ -27,6 +27,7 @@ import { documentApi, type ProposedEdit } from "@/lib/api";
 import { Spinner } from "@/components/ui/spinner";
 import { useDocsAiSettings } from "@/hooks/useDocsAiSettings";
 import { useTicketForms } from "@/hooks/useTicketing";
+import { useWorkspaceSprints } from "@/hooks/useSprints";
 import { DocxIntakePanel } from "./DocxIntakePanel";
 import { DocxProposalsBanner } from "./DocxProposalsBanner";
 import type { DocxCanvasMode, DocxEditorCanvasHandle } from "./DocxEditorCanvas";
@@ -189,10 +190,12 @@ export function DocxDocumentEditor({
   }, [saveState]);
 
   const { data: aiSettings } = useDocsAiSettings();
-  // Ticket forms are workspace-scoped, so they are available here. Sprints are
-  // not: `useSprints` needs a team, which a document does not have — the panel
-  // says so rather than showing a dropdown that cannot be satisfied.
+  // Both workspace-scoped, so both are reachable from a document. Sprints used
+  // to need a team — `useSprints` still does — which is why the workspace-wide
+  // query exists: a document has a workspace and no team, and making the person
+  // pick a team first would ask them about our schema rather than their work.
   const { forms: ticketForms } = useTicketForms(workspaceId ?? null);
+  const { sprints } = useWorkspaceSprints(workspaceId ?? null);
 
   const reviewProposal = useCallback(
     (proposal: ProposedEdit): ApplyOpsResult | undefined => {
@@ -241,6 +244,12 @@ export function DocxDocumentEditor({
           ticketForms={(ticketForms ?? []).map((form) => ({
             id: String(form.id),
             name: form.name,
+          }))}
+          sprints={sprints.map((sprint) => ({
+            id: sprint.id,
+            // Qualified by team, because two teams routinely have a "Sprint 24"
+            // and the picker is cross-team by design.
+            name: `${sprint.name} · ${sprint.team_name}`,
           }))}
           className="mt-2"
         />

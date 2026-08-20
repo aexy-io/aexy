@@ -271,7 +271,7 @@
       "intakeCreate": "{count} बनाएँ",
       "intakeCreated": "{count, plural, one {# issue} other {# issues}} बनाए",
       "intakeCreateFailed": "वे issues नहीं बनाए जा सके",
-      "intakeNoSprints": "यहाँ कोई sprint उपलब्ध नहीं है। इन्हें sprint board से बनाएँ, या दूसरा प्रकार चुनें।",
+      "intakeNoSprints": "नए काम के लिए कोई sprint खुला नहीं है। Sprint board पर एक शुरू करें या planning में रखें, या दूसरा प्रकार चुनें।",
       "intakeNoForms": "इस workspace में अभी कोई ticket form नहीं है। Tickets में एक बनाएँ, या दूसरा प्रकार चुनें।"
     }
   }

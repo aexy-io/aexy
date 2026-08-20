@@ -232,6 +232,28 @@ class SprintResponse(BaseModel):
     completed_points: int = 0
 
 
+class WorkspaceSprintListResponse(BaseModel):
+    """A sprint as a picker needs it, from anywhere in the workspace.
+
+    Distinct from ``SprintListResponse``, which carries task and point counts for
+    a sprint board. A picker needs neither, and computing them would mean loading
+    every task in every sprint to render a dropdown.
+
+    It does need ``team_name``: two teams routinely have a "Sprint 24", and a
+    cross-team list without it asks the reader to guess.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    team_id: str
+    team_name: str
+    name: str
+    status: SprintStatus
+    start_date: datetime
+    end_date: datetime
+
+
 class SprintListResponse(BaseModel):
     """Schema for sprint list item."""
 
