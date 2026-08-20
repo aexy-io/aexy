@@ -309,7 +309,8 @@
       "owner": "Owner",
       "mine": "मुझे सौंपे गए",
       "noMatchTitle": "कोई ticket नहीं मिला",
-      "noMatch": "इन filters से इस desk पर कुछ भी मेल नहीं खाता। पूरी queue देखने के लिए इन्हें हटाएँ।"
+      "noMatch": "इन filters से इस desk पर कुछ भी मेल नहीं खाता। पूरी queue देखने के लिए इन्हें हटाएँ।",
+      "more": "और filters"
     },
     "accountProducts": {
       "none": "कोई product mapped नहीं — सभी tickets इस account के owner को जाते हैं",

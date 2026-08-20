@@ -471,6 +471,31 @@ def _norm_domain(d: str) -> str:
     return cleaned
 
 
+_SORTABLE = {
+    "created": lambda: Ticket.created_at,
+    "ticket": lambda: Ticket.ticket_number,
+    "subject": lambda: Ticket.field_values["subject"].as_string(),
+    "account": lambda: ServiceDeskAccount.name,
+    "type": lambda: ServiceDeskTicket.request_type,
+    "pending": lambda: ServiceDeskTicket.pending_with,
+    "status": lambda: Ticket.status,
+}
+
+
+def _ticket_order(filters) -> list:
+    """The ORDER BY for a ticket list, from a validated sort key.
+
+    The key is a Literal on ``TicketFilters``, so an unknown one is refused with
+    a 422 before reaching here; the fallback covers a filters object built in
+    Python rather than parsed from a request.
+    """
+    column = _SORTABLE.get(getattr(filters, "sort", "created") or "created")
+    if column is None:
+        return [Ticket.created_at.desc()]
+    expr = column()
+    return [expr.asc() if getattr(filters, "direction", "desc") == "asc" else expr.desc()]
+
+
 class ServiceDeskService:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -1809,10 +1834,15 @@ class ServiceDeskService:
                     Developer.email,
                 ),
             )
-        # Ordered by id as well as time so a page boundary is stable: two tickets
-        # created in the same second would otherwise be free to swap places
-        # between page 1 and page 2, showing one twice and the other never.
-        ).order_by(Ticket.created_at.desc(), ServiceDeskTicket.id.desc())
+        # A fixed set of columns, looked up rather than interpolated — the sort
+        # key arrives from a query string.
+        ).order_by(
+            *_ticket_order(filters),
+            # Ordered by id as well, so a page boundary is stable: two tickets
+            # sharing a sort value would otherwise be free to swap places
+            # between page 1 and page 2, showing one twice and the other never.
+            ServiceDeskTicket.id.desc(),
+        )
         if limit is not None:
             query = query.limit(limit)
         if offset is not None:

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Inbox, Plus, Search, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Download, Inbox, Plus, Search, SlidersHorizontal, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -38,6 +38,20 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 
+type SortKey = "created" | "ticket" | "subject" | "account" | "type" | "pending" | "status";
+
+// Text reads naturally A→Z; a date and a number read newest/highest first.
+// Getting this wrong means every first click on a column looks broken.
+const SORT_DEFAULT_DIRECTION: Record<SortKey, "asc" | "desc"> = {
+  created: "desc",
+  ticket: "desc",
+  subject: "asc",
+  account: "asc",
+  type: "asc",
+  pending: "asc",
+  status: "asc",
+};
+
 const FILTER_CLASS =
   "h-9 rounded-md border border-input bg-background px-2 py-1 text-xs";
 
@@ -53,6 +67,71 @@ function relativeAge(iso: string, t: (k: string, v?: Record<string, string | num
   if (seconds < 3600) return t("table.ageMinutes", { count: Math.floor(seconds / 60) });
   if (seconds < 86400) return t("table.ageHours", { count: Math.floor(seconds / 3600) });
   return t("table.ageDays", { count: Math.floor(seconds / 86400) });
+}
+
+/**
+ * One applied filter, and the way to drop it.
+ *
+ * The bar has ten controls and used to give no answer to "which of these are
+ * set?" without reading all ten. A chip per applied filter puts that on screen,
+ * and makes each one reversible on its own — clearing everything to undo one
+ * wrong choice is the reason people stop using filters.
+ */
+function FilterChip({ label, value, onRemove }: { label: string; value: string; onRemove: () => void }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 py-0.5 pl-2 pr-1 text-xs">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-medium text-foreground">{value}</span>
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={`Remove ${label} filter`}
+        className="rounded-full p-0.5 text-muted-foreground hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      >
+        <X className="h-3 w-3" />
+      </button>
+    </span>
+  );
+}
+
+/**
+ * A column header that sorts.
+ *
+ * The caret only appears on the column in force. Showing a neutral glyph on
+ * every header makes six columns look sorted at once and tells the reader
+ * nothing about which one actually is.
+ */
+function SortableHeader({
+  label,
+  column,
+  sort,
+  direction,
+  onSort,
+  align = "left",
+}: {
+  label: string;
+  column: SortKey;
+  sort: SortKey;
+  direction: "asc" | "desc";
+  onSort: (c: SortKey) => void;
+  align?: "left" | "right";
+}) {
+  const active = sort === column;
+  return (
+    <th className={`px-3 py-2 ${align === "right" ? "text-right" : ""}`}>
+      <button
+        type="button"
+        onClick={() => onSort(column)}
+        aria-sort={active ? (direction === "asc" ? "ascending" : "descending") : "none"}
+        className={`inline-flex items-center gap-1 uppercase hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${
+          active ? "text-foreground" : ""
+        }`}
+      >
+        {label}
+        {active && (direction === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
+      </button>
+    </th>
+  );
 }
 
 function FilterField({ label, children }: { label: string; children: React.ReactNode }) {
@@ -108,8 +187,30 @@ export default function ServiceDeskTicketsPage() {
       return next;
     });
   };
+  const [sort, setSort] = useState<SortKey>("created");
+  const [direction, setDirection] = useState<"asc" | "desc">("desc");
+  // Clicking the column already in force reverses it; a new column starts in
+  // whichever direction reads as "the interesting end" for that kind of value.
+  const onSort = (column: SortKey) => {
+    setPage(0);
+    if (column === sort) setDirection((d) => (d === "asc" ? "desc" : "asc"));
+    else {
+      setSort(column);
+      setDirection(SORT_DEFAULT_DIRECTION[column]);
+    }
+  };
+  // Whether the secondary filters are on screen. Open by default only when
+  // something inside is already set, so a filtered view never hides why.
+  const [showMore, setShowMore] = useState(false);
+
   const activeFilterCount = Object.keys(filters).length;
-  const query: TicketQuery = { ...filters, limit: PAGE_SIZE, offset: page * PAGE_SIZE };
+  const query: TicketQuery = {
+    ...filters,
+    sort,
+    direction,
+    limit: PAGE_SIZE,
+    offset: page * PAGE_SIZE,
+  };
   const { data: tickets, isLoading } = useServiceDeskTickets(query);
   const { data: countData } = useServiceDeskTicketCount(filters);
   const total = countData?.total ?? 0;
@@ -136,6 +237,42 @@ export default function ServiceDeskTicketsPage() {
   const { members } = useWorkspaceMembers(currentWorkspace?.id ?? null);
   const terms = settings.data?.terminology ?? {};
   const { createManual } = useServiceDeskMutations();
+
+  const clearAll = () => {
+    setFilters({});
+    setSearch("");
+    setPage(0);
+  };
+
+  // One description per applied filter: what it narrowed, to what, and how to
+  // undo it. Named lookups rather than raw ids — a chip reading
+  // "Customer: 352b8193-…" would be worse than no chip at all.
+  const nameOf = (list: { id: string; name: string }[] | undefined, id: string | undefined) =>
+    (id && list?.find((x) => x.id === id)?.name) || id || "";
+  const chips: { key: string; label: string; value: string; remove: () => void }[] = [];
+  const chip = (key: keyof TicketQuery, label: string, value: string) => {
+    if (!value) return;
+    chips.push({ key, label, value, remove: () => setFilter(key, undefined) });
+  };
+  if (filters.q) chip("q", t("filters.search"), filters.q);
+  if (filters.created_from) chip("created_from", t("filters.from"), dateInput(filters.created_from));
+  if (filters.created_to) chip("created_to", t("filters.to"), dateInput(filters.created_to));
+  if (filters.account_id)
+    chip("account_id", terms.account ?? t("table.account"), nameOf(accounts.data, filters.account_id));
+  if (filters.product_id)
+    chip("product_id", terms.product ?? t("filters.product"), nameOf(products.data, filters.product_id));
+  if (filters.vendor_id)
+    chip("vendor_id", terms.vendor ?? t("filters.vendor"), nameOf(vendors.data, filters.vendor_id));
+  if (filters.assigned_to) {
+    const m = (members ?? []).find((x) => x.developer_id === filters.assigned_to);
+    chip("assigned_to", t("filters.owner"), m?.developer_name || m?.developer_email || filters.assigned_to);
+  }
+  if (filters.request_type) chip("request_type", t("table.type"), requestTypeLabel(filters.request_type));
+  if (filters.pending_with) chip("pending_with", t("table.pendingWith"), stakeholderLabel(filters.pending_with));
+  if (filters.is_open !== undefined)
+    chip("is_open", t("filters.state"), filters.is_open ? t("filters.open") : t("filters.closed"));
+  if (filters.assigned_to_me) chip("assigned_to_me", t("filters.owner"), t("filters.mine"));
+  if (filters.needs_triage) chip("needs_triage", t("table.status"), t("filters.needsTriage"));
 
   const [open, setOpen] = useState(false);
   // Blank rather than a hardcoded "query": the default request type is the
@@ -218,156 +355,174 @@ export default function ServiceDeskTicketsPage() {
       {/* The filter bar. Every control narrows the caller's own scope — the
           server applies visibility first and separately, so a KAM choosing
           another owner here sees nothing rather than that owner's queue. */}
-      <Card className="flex flex-wrap items-end gap-2 p-3">
-        <FilterField label={t("filters.search")}>
+      {/* Primary row: what people reach for. Everything rarer sits one click
+          away rather than competing with it — ten equal controls in a row made
+          the two that matter as hard to find as the eight that do not. */}
+      <Card className="space-y-3 p-3">
+        <div className="flex flex-wrap items-end gap-2">
+          <FilterField label={t("filters.search")}>
           <div className="relative">
-            <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={t("filters.searchHint")}
-              className={`${FILTER_CLASS} w-56 pl-7`}
-            />
-          </div>
-        </FilterField>
-        <FilterField label={t("filters.from")}>
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={t("filters.searchHint")}
+          className={`${FILTER_CLASS} w-56 pl-7`}
+          />
+          </div>
+          </FilterField>
+          <FilterField label={t("filters.state")}>
+          <select
+          value={filters.is_open === undefined ? "" : filters.is_open ? "open" : "closed"}
+          onChange={(e) =>
+          setFilter("is_open", e.target.value === "" ? undefined : e.target.value === "open")
+          }
+          className={FILTER_CLASS}
+          >
+          <option value="">{t("filters.any")}</option>
+          <option value="open">{t("filters.open")}</option>
+          <option value="closed">{t("filters.closed")}</option>
+          </select>
+          </FilterField>
+          <Button
+            variant={showMore ? "secondary" : "outline"}
+            size="sm"
+            className="h-9"
+            onClick={() => setShowMore((v) => !v)}
+            aria-expanded={showMore}
+          >
+            <SlidersHorizontal className="mr-1.5 h-3.5 w-3.5" />
+            {t("filters.more")}
+          </Button>
+          <span className="ml-auto text-xs text-muted-foreground">
+            {t("filters.matching", { count: total })}
+          </span>
+        </div>
+
+        {showMore && (
+          <div className="grid grid-cols-2 gap-2 border-t border-border pt-3 sm:grid-cols-3 lg:grid-cols-4">
+            <FilterField label={t("filters.from")}>
+            <input
             type="date"
             value={dateInput(filters.created_from)}
             onChange={(e) => setFilter("created_from", dayStart(e.target.value))}
             className={FILTER_CLASS}
-          />
-        </FilterField>
-        <FilterField label={t("filters.to")}>
-          <input
+            />
+            </FilterField>
+            <FilterField label={t("filters.to")}>
+            <input
             type="date"
             value={dateInput(filters.created_to)}
             // End of day, not midnight: a range typed as 1–31 July that stopped
             // at 00:00 on the 31st would silently drop that whole day.
             onChange={(e) => setFilter("created_to", dayEnd(e.target.value))}
             className={FILTER_CLASS}
-          />
-        </FilterField>
-        <FilterField label={terms.account ?? t("table.account")}>
-          <select
+            />
+            </FilterField>
+            <FilterField label={terms.account ?? t("table.account")}>
+            <select
             value={filters.account_id ?? ""}
             onChange={(e) => setFilter("account_id", e.target.value)}
             className={FILTER_CLASS}
-          >
+            >
             <option value="">{t("filters.any")}</option>
             {(accounts.data ?? []).map((a) => (
-              <option key={a.id} value={a.id}>{a.name}</option>
+            <option key={a.id} value={a.id}>{a.name}</option>
             ))}
-          </select>
-        </FilterField>
-        <FilterField label={terms.product ?? t("filters.product")}>
-          <select
+            </select>
+            </FilterField>
+            <FilterField label={terms.product ?? t("filters.product")}>
+            <select
             value={filters.product_id ?? ""}
             onChange={(e) => setFilter("product_id", e.target.value)}
             className={FILTER_CLASS}
-          >
+            >
             <option value="">{t("filters.any")}</option>
             {(products.data ?? []).map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
+            <option key={p.id} value={p.id}>{p.name}</option>
             ))}
-          </select>
-        </FilterField>
-        <FilterField label={terms.vendor ?? t("filters.vendor")}>
-          <select
+            </select>
+            </FilterField>
+            <FilterField label={terms.vendor ?? t("filters.vendor")}>
+            <select
             value={filters.vendor_id ?? ""}
             onChange={(e) => setFilter("vendor_id", e.target.value)}
             className={FILTER_CLASS}
-          >
+            >
             <option value="">{t("filters.any")}</option>
             {(vendors.data ?? []).map((v) => (
-              <option key={v.id} value={v.id}>{v.name}</option>
+            <option key={v.id} value={v.id}>{v.name}</option>
             ))}
-          </select>
-        </FilterField>
-        <FilterField label={t("filters.owner")}>
-          <select
+            </select>
+            </FilterField>
+            <FilterField label={t("filters.owner")}>
+            <select
             value={filters.assigned_to ?? ""}
             onChange={(e) => setFilter("assigned_to", e.target.value)}
             className={FILTER_CLASS}
-          >
+            >
             <option value="">{t("filters.any")}</option>
             {(members ?? []).map((m) => (
-              <option key={m.id} value={m.developer_id}>
-                {m.developer_name || m.developer_email}
-              </option>
+            <option key={m.id} value={m.developer_id}>
+            {m.developer_name || m.developer_email}
+            </option>
             ))}
-          </select>
-        </FilterField>
-        <FilterField label={t("table.type")}>
-          <select
+            </select>
+            </FilterField>
+            <FilterField label={t("table.type")}>
+            <select
             value={filters.request_type ?? ""}
             onChange={(e) => setFilter("request_type", e.target.value)}
             className={FILTER_CLASS}
-          >
+            >
             <option value="">{t("filters.any")}</option>
             {requestTypes.map((r) => (
-              <option key={r.slug} value={r.slug}>{requestTypeLabel(r.slug)}</option>
+            <option key={r.slug} value={r.slug}>{requestTypeLabel(r.slug)}</option>
             ))}
-          </select>
-        </FilterField>
-        <FilterField label={t("table.pendingWith")}>
-          <select
+            </select>
+            </FilterField>
+            <FilterField label={t("table.pendingWith")}>
+            <select
             value={filters.pending_with ?? ""}
             onChange={(e) => setFilter("pending_with", e.target.value)}
             className={FILTER_CLASS}
-          >
+            >
             <option value="">{t("filters.any")}</option>
             {stakeholders.map((sh) => (
-              <option key={sh.slug} value={sh.slug}>{stakeholderLabel(sh.slug)}</option>
+            <option key={sh.slug} value={sh.slug}>{stakeholderLabel(sh.slug)}</option>
             ))}
-          </select>
-        </FilterField>
-        <FilterField label={t("filters.state")}>
-          <select
-            value={filters.is_open === undefined ? "" : filters.is_open ? "open" : "closed"}
-            onChange={(e) =>
-              setFilter("is_open", e.target.value === "" ? undefined : e.target.value === "open")
-            }
-            className={FILTER_CLASS}
-          >
-            <option value="">{t("filters.any")}</option>
-            <option value="open">{t("filters.open")}</option>
-            <option value="closed">{t("filters.closed")}</option>
-          </select>
-        </FilterField>
-        <label className="flex h-9 items-center gap-1.5 text-xs text-muted-foreground">
-          <input
-            type="checkbox"
-            checked={filters.assigned_to_me === true}
-            onChange={(e) => setFilter("assigned_to_me", e.target.checked || undefined)}
-          />
-          {t("filters.mine")}
-        </label>
-        <label className="flex h-9 items-center gap-1.5 text-xs text-muted-foreground">
-          <input
-            type="checkbox"
-            checked={filters.needs_triage === true}
-            onChange={(e) => setFilter("needs_triage", e.target.checked || undefined)}
-          />
-          {t("filters.needsTriage")}
-        </label>
-        {activeFilterCount > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setFilters({});
-              setSearch("");
-              setPage(0);
-            }}
-          >
-            <X className="mr-1 h-3 w-3" /> {t("filters.clear")}
-          </Button>
+            </select>
+            </FilterField>
+            <label className="flex h-9 items-end gap-1.5 pb-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={filters.assigned_to_me === true}
+                onChange={(e) => setFilter("assigned_to_me", e.target.checked || undefined)}
+              />
+              {t("filters.mine")}
+            </label>
+            <label className="flex h-9 items-end gap-1.5 pb-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={filters.needs_triage === true}
+                onChange={(e) => setFilter("needs_triage", e.target.checked || undefined)}
+              />
+              {t("filters.needsTriage")}
+            </label>
+          </div>
         )}
-        <span className="ml-auto text-xs text-muted-foreground">
-          {t("filters.matching", { count: total })}
-        </span>
+
+        {chips.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 border-t border-border pt-3">
+            {chips.map((c) => (
+              <FilterChip key={c.key} label={c.label} value={c.value} onRemove={c.remove} />
+            ))}
+            <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={clearAll}>
+              {t("filters.clear")}
+            </Button>
+          </div>
+        )}
       </Card>
 
       {isLoading ? (
@@ -392,13 +547,13 @@ export default function ServiceDeskTicketsPage() {
           <table className="w-full text-sm">
             <thead className="text-left text-xs uppercase text-muted-foreground">
               <tr>
-                <th className="px-3 py-2">{t("table.id")}</th>
-                <th className="px-3 py-2">{t("table.subject")}</th>
-                <th className="px-3 py-2">{terms.account ?? t("table.account")}</th>
-                <th className="px-3 py-2">{t("table.type")}</th>
-                <th className="px-3 py-2">{t("table.pendingWith")}</th>
-                <th className="px-3 py-2">{t("table.status")}</th>
-                <th className="px-3 py-2 text-right">{t("table.age")}</th>
+                <SortableHeader label={t("table.id")} column="ticket" sort={sort} direction={direction} onSort={onSort} />
+                <SortableHeader label={t("table.subject")} column="subject" sort={sort} direction={direction} onSort={onSort} />
+                <SortableHeader label={terms.account ?? t("table.account")} column="account" sort={sort} direction={direction} onSort={onSort} />
+                <SortableHeader label={t("table.type")} column="type" sort={sort} direction={direction} onSort={onSort} />
+                <SortableHeader label={t("table.pendingWith")} column="pending" sort={sort} direction={direction} onSort={onSort} />
+                <SortableHeader label={t("table.status")} column="status" sort={sort} direction={direction} onSort={onSort} />
+                <SortableHeader label={t("table.age")} column="created" sort={sort} direction={direction} onSort={onSort} align="right" />
               </tr>
             </thead>
             <tbody>

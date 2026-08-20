@@ -61,6 +61,13 @@ describe("Service Desk ticket filters", () => {
     });
   };
   const lastQuery = () => mocks.queries[mocks.queries.length - 1];
+  /** The rarely-used filters sit behind a disclosure now. */
+  const openMoreFilters = () => {
+    const button = Array.from(container.querySelectorAll("button")).find(
+      (b) => b.textContent?.includes("filters.more"),
+    )!;
+    act(() => button.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+  };
   const select = (label: string) =>
     Array.from(container.querySelectorAll("select")).find(
       (el) => el.previousElementSibling?.textContent === label,
@@ -153,6 +160,7 @@ describe("Service Desk ticket filters", () => {
 
   it("passes a chosen account through to the query", () => {
     render();
+    openMoreFilters();
 
     change(select("table.account"), "acct-1");
 
@@ -161,6 +169,7 @@ describe("Service Desk ticket filters", () => {
 
   it("returns to the first page when a filter changes", () => {
     render();
+    openMoreFilters();
 
     const next = Array.from(container.querySelectorAll("button")).find(
       (b) => b.textContent === "filters.next",
@@ -177,6 +186,7 @@ describe("Service Desk ticket filters", () => {
 
   it("clears every filter at once", () => {
     render();
+    openMoreFilters();
     change(select("table.account"), "acct-1");
 
     const clear = Array.from(container.querySelectorAll("button")).find(

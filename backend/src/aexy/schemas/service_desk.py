@@ -378,6 +378,14 @@ class TicketFilters(BaseModel):
     created_from: datetime | None = None
     created_to: datetime | None = None
 
+    # Ordering, not narrowing — but it lives here because the export takes the
+    # same model, and a CSV that came back in a different order than the screen
+    # it was generated from is its own small betrayal.
+    sort: Literal[
+        "created", "ticket", "subject", "account", "type", "pending", "status"
+    ] = "created"
+    direction: Literal["asc", "desc"] = "desc"
+
     # Free text, matched against the things a person actually remembers about a
     # ticket: what it was called, who sent it, and its number. Deliberately not a
     # body search — the desk stores whole email threads, and a query that matched

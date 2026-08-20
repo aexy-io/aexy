@@ -309,7 +309,8 @@
       "owner": "Owner",
       "mine": "Assigned to me",
       "noMatchTitle": "No tickets match",
-      "noMatch": "Nothing on this desk matches these filters. Clear them to see the whole queue."
+      "noMatch": "Nothing on this desk matches these filters. Clear them to see the whole queue.",
+      "more": "More filters"
     },
     "accountProducts": {
       "none": "No products mapped — all tickets go to this account's owner",
