@@ -64,6 +64,18 @@ export interface DocxEditorCanvasProps {
   title?: string;
   /** Shown in tracked changes and comments as the author of an edit. */
   author?: string;
+  /**
+   * Who an AI-drafted op is attributed to, when one is replayed.
+   *
+   * Separate from `author` on purpose. `author` is the person at the keyboard,
+   * and using it for a replayed proposal would sign the AI's redline with the
+   * name of whoever happened to open the review — the document would then claim
+   * a reviewer wrote changes they were in the middle of judging.
+   *
+   * The workspace decides the label (`ai_author_label`), so a proposal drafted
+   * last week adopts today's answer rather than carrying a name on the op.
+   */
+  aiAuthor?: string;
   locale?: string;
   colorMode?: "light" | "dark" | "system";
   /** Fired on every document mutation. Debounce before saving. */
@@ -78,6 +90,7 @@ export default function DocxEditorCanvas({
   document,
   mode,
   title,
+  aiAuthor,
   author,
   locale,
   colorMode = "system",
@@ -92,6 +105,11 @@ export default function DocxEditorCanvas({
   const applyOpsRef = useRef<((ops: readonly AexyDocxOp[]) => ApplyOpsResult) | null>(
     null
   );
+  // Read through a ref inside the bridge, so changing the label does not tear
+  // down and rebuild the automation host — which would re-subscribe to document
+  // changes for a string.
+  const aiAuthorRef = useRef(aiAuthor);
+  aiAuthorRef.current = aiAuthor;
 
   // Registered unconditionally: without it the engine renders revisions as a
   // final-state projection — an existing redline in an uploaded document would
@@ -175,7 +193,7 @@ export default function DocxEditorCanvas({
       onSave={onSaveRequested}
       className={className}
     >
-      <OpsBridge applyRef={applyOpsRef} />
+      <OpsBridge applyRef={applyOpsRef} authorRef={aiAuthorRef} />
     </DocxEditor>
   );
 }
@@ -190,8 +208,10 @@ export default function DocxEditorCanvas({
  */
 function OpsBridge({
   applyRef,
+  authorRef,
 }: {
   applyRef: React.RefObject<((ops: readonly AexyDocxOp[]) => ApplyOpsResult) | null>;
+  authorRef: React.RefObject<string | undefined>;
 }) {
   const editor = useDocxEditor();
 
@@ -203,7 +223,11 @@ function OpsBridge({
     // A host per replay would re-subscribe to changes each time; one per mounted
     // editor, disposed with it, is the lifetime the adapter documents.
     const host = createBrowserAutomationHost(editor);
-    applyRef.current = (ops) => applyAexyOps(host, ops);
+    // The author is what makes an AI redline say it came from the AI. Without
+    // it `applyAexyOps` falls back to a hardcoded default, and the workspace's
+    // `ai_author_label` setting — which exists for exactly this — does nothing.
+    applyRef.current = (ops) =>
+      applyAexyOps(host, ops, { author: authorRef.current });
     return () => {
       applyRef.current = null;
       host.dispose();

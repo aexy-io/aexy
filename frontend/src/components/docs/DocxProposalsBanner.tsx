@@ -31,6 +31,7 @@ import { toast } from "sonner";
 
 import { documentApi, type ProposedEdit } from "@/lib/api";
 import { opsAreFullyReviewable, type ApplyOpsResult } from "./docxOps";
+import { DocxReviewRail } from "./DocxReviewRail";
 
 export interface DocxProposalsBannerProps {
   workspaceId: string;
@@ -167,20 +168,37 @@ export function DocxProposalsBanner({
               </p>
             )}
 
-            {/* A proposal that only partly replayed must say so. The reviewer is
-                looking at a redline and would otherwise reasonably believe it is
-                the whole proposal. */}
+            {/* What is in the proposal, change by change. Available before the
+                replay as well as after, because a count is not something you can
+                review — and once the redline is in a long document, this is how a
+                reviewer tells one marked-up passage from another. Skipped ops are
+                matched to their own row rather than listed separately below. */}
+            {proposal.proposed_ops && proposal.proposed_ops.length > 0 && (
+              <details className="text-xs" open={reviewing}>
+                <summary className="cursor-pointer text-foreground hover:underline">
+                  {t("docx.railToggle", {
+                    count: proposal.proposed_ops.length,
+                  })}
+                </summary>
+                <DocxReviewRail
+                  ops={proposal.proposed_ops}
+                  skipped={reviewing ? lastResult?.skipped : undefined}
+                  className="mt-2"
+                />
+              </details>
+            )}
+
+            {/* A proposal that only partly replayed must say so, and say it
+                where the reviewer is looking. The count stays here — it is the
+                headline — while each refusal is shown against its own change in
+                the rail above, rather than in a second list to cross-reference. */}
             {reviewing && lastResult && lastResult.skipped.length > 0 && (
-              <ul className="space-y-0.5 rounded-md bg-amber-50 px-2.5 py-2 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-100">
-                <li className="font-medium">
-                  {t("docx.someOpsSkipped", { count: lastResult.skipped.length })}
-                </li>
-                {lastResult.skipped.map((skip) => (
-                  <li key={skip.index}>
-                    {skip.kind}: {skip.reason}
-                  </li>
-                ))}
-              </ul>
+              <p
+                data-testid="docx-skipped-summary"
+                className="rounded-md bg-amber-50 px-2.5 py-2 text-xs font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-100"
+              >
+                {t("docx.someOpsSkipped", { count: lastResult.skipped.length })}
+              </p>
             )}
 
             {!reviewing && !fullyReviewable && (

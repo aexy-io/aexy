@@ -237,7 +237,11 @@
       "someOpsSkipped": "{count} change(s) couldn't be marked up and are not in this redline:",
       "partiallyReviewable": "Some of these changes can't be shown as tracked changes yet.",
       "reviewAnyway": "Review anyway",
-      "staleWarning": "This document changed after the proposal was written. Some changes will refuse to apply; others may land in the wrong place."
+      "staleWarning": "This document changed after the proposal was written. Some changes will refuse to apply; others may land in the wrong place.",
+      "railTitle": "{count, plural, one {# change} other {# changes}} in this proposal",
+      "railToggle": "See what changes ({count})",
+      "railNoRedline": "no redline",
+      "railAsComment": "as a comment"
     }
   }
 }

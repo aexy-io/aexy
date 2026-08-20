@@ -44,3 +44,48 @@ class DocxAiSettingsUpdate(BaseModel):
     ai_author_label: str | None = None
     max_ops: int | None = None
     notify_owner: bool | None = None
+
+
+class DocxAiEditRequest(BaseModel):
+    """Ask for an edit to one Word document.
+
+    Mirrors ``DraftRequest`` in the service, which is deliberately independent of
+    which door the ask came in through — this is the HTTP one.
+    """
+
+    #: Free text from a person. Optional, because "address the comments" is a
+    #: complete ask on its own.
+    instruction: str | None = Field(default=None, max_length=4000)
+
+    #: The passage the person had selected, when they asked from a selection.
+    selection_text: str | None = Field(default=None, max_length=20000)
+
+    scope: str = Field(default="document", pattern="^(document|selection|section)$")
+
+    #: Read the document's own comment threads and answer them.
+    address_comments: bool = False
+
+    #: Answer only these comments. Word's `w:id` values, valid for this save
+    #: only — Word reuses an id once the comment holding it is deleted.
+    comment_ids: list[str] = Field(default_factory=list, max_length=50)
+
+    #: Run in the background instead of waiting. For a long document the
+    #: synchronous call would outlive the request; the caller gets a
+    #: notification when the draft lands.
+    background: bool = False
+
+
+class DocxAiEditResponse(BaseModel):
+    """What came back, or what was queued."""
+
+    #: The proposal to review. Null when the work was queued instead of run.
+    proposal_id: str | None = None
+    summary: str | None = None
+    change_count: int | None = None
+
+    #: True when this was queued. The draft arrives as a notification, and the
+    #: review queue is where it lands.
+    queued: bool = False
+
+    #: Where to go and look at it.
+    review_url: str | None = None

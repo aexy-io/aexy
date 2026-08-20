@@ -25,6 +25,7 @@ import { toast } from "sonner";
 
 import { documentApi, type ProposedEdit } from "@/lib/api";
 import { Spinner } from "@/components/ui/spinner";
+import { useDocsAiSettings } from "@/hooks/useDocsAiSettings";
 import { DocxProposalsBanner } from "./DocxProposalsBanner";
 import type { DocxCanvasMode, DocxEditorCanvasHandle } from "./DocxEditorCanvas";
 import type { ApplyOpsResult } from "./docxOps";
@@ -185,6 +186,8 @@ export function DocxDocumentEditor({
     };
   }, [saveState]);
 
+  const { data: aiSettings } = useDocsAiSettings();
+
   const reviewProposal = useCallback(
     (proposal: ProposedEdit): ApplyOpsResult | undefined => {
       const ops = proposal.proposed_ops;
@@ -290,6 +293,11 @@ export function DocxDocumentEditor({
           }
           title={title}
           author={author}
+          // Not `author`. A replayed AI proposal signed with the reviewer's name
+          // would have the document claim they wrote changes they were in the
+          // middle of judging. The workspace names the AI; the fallback inside
+          // `applyAexyOps` covers a workspace that has not.
+          aiAuthor={aiSettings?.ai_author_label}
           locale={locale}
           handleRef={canvasHandle}
           onDirty={handleDirty}

@@ -81,6 +81,10 @@ def get_all_activities() -> list:
         reset_daily_limits,
     )
     from aexy.temporal.activities.document_impact import evaluate_document_impact
+    from aexy.temporal.activities.docx_ai_edit import (
+        draft_docx_ai_edit,
+        scan_docx_comments_for_mentions,
+    )
     from aexy.temporal.activities.booking import (
         cleanup_expired_pending,
         create_calendar_event,
@@ -311,6 +315,8 @@ def get_all_activities() -> list:
         process_document_sync_queue,
         regenerate_document,
         evaluate_document_impact,
+        draft_docx_ai_edit,
+        scan_docx_comments_for_mentions,
         # Sync
         sync_repository,
         sync_commits,

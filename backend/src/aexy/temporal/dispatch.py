@@ -56,6 +56,16 @@ WEBHOOK_RETRY = RetryPolicy(
 # Map activity names to retry policies and timeouts
 ACTIVITY_CONFIG: dict[str, dict[str, Any]] = {
     # Analysis (LLM)
+    # A long contract is minutes of model time, and LLM_RETRY is
+    # non-retryable on ValueError/KeyError — which is what a malformed model
+    # response raises, and retrying that would just burn the same tokens again.
+    "draft_docx_ai_edit": {"retry": LLM_RETRY, "timeout": timedelta(minutes=20)},
+    # Reads the file and answers only if somebody asked. Usually a no-op, so a
+    # tighter budget: the common case is "no mentions, stop".
+    "scan_docx_comments_for_mentions": {
+        "retry": LLM_RETRY,
+        "timeout": timedelta(minutes=20),
+    },
     "analyze_commit": {"retry": LLM_RETRY, "timeout": timedelta(minutes=10)},
     "analyze_pr": {"retry": LLM_RETRY, "timeout": timedelta(minutes=10)},
     "analyze_review": {"retry": LLM_RETRY, "timeout": timedelta(minutes=10)},

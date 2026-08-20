@@ -2909,6 +2909,28 @@ async def save_docx(
         )
 
     await quota.invalidate_workspace_usage(workspace_id)
+
+    # The third door into AI editing: a reviewer opened this file in Word, typed
+    # `@aexy` in a comment asking for a change, and sent it back. Dispatched, not
+    # inline — a save must not wait on a model call to return the bytes the
+    # editor is expecting, and the scan is usually a no-op.
+    #
+    # Keyed on the content sha so re-saving the same bytes does not re-answer
+    # comments that were already answered.
+    from aexy.temporal.dispatch import dispatch
+    from aexy.temporal.task_queues import TaskQueue
+
+    await dispatch(
+        "scan_docx_comments_for_mentions",
+        {
+            "document_id": document_id,
+            "workspace_id": workspace_id,
+            "saved_by_id": str(current_user.id),
+        },
+        task_queue=TaskQueue.ANALYSIS,
+        workflow_id=f"docx-mention-scan-{document_id}-{updated.docx_content_sha}",
+    )
+
     return document_to_response(updated)
 
 

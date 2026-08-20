@@ -14,8 +14,19 @@ from aexy.core.database import get_db
 from aexy.llm.gateway import resolve_effective_model
 from aexy.models.developer import Developer
 from aexy.models.workspace import Workspace
-from aexy.schemas.docx_ai import DocxAiSettingsResponse, DocxAiSettingsUpdate
+from aexy.schemas.docx_ai import (
+    DocxAiEditRequest,
+    DocxAiEditResponse,
+    DocxAiSettingsResponse,
+    DocxAiSettingsUpdate,
+)
 from aexy.services import docx_ai_settings
+from aexy.services.docx_ai_edit_service import (
+    DocxAiDisabledError,
+    DocxAiEditError,
+    DocxAiEditService,
+    DraftRequest,
+)
 from aexy.services.workspace_service import WorkspaceService
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/docx-ai", tags=["Word AI editing"])
@@ -146,3 +157,95 @@ async def update_docx_ai_settings(
     await db.flush()
 
     return await _response(updated, workspace_id=workspace_id, can_manage=True)
+
+
+@router.post(
+    "/documents/{document_id}/edit",
+    response_model=DocxAiEditResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def request_docx_edit(
+    workspace_id: str,
+    document_id: str,
+    data: DocxAiEditRequest,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+) -> DocxAiEditResponse:
+    """Ask the AI to edit a Word document. The first of the three doors.
+
+    Nothing is applied. The draft becomes a pending proposal in the same review
+    queue a human edit goes through, which is the whole design: an AI edit to a
+    document somebody signs off on should not be able to reach the file without a
+    person seeing the redline first.
+
+    ``member`` rather than ``admin``, and no notification on the synchronous
+    path: whoever asked is looking at the answer. The background path is where
+    the notification earns its place, because by then they have gone.
+    """
+    await _require(workspace_id, current_user, db, "member")
+
+    request = DraftRequest(
+        document_id=document_id,
+        requested_by_id=str(current_user.id),
+        instruction=data.instruction,
+        selection_text=data.selection_text,
+        scope=data.scope,  # type: ignore[arg-type]
+        address_comments=data.address_comments or bool(data.comment_ids),
+        comment_ids=tuple(data.comment_ids),
+        # Recorded on the proposal so the review queue can say what caused it.
+        # A reviewer looking at a redline needs to know whether a person typed
+        # this instruction or a comment triggered it.
+        trigger={
+            "door": "request",
+            "requested_by_id": str(current_user.id),
+            "instruction": data.instruction,
+        },
+    )
+
+    if data.background:
+        # Long documents outlive an HTTP request, and a person who chose to wait
+        # elsewhere gets told when it lands.
+        from aexy.temporal.dispatch import dispatch
+        from aexy.temporal.task_queues import TaskQueue
+
+        await dispatch(
+            "draft_docx_ai_edit",
+            {
+                "document_id": document_id,
+                "workspace_id": workspace_id,
+                "requested_by_id": str(current_user.id),
+                "instruction": data.instruction,
+                "selection_text": data.selection_text,
+                "scope": data.scope,
+                "address_comments": request.address_comments,
+                "comment_ids": list(data.comment_ids),
+            },
+            task_queue=TaskQueue.ANALYSIS,
+            # One draft per person per document at a time. Two clicks on a slow
+            # request should not produce two redlines of the same instruction.
+            workflow_id=f"docx-ai-edit-{document_id}-{current_user.id}",
+        )
+        return DocxAiEditResponse(queued=True, review_url=f"/docs/{document_id}")
+
+    try:
+        proposal = await DocxAiEditService(db).draft_edit(request)
+    except DocxAiDisabledError as exc:
+        # A deliberate configuration, not a fault: 409 rather than 500, with the
+        # workspace's own reason.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
+    except DocxAiEditError as exc:
+        # Every message on this path is written for a person to read — the
+        # service says so — so it goes through verbatim.
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
+
+    diff = proposal.diff_summary or {}
+    return DocxAiEditResponse(
+        proposal_id=str(proposal.id),
+        summary=diff.get("summary"),
+        change_count=diff.get("op_count"),
+        review_url=f"/docs/{document_id}",
+    )

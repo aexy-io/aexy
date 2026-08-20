@@ -92,6 +92,19 @@ export interface ApplyOpsResult {
  * reviewer *before* they start whether the proposal they are opening is fully
  * reviewable.
  */
+/**
+ * The ops that arrive as a comment rather than as a tracked change.
+ *
+ * Separate from `REDLINE_SUPPORTED_OPS`, which answers "can the browser replay
+ * it" — a comment op is replayable AND not a redline, so one set cannot answer
+ * both questions.
+ */
+export const COMMENT_OPS = new Set([
+  "add_comment",
+  "reply_to_comment",
+  "resolve_comment",
+]);
+
 export const REDLINE_SUPPORTED_OPS = new Set([
   "replace_text",
   "append_section",
@@ -725,6 +738,129 @@ const HANDLERS: Record<string, OpHandler> = {
  * result reviewable. This function does not set the mode — it is sampled at
  * mount, so the caller opens the document in the right one.
  */
+/** One line of the review rail: what a single op does, in a person's words. */
+export interface OpSummary {
+  index: number;
+  kind: string;
+  /** What it does, e.g. "Replace text" — short enough to be a row heading. */
+  action: string;
+  /** Where or what it touches: the found text, the cell label, the heading. */
+  target: string;
+  /** What it becomes, when the op has a replacement worth showing. */
+  becomes?: string;
+  /**
+   * False when the browser cannot replay this op at all — the backend applies it
+   * on accept, and no markup will ever appear in the editor. A reviewer told
+   * otherwise goes looking for a change that is not there.
+   */
+  replayable: boolean;
+  /**
+   * True for the three comment ops. They ARE replayable, but they arrive as
+   * comments rather than tracked changes — a distinction the rail has to draw,
+   * because "replayable" and "shows up as a redline" are not the same question
+   * and conflating them tells the reviewer to look in the wrong place.
+   */
+  asComment: boolean;
+  /**
+   * Set when the backend already knew this op could not be resolved — an
+   * out-of-range table coordinate, a comment that has since been deleted.
+   * Carried through so the rail shows it before the reviewer replays, rather
+   * than after.
+   */
+  unresolvable?: string;
+}
+
+/** A short, quotable piece of text. */
+function excerpt(value: string | undefined, limit = 80): string {
+  const flat = (value ?? "").replace(/\s+/g, " ").trim();
+  if (!flat) return "";
+  return flat.length <= limit ? flat : `${flat.slice(0, limit - 1)}…`;
+}
+
+/**
+ * Describe a proposal's ops for the review rail.
+ *
+ * Exists because "12 changes waiting" is not reviewable information. A person
+ * deciding whether to replay a proposal into a forty-page contract needs to see
+ * what is in it, and once the redline is in the document they need to be able to
+ * tell one marked-up passage from another.
+ *
+ * Pure, and independent of the editor: the rail renders before anything is
+ * replayed, which is the point — it is what you read *instead of* guessing.
+ */
+export function summariseOps(ops: readonly AexyDocxOp[]): OpSummary[] {
+  return ops.map((op, index) => {
+    const base = {
+      index,
+      kind: op.kind,
+      replayable: REDLINE_SUPPORTED_OPS.has(op.kind),
+      asComment: COMMENT_OPS.has(op.kind),
+      unresolvable: op.unresolvable,
+    };
+
+    switch (op.kind) {
+      case "replace_text":
+        return {
+          ...base,
+          action: "Replace text",
+          target: excerpt(op.find),
+          becomes: excerpt(op.replace) || "(deleted)",
+        };
+      case "set_table_cell":
+        return {
+          ...base,
+          action: "Change a table cell",
+          // The label when the backend resolved one; otherwise the coordinate,
+          // which is at least addressable.
+          target:
+            op.cell_label ||
+            excerpt(op.expected_current) ||
+            `table cell`,
+          becomes: excerpt(op.text),
+        };
+      case "append_section":
+        return {
+          ...base,
+          action: "Add a section",
+          target: excerpt(op.heading) || "at the end",
+          becomes: excerpt(op.markdown),
+        };
+      case "replace_section_body":
+        return {
+          ...base,
+          action: "Rewrite a section",
+          target: excerpt(op.heading),
+          becomes: excerpt(op.markdown),
+        };
+      case "add_comment":
+        return {
+          ...base,
+          action: "Leave a comment",
+          target: excerpt(op.anchor_find),
+          becomes: excerpt(op.text),
+        };
+      case "reply_to_comment":
+        return {
+          ...base,
+          action: "Reply to a comment",
+          target: excerpt(op.expected_comment_text) || `comment ${op.comment_id}`,
+          becomes: excerpt(op.text),
+        };
+      case "resolve_comment":
+        return {
+          ...base,
+          action: "Resolve a comment",
+          target: excerpt(op.expected_comment_text) || `comment ${op.comment_id}`,
+        };
+      default:
+        // An op kind this build does not know about — a proposal written by a
+        // newer backend. Named rather than hidden, so the count in the rail
+        // still matches the count in the banner.
+        return { ...base, action: op.kind, target: "" };
+    }
+  });
+}
+
 export function applyAexyOps(
   host: AutomationHost,
   ops: readonly AexyDocxOp[],

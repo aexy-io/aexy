@@ -690,6 +690,42 @@ describe("comment ops", () => {
     expect(host.calls.find((c) => c.op === "insertComment")?.author).toBe("Aexy AI");
   });
 
+  it("uses the workspace's own label rather than the built-in fallback", () => {
+    // `ai_author_label` is a workspace setting. Before the bridge passed it
+    // through, it was stored, validated, surfaced in the API — and never read,
+    // so every AI comment carried the hardcoded default instead.
+    const host = fakeHost();
+    applyAexyOps(host as never, [{ kind: "add_comment", anchor_find: "a", text: "b" }], {
+      author: "Contracts Bot",
+    });
+    expect(host.calls.find((c) => c.op === "insertComment")?.author).toBe(
+      "Contracts Bot"
+    );
+  });
+
+  it("never signs an AI op with the reviewer's name", () => {
+    // The attribution bug: the canvas was handed `author={user.name}` and the
+    // ops bridge passed no author at all, so a replayed proposal was signed by
+    // whoever happened to open the review — the document then claimed a
+    // reviewer wrote changes they were in the middle of judging.
+    const host = fakeHost();
+    applyAexyOps(host as never, [{ kind: "add_comment", anchor_find: "a", text: "b" }]);
+    const author = host.calls.find((c) => c.op === "insertComment")?.author;
+    expect(author).toBe("Aexy AI");
+    expect(author).not.toBe("Priya");
+  });
+
+  it("falls back rather than writing an empty author", () => {
+    // w:author is required by the schema, so a blank label must not reach the
+    // engine — a workspace that cleared the field gets the default, not a
+    // refused comment.
+    const host = fakeHost();
+    applyAexyOps(host as never, [{ kind: "add_comment", anchor_find: "a", text: "b" }], {
+      author: "   ",
+    });
+    expect(host.calls.find((c) => c.op === "insertComment")?.author).toBe("Aexy AI");
+  });
+
   it("refuses to comment on text that is not there", () => {
     const host = fakeHost({ matches: 0 });
     const result = applyAexyOps(host as never, [
