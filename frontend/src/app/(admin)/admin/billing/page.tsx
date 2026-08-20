@@ -20,7 +20,7 @@ function formatCents(cents: number) {
 }
 
 export default function PlatformBillingPage() {
-  const t = useTranslations("settings.platformBilling");
+  const t = useTranslations("settings.billing.platformBilling");
   const tBreakdown = useTranslations("settings.billing.breakdownPage");
 
   const [period, setPeriod] = useState("current");
