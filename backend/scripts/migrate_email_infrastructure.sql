@@ -171,6 +171,7 @@ CREATE TABLE IF NOT EXISTS sending_identities (
 
 CREATE INDEX IF NOT EXISTS ix_sending_identity_workspace ON sending_identities(workspace_id);
 CREATE INDEX IF NOT EXISTS ix_sending_identity_domain ON sending_identities(domain_id);
+ALTER TABLE sending_identities ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
 CREATE INDEX IF NOT EXISTS ix_sending_identity_active ON sending_identities(is_active);
 
 -- Add workspace_id if table already exists (for existing deployments)
@@ -224,6 +225,27 @@ CREATE TABLE IF NOT EXISTS dedicated_ips (
 
 CREATE INDEX IF NOT EXISTS ix_dedicated_ip_workspace ON dedicated_ips(workspace_id);
 CREATE INDEX IF NOT EXISTS ix_dedicated_ip_provider ON dedicated_ips(provider_id);
+-- `CREATE TABLE IF NOT EXISTS` above does nothing when the table is already
+-- here, so on a database whose dedicated_ips predates the model's `is_active`
+-- — it carries the older `status` enum instead — the index below has no column
+-- to index, and the whole file is one transaction, so every migration behind it
+-- stops too. Converge the shape first.
+ALTER TABLE dedicated_ips ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
+
+-- Carry the legacy column's meaning across rather than defaulting every row to
+-- active. `status` was pending/warming/active/paused; only the middle two were
+-- sending. Defaulting a paused IP to active would resume sending from it, which
+-- is the one outcome here worth being careful about.
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'dedicated_ips' AND column_name = 'status'
+    ) THEN
+        EXECUTE 'UPDATE dedicated_ips SET is_active = (status IN (''active'', ''warming''))';
+    END IF;
+END $$;
+
 CREATE INDEX IF NOT EXISTS ix_dedicated_ip_active ON dedicated_ips(is_active);
 
 -- =============================================================================
@@ -270,6 +292,20 @@ CREATE TABLE IF NOT EXISTS warming_progress (
 );
 
 CREATE INDEX IF NOT EXISTS ix_warming_progress_domain ON warming_progress(domain_id);
+-- Same convergence: a database built by the earlier version of this file calls
+-- this column `ip_id`. Add the model's name, carry the values over, and leave
+-- the old column alone — dropping it is not this migration's decision to make.
+ALTER TABLE warming_progress ADD COLUMN IF NOT EXISTS dedicated_ip_id UUID REFERENCES dedicated_ips(id) ON DELETE CASCADE;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'warming_progress' AND column_name = 'ip_id'
+    ) THEN
+        EXECUTE 'UPDATE warming_progress SET dedicated_ip_id = ip_id WHERE dedicated_ip_id IS NULL AND ip_id IS NOT NULL';
+    END IF;
+END $$;
+
 CREATE INDEX IF NOT EXISTS ix_warming_progress_ip ON warming_progress(dedicated_ip_id);
 CREATE INDEX IF NOT EXISTS ix_warming_progress_date ON warming_progress(date);
 
@@ -543,6 +579,8 @@ CREATE TRIGGER update_sending_pools_updated_at
 -- INSERT SYSTEM WARMING SCHEDULES
 -- =============================================================================
 
+ALTER TABLE warming_schedules ADD COLUMN IF NOT EXISTS auto_adjust_volume BOOLEAN NOT NULL DEFAULT true;
+
 -- The seed below is ON CONFLICT DO NOTHING against
 -- `uq_warming_schedule_workspace_name UNIQUE (workspace_id, name)`. System rows
 -- carry `workspace_id IS NULL`, and Postgres treats NULLs as distinct in a
@@ -550,24 +588,35 @@ CREATE TRIGGER update_sending_pools_updated_at
 -- inserts a second full set. Collapse any duplicates that already exist, then
 -- add the partial index that makes the conflict clause real.
 
--- Point anything at the surviving row before removing its twins.
-UPDATE sending_domains d SET warming_schedule_id = keep.id
-FROM warming_schedules dup
-JOIN LATERAL (
-    SELECT id FROM warming_schedules k
-    WHERE k.workspace_id IS NULL AND k.is_system AND k.name = dup.name
-    ORDER BY k.created_at, k.id LIMIT 1
-) keep ON TRUE
-WHERE d.warming_schedule_id = dup.id AND dup.workspace_id IS NULL AND dup.is_system AND dup.id <> keep.id;
+-- Point anything at the surviving row before removing its twins. Both columns
+-- are guarded: on a database that predates them these UPDATEs would fail, and
+-- one failure here stops every migration behind this file.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_name = 'sending_domains' AND column_name = 'warming_schedule_id') THEN
+        UPDATE sending_domains d SET warming_schedule_id = keep.id
+        FROM warming_schedules dup
+        JOIN LATERAL (
+            SELECT id FROM warming_schedules k
+            WHERE k.workspace_id IS NULL AND k.is_system AND k.name = dup.name
+            ORDER BY k.created_at, k.id LIMIT 1
+        ) keep ON TRUE
+        WHERE d.warming_schedule_id = dup.id AND dup.workspace_id IS NULL AND dup.is_system AND dup.id <> keep.id;
+    END IF;
 
-UPDATE dedicated_ips i SET warming_schedule_id = keep.id
-FROM warming_schedules dup
-JOIN LATERAL (
-    SELECT id FROM warming_schedules k
-    WHERE k.workspace_id IS NULL AND k.is_system AND k.name = dup.name
-    ORDER BY k.created_at, k.id LIMIT 1
-) keep ON TRUE
-WHERE i.warming_schedule_id = dup.id AND dup.workspace_id IS NULL AND dup.is_system AND dup.id <> keep.id;
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_name = 'dedicated_ips' AND column_name = 'warming_schedule_id') THEN
+        UPDATE dedicated_ips i SET warming_schedule_id = keep.id
+        FROM warming_schedules dup
+        JOIN LATERAL (
+            SELECT id FROM warming_schedules k
+            WHERE k.workspace_id IS NULL AND k.is_system AND k.name = dup.name
+            ORDER BY k.created_at, k.id LIMIT 1
+        ) keep ON TRUE
+        WHERE i.warming_schedule_id = dup.id AND dup.workspace_id IS NULL AND dup.is_system AND dup.id <> keep.id;
+    END IF;
+END $$;
 
 DELETE FROM warming_schedules dup
 USING (
