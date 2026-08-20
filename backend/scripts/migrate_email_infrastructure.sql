@@ -476,25 +476,18 @@ BEGIN
 END $$;
 -- =============================================================================
 
-ALTER TABLE email_campaigns
-ADD COLUMN IF NOT EXISTS sending_pool_id UUID REFERENCES sending_pools(id) ON DELETE SET NULL,
-ADD COLUMN IF NOT EXISTS sending_identity_id UUID REFERENCES sending_identities(id) ON DELETE SET NULL,
-ADD COLUMN IF NOT EXISTS routing_config JSONB;
-
-CREATE INDEX IF NOT EXISTS ix_email_campaign_pool ON email_campaigns(sending_pool_id);
-CREATE INDEX IF NOT EXISTS ix_email_campaign_identity ON email_campaigns(sending_identity_id);
+-- The same three columns are added inside the IF EXISTS block above. An
+-- unguarded copy here defeated that guard: migrate_email_marketing.sql creates
+-- email_campaigns and sorts after this file, so on a fresh database the table
+-- does not exist yet and this aborted the migration — and every migration
+-- behind it.
 
 -- =============================================================================
 -- ALTER CAMPAIGN RECIPIENTS TABLE (Add sent_via fields)
 -- =============================================================================
 
-ALTER TABLE campaign_recipients
-ADD COLUMN IF NOT EXISTS sent_via_domain_id UUID REFERENCES sending_domains(id) ON DELETE SET NULL,
-ADD COLUMN IF NOT EXISTS sent_via_provider_id UUID REFERENCES email_providers(id) ON DELETE SET NULL,
-ADD COLUMN IF NOT EXISTS sent_via_ip_id UUID REFERENCES dedicated_ips(id) ON DELETE SET NULL;
-
-CREATE INDEX IF NOT EXISTS ix_campaign_recipient_domain ON campaign_recipients(sent_via_domain_id);
-CREATE INDEX IF NOT EXISTS ix_campaign_recipient_provider ON campaign_recipients(sent_via_provider_id);
+-- Guarded above, for the same reason: campaign_recipients also comes from
+-- migrate_email_marketing.sql, which runs after this file.
 
 -- =============================================================================
 -- TRIGGERS FOR UPDATED_AT
@@ -549,6 +542,48 @@ CREATE TRIGGER update_sending_pools_updated_at
 -- =============================================================================
 -- INSERT SYSTEM WARMING SCHEDULES
 -- =============================================================================
+
+-- The seed below is ON CONFLICT DO NOTHING against
+-- `uq_warming_schedule_workspace_name UNIQUE (workspace_id, name)`. System rows
+-- carry `workspace_id IS NULL`, and Postgres treats NULLs as distinct in a
+-- unique constraint — so that clause never fires for them and a second run
+-- inserts a second full set. Collapse any duplicates that already exist, then
+-- add the partial index that makes the conflict clause real.
+
+-- Point anything at the surviving row before removing its twins.
+UPDATE sending_domains d SET warming_schedule_id = keep.id
+FROM warming_schedules dup
+JOIN LATERAL (
+    SELECT id FROM warming_schedules k
+    WHERE k.workspace_id IS NULL AND k.is_system AND k.name = dup.name
+    ORDER BY k.created_at, k.id LIMIT 1
+) keep ON TRUE
+WHERE d.warming_schedule_id = dup.id AND dup.workspace_id IS NULL AND dup.is_system AND dup.id <> keep.id;
+
+UPDATE dedicated_ips i SET warming_schedule_id = keep.id
+FROM warming_schedules dup
+JOIN LATERAL (
+    SELECT id FROM warming_schedules k
+    WHERE k.workspace_id IS NULL AND k.is_system AND k.name = dup.name
+    ORDER BY k.created_at, k.id LIMIT 1
+) keep ON TRUE
+WHERE i.warming_schedule_id = dup.id AND dup.workspace_id IS NULL AND dup.is_system AND dup.id <> keep.id;
+
+DELETE FROM warming_schedules dup
+USING (
+    SELECT name, (ARRAY_AGG(id ORDER BY created_at, id))[1] AS keep_id
+    FROM warming_schedules WHERE workspace_id IS NULL AND is_system GROUP BY name
+) k
+WHERE dup.workspace_id IS NULL AND dup.is_system AND dup.name = k.name AND dup.id <> k.keep_id;
+
+-- `AND is_system` is not decoration: the dedupe above only collapses system
+-- rows, so an index over every workspace_id IS NULL row could find a duplicate
+-- it had no mandate to remove — a non-system row sharing a system name — and
+-- fail. The whole file is one implicit transaction, so that failure would roll
+-- back the migration and stop every migration behind it. Constrain exactly what
+-- was deduped.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_warming_schedule_system_name
+    ON warming_schedules(name) WHERE workspace_id IS NULL AND is_system;
 
 INSERT INTO warming_schedules (
     id, workspace_id, name, schedule_type, description, steps, is_system,
@@ -613,6 +648,36 @@ ALTER TABLE email_providers ADD COLUMN IF NOT EXISTS last_check_status VARCHAR(5
 ALTER TABLE email_providers ADD COLUMN IF NOT EXISTS last_error TEXT;
 ALTER TABLE email_providers ADD COLUMN IF NOT EXISTS max_sends_per_day INTEGER;
 ALTER TABLE email_providers ADD COLUMN IF NOT EXISTS max_sends_per_second INTEGER;
+
+-- The tables above are created by the ORM on startup when the app boots first,
+-- and by this file when migrations run first. Only the second order leaves the
+-- gaps below, and nothing else ever closes them: `create_all` creates missing
+-- tables, never missing columns. Defaults are the models' own, so a row written
+-- by either path reads the same.
+
+-- dedicated_ips
+ALTER TABLE dedicated_ips ADD COLUMN IF NOT EXISTS daily_reset_at TIMESTAMPTZ;
+ALTER TABLE dedicated_ips ADD COLUMN IF NOT EXISTS health_status VARCHAR(20) NOT NULL DEFAULT 'excellent';
+-- A list, not an object: `blacklist_status` is default=list on the model.
+ALTER TABLE dedicated_ips ADD COLUMN IF NOT EXISTS blacklist_status JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE dedicated_ips ADD COLUMN IF NOT EXISTS last_blacklist_check_at TIMESTAMPTZ;
+
+-- warming_progress
+ALTER TABLE warming_progress ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+-- domain_health
+ALTER TABLE domain_health ADD COLUMN IF NOT EXISTS rejects INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE domain_health ADD COLUMN IF NOT EXISTS unique_opens INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE domain_health ADD COLUMN IF NOT EXISTS unique_clicks INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE domain_health ADD COLUMN IF NOT EXISTS unsubscribes INTEGER NOT NULL DEFAULT 0;
+
+-- sending_pools
+ALTER TABLE sending_pools ADD COLUMN IF NOT EXISTS settings JSONB NOT NULL DEFAULT '{}'::jsonb;
+
+-- provider_event_logs
+ALTER TABLE provider_event_logs ADD COLUMN IF NOT EXISTS diagnostic_code TEXT;
+ALTER TABLE provider_event_logs ADD COLUMN IF NOT EXISTS event_timestamp TIMESTAMPTZ;
+ALTER TABLE provider_event_logs ADD COLUMN IF NOT EXISTS raw_payload JSONB NOT NULL DEFAULT '{}'::jsonb;
 
 -- sending_domains: Add missing columns
 ALTER TABLE sending_domains ADD COLUMN IF NOT EXISTS subdomain VARCHAR(100);
