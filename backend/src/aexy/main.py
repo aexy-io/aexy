@@ -11,6 +11,7 @@ from aexy.api.mcp_oauth import router as mcp_oauth_router
 from aexy.core.config import get_settings
 from aexy.core.database import engine, Base
 from aexy.middleware import CommunityIsolationMiddleware, UsageTrackingMiddleware
+from aexy.llm.gateway import AIFeatureDormant
 from aexy.services.data_table_service import DuplicateValueError
 
 settings = get_settings()
@@ -125,6 +126,22 @@ def create_app() -> FastAPI:
                 "detail": str(exc),
                 "field": exc.field,
                 "existing_record_id": exc.existing_record_id,
+            },
+        )
+
+    # A feature switched off by configuration is unavailable, not broken. 503
+    # with the reason and the switch, rather than the 500 an unhandled
+    # RuntimeError would give — the whole point of the flag is that an operator
+    # can see why nothing happened.
+    @app.exception_handler(AIFeatureDormant)
+    async def _dormant_feature_handler(request: Request, exc: AIFeatureDormant):
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "detail": str(exc),
+                "feature": exc.feature,
+                "reason": exc.reason,
+                "enable_with": f"AI_ENABLE_DORMANT_FEATURES={exc.feature}",
             },
         )
 

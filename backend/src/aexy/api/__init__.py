@@ -85,6 +85,8 @@ from aexy.api.google_calendar import router as google_calendar_router
 from aexy.api.documents import router as documents_router
 from aexy.api.documents import template_router as templates_router
 from aexy.api.document_impact import router as document_impact_router
+from aexy.api.ai_models import router as ai_models_router
+from aexy.api.docx_ai import router as docx_ai_router
 from aexy.api.collaboration import router as collaboration_router
 from aexy.api.document_spaces import router as document_spaces_router
 # Tracking
@@ -301,6 +303,8 @@ api_router.include_router(documents_router, tags=["documents"], dependencies=[De
 # (ensure_app_enabled) rather than as a blanket router dependency.
 api_router.include_router(templates_router, tags=["templates"])
 api_router.include_router(document_impact_router, tags=["documentation-impact"], dependencies=[Depends(require_app_access("docs"))])
+api_router.include_router(docx_ai_router, tags=["word-ai-editing"], dependencies=[Depends(require_app_access("docs"))])
+api_router.include_router(ai_models_router, tags=["ai-model-configuration"])
 api_router.include_router(collaboration_router, tags=["collaboration"], dependencies=[Depends(require_app_access_document_scoped("docs"))])
 api_router.include_router(document_spaces_router, tags=["document-spaces"], dependencies=[Depends(require_app_access("docs"))])
 # Tracking: most paths carry no workspace_id param, so the toggle is enforced

@@ -198,6 +198,19 @@ class LLMSettings(BaseSettings):
         default=4096,
         description="Maximum tokens per LLM request",
     )
+    ai_enable_dormant_features: str = Field(
+        default="",
+        validation_alias="AI_ENABLE_DORMANT_FEATURES",
+        description=(
+            "Comma-separated AI feature ids to switch on, or 'all'. These are "
+            "features whose call sites were broken for their entire existence — "
+            "they raised on every invocation and were swallowed, so they never "
+            "ran. Repairing the call is a separate decision from starting to "
+            "spend money on it, so they stay off until named here. See "
+            "DORMANT_FEATURES in aexy/llm/features.py for the list and why each "
+            "one is on it."
+        ),
+    )
     max_requests_per_hour: int = Field(
         default=100,
         description="Rate limit for LLM requests",

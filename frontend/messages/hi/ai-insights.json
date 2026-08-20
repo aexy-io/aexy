@@ -159,9 +159,8 @@
       "modeOff": "बंद",
       "modeOnHint": "नए commits, PRs और reviews पर sync के तुरंत बाद AI विश्लेषण चलाएँ।",
       "modeOffHint": "इस workspace से किसी भी LLM provider को payload नहीं भेजा जाएगा।",
-      "modelTierLabel": "Model tier",
-      "modelTierHaiku": "Haiku (तेज़, कम लागत)",
-      "modelTierSonnet": "Sonnet (गहरा, अधिक लागत)",
+      "modelChoiceMoved": "यह किस model पर चलता है, यह हर दूसरी AI सुविधा के साथ एक ही जगह तय होता है।",
+      "modelChoiceLink": "AI model settings",
       "save": "AI सेटिंग्स सहेजें",
       "saving": "सहेजा जा रहा है…",
       "adminOnly": "केवल workspace admins AI सेटिंग्स बदल सकते हैं।"

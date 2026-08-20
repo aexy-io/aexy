@@ -172,6 +172,10 @@ from aexy.models.documentation import (
     DocumentPermission,
     TemplateCategory,
 )
+from aexy.models.ai_model_override import (
+    OverrideScope,
+    WorkspaceAIModelOverride,
+)
 from aexy.models.workspace_doc_impact_settings import (
     CheckRunConclusion,
     WorkspaceDocImpactSettings,
@@ -781,6 +785,8 @@ __all__ = [
     "PullRequestDocImpactItem",
     "CheckRunConclusion",
     "WorkspaceDocImpactSettings",
+    "WorkspaceAIModelOverride",
+    "OverrideScope",
     "DocumentGenerationPrompt",
     "CollaborationSession",
     "DocumentCollaborator",

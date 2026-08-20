@@ -373,6 +373,25 @@ messages/
 
 ## Configuration
 
+### Dormant AI features
+
+Five AI features ship switched **off** and must be named in
+`AI_ENABLE_DORMANT_FEATURES` to run: `code.commit_message`,
+`insights.attrition_risk`, `insights.burnout_risk`,
+`insights.performance_trajectory`, `insights.team_health`.
+
+All five had call sites that were broken for their entire existence — they passed
+keyword arguments the gateway has never accepted, raised `TypeError` on every
+invocation, and the error was swallowed by a surrounding `except Exception`. The
+calls are fixed, but enabling them starts real spend on paths this deployment has
+never exercised, so it is an explicit choice rather than a side effect of the fix.
+
+The list and the reason for each live in `DORMANT_FEATURES` /
+`AIFeature.dormant_reason` (`backend/src/aexy/llm/features.py`). The gate is
+`_refuse_if_dormant` in `llm/gateway.py`, raising `AIFeatureDormant`, which
+`main.py` turns into a 503 naming the switch. `/settings/ai/models` shows which
+features are currently off and why.
+
 ### LLM Rate Limits (env vars)
 ```
 CLAUDE_REQUESTS_PER_MINUTE=60    GEMINI_REQUESTS_PER_MINUTE=60

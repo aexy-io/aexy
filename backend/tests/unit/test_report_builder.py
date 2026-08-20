@@ -542,3 +542,82 @@ class TestReportValidation:
 
         is_valid = service._validate_schedule(schedule)
         assert is_valid is False
+
+
+class TestPredictiveWidgetsRender:
+    """Regression: the three predictive metrics crashed instead of rendering.
+
+    `get_widget_data` constructed `PredictiveAnalyticsService()` with no
+    argument, but the constructor required a positional `llm_gateway`, so every
+    TEAM_HEALTH, BUS_FACTOR and ATTRITION_RISK widget raised TypeError.
+
+    Nothing covered these three paths, which is why it survived. The fix made the
+    gateway optional — the call only uses `get_cached_insight`, which reads a row
+    a previous analysis wrote and never touches an LLM, so requiring one made a
+    cheap read depend on an LLM being configured.
+
+    These tests pass **no** gateway anywhere, which is the whole point: if the
+    constructor ever goes back to requiring one, they fail.
+    """
+
+    @pytest.fixture
+    def service(self):
+        return ReportBuilderService()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "metric",
+        [MetricType.TEAM_HEALTH, MetricType.BUS_FACTOR, MetricType.ATTRITION_RISK],
+    )
+    async def test_a_predictive_widget_renders_without_a_gateway(
+        self, service, db_session, metric
+    ):
+        widget = WidgetConfig(
+            id=f"w-{metric.value}",
+            type=WidgetType.KPI,
+            title=metric.value,
+            metric=metric,
+            config={"team_id": "11111111-1111-1111-1111-111111111111"},
+        )
+
+        result = await service.get_widget_data(
+            widget=widget,
+            db=db_session,
+            developer_ids=["22222222-2222-2222-2222-222222222222"],
+        )
+
+        # No cached insight exists in a fresh database, so the honest answer is
+        # "not yet" — not a crash, and not a zero that reads as a real measurement.
+        assert result["available"] is False
+        assert "No cached" in result["message"]
+
+    @pytest.mark.asyncio
+    async def test_the_cached_read_needs_no_gateway_at_all(self, db_session):
+        # Directly, so the reason the widget works is pinned rather than implied.
+        from aexy.services.predictive_analytics import PredictiveAnalyticsService
+
+        service = PredictiveAnalyticsService()
+        assert service.llm is None
+
+        insight = await service.get_cached_insight(
+            developer_id=None,
+            team_id="11111111-1111-1111-1111-111111111111",
+            insight_type="team_health",
+            db=db_session,
+        )
+        assert insight is None
+
+    @pytest.mark.asyncio
+    async def test_a_fresh_analysis_without_a_gateway_says_so(self, db_session):
+        # The other half: optional must not mean silently degraded. Asking for a
+        # fresh analysis with no gateway should name the problem, not raise
+        # AttributeError on None several frames deeper.
+        from aexy.services.predictive_analytics import PredictiveAnalyticsService
+
+        service = PredictiveAnalyticsService()
+        with pytest.raises(RuntimeError, match="needs an LLM gateway"):
+            await service.analyze_team_health(
+                team_id="11111111-1111-1111-1111-111111111111",
+                developer_ids=["22222222-2222-2222-2222-222222222222"],
+                db=db_session,
+            )

@@ -1,0 +1,39 @@
+{
+  "settingsAiModels": {
+    "title": "AI models",
+    "description": "हर AI सुविधा किस model पर चलती है। जब तक आप कुछ और न कहें, सब workspace default का पालन करते हैं।",
+    "breadcrumbSettings": "Settings",
+    "breadcrumbAi": "AI और Providers",
+    "breadcrumbModels": "Models",
+    "readOnly": "आप ये settings देख सकते हैं, बदल नहीं सकते। किसी workspace owner या admin से कहें।",
+    "aiDisabled": "इस workspace के लिए AI बंद है, इसलिए नीचे कुछ भी नहीं चल रहा। ये चुनाव सहेजे रहेंगे और AI दोबारा चालू होने पर लागू होंगे।",
+    "notConfigured": "अभी कोई AI provider सेट नहीं है, इसलिए चुनने के लिए कोई model नहीं है।",
+    "aiSettingsLink": "AI और Providers settings",
+    "defaultTitle": "Workspace default",
+    "defaultValue": "{provider} पर {model}",
+    "defaultFromWorkspace": "इस workspace के अपने provider और key से।",
+    "defaultFromPlatform": "Platform की configuration से — इस workspace ने अपनी नहीं चुनी है।",
+    "changeDefault": "बदलें",
+    "categoryModelLabel": "इस समूह के लिए model",
+    "featureModelLabel": "Model",
+    "inheritDefault": "Workspace default ({model})",
+    "inheritCategory": "इस समूह के समान ({model})",
+    "otherModel": "कुछ और…",
+    "otherPlaceholder": "Model identifier",
+    "inUseHere": "यहाँ प्रयोग में",
+    "inheritingCount": "यहाँ की {total} में से {count} सुविधाएँ इस समूह का पालन करती हैं।",
+    "showFeatures": "अलग-अलग सुविधाएँ configure करें",
+    "hideFeatures": "अलग-अलग सुविधाएँ छिपाएँ",
+    "runsOn": "{model} पर चलती है",
+    "ignoredLabel": "प्रयोग नहीं हो रहा:",
+    "source": {
+      "platform": "Platform default",
+      "workspace": "Workspace default",
+      "category": "समूह",
+      "feature": "यह सुविधा",
+      "instance": "Agent पर सेट"
+    },
+    "autosave": "बदलाव अगली AI कॉल पर लागू होते हैं। जो पहले से चल रहा है वह प्रभावित नहीं होता।",
+    "dormantLabel": "नहीं चल रहा:"
+  }
+}
