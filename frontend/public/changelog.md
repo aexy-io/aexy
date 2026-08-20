@@ -19,9 +19,15 @@ No 'Access-Control-Allow-Origin' header is present on the requested resource.
 
 CORS was configured correctly, and the endpoint returned the right headers on a
 401 and on preflight. The real fault was `Content-Disposition`: it interpolated
-the filename straight into the header, and header values are encoded latin-1. A
-name containing Devanagari, an em dash or an emoji raised `UnicodeEncodeError`
-while the response was still being built.
+the filename straight into the header, and header values are encoded latin-1, so
+any character outside that range raised `UnicodeEncodeError` while the response
+was still being built.
+
+The character doing it in production was `\u202f`, a narrow no-break space —
+what macOS writes before AM/PM in a screenshot filename. So this was not an
+exotic-name edge case: it was every screenshot dragged off a Mac, which is most
+of what gets attached to a task. Devanagari, em dashes and emoji fail the same
+way.
 
 `CORSMiddleware` sits inside `ServerErrorMiddleware`, so a 500 raised in the
 router is answered by the outer one and never gets CORS headers added. The
@@ -31,7 +37,9 @@ that was not wrong.
 
 The name is now emitted in both forms: the plain one with non-ASCII characters
 substituted, so an extension survives for clients that pick an application from
-it, and an RFC 5987 `filename*` carrying the real name. A blank name falls back
+it, and an RFC 5987 `filename*` carrying the real name. Substitution rather than
+deletion matters here — `Screenshot 2026-08-20 at 3.46.22_PM.png` still reads as
+the file somebody recognises. A blank name falls back
 to "attachment", because an empty plain form reads as "no name given" and those
 clients answer with the last URL segment, which on these routes is a bare id.
 

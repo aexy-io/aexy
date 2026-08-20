@@ -163,10 +163,15 @@ def test_quote_in_filename_cannot_break_out_of_the_header(fake_storage):
 @pytest.mark.parametrize(
     "name",
     [
+        # The one that actually broke production. macOS writes U+202F, a narrow
+        # no-break space, before AM/PM — so this is every screenshot dragged off
+        # a Mac, not an unusual name at all.
+        "Screenshot 2026-08-20 at 3.46.22\u202fPM.png",
         "बीमा-दावा.pdf",   # Devanagari
         "report—final.pdf",                                    # em dash
         "chart 📊.png",                                     # emoji
         "résumé.docx",                                    # latin-1 representable, still not ASCII
+        "notes\u00a0draft.txt",                             # non-breaking space
     ],
 )
 def test_a_name_the_header_cannot_encode_does_not_500(fake_storage, name):
@@ -235,3 +240,11 @@ def test_content_disposition_never_leaves_the_plain_form_empty():
     fall back to the URL's last segment — which on these routes is a bare id."""
     for blank in (None, "", "   "):
         assert 'filename="attachment"' in content_disposition(blank)
+
+
+def test_a_mac_screenshot_name_stays_readable():
+    """The character that broke this is invisible, so the plain form must still
+    read as the name somebody recognises rather than as damage."""
+    header = content_disposition("Screenshot 2026-08-20 at 3.46.22\u202fPM.png")
+    assert 'filename="Screenshot 2026-08-20 at 3.46.22_PM.png"' in header
+    assert "filename*=UTF-8''Screenshot%202026-08-20%20at%203.46.22%E2%80%AFPM.png" in header
