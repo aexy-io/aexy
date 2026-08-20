@@ -5,7 +5,7 @@ Replaces: aexy.processing.google_sync_tasks
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from temporalio import activity
@@ -13,6 +13,14 @@ from temporalio import activity
 from aexy.core.database import async_session_maker
 
 logger = logging.getLogger(__name__)
+
+
+# How long a job may sit in pending/running before it is treated as dead.
+#
+# A sync is minutes of work. An hour means the process running it is gone —
+# killed mid-flight by a deploy, an OOM, or a database that went away — and it
+# will never write a terminal status of its own.
+STALE_SYNC_JOB_AFTER = timedelta(hours=1)
 
 
 async def has_live_sync_job(db, integration, job_type: str) -> bool:
@@ -27,7 +35,16 @@ async def has_live_sync_job(db, integration, job_type: str) -> bool:
     connect could wait indefinitely. It also used `scalar_one_or_none()`, which
     raises when an account genuinely has two live jobs — swallowed by the
     caller's broad `except` and reported as a failure to trigger.
+
+    And it had no age bound, which is the same bug once more: a job whose worker
+    died still reads as live, so this returns True on every tick from then on
+    and that account never syncs again. Nothing else reclaims it, and nothing
+    says so — a desk simply stops receiving mail. Anything older than
+    ``STALE_SYNC_JOB_AFTER`` is marked failed here and does not block the next
+    run.
     """
+    from datetime import datetime, timezone
+
     from sqlalchemy import and_, select
 
     from aexy.models.google_integration import GoogleSyncJob
@@ -42,7 +59,35 @@ async def has_live_sync_job(db, integration, job_type: str) -> bool:
             )
         )
     )
-    return result.scalars().first() is not None
+    jobs = result.scalars().all()
+    if not jobs:
+        return False
+
+    cutoff = datetime.now(timezone.utc) - STALE_SYNC_JOB_AFTER
+    live = False
+    for job in jobs:
+        started = job.started_at or job.created_at
+        # Postgres hands these back aware; SQLite (tests) hands them back naive.
+        # Comparing the two raises, and the raise is swallowed by the caller's
+        # broad `except` and reported as a failure to trigger — the same way the
+        # last two defects in this function hid.
+        if started is not None and started.tzinfo is None:
+            started = started.replace(tzinfo=timezone.utc)
+        # A row written this instant can have no timestamp yet; treat it as live
+        # rather than reclaiming a job that is genuinely starting.
+        if started is not None and started < cutoff:
+            job.status = "failed"
+            job.error = "Abandoned: no worker finished this job, reclaimed by the scheduler"
+            logger.warning(
+                "Reclaimed a stale %s sync job for integration %s (started %s)",
+                job_type,
+                integration.id,
+                started.isoformat(),
+            )
+        else:
+            live = True
+    await db.commit()
+    return live
 
 
 @dataclass
@@ -150,6 +195,24 @@ async def _deactivate_integration(integration_id: str, error_message: str) -> No
                 integration.last_error = error_message
                 await db.commit()
                 logger.info(f"Deactivated integration {integration_id} due to auth error")
+
+                # This is the end of the line for this account: nothing retries
+                # it, and the poller now skips it. Somebody has to be told, or
+                # the first sign is a person asking why their mail stopped.
+                from aexy.services.integration_health import (
+                    notify_integration_disconnected,
+                )
+
+                await notify_integration_disconnected(
+                    db,
+                    workspace_id=integration.workspace_id,
+                    provider="Google",
+                    account_label=integration.google_email or "Google account",
+                    reason=error_message,
+                    connected_by_id=integration.connected_by_id,
+                    settings_path="/settings/connected-accounts",
+                )
+                await db.commit()
     except Exception as e:
         logger.error(f"Failed to deactivate integration {integration_id}: {e}")
 
@@ -170,6 +233,8 @@ async def check_auto_sync_integrations(input: CheckAutoSyncInput) -> dict[str, A
 
     gmail_syncs = 0
     calendar_syncs = 0
+    gmail_skipped_interval = 0
+    gmail_skipped_live = 0
 
     async with async_session_maker() as db:
         now = datetime.now(timezone.utc)
@@ -190,6 +255,45 @@ async def check_auto_sync_integrations(input: CheckAutoSyncInput) -> dict[str, A
                 )
             ).all()
         }
+
+        # A desk mailbox whose integration is switched off is invisible to the
+        # query below — it is excluded by the same `is_active` clause that keeps
+        # personal accounts out. That is the failure with no symptom: the poller
+        # runs on time, reports nothing wrong, and the desk quietly stops
+        # receiving mail. Say so on every tick, with the reason.
+        if desk_integrations:
+            unhealthy = (
+                await db.execute(
+                    select(
+                        ServiceDeskMailbox.address,
+                        GoogleIntegration.is_active,
+                        GoogleIntegration.gmail_sync_enabled,
+                        GoogleIntegration.last_error,
+                    )
+                    .join(
+                        GoogleIntegration,
+                        GoogleIntegration.id == ServiceDeskMailbox.integration_id,
+                    )
+                    .where(
+                        ServiceDeskMailbox.is_active.is_(True),
+                        ServiceDeskMailbox.channel == MailboxChannel.GMAIL_SYNC.value,
+                        or_(
+                            GoogleIntegration.is_active.is_(False),
+                            GoogleIntegration.gmail_sync_enabled.is_(False),
+                        ),
+                    )
+                )
+            ).all()
+            for address, active, sync_enabled, last_error in unhealthy:
+                logger.warning(
+                    "Service desk mailbox %s is not being polled: "
+                    "google integration is_active=%s gmail_sync_enabled=%s last_error=%s. "
+                    "No tickets will be created from this mailbox until it is reconnected.",
+                    address,
+                    active,
+                    sync_enabled,
+                    last_error or "none",
+                )
 
         # Gmail Auto-Sync
         gmail_result = await db.execute(
@@ -223,9 +327,11 @@ async def check_auto_sync_integrations(input: CheckAutoSyncInput) -> dict[str, A
                     interval = min(interval, desk_interval) if interval > 0 else desk_interval
                 last_sync = integration.gmail_last_sync_at
                 if last_sync and now < last_sync + timedelta(minutes=interval):
+                    gmail_skipped_interval += 1
                     continue
 
                 if await has_live_sync_job(db, integration, "gmail"):
+                    gmail_skipped_live += 1
                     continue
 
                 job = GoogleSyncJob(
@@ -290,6 +396,16 @@ async def check_auto_sync_integrations(input: CheckAutoSyncInput) -> dict[str, A
             except Exception as e:
                 logger.error(f"Failed to trigger Calendar auto-sync: {e}")
 
+    # The repo auto-sync has always logged its tally and this had not, so a desk
+    # receiving nothing looked identical to a desk with nothing to receive.
+    logger.info(
+        "Gmail auto-sync check complete: %d triggered, %d within their interval, "
+        "%d already running, %d desk mailbox(es) configured",
+        gmail_syncs,
+        gmail_skipped_interval,
+        gmail_skipped_live,
+        len(desk_integrations),
+    )
     return {"gmail_syncs": gmail_syncs, "calendar_syncs": calendar_syncs}
 
 

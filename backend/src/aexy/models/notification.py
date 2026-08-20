@@ -97,6 +97,12 @@ class NotificationEventType(str, Enum):
     DESK_TICKET_ASSIGNED = "desk_ticket_assigned"
     DESK_TICKET_PENDING_WITH_CHANGED = "desk_ticket_pending_with_changed"
 
+    # A connected account stopped working. Not "a sync failed" — one failed sync
+    # is noise and retries. This fires when the connection itself is refused and
+    # will keep being refused until a person reconnects it, which is the only
+    # sync problem a notification can actually resolve.
+    INTEGRATION_DISCONNECTED = "integration_disconnected"
+
     # Usage alerts (billing)
     USAGE_ALERT_80 = "usage_alert_80"  # 80% of limit reached
     USAGE_ALERT_90 = "usage_alert_90"  # 90% of limit reached (critical)
@@ -500,6 +506,7 @@ NOTIFICATION_CATEGORIES: dict[str, list[str]] = {
         NotificationEventType.WORKSPACE_JOIN_REQUEST.value,
         NotificationEventType.WORKSPACE_JOIN_APPROVED.value,
         NotificationEventType.WORKSPACE_JOIN_REJECTED.value,
+        NotificationEventType.INTEGRATION_DISCONNECTED.value,
     ],
     "mentions": [
         NotificationEventType.TASK_MENTIONED.value,
@@ -673,6 +680,10 @@ DEFAULT_NOTIFICATION_PREFERENCES = {
     NotificationEventType.USAGE_ALERT_80: {"in_app": True, "email": False, "slack": False, "web_push": False},
     NotificationEventType.USAGE_ALERT_90: {"in_app": True, "email": True, "slack": False, "web_push": False},
     NotificationEventType.USAGE_ALERT_100: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    # Email on by default: the person who can reconnect the account is not
+    # necessarily looking at the app, and not looking is exactly how a desk goes
+    # a day without noticing its mail stopped.
+    NotificationEventType.INTEGRATION_DISCONNECTED: {"in_app": True, "email": True, "slack": False, "web_push": False},
     # Insights alerts
     NotificationEventType.INSIGHT_ALERT_WARNING: {"in_app": True, "email": False, "slack": False, "web_push": False},
     NotificationEventType.INSIGHT_ALERT_CRITICAL: {"in_app": True, "email": True, "slack": False, "web_push": True},
