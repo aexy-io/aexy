@@ -241,7 +241,38 @@
       "railTitle": "इस proposal में {count, plural, one {# बदलाव} other {# बदलाव}}",
       "railToggle": "कौन से बदलाव हैं देखें ({count})",
       "railNoRedline": "redline नहीं",
-      "railAsComment": "comment के रूप में"
+      "railAsComment": "comment के रूप में",
+      "intakeTitle": "इस document को issues में बदलें",
+      "intakeHint": "Document पढ़कर work items सुझाता है। जब तक आप न कहें, कुछ नहीं बनता।",
+      "intakeSourcesLabel": "कहाँ से पढ़ें",
+      "intakeSource": {
+        "comments": "खुले comments",
+        "markers": "TODO / ACTION पंक्तियाँ",
+        "model": "AI जो भी पाए"
+      },
+      "intakeModelCost": "AI से पढ़ने पर एक model call होती है। Comments और markers मुफ़्त हैं।",
+      "intakeNoModelCost": "कोई model call नहीं — यह वही पढ़ता है जो document में पहले से है।",
+      "intakeRead": "Document पढ़ें",
+      "intakeReadFailed": "Work items के लिए document नहीं पढ़ा जा सका",
+      "intakeNothingFound": "इस document से बनाने के लिए कुछ नहीं। जिस document में काम नहीं है, उसके लिए यह सामान्य उत्तर है।",
+      "intakeFound": "{count, plural, one {# सुझाया} other {# सुझाए}} · {kept} चुने गए",
+      "intakeTargetLabel": "किस रूप में बनाएँ",
+      "intakeTarget": {
+        "sprint_task": "Sprint tasks",
+        "bug": "Bugs",
+        "user_story": "User stories",
+        "ticket": "Tickets"
+      },
+      "intakeSprintLabel": "Sprint",
+      "intakeFormLabel": "Ticket form",
+      "intakeChoose": "चुनें…",
+      "intakeNeedsSprint": "एक sprint चुनें — task को किसी में रहना होता है।",
+      "intakeNeedsForm": "एक form चुनें — ticket के fields और SLA उसी से आते हैं।",
+      "intakeCreate": "{count} बनाएँ",
+      "intakeCreated": "{count, plural, one {# issue} other {# issues}} बनाए",
+      "intakeCreateFailed": "वे issues नहीं बनाए जा सके",
+      "intakeNoSprints": "यहाँ कोई sprint उपलब्ध नहीं है। इन्हें sprint board से बनाएँ, या दूसरा प्रकार चुनें।",
+      "intakeNoForms": "इस workspace में अभी कोई ticket form नहीं है। Tickets में एक बनाएँ, या दूसरा प्रकार चुनें।"
     }
   }
 }

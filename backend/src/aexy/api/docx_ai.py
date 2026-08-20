@@ -19,6 +19,12 @@ from aexy.schemas.docx_ai import (
     DocxAiEditResponse,
     DocxAiSettingsResponse,
     DocxAiSettingsUpdate,
+    IntakeCandidate,
+    IntakeCreatedIssue,
+    IntakeCreateRequest,
+    IntakeCreateResponse,
+    IntakePreviewRequest,
+    IntakePreviewResponse,
 )
 from aexy.services import docx_ai_settings
 from aexy.services.docx_ai_edit_service import (
@@ -26,6 +32,12 @@ from aexy.services.docx_ai_edit_service import (
     DocxAiEditError,
     DocxAiEditService,
     DraftRequest,
+)
+from aexy.services.docx_intake_service import Candidate as IntakeService_Candidate
+from aexy.services.docx_intake_service import (
+    CreateOptions,
+    DocxIntakeError,
+    DocxIntakeService,
 )
 from aexy.services.workspace_service import WorkspaceService
 
@@ -248,4 +260,97 @@ async def request_docx_edit(
         summary=diff.get("summary"),
         change_count=diff.get("op_count"),
         review_url=f"/docs/{document_id}",
+    )
+
+
+@router.post(
+    "/documents/{document_id}/intake/preview",
+    response_model=IntakePreviewResponse,
+)
+async def preview_docx_intake(
+    workspace_id: str,
+    document_id: str,
+    data: IntakePreviewRequest,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+) -> IntakePreviewResponse:
+    """Propose issues from a Word document. Writes nothing.
+
+    Step one of two, and the split is the point: these rows become work a team
+    is measured against, so a model that mistook a heading for a deliverable must
+    not be able to put a phantom task in somebody's sprint without a person
+    seeing the list first.
+    """
+    await _require(workspace_id, current_user, db, "member")
+
+    try:
+        candidates = await DocxIntakeService(db).preview(
+            document_id,
+            tuple(data.sources),  # type: ignore[arg-type]
+            requested_by_id=str(current_user.id),
+        )
+    except DocxIntakeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
+
+    return IntakePreviewResponse(
+        candidates=[IntakeCandidate(**vars(c)) for c in candidates]
+    )
+
+
+@router.post(
+    "/documents/{document_id}/intake",
+    response_model=IntakeCreateResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_docx_intake(
+    workspace_id: str,
+    document_id: str,
+    data: IntakeCreateRequest,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+) -> IntakeCreateResponse:
+    """Create the issues a person kept. Step two.
+
+    The candidates come back from the client rather than being re-derived, so a
+    second model run cannot quietly produce a different list than the one that
+    was approved.
+    """
+    await _require(workspace_id, current_user, db, "member")
+
+    try:
+        created = await DocxIntakeService(db).create(
+            document_id,
+            data.target,  # type: ignore[arg-type]
+            [
+                IntakeService_Candidate(
+                    title=c.title,
+                    detail=c.detail,
+                    source=c.source,  # type: ignore[arg-type]
+                    kind=c.kind,
+                    origin=c.origin,
+                    comment_id=c.comment_id,
+                    paragraph_index=c.paragraph_index,
+                )
+                for c in data.candidates
+            ],
+            CreateOptions(
+                sprint_id=data.sprint_id,
+                form_id=data.form_id,
+                labels=data.labels,
+                assignee_id=data.assignee_id,
+            ),
+            created_by_id=str(current_user.id),
+        )
+    except DocxIntakeError as exc:
+        # Every message here is written for a person: "Choose a sprint for these
+        # tasks to go into" is the whole point of refusing rather than guessing.
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
+
+    return IntakeCreateResponse(
+        created=[IntakeCreatedIssue(**row) for row in created],
+        target=data.target,
     )

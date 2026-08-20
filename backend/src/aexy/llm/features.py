@@ -221,6 +221,16 @@ AI_FEATURES: tuple[AIFeature, ...] = (
         app="docs",
     ),
     AIFeature(
+        id="docs.docx_intake",
+        name="Word document to issues",
+        description=(
+            "Reading a Word document for work items — requirements, review "
+            "findings, action points — and proposing them as issues."
+        ),
+        category="documentation",
+        app="docs",
+    ),
+    AIFeature(
         id="docs.knowledge_extraction",
         name="Knowledge extraction",
         description="Pulling entities and relationships out of a page for the graph.",

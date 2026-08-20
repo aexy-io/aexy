@@ -89,3 +89,65 @@ class DocxAiEditResponse(BaseModel):
 
     #: Where to go and look at it.
     review_url: str | None = None
+
+
+# ── document → issues intake ──
+
+
+class IntakeCandidate(BaseModel):
+    """One proposed issue, and where in the document it came from."""
+
+    title: str
+    detail: str = ""
+    #: ``comments`` | ``markers`` | ``model``. Shown, not just recorded: a person
+    #: deciding whether to keep a row needs to know whether a reviewer wrote it,
+    #: an author tagged it, or a model inferred it.
+    source: str
+    kind: str = "action"
+    origin: str = ""
+    comment_id: str | None = None
+    paragraph_index: int | None = None
+
+
+class IntakePreviewRequest(BaseModel):
+    """Where to read from. Chosen per run, never a workspace default.
+
+    The same document read for "unresolved comments → tickets" and for
+    "requirements → sprint tasks" is two different asks.
+    """
+
+    sources: list[str] = Field(min_length=1, max_length=3)
+
+
+class IntakePreviewResponse(BaseModel):
+    candidates: list[IntakeCandidate] = Field(default_factory=list)
+    #: What each target still needs before it can be created, so the picker can
+    #: ask for it rather than failing on submit.
+    needs_sprint: bool = True
+    needs_form: bool = True
+
+
+class IntakeCreateRequest(BaseModel):
+    """What was kept, and where it goes."""
+
+    target: str = Field(pattern="^(sprint_task|bug|user_story|ticket)$")
+    #: The candidates the person left selected — sent back rather than re-derived,
+    #: so a second model run cannot quietly produce a different list than the one
+    #: they approved.
+    candidates: list[IntakeCandidate] = Field(min_length=1, max_length=100)
+
+    sprint_id: str | None = None
+    form_id: str | None = None
+    labels: list[str] = Field(default_factory=list)
+    assignee_id: str | None = None
+
+
+class IntakeCreatedIssue(BaseModel):
+    id: str
+    title: str
+    key: str | None = None
+
+
+class IntakeCreateResponse(BaseModel):
+    created: list[IntakeCreatedIssue] = Field(default_factory=list)
+    target: str

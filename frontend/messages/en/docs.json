@@ -241,7 +241,38 @@
       "railTitle": "{count, plural, one {# change} other {# changes}} in this proposal",
       "railToggle": "See what changes ({count})",
       "railNoRedline": "no redline",
-      "railAsComment": "as a comment"
+      "railAsComment": "as a comment",
+      "intakeTitle": "Turn this document into issues",
+      "intakeHint": "Reads the document and proposes work items. Nothing is created until you say so.",
+      "intakeSourcesLabel": "Read from",
+      "intakeSource": {
+        "comments": "Open comments",
+        "markers": "TODO / ACTION lines",
+        "model": "Whatever the AI finds"
+      },
+      "intakeModelCost": "Reading with the AI makes a model call. Comments and markers are free.",
+      "intakeNoModelCost": "No model call — this reads only what is already in the document.",
+      "intakeRead": "Read the document",
+      "intakeReadFailed": "Could not read the document for work items",
+      "intakeNothingFound": "Nothing to create from this document. That is a normal answer for a document with no work in it.",
+      "intakeFound": "{count, plural, one {# proposed} other {# proposed}} · {kept} selected",
+      "intakeTargetLabel": "Create as",
+      "intakeTarget": {
+        "sprint_task": "Sprint tasks",
+        "bug": "Bugs",
+        "user_story": "User stories",
+        "ticket": "Tickets"
+      },
+      "intakeSprintLabel": "Sprint",
+      "intakeFormLabel": "Ticket form",
+      "intakeChoose": "Choose…",
+      "intakeNeedsSprint": "Pick a sprint — a task has to live in one.",
+      "intakeNeedsForm": "Pick a form — a ticket's fields and SLA come from it.",
+      "intakeCreate": "Create {count}",
+      "intakeCreated": "Created {count, plural, one {# issue} other {# issues}}",
+      "intakeCreateFailed": "Could not create those issues",
+      "intakeNoSprints": "No sprint is available here. Create these from the sprint board, or choose another type.",
+      "intakeNoForms": "This workspace has no ticket forms yet. Create one in Tickets, or choose another type."
     }
   }
 }

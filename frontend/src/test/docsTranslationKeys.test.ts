@@ -30,6 +30,7 @@ const FILES = [
   "app/(app)/settings/docs/page.tsx",
   "app/(app)/settings/ai/models/page.tsx",
   "components/docs/DocxReviewRail.tsx",
+  "components/docs/DocxIntakePanel.tsx",
 ];
 
 const LOCALES = ["en", "hi"] as const;

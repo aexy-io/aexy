@@ -26,6 +26,8 @@ import { toast } from "sonner";
 import { documentApi, type ProposedEdit } from "@/lib/api";
 import { Spinner } from "@/components/ui/spinner";
 import { useDocsAiSettings } from "@/hooks/useDocsAiSettings";
+import { useTicketForms } from "@/hooks/useTicketing";
+import { DocxIntakePanel } from "./DocxIntakePanel";
 import { DocxProposalsBanner } from "./DocxProposalsBanner";
 import type { DocxCanvasMode, DocxEditorCanvasHandle } from "./DocxEditorCanvas";
 import type { ApplyOpsResult } from "./docxOps";
@@ -187,6 +189,10 @@ export function DocxDocumentEditor({
   }, [saveState]);
 
   const { data: aiSettings } = useDocsAiSettings();
+  // Ticket forms are workspace-scoped, so they are available here. Sprints are
+  // not: `useSprints` needs a team, which a document does not have — the panel
+  // says so rather than showing a dropdown that cannot be satisfied.
+  const { forms: ticketForms } = useTicketForms(workspaceId ?? null);
 
   const reviewProposal = useCallback(
     (proposal: ProposedEdit): ApplyOpsResult | undefined => {
@@ -214,13 +220,32 @@ export function DocxDocumentEditor({
   }, [documentId, queryClient, refetch]);
 
   const currentReviewBanner = (
-    <DocxProposalsBanner
-      workspaceId={workspaceId}
-      documentId={documentId}
-      onReview={reviewProposal}
-      reviewingId={reviewingId}
-      onReviewingChange={setReviewingId}
-    />
+    <>
+      <DocxProposalsBanner
+        workspaceId={workspaceId}
+        documentId={documentId}
+        onReview={reviewProposal}
+        reviewingId={reviewingId}
+        onReviewingChange={setReviewingId}
+      />
+      {/* Behind a disclosure, closed by default: most opens of a document are to
+          read or edit it, not to mine it for work. Rendering the panel open
+          would also make a model-call button the first thing on the page. */}
+      <details data-testid="docx-intake-disclosure" className="mt-2">
+        <summary className="cursor-pointer text-xs text-muted-foreground hover:underline">
+          {t("docx.intakeTitle")}
+        </summary>
+        <DocxIntakePanel
+          workspaceId={workspaceId}
+          documentId={documentId}
+          ticketForms={(ticketForms ?? []).map((form) => ({
+            id: String(form.id),
+            name: form.name,
+          }))}
+          className="mt-2"
+        />
+      </details>
+    </>
   );
 
   if (isLoading) {
