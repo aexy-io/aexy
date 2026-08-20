@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.24.3] - 2026-08-20
+
+### Fixed: an attachment whose name was not ASCII returned a CORS error
+
+Reported from production immediately after 0.24.2:
+
+```
+Access to XMLHttpRequest at 'https://server.aexy.io/api/v1/task-attachments/…'
+from origin 'https://aexy.io' has been blocked by CORS policy:
+No 'Access-Control-Allow-Origin' header is present on the requested resource.
+```
+
+CORS was configured correctly, and the endpoint returned the right headers on a
+401 and on preflight. The real fault was `Content-Disposition`: it interpolated
+the filename straight into the header, and header values are encoded latin-1. A
+name containing Devanagari, an em dash or an emoji raised `UnicodeEncodeError`
+while the response was still being built.
+
+`CORSMiddleware` sits inside `ServerErrorMiddleware`, so a 500 raised in the
+router is answered by the outer one and never gets CORS headers added. The
+browser has no way to tell that apart from a real CORS refusal, and reports the
+symptom rather than the cause — which is why the message named the one thing
+that was not wrong.
+
+The name is now emitted in both forms: the plain one with non-ASCII characters
+substituted, so an extension survives for clients that pick an application from
+it, and an RFC 5987 `filename*` carrying the real name. A blank name falls back
+to "attachment", because an empty plain form reads as "no name given" and those
+clients answer with the last URL segment, which on these routes is a bare id.
+
+Ticket attachments had the identical bug and were more exposed to it — those
+names arrive from whoever emailed the desk. The service desk's own download had
+already solved this correctly; all three now share one builder rather than three
+copies of the reasoning.
+
 ## [0.24.2] - 2026-08-20
 
 Every task attachment was a dead link, and the reason was that nothing served

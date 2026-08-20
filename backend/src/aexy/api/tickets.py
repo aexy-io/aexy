@@ -7,7 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.core.config import settings
 from aexy.core.database import get_db
-from aexy.services.storage_service import get_storage_service, parse_byte_range
+from aexy.services.storage_service import (
+    content_disposition,
+    get_storage_service,
+    parse_byte_range,
+)
 from aexy.api.developers import get_current_developer
 from aexy.models.developer import Developer
 from aexy.schemas.ticketing import (
@@ -58,9 +62,8 @@ def stream_attachment(meta: dict, range_header: str | None = None) -> StreamingR
             detail="Attachment file not found",
         )
 
-    filename = (meta.get("filename") or "attachment").replace('"', "")
     headers = {
-        "Content-Disposition": f'inline; filename="{filename}"',
+        "Content-Disposition": content_disposition(meta.get("filename")),
         "Accept-Ranges": "bytes",
     }
     if result["content_length"] is not None:

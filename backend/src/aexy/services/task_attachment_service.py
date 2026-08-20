@@ -23,7 +23,11 @@ from aexy.models.sprint import SprintTask
 from aexy.schemas.sprint import TaskAttachmentListResponse, TaskAttachmentResponse
 from aexy.services.sprint_task_service import SprintTaskService
 from aexy.services.storage_quota_service import StorageQuotaService
-from aexy.services.storage_service import get_storage_service, parse_byte_range
+from aexy.services.storage_service import (
+    content_disposition,
+    get_storage_service,
+    parse_byte_range,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -75,12 +79,11 @@ def stream_attachment_object(attachment, range_header: str | None = None) -> Str
             detail="Attachment file not found",
         )
 
-    filename = (attachment.file_name or "attachment").replace('"', "")
     headers = {
         # Inline so an image or PDF opens in a tab; the browser still offers
         # Save. `nosniff` because the content type came off an upload and is
         # therefore chosen by whoever uploaded it.
-        "Content-Disposition": f'inline; filename="{filename}"',
+        "Content-Disposition": content_disposition(attachment.file_name),
         "Accept-Ranges": "bytes",
         "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",

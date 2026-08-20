@@ -7,8 +7,6 @@ through this router — it is driven by the inbound webhook / Gmail sync hooks
 
 import asyncio
 import logging
-import re
-from urllib.parse import quote
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -60,6 +58,7 @@ from aexy.schemas.service_desk import (
 from aexy.services.service_desk_digest_service import ServiceDeskDigestService
 from aexy.services.service_desk_service import ServiceDeskService
 from aexy.services.service_desk_ticket_service import ServiceDeskTicketService
+from aexy.services.storage_service import content_disposition
 
 logger = logging.getLogger(__name__)
 
@@ -585,20 +584,14 @@ async def download_ticket_attachment(
     filename, content_type, raw = await ServiceDeskTicketService(db).load_attachment(
         workspace_id, ticket_id, index, scope_developer_id=current.id
     )
-    # Both forms: the plain one for clients that ignore RFC 5987, and the encoded
-    # one so a name with spaces or Devanagari in it survives. Quotes and anything
-    # outside printable ASCII go from the plain form — it sits inside a header —
-    # and a name that was entirely non-ASCII would leave it empty, which some
-    # clients read as "no name given" and answer with the last URL segment: `0`.
-    ascii_fallback = re.sub(r'[^\x20-\x7e]', "_", filename).replace('"', "").strip()
     return Response(
         content=raw,
         media_type=content_type,
         headers={
-            "Content-Disposition": (
-                f'attachment; filename="{ascii_fallback or "attachment"}"; '
-                f"filename*=UTF-8''{quote(filename)}"
-            ),
+            # `attachment`, not inline: this arrived as an inbound MIME part
+            # from whoever emailed the desk, so it is a file the reader saves
+            # rather than something we render on our own origin.
+            "Content-Disposition": content_disposition(filename, "attachment"),
             # A ticket's file is one person's document, not something a shared
             # cache should keep a copy of.
             "Cache-Control": "private, no-store",
