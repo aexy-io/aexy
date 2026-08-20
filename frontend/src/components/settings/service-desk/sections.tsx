@@ -749,7 +749,7 @@ function AiAccuracyPanel() {
       </p>
       <p className="max-w-2xl text-xs text-muted-foreground">{t("ai.accuracy.caveat")}</p>
       <div className="space-y-1">
-        {data.by_request_type.map((row) => (
+        {(data.by_request_type ?? []).map((row) => (
           <div key={row.request_type} className="flex items-center gap-3 text-sm">
             <span className="w-40 shrink-0 truncate">{row.label}</span>
             <div className="h-1.5 w-32 overflow-hidden rounded-full bg-muted">

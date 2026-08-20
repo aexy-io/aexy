@@ -1,9 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import {
   GitMerge,
-  GitPullRequest, useRouter } from "next/navigation";
-import {
+  GitPullRequest,
   Bell,
   UserPlus,
   MessageCircle,
