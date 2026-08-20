@@ -16,7 +16,7 @@ from fastapi import HTTPException
 
 from aexy.core.config import settings
 from aexy.services import task_attachment_service as tas
-from aexy.services.storage_service import parse_byte_range
+from aexy.services.storage_service import content_disposition, parse_byte_range
 
 KEY = "task-attachments/task-1/deadbeef_screenshot.png"
 BODY = b"0123456789"
@@ -157,7 +157,43 @@ def test_row_with_no_recoverable_key_is_a_404(fake_storage):
 def test_quote_in_filename_cannot_break_out_of_the_header(fake_storage):
     fake_storage()
     resp = tas.stream_attachment_object(_attachment(file_name='a"; x="y.png'))
-    assert resp.headers["content-disposition"] == 'inline; filename="a; x=y.png"'
+    assert resp.headers["content-disposition"].startswith('inline; filename="a; x=y.png";')
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        # The one that actually broke production. macOS writes U+202F, a narrow
+        # no-break space, before AM/PM — so this is every screenshot dragged off
+        # a Mac, not an unusual name at all.
+        "Screenshot 2026-08-20 at 3.46.22\u202fPM.png",
+        "बीमा-दावा.pdf",   # Devanagari
+        "report—final.pdf",                                    # em dash
+        "chart 📊.png",                                     # emoji
+        "résumé.docx",                                    # latin-1 representable, still not ASCII
+        "notes\u00a0draft.txt",                             # non-breaking space
+    ],
+)
+def test_a_name_the_header_cannot_encode_does_not_500(fake_storage, name):
+    """Header values are latin-1. Interpolating the name raw raised
+    UnicodeEncodeError while the response was being built, which surfaced as a
+    500 with no CORS headers — reported by the browser as a CORS failure."""
+    fake_storage()
+    resp = tas.stream_attachment_object(_attachment(file_name=name))
+    assert resp.status_code == 200
+    # The thing that used to blow up: every header must survive the wire.
+    for key, value in resp.headers.items():
+        key.encode("latin-1")
+        value.encode("latin-1")
+
+
+def test_the_real_name_is_still_carried(fake_storage):
+    fake_storage()
+    resp = tas.stream_attachment_object(_attachment(file_name="बीमा.pdf"))
+    disposition = resp.headers["content-disposition"]
+    # RFC 5987 form carries the true name; the plain form is the fallback.
+    assert "filename*=UTF-8''%E0%A4%AC%E0%A5%80%E0%A4%AE%E0%A4%BE.pdf" in disposition
+    assert 'filename="____.pdf"' in disposition
 
 
 # ─── Range parsing ──────────────────────────────────────────────────────────
@@ -178,3 +214,37 @@ def test_quote_in_filename_cannot_break_out_of_the_header(fake_storage):
 )
 def test_parse_byte_range(header, expected):
     assert parse_byte_range(header) == expected
+
+
+# ─── Content-Disposition ────────────────────────
+
+def test_content_disposition_keeps_an_ascii_name_readable():
+    assert content_disposition("report.pdf") == (
+        'inline; filename="report.pdf"; filename*=UTF-8\'\'report.pdf'
+    )
+
+
+def test_content_disposition_honours_the_disposition_type():
+    assert content_disposition("report.pdf", "attachment").startswith("attachment; ")
+
+
+def test_content_disposition_substitutes_rather_than_drops():
+    """Non-ASCII characters become underscores, so the plain form keeps the
+    name's shape — its extension in particular, which is what a client uses to
+    pick an application when it ignores the encoded form."""
+    assert 'filename="____.pdf"' in content_disposition("बीमा.pdf")
+
+
+def test_content_disposition_never_leaves_the_plain_form_empty():
+    """An empty plain form reads to some clients as "no name given", and they
+    fall back to the URL's last segment — which on these routes is a bare id."""
+    for blank in (None, "", "   "):
+        assert 'filename="attachment"' in content_disposition(blank)
+
+
+def test_a_mac_screenshot_name_stays_readable():
+    """The character that broke this is invisible, so the plain form must still
+    read as the name somebody recognises rather than as damage."""
+    header = content_disposition("Screenshot 2026-08-20 at 3.46.22\u202fPM.png")
+    assert 'filename="Screenshot 2026-08-20 at 3.46.22_PM.png"' in header
+    assert "filename*=UTF-8''Screenshot%202026-08-20%20at%203.46.22%E2%80%AFPM.png" in header
