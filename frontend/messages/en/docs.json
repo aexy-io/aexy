@@ -212,6 +212,32 @@
       "errorTitle": "Could not load this",
       "errorBody": "The documentation impact for this pull request could not be fetched.",
       "retry": "Try again"
+    },
+    "docx": {
+      "saving": "Saving…",
+      "saved": "Saved",
+      "unsaved": "Unsaved changes",
+      "stale": "Out of date",
+      "saveFailed": "Couldn't save this document",
+      "loadFailed": "Couldn't open this document",
+      "retry": "Try again",
+      "reload": "Reload",
+      "conflict": "Someone else saved this document while you had it open. Reload to get their version — your unsaved changes here will be lost.",
+      "openInEditor": "Open in editor",
+      "wordDocument": "Word document",
+      "previewUnavailable": "Preview couldn't be loaded",
+      "reviewAsTrackedChanges": "Review as tracked changes",
+      "rejectProposal": "Reject",
+      "proposalDone": "Done reviewing",
+      "proposalStale": "Document changed since",
+      "proposalCount": "{count} AI-proposed edit(s)",
+      "proposalFailed": "Couldn't update that proposal",
+      "rejectedByReviewer": "Rejected by reviewer",
+      "reviewingHint": "The changes are marked up in the document. Accept or reject each one, save, then choose Done reviewing.",
+      "someOpsSkipped": "{count} change(s) couldn't be marked up and are not in this redline:",
+      "partiallyReviewable": "Some of these changes can't be shown as tracked changes yet.",
+      "reviewAnyway": "Review anyway",
+      "staleWarning": "This document changed after the proposal was written. Some changes will refuse to apply; others may land in the wrong place."
     }
   }
 }

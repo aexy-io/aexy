@@ -679,6 +679,10 @@ class ReportBuilderService:
             # on its own cadence.
             from aexy.services.predictive_analytics import PredictiveAnalyticsService
 
+            # No gateway on purpose: the cached read needs none, and requiring
+            # one would make rendering a report depend on an LLM being
+            # configured. The constructor's argument is optional for exactly
+            # this caller.
             predictive = PredictiveAnalyticsService()
             dev_id = developer_ids[0] if (developer_ids and metric == MetricType.ATTRITION_RISK) else None
             team_id = config.get("team_id")

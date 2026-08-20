@@ -1519,6 +1519,88 @@ async def notify_document_ai_proposal(
     )
 
 
+async def notify_docx_ai_draft_ready(
+    db: AsyncSession,
+    recipient_id: str,
+    document_id: str,
+    document_title: str,
+    summary: str,
+    change_count: int,
+    workspace_id: str | None = None,
+) -> int:
+    """Tell the person who asked that their Word draft is ready.
+
+    Deliberately NOT the same event as ``DOCUMENT_AI_PROPOSAL``, and deliberately
+    passing no ``actor_id``: the recipient IS the actor here, and
+    ``_notify_quietly`` drops the actor. The owner event has a self-action guard
+    precisely so it does not tell you about your own request — which left the
+    person who asked for a background draft hearing nothing at all.
+    """
+    context: dict[str, Any] = {
+        "document_id": document_id,
+        "document_title": document_title,
+        "summary": summary,
+        "change_count": change_count,
+        "action_url": f"/docs/{document_id}",
+        # Grouping key in the bell: several drafts on one document read as one
+        # thread rather than a stack.
+        "entity_id": document_id,
+    }
+    if workspace_id:
+        context["workspace_id"] = str(workspace_id)
+
+    changes = "change" if change_count == 1 else "changes"
+    return await _notify_quietly(
+        db,
+        [recipient_id],
+        NotificationEventType.DOCX_AI_DRAFT_READY,
+        title="Your Word edit is ready to review",
+        body=f'{change_count} {changes} drafted for "{document_title}": {summary}',
+        context=context,
+    )
+
+
+async def notify_docx_ai_comment_answered(
+    db: AsyncSession,
+    recipient_id: str,
+    document_id: str,
+    document_title: str,
+    comment_excerpt: str,
+    summary: str,
+    workspace_id: str | None = None,
+) -> int:
+    """Tell a comment's author that the AI drafted an answer to it.
+
+    The recipient is whoever wrote the comment, which is often neither the
+    document's owner nor anyone who asked for anything: a reviewer typed a remark
+    in Word, sent the file back, and has no reason to be watching Aexy. No
+    ``actor_id`` for the same reason as above — the trigger was their own
+    comment.
+    """
+    context: dict[str, Any] = {
+        "document_id": document_id,
+        "document_title": document_title,
+        "comment_excerpt": comment_excerpt,
+        "summary": summary,
+        "action_url": f"/docs/{document_id}",
+        "entity_id": document_id,
+    }
+    if workspace_id:
+        context["workspace_id"] = str(workspace_id)
+
+    return await _notify_quietly(
+        db,
+        [recipient_id],
+        NotificationEventType.DOCX_AI_COMMENT_ANSWERED,
+        title="Aexy answered your comment",
+        body=(
+            f'Your comment on "{document_title}" — {comment_excerpt} — has a '
+            f"drafted edit waiting: {summary}"
+        ),
+        context=context,
+    )
+
+
 async def notify_document_sync_ownership_transferred(
     db: AsyncSession,
     recipient_id: str,

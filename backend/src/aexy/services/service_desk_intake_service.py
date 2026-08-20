@@ -490,7 +490,8 @@ class ServiceDeskIntakeService:
                 f"Open tickets for this company:\n{catalogue}"
             )
             text, *_ = await get_llm_gateway().call_llm(
-                system, user, tokens_estimate=350, workspace_id=workspace_id
+                system, user, tokens_estimate=350, workspace_id=workspace_id,
+                feature="service_desk.ticket_match",
             )
             found = re.search(r"\{.*\}", text, re.DOTALL)
             if not found:
@@ -1293,6 +1294,7 @@ class ServiceDeskIntakeService:
                 user,
                 tokens_estimate=650,
                 workspace_id=workspace_id,
+                feature="service_desk.classify",
             )
 
             match = re.search(r"\{.*\}", text, re.DOTALL)

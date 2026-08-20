@@ -84,7 +84,9 @@ def make_service():
     return svc, db
 
 
-def make_doc(*, doc_id="doc-1", owner_id="owner-1", content=None):
+def make_doc(
+    *, doc_id="doc-1", owner_id="owner-1", content=None, content_format="tiptap"
+):
     return SimpleNamespace(
         id=doc_id,
         # `title` and `workspace_id` are read when notifying the owner: the
@@ -93,6 +95,9 @@ def make_doc(*, doc_id="doc-1", owner_id="owner-1", content=None):
         title="Runbook",
         workspace_id="ws-1",
         content=content or {"type": "doc", "content": []},
+        # A TipTap proposal against a Word document is refused; every fake here
+        # is a TipTap document unless a test says otherwise.
+        content_format=content_format,
         created_by_id=owner_id,
     )
 
@@ -183,7 +188,7 @@ class TestIsStale:
     async def test_matching_sha_not_stale(self):
         svc, db = make_service()
         content = {"type": "doc", "content": []}
-        db.get.return_value = SimpleNamespace(content=content)
+        db.get.return_value = SimpleNamespace(content=content, content_format="tiptap")
 
         proposal = SimpleNamespace(
             document_id="doc-1",
@@ -199,7 +204,7 @@ class TestIsStale:
         svc, db = make_service()
         original = {"type": "doc", "content": []}
         edited = {"type": "doc", "content": [{"type": "paragraph"}]}
-        db.get.return_value = SimpleNamespace(content=edited)
+        db.get.return_value = SimpleNamespace(content=edited, content_format="tiptap")
 
         proposal = SimpleNamespace(
             document_id="doc-1",

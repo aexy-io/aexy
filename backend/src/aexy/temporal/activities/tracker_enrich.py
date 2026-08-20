@@ -203,6 +203,7 @@ async def enrich_attribute_tracker_events(input: EnrichTrackerEventsInput) -> di
                         tokens_estimate=2000,
                         developer_id=developer_id,
                         db=db,
+                        feature="insights.tracker_enrich",
                     )
                     parsed = _parse_llm_json(text)
                     for r in parsed.get("spans", []):

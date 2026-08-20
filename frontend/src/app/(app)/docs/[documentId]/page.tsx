@@ -8,6 +8,7 @@ import { useDocument, useDocumentCodeLinks } from "@/hooks/useDocuments";
 import { useAuth } from "@/hooks/useAuth";
 import { CollaborativeEditor } from "@/components/docs/CollaborativeEditor";
 import { DocumentEditor } from "@/components/docs/DocumentEditor";
+import { DocxDocumentEditor } from "@/components/docs/DocxDocumentEditor";
 import { DocumentBreadcrumb } from "@/components/docs/DocumentBreadcrumb";
 import { DocumentComments } from "@/components/docs/DocumentComments";
 import { ProposedEditsBanner } from "@/components/docs/ProposedEditsBanner";
@@ -156,6 +157,37 @@ export default function DocumentPage() {
 
   if (!document) {
     return null;
+  }
+
+  // A Word document's body is a file, not a TipTap tree. Forked before every
+  // branch below because all of them read `document.content`, which is `{}`
+  // here — the TipTap editor would render a blank page, and a reader cannot
+  // tell a blank page from a lost document.
+  //
+  // The panels above the TipTap editor are deliberately not rendered yet:
+  // proposed edits, code links and GitHub sync are all TipTap-shaped, and the
+  // API refuses them for a Word document. Comments and version history are
+  // format-independent and are the next thing to bring across.
+  if (document.content_format === "docx") {
+    return (
+      <div className="flex flex-col h-full">
+        <DocxDocumentEditor
+          workspaceId={currentWorkspaceId!}
+          documentId={documentId}
+          title={document.title}
+          author={user?.name || undefined}
+          embedded={embedded}
+          breadcrumb={
+            embedded ? undefined : (
+              <DocumentBreadcrumb
+                workspaceId={currentWorkspaceId}
+                documentId={documentId}
+              />
+            )
+          }
+        />
+      </div>
+    );
   }
 
   // Use CollaborativeEditor when user is authenticated and collaboration is enabled

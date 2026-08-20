@@ -6,7 +6,9 @@ from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
+    CheckConstraint,
     DateTime,
     Float,
     ForeignKey,
@@ -26,6 +28,14 @@ if TYPE_CHECKING:
     from aexy.models.developer import Developer
     from aexy.models.repository import Repository
     from aexy.models.workspace import Workspace
+
+
+# How a document's body is stored. Not an Enum: these are compared against a
+# raw column value in query filters and in the API's format guards, and a bare
+# string keeps those call sites from needing `.value` everywhere.
+CONTENT_FORMAT_TIPTAP = "tiptap"
+CONTENT_FORMAT_DOCX = "docx"
+CONTENT_FORMATS = (CONTENT_FORMAT_TIPTAP, CONTENT_FORMAT_DOCX)
 
 
 class DocumentStatus(str, Enum):
@@ -294,6 +304,35 @@ class Document(Base):
         Text, nullable=True
     )  # Plain text for search
 
+    # Which of the two bodies above is the real one.
+    #
+    # 'tiptap' keeps `content` authoritative and is what every existing row is.
+    # 'docx' means the document *is* a Word file: `content` holds `{}`, the bytes
+    # live in object storage under `docx_storage_key`, and `content_text` holds
+    # the Markdown extracted from them — which is why search, embeddings and the
+    # knowledge graph need no docx-specific code at all.
+    content_format: Mapped[str] = mapped_column(
+        String(20),
+        default=CONTENT_FORMAT_TIPTAP,
+        server_default=CONTENT_FORMAT_TIPTAP,
+        nullable=False,
+    )
+    docx_storage_key: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    docx_size_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    # SHA-256 of the current bytes: the docx counterpart of
+    # compute_content_sha(content), so a stale AI proposal is caught at approve
+    # time instead of overwriting an edit made since it was written.
+    docx_content_sha: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    # Set when this document was promoted from a file already in Drive, so the
+    # two views of one document stay connected and Drive can link to the editor
+    # rather than offering a download of bytes that have since been edited.
+    source_drive_file_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("drive_files.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
     # Visual customization
     icon: Mapped[str | None] = mapped_column(String(50), nullable=True)  # Emoji or icon
     cover_image: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -406,10 +445,29 @@ class Document(Base):
         lazy="selectin",
     )
 
+    @property
+    def is_docx(self) -> bool:
+        """Whether this document's body is a Word file rather than TipTap JSON.
+
+        Read it before touching `content`: for a docx document that field is
+        `{}`, so a TipTap walker returns nothing and reports success. Callers
+        that cannot handle a Word body should refuse rather than no-op.
+        """
+        return self.content_format == CONTENT_FORMAT_DOCX
+
     __table_args__ = (
         Index("ix_documents_workspace_parent", "workspace_id", "parent_id"),
         Index("ix_documents_workspace_template", "workspace_id", "is_template"),
         Index("ix_documents_workspace_space", "workspace_id", "space_id"),
+        Index("ix_documents_workspace_format", "workspace_id", "content_format"),
+        CheckConstraint(
+            f"content_format IN {CONTENT_FORMATS}",
+            name="ck_documents_content_format",
+        ),
+        CheckConstraint(
+            f"content_format <> '{CONTENT_FORMAT_DOCX}' OR docx_storage_key IS NOT NULL",
+            name="ck_documents_docx_has_key",
+        ),
     )
 
 
@@ -433,6 +491,20 @@ class DocumentVersion(Base):
     # Version info
     version_number: Mapped[int] = mapped_column(Integer, nullable=False)
     content: Mapped[dict] = mapped_column(JSONB, nullable=False)  # Full snapshot
+
+    # A Word document's history has to work too, or "restore" is a button that
+    # silently does nothing. Each version is its own immutable object at
+    # documents/{document_id}/versions/{version_number}.docx, so restoring is a
+    # copy rather than a diff replay — the only correct approach for a format
+    # this module does not itself parse. `content` holds `{}` on those rows.
+    content_format: Mapped[str] = mapped_column(
+        String(20),
+        default=CONTENT_FORMAT_TIPTAP,
+        server_default=CONTENT_FORMAT_TIPTAP,
+        nullable=False,
+    )
+    docx_storage_key: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    docx_size_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     content_diff: Mapped[dict | None] = mapped_column(
         JSONB, nullable=True
     )  # Diff from previous
@@ -470,6 +542,14 @@ class DocumentVersion(Base):
     __table_args__ = (
         UniqueConstraint(
             "document_id", "version_number", name="uq_document_version_number"
+        ),
+        CheckConstraint(
+            f"content_format IN {CONTENT_FORMATS}",
+            name="ck_document_versions_content_format",
+        ),
+        CheckConstraint(
+            f"content_format <> '{CONTENT_FORMAT_DOCX}' OR docx_storage_key IS NOT NULL",
+            name="ck_document_versions_docx_has_key",
         ),
     )
 
@@ -1153,6 +1233,11 @@ class ProposedEditSource(str, Enum):
     REGENERATE = "regenerate"
     SUGGEST_IMPROVEMENTS = "suggest_improvements"
     MANUAL_AI_EDIT = "manual_ai_edit"
+    # An agent's edit to a Word document. Distinct because its payload is an op
+    # list rather than a replacement tree, and because it is reviewed as a
+    # tracked-changes redline instead of a side-by-side content diff — the queue
+    # has to know which reviewer to open.
+    AGENT_DOCX_EDIT = "agent_docx_edit"
 
 
 class ProposedEditStatus(str, Enum):

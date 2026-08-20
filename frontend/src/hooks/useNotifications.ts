@@ -342,6 +342,9 @@ export function getNotificationIcon(eventType: string): string {
     case "document_impact_pr_opened":
     case "document_impact_pr_merged":
       return "git-merge";
+    case "docx_ai_draft_ready":
+    case "docx_ai_comment_answered":
+      return "sparkles";
     case "leave_request_submitted":
     case "leave_request_approved":
     case "leave_request_rejected":
@@ -456,6 +459,12 @@ export function getNotificationColor(eventType: string): string {
     case "document_impact_pr_opened":
     case "document_impact_pr_merged":
       return "text-amber-400";
+    // An AI suggestion waiting on you, in the same colour as everything else the
+    // AI produced, so the bell separates "a person did something" from "a model
+    // drafted something".
+    case "docx_ai_draft_ready":
+    case "docx_ai_comment_answered":
+      return "text-violet-400";
     case "leave_request_submitted":
       return "text-blue-400";
     case "leave_request_approved":

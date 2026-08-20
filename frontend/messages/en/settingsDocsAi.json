@@ -1,0 +1,34 @@
+{
+  "settingsDocsAi": {
+    "title": "Documentation",
+    "description": "How the AI drafts edits to Word documents in this workspace, and who hears about it.",
+    "readOnly": "You can see these settings but not change them. Ask a workspace owner or admin.",
+
+    "featureTitle": "AI editing",
+    "featureDescription": "The AI never writes into a document directly. It drafts, and a person reviews the result as tracked changes they can accept or reject one at a time.",
+    "modeLabel": "Let people ask the AI for edits",
+    "modeDescription": "Turns off the Ask Aexy control, the background drafting job, and the comment trigger together.",
+    "allowCommentsLabel": "Let the AI leave comments",
+    "allowCommentsDescription": "When the AI has a concern it should not silently guess at — a clause contradicting another section — it can raise it as a margin comment instead of rewriting the text.",
+    "maxOpsLabel": "Most changes in one draft",
+    "maxOpsDescription": "A ceiling, not a target. Twenty-five tracked changes is a redline somebody can read through; two hundred is a rewrite wearing one.",
+
+    "mentionTitle": "Asking from inside the document",
+    "mentionDescription": "Mention the handle in a Word comment and the AI drafts an edit answering it, then replies in the thread. This works for comments written in Word and uploaded, not only ones typed here.",
+    "commentTriggerLabel": "Draft an edit when someone mentions the handle",
+    "commentTriggerDescription": "Checked on the next save of the document. Each comment is acted on once, however many times the file is saved.",
+    "handleLabel": "Handle",
+    "handleDescription": "Write {mention} in a comment to reach the AI. Letters, digits, dots, dashes and underscores.",
+
+    "attributionTitle": "Attribution and notifications",
+    "attributionDescription": "The AI's changes carry a name, and that name travels in the file — whoever opens it in Word sees it on every tracked change and comment.",
+    "authorLabel": "The AI signs its changes as",
+    "authorDescription": "Not a person's name: a reviewer needs to be able to tell the AI's suggestion from a colleague's.",
+    "notifyOwnerLabel": "Tell the document's owner about drafts nobody asked them for",
+    "notifyOwnerDescription": "Applies to background drafts and comment mentions. Somebody who asked for a draft themselves is always told when it is ready.",
+
+    "notificationsHint": "Which channels those notifications use is your own choice, per event.",
+    "notificationsLink": "Notification settings",
+    "autosave": "Changes are saved as you make them."
+  }
+}

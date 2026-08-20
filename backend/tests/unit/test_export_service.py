@@ -389,3 +389,79 @@ class TestExportValidation:
 
     def test_validate_export_request_invalid_type(self):
         pass
+
+
+class TestDocxExport:
+    """Word export.
+
+    Asserts the bytes are a document that reads back, not just that the job
+    reached a terminal status: a renderer that emits a file Word cannot open,
+    or one that drops the payload and writes only a title, would both leave
+    the job "completed".
+    """
+
+    @pytest.fixture
+    def service(self, tmp_path):
+        return ExportService(export_dir=tmp_path / "exports")
+
+    @pytest.mark.asyncio
+    async def test_tabular_data_becomes_a_real_table(
+        self, service, db_session, sample_developer
+    ):
+        request = ExportRequest(export_type="sprint_tasks", format="docx", config={})
+        try:
+            job = await service.create_export_job(
+                request, sample_developer.id, db_session
+            )
+        except ValueError:
+            pytest.skip("python-docx not installed; Word export unavailable")
+
+        data = {
+            "headers": ["Task", "Owner", "Points"],
+            "rows": [["Fix billing", "ana", "3"], ["Add dunning", "raj", "5"]],
+        }
+
+        result = await service.process_export(job.id, db_session, data)
+        assert result.status == ExportStatus.COMPLETED.value
+
+        from pathlib import Path
+
+        from aexy.services.docx_service import extract_structured
+
+        extract = extract_structured(Path(result.file_path).read_bytes())
+
+        assert len(extract.tables) == 1
+        assert extract.tables[0].header == ["Task", "Owner", "Points"]
+        assert ["Add dunning", "raj", "5"] in extract.tables[0].rows
+
+    @pytest.mark.asyncio
+    async def test_nested_data_still_produces_content(
+        self, service, db_session, sample_developer
+    ):
+        """The shapes `_data_to_table` returns None for must not export a
+        document containing nothing but a heading."""
+        request = ExportRequest(export_type="report", format="docx", config={})
+        try:
+            job = await service.create_export_job(
+                request, sample_developer.id, db_session
+            )
+        except ValueError:
+            pytest.skip("python-docx not installed; Word export unavailable")
+
+        data = {
+            "summary": {"velocity": 42, "carry_over": 3},
+            "risks": ["Migration window", "Data backfill"],
+        }
+
+        result = await service.process_export(job.id, db_session, data)
+        assert result.status == ExportStatus.COMPLETED.value
+
+        from pathlib import Path
+
+        from aexy.services.docx_service import extract_structured
+
+        markdown = extract_structured(Path(result.file_path).read_bytes()).markdown
+
+        assert "42" in markdown
+        assert "Migration window" in markdown
+        assert "Data backfill" in markdown

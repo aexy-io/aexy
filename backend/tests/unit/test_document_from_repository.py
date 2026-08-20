@@ -51,6 +51,12 @@ class FakeDocService:
         FakeDocService.last = self
         return SimpleNamespace(
             id=DOC,
+            # A real Document always carries these. `content_format` is what the
+            # TipTap-only guards read; the docx_* fields are on the response.
+            content_format="tiptap",
+            docx_size_bytes=None,
+            docx_content_sha=None,
+            source_drive_file_id=None,
             workspace_id=WORKSPACE,
             parent_id=None,
             title=kwargs["title"],
@@ -79,6 +85,12 @@ class FakeDocService:
     async def get_document(self, document_id, workspace_id=None):
         return SimpleNamespace(
             id=DOC,
+            # A real Document always carries these. `content_format` is what the
+            # TipTap-only guards read; the docx_* fields are on the response.
+            content_format="tiptap",
+            docx_size_bytes=None,
+            docx_content_sha=None,
+            source_drive_file_id=None,
             workspace_id=WORKSPACE,
             parent_id=None,
             title="Session service",

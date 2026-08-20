@@ -191,6 +191,18 @@ class NotificationEventType(str, Enum):
     # here means the first you hear of it is an AI proposal you did not ask for
     # on a document you did not know you owned.
     DOCUMENT_SYNC_OWNERSHIP_TRANSFERRED = "document_sync_ownership_transferred"
+    # The Word edit you asked the AI to draft in the background is ready to
+    # review. Addressed to the person who ASKED, which is why it is distinct
+    # from DOCUMENT_AI_PROPOSAL: that one tells a document's owner something is
+    # waiting on them, and the self-action guard there deliberately suppresses
+    # it for the requester. Without this, asking for a draft and closing the tab
+    # meant never hearing that it arrived.
+    DOCX_AI_DRAFT_READY = "docx_ai_draft_ready"
+    # The AI answered the comment you left in a Word document. Addressed to the
+    # comment's author, who may be neither the requester nor the owner — often
+    # they are a reviewer who typed a remark in Word and has no reason to be
+    # watching Aexy at all.
+    DOCX_AI_COMMENT_ANSWERED = "docx_ai_comment_answered"
 
     # Documentation impact — the only two events in the product addressed to the
     # recipient about their *own* action, which is why their emitters must not
@@ -585,6 +597,8 @@ NOTIFICATION_CATEGORIES: dict[str, list[str]] = {
         NotificationEventType.DOCUMENT_COMMENTED.value,
         NotificationEventType.DOCUMENT_AI_PROPOSAL.value,
         NotificationEventType.DOCUMENT_SYNC_OWNERSHIP_TRANSFERRED.value,
+        NotificationEventType.DOCX_AI_DRAFT_READY.value,
+        NotificationEventType.DOCX_AI_COMMENT_ANSWERED.value,
     ],
     # Its own category rather than joining "documents", for two reasons worth the
     # two lines: turning off document comments should not silence feedback on your
@@ -753,6 +767,14 @@ DEFAULT_NOTIFICATION_PREFERENCES = {
     # Email too: this arrives when a colleague leaves, which is exactly when
     # nobody is watching the bell.
     NotificationEventType.DOCUMENT_SYNC_OWNERSHIP_TRANSFERRED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    # Email on by default: you asked for this and then went to do something
+    # else, which is the whole reason the background path exists. In-app alone
+    # would only reach you if you were still looking at Aexy.
+    NotificationEventType.DOCX_AI_DRAFT_READY: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    # Email on by default for a different reason: the recipient is often a
+    # reviewer who wrote a comment in Word and has no habit of opening Aexy, so
+    # in-app would be a notification nobody ever sees.
+    NotificationEventType.DOCX_AI_COMMENT_ANSWERED: {"in_app": True, "email": True, "slack": False, "web_push": False},
     # Documentation impact
     #
     # Fires on every pull request that touches a documented module, which on a

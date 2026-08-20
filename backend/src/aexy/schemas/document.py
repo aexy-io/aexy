@@ -65,6 +65,17 @@ class DocumentResponse(BaseModel):
     title: str
     content: dict[str, Any]
     content_text: str | None = None
+
+    # 'tiptap' | 'docx'. The frontend picks its editor from this, so it is on the
+    # response rather than inferred: a Word document handed to the TipTap editor
+    # renders as a blank page, which reads as data loss rather than a wrong route.
+    content_format: str = "tiptap"
+    # Present only for 'docx'. The sha is what a save sends back for optimistic
+    # concurrency, so the editor has to be able to see the one it loaded.
+    docx_size_bytes: int | None = None
+    docx_content_sha: str | None = None
+    source_drive_file_id: str | None = None
+
     icon: str | None = None
     cover_image: str | None = None
     is_template: bool = False
@@ -93,6 +104,9 @@ class DocumentListResponse(BaseModel):
     parent_id: str | None = None
     title: str
     icon: str | None = None
+    # Listings and the sidebar tree show a Word document with its own icon and
+    # route to a different editor, so the format has to survive the light shape.
+    content_format: str = "tiptap"
     generation_status: DocumentStatus = "draft"
     created_at: datetime
     updated_at: datetime
@@ -720,6 +734,7 @@ ProposedEditSourceLiteral = Literal[
     "regenerate",
     "suggest_improvements",
     "manual_ai_edit",
+    "agent_docx_edit",
 ]
 
 ProposedEditStatusLiteral = Literal[
@@ -753,7 +768,14 @@ class ProposedEditResponse(BaseModel):
     id: str
     document_id: str
     source: ProposedEditSourceLiteral
-    proposed_content: dict[str, Any]
+    # Exactly one of these is populated, decided by the document's format.
+    #
+    # A TipTap proposal carries a replacement body. A Word proposal carries an
+    # ordered edit list instead: there is no useful way to show a person a diff
+    # of two opaque zips, so the reviewable form is a tracked-changes redline
+    # produced by replaying the ops into the document.
+    proposed_content: dict[str, Any] | None = None
+    proposed_ops: list[dict[str, Any]] | None = None
     base_content_sha: str | None = None
     diff_summary: dict[str, Any] | None = None
     status: ProposedEditStatusLiteral

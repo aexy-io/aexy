@@ -182,6 +182,7 @@ async def generate_workflow_from_prompt(
         workspace_id=workspace_id,
         developer_id=developer_id,
         db=db,
+        feature="agents.workflow_generation",
     )
 
     stripped = _strip_json_fence(response)

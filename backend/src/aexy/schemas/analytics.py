@@ -69,6 +69,7 @@ class ExportFormat(str, Enum):
     CSV = "csv"
     XLSX = "xlsx"
     JSON = "json"
+    DOCX = "docx"
 
 
 class ExportType(str, Enum):

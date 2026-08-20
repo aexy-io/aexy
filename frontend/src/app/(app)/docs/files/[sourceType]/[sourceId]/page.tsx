@@ -1,8 +1,11 @@
 "use client";
 
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, ExternalLink, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import { useMutation } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 
 import {
   type FileSourceType,
@@ -15,6 +18,8 @@ import { useWorkspace } from "@/hooks/useWorkspace";
 
 import { FileMetadataSidecar } from "@/components/files/FileMetadataSidecar";
 import { VideoAnnotatedPlayer } from "@/components/drive/VideoAnnotatedPlayer";
+import { DocxFileViewer } from "@/components/docs/DocxFileViewer";
+import { documentApi } from "@/lib/api";
 
 const VALID_SOURCES: FileSourceType[] = [
   "drive_file",
@@ -136,9 +141,65 @@ function DrivePreview({
       />
     );
   }
+  // `kind` is "doc" for several office formats, so the extension decides:
+  // only .docx has an engine that can render it.
+  if (
+    workspaceId &&
+    file.kind === "doc" &&
+    file.file_name.toLowerCase().endsWith(".docx")
+  ) {
+    return <DocxPreview file={file} workspaceId={workspaceId} />;
+  }
   return (
     <div className="rounded-md border border-border bg-muted/30 p-6 text-sm text-muted-foreground">
       No inline preview for this file type. Use Download.
+    </div>
+  );
+}
+
+function DocxPreview({
+  file,
+  workspaceId,
+}: {
+  file: DriveFile;
+  workspaceId: string;
+}) {
+  const t = useTranslations("docs");
+  const router = useRouter();
+
+  // Promoting copies the bytes into a document with its own history, rather than
+  // making the editor write back over a file other people may have linked to.
+  const promote = useMutation({
+    mutationFn: () => documentApi.createFromDriveFile(workspaceId, file.id),
+    onSuccess: (document) => router.push(`/docs/${document.id}`),
+    onError: () => toast.error(t("docx.loadFailed")),
+  });
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs uppercase tracking-wide text-muted-foreground">
+          {t("docx.wordDocument")}
+        </span>
+        <button
+          type="button"
+          onClick={() => promote.mutate()}
+          disabled={promote.isPending}
+          className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium hover:bg-muted disabled:opacity-60"
+        >
+          {promote.isPending ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <ExternalLink className="h-3 w-3" />
+          )}
+          {t("docx.openInEditor")}
+        </button>
+      </div>
+      <DocxFileViewer
+        workspaceId={workspaceId}
+        fileId={file.id}
+        fileName={file.file_name}
+      />
     </div>
   );
 }

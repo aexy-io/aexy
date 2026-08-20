@@ -6762,6 +6762,13 @@ export interface Document {
   title: string;
   content: Record<string, unknown>;
   content_text: string | null;
+  /** "tiptap" | "docx". Chooses the editor: a Word document handed to the TipTap
+   *  editor renders as a blank page, which reads as data loss, not a bad route. */
+  content_format: DocumentContentFormat;
+  /** Present only for content_format === "docx". */
+  docx_size_bytes: number | null;
+  docx_content_sha: string | null;
+  source_drive_file_id: string | null;
   icon: string | null;
   cover_image: string | null;
   is_template: boolean;
@@ -6780,12 +6787,37 @@ export interface Document {
   updated_at: string;
 }
 
+export type DocumentContentFormat = "tiptap" | "docx";
+
+/** One edit on a Word document proposal. Mirrors the backend's supported ops. */
+export interface DocxOp {
+  kind: string;
+  find?: string;
+  replace?: string;
+  count?: number;
+  heading?: string;
+  level?: number;
+  markdown?: string;
+  table_index?: number;
+  row?: number;
+  column?: number;
+  text?: string;
+}
+
+export interface DocxBytes {
+  bytes: ArrayBuffer;
+  /** From the X-Docx-Content-Sha response header. Sent back on save so a
+   *  concurrent save is detected rather than silently overwritten. */
+  sha: string | null;
+}
+
 export interface DocumentListItem {
   id: string;
   workspace_id: string;
   parent_id: string | null;
   title: string;
   icon: string | null;
+  content_format: DocumentContentFormat;
   generation_status: DocumentStatus;
   created_at: string;
   updated_at: string;
@@ -7153,6 +7185,117 @@ export interface DocumentAncestor {
 // ============ Document API ============
 
 export const documentApi = {
+  // ---- Word documents ----
+  //
+  // Bytes go through the API rather than a presigned URL: uploads are private,
+  // and the editor fetches these from the page, where a cross-origin object URL
+  // would need bucket CORS that is not configured. Same-origin needs none.
+
+  /** Upload a .docx and get a first-class document back. */
+  createFromDocx: async (
+    workspaceId: string,
+    file: File,
+    options?: { title?: string; parentId?: string; spaceId?: string }
+  ): Promise<Document> => {
+    const form = new FormData();
+    form.append("file", file);
+    const params = new URLSearchParams();
+    if (options?.title) params.set("title", options.title);
+    if (options?.parentId) params.set("parent_id", options.parentId);
+    if (options?.spaceId) params.set("space_id", options.spaceId);
+    const query = params.toString();
+    const response = await api.post(
+      `/workspaces/${workspaceId}/documents/docx${query ? `?${query}` : ""}`,
+      form,
+      { headers: { "Content-Type": "multipart/form-data" } }
+    );
+    return response.data;
+  },
+
+  /** The current bytes, plus the sha a later save must be based on. */
+  getDocxBytes: async (
+    workspaceId: string,
+    documentId: string
+  ): Promise<DocxBytes> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/documents/${documentId}/docx`,
+      { responseType: "arraybuffer" }
+    );
+    return {
+      bytes: response.data as ArrayBuffer,
+      sha: (response.headers?.["x-docx-content-sha"] as string) || null,
+    };
+  },
+
+  /**
+   * Save new bytes, creating a version.
+   *
+   * `expectedSha` is the sha the edit was based on. A 409 means somebody else
+   * saved first and this copy is stale — the caller must reload rather than
+   * retry, because the editor holds the whole document and a retry would
+   * discard the other author's save in full.
+   */
+  saveDocxBytes: async (
+    workspaceId: string,
+    documentId: string,
+    bytes: ArrayBuffer | Uint8Array,
+    expectedSha?: string | null
+  ): Promise<Document> => {
+    const form = new FormData();
+    // `Uint8Array<ArrayBufferLike>` is not a `BlobPart` under TS 5.7's stricter
+    // ArrayBuffer typing, and the editor hands back a plain ArrayBuffer anyway.
+    const part: ArrayBuffer =
+      bytes instanceof Uint8Array
+        ? (bytes.slice().buffer as ArrayBuffer)
+        : bytes;
+    form.append(
+      "file",
+      new Blob([part], {
+        type:
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      }),
+      "document.docx"
+    );
+    const query = expectedSha
+      ? `?expected_sha=${encodeURIComponent(expectedSha)}`
+      : "";
+    const response = await api.put(
+      `/workspaces/${workspaceId}/documents/${documentId}/docx${query}`,
+      form,
+      { headers: { "Content-Type": "multipart/form-data" } }
+    );
+    return response.data;
+  },
+
+  /** One saved version's bytes, so history is readable before restoring. */
+  getDocxVersionBytes: async (
+    workspaceId: string,
+    documentId: string,
+    versionId: string
+  ): Promise<ArrayBuffer> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/documents/${documentId}/docx/versions/${versionId}`,
+      { responseType: "arraybuffer" }
+    );
+    return response.data as ArrayBuffer;
+  },
+
+  /** Turn a .docx already in Drive into an editable document. */
+  createFromDriveFile: async (
+    workspaceId: string,
+    fileId: string,
+    options?: { parentId?: string; spaceId?: string }
+  ): Promise<Document> => {
+    const params = new URLSearchParams();
+    if (options?.parentId) params.set("parent_id", options.parentId);
+    if (options?.spaceId) params.set("space_id", options.spaceId);
+    const query = params.toString();
+    const response = await api.post(
+      `/workspaces/${workspaceId}/documents/from-drive-file/${fileId}${query ? `?${query}` : ""}`
+    );
+    return response.data;
+  },
+
   // Document CRUD
   create: async (workspaceId: string, data: DocumentCreate): Promise<Document> => {
     const response = await api.post(`/workspaces/${workspaceId}/documents`, data);
@@ -7664,7 +7807,8 @@ export type ProposedEditSource =
   | "code_change_sync"
   | "regenerate"
   | "suggest_improvements"
-  | "manual_ai_edit";
+  | "manual_ai_edit"
+  | "agent_docx_edit";
 
 export type ProposedEditStatus =
   | "pending"
@@ -7676,9 +7820,19 @@ export interface ProposedEdit {
   id: string;
   document_id: string;
   source: ProposedEditSource;
-  proposed_content: Record<string, unknown>;
+  /** Exactly one of these is populated, decided by the document's format. */
+  proposed_content: Record<string, unknown> | null;
+  /** A Word document's proposal: an ordered edit list, replayed as a redline. */
+  proposed_ops: DocxOp[] | null;
   base_content_sha: string | null;
-  diff_summary: { sections_added?: string[]; sections_removed?: string[]; headings_changed?: string[] } | null;
+  diff_summary: {
+    sections_added?: string[];
+    sections_removed?: string[];
+    headings_changed?: string[];
+    /** Word proposals carry a one-line description and an op count instead. */
+    summary?: string;
+    op_count?: number;
+  } | null;
   status: ProposedEditStatus;
   proposed_by_id: string | null;
   proposed_at: string;
@@ -24174,6 +24328,26 @@ export interface DriveUsage {
 }
 
 export const driveApi = {
+  /**
+   * A file's bytes, from this origin.
+   *
+   * `file_url` is presigned, which is enough for an `<img>` or `<iframe>` where
+   * the browser navigates and CORS never applies. A reader that parses the bytes
+   * in the page — the Word preview — has to `fetch` them, and that is a
+   * cross-origin request to the storage endpoint with no bucket CORS policy
+   * behind it. Same-origin needs none.
+   */
+  getFileContent: async (
+    workspaceId: string,
+    fileId: string,
+  ): Promise<ArrayBuffer> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/drive/files/${fileId}/content`,
+      { responseType: "arraybuffer" },
+    );
+    return response.data as ArrayBuffer;
+  },
+
   listFiles: async (
     workspaceId: string,
     params: {

@@ -1,10 +1,11 @@
 "use client";
 
-import {
-  GitMerge,
-  GitPullRequest, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   Bell,
+  GitMerge,
+  GitPullRequest,
+  Sparkles,
   UserPlus,
   MessageCircle,
   RefreshCw,
@@ -45,6 +46,10 @@ const iconMap: Record<string, React.ElementType> = {
   // a document one: the subject is the change, not the page.
   "document_impact_pr_opened": GitPullRequest,
   "document_impact_pr_merged": GitMerge,
+  // A model drafted this, not a colleague. Worth its own glyph: the bell is the
+  // one place a suggestion from the AI and one from a reviewer sit side by side.
+  "docx_ai_draft_ready": Sparkles,
+  "docx_ai_comment_answered": Sparkles,
 };
 
 export function NotificationItem({

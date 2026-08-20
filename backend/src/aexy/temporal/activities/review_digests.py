@@ -352,6 +352,7 @@ async def compose_developer_review_period(
                     tokens_estimate=4000,
                     workspace_id=input.workspace_id,
                     developer_id=input.developer_id,
+                    feature="insights.review_period",
                 )
             )
         except Exception as e:
@@ -575,6 +576,7 @@ async def compose_team_review_period(
                     ),
                     tokens_estimate=5000,
                     workspace_id=input.workspace_id,
+                    feature="insights.review_period",
                 )
             )
         except Exception as e:

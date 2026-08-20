@@ -128,6 +128,7 @@ async def tracker_qa(
         tokens_estimate=3000,
         developer_id=developer.id,
         db=db,
+        feature="insights.tracker_qa",
     )
 
     return TrackerQAResponse(

@@ -74,6 +74,7 @@ class QuestionGenerationService:
                 user_prompt=user_prompt,
                 tokens_estimate=tokens_estimate,
                 workspace_id=ws_id,
+                feature="hiring.question_generation",
             )
             response_text = result[0] if isinstance(result, tuple) else result
 

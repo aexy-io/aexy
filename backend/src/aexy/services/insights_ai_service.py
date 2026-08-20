@@ -88,6 +88,7 @@ class InsightsAIService:
                 system_prompt, user_prompt,
                 tokens_estimate=1500,
                 workspace_id=workspace_id,
+                feature="insights.team_narrative",
             )
             return {
                 "narrative": response_text.strip(),
@@ -140,6 +141,7 @@ class InsightsAIService:
                 system_prompt, user_prompt,
                 tokens_estimate=1500,
                 workspace_id=workspace_id,
+                feature="insights.developer_narrative",
             )
             return {
                 "narrative": response_text.strip(),
@@ -251,6 +253,7 @@ class InsightsAIService:
                 system_prompt, user_prompt,
                 tokens_estimate=1000,
                 workspace_id=workspace_id,
+                feature="insights.anomalies",
             )
             return {
                 "anomalies": anomalies,
@@ -338,6 +341,7 @@ class InsightsAIService:
                 system_prompt, user_prompt,
                 tokens_estimate=1500,
                 workspace_id=workspace_id,
+                feature="insights.root_causes",
             )
             return {
                 "analysis": response_text.strip(),
@@ -408,6 +412,7 @@ class InsightsAIService:
                 system_prompt, user_prompt,
                 tokens_estimate=2000,
                 workspace_id=workspace_id,
+                feature="insights.one_on_one_prep",
             )
             return {
                 "notes": response_text.strip(),
@@ -488,6 +493,7 @@ class InsightsAIService:
                 system_prompt, user_prompt,
                 tokens_estimate=2000,
                 workspace_id=workspace_id,
+                feature="insights.sprint_retro",
             )
             return {
                 "retro": response_text.strip(),
@@ -573,6 +579,7 @@ class InsightsAIService:
                 system_prompt, user_prompt,
                 tokens_estimate=2000,
                 workspace_id=workspace_id,
+                feature="insights.team_trajectory",
             )
             return {
                 "trajectory": response_text.strip(),
@@ -653,6 +660,7 @@ class InsightsAIService:
                 system_prompt, user_prompt,
                 tokens_estimate=2000,
                 workspace_id=workspace_id,
+                feature="insights.team_composition",
             )
             return {
                 "recommendations": response_text.strip(),
@@ -745,6 +753,7 @@ class InsightsAIService:
                 system_prompt, user_prompt,
                 tokens_estimate=2000,
                 workspace_id=workspace_id,
+                feature="insights.hiring_timeline",
             )
             return {
                 "forecast": response_text.strip(),
