@@ -7,8 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.24.2] - 2026-08-20
 
-Every task attachment was a dead link, and the reason was that nothing served
-object storage at all.
+Two silences. An account that had stopped working and never said so, and a file
+that could not be fetched because nothing served the bucket it lived in.
+
+### Fixed: a connected account could stop working without telling anyone
+
+A desk went a day without tickets. The mailbox was fine, the schedule was fine,
+the worker was fine — Google had revoked the refresh token, the integration was
+marked inactive, and the poller's `is_active` clause skipped it on every tick.
+Finding that out meant reading the poller's query and then querying the database
+by hand.
+
+A connection that is refused now notifies the person who connected it and the
+workspace's owners and admins — the connector may have left, and an account
+nobody owns is the one that goes unnoticed longest. Email is on by default,
+because whoever can reconnect it is not necessarily looking at the app.
+
+It fires when the connection is refused, not when a sync fails. Timeouts, rate
+limits and one bad message all retry and resolve themselves; notifying on those
+teaches people to ignore the channel, which costs the one message that mattered.
+Wired into the three places a connection actually dies — Google auth failure
+mid-sync, Google refresh-token revocation, GitHub credentials refused — and
+GitHub notifies once per account rather than once per repository, since thirty
+repos would otherwise mean thirty notifications an hour.
+
+The notification also has to land somewhere that can fix it. Google pointed at
+`/settings/integrations`, which has no Google section; the accounts live on
+`/settings/connected-accounts`. GitHub pointed at `/settings/identity` while the
+Reconnect banner sits on `/settings/integrations`. And on the Google page the
+button did not exist: a disconnected account showed a red pill whose only
+neighbouring control was the bin, so the way back was to delete the account and
+re-add it — which on a desk mailbox is refused outright, leaving no way back at
+all. There is a Reconnect now, and the row says *why* it stopped: `last_error`
+was already on the response and the list ignored it.
+
+### Fixed: `check_auto_sync_integrations` never reported an outcome
+
+It announced itself every minute and said nothing about what it did, so a desk
+receiving no mail looked exactly like a desk with no mail to receive. It logs the
+tally now, and warns by name when a desk mailbox's integration is inactive, with
+the reason.
+
+### Fixed: a sync job whose worker died blocked that account forever
+
+`has_live_sync_job` matched pending/running with no age bound, so a job killed by
+a deploy, an OOM or a database that went away mid-sync reads as live
+indefinitely. Anything past an hour is marked failed and no longer blocks the
+next run. Timestamps are normalised before comparing — Postgres returns them
+aware and SQLite naive, and the raise would have been swallowed by the caller's
+broad `except` and reported as a failure to trigger, which is how both previous
+defects in this function hid.
 
 ### Fixed: attachments 404'd because storage had no public route
 
@@ -64,6 +112,261 @@ Two rules either way, both now stated in `DEPLOY.md` and the file-uploads guide:
 signs the URI, so a `/storage` suffix signs a path the origin never sees and a
 prefix strip invalidates every signature. Two docs had been prescribing the
 suffix.
+
+## [0.24.1] - 2026-08-20
+
+### Fixed: adding an account 500'd instead of naming the clash
+
+```
+UniqueViolationError: duplicate key value violates unique constraint
+"uq_service_desk_account_domain"
+```
+
+The constraint is right — a domain decides which account a ticket belongs to, so
+two accounts claiming one has no correct answer. What was wrong is that it was
+refused as a 500, raised from inside an autoflush that `_replace_account_products`
+happened to trigger, so the person adding the account saw a stack trace naming a
+constraint rather than which entry to change, and no way to find the account
+already holding it.
+
+The clash is looked up before anything is written, and the message names both
+halves: the domain, and the account that has it. Update excludes the account's
+own rows, or renaming an account would refuse its own domains back to it. The
+pre-check runs inside `no_autoflush`, since flushing the pending domains to run
+the check is exactly what produced the 500. A second claim arriving between check
+and flush still hits the constraint, so that stays caught — the constraint
+remains what decides, and the message says to reload rather than pretending to
+know whose it is now.
+
+### Fixed: a database built by the older version of the email migration
+
+Reported from a deployment: `column "is_active" does not exist`, and the runner
+stops there, taking every migration behind it.
+
+This one was self-inflicted. The earlier fix renamed `dedicated_ips.status` to
+`is_active` because that is what the model says — correct for a database the ORM
+built, wrong for one this file built, which still has `status`. `CREATE TABLE IF
+NOT EXISTS` does nothing to an existing table, so the column never appears and
+the index over it cannot be created.
+
+Three renames shared the assumption. Each is now added with `ADD COLUMN IF NOT
+EXISTS` before anything indexes or writes it, and the two renames carry their old
+values across rather than leaving a column of defaults. Legacy columns are left
+in place — dropping somebody's data is not this file's call.
+`dedicated_ips.status` maps active/warming to true and pending/paused to false;
+defaulting every row to true would have quietly resumed sending from a paused IP,
+which is the one outcome here worth being careful about.
+
+Verified against four databases — one built by the previous version of this file
+carrying rows in all four legacy statuses, one built by the ORM, one empty, each
+run twice. All four converge on the app's schema and stay at three system
+schedules.
+
+## [0.24.0] - 2026-08-20
+
+### Added: search the ticket list, and sort it by any column
+
+The list had seven filters and no way to search. With a screen of tickets that is
+tolerable; a desk past twenty and climbing is looked through by the subject line
+somebody half-remembers, or the number in a colleague's message.
+
+Search matches subject, requester name and address, and the ticket number — typed
+as "SD-26", "sd 26" or "26", since the prefix is per-workspace and is not stored
+on the row. Deliberately not the body: the desk keeps whole email threads, so
+matching quoted history would return every reply in a chain for a word said once,
+ranked by nothing. LIKE metacharacters are escaped rather than rejected —
+somebody searching for a subject with "100%" in it means the character.
+
+Sorting is server-side, because the list is paged and sorting a page would
+reorder fifty rows out of six hundred and read as data loss. The key is a
+`Literal` on the filters model, so an unknown column is refused at the edge
+rather than reaching a query, and an id tiebreak sits under every order —
+without it two rows sharing a sort value can swap between pages, showing one
+twice and the other never. A column starts in the direction that reads as its
+interesting end, newest-first for a date and A→Z for text, and clicking the
+column already in force reverses it.
+
+Both live on `TicketFilters` alongside the filters, so a CSV export still carries
+exactly the rows, in exactly the order, of the screen it came from.
+
+### Added: filter chips, and an age column
+
+Ten controls sat in one wrapped row, each with its own label, all the same
+weight — two reached for constantly and eight rarely, and no answer at all to
+"which of these are set?" without reading every one. Search and state stay out
+front with a Filters button; the rest move behind it, opened by default whenever
+something inside is already set, so a narrowed list never hides its own reason.
+
+Each applied filter is a chip saying what it narrowed and to what, removable on
+its own, because clearing everything to undo one wrong choice is why people stop
+using filters. Values resolve to names — a chip reading `Customer: 352b8193-…`
+would be worse than no chip.
+
+The table grows an age column. It was sorted newest-first and showed no date at
+all, so "has this been sitting for a week" was unanswerable without opening rows.
+Age rather than a timestamp because that is the question being asked, and rounded
+down, so a ticket does not read as breaching a two-day target an hour before it
+does.
+
+### Fixed
+
+- **Three filters the API already supported were never on the screen** — vendor,
+  owner, and the caller's own queue. Owner keys on developer id, not the
+  membership row id, which looks identical in a dropdown and matches nothing.
+- **An empty search said the work did not exist.** "No open tickets. New email
+  requests will appear here automatically" is untrue of a desk with twenty
+  tickets and one bad search, and points the reader at waiting for mail instead
+  of at the filter they just set.
+
+## [0.23.3] - 2026-08-20
+
+### Fixed: mail that copies the desk opened no ticket
+
+The inbound webhook read one address — the first name in the To line — and looked
+for a mailbox at exactly that. A customer writing to their account manager and
+copying the desk resolved to the account manager, matched no mailbox, and
+returned False. No ticket, no log line, nothing on the desk to notice.
+
+Two ways to lose a request, not one: Cc was never parsed at all, and even within
+To only `[0]` was read, so a desk named second on a message addressed to two
+people was dropped the same way.
+
+Every recipient is now collected from all three payload shapes the providers
+send, and the mailbox is looked up across them. Plain To stays first so a desk
+addressed directly still wins when two desks are on one mail, and the address
+that matched is what intake receives as `to` — downstream reads that as "which
+desk is this", and on a copied-in message the first To is a customer's account
+manager. `_recipient_addresses` takes what the providers really send rather than
+what they document: a bare string, a comma-separated header, a list of strings,
+or a list of `{"Email": …}` dicts.
+
+The Gmail path finds its mailbox from the integration and was never affected.
+
+## [0.23.2] - 2026-08-20
+
+### Fixed: the email migration could not complete on a fresh database
+
+Answering "is this safe for production" turned up the case the earlier fixes
+missed: a fresh database where migrations run before the app starts. That is the
+normal deploy order, and it was the one order this file could not survive.
+
+Two blocks add columns to `email_campaigns` and `campaign_recipients`, each
+correctly wrapped in `IF EXISTS (…)` because both tables come from
+`migrate_email_marketing.sql`, which sorts after this file. Both blocks then
+appeared a second time, unguarded — so on a fresh database the unguarded copy
+aborts the migration and the runner stops, taking every later migration with it.
+
+With those gone the file completes on an empty database and then creates tables
+the ORM cannot use, because `create_all` adds missing *tables* and never missing
+*columns*. Fourteen columns across five tables existed only in the models. They
+are added as `ADD COLUMN IF NOT EXISTS` beside the ones already there, so both
+orders converge.
+
+### Fixed: the warming-schedule seed duplicated itself on a second run
+
+The seed is `ON CONFLICT DO NOTHING` against a unique constraint on
+`(workspace_id, name)`, and the system rows it inserts carry `workspace_id IS
+NULL`. Postgres treats NULLs as distinct in a unique constraint, so that clause
+never fires for them: a second run inserts a second complete set of Conservative,
+Moderate and Aggressive, and a third inserts a third — silently, with no error
+anywhere.
+
+Existing duplicates are collapsed, repointing `sending_domains` and
+`dedicated_ips` at the surviving row first so a schedule in use is not quietly
+detached, then a partial unique index on `name` where `workspace_id IS NULL AND
+is_system` makes the existing conflict clause mean something against any future
+writer.
+
+The predicate is narrowed to `is_system` deliberately. Covering every
+`workspace_id IS NULL` row while the dedupe only collapses system ones leaves a
+non-system row sharing a system schedule's name as a duplicate the dedupe had no
+mandate to remove — and `CREATE UNIQUE INDEX` fails on it. asyncpg runs the whole
+file as one implicit transaction, so that failure rolls back the migration and
+stops the runner: the same cascade this work exists to end, reintroduced by the
+fix for it.
+
+## [0.23.1] - 2026-08-20
+
+### Fixed: 81 migrations were queued behind one that had never applied
+
+The email-infrastructure migration was written against a schema the ORM models
+have since moved away from. Because the app creates these tables from the models
+on startup, its `CREATE TABLE`s were all skipped and only its indexes and seeds
+ran — against columns that no longer exist. The runner stops at the first
+failure, so 81 later migrations sat behind it.
+
+Four points of drift, each taken from the model rather than guessed:
+`dedicated_ips.status` is `is_active`, a boolean; `warming_progress.ip_id` is
+`dedicated_ip_id`; `warming_schedules` has neither `total_days` nor `is_active`,
+and does have `auto_adjust_volume`. Its seed also spells out the three thresholds,
+because the model's defaults are Python-side and leave the columns NOT NULL with
+no server default.
+
+### Fixed: two crashes reached the error boundary
+
+Both the same shape — an optional chain that stops one property too early.
+`departmentOf` read `functionCatalog?.options.find(…)`, where `?.` guards the
+object and nothing guards `.options`, so any catalogue response without that key
+took the whole dashboard down. `AiAccuracyPanel` read `data.by_request_type.map(…)`
+behind a `data.classified === 0` guard, which a payload missing `classified`
+walks straight past. Both now guard the property they actually index.
+
+A third looked identical and was not: `ticket.email_recipients` is non-optional
+in the type and always sent, so the mock was simply wrong. Guarding it would have
+hidden a broken fixture behind a defensive `??`; the fixture is fixed instead.
+
+The service desk e2e spec had been failing on all seven tests against a route
+table that had drifted from the API — accounts, vendors and products still mocked
+under the old partners/insurers/lobs names, `{}` where a list belonged, and three
+tests pointing at a settings path that is now a redirect. One of those was hiding
+a real gap rather than a fake one: the ticket list route matched a bare path, so
+once filters added a query string the empty-list fixtures silently stopped
+applying, and the test asserting "no misconfiguration message" was passing
+against a list of two tickets.
+
+### Fixed
+
+- **A ticket read `in_progress`** while every cell beside it went through a label
+  helper. `ticketFieldLabel` already existed for exactly this: the same state
+  should not read two ways on one screen.
+- **The digest and AI settings pages said the same sentence twice**, an inch
+  apart — one string feeding both the page header and the toggle beneath it. Each
+  toggle now says what it does.
+- **Ignored senders moves to its own card.** Sharing the department card, its
+  description read as if it explained the department picker.
+- **Two placeholders were clipped mid-word** — measured, not guessed: 203px of
+  text in 194px, and 295px in 262px. Widening the input was tried and rejected,
+  because at 240px the Add button wraps to its own line.
+- **`NotificationItem` imported `GitMerge` and `GitPullRequest` from
+  `next/navigation`**, which exports neither, breaking `tsc`.
+
+## [0.23.0] - 2026-08-20
+
+Six things, all found by running the catalogue generator against main and reading
+what it complained about.
+
+### Fixed
+
+- **Two capabilities sat outside the access model.** `documentation_impact` and
+  `gmail_push` had no `TAG_TO_CAPABILITY` entry — exactly what the MCP
+  catalogue's `--check` guard exists to catch. `gmail_push` maps to `system`
+  rather than a domain capability: an inbound Pub/Sub webhook is machine ingest,
+  not something an agent should be able to address at all.
+- **The generated catalogue fixture was stale by twelve operations.** A fixture
+  the code no longer matches is worse than none, because the check reports green
+  while the tool list a client receives disagrees with it.
+- **Two routes were registered twice.** `get_public_form` existed in both
+  `forms.py` and `public_forms.py` under the same prefix, and the four reminder
+  instance handlers were byte-identical copies within one file. In both cases the
+  later copy was unreachable — dead code still emitting a duplicate operation id.
+- **`days_open` was holding seconds.** The arithmetic divided correctly at the
+  end, but that is how a later measure gets the unit wrong. It is `open_seconds`.
+- **Service desk analytics reached for a private method** to reuse the ticket
+  scope clause. It is public now: a second module using a leading-underscore
+  method makes that boundary a lie rather than a rule, and the risk is a chart
+  narrowed differently from the list above it.
+- **The version was describing pre-feature code.** The service desk shipped under
+  0.22.1 without a bump.
 
 ## [0.22.1] - 2026-08-18
 
