@@ -138,6 +138,8 @@ export interface UploadItem {
 export interface UploadController {
   queue: UploadItem[];
   enqueue: (files: File[]) => void;
+  retry: (id: string) => void;
+  remove: (id: string) => void;
   reset: () => void;
 }
 
@@ -151,22 +153,38 @@ export function useDriveUpload(
   const [queue, setQueue] = useState<UploadItem[]>([]);
   const qc = useQueryClient();
   const inFlight = useRef(0);
+  // Ids already dispatched to the network. `setQueue` is asynchronous, so
+  // within a single `tick()` pass `queueRef` still reports a just-started
+  // item as "pending" — without this claim set the same file is uploaded
+  // MAX_CONCURRENT times (one row + one AI summary per upload).
+  const started = useRef<Set<string>>(new Set());
   const queueRef = useRef<UploadItem[]>(queue);
   queueRef.current = queue;
 
   const updateItem = (id: string, patch: Partial<UploadItem>) =>
     setQueue((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)));
 
-  const tick = async () => {
+  const tick = () => {
     if (!workspaceId) return;
     while (inFlight.current < MAX_CONCURRENT) {
-      const next = queueRef.current.find((it) => it.status === "pending");
+      const next = queueRef.current.find(
+        (it) => it.status === "pending" && !started.current.has(it.id),
+      );
       if (!next) break;
+      started.current.add(next.id);
       inFlight.current += 1;
-      updateItem(next.id, { status: "uploading" });
+      updateItem(next.id, { status: "uploading", progress: 0, error: null });
+
+      let lastPct = -1;
       driveApi
         .uploadFile(workspaceId, next.file, parentId, (loaded, total) => {
-          if (total > 0) updateItem(next.id, { progress: loaded / total });
+          if (total <= 0) return;
+          // Throttle to whole percents — the raw progress event fires far
+          // more often than the UI can usefully re-render.
+          const pct = Math.floor((loaded / total) * 100);
+          if (pct === lastPct) return;
+          lastPct = pct;
+          updateItem(next.id, { progress: pct / 100 });
         })
         .then((file) => {
           updateItem(next.id, { status: "done", progress: 1, result: file });
@@ -179,16 +197,22 @@ export function useDriveUpload(
         })
         .finally(() => {
           inFlight.current -= 1;
-          // Schedule another tick to drain remaining queue items.
+          // Drain whatever is still pending once a slot frees up.
           setTimeout(tick, 0);
         });
     }
   };
 
+  // Keyed on the pending ids rather than queue length so a retry (which
+  // leaves the length unchanged) still kicks the drain loop.
+  const pendingKey = queue
+    .filter((it) => it.status === "pending")
+    .map((it) => it.id)
+    .join(",");
   useEffect(() => {
-    void tick();
+    tick();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [queue.length]);
+  }, [pendingKey, workspaceId]);
 
   const enqueue = (files: File[]) => {
     setQueue((prev) => [
@@ -204,10 +228,24 @@ export function useDriveUpload(
     ]);
   };
 
-  const reset = () => setQueue([]);
+  const retry = (id: string) => {
+    started.current.delete(id);
+    updateItem(id, { status: "pending", progress: 0, error: null });
+  };
+
+  const remove = (id: string) => {
+    started.current.delete(id);
+    setQueue((prev) => prev.filter((it) => it.id !== id));
+  };
+
+  const reset = () => {
+    started.current.clear();
+    setQueue([]);
+  };
 
   return useMemo(
-    () => ({ queue, enqueue, reset }),
+    () => ({ queue, enqueue, retry, remove, reset }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [queue],
   );
 }
