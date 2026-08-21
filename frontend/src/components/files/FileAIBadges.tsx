@@ -21,7 +21,7 @@ export function FileAIStatusPill({
         data-testid="file-ai-status"
         data-status="done"
         className={cn(
-          "inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] text-emerald-300",
+          "inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300",
           className,
         )}
       >
@@ -35,7 +35,7 @@ export function FileAIStatusPill({
         data-testid="file-ai-status"
         data-status="failed"
         className={cn(
-          "inline-flex items-center gap-1 rounded-full bg-red-500/15 px-1.5 py-0.5 text-[10px] text-red-300",
+          "inline-flex items-center gap-1 rounded-full bg-red-500/15 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:text-red-300",
           className,
         )}
       >
@@ -49,7 +49,7 @@ export function FileAIStatusPill({
       data-testid="file-ai-status"
       data-status={status}
       className={cn(
-        "inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-200",
+        "inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-200",
         className,
       )}
     >
@@ -80,7 +80,7 @@ export function FileAITagStrip({
       {shown.map((tag) => (
         <span
           key={tag}
-          className="rounded-full bg-primary-500/15 px-1.5 py-0.5 text-[10px] text-primary-300"
+          className="rounded-full bg-primary-500/15 px-1.5 py-0.5 text-[10px] font-medium text-primary-700 dark:text-primary-300"
         >
           {tag}
         </span>

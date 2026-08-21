@@ -77,6 +77,17 @@ export interface DocxEditorCanvasProps {
    */
   aiAuthor?: string;
   locale?: string;
+  /**
+   * Appearance of the editor and its page canvas.
+   *
+   * Defaults to `'light'`, not `'system'`. A .docx carries the author's own
+   * colour choices — black body text, coloured headings, table rules — chosen
+   * against white paper. Following the OS into dark mode inverts the canvas
+   * but not those choices, so the document renders as light text on a dark
+   * page: nothing like what the author wrote, or what it prints as. Word
+   * Online, Google Docs and Preview all keep the page light for the same
+   * reason and theme only the chrome around it.
+   */
   colorMode?: "light" | "dark" | "system";
   /** Fired on every document mutation. Debounce before saving. */
   onDirty?: () => void;
@@ -93,7 +104,7 @@ export default function DocxEditorCanvas({
   aiAuthor,
   author,
   locale,
-  colorMode = "system",
+  colorMode = "light",
   onDirty,
   onSaveRequested,
   handleRef,

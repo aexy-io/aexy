@@ -2,7 +2,7 @@
   "drive": {
     "page": {
       "title": "फ़ाइलें और स्टोरेज",
-      "subtitle": "Workspace files, task attachments, and compliance documents — आपके लिखित docs से अलग।",
+      "subtitle": "Workspace files, task attachments, और compliance documents — आपके लिखित docs से अलग।",
       "newFolder": "नया फ़ोल्डर",
       "folderNamePrompt": "फ़ोल्डर का नाम",
       "smartViewsHeading": "Smart Views",
@@ -11,25 +11,38 @@
       "storageHeading": "स्टोरेज",
       "unlimited": "असीमित",
       "percentUsed": "{percent}%",
-      "filesCount": "{count} फ़ाइलें",
+      "filesCount": "{count, plural, one {# फ़ाइल} other {# फ़ाइलें}}",
       "ofLimit": "{limit} में से",
       "searchPlaceholder": "सभी फ़ाइलों में खोजें (AI-powered)…",
       "searching": "खोज रहे हैं…",
       "noMatches": "कोई मेल नहीं मिला।",
       "loading": "लोड हो रहा है…",
-      "emptyFolder": "यह फ़ोल्डर खाली है। शुरू करने के लिए ऊपर फ़ाइलें Drop करें।",
+      "emptyFolder": "यहाँ अभी कुछ नहीं है",
       "folderLabel": "(फ़ोल्डर)",
       "sourcesHeading": "Sources",
       "viewDriveFiles": "Drive फ़ाइलें",
       "viewTaskAttachments": "Task अटैचमेंट",
       "viewComplianceDocs": "Compliance डॉक्यूमेंट",
-      "emptySource": "इस source में अभी कोई फ़ाइल नहीं है।"
+      "emptySource": "इस source में अभी कोई फ़ाइल नहीं है",
+      "remaining": "{size} खाली",
+      "clearSearch": "खोज साफ़ करें",
+      "searchMinLength": "खोजने के लिए कम से कम दो अक्षर लिखें।",
+      "resultsCount": "{count, plural, one {# परिणाम} other {# परिणाम}}",
+      "noMatchesHint": "कोई दूसरा शब्द आज़माएँ, या फ़ाइल के विषय से खोजें — खोज AI summaries भी पढ़ती है।",
+      "emptyFolderHint": "ऊपर फ़ाइलें छोड़ कर अपलोड करें। हर फ़ाइल को अपने आप AI summary और tags मिलते हैं।",
+      "emptySourceHint": "Tasks और compliance records से जुड़ी फ़ाइलें यहाँ अपने आप दिखती हैं।",
+      "deleteTitle": "यह फ़ाइल हटाएँ?",
+      "deleteDescription": "“{name}” को फ़ाइलें और स्टोरेज से हटा दिया जाएगा। इसका storage तुरंत खाली हो जाएगा।",
+      "deleteConfirm": "फ़ाइल हटाएँ"
     },
     "fileCard": {
       "aiPending": "AI",
       "aiReady": "तैयार",
       "aiFailed": "विफल",
-      "tagsOverflow": "+{count}"
+      "tagsOverflow": "+{count}",
+      "summaryPending": "AI summary बन रही है…",
+      "folder": "फ़ोल्डर",
+      "delete": "हटाएँ"
     },
     "upload": {
       "dropPrompt": "अपलोड के लिए फ़ाइलें Drop करें, या",
@@ -39,7 +52,12 @@
       "statusDone": "पूर्ण",
       "statusFailed": "विफल",
       "statusPercent": "{percent}%",
-      "quotaExceededAlert": "स्टोरेज सीमा पार हो जाएगी। {used} उपयोग + {incoming} आने वाली > {limit} सीमा।"
+      "quotaExceededAlert": "स्टोरेज सीमा पार हो जाएगी। {used} उपयोग + {incoming} आने वाली > {limit} सीमा।",
+      "dropHint": "कोई भी फ़ाइल प्रकार। एक बार में तीन अपलोड चलते हैं।",
+      "statusQueued": "कतार में",
+      "failedCount": "{count} असफल",
+      "retry": "फिर से अपलोड करें",
+      "dismiss": "सूची से हटाएँ"
     },
     "quota": {
       "limitReached": "स्टोरेज सीमा पूरी हो गई।",
@@ -106,6 +124,19 @@
       "sourceDrive": "Drive",
       "sourceTask": "Task",
       "sourceCompliance": "Compliance"
+    },
+    "fileDetail": {
+      "backToDrive": "फ़ाइलों पर वापस",
+      "loading": "लोड हो रहा है…",
+      "fallbackName": "फ़ाइल",
+      "unknownSource": "यह file source पहचाना नहीं गया।",
+      "uploadedAt": "{when} पर अपलोड",
+      "download": "डाउनलोड",
+      "openInNewTab": "खोलें",
+      "noPreviewForSourceTitle": "Preview केवल Drive files के लिए उपलब्ध है।",
+      "noPreviewForSourceHint": "इस फ़ाइल को उसके source — जिस task या compliance record की है — से खोलें।",
+      "noInlinePreviewTitle": "इस फ़ाइल प्रकार का inline preview नहीं है",
+      "noInlinePreviewHint": "इसे डाउनलोड करके उसी app में खोलें जिसके लिए बनी है। दाईं ओर की AI summary तब भी लागू है।"
     }
   }
 }

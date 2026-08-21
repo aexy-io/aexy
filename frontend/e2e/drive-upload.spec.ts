@@ -32,7 +32,7 @@ test.describe("Drive — multi-file upload", () => {
     });
 
     await page.goto("/docs/drive");
-    await expect(page.getByRole("heading", { name: "Drive" })).toBeVisible({
+    await expect(page.getByRole("heading", { name: /files\s*&\s*storage/i })).toBeVisible({
       timeout: 20000,
     });
 
@@ -49,5 +49,21 @@ test.describe("Drive — multi-file upload", () => {
 
     // Each item should land in the visible queue.
     await expect(page.getByTestId("drive-upload-item")).toHaveCount(2);
+
+    // Regression: the drain loop used to re-dispatch the same pending item
+    // once per concurrency slot (`setQueue` is async, so the queue snapshot
+    // still reported it as pending), producing MAX_CONCURRENT rows and
+    // MAX_CONCURRENT AI summaries for a single picked file. Settle, then
+    // assert exactly one POST per file.
+    await expect(page.getByTestId("drive-upload-item").first()).toHaveAttribute(
+      "data-status",
+      "done",
+    );
+    await expect(page.getByTestId("drive-upload-item").last()).toHaveAttribute(
+      "data-status",
+      "done",
+    );
+    await page.waitForTimeout(500);
+    expect(uploadCalls, "one upload per picked file — no duplicate dispatch").toBe(2);
   });
 });
