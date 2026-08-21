@@ -47,6 +47,20 @@ _STATUS_ALIASES: dict[str, tuple[str, ...]] = {
 }
 
 
+def _as_utc(value: datetime | None) -> datetime | None:
+    """Treat a naive timestamp as UTC.
+
+    Every timestamp here is stored in a `DateTime(timezone=True)` column, but a
+    driver may still hand one back without a tzinfo — SQLite has no timezone
+    type, so it always does. Subtracting that from an aware `now()` raises, which
+    made completing a task blow up on any non-Postgres connection: the cycle- and
+    lead-time arithmetic below is on the done path.
+    """
+    if value is None:
+        return None
+    return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
+
+
 def _assigned_to(developer_id: str):
     """Tasks where this developer is the primary *or* a collaborator.
 
@@ -560,8 +574,11 @@ class SprintTaskService:
             elif status == "done" and old_status != "done":
                 task.completed_at = now
                 if task.work_started_at:
-                    task.cycle_time_hours = (now - task.work_started_at).total_seconds() / 3600
-                task.lead_time_hours = (now - task.created_at).total_seconds() / 3600
+                    task.cycle_time_hours = (now - _as_utc(task.work_started_at)).total_seconds() / 3600
+                task.lead_time_hours = (now - _as_utc(task.created_at)).total_seconds() / 3600
+                await self._resolve_linked_ticket_if_done(
+                    task, status, old_status, actor_id
+                )
         if labels is not None:
             _record("labels_changed", "labels", task.labels or [], labels)
             task.labels = labels
@@ -1556,9 +1573,9 @@ class SprintTaskService:
             task.completed_at = now
             # Calculate cycle time (work_started_at → completed)
             if task.work_started_at:
-                task.cycle_time_hours = (now - task.work_started_at).total_seconds() / 3600
+                task.cycle_time_hours = (now - _as_utc(task.work_started_at)).total_seconds() / 3600
             # Calculate lead time (created_at → completed)
-            task.lead_time_hours = (now - task.created_at).total_seconds() / 3600
+            task.lead_time_hours = (now - _as_utc(task.created_at)).total_seconds() / 3600
 
         await self.db.flush()
 
@@ -1626,6 +1643,10 @@ class SprintTaskService:
                     entity_id=updated_task.id,
                     trigger_data=trigger_data,
                 )
+
+            await self._resolve_linked_ticket_if_done(
+                updated_task, new_status, old_status, actor_id
+            )
 
         # Tell the people on the task that somebody else moved it. In-app only by
         # default (see DEFAULT_NOTIFICATION_PREFERENCES) — this fires on every
@@ -2071,6 +2092,42 @@ class SprintTaskService:
                 metadata={"from_assignee_id": str(prior.developer_id)},
             )
         return await self._reload_with_assignees(task_id)
+
+    async def _resolve_linked_ticket_if_done(
+        self,
+        task: SprintTask,
+        new_status: str,
+        old_status: str | None,
+        actor_id: str | None,
+    ) -> None:
+        """Resolve the ticket this task was raised from, once it reaches done.
+
+        Called from both status write paths — `update_task` and
+        `update_task_status` — because a card can be moved from either, and a
+        ticket that closes only when the developer happened to use one of them is
+        worse than one that never closes: the behaviour looks random.
+
+        Guarded on the *transition*, not the state, so re-saving a task that is
+        already done does nothing. `TicketService.resolve_for_completed_task` is
+        idempotent as well; this just avoids the query.
+        """
+        if new_status != "done" or old_status == "done":
+            return
+        try:
+            from aexy.services.ticket_service import TicketService
+
+            await TicketService(self.db).resolve_for_completed_task(
+                task_id=str(task.id),
+                task_title=task.title,
+                actor_id=actor_id,
+            )
+        except Exception:
+            # The task is done and that must stand. A ticket left open is a
+            # visible, fixable state; a task that refuses to complete because
+            # something downstream failed is not.
+            logger.exception(
+                "Task %s completed but resolving its linked ticket failed", task.id
+            )
 
     # Activity Logging
     async def log_activity(

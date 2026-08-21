@@ -35,6 +35,7 @@ import {
   STATUS_OPTIONS,
   PRIORITY_OPTIONS,
   SEVERITY_OPTIONS,
+  ticketHeadline,
 } from "@/components/tickets/ticketLabels";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
@@ -152,7 +153,7 @@ export default function TicketDetailPage() {
         <Breadcrumb
           items={[
             { label: "Tickets", href: "/tickets" },
-            { label: ticket.form_name || `TKT-${ticket.ticket_number}` },
+            { label: ticketHeadline(ticket) },
           ]}
           className="mb-6"
         />
@@ -167,9 +168,15 @@ export default function TicketDetailPage() {
                   <span className="text-sm font-mono text-purple-400">
                     TKT-{ticket.ticket_number}
                   </span>
+                  {/* The ticket's own subject. This used to be `form_name`,
+                      so every ticket raised through one form carried the same
+                      heading and the list was unreadable. */}
                   <h1 className="text-2xl font-bold text-foreground mt-1">
-                    {ticket.form_name || "Ticket"}
+                    {ticketHeadline(ticket)}
                   </h1>
+                  {ticket.form_name && (
+                    <p className="text-xs text-muted-foreground mt-0.5">{ticket.form_name}</p>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   {ticket.sla_breached && (

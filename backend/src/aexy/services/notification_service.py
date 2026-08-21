@@ -2104,6 +2104,47 @@ async def notify_ticket_assigned(
     )
 
 
+async def notify_ticket_resolved(
+    db: AsyncSession,
+    recipient_id: str,
+    ticket_reference: str,
+    ticket_title: str,
+    task_title: str,
+    action_url: str,
+    workspace_id: str | None = None,
+) -> int:
+    """Tell a ticket's owner that the work behind it is finished.
+
+    The person who completed the task is usually not the ticket's owner and has
+    no idea a ticket was waiting on it, so without this the owner learns nothing
+    and the requester chases a ticket that was done days ago. No actor is passed:
+    the completion is attributable to whoever moved the task, but the useful fact
+    here is the state change, and `_notify_quietly` would drop the recipient if
+    they happened to be the one who moved it — which is exactly when they still
+    need to go and confirm with the requester.
+    """
+    context: dict[str, Any] = {
+        "ticket_reference": ticket_reference,
+        "ticket_title": ticket_title,
+        "task_title": task_title,
+        "action_url": action_url,
+    }
+    if workspace_id:
+        context["workspace_id"] = str(workspace_id)
+
+    return await _notify_quietly(
+        db,
+        [recipient_id],
+        NotificationEventType.TICKET_RESOLVED,
+        title="Ticket resolved",
+        body=(
+            f'{ticket_reference} was resolved: the task "{task_title}" is done. '
+            "Confirm with the requester before closing it."
+        ),
+        context=context,
+    )
+
+
 # ============ Workspace Join Request Notifications ============
 
 

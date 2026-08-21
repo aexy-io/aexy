@@ -20,7 +20,7 @@ from aexy.schemas.ticketing import (
     TicketCommentCreate,
     TicketFormFieldResponse,
 )
-from aexy.services.ticket_service import TicketService
+from aexy.services.ticket_service import TicketService, headline_from_field_values
 from aexy.services.workspace_service import WorkspaceService
 
 
@@ -30,16 +30,10 @@ router = APIRouter(
 )
 
 
-# Field keys commonly used as the ticket's headline.
-_SUBJECT_KEYS = ("title", "subject", "summary")
-
-
+# Shared with `Ticket.title`, so the public view and the stored headline can
+# never disagree about which field is the subject.
 def _extract_subject(field_values: dict) -> str | None:
-    for key in _SUBJECT_KEYS:
-        value = field_values.get(key)
-        if value:
-            return str(value)
-    return None
+    return headline_from_field_values(field_values)
 
 
 def shared_ticket_to_response(ticket, *, can_reply: bool) -> PublicTicketResponse:

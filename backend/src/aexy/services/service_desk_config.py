@@ -216,6 +216,30 @@ def digest_enabled(service_desk_settings: Mapping[str, object]) -> bool:
     return bool(service_desk_settings.get("digest_enabled", True))
 
 
+UNMATCHED_ASSIGNMENT_CHOICES: tuple[str, ...] = ("random", "unassigned", "desk_head")
+
+
+def unmatched_assignment(service_desk_settings: Mapping[str, object]) -> str:
+    """What to do with a ticket whose account intake could not identify.
+
+    Defaults to ``"random"``, which is what the desk has always done, so no
+    existing workspace changes behaviour on upgrade. It is also the option that
+    hid the problem: an arbitrarily-assigned ticket is indistinguishable from a
+    deliberately-assigned one, so a missing domain mapping in Master Data
+    surfaced only as a KAM asking why a partner they do not handle is in their
+    queue. ``"unassigned"`` leaves it visibly waiting instead, and
+    ``"desk_head"`` gives every unmatched ticket to one accountable person.
+
+    An unrecognised stored value falls back to the default rather than raising:
+    this is read on the intake path, and refusing to route mail because a
+    settings blob is odd would drop tickets on the floor.
+    """
+    value = service_desk_settings.get("unmatched_assignment")
+    if isinstance(value, str) and value in UNMATCHED_ASSIGNMENT_CHOICES:
+        return value
+    return "random"
+
+
 def normalise_email_list(values: object) -> list[str]:
     """Clean a list of plain addresses, dropping anything that isn't one.
 

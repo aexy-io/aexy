@@ -110,11 +110,13 @@ function useWs() {
   return currentWorkspace?.id;
 }
 
-export function useServiceDeskDashboard() {
+export function useServiceDeskDashboard(params?: { limit?: number; offset?: number }) {
   const ws = useWs();
   return useQuery<ServiceDeskDashboard>({
-    queryKey: keys.dashboard(ws ?? ""),
-    queryFn: () => serviceDeskApi.getDashboard(ws!),
+    // Paging is part of the key, or turning the page would serve the previous
+    // one from cache.
+    queryKey: [...keys.dashboard(ws ?? ""), params ?? {}],
+    queryFn: () => serviceDeskApi.getDashboard(ws!, params),
     enabled: !!ws,
   });
 }

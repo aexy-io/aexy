@@ -17,6 +17,9 @@ import {
 } from "@/hooks/useServiceDesk";
 import { serviceDeskApi, TicketQuery } from "@/lib/service-desk-api";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
+import { useProjects } from "@/hooks/useProjects";
+import { ticketsApi } from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/utils";
 import {
   serviceDeskStakeholderColor,
   TICKET_STATUS_COLORS,
@@ -235,6 +238,8 @@ export default function ServiceDeskTicketsPage() {
   const vendors = useVendors();
   const { currentWorkspace } = useWorkspace();
   const { members } = useWorkspaceMembers(currentWorkspace?.id ?? null);
+  // For the optional "raise the task now" fields in the log dialog.
+  const { projects } = useProjects(currentWorkspace?.id ?? null);
   const terms = settings.data?.terminology ?? {};
   const { createManual } = useServiceDeskMutations();
 
@@ -280,9 +285,14 @@ export default function ServiceDeskTicketsPage() {
   const EMPTY_FORM = {
     subject: "", body: "", requester_name: "", requester_email: "",
     request_type: "", product_id: "", account_id: "",
+    // Optional: raise the work in the same step as the ticket.
+    task_project_id: "", task_assignee_id: "",
   };
   const [form, setForm] = useState(EMPTY_FORM);
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+  const [files, setFiles] = useState<File[]>([]);
+  const [logging, setLogging] = useState(false);
+  const [logError, setLogError] = useState<string | null>(null);
 
   // Preselect the workspace's default once the taxonomy has loaded, so the
   // dropdown isn't empty while still deferring to the server if it hasn't.
@@ -309,25 +319,66 @@ export default function ServiceDeskTicketsPage() {
     }
   };
 
+  // Logging a call is up to three calls, in this order, because each step needs
+  // the id the one before it produced: the attachment endpoint is addressed by
+  // ticket, and the task copies the ticket's files onto itself as it is created.
+  // Doing it the other way round is how the files end up only on the ticket.
   const submit = async () => {
-    if (!form.subject.trim()) return;
-    const created = await createManual.mutateAsync({
-      subject: form.subject.trim(),
-      // The dropdown always shows a request type, so send the one on screen
-      // rather than nothing when it was never touched — otherwise the server
-      // resolves its own default and the ticket stays flagged for triage.
-      request_type: form.request_type || defaultRequestType || undefined,
-      body: form.body,
-      requester_name: form.requester_name || undefined,
-      requester_email: form.requester_email || undefined,
-      product_id: form.product_id || undefined,
-      account_id: form.account_id || undefined,
-    });
+    if (!form.subject.trim() || !currentWorkspace?.id) return;
+    setLogging(true);
+    setLogError(null);
+    let createdId: string | undefined;
+    try {
+      const created = await createManual.mutateAsync({
+        subject: form.subject.trim(),
+        // The dropdown always shows a request type, so send the one on screen
+        // rather than nothing when it was never touched — otherwise the server
+        // resolves its own default and the ticket stays flagged for triage.
+        request_type: form.request_type || defaultRequestType || undefined,
+        body: form.body,
+        requester_name: form.requester_name || undefined,
+        requester_email: form.requester_email || undefined,
+        product_id: form.product_id || undefined,
+        account_id: form.account_id || undefined,
+      });
+      createdId = created?.ticket_id;
+      if (!createdId) throw new Error("The ticket was logged but returned no id.");
+
+      if (files.length > 0) {
+        await ticketsApi.uploadAttachments(currentWorkspace.id, createdId, files);
+      }
+      if (form.task_project_id) {
+        await serviceDeskApi.convertToTask(currentWorkspace.id, createdId, {
+          project_id: form.task_project_id,
+          assignee_id: form.task_assignee_id || undefined,
+          // The ticket's subject is the task's title; the operator has already
+          // typed it once.
+          title: form.subject.trim(),
+        });
+      }
+    } catch (err) {
+      // The ticket itself may well exist — the caller is on the phone and must
+      // not be told the call was lost. Say what did not finish and leave the
+      // dialog open with the ticket id, so the rest can be done on the ticket.
+      setLogError(
+        createdId
+          ? `Ticket logged, but finishing up failed: ${getApiErrorMessage(err, "unknown error")}. Open the ticket to add the file or raise the task.`
+          : getApiErrorMessage(err, "Could not log that ticket."),
+      );
+      setLogging(false);
+      if (createdId) {
+        setFiles([]);
+        setForm(EMPTY_FORM);
+      }
+      return;
+    }
+    setLogging(false);
     setForm(EMPTY_FORM);
+    setFiles([]);
     setOpen(false);
     // Straight to the ticket. Whoever logged this is usually still on the phone
     // with the requester, and the ticket id is what they have to read out.
-    if (created?.ticket_id) router.push(`/service-desk/tickets/${created.ticket_id}`);
+    if (createdId) router.push(`/service-desk/tickets/${createdId}`);
   };
 
   return (
@@ -685,10 +736,87 @@ export default function ServiceDeskTicketsPage() {
                 </select>
               </div>
             </div>
+
+            {/* Files the requester sent. Uploaded after the ticket exists — the
+                endpoint is addressed by ticket — and copied onto the task below
+                if one is raised. */}
+            <div>
+              <label className="mb-1 block text-xs text-muted-foreground">{t("manual.attachments")}</label>
+              <input
+                type="file"
+                multiple
+                data-testid="manual-ticket-files"
+                onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+                className="w-full rounded-md border border-border bg-background px-2 py-2 text-sm file:mr-2 file:rounded file:border-0 file:bg-accent file:px-2 file:py-1 file:text-xs"
+              />
+              {files.length > 0 && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t("manual.attachmentsChosen", { count: files.length })}
+                </p>
+              )}
+            </div>
+
+            {/* Raise the work at the same time. Optional: plenty of calls are
+                answered on the call and never become a task.
+
+                Hidden entirely when the workspace has no projects — the section
+                would otherwise offer a picker whose only option is "don't", and
+                a control that cannot do anything reads as a broken one. */}
+            {(projects ?? []).length > 0 && (
+            <div className="rounded-md border border-border p-3">
+              <p className="mb-2 text-xs font-medium">{t("manual.taskSection")}</p>
+              {/* Stacks on a phone: side by side at 375px clipped the option
+                  text ("Don't create a ta…"), and the operator is often on a
+                  handset while the caller is still talking. */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs text-muted-foreground">{t("manual.taskProject")}</label>
+                  <select
+                    value={form.task_project_id}
+                    data-testid="manual-ticket-project"
+                    onChange={(e) => set("task_project_id", e.target.value)}
+                    className="w-full rounded-md border border-border bg-background px-2 py-2 text-sm"
+                  >
+                    <option value="">{t("manual.taskNone")}</option>
+                    {(projects ?? []).map((pr) => (
+                      <option key={pr.id} value={pr.id}>{pr.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-muted-foreground">{t("manual.taskAssignee")}</label>
+                  <select
+                    value={form.task_assignee_id}
+                    data-testid="manual-ticket-assignee"
+                    disabled={!form.task_project_id}
+                    onChange={(e) => set("task_assignee_id", e.target.value)}
+                    className="w-full rounded-md border border-border bg-background px-2 py-2 text-sm disabled:opacity-50"
+                  >
+                    <option value="">{t("manual.taskUnassigned")}</option>
+                    {members
+                      .filter((m) => m.status === "active")
+                      .map((m) => (
+                        <option key={m.developer_id} value={m.developer_id}>
+                          {m.developer_name || m.developer_email || m.developer_id}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+            )}
+
+            {logError && (
+              <p className="text-sm text-destructive" data-testid="manual-ticket-error">{logError}</p>
+            )}
           </div>
           <DialogFooter>
-            <Button onClick={submit} disabled={!form.subject.trim() || createManual.isPending}>
-              {createManual.isPending ? t("manual.creating") : t("manual.create")}
+            <Button
+              onClick={submit}
+              data-testid="manual-ticket-submit"
+              disabled={!form.subject.trim() || logging || createManual.isPending}
+            >
+              {logging || createManual.isPending ? t("manual.creating") : t("manual.create")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -702,6 +702,8 @@ export function AiSections() {
           <p className="text-xs text-muted-foreground">{t("autoSplit.requiresAi")}</p>
         )}
       </Section>
+
+
     </>
   );
 }
@@ -1052,6 +1054,31 @@ export function IntakeSection() {
         onSave={(departmentId) => m.updateSettings.mutate({ desk_department_id: departmentId })}
       />
     </Section>
+      {/* What happens to mail we cannot attribute to an account. The default is
+          the historical behaviour, which is also the one that hides a missing
+          domain mapping: an arbitrarily-assigned ticket looks deliberate. */}
+      <Section title={t("unmatched.title")}>
+        <p className="text-xs text-muted-foreground">{t("unmatched.description")}</p>
+        <select
+          value={settings.data?.unmatched_assignment ?? "random"}
+          disabled={!canManage || m.updateSettings.isPending || settings.isLoading}
+          aria-label={t("unmatched.title")}
+          onChange={(e) =>
+            m.updateSettings.mutate({
+              unmatched_assignment: e.target.value as "random" | "unassigned" | "desk_head",
+            })
+          }
+          // The longest option needs ~380px; a 320px cap clipped it to
+          // "…desk departmen".
+          className="mt-2 h-9 w-full max-w-[460px] rounded-md border border-input bg-background px-2 py-1 text-sm disabled:opacity-50"
+        >
+          <option value="random">{t("unmatched.random")}</option>
+          <option value="unassigned">{t("unmatched.unassigned")}</option>
+          <option value="desk_head">{t("unmatched.deskHead")}</option>
+        </select>
+        <p className="mt-2 text-xs text-muted-foreground">{t("unmatched.alwaysLogged")}</p>
+      </Section>
+
     <Section title={t("ignoredSenders.title")}>
       {/* Its own card: the description below runs long, and inside the
           department card it read as if it explained the department picker
@@ -1321,6 +1348,15 @@ function AccountRow({
       {!account.assigned_owner_id && (
         <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
           {t("settings.unownedAccountWarning")}
+        </p>
+      )}
+      {/* An owner is no use if nothing ever matches this account. Sender
+          matching joins on the domain rows, so an account with none can only
+          ever be attached to a ticket by hand — and the owner sitting right
+          next to it makes that look configured. */}
+      {account.domains.length === 0 && (
+        <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+          {t("settings.noDomainsWarning")}
         </p>
       )}
       <AccountProducts

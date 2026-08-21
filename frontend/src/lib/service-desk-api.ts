@@ -352,6 +352,9 @@ export interface ServiceDeskSettings {
    *  different, high-confidence requests. Off by default — everything else
    *  stays a single ticket flagged for triage. */
   auto_split_enabled: boolean;
+  /** What intake does with a ticket whose account it cannot identify.
+   *  "random" is the historical default. */
+  unmatched_assignment: "random" | "unassigned" | "desk_head";
   /** Whether the current user holds can_manage_service_desk. The server enforces
    *  this regardless; the UI uses it to avoid offering actions that would 403. */
   can_manage: boolean;
@@ -423,6 +426,7 @@ export interface ServiceDeskSettingsPatch {
   ai_attachment_previews_enabled?: boolean;
   public_ticket_links_enabled?: boolean;
   auto_split_enabled?: boolean;
+  unmatched_assignment?: "random" | "unassigned" | "desk_head";
   working_hours_start?: string;
   working_hours_end?: string;
   ticket_prefix?: string;
@@ -484,8 +488,13 @@ export const serviceDeskApi = {
   /** Whether the classifier is worth trusting on this desk's mail. */
   getAiAccuracy: async (ws: string, days = 90): Promise<AIAccuracy> =>
     (await api.get(`${base(ws)}/ai-accuracy`, { params: { days } })).data,
-  getDashboard: async (ws: string): Promise<ServiceDeskDashboard> =>
-    (await api.get(`${base(ws)}/dashboard`)).data,
+  /** The queue board plus one page of tickets. Omit the paging params for the
+   *  whole list, which is what the CSV export needs. */
+  getDashboard: async (
+    ws: string,
+    params?: { limit?: number; offset?: number },
+  ): Promise<ServiceDeskDashboard> =>
+    (await api.get(`${base(ws)}/dashboard`, { params })).data,
   listTickets: async (
     ws: string,
     params?: TicketQuery
@@ -538,7 +547,7 @@ export const serviceDeskApi = {
   ): Promise<ServiceDeskTicketDetail> =>
     (await api.post(`${base(ws)}/tickets/${id}/email`, data)).data,
   convertToTask: async (
-    ws: string, ticketId: string, data: { project_id: string; sprint_id?: string; title?: string; priority?: string },
+    ws: string, ticketId: string, data: { project_id: string; sprint_id?: string; title?: string; priority?: string; assignee_id?: string },
   ): Promise<{ task_id: string; task_title: string; linked: boolean }> =>
     (await api.post(`${base(ws)}/tickets/${ticketId}/convert-to-task`, data)).data,
 

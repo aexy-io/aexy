@@ -90,6 +90,10 @@ class NotificationEventType(str, Enum):
 
     # Ticket assignment (form tickets — the internal request queue)
     TICKET_ASSIGNED = "ticket_assigned"
+    # The work behind a ticket finished. Sent to the ticket's owner, who is
+    # usually not the person who completed the task — the developer closed a
+    # sprint task and has no idea a ticket was waiting on it.
+    TICKET_RESOLVED = "ticket_resolved"
 
     # Service desk. `pending_with` is the desk's real handoff — a ticket moves
     # between team queues far more often than it changes assigned owner, and the
@@ -518,6 +522,7 @@ NOTIFICATION_CATEGORIES: dict[str, list[str]] = {
         NotificationEventType.TASK_STATUS_CHANGED.value,
         NotificationEventType.TASK_COMMENTED.value,
         NotificationEventType.TICKET_ASSIGNED.value,
+        NotificationEventType.TICKET_RESOLVED.value,
     ],
     "service_desk": [
         NotificationEventType.DESK_TICKET_ASSIGNED.value,
@@ -653,6 +658,10 @@ DEFAULT_NOTIFICATION_PREFERENCES = {
     NotificationEventType.TASK_STATUS_CHANGED: {"in_app": True, "email": False, "slack": False, "web_push": False},
     NotificationEventType.TASK_COMMENTED: {"in_app": True, "email": False, "slack": False, "web_push": False},
     NotificationEventType.TICKET_ASSIGNED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    # Email on by default: the owner is told the work behind their ticket is
+    # finished and it is theirs to confirm with the requester. In-app alone
+    # would be missed by exactly the people who do not live on the board.
+    NotificationEventType.TICKET_RESOLVED: {"in_app": True, "email": True, "slack": False, "web_push": False},
     # Service desk. These carry an external SLA clock, so both the new owner and
     # the queue a ticket lands in get email — the daily digest was previously the
     # only signal and it can be up to a day late.

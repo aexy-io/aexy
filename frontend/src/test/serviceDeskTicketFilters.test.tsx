@@ -20,6 +20,13 @@ vi.mock("@/hooks/useWorkspace", () => ({
   useWorkspaceMembers: () => ({ members: [], isLoading: false }),
 }));
 
+// Added with the log-dialog's optional "raise the task now" fields: the page
+// now reads projects too, and the real hook needs a QueryClient these tests
+// deliberately do without.
+vi.mock("@/hooks/useProjects", () => ({
+  useProjects: () => ({ projects: [{ id: "proj-1", name: "Platform" }], isLoading: false }),
+}));
+
 vi.mock("@/hooks/useServiceDesk", () => ({
   useVendors: () => ({ data: [] }),
   useServiceDeskTickets: (query: Record<string, unknown>) => {

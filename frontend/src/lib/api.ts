@@ -8851,6 +8851,10 @@ export interface Ticket {
   form_id: string;
   workspace_id: string;
   ticket_number: number;
+  /** The ticket's own headline. Null for tickets raised through a form with no
+   *  subject field — fall back to field_values, never to the form name, which
+   *  is identical for every ticket on that form. */
+  title?: string | null;
   submitter_email?: string;
   submitter_name?: string;
   email_verified: boolean;

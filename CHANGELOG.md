@@ -5,6 +5,113 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.25.0] - 2026-08-21
+
+Service Desk, from the ops head's and the tech team's reports.
+
+### Fixed: a logged ticket reaches the partner's own KAM
+
+"Assignment based on Partner in Master Data is not working — I have to move
+every ticket to the right KAM by hand."
+
+A manual ticket is created through intake, and intake decides the owner from the
+sender address. For a logged call that address is the literal `manual@local`, so
+it matched no account and fell through to an arbitrary member of the desk. The
+account the operator picked in the dialog was applied to the ticket *afterwards*
+and never touched the assignee — so choosing the partner did nothing at all.
+
+Routing now runs after the operator's fields are applied, narrowest answer
+first: the account/product pairing, then the account's own owner. A named
+account that owns nobody says so on the ticket, because that case still gets an
+arbitrary assignee and is the one most in need of explaining.
+
+The unmatched case is now the desk's choice rather than a constant.
+`unmatched_assignment` defaults to **"random"** — the historical behaviour, so no
+existing desk changes on upgrade — and that is also the option that hid this
+class of bug: an arbitrarily-assigned ticket is indistinguishable from a
+deliberately-assigned one, so a missing domain mapping surfaced only as a KAM
+asking why a partner they do not handle is in their queue. "unassigned" leaves it
+visibly waiting and flagged for triage; "desk_head" gives it to one accountable
+person. The last-ditch workspace-owner fallback no longer fires under
+"unassigned", which would have quietly undone the setting.
+
+Master Data also warns when an account has no domains at all. Sender matching
+joins on the domain rows, so such an account can only ever be attached by hand —
+and the owner shown next to it makes that look configured.
+
+### Added: finishing the task resolves the ticket it came from
+
+`Ticket.linked_task_id` has been written by the convert-to-task flow since it
+existed and was read by nothing. The engineering finished, the card went to
+done, and the ticket stayed open — so the requester chased something fixed days
+earlier and the desk's open count was wrong.
+
+**Resolved, not Closed.** The ticket is a conversation with somebody outside the
+workspace and the developer who moved the card has not spoken to them; closing it
+there would end that conversation on a board action. Both status write paths are
+hooked, because a card can be completed from either and a ticket that closes only
+via one of them looks random. It goes through `update_ticket`, so `resolved_at`,
+the status-change row, the automation events and the activity entry all happen
+exactly as when a human resolves it, and it is idempotent on the transition so
+dragging a card back and forth does not re-resolve or re-notify.
+
+Notifications reach two audiences on two channels: the ticket's owner through the
+notification system (new `TICKET_RESOLVED` event, email on by default), and the
+requester by plain email since they usually have no account. The requester's copy
+is marked auto-generated — without that a watched Service Desk mailbox turns our
+own outbound message into a new ticket, so resolving one would open another.
+
+Fixes a pre-existing crash found on the way: the cycle/lead-time arithmetic on
+the done path subtracts `created_at` from an aware `now()`, which raises when a
+driver returns a naive timestamp. SQLite always does, so completing a task threw
+`TypeError` on any non-Postgres connection — which is why no test covered task
+completion through that path.
+
+### Added: a ticket has a title of its own
+
+There was no such column. The subject lived in `field_values["subject"]`, so the
+detail page headlined the **form** name and every ticket raised through one form
+read identically; sorting or filtering by subject went through a JSONB
+expression no index helps; and a form with no subject field produced tickets with
+nothing to call them.
+
+`tickets.title` is backfilled from where the subject has always been kept —
+trimmed, blanks and JSON nulls left NULL rather than becoming a title of "", and
+bounded to the column. Readers prefer the column and fall back to the submission
+blob, so a row the backfill could not fill displays exactly as before. The form
+name now sits under the heading instead of standing in for it.
+
+### Added: attachments and the task, while logging the call
+
+The log dialog can attach the files the requester sent and raise the project task
+in the same pass, with the project and who is picking it up. Converting a ticket
+to a task now carries the ticket's files onto the task as well — they reference
+the same stored objects rather than being re-uploaded, so deleting one copy
+cannot leave the other resolving — and takes an assignee, validated as a member
+of the workspace before work is put on them.
+
+The three steps run in that order because each needs the id the one before
+produced: the attachment endpoint is addressed by ticket, and the task copies the
+ticket's files as it is created. If a later step fails the ticket still exists and
+the dialog says what did not finish, because somebody is on the phone.
+
+### Added: pagination on the dashboard
+
+`GET /dashboard` returned every open ticket. It now takes `limit`/`offset` — but
+only the ticket list is paged: the stakeholder matrix and the open/breaching
+counts stay whole-desk, because a queue board reporting "3 waiting" when that is
+all that fitted on the page would be worse than a long page. The CSV export
+re-fetches unpaged, so pressing export never quietly gives you one page.
+
+### Changed: quoted email history is folded away
+
+Correspondence was rendered raw, so every reply carried the whole thread again
+behind `>` and `>>` markers and the newest message — the only part being read
+for — sat above screens of text already read, repeated once per reply. The quoted
+part is now folded behind a toggle. Folded, not dropped: it is the record of what
+was actually sent, and on a ticket forwarded twice it is sometimes the only place
+the original request survives.
+
 ## [0.24.3] - 2026-08-20
 
 ### Fixed: an attachment whose name was not ASCII returned a CORS error

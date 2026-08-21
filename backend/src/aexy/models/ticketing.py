@@ -323,6 +323,18 @@ class Ticket(Base):
     # Ticket number (workspace-scoped, sequential)
     ticket_number: Mapped[int] = mapped_column(Integer, nullable=False)
 
+    # What this ticket is about, in one line.
+    #
+    # There was no such column: the subject lived in `field_values["subject"]`,
+    # so the detail page headlined the *form* name and every ticket raised
+    # through one form read identically. Sorting and searching by subject meant a
+    # JSONB expression, which no index helps.
+    #
+    # Nullable because a form need not have a subject field at all, and because
+    # the backfill can only fill in what `field_values` happened to hold. Readers
+    # should prefer this and fall back to `field_values["subject"]`.
+    title: Mapped[str | None] = mapped_column(String(500), nullable=True, index=True)
+
     # Submitter info
     submitter_email: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     submitter_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
