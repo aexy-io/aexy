@@ -76,7 +76,13 @@ export function DocxFileViewer({
   }
 
   return (
-    <div className="h-[70vh] overflow-hidden rounded-md border border-border">
+    // `color-scheme: light` so the engine's own scrollbars and any native
+    // controls inside the canvas stay light with it, instead of the page
+    // reading as paper inside dark browser chrome.
+    <div
+      style={{ colorScheme: "light" }}
+      className="h-[70vh] overflow-hidden rounded-md border border-border bg-white"
+    >
       <DocxEditorCanvas
         document={data}
         mode="view"

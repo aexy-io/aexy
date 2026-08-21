@@ -38,7 +38,7 @@ export function FileMetadataSidecar({
   return (
     <aside
       data-testid="file-metadata-sidecar"
-      className={`space-y-4 rounded-lg border border-border bg-muted/30 p-4 text-sm ${className ?? ""}`}
+      className={`h-fit space-y-4 rounded-xl border border-border bg-card p-4 text-sm ${className ?? ""}`}
     >
       <header className="flex items-center justify-between gap-2">
         <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -80,9 +80,9 @@ function SidecarBody({ ai }: { ai: FileAIMetadata }) {
           {t("summaryHeading")}
         </h4>
         {ai.ai_status === "failed" ? (
-          <p className="text-red-400">{ai.ai_error ?? t("summaryFailedFallback")}</p>
+          <p className="text-red-600 dark:text-red-300">{ai.ai_error ?? t("summaryFailedFallback")}</p>
         ) : ai.ai_summary ? (
-          <p className="text-foreground">{ai.ai_summary}</p>
+          <p className="leading-relaxed text-foreground">{ai.ai_summary}</p>
         ) : (
           <p className="text-muted-foreground">
             {t("summaryAnalysing")}

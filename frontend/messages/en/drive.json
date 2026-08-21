@@ -11,25 +11,38 @@
       "storageHeading": "Storage",
       "unlimited": "Unlimited",
       "percentUsed": "{percent}%",
-      "filesCount": "{count} files",
+      "filesCount": "{count, plural, one {# file} other {# files}}",
       "ofLimit": "of {limit}",
       "searchPlaceholder": "Search across all files (AI-powered)…",
       "searching": "Searching…",
       "noMatches": "No matches.",
       "loading": "Loading…",
-      "emptyFolder": "This folder is empty. Drop files above to get started.",
+      "emptyFolder": "Nothing here yet",
       "folderLabel": "(folder)",
       "sourcesHeading": "Sources",
       "viewDriveFiles": "Drive files",
       "viewTaskAttachments": "Task attachments",
       "viewComplianceDocs": "Compliance documents",
-      "emptySource": "No files in this source yet."
+      "emptySource": "No files in this source yet",
+      "remaining": "{size} free",
+      "clearSearch": "Clear search",
+      "searchMinLength": "Type at least two characters to search.",
+      "resultsCount": "{count, plural, one {# match} other {# matches}}",
+      "noMatchesHint": "Try a different word, or search by what the file is about — search reads AI summaries too.",
+      "emptyFolderHint": "Drop files above to upload them. Each one gets an AI summary and tags automatically.",
+      "emptySourceHint": "Files attached to tasks and compliance records show up here automatically.",
+      "deleteTitle": "Delete this file?",
+      "deleteDescription": "“{name}” will be removed from Files & Storage. This frees up its storage immediately.",
+      "deleteConfirm": "Delete file"
     },
     "fileCard": {
       "aiPending": "AI",
       "aiReady": "Ready",
       "aiFailed": "Failed",
-      "tagsOverflow": "+{count}"
+      "tagsOverflow": "+{count}",
+      "summaryPending": "Generating AI summary…",
+      "folder": "Folder",
+      "delete": "Delete"
     },
     "upload": {
       "dropPrompt": "Drop files to upload, or",
@@ -39,7 +52,12 @@
       "statusDone": "Done",
       "statusFailed": "Failed",
       "statusPercent": "{percent}%",
-      "quotaExceededAlert": "Storage quota would be exceeded. {used} used + {incoming} incoming > {limit} limit."
+      "quotaExceededAlert": "Storage quota would be exceeded. {used} used + {incoming} incoming > {limit} limit.",
+      "dropHint": "Any file type. Uploads run three at a time.",
+      "statusQueued": "Queued",
+      "failedCount": "{count} failed",
+      "retry": "Retry upload",
+      "dismiss": "Remove from list"
     },
     "quota": {
       "limitReached": "Storage limit reached.",
@@ -106,6 +124,19 @@
       "sourceDrive": "Drive",
       "sourceTask": "Task",
       "sourceCompliance": "Compliance"
+    },
+    "fileDetail": {
+      "backToDrive": "Back to Files",
+      "loading": "Loading…",
+      "fallbackName": "File",
+      "unknownSource": "We don't recognise that file source.",
+      "uploadedAt": "Uploaded {when}",
+      "download": "Download",
+      "openInNewTab": "Open",
+      "noPreviewForSourceTitle": "Preview is available for Drive files only.",
+      "noPreviewForSourceHint": "Open this file from its own source — the task or the compliance record it belongs to.",
+      "noInlinePreviewTitle": "No inline preview for this file type",
+      "noInlinePreviewHint": "Download it to open in the app it was made for. The AI summary on the right still applies."
     }
   }
 }

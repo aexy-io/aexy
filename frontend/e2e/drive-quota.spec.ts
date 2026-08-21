@@ -54,7 +54,7 @@ test.describe("Drive — storage quota banner", () => {
     });
 
     await page.goto("/docs/drive");
-    await expect(page.getByRole("heading", { name: "Drive" })).toBeVisible({
+    await expect(page.getByRole("heading", { name: /files\s*&\s*storage/i })).toBeVisible({
       timeout: 20000,
     });
     await expect(page.getByTestId("drive-quota-banner")).toHaveCount(0);

@@ -43,7 +43,7 @@ test.describe("Drive — smart views", () => {
     );
 
     await page.goto("/docs/drive");
-    await expect(page.getByRole("heading", { name: "Drive" })).toBeVisible({
+    await expect(page.getByRole("heading", { name: /files\s*&\s*storage/i })).toBeVisible({
       timeout: 20000,
     });
 

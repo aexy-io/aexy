@@ -1,6 +1,12 @@
 "use client";
 
-import { ArrowLeft, ExternalLink, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Download,
+  ExternalLink,
+  FileQuestion,
+  Loader2,
+} from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
@@ -9,17 +15,17 @@ import { toast } from "sonner";
 
 import {
   type FileSourceType,
-  driveApi,
+  documentApi,
   type DriveFile,
 } from "@/lib/api";
 import { useDriveFile } from "@/hooks/useDrive";
 import { useFileMetadata } from "@/hooks/useFileMetadata";
 import { useWorkspace } from "@/hooks/useWorkspace";
 
+import { formatBytes } from "@/components/drive/QuotaBanner";
 import { FileMetadataSidecar } from "@/components/files/FileMetadataSidecar";
-import { VideoAnnotatedPlayer } from "@/components/drive/VideoAnnotatedPlayer";
 import { DocxFileViewer } from "@/components/docs/DocxFileViewer";
-import { documentApi } from "@/lib/api";
+import { VideoAnnotatedPlayer } from "@/components/drive/VideoAnnotatedPlayer";
 
 const VALID_SOURCES: FileSourceType[] = [
   "drive_file",
@@ -28,6 +34,7 @@ const VALID_SOURCES: FileSourceType[] = [
 ];
 
 export default function UniversalFileDetailPage() {
+  const t = useTranslations("drive.fileDetail");
   const params = useParams<{ sourceType: string; sourceId: string }>();
   const { currentWorkspaceId } = useWorkspace();
 
@@ -50,8 +57,15 @@ export default function UniversalFileDetailPage() {
 
   if (!isValid) {
     return (
-      <div className="p-6 text-sm text-muted-foreground">
-        Unknown source type. <Link href="/docs/drive" className="text-primary-400 underline">Back</Link>
+      <div className="flex flex-col items-center gap-2 p-12 text-center">
+        <FileQuestion className="h-6 w-6 text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">{t("unknownSource")}</p>
+        <Link
+          href="/docs/drive"
+          className="text-sm text-primary-500 underline decoration-dotted"
+        >
+          {t("backToDrive")}
+        </Link>
       </div>
     );
   }
@@ -62,7 +76,7 @@ export default function UniversalFileDetailPage() {
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 p-6 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+        <Loader2 className="h-4 w-4 animate-spin" /> {t("loading")}
       </div>
     );
   }
@@ -70,32 +84,72 @@ export default function UniversalFileDetailPage() {
   const driveFile: DriveFile | undefined = driveQ.data;
 
   return (
-    <div className="grid h-full min-h-0 gap-4 p-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+    // `items-start` so the metadata column hugs its content instead of
+    // stretching to the height of a 75vh document preview.
+    <div className="grid h-full min-h-0 items-start gap-5 p-6 lg:grid-cols-[minmax(0,1fr)_21rem]">
       <section className="min-w-0 space-y-4">
         <Link
           href="/docs/drive"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
-          <ArrowLeft className="h-4 w-4" /> Back to Drive
+          <ArrowLeft className="h-4 w-4" /> {t("backToDrive")}
         </Link>
 
-        <h1 className="text-xl font-semibold text-foreground">
-          {driveFile?.file_name ?? "File"}
-        </h1>
+        <header className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="break-all text-xl font-semibold text-foreground">
+              {driveFile?.file_name ?? t("fallbackName")}
+            </h1>
+            {driveFile && (
+              <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                <span className="uppercase tracking-wider">{driveFile.kind}</span>
+                <span aria-hidden>·</span>
+                <span className="tabular-nums">
+                  {formatBytes(driveFile.file_size_bytes)}
+                </span>
+                <span aria-hidden>·</span>
+                <span>
+                  {t("uploadedAt", {
+                    when: new Date(driveFile.uploaded_at).toLocaleString(),
+                  })}
+                </span>
+              </p>
+            )}
+          </div>
+
+          {driveFile?.file_url && (
+            <div className="flex shrink-0 items-center gap-2">
+              <a
+                href={driveFile.file_url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                {t("openInNewTab")}
+              </a>
+              <a
+                href={driveFile.file_url}
+                download={driveFile.file_name}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-primary-500 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary-600"
+              >
+                <Download className="h-3.5 w-3.5" />
+                {t("download")}
+              </a>
+            </div>
+          )}
+        </header>
 
         {/* Source-specific preview */}
         {sourceType === "drive_file" && driveFile && (
           <DrivePreview file={driveFile} workspaceId={currentWorkspaceId} />
         )}
         {sourceType !== "drive_file" && (
-          <div className="rounded-md border border-border bg-muted/30 p-6 text-sm text-muted-foreground">
-            <p className="mb-2 text-foreground">
-              Preview is currently available for Drive files only.
+          <div className="rounded-xl border border-border bg-muted/20 p-6 text-sm text-muted-foreground">
+            <p className="mb-1 font-medium text-foreground">
+              {t("noPreviewForSourceTitle")}
             </p>
-            <p>
-              Use the source&apos;s own download / view endpoint to access this
-              file&apos;s contents.
-            </p>
+            <p>{t("noPreviewForSourceHint")}</p>
           </div>
         )}
       </section>
@@ -104,7 +158,36 @@ export default function UniversalFileDetailPage() {
         workspaceId={currentWorkspaceId}
         sourceType={sourceType}
         sourceId={params.sourceId}
+        className="lg:sticky lg:top-6"
       />
+    </div>
+  );
+}
+
+/**
+ * Documents are authored on white paper, so a preview keeps its own light
+ * canvas with `color-scheme: light` regardless of the app's theme — the
+ * author's black-on-white contrast choices are part of the content, and
+ * inverting the page but not the ink is what makes a dark-mode document
+ * look broken. Media (image/video) gets a neutral mat instead, which is the
+ * conventional treatment and follows the theme.
+ */
+function PaperSurface({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      data-testid="file-paper-surface"
+      style={{ colorScheme: "light" }}
+      className="overflow-hidden rounded-xl border border-border bg-[#f4f4f5] p-2 shadow-sm sm:p-3"
+    >
+      {children}
+    </div>
+  );
+}
+
+function MediaSurface({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-center overflow-hidden rounded-xl border border-border bg-neutral-100 p-3 dark:bg-neutral-900">
+      {children}
     </div>
   );
 }
@@ -116,31 +199,40 @@ function DrivePreview({
   file: DriveFile;
   workspaceId: string | null;
 }) {
+  const t = useTranslations("drive.fileDetail");
   if (!file.file_url) return null;
+
   if (file.kind === "image") {
     return (
-      // A user-uploaded file preview at an arbitrary remote URL, so `next/image`
-      // would need every host allowlisted to render it at all.
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={file.file_url}
-        alt={file.file_name}
-        className="max-h-[70vh] rounded-md border border-border"
-      />
+      <MediaSurface>
+        {/* A user-uploaded file preview at an arbitrary remote URL, so `next/image`
+            would need every host allowlisted to render it at all. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={file.file_url}
+          alt={file.file_name}
+          className="max-h-[70vh] w-auto rounded-md object-contain"
+        />
+      </MediaSurface>
     );
   }
+
   if (file.kind === "video") {
     return <VideoAnnotatedPlayer workspaceId={workspaceId} file={file} />;
   }
+
   if (file.kind === "pdf") {
     return (
-      <iframe
-        src={file.file_url}
-        title={file.file_name}
-        className="h-[70vh] w-full rounded-md border border-border bg-muted"
-      />
+      <PaperSurface>
+        <iframe
+          src={file.file_url}
+          title={file.file_name}
+          className="h-[75vh] w-full rounded-md border-0 bg-white"
+        />
+      </PaperSurface>
     );
   }
+
   // `kind` is "doc" for several office formats, so the extension decides:
   // only .docx has an engine that can render it.
   if (
@@ -150,9 +242,28 @@ function DrivePreview({
   ) {
     return <DocxPreview file={file} workspaceId={workspaceId} />;
   }
+
   return (
-    <div className="rounded-md border border-border bg-muted/30 p-6 text-sm text-muted-foreground">
-      No inline preview for this file type. Use Download.
+    <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border bg-muted/20 px-6 py-12 text-center">
+      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        <FileQuestion className="h-5 w-5" />
+      </span>
+      <div>
+        <p className="text-sm font-medium text-foreground">
+          {t("noInlinePreviewTitle")}
+        </p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {t("noInlinePreviewHint")}
+        </p>
+      </div>
+      <a
+        href={file.file_url}
+        download={file.file_name}
+        className="inline-flex items-center gap-1.5 rounded-lg bg-primary-500 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary-600"
+      >
+        <Download className="h-3.5 w-3.5" />
+        {t("download")}
+      </a>
     </div>
   );
 }
@@ -176,16 +287,16 @@ function DocxPreview({
   });
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-xs uppercase tracking-wide text-muted-foreground">
+        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           {t("docx.wordDocument")}
         </span>
         <button
           type="button"
           onClick={() => promote.mutate()}
           disabled={promote.isPending}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium hover:bg-muted disabled:opacity-60"
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium transition-colors hover:bg-accent disabled:opacity-60"
         >
           {promote.isPending ? (
             <Loader2 className="h-3 w-3 animate-spin" />
