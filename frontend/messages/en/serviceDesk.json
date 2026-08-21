@@ -24,7 +24,10 @@
       "export": "Export CSV",
       "routesTo": "Routes to",
       "external": "External",
-      "noDepartment": "No department"
+      "noDepartment": "No department",
+      "showing": "Showing {from}–{to} of {total}",
+      "previous": "Previous",
+      "next": "Next"
     },
     "table": {
       "id": "Ticket",
@@ -117,7 +120,9 @@
       "actions": "Actions",
       "download": "Download",
       "downloading": "Downloading…",
-      "attachmentUnavailable": "Only in the original email"
+      "attachmentUnavailable": "Only in the original email",
+      "showQuoted": "Show quoted history",
+      "hideQuoted": "Hide quoted history"
     },
     "ai": {
       "title": "AI email categorisation",
@@ -159,7 +164,14 @@
       "account": "Account",
       "none": "— None —",
       "create": "Create ticket",
-      "creating": "Creating…"
+      "creating": "Creating…",
+      "attachments": "Attachments",
+      "attachmentsChosen": "{count} file(s) will be attached to the ticket",
+      "taskSection": "Raise the work now (optional)",
+      "taskProject": "Project",
+      "taskNone": "Don't create a task",
+      "taskAssignee": "Assign to",
+      "taskUnassigned": "Nobody yet"
     },
     "templates": {
       "title": "Email templates",
@@ -220,7 +232,8 @@
       "productsHint": "What a ticket can be about. AI categorisation picks one by exact name and the daily digest groups by it, so a name the AI suggests that is not listed here is dropped.",
       "productsEmpty": "No products yet, so tickets are not tagged with one and the digest cannot group by it.",
       "assignedOwnerFor": "Assigned owner for {name}",
-      "unownedAccountWarning": "No assigned owner — tickets from this account go to an arbitrary member of the desk department."
+      "unownedAccountWarning": "No assigned owner — tickets from this account go to an arbitrary member of the desk department.",
+      "noDomainsWarning": "No domains — sender matching can never attach a ticket to this account on its own, so its owner is only used when someone sets the account by hand."
     },
     "noDepartment": "You're not in a department yet, so no tickets can be routed to you. Ask an admin to add you from Organization → Departments.",
     "assignedOnly": "You see the tickets assigned to you, and none are open right now. Other tickets on the desk are handled by their own owners.",
@@ -335,35 +348,14 @@
       "sendNow": "Send now",
       "sentCount": "{count, plural, =0 {Nothing sent} one {Sent to # person} other {Sent to # people}}",
       "notARecipient": "You are not on the recipient list, so there is nothing to preview. The settings above still apply to everyone who is."
+    },
+    "unmatched": {
+      "title": "Unroutable tickets",
+      "description": "What to do when intake cannot tell which account a ticket belongs to — usually because no account claims the sender's domain.",
+      "random": "Assign to any member of the desk department (default)",
+      "unassigned": "Leave unassigned and flag for triage",
+      "deskHead": "Assign to the desk department's head",
+      "alwaysLogged": "Whichever you choose, the reason is written on the ticket so a wrong owner can be traced back to the mapping that caused it."
     }
-  },
-  "settings": {
-    "noDomainsWarning": "No domains — sender matching can never attach a ticket to this account on its own, so its owner is only used when someone sets the account by hand."
-  },
-  "unmatched": {
-    "title": "Unroutable tickets",
-    "description": "What to do when intake cannot tell which account a ticket belongs to — usually because no account claims the sender's domain.",
-    "random": "Assign to any member of the desk department (default)",
-    "unassigned": "Leave unassigned and flag for triage",
-    "deskHead": "Assign to the desk department's head",
-    "alwaysLogged": "Whichever you choose, the reason is written on the ticket so a wrong owner can be traced back to the mapping that caused it."
-  },
-  "manual": {
-    "attachments": "Attachments",
-    "attachmentsChosen": "{count} file(s) will be attached to the ticket",
-    "taskSection": "Raise the work now (optional)",
-    "taskProject": "Project",
-    "taskNone": "Don't create a task",
-    "taskAssignee": "Assign to",
-    "taskUnassigned": "Nobody yet"
-  },
-  "dashboard": {
-    "showing": "Showing {from}–{to} of {total}",
-    "previous": "Previous",
-    "next": "Next"
-  },
-  "detail": {
-    "showQuoted": "Show quoted history",
-    "hideQuoted": "Hide quoted history"
   }
 }

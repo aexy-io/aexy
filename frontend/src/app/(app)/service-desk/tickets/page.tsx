@@ -757,10 +757,18 @@ export default function ServiceDeskTicketsPage() {
             </div>
 
             {/* Raise the work at the same time. Optional: plenty of calls are
-                answered on the call and never become a task. */}
+                answered on the call and never become a task.
+
+                Hidden entirely when the workspace has no projects — the section
+                would otherwise offer a picker whose only option is "don't", and
+                a control that cannot do anything reads as a broken one. */}
+            {(projects ?? []).length > 0 && (
             <div className="rounded-md border border-border p-3">
               <p className="mb-2 text-xs font-medium">{t("manual.taskSection")}</p>
-              <div className="grid grid-cols-2 gap-3">
+              {/* Stacks on a phone: side by side at 375px clipped the option
+                  text ("Don't create a ta…"), and the operator is often on a
+                  handset while the caller is still talking. */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-xs text-muted-foreground">{t("manual.taskProject")}</label>
                   <select
@@ -796,6 +804,7 @@ export default function ServiceDeskTicketsPage() {
                 </div>
               </div>
             </div>
+            )}
 
             {logError && (
               <p className="text-sm text-destructive" data-testid="manual-ticket-error">{logError}</p>
