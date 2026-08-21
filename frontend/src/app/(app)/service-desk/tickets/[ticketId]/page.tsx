@@ -236,9 +236,11 @@ export default function ServiceDeskTicketDetailPage() {
           {(ticket.body || ticket.attachments.length > 0) && (
             <Card className="space-y-3 p-4">
               <div className="text-sm font-semibold">{t("detail.request")}</div>
-              {ticket.body && (
-                <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{ticket.body}</p>
-              )}
+              {/* The request body is the worst offender for quoted history: a
+                  partner request that has been forwarded twice arrives with
+                  three levels of `>` and the actual ask buried at the top. Same
+                  folding as the correspondence entries below. */}
+              {ticket.body && <QuotedBody body={ticket.body} />}
               {ticket.attachments.length > 0 && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
