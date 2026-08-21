@@ -404,7 +404,7 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
                             {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
                         </button>
                     ) : (
-                        <span className="w-5" />
+                        <span className="w-2" />
                     )}
                     <Link href={`/docs/${doc.id}`} className="flex-1 flex items-center gap-2 truncate">
                         <FileText className="h-3.5 w-3.5 shrink-0" />

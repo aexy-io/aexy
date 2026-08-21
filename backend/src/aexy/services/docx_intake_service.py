@@ -655,6 +655,14 @@ class DocxIntakeService:
                 workspace_id=workspace_id,
                 submission=PublicTicketSubmission(field_values=values),
             )
+            # `create_ticket` fills `Ticket.title` by looking for a
+            # "title"/"subject"/"summary" key in `field_values` — and this path
+            # keys everything by the form field's UUID, so it finds nothing and
+            # the ticket headlines its form name instead. That is the exact bug
+            # main fixed by adding the column; set it here rather than
+            # reintroduce it through this door.
+            if not ticket.title:
+                ticket.title = candidate.title
             created.append(
                 {
                     "id": str(ticket.id),
@@ -662,6 +670,8 @@ class DocxIntakeService:
                     "key": f"#{ticket.ticket_number}",
                 }
             )
+        # The titles set above are pending until flushed.
+        await self.db.flush()
         return created
 
     async def _load_bytes(self, document_id: str) -> bytes:
