@@ -395,6 +395,11 @@ NOTIFICATION_TEMPLATES = {
         "body_template": "{actor_name} assigned you ticket {ticket_reference}: {ticket_title}",
         "email_subject": "Ticket assigned to you: {ticket_title}",
     },
+    NotificationEventType.TICKET_RESOLVED: {
+        "title": "Ticket resolved",
+        "body_template": "{ticket_reference} was resolved: the task \"{task_title}\" is done. Confirm with the requester before closing it.",
+        "email_subject": "{ticket_reference} resolved: {ticket_title}",
+    },
     NotificationEventType.DESK_TICKET_ASSIGNED: {
         "title": "Service desk ticket assigned to you",
         "body_template": "{actor_name} made you the owner of {ticket_reference}: {ticket_title}",

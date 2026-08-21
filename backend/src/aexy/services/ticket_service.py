@@ -1,5 +1,6 @@
 """Ticket service for managing tickets and responses."""
 
+import logging
 import re
 import secrets
 from datetime import datetime, timezone
@@ -41,6 +42,8 @@ from aexy.services.notification_service import (
 from aexy.services.activity_logger import log_activity
 from aexy.services.storage_service import get_storage_service
 
+
+logger = logging.getLogger(__name__)
 
 TICKET_ATTACHMENTS_PREFIX = "ticket-attachments"
 _SAFE_FILENAME_RE = re.compile(r"[^A-Za-z0-9._-]+")
@@ -498,6 +501,133 @@ class TicketService:
             )
 
         return await self.get_ticket(ticket_id)
+
+    async def resolve_for_completed_task(
+        self,
+        task_id: str,
+        task_title: str,
+        actor_id: str | None = None,
+    ) -> Ticket | None:
+        """Resolve the ticket a task was created from, now that the task is done.
+
+        `linked_task_id` has been written by the convert-to-task flow since it
+        existed and was read by nothing, so finishing the work left the ticket
+        open. The requester chased a ticket whose engineering was done days ago,
+        and the desk's open count was wrong.
+
+        **Resolved, not Closed.** The ticket is a conversation with somebody
+        outside the workspace and the developer who dragged the card has not
+        spoken to them. Closing it here would end that conversation on a
+        developer's board action; Resolved says the work is done and leaves the
+        confirmation to a person.
+
+        Idempotent: a task can reach done more than once (dragged back and
+        forth, reopened, bulk-updated), and each pass must not re-resolve, re-log
+        or re-notify.
+        """
+        result = await self.db.execute(
+            select(Ticket).where(Ticket.linked_task_id == task_id)
+        )
+        ticket = result.scalar_one_or_none()
+        if ticket is None:
+            return None
+
+        already_done = {TicketStatus.RESOLVED.value, TicketStatus.CLOSED.value}
+        if ticket.status in already_done:
+            return ticket
+
+        # Goes through `update_ticket` rather than setting the column, so the
+        # status-change response row, `resolved_at`, the automation events and
+        # the entity-activity entry all happen exactly as they do when a human
+        # resolves it. Reimplementing those here is how the two paths drift.
+        updated = await self.update_ticket(
+            ticket_id=str(ticket.id),
+            update_data=TicketUpdate(status=TicketStatus.RESOLVED.value),
+            updated_by_id=actor_id,
+        )
+        if updated is None:
+            return None
+
+        self.db.add(
+            TicketResponseModel(
+                id=str(uuid4()),
+                ticket_id=str(updated.id),
+                author_id=actor_id,
+                is_internal=True,
+                content=(
+                    f'Resolved automatically: the linked task "{task_title}" was completed. '
+                    "Confirm with the requester before closing."
+                ),
+            )
+        )
+        await self.db.flush()
+
+        await self._notify_ticket_resolved(updated, task_id=task_id, task_title=task_title)
+        return updated
+
+    async def _notify_ticket_resolved(
+        self, ticket: Ticket, *, task_id: str, task_title: str
+    ) -> None:
+        """Tell the ticket's owner, and the requester if we can reach them.
+
+        Two different audiences and two different channels. The owner is a
+        workspace member, so this goes through the notification system and
+        honours their preferences. The requester is usually external and has no
+        account, so the only way to reach them is the address they wrote in.
+
+        Never raises: the ticket is already resolved by the time this runs, and
+        an SMTP failure must not roll that back.
+        """
+        reference = f"TKT-{ticket.ticket_number}"
+        title = (ticket.field_values or {}).get("subject") or reference
+
+        try:
+            if ticket.assignee_id:
+                from aexy.services.notification_service import notify_ticket_resolved
+
+                await notify_ticket_resolved(
+                    self.db,
+                    recipient_id=str(ticket.assignee_id),
+                    ticket_reference=reference,
+                    ticket_title=str(title),
+                    task_title=task_title,
+                    action_url=f"/tickets/{ticket.id}",
+                    workspace_id=str(ticket.workspace_id),
+                )
+        except Exception:
+            logger.exception(
+                "Ticket %s resolved but notifying its owner failed", ticket.id
+            )
+
+        if not ticket.submitter_email:
+            return
+        try:
+            from aexy.services.email_service import EmailService
+
+            email = EmailService()
+            if not email.is_configured:
+                return
+            await email.send_templated_email(
+                db=self.db,
+                recipient_email=ticket.submitter_email,
+                subject=f"[{reference}] Resolved: {title}",
+                # Deliberately says nothing about the internal task — the
+                # requester has no view of the board and the task title is
+                # internal wording.
+                body_text=(
+                    f"Hello,\n\n{reference} has been resolved.\n\n"
+                    "If this is not sorted from your side, reply to this message and "
+                    "the ticket will reopen.\n"
+                ),
+                # Marks the message as machine-composed. Without it a watched
+                # Service Desk mailbox turns our own outbound copy into a new
+                # ticket, so resolving one ticket opens another.
+                auto_generated=True,
+            )
+        except Exception:
+            logger.exception(
+                "Ticket %s resolved but emailing the requester failed", ticket.id
+            )
 
     async def assign_ticket(
         self,
