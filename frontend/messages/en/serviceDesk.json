@@ -347,5 +347,23 @@
     "unassigned": "Leave unassigned and flag for triage",
     "deskHead": "Assign to the desk department's head",
     "alwaysLogged": "Whichever you choose, the reason is written on the ticket so a wrong owner can be traced back to the mapping that caused it."
+  },
+  "manual": {
+    "attachments": "Attachments",
+    "attachmentsChosen": "{count} file(s) will be attached to the ticket",
+    "taskSection": "Raise the work now (optional)",
+    "taskProject": "Project",
+    "taskNone": "Don't create a task",
+    "taskAssignee": "Assign to",
+    "taskUnassigned": "Nobody yet"
+  },
+  "dashboard": {
+    "showing": "Showing {from}–{to} of {total}",
+    "previous": "Previous",
+    "next": "Next"
+  },
+  "detail": {
+    "showQuoted": "Show quoted history",
+    "hideQuoted": "Hide quoted history"
   }
 }

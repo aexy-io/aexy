@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { QuotedBody } from "@/components/service-desk/QuotedBody";
+
 import {
   useServiceDeskTicket,
   useServiceDeskMutations,
@@ -725,7 +727,7 @@ export default function ServiceDeskTicketDetailPage() {
                       )}
                     </div>
                     <div className="mt-0.5 text-xs text-muted-foreground">{new Date(entry.created_at).toLocaleString()}</div>
-                    <p className="mt-2 whitespace-pre-wrap break-words text-sm">{entry.content}</p>
+                    <QuotedBody body={entry.content} />
                   </li>
                 ))}
               </ol>

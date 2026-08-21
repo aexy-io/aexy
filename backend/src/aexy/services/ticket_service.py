@@ -46,6 +46,27 @@ from aexy.services.storage_service import get_storage_service
 logger = logging.getLogger(__name__)
 
 TICKET_ATTACHMENTS_PREFIX = "ticket-attachments"
+
+# Field keys a form commonly uses for the ticket's headline, most specific
+# first. A form builder names this field whatever suits the form, so there is no
+# single key to read — but these three cover what the templates ship with.
+_HEADLINE_KEYS = ("title", "subject", "summary")
+
+
+def headline_from_field_values(field_values: dict | None) -> str | None:
+    """The one-line description of a ticket, taken from its submission.
+
+    Used to fill `Ticket.title` at creation and to fall back for rows the
+    backfill could not fill. Returns None rather than an empty string so a blank
+    subject stays absent instead of becoming a title of "".
+    """
+    for key in _HEADLINE_KEYS:
+        value = (field_values or {}).get(key)
+        if value:
+            text = " ".join(str(value).split())
+            if text:
+                return text[:500]
+    return None
 _SAFE_FILENAME_RE = re.compile(r"[^A-Za-z0-9._-]+")
 
 
@@ -101,6 +122,7 @@ class TicketService:
             email_verified=False,
             verification_token=verification_token,
             field_values=submission.field_values,
+            title=headline_from_field_values(submission.field_values),
             attachments=attachments or [],
             status=TicketStatus.NEW.value,
             source_ip=source_ip,
@@ -579,7 +601,7 @@ class TicketService:
         an SMTP failure must not roll that back.
         """
         reference = f"TKT-{ticket.ticket_number}"
-        title = (ticket.field_values or {}).get("subject") or reference
+        title = ticket.title or (ticket.field_values or {}).get("subject") or reference
 
         try:
             if ticket.assignee_id:

@@ -477,6 +477,9 @@ class ConvertToTaskRequest(BaseModel):
     sprint_id: str | None = None
     title: str | None = None
     priority: str = "medium"
+    # Who picks the work up. Without it the task landed on nobody and had to be
+    # assigned in a second trip to the board.
+    assignee_id: str | None = None
 
 
 class ConvertToTaskResponse(BaseModel):

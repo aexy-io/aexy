@@ -472,10 +472,23 @@ def _norm_domain(d: str) -> str:
     return cleaned
 
 
+def _ticket_headline():
+    """The ticket's headline as a SQL expression.
+
+    Prefers the `title` column and falls back to the submission blob, so rows
+    the backfill could not fill (a form with no subject field, a submission that
+    stored it under a key we do not recognise) still sort and match on whatever
+    they do have, exactly as they did before the column existed.
+    """
+    return func.coalesce(
+        Ticket.title, Ticket.field_values["subject"].as_string()
+    )
+
+
 _SORTABLE = {
     "created": lambda: Ticket.created_at,
     "ticket": lambda: Ticket.ticket_number,
-    "subject": lambda: Ticket.field_values["subject"].as_string(),
+    "subject": _ticket_headline,
     "account": lambda: ServiceDeskAccount.name,
     "type": lambda: ServiceDeskTicket.request_type,
     "pending": lambda: ServiceDeskTicket.pending_with,
@@ -1817,7 +1830,7 @@ class ServiceDeskService:
             if term:
                 like = f"%{term}%"
                 matches = [
-                    Ticket.field_values["subject"].as_string().ilike(like, escape="\\"),
+                    _ticket_headline().ilike(like, escape="\\"),
                     Ticket.submitter_email.ilike(like, escape="\\"),
                     Ticket.submitter_name.ilike(like, escape="\\"),
                 ]
@@ -1921,7 +1934,7 @@ class ServiceDeskService:
                     workspace_id=sd.workspace_id,
                     ticket_number=ticket.ticket_number,
                     display_id=display_id(prefix, ticket.ticket_number),
-                    subject=(ticket.field_values or {}).get("subject"),
+                    subject=ticket.title or (ticket.field_values or {}).get("subject"),
                     requester_email=ticket.submitter_email,
                     requester_name=ticket.submitter_name,
                     status=ticket.status,
@@ -2066,6 +2079,7 @@ class ServiceDeskService:
                     is_internal=True,
                 )
             )
+
         await self.db.flush()
 
         # Commit before the acknowledgement goes out, so a rollback can't leave
@@ -2073,6 +2087,7 @@ class ServiceDeskService:
         # send itself is the caller's to schedule (``acknowledge_ticket``) — it is
         # an SMTP round trip and the operator does not have to watch it finish.
         await self.db.commit()
+
         return ticket.id
 
     async def _require_own(self, model, workspace_id: str, row_id: str, label: str) -> None:

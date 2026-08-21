@@ -632,7 +632,7 @@ class ServiceDeskTicketService:
             to=mailbox.address if mailbox else "",
             from_email=primary.submitter_email or "",
             from_name=primary.submitter_name,
-            subject=str(field_values.get("subject") or ""),
+            subject=str(primary.title or field_values.get("subject") or ""),
             body_text=str(field_values.get("body") or ""),
             message_id=sd.source_message_id,
         )
@@ -1340,6 +1340,7 @@ class ServiceDeskTicketService:
         sprint_id: str | None = None,
         title: str | None = None,
         priority: str = "medium",
+        assignee_id: str | None = None,
         scope_developer_id: str | None = None,
     ) -> dict:
         """Create a SprintTask from a Service Desk ticket and link them.
@@ -1382,7 +1383,9 @@ class ServiceDeskTicketService:
                 raise HTTPException(status_code=404, detail="Sprint not found in this workspace")
 
         fv = ticket.field_values or {}
-        task_title = title or fv.get("subject") or f"Ticket #{ticket.ticket_number}"
+        task_title = (
+            title or ticket.title or fv.get("subject") or f"Ticket #{ticket.ticket_number}"
+        )
         lines: list[str] = []
         if ticket.submitter_email:
             lines.append(f"From: {ticket.submitter_name or ticket.submitter_email}")
@@ -1399,6 +1402,26 @@ class ServiceDeskTicketService:
             for ln in lines
         ] or [{"type": "paragraph"}]
 
+        # An assignee arrives from the request body, so confirm they are in this
+        # workspace before putting work on them — otherwise an id from anywhere
+        # lands a task on somebody with no access to it.
+        if assignee_id is not None:
+            from aexy.models.workspace import WorkspaceMember
+
+            member = (
+                await self.db.execute(
+                    select(WorkspaceMember.developer_id).where(
+                        WorkspaceMember.workspace_id == workspace_id,
+                        WorkspaceMember.developer_id == assignee_id,
+                    )
+                )
+            ).scalar_one_or_none()
+            if member is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="That assignee is not a member of this workspace",
+                )
+
         task = SprintTask(
             id=str(_uuid4()),
             sprint_id=sprint_id,
@@ -1412,18 +1435,101 @@ class ServiceDeskTicketService:
             priority=priority,
             labels=[],
             status="backlog",
+            assignee_id=assignee_id,
         )
         self.db.add(task)
         await self.db.flush()
+
+        # Mirror the primary assignee into `task_assignees`, the same as every
+        # other creation path — a task created here with an assignee would
+        # otherwise show the column set and an empty assignee list.
+        if assignee_id:
+            from aexy.services.sprint_task_service import SprintTaskService
+
+            await SprintTaskService(self.db).sync_assignee_rows_from_column(
+                task, actor_id=scope_developer_id
+            )
+
+        # The files the requester sent are the evidence the work needs. Leaving
+        # them on the ticket meant whoever picked up the task had to find the
+        # ticket to see them, which is exactly the hop converting to a task is
+        # supposed to remove.
+        await self._copy_attachments_to_task(ticket, task)
 
         ticket.linked_task_id = task.id
         await self.db.flush()
         return {"task_id": task.id, "task_title": task_title, "linked": True}
 
+    async def _copy_attachments_to_task(self, ticket: Ticket, task) -> None:
+        """Put the ticket's files on the task as well.
+
+        The rows *reference* the same stored objects — the storage key is copied,
+        not the bytes. Re-uploading would double the storage for every conversion
+        and give the two copies different keys, so deleting one would look like it
+        had worked while the other still resolved.
+
+        Best-effort: a malformed entry is skipped rather than failing the
+        conversion. The task and its link are the point; a missing file
+        attachment is visible and fixable, a conversion that 500s is not.
+        """
+        from aexy.models.sprint import TaskAttachment
+
+        entries = ticket.attachments or []
+        if not entries:
+            return
+
+        from aexy.services.task_attachment_service import attachment_download_url
+
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            key = entry.get("key")
+            name = entry.get("filename") or entry.get("file_name") or "attachment"
+            if not key:
+                # An intake attachment that was never streamed to storage — it
+                # carries a provider message handle instead, valid only against
+                # the message it arrived on. Nothing durable to point a task row
+                # at, so it stays on the ticket.
+                continue
+            attachment_id = str(uuid4())
+            self.db.add(
+                TaskAttachment(
+                    id=attachment_id,
+                    task_id=task.id,
+                    file_name=str(name)[:500],
+                    # Reads go through the backend, so the URL is derived from
+                    # the row id rather than presigned; see
+                    # task_attachment_service.attachment_download_url.
+                    file_url=attachment_download_url(attachment_id)[:2000],
+                    # The same stored object as the ticket's copy. Deliberately
+                    # not re-uploaded: that would double storage per conversion
+                    # and give the two rows different keys, so deleting one would
+                    # look like it worked while the other still resolved.
+                    storage_key=str(key)[:1024],
+                    file_size=entry.get("size") or None,
+                    content_type=entry.get("type") or None,
+                )
+            )
+        await self.db.flush()
+
     # ------------------------------------------------------------- dashboard
 
-    async def get_dashboard(self, workspace_id: str, developer_id: str | None = None):
-        """Open tickets bucketed by stakeholder × current-stage age."""
+    async def get_dashboard(
+        self,
+        workspace_id: str,
+        developer_id: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ):
+        """Open tickets bucketed by stakeholder × current-stage age.
+
+        `limit`/`offset` page the **ticket list** only. The stakeholder matrix,
+        `total_open` and `breaching` are counts over everything open and stay
+        whole-set: a queue board that reported "3 waiting" because that is all
+        that fitted on the page would be worse than a long page. So the query
+        and the single pass over segments are unchanged, and only the rows
+        handed back are sliced.
+        """
         from aexy.models.service_desk import ServiceDeskProduct
         from aexy.schemas.service_desk import (
             DashboardTicket,
@@ -1543,10 +1649,17 @@ class ServiceDeskTicketService:
         # Anything holding a retired slug still has to be visible somewhere.
         ordered += [b for slug, b in buckets.items() if slug not in set(taxonomy.open_slugs)]
 
+        # `total_open` is the count of everything open, so it stays the total
+        # even when one page is returned — it is what the pager divides by.
+        total_open = len(tickets)
+        if limit is not None:
+            start = offset or 0
+            tickets = tickets[start : start + limit]
+
         return ServiceDeskDashboard(
             stakeholders=ordered,
             tickets=tickets,
-            total_open=len(tickets),
+            total_open=total_open,
             breaching=breaching,
         )
 

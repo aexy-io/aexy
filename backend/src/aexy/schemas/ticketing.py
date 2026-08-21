@@ -324,6 +324,9 @@ class TicketResponse(BaseModel):
     form_id: str
     workspace_id: str
     ticket_number: int
+    # The ticket's own one-line headline. Null for rows raised through a form
+    # with no subject field; clients fall back to field_values.
+    title: str | None = None
     submitter_email: str | None = None
     submitter_name: str | None = None
     email_verified: bool
@@ -356,6 +359,9 @@ class TicketListResponse(BaseModel):
     id: str
     form_id: str
     ticket_number: int
+    # The ticket's own one-line headline. Null for rows raised through a form
+    # with no subject field; clients fall back to field_values.
+    title: str | None = None
     submitter_email: str | None = None
     submitter_name: str | None = None
     status: TicketStatus

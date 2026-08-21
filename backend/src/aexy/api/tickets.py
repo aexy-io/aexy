@@ -28,7 +28,7 @@ from aexy.schemas.ticketing import (
     TicketStatus,
     TicketPriority,
 )
-from aexy.services.ticket_service import TicketService
+from aexy.services.ticket_service import TicketService, headline_from_field_values
 from aexy.services.workspace_service import WorkspaceService
 
 
@@ -89,6 +89,7 @@ def ticket_to_response(ticket) -> TicketResponseSchema:
         form_id=str(ticket.form_id),
         workspace_id=str(ticket.workspace_id),
         ticket_number=ticket.ticket_number,
+        title=ticket.title or headline_from_field_values(ticket.field_values),
         submitter_email=ticket.submitter_email,
         submitter_name=ticket.submitter_name,
         email_verified=ticket.email_verified,
@@ -120,6 +121,7 @@ def ticket_to_list_response(ticket) -> TicketListResponse:
         id=str(ticket.id),
         form_id=str(ticket.form_id),
         ticket_number=ticket.ticket_number,
+        title=ticket.title or headline_from_field_values(ticket.field_values),
         submitter_email=ticket.submitter_email,
         submitter_name=ticket.submitter_name,
         status=ticket.status,
@@ -722,12 +724,11 @@ async def create_task_from_ticket(
     # Build title from ticket data
     task_title = request_data.title
     if not task_title:
-        # Try to get title from field_values
-        field_values = ticket.field_values or {}
+        # The ticket's own headline, falling back to the submission blob for
+        # rows predating the `title` column.
         task_title = (
-            field_values.get("title")
-            or field_values.get("subject")
-            or field_values.get("summary")
+            ticket.title
+            or headline_from_field_values(ticket.field_values)
             or f"Ticket #{ticket.ticket_number}"
         )
 

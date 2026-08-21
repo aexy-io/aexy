@@ -879,6 +879,10 @@ class ServiceDeskIntakeService:
             submitter_email=email.from_email,
             submitter_name=email.from_name,
             email_verified=False,
+            # Kept in both places on purpose: `title` is the column readers and
+            # indexes use, `field_values["subject"]` stays because the form
+            # renderer and every existing consumer read the submission blob.
+            title=(email.subject or "").strip()[:500] or None,
             field_values={
                 "subject": email.subject,
                 "body": email.body_text,

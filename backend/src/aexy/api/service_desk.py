@@ -311,8 +311,22 @@ async def delete_mailbox(workspace_id: str, mailbox_id: str, db: AsyncSession = 
 # ------------------------------------------------------------------ tickets
 
 @router.get("/dashboard", response_model=ServiceDeskDashboard)
-async def get_dashboard(workspace_id: str, db: AsyncSession = Depends(get_db), current: Developer = Depends(get_current_developer)):
-    return await ServiceDeskTicketService(db).get_dashboard(workspace_id, developer_id=current.id)
+async def get_dashboard(
+    workspace_id: str,
+    limit: int | None = Query(default=None, ge=1, le=200),
+    offset: int | None = Query(default=None, ge=0),
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """The queue board, and one page of the tickets behind it.
+
+    `limit`/`offset` page the ticket list only; the stakeholder matrix and the
+    open/breaching counts are over everything open. Omitting them returns the
+    whole list, which is what the CSV export needs.
+    """
+    return await ServiceDeskTicketService(db).get_dashboard(
+        workspace_id, developer_id=current.id, limit=limit, offset=offset
+    )
 
 
 @router.get("/tickets", response_model=list[ServiceDeskTicketResponse])
@@ -691,6 +705,7 @@ async def convert_to_task(
         data.sprint_id,
         data.title,
         data.priority,
+        assignee_id=data.assignee_id,
         scope_developer_id=current.id,
     )
 
