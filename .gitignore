@@ -27,6 +27,10 @@ screenshots
 frontend/playwright-report/
 frontend/test-results/
 frontend/e2e/debug-screenshot*.png
+# Screenshot capture intermediates: e2e/tools/capture-marketing-shots.ts writes
+# PNGs that are converted to the WebP which actually ships. The PNGs are ~3x
+# the size and nothing imports them.
+frontend/public/marketing/**/*.png
 
 # Test coverage output (regenerated each test run)
 .coverage

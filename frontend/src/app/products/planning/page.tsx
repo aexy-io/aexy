@@ -5,49 +5,39 @@ import {
   ArrowRight,
   Calendar,
   Layers,
-  Target,
-  Users,
-  Zap,
   CheckCircle2,
-  Clock,
-  BarChart3,
   Kanban,
-  ListTodo,
-  Timer,
   TrendingUp,
   Bot,
   Sparkles,
   GitPullRequest,
   Github,
 } from "lucide-react";
-import { LandingHeader, LandingFooter } from "@/components/landing/LandingHeader";
+import { LedgerPage } from "@/components/landing/LedgerPage";
+import { ProductShot } from "@/components/marketing/ProductShot";
+import boardShot from "../../../../public/marketing/home/home-build@2x.webp";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 const features = [
   {
     icon: Kanban,
     title: "Visual Sprint Planning",
     description: "Drag-and-drop kanban boards. Plan sprints visually with real capacity data from your team.",
-    color: "from-green-500 to-emerald-500",
   },
   {
     icon: Layers,
     title: "Epic & Initiative Tracking",
     description: "Create epics spanning multiple sprints. Track progress across projects with automatic rollups.",
-    color: "from-purple-500 to-violet-500",
   },
   {
     icon: Bot,
     title: "AI Task Assignment",
     description: "Intelligent task matching based on developer skills and current workload. Never over-allocate again.",
-    color: "from-blue-500 to-cyan-500",
   },
   {
     icon: TrendingUp,
     title: "Velocity Analytics",
     description: "Track sprint velocity, predict completion dates, and identify patterns over time.",
-    color: "from-amber-500 to-orange-500",
   },
 ];
 
@@ -59,125 +49,142 @@ const integrations = [
 ];
 
 export default function PlanningProductPage() {
-  const googleLoginUrl = `${API_BASE_URL}/auth/google/login`;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] overflow-hidden">
-      {/* Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-green-500/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
-      </div>
-
-      <LandingHeader />
+    <LedgerPage>
 
       {/* Hero */}
-      <section className="pt-32 pb-20 px-6 relative">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+      <section className="px-6 pt-32 pb-20">
+        <div className="mx-auto max-w-7xl">
+          <div className="grid items-center gap-12 lg:grid-cols-2">
             <div>
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 rounded-full text-green-400 text-sm mb-6">
+              <div className="mb-6 inline-flex items-center gap-2 font-brand-mono text-xs font-medium uppercase tracking-[0.18em] text-ledger-green">
                 <Calendar className="h-4 w-4" />
                 <span>Sprint Planning</span>
               </div>
 
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 tracking-tight leading-tight">
+              <h1 className="mb-6 font-display text-4xl font-semibold leading-tight tracking-tight md:text-5xl lg:text-6xl">
                 Planning that{" "}
-                <span className="bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
-                  reflects reality
-                </span>
+                <span className="text-ledger-green">reflects reality</span>
               </h1>
 
-              <p className="text-xl text-white/60 mb-8 leading-relaxed">
+              <p className="mb-8 text-xl leading-relaxed text-ledger-ink/65">
                 Sprint planning powered by real team capacity. AI-driven task assignment.
                 Automatic sync with GitHub, Jira, and Linear. No more guessing games.
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4 mb-8">
-                <a
-                  href={googleLoginUrl}
-                  className="group inline-flex items-center justify-center gap-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(34,197,94,0.3)]"
+              <div className="mb-8 flex flex-col gap-4 sm:flex-row">
+                <Link
+                  href="/login"
+                  className="group inline-flex items-center justify-center gap-3 rounded-[2px] bg-ledger-green px-8 py-4 text-lg font-semibold text-ledger-paper transition hover:bg-[#095A31]"
                 >
                   Start Planning Free
-                  <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                </a>
+                  <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+                </Link>
                 <Link
-                  href="/manifesto"
-                  className="group inline-flex items-center justify-center gap-2 bg-white/5 text-white px-8 py-4 rounded-full text-lg font-medium border border-white/10 hover:border-white/20 transition-all"
+                  href="/pricing"
+                  className="group inline-flex items-center justify-center gap-2 rounded-[2px] border border-ledger-ink/25 px-8 py-4 text-lg font-medium text-ledger-ink transition hover:border-ledger-ink/50"
                 >
-                  Learn More
+                  See pricing
                 </Link>
               </div>
 
-              <div className="flex items-center gap-6 text-sm text-white/40">
+              <div className="flex items-center gap-6 text-sm text-ledger-ink/55">
                 <span className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <CheckCircle2 className="h-4 w-4 text-ledger-green" />
                   Import from Jira/Linear
                 </span>
                 <span className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <CheckCircle2 className="h-4 w-4 text-ledger-green" />
                   AI capacity planning
                 </span>
               </div>
             </div>
 
-            {/* Visual - Kanban Preview */}
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-3xl blur-2xl" />
-              <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-white font-medium">Sprint 24 - Mobile App</h3>
-                  <span className="px-3 py-1 bg-green-500/20 text-green-400 text-xs rounded-full">67% Complete</span>
-                </div>
-                <div className="grid grid-cols-3 gap-4">
-                  {[
-                    { title: "To Do", tasks: [{ name: "API endpoints", tag: "Backend" }, { name: "Tests", tag: "QA" }] },
-                    { title: "In Progress", tasks: [{ name: "Dashboard UI", tag: "Frontend" }] },
-                    { title: "Done", tasks: [{ name: "Auth flow", tag: "Backend" }, { name: "Login page", tag: "Frontend" }] },
-                  ].map((col, idx) => (
-                    <div key={idx} className="space-y-3">
-                      <div className="text-white/40 text-xs font-medium uppercase tracking-wider">{col.title}</div>
-                      {col.tasks.map((task, tidx) => (
-                        <div key={tidx} className="p-3 bg-white/5 rounded-lg border border-white/5">
-                          <p className="text-white text-sm mb-2">{task.name}</p>
-                          <span className={`text-xs px-2 py-0.5 rounded ${idx === 2 ? "bg-green-500/20 text-green-400" : idx === 1 ? "bg-blue-500/20 text-blue-400" : "bg-white/10 text-white/40"}`}>
-                            {task.tag}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
+            {/* Visual - Kanban Preview.
+
+                DARK PANE: a genuine product mockup — the sprint board as the app
+                renders it — so it keeps the plate treatment used for product UI
+                on the paper page (see OsConsolePreview): ledger-pane ground,
+                white-opacity type, ledger-mint as the only accent. The white/*
+                utilities below are intentional inside bg-ledger-pane. */}
+            <div className="rounded-[4px] border border-ledger-ink/25 bg-ledger-pane p-6 text-[#E6EDE7]">
+              <div className="mb-6 flex items-center justify-between">
+                <h3 className="font-medium">Sprint 24 - Mobile App</h3>
+                <span className="rounded-[2px] bg-ledger-mint/15 px-3 py-1 font-brand-mono text-[11px] uppercase tracking-[0.14em] text-ledger-mint">
+                  67% Complete
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                {[
+                  { title: "To Do", tasks: [{ name: "API endpoints", tag: "Backend" }, { name: "Tests", tag: "QA" }] },
+                  { title: "In Progress", tasks: [{ name: "Dashboard UI", tag: "Frontend" }] },
+                  { title: "Done", tasks: [{ name: "Auth flow", tag: "Backend" }, { name: "Login page", tag: "Frontend" }] },
+                ].map((col, idx) => (
+                  <div key={idx} className="space-y-3">
+                    <div className="font-brand-mono text-[11px] uppercase tracking-[0.14em] text-white/50">{col.title}</div>
+                    {col.tasks.map((task, tidx) => (
+                      <div key={tidx} className="rounded-[2px] border border-white/12 p-3">
+                        <p className="mb-2 text-[13px] text-white/85">{task.name}</p>
+                        <span className={`rounded-[2px] px-2 py-0.5 font-brand-mono text-[10px] uppercase tracking-[0.14em] ${idx === 2 ? "bg-ledger-mint/15 text-ledger-mint" : "border border-white/12 text-white/55"}`}>
+                          {task.tag}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </div>
       </section>
 
+      {/* Real screenshot. The hero above is a hand-built mockup sized for a
+          two-column layout; this is the surface as the app actually renders it,
+          captured by e2e/tools/capture-marketing-shots.ts. */}
+      <section className="px-6 py-20">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-10 max-w-2xl">
+            <div className="mb-4 font-brand-mono text-xs font-medium uppercase tracking-[0.18em] text-ledger-green">
+              In the product
+            </div>
+            <h2 className="mb-4 font-display text-3xl font-semibold tracking-tight md:text-4xl">
+              The board your sprint actually runs on.
+            </h2>
+            <p className="text-lg leading-relaxed text-ledger-ink/65">
+              Tasks move across the columns your workspace defines, linked to the commits and pull requests that closed them.
+            </p>
+          </div>
+          <ProductShot
+            src={boardShot}
+            alt="Aexy sprint board showing tasks in todo, in progress, and in review columns with a sprint goal"
+            figure="FIG. 01"
+            caption="Sprint board — tasks across status columns"
+          />
+        </div>
+      </section>
+
       {/* Features */}
-      <section className="py-20 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+      <section className="px-6 py-20">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-16 text-center">
+            <h2 className="mb-4 font-display text-3xl font-semibold tracking-tight md:text-4xl">
               Planning that actually works
             </h2>
-            <p className="text-white/50 text-lg max-w-2xl mx-auto">
+            <p className="mx-auto max-w-2xl text-lg text-ledger-ink/55">
               Built by engineering leaders who were tired of plans that never matched reality.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid gap-6 md:grid-cols-2">
             {features.map((feature, idx) => (
-              <div key={idx} className="group relative">
-                <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} rounded-3xl opacity-0 group-hover:opacity-10 blur-xl transition-all duration-500`} />
-                <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-white/20 transition-all h-full">
-                  <div className={`p-4 bg-gradient-to-br ${feature.color} rounded-2xl w-fit mb-6`}>
-                    <feature.icon className="h-6 w-6 text-white" />
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-3">{feature.title}</h3>
-                  <p className="text-white/60">{feature.description}</p>
-                </div>
+              <div
+                key={idx}
+                className="h-full rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-8 transition hover:shadow-[inset_0_2px_0_0_#0B6B3A]"
+              >
+                <feature.icon className="mb-6 h-5 w-5 text-ledger-green" />
+                <h3 className="mb-3 font-display text-xl font-semibold">{feature.title}</h3>
+                <p className="text-ledger-ink/65">{feature.description}</p>
               </div>
             ))}
           </div>
@@ -185,52 +192,52 @@ export default function PlanningProductPage() {
       </section>
 
       {/* AI Assignment */}
-      <section className="py-20 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-3xl blur-xl" />
-            <div className="relative bg-white/5 backdrop-blur-sm rounded-3xl p-10 md:p-12 border border-white/10">
-              <div className="grid md:grid-cols-2 gap-8 items-center">
-                <div>
-                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/20 rounded-full text-blue-400 text-xs mb-4">
-                    <Sparkles className="h-3 w-3" />
-                    AI-POWERED
-                  </div>
-                  <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
-                    Smart task assignment
-                  </h2>
-                  <p className="text-white/60 mb-6">
-                    Our AI analyzes developer skills from their actual code contributions and matches tasks to the best-suited team members automatically.
-                  </p>
-                  <ul className="space-y-3">
-                    {[
-                      "Matches tasks to developer expertise",
-                      "Balances workload across the team",
-                      "Suggests optimal sprint capacity",
-                      "Learns from historical patterns",
-                    ].map((item, idx) => (
-                      <li key={idx} className="flex items-center gap-3 text-white/70">
-                        <CheckCircle2 className="h-5 w-5 text-blue-400" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
+      <section className="px-6 py-20">
+        <div className="mx-auto max-w-5xl">
+          <div className="rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-10 md:p-12">
+            <div className="grid items-center gap-8 md:grid-cols-2">
+              <div>
+                <div className="mb-4 inline-flex items-center gap-2 font-brand-mono text-xs font-medium uppercase tracking-[0.18em] text-ledger-green">
+                  <Sparkles className="h-3 w-3" />
+                  AI-POWERED
                 </div>
-                <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
-                  <div className="flex items-center gap-3 mb-4">
-                    <Bot className="h-6 w-6 text-blue-400" />
-                    <span className="text-white font-medium">AI Suggestion</span>
-                  </div>
-                  <div className="p-4 bg-blue-500/10 rounded-xl border border-blue-500/20 mb-4">
-                    <p className="text-white/80 text-sm">
-                      &ldquo;Assign <span className="text-blue-400">API refactoring</span> to <span className="text-green-400">Sarah</span> -
-                      95% match based on Node.js expertise and current capacity.&rdquo;
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button className="px-4 py-2 bg-blue-500 text-white text-sm rounded-lg font-medium">Accept</button>
-                    <button className="px-4 py-2 bg-white/10 text-white/60 text-sm rounded-lg">Dismiss</button>
-                  </div>
+                <h2 className="mb-4 font-display text-2xl font-semibold tracking-tight md:text-3xl">
+                  Smart task assignment
+                </h2>
+                <p className="mb-6 text-ledger-ink/65">
+                  Our AI analyzes developer skills from their actual code contributions and matches tasks to the best-suited team members automatically.
+                </p>
+                <ul className="space-y-3">
+                  {[
+                    "Matches tasks to developer expertise",
+                    "Balances workload across the team",
+                    "Suggests optimal sprint capacity",
+                    "Learns from historical patterns",
+                  ].map((item, idx) => (
+                    <li key={idx} className="flex items-center gap-3 text-ledger-ink/75">
+                      <span className="font-brand-mono text-base leading-none text-ledger-green">+</span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* DARK PANE: the in-product AI suggestion card, rendered as the app
+                  shows it. The white/* utilities are intentional inside bg-ledger-pane. */}
+              <div className="rounded-[4px] border border-ledger-ink/25 bg-ledger-pane p-6 text-[#E6EDE7]">
+                <div className="mb-4 flex items-center gap-3">
+                  <Bot className="h-5 w-5 text-ledger-mint" />
+                  <span className="font-brand-mono text-[11px] uppercase tracking-[0.14em] text-white/55">AI Suggestion</span>
+                </div>
+                <div className="mb-4 border-l-2 border-ledger-mint bg-white/[0.03] px-3.5 py-3">
+                  <p className="text-sm leading-6 text-white/85">
+                    &ldquo;Assign <span className="text-ledger-mint">API refactoring</span> to <span className="text-ledger-mint">Sarah</span> -
+                    95% match based on Node.js expertise and current capacity.&rdquo;
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button className="rounded-[2px] bg-ledger-mint px-4 py-2 text-sm font-medium text-ledger-pane">Accept</button>
+                  <button className="rounded-[2px] border border-white/12 px-4 py-2 text-sm text-white/60">Dismiss</button>
                 </div>
               </div>
             </div>
@@ -239,23 +246,24 @@ export default function PlanningProductPage() {
       </section>
 
       {/* Integrations */}
-      <section className="py-20 px-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+      <section className="px-6 py-20">
+        <div className="mx-auto max-w-4xl">
+          <div className="mb-12 text-center">
+            <h2 className="mb-4 font-display text-3xl font-semibold tracking-tight md:text-4xl">
               Works with your existing tools
             </h2>
-            <p className="text-white/50">Import from anywhere, sync everywhere.</p>
+            <p className="text-ledger-ink/55">Import from anywhere, sync everywhere.</p>
           </div>
 
-          <div className="grid md:grid-cols-4 gap-4">
+          <div className="grid gap-4 md:grid-cols-4">
             {integrations.map((int, idx) => (
-              <div key={idx} className="p-6 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 text-center hover:border-white/20 transition-all">
-                <div className="w-12 h-12 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-xl flex items-center justify-center mx-auto mb-3">
-                  <GitPullRequest className="h-6 w-6 text-green-400" />
-                </div>
-                <h3 className="text-white font-medium mb-1">{int.name}</h3>
-                <p className="text-white/40 text-xs">{int.desc}</p>
+              <div
+                key={idx}
+                className="rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-6 text-center transition hover:shadow-[inset_0_2px_0_0_#0B6B3A]"
+              >
+                <GitPullRequest className="mx-auto mb-3 h-5 w-5 text-ledger-green" />
+                <h3 className="mb-1 font-medium">{int.name}</h3>
+                <p className="font-brand-mono text-[11px] leading-5 text-ledger-ink/55">{int.desc}</p>
               </div>
             ))}
           </div>
@@ -263,26 +271,26 @@ export default function PlanningProductPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-24 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+      <section className="px-6 py-24">
+        <div className="mx-auto max-w-4xl text-center">
+          <h2 className="mb-4 font-display text-3xl font-semibold tracking-tight md:text-4xl">
             Transform your sprint planning
           </h2>
-          <p className="text-xl text-white/50 mb-10">
-            Join thousands of teams planning smarter with Aexy.
+          <p className="mb-10 text-xl text-ledger-ink/55">
+            Import a Jira or Linear project and plan your next sprint against real capacity.
           </p>
 
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <a
-              href={googleLoginUrl}
-              className="group inline-flex items-center justify-center gap-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all hover:scale-105"
+          <div className="flex flex-col justify-center gap-4 sm:flex-row">
+            <Link
+              href="/login"
+              className="group inline-flex items-center justify-center gap-3 rounded-[2px] bg-ledger-green px-8 py-4 text-lg font-semibold text-ledger-paper transition hover:bg-[#095A31]"
             >
               Start Planning Free
-              <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-            </a>
+              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+            </Link>
             <a
               href="https://github.com/aexy-io/aexy"
-              className="group bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-3"
+              className="group flex items-center justify-center gap-3 rounded-[2px] border border-ledger-ink/25 px-8 py-4 text-lg font-semibold text-ledger-ink transition hover:border-ledger-ink/50"
             >
               <Github className="h-5 w-5" />
               View on GitHub
@@ -291,7 +299,6 @@ export default function PlanningProductPage() {
         </div>
       </section>
 
-      <LandingFooter />
-    </div>
+    </LedgerPage>
   );
 }

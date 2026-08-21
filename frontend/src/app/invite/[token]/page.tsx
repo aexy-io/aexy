@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { workspaceApi, developerApi, InviteInfo } from "@/lib/api";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { LedgerPage } from "@/components/landing/LedgerPage";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -109,57 +110,57 @@ export default function AcceptInvitePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
+      <LedgerPage chrome={false} className="flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 text-primary-500 animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading invite...</p>
+          <Loader2 className="w-8 h-8 text-ledger-green animate-spin mx-auto mb-4" />
+          <p className="text-ledger-ink/65">Loading invite...</p>
         </div>
-      </div>
+      </LedgerPage>
     );
   }
 
   if (error && !inviteInfo) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-background/50 border border-border rounded-2xl p-8 text-center">
-          <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-6">
-            <XCircle className="w-8 h-8 text-red-500" />
+      <LedgerPage chrome={false} className="flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-ledger-card border border-ledger-ink/12 rounded-[2px] p-8 text-center">
+          <div className="w-16 h-16 rounded-[2px] bg-ledger-red/10 flex items-center justify-center mx-auto mb-6">
+            <XCircle className="w-8 h-8 text-ledger-red" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground mb-3">Invalid Invite</h1>
-          <p className="text-muted-foreground mb-6">{error}</p>
+          <h1 className="font-display text-2xl font-semibold text-ledger-ink mb-3">Invalid Invite</h1>
+          <p className="text-ledger-ink/65 mb-6">{error}</p>
           <button
             onClick={() => router.push("/")}
-            className="px-6 py-3 bg-muted hover:bg-accent text-foreground rounded-lg transition-colors"
+            className="px-6 py-3 border border-ledger-ink/25 hover:border-ledger-ink/50 text-ledger-ink rounded-[2px] transition-colors font-semibold"
           >
             Go to Homepage
           </button>
         </div>
-      </div>
+      </LedgerPage>
     );
   }
 
   if (success && acceptedWorkspace) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-background/50 border border-border rounded-2xl p-8 text-center">
-          <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-6">
-            <CheckCircle2 className="w-8 h-8 text-green-500" />
+      <LedgerPage chrome={false} className="flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-ledger-card border border-ledger-ink/12 rounded-[2px] p-8 text-center">
+          <div className="w-16 h-16 rounded-[2px] bg-ledger-green/10 flex items-center justify-center mx-auto mb-6">
+            <CheckCircle2 className="w-8 h-8 text-ledger-green" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground mb-3">
+          <h1 className="font-display text-2xl font-semibold text-ledger-ink mb-3">
             Welcome to {acceptedWorkspace.name}!
           </h1>
-          <p className="text-muted-foreground mb-6">
+          <p className="text-ledger-ink/65 mb-6">
             You&apos;ve successfully joined the workspace. You can now collaborate with your team.
           </p>
           <button
             onClick={goToWorkspace}
-            className="flex items-center justify-center gap-2 w-full px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white rounded-lg transition-all font-medium"
+            className="flex items-center justify-center gap-2 w-full px-6 py-3 bg-ledger-green hover:bg-[#095A31] text-ledger-paper rounded-[2px] transition-colors font-semibold"
           >
             Go to Workspace
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>
-      </div>
+      </LedgerPage>
     );
   }
 
@@ -170,17 +171,17 @@ export default function AcceptInvitePage() {
   const emailMatches = currentUserEmail?.toLowerCase() === inviteInfo.email.toLowerCase();
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-background/50 border border-border rounded-2xl p-8">
+    <LedgerPage chrome={false} className="flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-ledger-card border border-ledger-ink/12 rounded-[2px] p-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center mx-auto mb-6">
-            <Users className="w-8 h-8 text-foreground" />
+          <div className="w-16 h-16 rounded-[2px] bg-ledger-ink text-ledger-paper flex items-center justify-center mx-auto mb-6">
+            <Users className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground mb-2">
+          <h1 className="font-display text-2xl font-semibold text-ledger-ink mb-2">
             You&apos;re invited to join
           </h1>
-          <p className="text-3xl font-bold bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent">
+          <p className="font-display text-3xl font-semibold text-ledger-green">
             {inviteInfo.workspace_name}
           </p>
         </div>
@@ -188,32 +189,32 @@ export default function AcceptInvitePage() {
         {/* Invite Details */}
         <div className="space-y-4 mb-8">
           {inviteInfo.invited_by_name && (
-            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-              <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center">
-                <span className="text-sm font-medium text-foreground">
+            <div className="flex items-center gap-3 p-3 bg-ledger-paper border border-ledger-ink/12 rounded-[2px]">
+              <div className="w-10 h-10 rounded-[2px] bg-ledger-ink/[0.06] flex items-center justify-center">
+                <span className="text-sm font-medium text-ledger-ink">
                   {inviteInfo.invited_by_name.charAt(0).toUpperCase()}
                 </span>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Invited by</p>
-                <p className="text-foreground font-medium">{inviteInfo.invited_by_name}</p>
+                <p className="text-sm text-ledger-ink/65">Invited by</p>
+                <p className="font-medium text-ledger-ink">{inviteInfo.invited_by_name}</p>
               </div>
             </div>
           )}
 
-          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-            <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center">
-              <Mail className="w-5 h-5 text-muted-foreground" />
+          <div className="flex items-center gap-3 p-3 bg-ledger-paper border border-ledger-ink/12 rounded-[2px]">
+            <div className="w-10 h-10 rounded-[2px] bg-ledger-ink/[0.06] flex items-center justify-center">
+              <Mail className="w-5 h-5 text-ledger-ink/65" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Invite sent to</p>
-              <p className="text-foreground font-medium">{inviteInfo.email}</p>
+              <p className="text-sm text-ledger-ink/65">Invite sent to</p>
+              <p className="font-medium text-ledger-ink">{inviteInfo.email}</p>
             </div>
           </div>
 
-          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-            <span className="text-muted-foreground">Role</span>
-            <span className="px-3 py-1 bg-primary-50 text-primary-600 dark:bg-primary-500/10 dark:text-primary-400 rounded-full text-sm font-medium capitalize">
+          <div className="flex items-center justify-between p-3 bg-ledger-paper border border-ledger-ink/12 rounded-[2px]">
+            <span className="text-ledger-ink/65">Role</span>
+            <span className="px-2.5 py-1 bg-ledger-green/10 text-ledger-green rounded-[2px] font-brand-mono text-xs uppercase tracking-[0.12em]">
               {inviteInfo.role}
             </span>
           </div>
@@ -221,11 +222,11 @@ export default function AcceptInvitePage() {
 
         {/* Expired Warning */}
         {inviteInfo.is_expired && (
-          <div className="flex items-start gap-3 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg mb-6">
-            <AlertTriangle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+          <div className="flex items-start gap-3 p-4 bg-ledger-card border border-ledger-ink/20 rounded-[2px] mb-6">
+            <AlertTriangle className="w-5 h-5 text-ledger-red flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-yellow-500 font-medium">Invite Expired</p>
-              <p className="text-yellow-500/70 text-sm">
+              <p className="font-semibold text-ledger-ink">Invite Expired</p>
+              <p className="text-sm text-ledger-ink/65">
                 This invite has expired. Please ask for a new invitation.
               </p>
             </div>
@@ -234,19 +235,19 @@ export default function AcceptInvitePage() {
 
         {/* Error Message */}
         {error && (
-          <div className="flex items-start gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-lg mb-6">
-            <XCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-            <p className="text-red-400 text-sm">{error}</p>
+          <div className="flex items-start gap-3 p-4 bg-ledger-card border border-ledger-ink/20 rounded-[2px] mb-6">
+            <XCircle className="w-5 h-5 text-ledger-red flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-ledger-ink/75">{error}</p>
           </div>
         )}
 
         {/* Email Mismatch Warning */}
         {isLoggedIn && !emailMatches && (
-          <div className="flex items-start gap-3 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg mb-6">
-            <AlertTriangle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+          <div className="flex items-start gap-3 p-4 bg-ledger-card border border-ledger-ink/20 rounded-[2px] mb-6">
+            <AlertTriangle className="w-5 h-5 text-ledger-red flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-yellow-500 font-medium">Different Email</p>
-              <p className="text-yellow-500/70 text-sm">
+              <p className="font-semibold text-ledger-ink">Different Email</p>
+              <p className="text-sm text-ledger-ink/65">
                 You&apos;re logged in as {currentUserEmail}, but this invite was sent to{" "}
                 {inviteInfo.email}. Please sign in with the correct email.
               </p>
@@ -261,7 +262,7 @@ export default function AcceptInvitePage() {
               <button
                 onClick={handleAcceptInvite}
                 disabled={accepting}
-                className="flex items-center justify-center gap-2 w-full px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-all font-medium"
+                className="flex items-center justify-center gap-2 w-full px-6 py-3 bg-ledger-green hover:bg-[#095A31] disabled:opacity-50 disabled:cursor-not-allowed text-ledger-paper rounded-[2px] transition-colors font-semibold"
               >
                 {accepting ? (
                   <>
@@ -279,12 +280,12 @@ export default function AcceptInvitePage() {
               <>
                 <button
                   onClick={handleLoginAndAccept}
-                  className="flex items-center justify-center gap-2 w-full px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white rounded-lg transition-all font-medium"
+                  className="flex items-center justify-center gap-2 w-full px-6 py-3 bg-ledger-green hover:bg-[#095A31] text-ledger-paper rounded-[2px] transition-colors font-semibold"
                 >
                   Sign in to Accept
                   <ArrowRight className="w-4 h-4" />
                 </button>
-                <p className="text-center text-sm text-muted-foreground">
+                <p className="text-center text-sm text-ledger-ink/65">
                   Sign in with {inviteInfo.email} to accept this invite
                 </p>
               </>
@@ -292,6 +293,6 @@ export default function AcceptInvitePage() {
           </div>
         )}
       </div>
-    </div>
+    </LedgerPage>
   );
 }

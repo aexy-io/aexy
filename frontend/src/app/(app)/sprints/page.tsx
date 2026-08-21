@@ -83,6 +83,14 @@ function ProjectCard({
     >
       <div className="absolute inset-0 bg-gradient-to-br from-primary-500/10 to-purple-500/10 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
       <div className="relative bg-background/80 backdrop-blur-sm rounded-2xl border border-border/80 overflow-hidden hover:border-border/80 transition-all duration-300">
+        {/* Stretched link: the whole card opens the project (same target as
+            the footer's "Open"), as a real <a> so middle-click / cmd-click
+            work. Inner links sit above it via `relative z-10`. */}
+        <Link
+          href={`/sprints/${project.id}/board`}
+          aria-label={`Open ${project.name}`}
+          className="absolute inset-0"
+        />
         {/* Header */}
         <div className="p-5 pb-4">
           <div className="flex items-start justify-between mb-4">
@@ -102,7 +110,7 @@ function ProjectCard({
                     </div>
                     {project.is_public && (
 
-                    <Link href={`/p/${project.public_slug}`}>
+                    <Link href={`/p/${project.public_slug}`} className="relative z-10">
                     <Link2 className="h-3 w-3" />
                     </Link>
                     )}
@@ -125,7 +133,7 @@ function ProjectCard({
               {activeSprint ? (
                 <Link
                   href={`/sprints/${project.id}/board`}
-                  className="block bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-xl p-4 mb-4 hover:from-green-500/15 hover:to-emerald-500/15 transition-all"
+                  className="relative z-10 block bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-xl p-4 mb-4 hover:from-green-500/15 hover:to-emerald-500/15 transition-all"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
                     <div className="flex items-center gap-2">
@@ -184,7 +192,7 @@ function ProjectCard({
               ) : planningSprints.length > 0 ? (
                 <Link
                   href={`/sprints/${project.id}/board`}
-                  className="block bg-gradient-to-br from-blue-500/10 to-indigo-500/10 border border-blue-500/20 rounded-xl p-4 mb-4 hover:from-blue-500/15 hover:to-indigo-500/15 transition-all"
+                  className="relative z-10 block bg-gradient-to-br from-blue-500/10 to-indigo-500/10 border border-blue-500/20 rounded-xl p-4 mb-4 hover:from-blue-500/15 hover:to-indigo-500/15 transition-all"
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <Target className="h-4 w-4 text-blue-400" />
@@ -216,7 +224,7 @@ function ProjectCard({
                   </p>
                   <Link
                     href={`/sprints/${project.id}`}
-                    className="text-primary-400 text-sm hover:text-primary-300 font-medium"
+                    className="relative z-10 text-primary-400 text-sm hover:text-primary-300 font-medium"
                   >
                     Create a sprint →
                   </Link>
@@ -255,7 +263,7 @@ function ProjectCard({
         </div>
 
         {/* Quick Actions Footer */}
-        <div className="border-t border-border/80 px-4 py-3 bg-background/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="relative z-10 border-t border-border/80 px-4 py-3 bg-background/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Link
               href={`/sprints/${project.id}/board`}

@@ -2,13 +2,17 @@ import type { Metadata } from "next";
 import { ComparisonPage } from "@/components/marketing/ComparisonPage";
 
 export const metadata: Metadata = {
-  title: "Aexy vs Salesforce",
+  // `absolute` because the title already carries the brand; the root
+  // layout's "%s | Aexy" template would otherwise render it twice.
+  title: { absolute: "Aexy vs Salesforce" },
   description: "Compare Aexy and Salesforce for teams that want open CRM, GTM intelligence, engineering context, workflows, docs, and governed AI agents.",
+  alternates: { canonical: "/compare/salesforce" },
 };
 
 export default function SalesforceComparisonPage() {
   return (
     <ComparisonPage
+      path="/compare/salesforce"
       competitor="Salesforce"
       eyebrow="Aexy vs Salesforce"
       title="A Salesforce alternative for teams that want CRM connected to company execution."

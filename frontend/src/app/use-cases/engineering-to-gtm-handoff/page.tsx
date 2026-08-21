@@ -4,11 +4,14 @@ import { SeoLandingPage } from "@/components/marketing/SeoLandingPage";
 export const metadata: Metadata = {
   title: "Engineering to GTM Handoff",
   description: "Connect engineering, product, CRM, and GTM workflows with Aexy so customer commitments, releases, bugs, and expansion signals do not get lost.",
+  alternates: { canonical: "/use-cases/engineering-to-gtm-handoff" },
 };
 
 export default function EngineeringToGtmHandoffPage() {
   return (
     <SeoLandingPage
+      path="/use-cases/engineering-to-gtm-handoff"
+      breadcrumbName="Engineering to GTM handoff"
       eyebrow="Use case"
       title="Connect engineering work to GTM follow-through."
       description="Aexy links tickets, releases, customer records, docs, workflows, and account signals so product-led teams can route customer requests, launch updates, and expansion opportunities with context."

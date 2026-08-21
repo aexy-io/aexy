@@ -2,34 +2,32 @@
 
 import Link from "next/link";
 import { ArrowRight, Heart, Code2, Globe, Sparkles } from "lucide-react";
-import { LandingHeader, LandingFooter } from "@/components/landing/LandingHeader";
+import { LedgerPage } from "@/components/landing/LedgerPage";
 import { SiGithub } from "@icons-pack/react-simple-icons";
 import { defaultAuthor, organizationJsonLd, personJsonLd } from "@/components/marketing/AuthorByline";
 
+// "Open Ledger" brand: paper page, ink text, ledger-green as the only accent.
+// Tokens live in tailwind.config.ts; LedgerPage attaches the theme scope.
 const VALUES = [
   {
     icon: Heart,
     title: "Transparency",
     desc: "Open-source code, public roadmap, honest communication.",
-    color: "from-rose-500 to-pink-500",
   },
   {
     icon: Code2,
     title: "Build for builders",
     desc: "We make tools we want to use ourselves. Engineers first.",
-    color: "from-blue-500 to-cyan-500",
   },
   {
     icon: Globe,
     title: "Accessible to all",
     desc: "World-class engineering software, free for anyone to self-host.",
-    color: "from-emerald-500 to-teal-500",
   },
   {
     icon: Sparkles,
     title: "Optimism in practice",
     desc: "We believe better software makes better organizations.",
-    color: "from-purple-500 to-violet-500",
   },
 ];
 
@@ -40,44 +38,38 @@ const aboutJsonLd = {
 
 export default function AboutPage() {
   return (
-    <div className="min-h-screen bg-[#0a0a0f] overflow-hidden">
+    <LedgerPage>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(aboutJsonLd) }} />
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-primary-500/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
-      </div>
 
-      <LandingHeader />
 
-      <section className="pt-32 pb-16 px-6 relative">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-500/20 to-purple-500/20 border border-primary-500/30 rounded-full text-primary-400 text-sm mb-6">
+      <section className="relative px-6 pb-16 pt-32">
+        <div className="mx-auto max-w-4xl text-center">
+          <p className="mb-5 font-brand-mono text-xs font-medium uppercase tracking-[0.18em] text-ledger-green">
             About Aexy
-          </div>
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 tracking-tight leading-tight">
+          </p>
+          <h1 className="mb-6 font-display text-4xl font-semibold leading-[1.05] tracking-tight text-ledger-ink md:text-5xl lg:text-6xl">
             We&apos;re building the{" "}
-            <span className="bg-gradient-to-r from-primary-400 to-purple-400 bg-clip-text text-transparent">
+            <span className="text-ledger-green">
               AI company operating system
             </span>{" "}
             for modern teams.
           </h1>
-          <p className="text-xl text-white/60 max-w-2xl mx-auto">
+          <p className="mx-auto max-w-2xl text-xl leading-8 text-ledger-ink/65">
             One platform that connects engineering, GTM, people, docs, workflows, and AI agents —
             transparent by default, free to self-host.
           </p>
         </div>
       </section>
 
-      <section className="py-12 px-6 relative">
-        <div className="max-w-3xl mx-auto">
-          <div className="prose prose-invert prose-lg max-w-none mb-16">
-            <p className="text-xl text-white/80 leading-relaxed">
+      <section className="relative px-6 py-12">
+        <div className="mx-auto max-w-3xl">
+          <div className="mb-16 space-y-6">
+            <p className="text-xl leading-relaxed text-ledger-ink/75">
               Engineering teams are buried under disconnected tools — Jira here, Lattice there,
               HubSpot for revenue, Notion for docs, a separate vendor for everything else.
               Each one charges per seat. Each one owns your data.
             </p>
-            <p className="text-xl text-white/80 leading-relaxed mt-6">
+            <p className="text-xl leading-relaxed text-ledger-ink/75">
               Aexy is the alternative: one open-source platform where the work, the team, and
               the customer all live together. Self-host it free, forever. Or use the cloud
               and pay only for what you actually need.
@@ -86,56 +78,57 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="py-16 px-6 relative">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 tracking-tight">
+      <section className="relative border-t border-ledger-ink/12 px-6 py-16">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-16 text-center">
+            <h2 className="mb-4 font-display text-3xl font-semibold tracking-tight text-ledger-ink md:text-4xl">
               What we believe
             </h2>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {VALUES.map(({ icon: Icon, title, desc, color }) => (
-              <div key={title} className="group relative">
-                <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-white/20 transition-all h-full">
-                  <div className={`p-3 bg-gradient-to-br ${color} rounded-2xl shadow-lg w-fit mb-4`}>
-                    <Icon className="h-6 w-6 text-white" />
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-2">{title}</h3>
-                  <p className="text-white/50 text-sm leading-relaxed">{desc}</p>
-                </div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {VALUES.map(({ icon: Icon, title, desc }) => (
+              <div
+                key={title}
+                className="h-full rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-6 transition hover:shadow-[inset_0_2px_0_0_#0B6B3A]"
+              >
+                <Icon className="mb-4 h-5 w-5 text-ledger-green" />
+                <h3 className="mb-2 font-display text-xl font-semibold text-ledger-ink">{title}</h3>
+                <p className="text-sm leading-6 text-ledger-ink/65">{desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section id={defaultAuthor.slug} className="py-16 px-6 relative">
-        <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-10">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 tracking-tight">
+      <section id={defaultAuthor.slug} className="relative scroll-mt-24 border-t border-ledger-ink/12 px-6 py-16">
+        <div className="mx-auto max-w-3xl">
+          <div className="mb-10 text-center">
+            <h2 className="mb-4 font-display text-3xl font-semibold tracking-tight text-ledger-ink md:text-4xl">
               Who&apos;s building this
             </h2>
           </div>
-          <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 md:p-10">
-            <div className="flex flex-col sm:flex-row items-start gap-6">
+          <div className="rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-8 md:p-10">
+            <div className="flex flex-col items-start gap-6 sm:flex-row">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={defaultAuthor.avatarUrl}
                 alt={defaultAuthor.name}
-                className="h-20 w-20 rounded-2xl border border-white/15"
+                className="h-20 w-20 rounded-[2px] border border-ledger-ink/12"
                 loading="lazy"
               />
               <div>
-                <h3 className="text-xl font-bold text-white">{defaultAuthor.name}</h3>
-                <p className="text-white/40 text-sm mb-3">{defaultAuthor.role}</p>
-                <p className="text-white/60 leading-relaxed">{defaultAuthor.bio}</p>
+                <h3 className="font-display text-xl font-semibold text-ledger-ink">{defaultAuthor.name}</h3>
+                <p className="mb-3 font-brand-mono text-xs uppercase tracking-[0.14em] text-ledger-ink/55">
+                  {defaultAuthor.role}
+                </p>
+                <p className="leading-relaxed text-ledger-ink/65">{defaultAuthor.bio}</p>
                 <div className="mt-4 flex items-center gap-4 text-sm">
-                  <a href={defaultAuthor.githubUrl} className="flex items-center gap-2 text-white/60 hover:text-white transition">
+                  <a href={defaultAuthor.githubUrl} className="flex items-center gap-2 font-semibold text-ledger-green transition hover:text-ledger-ink">
                     <SiGithub className="h-4 w-4" />
                     GitHub
                   </a>
                   {defaultAuthor.websiteUrl && (
-                    <a href={defaultAuthor.websiteUrl} className="text-white/60 hover:text-white transition">
+                    <a href={defaultAuthor.websiteUrl} className="font-semibold text-ledger-green transition hover:text-ledger-ink">
                       bhanu.io
                     </a>
                   )}
@@ -146,28 +139,28 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="py-16 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+      <section className="border-t border-ledger-ink/12 px-6 py-16">
+        <div className="mx-auto max-w-4xl text-center">
+          <h2 className="mb-6 font-display text-3xl font-semibold tracking-tight text-ledger-ink md:text-4xl">
             Read more
           </h2>
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
+          <div className="flex flex-col justify-center gap-3 sm:flex-row">
             <Link
               href="/story"
-              className="group bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-3"
+              className="group flex items-center justify-center gap-3 rounded-[2px] border border-ledger-ink/25 px-8 py-4 text-lg font-semibold text-ledger-ink transition hover:border-ledger-ink/50"
             >
               Our Story
-              <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
             </Link>
             <Link
               href="/mission"
-              className="group bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-3"
+              className="flex items-center justify-center gap-3 rounded-[2px] border border-ledger-ink/25 px-8 py-4 text-lg font-semibold text-ledger-ink transition hover:border-ledger-ink/50"
             >
               Our Mission
             </Link>
             <Link
               href="/manifesto"
-              className="group bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-3"
+              className="flex items-center justify-center gap-3 rounded-[2px] border border-ledger-ink/25 px-8 py-4 text-lg font-semibold text-ledger-ink transition hover:border-ledger-ink/50"
             >
               Company OS Manifesto
             </Link>
@@ -175,7 +168,6 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <LandingFooter />
-    </div>
+    </LedgerPage>
   );
 }

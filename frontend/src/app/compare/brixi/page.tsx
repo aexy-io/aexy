@@ -2,13 +2,17 @@ import type { Metadata } from "next";
 import { ComparisonPage } from "@/components/marketing/ComparisonPage";
 
 export const metadata: Metadata = {
-  title: "Aexy vs Brixi",
+  // `absolute` because the title already carries the brand; the root
+  // layout's "%s | Aexy" template would otherwise render it twice.
+  title: { absolute: "Aexy vs Brixi" },
   description: "Compare Aexy and Brixi for teams evaluating AI operating layers, CRM, inbox, workflow automation, GTM intelligence, docs, and company OS platforms.",
+  alternates: { canonical: "/compare/brixi" },
 };
 
 export default function BrixiComparisonPage() {
   return (
     <ComparisonPage
+      path="/compare/brixi"
       competitor="Brixi"
       eyebrow="Aexy vs Brixi"
       title="A Brixi alternative when revenue workflows need company-wide context."

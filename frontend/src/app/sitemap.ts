@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { getAllDocSlugs } from "@/lib/docs";
 
 const BASE_URL = "https://aexy.io";
 
@@ -89,6 +90,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     entry("/gtm-intelligence-platform", 0.8, "monthly"),
     entry("/open-source-company-os", 0.8, "monthly"),
     entry("/handbook", 0.7, "weekly"),
+    // The ~50 handbook pages are the deepest content on the site and were
+    // absent here entirely — reachable only by crawling links from /handbook.
+    // Read from the same index the pages render from, so a new doc is listed
+    // the moment it exists rather than when someone remembers to edit this file.
+    ...getAllDocSlugs().map((slug) => entry(`/handbook/${slug}`, 0.5, "monthly")),
     entry("/blog", 0.7, "weekly"),
     entry("/changelog", 0.6, "weekly"),
     entry("/careers", 0.6, "weekly"),

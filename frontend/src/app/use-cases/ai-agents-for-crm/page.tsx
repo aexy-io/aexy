@@ -4,11 +4,14 @@ import { SeoLandingPage } from "@/components/marketing/SeoLandingPage";
 export const metadata: Metadata = {
   title: "AI Agents for CRM",
   description: "Use Aexy AI agents for CRM workflows including lead routing, enrichment, account summaries, email drafts, approvals, and audit history.",
+  alternates: { canonical: "/use-cases/ai-agents-for-crm" },
 };
 
 export default function AiAgentsForCrmPage() {
   return (
     <SeoLandingPage
+      path="/use-cases/ai-agents-for-crm"
+      breadcrumbName="AI agents for CRM"
       eyebrow="Use case"
       title="Use AI agents for CRM work without losing governance."
       description="Aexy gives agents the CRM, email, GTM, workflow, and company context they need while keeping tool access, approvals, and audit trails close to every action."

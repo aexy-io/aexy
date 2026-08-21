@@ -31,8 +31,11 @@ const COLUMNS = [
 export function McpChatPreview() {
   return (
     <div className="relative">
-      <div className="absolute -inset-5 rounded-[2rem] bg-gradient-to-br from-teal-500/16 via-cyan-500/16 to-violet-500/12 blur-2xl" />
-      <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#0d0f14] shadow-2xl">
+      {/* Semantic hooks, not a fork: the defaults below are the dark look
+          /products/mcp has always had; the homepage's .theme-ledger scope
+          restyles the frame and hides the glow via globals.css. */}
+      <div className="mcp-preview-glow absolute -inset-5 rounded-[2rem] bg-gradient-to-br from-teal-500/16 via-cyan-500/16 to-violet-500/12 blur-2xl" />
+      <div className="mcp-preview-frame relative overflow-hidden rounded-3xl border border-white/10 bg-[#0d0f14] shadow-2xl">
         <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-black">

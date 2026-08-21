@@ -2,13 +2,17 @@ import type { Metadata } from "next";
 import { SeoLandingPage } from "@/components/marketing/SeoLandingPage";
 
 export const metadata: Metadata = {
-  title: "Aexy for Operations Teams",
+  // `absolute` because the title already carries the brand; the root
+  // layout's "%s | Aexy" template would otherwise render it twice.
+  title: { absolute: "Aexy for Operations Teams" },
   description: "Aexy helps operations teams connect docs, forms, workflows, reminders, CRM, people processes, compliance, and AI agents in one company OS.",
+  alternates: { canonical: "/for/operations" },
 };
 
 export default function OperationsPage() {
   return (
     <SeoLandingPage
+      path="/for/operations"
       eyebrow="For operations"
       title="Turn repeated company work into governed workflows."
       description="Aexy helps operations teams centralize process, ownership, forms, docs, reminders, compliance, CRM context, and agent-assisted workflows."

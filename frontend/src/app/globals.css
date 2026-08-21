@@ -2,6 +2,86 @@
 @tailwind components;
 @tailwind utilities;
 
+/* "Open Ledger" marketing theme — scoped by .theme-ledger, which
+ * components/landing/LedgerPage puts on every public marketing page.
+ *
+ * Pages paint themselves with the static ledger-* Tailwind tokens; this block
+ * exists for the pieces that cannot. McpChatPreview is shared between the
+ * homepage and /products/mcp and must not be forked, so it carries semantic
+ * hooks (.mcp-preview-*) whose default styling is its own Tailwind utilities,
+ * overridden only inside .theme-ledger. */
+.theme-ledger {
+  --ledger-paper: #f2f3ee;
+  --ledger-ink: #101913;
+  --ledger-green: #0b6b3a;
+  --ledger-red: #a8342a;
+  --ledger-pane: #0e1512;
+  --ledger-mint: #35c77f;
+}
+
+.theme-ledger .mcp-preview-glow {
+  display: none; /* no blur/glow on paper — the pane is the plate */
+}
+
+.theme-ledger .mcp-preview-frame {
+  border-radius: 4px;
+  border-color: rgb(16 25 19 / 0.25);
+  box-shadow: none;
+  /* The preview inherited white text from the old dark page; on paper it
+   * must carry its own — it is still a dark pane inside. */
+  color: #fff;
+}
+
+/* The hero diff types itself. Each line sets its own --type-w (in ch) and
+ * delay inline; steps() gives the character-by-character reveal without any
+ * JS. Visitors who ask for reduced motion get the finished state immediately
+ * (width: auto, not width: 0 — killing only the animation would hide the
+ * lines forever). */
+@keyframes ledger-type {
+  from {
+    width: 0;
+  }
+  to {
+    width: var(--type-w);
+  }
+}
+
+.diff-typed {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  vertical-align: bottom;
+  width: 0;
+  animation: ledger-type 0.9s steps(32, end) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-ledger .diff-typed {
+    animation: none !important;
+    width: auto !important;
+  }
+}
+
+/* Product-tour tab crossfade — the only motion besides the hero diff. */
+@keyframes ledger-tour-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.tour-fade {
+  animation: ledger-tour-fade 150ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-fade {
+    animation: none !important;
+  }
+}
+
 /* NProgress - Navigation Progress Bar */
 #nprogress {
   pointer-events: none;

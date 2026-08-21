@@ -78,7 +78,12 @@ describe("marketing product route parity", () => {
     const header = readFileSync(HEADER, "utf8");
     expect(productSlugsFromSitemap()).toContain("mcp");
     expect(productHrefsFromHeader()).toContain("mcp");
-    // Footer and mobile sheet are separate hand-maintained lists in the same file.
-    expect(header.match(/href="\/products\/mcp"/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+    // The footer renders the product catalogue by mapping productLinks (the
+    // Open Ledger header keeps nav minimal, so there are no hand-maintained
+    // duplicate lists anymore). Assert the wiring that makes the mcp link
+    // actually reach the page: the footer maps the same constant the checks
+    // above validated.
+    expect(header).toMatch(/links=\{\[\s*\.\.\.productLinks/);
+    expect(header).toMatch(/<FooterColumn title="Solutions" links=\{solutionLinks\}/);
   });
 });

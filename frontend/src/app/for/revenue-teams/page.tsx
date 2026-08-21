@@ -2,18 +2,22 @@ import type { Metadata } from "next";
 import { SeoLandingPage } from "@/components/marketing/SeoLandingPage";
 
 export const metadata: Metadata = {
-  title: "Aexy for Revenue Teams — Agent-Native CRM & GTM Intelligence",
+  // `absolute` because the title already carries the brand; the root
+  // layout's "%s | Aexy" template would otherwise render it twice.
+  title: { absolute: "Aexy for Revenue Teams — Agent-Native CRM & GTM Intelligence" },
   description:
     "Aexy gives revenue teams an agent-native CRM with visitor identification, lead scoring, sequences, and routing — connected to engineering, docs, and workflows. An open-source alternative to HubSpot and Attio.",
+  alternates: { canonical: "/for/revenue-teams" },
 };
 
 export default function RevenueTeamsPage() {
   return (
     <SeoLandingPage
+      path="/for/revenue-teams"
       eyebrow="For revenue teams"
       title="A CRM that sees the whole company, not just the pipeline."
       description="Aexy gives GTM teams an agent-native CRM with visitor identification, ICP scoring, sequences, and routing — connected to product, engineering, docs, and the commitments your company actually made to each customer."
-      primaryCta="Book a GTM demo"
+      secondaryCta="Book a GTM demo"
       proofPoints={[
         "CRM connected to execution context.",
         "GTM signals become routed tasks and workflows.",

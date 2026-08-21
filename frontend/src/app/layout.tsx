@@ -18,9 +18,13 @@ export const metadata: Metadata = {
     template: "%s | Aexy",
   },
   description,
-  alternates: {
-    canonical: "/",
-  },
+  // NO site-wide `alternates.canonical` here. Next inherits metadata down the
+  // tree, so a canonical set on the root layout is emitted verbatim on every
+  // route — every page then declares itself a duplicate of the homepage and
+  // drops out of the index. Each route owns its own canonical instead: server
+  // pages via their `metadata` export, client pages via a sibling layout.tsx.
+  // See src/test/canonicalCoverage.test.ts, which fails if a public route
+  // ships without one.
   openGraph: {
     type: "website",
     siteName: "Aexy",

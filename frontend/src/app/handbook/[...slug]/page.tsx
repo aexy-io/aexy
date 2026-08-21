@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: DocPageProps): Promise<Metada
   const { slug } = await params;
   const slugStr = slug.join("/");
   const meta = getDocIndex().lookup[slugStr];
-  if (!meta) return { title: "Not found - Aexy Docs" };
+  if (!meta) return { title: "Not found" };
 
   const content = getDocContent(slugStr) || "";
   let description = meta.description;
@@ -40,10 +40,16 @@ export async function generateMetadata({ params }: DocPageProps): Promise<Metada
   }
 
   return {
-    title: `${meta.title} - Aexy Docs`,
+    // "Docs" not "- Aexy Docs": the root title.template appends " | Aexy", so
+    // the old form rendered "X - Aexy Docs | Aexy".
+    title: `${meta.title} — Docs`,
     description: description || `${meta.title} documentation for Aexy`,
+    // Every doc slug is its own canonical URL. Without this each of the ~100
+    // handbook pages inherited the site-wide canonical and self-reported as a
+    // duplicate of the homepage.
+    alternates: { canonical: `/handbook/${slugStr}` },
     openGraph: {
-      title: `${meta.title} - Aexy Docs`,
+      title: `${meta.title} — Aexy Docs`,
       description: description || undefined,
       type: "article",
     },
@@ -76,12 +82,12 @@ export default async function DocPage({ params }: DocPageProps) {
       <div className="min-w-0">
         <DocsBreadcrumb section={meta.section} title={meta.title} />
 
-        <header className="mb-8 pb-8 border-b border-white/[0.06]">
-          <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight mb-3">
+        <header className="mb-8 pb-8 border-b border-ledger-ink/12">
+          <h1 className="font-display text-4xl md:text-5xl font-bold text-ledger-ink tracking-tight mb-3">
             {meta.title}
           </h1>
           {meta.description && (
-            <p className="text-lg text-white/55 leading-relaxed">{meta.description}</p>
+            <p className="text-lg text-ledger-ink/60 leading-relaxed">{meta.description}</p>
           )}
         </header>
 

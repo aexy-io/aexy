@@ -9,6 +9,10 @@ const config: Config = {
   ],
   theme: {
     extend: {
+        fontFamily: {
+          display: ["var(--font-display)", "ui-sans-serif", "system-ui", "sans-serif"],
+          "brand-mono": ["var(--font-brand-mono)", "ui-monospace", "monospace"],
+        },
         container: {
           center: true,
           padding: "2rem",
@@ -17,6 +21,18 @@ const config: Config = {
           },
         },
         colors: {
+          // "Open Ledger" marketing brand — used by every public marketing
+          // page via components/landing/LedgerPage. Static hexes on purpose:
+          // the marketing surface does not flip with the app's dark mode.
+          ledger: {
+            paper: "#F2F3EE",
+            card: "#FBFCF9",
+            ink: "#101913",
+            green: "#0B6B3A",
+            red: "#A8342A",
+            pane: "#0E1512",
+            mint: "#35C77F",
+          },
           border: "hsl(var(--border))",
           input: "hsl(var(--input))",
           ring: "hsl(var(--ring))",

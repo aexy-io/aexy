@@ -33,8 +33,8 @@ export function DocsSidebar({ sections }: DocsSidebarProps) {
       <Link
         href="/handbook"
         className={cn(
-          "block px-3 py-2 rounded-lg text-white/70 hover:text-white hover:bg-white/[0.04] transition",
-          pathname === "/handbook" && "text-white bg-white/[0.06]",
+          "block px-3 py-2 rounded-[2px] text-ledger-ink/70 hover:text-ledger-ink hover:bg-ledger-ink/[0.04] transition",
+          pathname === "/handbook" && "text-ledger-ink bg-ledger-ink/[0.06]",
         )}
       >
         Docs Home
@@ -47,10 +47,10 @@ export function DocsSidebar({ sections }: DocsSidebarProps) {
               onClick={() =>
                 setCollapsed((c) => ({ ...c, [section.title]: !c[section.title] }))
               }
-              className="flex items-center justify-between w-full px-3 mb-2 text-[11px] font-semibold uppercase tracking-wider text-white/40 hover:text-white/60 transition"
+              className="flex items-center justify-between w-full px-3 mb-2 font-brand-mono text-[11px] font-medium uppercase tracking-wider text-ledger-ink/50 hover:text-ledger-ink/75 transition"
             >
               <span>{section.title}</span>
-              <span className="text-white/30 text-[10px]">{isCollapsed ? "+" : "−"}</span>
+              <span className="text-ledger-ink/50 text-[10px]">{isCollapsed ? "+" : "−"}</span>
             </button>
             {!isCollapsed && (
               <ul className="space-y-0.5">
@@ -61,8 +61,8 @@ export function DocsSidebar({ sections }: DocsSidebarProps) {
                       <Link
                         href={`/handbook/${item.slug}`}
                         className={cn(
-                          "block px-3 py-1.5 rounded-md text-white/55 hover:text-white hover:bg-white/[0.04] transition-colors leading-snug",
-                          active && "text-white bg-primary-500/10 border-l-2 border-primary-500 pl-[10px] font-medium",
+                          "block px-3 py-1.5 rounded-[2px] text-ledger-ink/60 hover:text-ledger-ink hover:bg-ledger-ink/[0.04] transition-colors leading-snug",
+                          active && "text-ledger-green bg-ledger-green/10 border-l-2 border-ledger-green pl-[10px] font-medium",
                         )}
                       >
                         {item.title}

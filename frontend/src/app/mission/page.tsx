@@ -2,41 +2,33 @@
 
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { LandingHeader, LandingFooter } from "@/components/landing/LandingHeader";
+import { LedgerPage } from "@/components/landing/LedgerPage";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
+// "Open Ledger" brand: paper page, ink text, ledger-green as the only accent.
+// The single dark plate below is the deliberate exception.
 export default function MissionPage() {
-  const googleLoginUrl = `${API_BASE_URL}/auth/google/login`;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] overflow-hidden">
-      {/* Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-primary-500/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
-      </div>
-
-      <LandingHeader />
+    <LedgerPage>
 
       {/* Hero */}
-      <section className="pt-32 pb-16 px-6 relative">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-500/20 to-purple-500/20 border border-primary-500/30 rounded-full text-primary-400 text-sm mb-6">
+      <section className="relative px-6 pb-16 pt-32">
+        <div className="mx-auto max-w-4xl">
+          <div className="mb-12 text-center">
+            <p className="mb-5 font-brand-mono text-xs font-medium uppercase tracking-[0.18em] text-ledger-green">
               Our Mission
-            </div>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 tracking-tight leading-tight">
+            </p>
+            <h1 className="mb-6 font-display text-4xl font-semibold leading-[1.05] tracking-tight text-ledger-ink md:text-5xl lg:text-6xl">
               Aexy is on a mission to bring{" "}
-              <span className="bg-gradient-to-r from-primary-400 to-purple-400 bg-clip-text text-transparent">
+              <span className="text-ledger-green">
                 positive change.
               </span>
             </h1>
-            <p className="text-xl text-white/60 max-w-2xl mx-auto">
+            <p className="mx-auto max-w-2xl text-xl leading-8 text-ledger-ink/65">
               We are building world-class tools actually accessible for everyone using AI.
             </p>
-            <p className="text-white/40 text-sm mt-6">
+            <p className="mt-6 font-brand-mono text-xs uppercase tracking-[0.14em] text-ledger-ink/55">
               Bhanu Pratap Chaudhary
             </p>
           </div>
@@ -44,19 +36,21 @@ export default function MissionPage() {
       </section>
 
       {/* Main Content */}
-      <section className="py-12 px-6 relative">
-        <div className="max-w-3xl mx-auto">
-          {/* Hero Image */}
-          <div className="relative mb-16 rounded-2xl overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] to-transparent z-10" />
-            <div className="h-64 bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
-              <div className="text-white/20 text-sm">Building the future</div>
+      <section className="relative px-6 py-12">
+        <div className="mx-auto max-w-3xl">
+          {/* Hero plate. Deliberately dark: the one product-pane note on this
+              page, styled like a plate in a technical manual. */}
+          <figure className="mb-16">
+            <div className="flex h-64 items-center justify-center overflow-hidden rounded-[4px] border border-ledger-ink/25 bg-ledger-pane">
+              <div className="font-brand-mono text-xs uppercase tracking-[0.18em] text-white/55">
+                Building the future
+              </div>
             </div>
-          </div>
+          </figure>
 
           {/* Opening */}
-          <div className="prose prose-invert prose-lg max-w-none mb-16">
-            <p className="text-xl text-white/80 leading-relaxed">
+          <div className="mb-16">
+            <p className="text-xl leading-relaxed text-ledger-ink/75">
               Humanity has progressed so far, yet there are so many stories that are buried under the status quo.
               Aexy aims to bring about social change by enabling people to build better software & reducing the
               friction involved in creating world-class tools that were once only accessible to giants like Google,
@@ -66,10 +60,10 @@ export default function MissionPage() {
 
           {/* Democratize */}
           <div className="mb-16">
-            <h2 className="text-2xl md:text-3xl font-bold text-white mb-6">
+            <h2 className="mb-6 font-display text-2xl font-semibold tracking-tight text-ledger-ink md:text-3xl">
               Democratize software creation
             </h2>
-            <p className="text-white/70 leading-relaxed text-lg">
+            <p className="text-lg leading-relaxed text-ledger-ink/70">
               Aexy is started to challenge the existing enterprise software giants and give access to
               cutting-edge engineering tools in the hands of everyone. Let the ideas and innovation flow
               throughout Earth and let humanity progress.
@@ -77,8 +71,8 @@ export default function MissionPage() {
           </div>
 
           {/* Quote Block */}
-          <div className="relative my-16 pl-6 border-l-4 border-primary-500">
-            <p className="text-xl md:text-2xl text-white/90 italic leading-relaxed">
+          <div className="relative my-16 border-l-2 border-ledger-green pl-6">
+            <p className="font-display text-xl leading-relaxed text-ledger-ink/85 md:text-2xl">
               World needs to be shown that good companies can be created by good people with good culture
               without kalanick, jobs like toxicity & negativity.
             </p>
@@ -86,14 +80,14 @@ export default function MissionPage() {
 
           {/* Love over fear */}
           <div className="mb-16">
-            <p className="text-white/70 leading-relaxed text-lg mb-6">
+            <p className="mb-6 text-lg leading-relaxed text-ledger-ink/70">
               The world believes that love cannot trump over fear, history teaches us otherwise and we want
               to use love to transcend all color, caste, religion & gender boundaries and create a world
               where no kepler has to die, because no one believed in him. Aexy will create a new world of innovators.
             </p>
-            <p className="text-white/70 leading-relaxed text-lg">
+            <p className="text-lg leading-relaxed text-ledger-ink/70">
               We personally believe in no rules, apart from the laws imposed by nature, though for guiding
-              principle we have adopted a very simple principle - <span className="text-white font-medium">We don&apos;t
+              principle we have adopted a very simple principle - <span className="font-medium text-ledger-ink">We don&apos;t
               make money or take advantage of people in need or suffering.</span> Thanks to AI, we don&apos;t want
               and need a lot of money to bring about change.
             </p>
@@ -101,13 +95,13 @@ export default function MissionPage() {
 
           {/* Who we work with */}
           <div className="mb-16">
-            <h2 className="text-2xl md:text-3xl font-bold text-white mb-6">
+            <h2 className="mb-6 font-display text-2xl font-semibold tracking-tight text-ledger-ink md:text-3xl">
               Who we work with
             </h2>
-            <p className="text-xl text-white/80 leading-relaxed mb-6">
+            <p className="mb-6 text-xl leading-relaxed text-ledger-ink/75">
               We plan to work with everyone who believe in this mission and are open to transparency & accountability.
             </p>
-            <p className="text-white/70 leading-relaxed text-lg">
+            <p className="text-lg leading-relaxed text-ledger-ink/70">
               This journey is not for light hearted people, as the reality might strike you that walking the
               right path requires a straight spine that only a few have retained. Please don&apos;t take this lightly,
               we are building a world of optimists, who believe the change is possible.
@@ -116,20 +110,20 @@ export default function MissionPage() {
 
           {/* Long Term Vision */}
           <div className="mb-16">
-            <h2 className="text-2xl md:text-3xl font-bold text-white mb-6">
+            <h2 className="mb-6 font-display text-2xl font-semibold tracking-tight text-ledger-ink md:text-3xl">
               Our Long Term Vision
             </h2>
-            <p className="text-xl text-white/80 leading-relaxed mb-6">
+            <p className="mb-6 text-xl leading-relaxed text-ledger-ink/75">
               We are actually building the resources for the future generations, so that disadvantaged people
               in India & all over the world are no longer restricted by the technical challenges and lack of
               access to information & resources.
             </p>
-            <p className="text-white/70 leading-relaxed text-lg mb-6">
+            <p className="mb-6 text-lg leading-relaxed text-ledger-ink/70">
               This is Aexy&apos;s true & bold vision, everything in between is being done to ensure Aexy is able
               to actually solve real problems instead of pretending to connect people while filling up their
               coffers at any cost.
             </p>
-            <p className="text-white/70 leading-relaxed text-lg">
+            <p className="text-lg leading-relaxed text-ledger-ink/70">
               In the meantime, we are working towards reducing barriers to entry for high-quality software
               development. Aexy could empower a diverse array of voices, fostering a more inclusive technology
               landscape. This aligns with the theories on technology democratization and the public sphere,
@@ -140,41 +134,38 @@ export default function MissionPage() {
       </section>
 
       {/* Quote Section */}
-      <section className="py-24 px-6 relative">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-primary-500/10 via-purple-500/10 to-primary-500/10 rounded-3xl blur-xl" />
-            <div className="relative bg-white/5 backdrop-blur-sm rounded-3xl p-12 border border-white/10">
-              <p className="text-2xl md:text-3xl text-white font-medium leading-relaxed mb-6">
-                &ldquo;Big tech does not have a monopoly on big software. We can build whatever we want.&rdquo;
-              </p>
-              <p className="text-white/50">@awesomekling</p>
-            </div>
+      <section className="relative border-t border-ledger-ink/12 px-6 py-24">
+        <div className="mx-auto max-w-4xl text-center">
+          <div className="rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-12">
+            <p className="mb-6 font-display text-2xl font-semibold leading-relaxed text-ledger-ink md:text-3xl">
+              &ldquo;Big tech does not have a monopoly on big software. We can build whatever we want.&rdquo;
+            </p>
+            <p className="font-brand-mono text-xs uppercase tracking-[0.14em] text-ledger-ink/55">@awesomekling</p>
           </div>
         </div>
       </section>
 
       {/* CTA */}
-      <section className="py-16 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+      <section className="border-t border-ledger-ink/12 px-6 py-16">
+        <div className="mx-auto max-w-4xl text-center">
+          <h2 className="mb-6 font-display text-3xl font-semibold tracking-tight text-ledger-ink md:text-4xl">
             Work at Aexy
           </h2>
-          <p className="text-xl text-white/50 mb-10 max-w-2xl mx-auto">
+          <p className="mx-auto mb-10 max-w-2xl text-xl leading-8 text-ledger-ink/65">
             Join us in building the future of engineering tools.
           </p>
 
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <a
-              href={googleLoginUrl}
-              className="group inline-flex items-center justify-center gap-3 bg-white text-black px-8 py-4 rounded-full text-lg font-semibold transition-all hover:scale-105"
+          <div className="flex flex-col justify-center gap-3 sm:flex-row">
+            <Link
+              href="/login"
+              className="group inline-flex items-center justify-center gap-3 rounded-[2px] bg-ledger-green px-8 py-4 text-lg font-semibold text-ledger-paper transition hover:bg-[#095A31]"
             >
               Get Started
-              <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-            </a>
+              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+            </Link>
             <Link
               href="/manifesto"
-              className="group bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-3"
+              className="flex items-center justify-center gap-3 rounded-[2px] border border-ledger-ink/25 px-8 py-4 text-lg font-semibold text-ledger-ink transition hover:border-ledger-ink/50"
             >
               Read the Manifesto
             </Link>
@@ -182,7 +173,6 @@ export default function MissionPage() {
         </div>
       </section>
 
-      <LandingFooter />
-    </div>
+    </LedgerPage>
   );
 }

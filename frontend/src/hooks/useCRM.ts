@@ -102,9 +102,12 @@ export function useCRMObjects(workspaceId: string | null) {
   });
 
   const recalculateCountsMutation = useMutation({
-    mutationFn: () => crmApi.objects.recalculateCounts(workspaceId!),
-    onSuccess: () => {
-      toast.success("Counts recalculated");
+    mutationFn: (_opts?: { silent?: boolean }) =>
+      crmApi.objects.recalculateCounts(workspaceId!),
+    onSuccess: (_data, opts) => {
+      // The page auto-recalculates stale counts on load; that background pass
+      // passes { silent: true } so only the explicit refresh button toasts.
+      if (!opts?.silent) toast.success("Counts recalculated");
       queryClient.invalidateQueries({ queryKey: ["crmObjects", workspaceId] });
     },
     onError: (error) => {

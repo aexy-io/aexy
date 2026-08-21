@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, GitBranch } from "lucide-react";
 import { SiGithub } from "@icons-pack/react-simple-icons";
 import { safeInternalPath, stashPostLoginRedirect } from "@/lib/oauth";
+import { LedgerPage } from "@/components/landing/LedgerPage";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -30,18 +31,16 @@ export default function LoginPage() {
   }, [router]);
 
   return (
-    <main className="relative flex min-h-screen flex-col bg-[#08090d] text-white">
-      <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_left,rgba(45,212,191,0.14),transparent_32%),radial-gradient(circle_at_75%_15%,rgba(168,85,247,0.13),transparent_30%)]" />
-
+    <LedgerPage chrome={false} className="relative flex flex-col">
       <header className="relative px-4 py-5 sm:px-6">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
-            <div className="rounded-xl bg-white p-2 text-black">
+            <div className="rounded-[2px] bg-ledger-ink p-2 text-ledger-paper">
               <GitBranch className="h-5 w-5" />
             </div>
-            <span className="text-xl font-semibold tracking-tight">Aexy</span>
+            <span className="font-display text-xl font-semibold tracking-tight">Aexy</span>
           </Link>
-          <Link href="/" className="inline-flex items-center gap-2 text-sm text-white/55 transition hover:text-white">
+          <Link href="/" className="inline-flex items-center gap-2 text-sm text-ledger-ink/55 transition hover:text-ledger-ink">
             <ArrowLeft className="h-4 w-4" />
             Back to site
           </Link>
@@ -50,9 +49,9 @@ export default function LoginPage() {
 
       <div className="relative flex flex-1 items-center justify-center px-4 py-12 sm:px-6">
         <div className="w-full max-w-md">
-          <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-8 sm:p-10">
-            <h1 className="text-3xl font-semibold tracking-tight">Get started with Aexy</h1>
-            <p className="mt-3 text-sm leading-6 text-white/55">
+          <div className="rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-8 sm:p-10">
+            <h1 className="font-display text-3xl font-semibold tracking-tight">Get started with Aexy</h1>
+            <p className="mt-3 text-sm leading-6 text-ledger-ink/65">
               Sign in or create your workspace — same flow either way. Pick a provider to continue.
             </p>
 
@@ -61,7 +60,7 @@ export default function LoginPage() {
                 <a
                   key={name}
                   href={href}
-                  className="flex w-full items-center justify-center gap-3 rounded-full border border-white/12 bg-white/[0.04] px-6 py-3.5 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.08]"
+                  className="flex w-full items-center justify-center gap-3 rounded-[2px] border border-ledger-ink/25 px-6 py-3.5 text-sm font-semibold text-ledger-ink transition hover:border-ledger-ink/50"
                 >
                   {icon}
                   Continue with {name}
@@ -69,22 +68,22 @@ export default function LoginPage() {
               ))}
             </div>
 
-            <p className="mt-8 text-center text-xs leading-5 text-white/38">
+            <p className="mt-8 text-center text-xs leading-5 text-ledger-ink/50">
               By continuing, you agree to Aexy&apos;s{" "}
-              <Link href="/terms" className="underline underline-offset-2 hover:text-white/70">Terms</Link> and{" "}
-              <Link href="/privacy" className="underline underline-offset-2 hover:text-white/70">Privacy Policy</Link>.
+              <Link href="/terms" className="underline underline-offset-2 hover:text-ledger-ink">Terms</Link> and{" "}
+              <Link href="/privacy" className="underline underline-offset-2 hover:text-ledger-ink">Privacy Policy</Link>.
             </p>
           </div>
 
-          <p className="mt-6 text-center text-sm text-white/45">
+          <p className="mt-6 text-center text-sm text-ledger-ink/55">
             Prefer to self-host?{" "}
-            <a href="https://github.com/aexy-io/aexy" className="font-semibold text-white/70 transition hover:text-white">
+            <a href="https://github.com/aexy-io/aexy" className="font-semibold text-ledger-green transition hover:text-ledger-ink">
               Get the code on GitHub
             </a>
           </p>
         </div>
       </div>
-    </main>
+    </LedgerPage>
   );
 }
 

@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   title: "AI Agents for Business Workflows: Automation Without Custom Code",
   description:
     "How governed AI agents automate CRM updates, ticket triage, follow-up drafts, and cross-tool workflows without custom development — and how policy gates, approvals, and audit logs keep them safe.",
+  alternates: { canonical: "/guides/ai-agents-for-business-workflows" },
 };
 
 export default function AiAgentsForWorkflowsGuide() {

@@ -1,30 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import {
-  GitBranch,
-  ArrowRight,
-  ChevronDown,
-  Target,
-  Calendar,
-  Ticket,
-  FormInput,
-  FileText,
-  ClipboardCheck,
-  GraduationCap,
-  UserPlus,
-  Building2,
-  Users,
-  Code2,
-  Briefcase,
-  Heart,
-  Mail,
-  Bot,
-  Menu,
-  Crosshair,
-  Plug,
-} from "lucide-react";
+import { ArrowRight, GitBranch, Menu } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -33,31 +11,47 @@ import {
 } from "@/components/ui/sheet";
 import { SiGithub } from "@icons-pack/react-simple-icons";
 
+// The header stays minimal on purpose — Products/Solutions are single links,
+// and the full per-page catalogues below render in the footer instead of
+// dropdown menus. marketingRouteParity.test.ts slices this file from the
+// first product-links declaration to the solution-links declaration to
+// assert every product route exists and is in the sitemap, so the two
+// constants below (and their order) are load-bearing: keep them in this file
+// even though only the footer renders them, and don't spell their
+// declarations out in prose above them — the scan keys on first occurrence.
+
 const productLinks = [
-  { href: "/products/tracking", label: "Activity Tracking", icon: Target, desc: "Real-time team visibility", color: "from-emerald-500 to-teal-500" },
-  { href: "/products/planning", label: "Sprint Planning", icon: Calendar, desc: "AI-powered capacity planning", color: "from-green-500 to-emerald-500" },
-  { href: "/products/tickets", label: "Ticketing", icon: Ticket, desc: "Keyboard-first issue tracking", color: "from-pink-500 to-rose-500" },
-  { href: "/products/forms", label: "Forms", icon: FormInput, desc: "Drag-and-drop form builder", color: "from-violet-500 to-purple-500" },
-  { href: "/products/docs", label: "Documentation", icon: FileText, desc: "Connected team knowledge", color: "from-indigo-500 to-blue-500" },
-  { href: "/products/reviews", label: "Performance Reviews", icon: ClipboardCheck, desc: "360° feedback & SMART goals", color: "from-orange-500 to-amber-500" },
-  { href: "/products/learning", label: "Learning & Dev", icon: GraduationCap, desc: "Personalized skill growth", color: "from-rose-500 to-pink-500" },
-  { href: "/products/hiring", label: "Technical Hiring", icon: UserPlus, desc: "AI-powered assessments", color: "from-cyan-500 to-blue-500" },
-  { href: "/products/crm", label: "CRM", icon: Building2, desc: "Relationship management", color: "from-purple-500 to-violet-500" },
-  { href: "/products/email-marketing", label: "Email Marketing", icon: Mail, desc: "Campaigns & automation", color: "from-sky-500 to-blue-500" },
-  { href: "/products/ai-agents", label: "AI Agents", icon: Bot, desc: "Intelligent automation", color: "from-purple-500 to-violet-500" },
-  { href: "/products/mcp", label: "MCP Server", icon: Plug, desc: "Use Aexy from ChatGPT & Claude", color: "from-teal-500 to-cyan-500" },
-  { href: "/products/gtm-intelligence", label: "GTM Intelligence", icon: Crosshair, desc: "Visitor ID & lead scoring", color: "from-indigo-500 to-violet-500" },
+  { href: "/products/tracking", label: "Activity Tracking" },
+  { href: "/products/planning", label: "Sprint Planning" },
+  { href: "/products/tickets", label: "Ticketing" },
+  { href: "/products/forms", label: "Forms" },
+  { href: "/products/docs", label: "Documentation" },
+  { href: "/products/reviews", label: "Performance Reviews" },
+  { href: "/products/learning", label: "Learning & Dev" },
+  { href: "/products/hiring", label: "Technical Hiring" },
+  { href: "/products/crm", label: "CRM" },
+  { href: "/products/email-marketing", label: "Email Marketing" },
+  { href: "/products/ai-agents", label: "AI Agents" },
+  { href: "/products/mcp", label: "MCP Server" },
+  { href: "/products/gtm-intelligence", label: "GTM Intelligence" },
 ];
 
 const solutionLinks = [
-  { href: "/for/founders", label: "Founders", icon: Building2, desc: "Run the company OS", color: "from-emerald-500 to-cyan-500" },
-  { href: "/for/revenue-teams", label: "Revenue Teams", icon: Crosshair, desc: "CRM, GTM & handoffs", color: "from-indigo-500 to-violet-500" },
-  { href: "/for/operations", label: "Operations", icon: ClipboardCheck, desc: "Process & workflow control", color: "from-amber-500 to-orange-500" },
-  { href: "/for/ai-agent-builders", label: "AI Agent Builders", icon: Bot, desc: "Governed company context", color: "from-purple-500 to-violet-500" },
-  { href: "/for/engineering-managers", label: "Engineering Managers", icon: Users, desc: "Visibility & planning tools", color: "from-blue-500 to-cyan-500" },
-  { href: "/for/developers", label: "Developers", icon: Code2, desc: "No surveillance, just growth", color: "from-emerald-500 to-teal-500" },
-  { href: "/for/engineering-leaders", label: "CTOs & VPs", icon: Briefcase, desc: "Scale with confidence", color: "from-purple-500 to-violet-500" },
-  { href: "/for/people-ops", label: "HR & People Ops", icon: Heart, desc: "Hiring, reviews & L&D", color: "from-rose-500 to-pink-500" },
+  { href: "/for/founders", label: "Founders" },
+  { href: "/for/revenue-teams", label: "Revenue Teams" },
+  { href: "/for/operations", label: "Operations" },
+  { href: "/for/ai-agent-builders", label: "AI Agent Builders" },
+  { href: "/for/engineering-managers", label: "Engineering Managers" },
+  { href: "/for/developers", label: "Developers" },
+  { href: "/for/engineering-leaders", label: "CTOs & VPs" },
+  { href: "/for/people-ops", label: "HR & People Ops" },
+];
+
+const NAV_LINKS: Array<[string, string]> = [
+  ["/#platform", "Products"],
+  ["/#solutions", "Solutions"],
+  ["/pricing", "Pricing"],
+  ["/handbook", "Docs"],
 ];
 
 interface LandingHeaderProps {
@@ -65,128 +59,28 @@ interface LandingHeaderProps {
 }
 
 export function LandingHeader({ showGetStarted = true }: LandingHeaderProps) {
-  const [showProductsMenu, setShowProductsMenu] = useState(false);
-  const [showSolutionsMenu, setShowSolutionsMenu] = useState(false);
-  const productsRef = useRef<HTMLDivElement>(null);
-  const solutionsRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (productsRef.current && !productsRef.current.contains(event.target as Node)) {
-        setShowProductsMenu(false);
-      }
-      if (solutionsRef.current && !solutionsRef.current.contains(event.target as Node)) {
-        setShowSolutionsMenu(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0f]/80 backdrop-blur-xl border-b border-white/5">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
+    <header className="fixed top-0 left-0 right-0 z-50 border-b border-ledger-ink/12 bg-ledger-paper/90 backdrop-blur">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
         <Link href="/" className="flex items-center gap-3">
-          <div className="relative">
-            <div className="absolute inset-0 bg-primary-500 blur-lg opacity-50" />
-            <div className="relative p-2 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl">
-              <GitBranch className="h-6 w-6 text-white" />
-            </div>
+          <div className="rounded-[2px] bg-ledger-ink p-2 text-ledger-paper">
+            <GitBranch className="h-5 w-5" />
           </div>
-          <span className="text-xl font-bold bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">
-            Aexy
-          </span>
+          <span className="font-display text-xl font-semibold tracking-tight">Aexy</span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-6">
-          {/* Products Dropdown */}
-          <div className="relative" ref={productsRef}>
-            <button
-              onClick={() => { setShowProductsMenu(!showProductsMenu); setShowSolutionsMenu(false); }}
-              className="flex items-center gap-1 text-white/60 hover:text-white transition text-sm"
-            >
-              Products
-              <ChevronDown className={`h-4 w-4 transition-transform ${showProductsMenu ? "rotate-180" : ""}`} />
-            </button>
-            {showProductsMenu && (
-              <div className="absolute top-full left-0 mt-2 w-80 bg-[#12121a]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
-                <div className="p-2 max-h-[70vh] overflow-y-auto">
-                  {productLinks.map(({ href, label, icon: Icon, desc, color }) => (
-                    <Link
-                      key={href}
-                      href={href}
-                      onClick={() => setShowProductsMenu(false)}
-                      className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-all group"
-                    >
-                      <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
-                        <Icon className="h-5 w-5 text-white" />
-                      </div>
-                      <div>
-                        <div className="text-white font-medium text-sm">{label}</div>
-                        <div className="text-white/40 text-xs">{desc}</div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-                <div className="border-t border-white/10 p-3">
-                  <Link
-                    href="/#pillars"
-                    onClick={() => setShowProductsMenu(false)}
-                    className="flex items-center justify-center gap-2 text-sm text-primary-400 hover:text-primary-300 transition"
-                  >
-                    View all products
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Solutions Dropdown */}
-          <div className="relative" ref={solutionsRef}>
-            <button
-              onClick={() => { setShowSolutionsMenu(!showSolutionsMenu); setShowProductsMenu(false); }}
-              className="flex items-center gap-1 text-white/60 hover:text-white transition text-sm"
-            >
-              Solutions
-              <ChevronDown className={`h-4 w-4 transition-transform ${showSolutionsMenu ? "rotate-180" : ""}`} />
-            </button>
-            {showSolutionsMenu && (
-              <div className="absolute top-full left-0 mt-2 w-72 bg-[#12121a]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
-                <div className="p-2">
-                  {solutionLinks.map(({ href, label, icon: Icon, desc, color }) => (
-                    <Link
-                      key={href}
-                      href={href}
-                      onClick={() => setShowSolutionsMenu(false)}
-                      className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-all group"
-                    >
-                      <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
-                        <Icon className="h-5 w-5 text-white" />
-                      </div>
-                      <div>
-                        <div className="text-white font-medium text-sm">{label}</div>
-                        <div className="text-white/40 text-xs">{desc}</div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <Link href="/products/ai-agents" className="text-white/60 hover:text-white transition text-sm whitespace-nowrap">
-            AI Agents
-          </Link>
-          <Link href="/pricing" className="text-white/60 hover:text-white transition text-sm">
-            Pricing
-          </Link>
-          <Link href="/handbook" className="text-white/60 hover:text-white transition text-sm">
-            Docs
-          </Link>
-          <a href="https://github.com/aexy-io/aexy" className="text-white/60 hover:text-white transition text-sm flex items-center gap-1">
+        <nav className="hidden items-center gap-6 font-brand-mono text-xs font-medium uppercase tracking-[0.12em] text-ledger-ink/65 md:flex">
+          {NAV_LINKS.map(([href, label]) => (
+            <Link key={href} href={href} className="hover:text-ledger-ink transition">
+              {label}
+            </Link>
+          ))}
+          <a
+            href="https://github.com/aexy-io/aexy"
+            className="flex items-center gap-1.5 hover:text-ledger-ink transition"
+          >
             <SiGithub className="h-4 w-4" />
             GitHub
           </a>
@@ -196,83 +90,51 @@ export function LandingHeader({ showGetStarted = true }: LandingHeaderProps) {
           {showGetStarted && (
             <Link
               href="/login"
-              className="group inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-white px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-black transition hover:bg-white/90"
+              className="hidden items-center gap-2 whitespace-nowrap rounded-[2px] bg-ledger-green px-4 py-2 text-sm font-semibold text-ledger-paper transition hover:bg-[#095A31] md:inline-flex"
             >
               Get started
-              <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+              <ArrowRight className="h-4 w-4" />
             </Link>
           )}
 
-          {/* Mobile hamburger menu */}
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
-              <button className="md:hidden p-2 text-white/70 hover:text-white transition">
+              <button
+                className="rounded-[2px] border border-ledger-ink/20 p-2 text-ledger-ink/80 md:hidden"
+                aria-label="Toggle menu"
+              >
                 <Menu className="h-5 w-5" />
               </button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[300px] bg-[#0a0a0f] border-white/10 overflow-y-auto">
-              <SheetTitle className="text-white text-lg font-bold mb-6">Menu</SheetTitle>
-              <nav className="flex flex-col gap-6">
-                <div>
-                  <h3 className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-3">Products</h3>
-                  <div className="space-y-1">
-                    {productLinks.map(({ href, label, icon: Icon, color }) => (
-                      <Link
-                        key={href}
-                        href={href}
-                        onClick={() => setMobileOpen(false)}
-                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition"
-                      >
-                        <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center`}>
-                          <Icon className="h-4 w-4 text-white" />
-                        </div>
-                        <span className="text-white/80 text-sm">{label}</span>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <h3 className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-3">Solutions</h3>
-                  <div className="space-y-1">
-                    {solutionLinks.map(({ href, label, icon: Icon, color }) => (
-                      <Link
-                        key={href}
-                        href={href}
-                        onClick={() => setMobileOpen(false)}
-                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition"
-                      >
-                        <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center`}>
-                          <Icon className="h-4 w-4 text-white" />
-                        </div>
-                        <span className="text-white/80 text-sm">{label}</span>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <Link href="/#platform" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Platform</Link>
-                  <Link href="/ai-company-os" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Company OS</Link>
-                  <Link href="/products/ai-agents" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">AI Agents</Link>
-                  <Link href="/products/mcp" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">MCP Server</Link>
-                  <Link href="/products/gtm-intelligence" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">GTM Intelligence</Link>
-                  <Link href="/pricing" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Pricing</Link>
-                  <Link href="/handbook" onClick={() => setMobileOpen(false)} className="block p-2 text-white/70 hover:text-white text-sm transition">Docs</Link>
-                  <a href="https://github.com/aexy-io/aexy" className="flex items-center gap-2 p-2 text-white/70 hover:text-white text-sm transition">
-                    <SiGithub className="h-4 w-4" />
-                    GitHub
-                  </a>
-                </div>
+            <SheetContent
+              side="right"
+              className="w-[300px] overflow-y-auto border-ledger-ink/12 bg-ledger-paper text-ledger-ink"
+            >
+              <SheetTitle className="mb-6 font-display text-lg font-semibold text-ledger-ink">
+                Menu
+              </SheetTitle>
+              <nav className="flex flex-col gap-4 font-brand-mono text-sm uppercase tracking-[0.1em] text-ledger-ink/75">
+                {NAV_LINKS.map(([href, label]) => (
+                  <Link key={href} href={href} onClick={() => setMobileOpen(false)}>
+                    {label}
+                  </Link>
+                ))}
+                <a
+                  href="https://github.com/aexy-io/aexy"
+                  className="flex items-center gap-2"
+                >
+                  <SiGithub className="h-4 w-4" />
+                  GitHub
+                </a>
                 {showGetStarted && (
-                  <div className="pt-4 border-t border-white/10">
-                    <Link
-                      href="/login"
-                      onClick={() => setMobileOpen(false)}
-                      className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-white text-black rounded-full text-sm font-semibold hover:bg-white/90 transition"
-                    >
-                      Get started
-                      <ArrowRight className="h-4 w-4" />
-                    </Link>
-                  </div>
+                  <Link
+                    href="/login"
+                    onClick={() => setMobileOpen(false)}
+                    className="mt-2 inline-flex items-center justify-center gap-2 rounded-[2px] bg-ledger-green px-4 py-2.5 font-sans font-semibold normal-case tracking-normal text-ledger-paper"
+                  >
+                    Get started
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
                 )}
               </nav>
             </SheetContent>
@@ -283,94 +145,102 @@ export function LandingHeader({ showGetStarted = true }: LandingHeaderProps) {
   );
 }
 
+const resourceLinks: Array<[string, string]> = [
+  ["/guides/what-is-an-ai-company-operating-system", "What is a Company OS?"],
+  ["/guides/best-ai-company-operating-systems-2026", "Best Company OS 2026"],
+  ["/guides/ai-agents-for-business-workflows", "AI Agents Guide"],
+  ["/guides/self-hosted-ai-company-os", "Self-Hosting Guide"],
+  ["/story", "Our Story"],
+  ["/mission", "Mission"],
+  ["/manifesto", "Company OS Manifesto"],
+  ["/use-cases/replace-saas-sprawl", "Replace SaaS Sprawl"],
+  ["/use-cases/company-knowledge-graph", "Knowledge Graph"],
+  ["/compare/hubspot", "Compare HubSpot"],
+  ["/compare/jira", "Compare Jira"],
+  ["/pricing", "Pricing"],
+  ["/handbook", "Documentation"],
+  ["/changelog", "Changelog"],
+];
+
+const companyLinks: Array<[string, string]> = [
+  ["/about", "About"],
+  ["/blog", "Blog"],
+  ["/careers", "Careers"],
+  ["/contact", "Contact"],
+];
+
+function FooterColumn({
+  title,
+  links,
+}: {
+  title: string;
+  links: Array<{ href: string; label: string }>;
+}) {
+  return (
+    <div>
+      <h4 className="font-brand-mono text-xs font-medium uppercase tracking-[0.16em] text-ledger-ink/50">
+        {title}
+      </h4>
+      <ul className="mt-4 space-y-2.5 text-sm text-ledger-ink/70">
+        {links.map(({ href, label }) => (
+          <li key={href}>
+            <Link href={href} className="hover:text-ledger-green transition">
+              {label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function LandingFooter() {
   return (
-    <footer className="border-t border-white/5 py-12 px-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="grid md:grid-cols-6 gap-8 mb-12">
+    <footer className="border-t border-ledger-ink/12 px-4 py-14 sm:px-6">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-12 grid gap-10 md:grid-cols-6">
           <div className="md:col-span-2">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl">
-                <GitBranch className="h-5 w-5 text-white" />
+            <div className="mb-4 flex items-center gap-3">
+              <div className="rounded-[2px] bg-ledger-ink p-2 text-ledger-paper">
+                <GitBranch className="h-5 w-5" />
               </div>
-              <span className="text-lg font-bold text-white">Aexy</span>
+              <span className="font-display text-lg font-semibold">Aexy</span>
             </div>
-            <p className="text-white/40 text-sm mb-4">
-              The open-source AI company OS. One workspace for CRM, engineering, workflows, people, and AI agents.
+            <p className="mb-4 max-w-sm text-sm leading-6 text-ledger-ink/60">
+              The open-source AI company OS. One system of record for CRM, engineering, workflows, people, and AI agents.
             </p>
-            <div className="flex items-center gap-3">
-              <a href="https://github.com/aexy-io/aexy" className="p-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition">
-                <SiGithub className="h-4 w-4 text-white/60" />
-              </a>
-            </div>
+            <a
+              href="https://github.com/aexy-io/aexy"
+              className="inline-flex items-center gap-2 font-brand-mono text-xs uppercase tracking-[0.14em] text-ledger-green hover:text-ledger-ink transition"
+            >
+              <SiGithub className="h-4 w-4" />
+              github.com/aexy-io/aexy
+            </a>
           </div>
-          <div>
-            <h4 className="text-white font-semibold mb-4">Products</h4>
-            <ul className="space-y-2 text-white/40 text-sm">
-              <li><Link href="/products/tracking" className="hover:text-white transition">Activity Tracking</Link></li>
-              <li><Link href="/products/planning" className="hover:text-white transition">Sprint Planning</Link></li>
-              <li><Link href="/products/tickets" className="hover:text-white transition">Ticketing</Link></li>
-              <li><Link href="/products/reviews" className="hover:text-white transition">Reviews</Link></li>
-              <li><Link href="/products/learning" className="hover:text-white transition">Learning</Link></li>
-              <li><Link href="/products/hiring" className="hover:text-white transition">Hiring</Link></li>
-              <li><Link href="/products/crm" className="hover:text-white transition">CRM</Link></li>
-              <li><Link href="/products/email-marketing" className="hover:text-white transition">Email Marketing</Link></li>
-              <li><Link href="/products/ai-agents" className="hover:text-white transition">AI Agents</Link></li>
-              <li><Link href="/products/mcp" className="hover:text-white transition">MCP Server</Link></li>
-              <li><Link href="/products/gtm-intelligence" className="hover:text-white transition">GTM Intelligence</Link></li>
-              <li><Link href="/ai-company-os" className="hover:text-white transition">AI Company OS</Link></li>
-              <li><Link href="/open-source-company-os" className="hover:text-white transition">Open Source Company OS</Link></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="text-white font-semibold mb-4">Solutions</h4>
-            <ul className="space-y-2 text-white/40 text-sm">
-              <li><Link href="/for/founders" className="hover:text-white transition">For Founders</Link></li>
-              <li><Link href="/for/revenue-teams" className="hover:text-white transition">For Revenue</Link></li>
-              <li><Link href="/for/operations" className="hover:text-white transition">For Operations</Link></li>
-              <li><Link href="/for/ai-agent-builders" className="hover:text-white transition">For Agent Builders</Link></li>
-              <li><Link href="/for/engineering-managers" className="hover:text-white transition">For Managers</Link></li>
-              <li><Link href="/for/developers" className="hover:text-white transition">For Developers</Link></li>
-              <li><Link href="/for/engineering-leaders" className="hover:text-white transition">For CTOs</Link></li>
-              <li><Link href="/for/people-ops" className="hover:text-white transition">For HR</Link></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="text-white font-semibold mb-4">Resources</h4>
-            <ul className="space-y-2 text-white/40 text-sm">
-              <li><Link href="/guides/what-is-an-ai-company-operating-system" className="hover:text-white transition">What is a Company OS?</Link></li>
-              <li><Link href="/guides/best-ai-company-operating-systems-2026" className="hover:text-white transition">Best Company OS 2026</Link></li>
-              <li><Link href="/guides/ai-agents-for-business-workflows" className="hover:text-white transition">AI Agents Guide</Link></li>
-              <li><Link href="/guides/self-hosted-ai-company-os" className="hover:text-white transition">Self-Hosting Guide</Link></li>
-              <li><Link href="/story" className="hover:text-white transition">Our Story</Link></li>
-              <li><Link href="/mission" className="hover:text-white transition">Mission</Link></li>
-              <li><Link href="/manifesto" className="hover:text-white transition">Company OS Manifesto</Link></li>
-              <li><Link href="/use-cases/replace-saas-sprawl" className="hover:text-white transition">Replace SaaS Sprawl</Link></li>
-              <li><Link href="/use-cases/company-knowledge-graph" className="hover:text-white transition">Knowledge Graph</Link></li>
-              <li><Link href="/compare/hubspot" className="hover:text-white transition">Compare HubSpot</Link></li>
-              <li><Link href="/compare/jira" className="hover:text-white transition">Compare Jira</Link></li>
-              <li><Link href="/pricing" className="hover:text-white transition">Pricing</Link></li>
-              <li><Link href="/handbook" className="hover:text-white transition">Documentation</Link></li>
-              <li><Link href="/changelog" className="hover:text-white transition">Changelog</Link></li>
-              <li><a href="https://github.com/aexy-io/aexy" className="hover:text-white transition">GitHub</a></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="text-white font-semibold mb-4">Company</h4>
-            <ul className="space-y-2 text-white/40 text-sm">
-              <li><Link href="/about" className="hover:text-white transition">About</Link></li>
-              <li><Link href="/blog" className="hover:text-white transition">Blog</Link></li>
-              <li><Link href="/careers" className="hover:text-white transition">Careers</Link></li>
-              <li><Link href="/contact" className="hover:text-white transition">Contact</Link></li>
-            </ul>
-          </div>
+          <FooterColumn
+            title="Products"
+            links={[
+              ...productLinks,
+              { href: "/ai-company-os", label: "AI Company OS" },
+              { href: "/open-source-company-os", label: "Open Source Company OS" },
+            ]}
+          />
+          <FooterColumn title="Solutions" links={solutionLinks} />
+          <FooterColumn
+            title="Resources"
+            links={resourceLinks.map(([href, label]) => ({ href, label }))}
+          />
+          <FooterColumn
+            title="Company"
+            links={companyLinks.map(([href, label]) => ({ href, label }))}
+          />
         </div>
-        <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-white/40 text-sm">&copy; 2026 Aexy. All rights reserved.</p>
-          <div className="flex items-center gap-6 text-white/40 text-sm">
-            <Link href="/privacy" className="hover:text-white transition">Privacy Policy</Link>
-            <Link href="/terms" className="hover:text-white transition">Terms of Service</Link>
-            <Link href="/security" className="hover:text-white transition">Security</Link>
+        <div className="flex flex-col items-center justify-between gap-4 border-t border-ledger-ink/12 pt-6 md:flex-row">
+          <p className="text-sm text-ledger-ink/50">&copy; 2026 Aexy. All rights reserved.</p>
+          <div className="flex items-center gap-6 text-sm text-ledger-ink/50">
+            <Link href="/privacy" className="hover:text-ledger-ink transition">Privacy Policy</Link>
+            <Link href="/terms" className="hover:text-ledger-ink transition">Terms of Service</Link>
+            <Link href="/security" className="hover:text-ledger-ink transition">Security</Link>
           </div>
         </div>
       </div>

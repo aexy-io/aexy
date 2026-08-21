@@ -2,13 +2,17 @@ import type { Metadata } from "next";
 import { ComparisonPage } from "@/components/marketing/ComparisonPage";
 
 export const metadata: Metadata = {
-  title: "Aexy vs Jira",
+  // `absolute` because the title already carries the brand; the root
+  // layout's "%s | Aexy" template would otherwise render it twice.
+  title: { absolute: "Aexy vs Jira" },
   description: "Compare Aexy and Jira for teams that want sprint planning, CRM, docs, workflows, GTM intelligence, and AI agents in one company OS.",
+  alternates: { canonical: "/compare/jira" },
 };
 
 export default function JiraComparisonPage() {
   return (
     <ComparisonPage
+      path="/compare/jira"
       competitor="Jira"
       eyebrow="Aexy vs Jira"
       title="A Jira alternative for teams that need more than issue tracking."

@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   title: "Self-Hosted AI Company OS: Data Sovereignty, Compliance & Architecture",
   description:
     "Why teams self-host their AI company operating system: data residency, compliance posture, local LLM inference, and cost control. Aexy's self-hosted architecture (AGPL-3.0) explained.",
+  alternates: { canonical: "/guides/self-hosted-ai-company-os" },
 };
 
 export default function SelfHostedGuide() {

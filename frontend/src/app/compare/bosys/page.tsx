@@ -2,13 +2,17 @@ import type { Metadata } from "next";
 import { ComparisonPage } from "@/components/marketing/ComparisonPage";
 
 export const metadata: Metadata = {
-  title: "Aexy vs Bosys",
+  // `absolute` because the title already carries the brand; the root
+  // layout's "%s | Aexy" template would otherwise render it twice.
+  title: { absolute: "Aexy vs Bosys" },
   description: "Compare Aexy and Bosys for teams evaluating AI business operating systems, generated workflows, open company OS platforms, and governed AI agents.",
+  alternates: { canonical: "/compare/bosys" },
 };
 
 export default function BosysComparisonPage() {
   return (
     <ComparisonPage
+      path="/compare/bosys"
       competitor="Bosys"
       eyebrow="Aexy vs Bosys"
       title="A Bosys alternative for teams that want an inspectable company OS."

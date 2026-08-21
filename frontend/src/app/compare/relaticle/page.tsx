@@ -2,13 +2,17 @@ import type { Metadata } from "next";
 import { ComparisonPage } from "@/components/marketing/ComparisonPage";
 
 export const metadata: Metadata = {
-  title: "Aexy vs Relaticle",
+  // `absolute` because the title already carries the brand; the root
+  // layout's "%s | Aexy" template would otherwise render it twice.
+  title: { absolute: "Aexy vs Relaticle" },
   description: "Compare Aexy and Relaticle for teams evaluating open-source CRM, AI agents, GTM workflows, engineering context, docs, and company OS platforms.",
+  alternates: { canonical: "/compare/relaticle" },
 };
 
 export default function RelaticleComparisonPage() {
   return (
     <ComparisonPage
+      path="/compare/relaticle"
       competitor="Relaticle"
       eyebrow="Aexy vs Relaticle"
       title="A Relaticle alternative when agent-native CRM needs the full company OS."

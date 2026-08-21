@@ -5,6 +5,126 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.28.0] - 2026-08-22
+
+The public site: a new look, and the SEO and conversion audit that came with it.
+
+### Changed: the marketing site is "Open Ledger"
+
+Every public page — the homepage, sixteen product pages, eleven comparisons,
+the ICP and use-case pages, the guides, pricing, the handbook, login and the
+legal pages — moves off the dark gradient it shared with every other developer
+tool and onto bone paper. Ink `#101913` on `#F2F3EE`, ledger-green for links and
+actions, hairline 1px rules, 2px corners, and dark panes reserved for product
+UI. No gradients, no glass, no glow. Display type is Bricolage Grotesque, mono
+utility text is IBM Plex Mono, body stays Inter; the brand faces load only on
+marketing routes, so the authenticated app ships no extra font bytes.
+
+The header lost the thirteen-product and eight-solution catalogues it was
+carrying — those live in the footer now — and keeps Products, Solutions,
+Pricing, Docs, GitHub and one call to action.
+
+### Fixed: every page told Google it was a duplicate of the homepage
+
+The root layout carried `alternates: { canonical: "/" }`. Next inherits metadata
+down the route tree, so all sixty-four public pages emitted
+`<link rel="canonical" href="https://aexy.io">` — every product page, every
+comparison, every guide, nominating the homepage as its canonical URL. Nothing
+about this is visible in a browser or a build; the pages render perfectly while
+asking to be dropped from the index.
+
+Each route owns its canonical now, server pages through their `metadata` export
+and client pages through a sibling `layout.tsx`. A source-scan test fails if a
+public route ships without one, and fails again if a site-wide canonical
+reappears on the root layout.
+
+### Fixed: twenty pages had no title or description of their own
+
+Their `page.tsx` is a client component, where a `metadata` export is silently
+ignored, and no layout supplied one — so `/about`, `/security`,
+`/for/developers`, `/products/uptime` and sixteen others served the homepage's
+title and description verbatim. Each has its own now. `/login` is `noindex`: it
+is a gate, and it was competing for brand queries.
+
+Titles that already carried the brand rendered it twice — "About Aexy | Aexy",
+"MCP (Model Context Protocol) - Aexy Docs | Aexy" — because the root template
+appends " | Aexy". Those opt out with `title: { absolute }`.
+
+The handbook's fifty-one pages were missing from `sitemap.ts` entirely,
+reachable only by crawling links from `/handbook`. They are generated from the
+same index the pages render from, so a new doc is listed the moment it exists.
+The sitemap goes from 62 URLs to 113.
+
+### Changed: the highest-intent pages have a self-serve path
+
+Every comparison, use-case and ICP page sent its primary call to action to
+`/contact`, which is a page of `mailto:` links. Somebody typing "aexy vs jira"
+is mid-evaluation, and the product is open source and free to self-host — that
+visitor wants a workspace or a `git clone`, not a calendar invite. Primary is
+"Start free" now, with the demo kept as the secondary action.
+
+Product pages had the mirror problem. Their call to action went straight to the
+Google OAuth URL, which excludes anyone without a Google account on a product
+whose audience is developers; `/login` offers GitHub too and already reads "Sign
+in or create your workspace". Twenty pages in total pointed at a single
+provider, `/pricing` among them. `/for/engineering-leaders` had a button
+labelled "Schedule Demo" that opened a Google sign-in screen.
+
+Secondary actions on product pages pointed at `/manifesto`, which has no next
+step; they go to pricing.
+
+### Removed: two claims the site cannot support
+
+"Join thousands of teams planning smarter with Aexy" on `/products/planning`,
+and "40% faster hiring" on `/for/people-ops`. Neither number exists anywhere.
+A test now fails on unsourced volume and outcome claims across the public tree.
+
+### Added: real product screenshots on the pages that sell the product
+
+Forty-four interior pages had no product imagery at all — a visitor arriving
+from a search never saw the thing before being asked to sign up. `/products/crm`,
+`/products/planning`, `/products/docs`, `/products/reviews`, `/products/tickets`
+and `/products/mcp` now show the actual surface, framed as a dark plate.
+
+The captures come from a script against a seeded workspace, so they can be
+regenerated rather than hand-collected. Surfaces that photograph badly are left
+out on purpose: `/agents` looks good but reads "0% Success" in red on every
+card, because the seeder creates no agent runs, and shipping that would argue
+against the product.
+
+### Fixed: marketing pages had no banner, contentinfo or main landmark
+
+Pages rendered the header, their content and the footer as siblings inside one
+page-wide `<main>`. ARIA grants `<header>` the `banner` role and `<footer>` the
+`contentinfo` role only when they are *not* inside `<main>`, so every marketing
+page lost both, while `<main>` itself meant nothing by spanning the whole
+document. Screen-reader users had no landmark to jump to.
+
+`LedgerPage` owns the structure now — header, then `<main>` around the page's
+content, then footer — because a page can only control one of the three
+elements' position relative to the others, and so cannot get this right on its
+own. Verified across all 113 sitemap routes.
+
+### Added: structured data on the pages that had none
+
+Twelve of the sixteen product pages emitted no JSON-LD at all and were
+ineligible for any rich result. Nothing on the site emitted `BreadcrumbList`.
+Both are in place. The guides breadcrumb pointed at `/guides`, which 404s — that
+crumb is gone rather than linking to a dead URL.
+
+### Fixed: the demo seeder could be pointed at a production database
+
+`seed_marketing_demo.py` resolved "the first developer's first workspace" and
+wrote to it with no confirmation — CRM records, a sprint, a review cycle, docs,
+and two automations with `is_active=True`. Its documented invocation is
+`docker exec aexy-backend python scripts/seed_marketing_demo.py`, the same shape
+as the migration command that is run against real environments. Pointed at
+production it would have dropped fictional deals into a customer workspace and
+switched on automations that then fire on live records.
+
+It prints the database, workspace and developer it resolved, and refuses to
+write without `--yes`.
+
 ## [0.27.1] - 2026-08-21
 
 Files & Storage, from one upload that arrived three times.

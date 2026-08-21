@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   title: "Best AI Company Operating Systems for Startups & Scaleups (2026)",
   description:
     "A buyer's guide to AI company operating systems in 2026: Aexy, Microsoft 365 Copilot, Notion, monday.com, ClickUp, and Odoo compared by scope, AI depth, governance, and deployment — with honest best-for guidance.",
+  alternates: { canonical: "/guides/best-ai-company-operating-systems-2026" },
 };
 
 export default function BestCompanyOsGuide() {
