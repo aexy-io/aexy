@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import { useProjects, useProjectMembers } from "@/hooks/useProjects";
+import { useDepartments } from "@/hooks/useOrganization";
+import { useServiceDeskTaxonomy } from "@/hooks/useServiceDesk";
 import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
 import { useRoles } from "@/hooks/useRoles";
 import { useAuth } from "@/hooks/useAuth";
@@ -71,6 +73,122 @@ interface ProjectCardProps {
   roles: CustomRole[];
   onDelete: (projectId: string) => void;
   canUseProjectFeatures: boolean;
+}
+
+/**
+ * Which department owns this board, and what the Service Desk resolves that to.
+ *
+ * `teams.department_id` has existed since the org layer landed and no API ever
+ * exposed it, so in practice every board rolled up to nothing — which is why
+ * converting a ticket to a task left it pending with whoever had it before.
+ *
+ * The resolved bucket is shown rather than implied, and when it resolves to
+ * nothing the reason is printed. A routing feature that silently does nothing is
+ * the exact complaint this release is answering; a blank badge here would be the
+ * same bug wearing a different hat.
+ */
+function BoardRouting({
+  project,
+  workspaceId,
+  canEdit,
+}: {
+  project: Project;
+  workspaceId: string;
+  canEdit: boolean;
+}) {
+  const { updateProject, isUpdating } = useProjects(workspaceId);
+  const { data: departments } = useDepartments();
+  const { stakeholders } = useServiceDeskTaxonomy();
+
+  // A board is where work gets done, so only internal buckets can own it —
+  // pointing one at "Partner" would move tickets out of the desk's own queue the
+  // moment somebody started on them. The server refuses it too.
+  const internal = stakeholders.filter((s) => s.semantics === "internal" && s.is_active);
+  const resolved = project.desk_stakeholder_slug
+    ? stakeholders.find((s) => s.slug === project.desk_stakeholder_slug)
+    : undefined;
+
+  const REASONS: Record<string, string> = {
+    override: "set directly on this board",
+    department: project.department_name
+      ? `via ${project.department_name}`
+      : "via its department",
+    no_department: "This board has no department, so tickets stay where they are.",
+    department_has_no_function: `"${project.department_name}" has no function on the org chart, so nothing routes here.`,
+    no_bucket_for_function: `No pending-with bucket is owned by "${project.department_name}" yet.`,
+    no_board: "This project has no board.",
+  };
+  const reason = project.desk_routing_reason
+    ? REASONS[project.desk_routing_reason]
+    : undefined;
+
+  return (
+    <div className="border-t border-border bg-muted/30 p-4">
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="min-w-[180px]">
+          <label className="mb-1 block text-xs text-muted-foreground">Owning department</label>
+          <select
+            value={project.department_id ?? ""}
+            disabled={!canEdit || isUpdating}
+            aria-label="Owning department"
+            onChange={(e) =>
+              updateProject({
+                projectId: project.id,
+                data: { department_id: e.target.value || null },
+              })
+            }
+            className="h-9 w-full rounded-md border border-border bg-background px-2 text-sm disabled:opacity-50"
+          >
+            <option value="">No department</option>
+            {(departments ?? []).map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="min-w-[180px]">
+          <label className="mb-1 block text-xs text-muted-foreground">
+            Pending-with override
+          </label>
+          <select
+            value={project.desk_routing_reason === "override" ? project.desk_stakeholder_slug ?? "" : ""}
+            disabled={!canEdit || isUpdating}
+            aria-label="Pending-with override"
+            onChange={(e) =>
+              updateProject({
+                projectId: project.id,
+                data: { desk_stakeholder_slug: e.target.value || null },
+              })
+            }
+            className="h-9 w-full rounded-md border border-border bg-background px-2 text-sm disabled:opacity-50"
+          >
+            <option value="">Follow the department</option>
+            {internal.map((s) => (
+              <option key={s.slug} value={s.slug}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="min-w-[200px] pb-1 text-xs">
+          <div className="mb-1 text-muted-foreground">Tickets move to</div>
+          {resolved ? (
+            <span>
+              <span className="font-medium">{resolved.label}</span>{" "}
+              <span className="text-muted-foreground">{reason}</span>
+            </span>
+          ) : (
+            <span className="text-amber-700 dark:text-amber-400">
+              {reason ?? "Nothing — tickets stay where they are."}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function ProjectCard({
@@ -247,6 +365,7 @@ function ProjectCard({
 
       {expanded && (
         <div className="border-t border-border">
+          <BoardRouting project={project} workspaceId={workspaceId} canEdit={isAdmin} />
           {membersLoading ? (
             <div className="p-4 text-center text-muted-foreground">Loading members...</div>
           ) : (

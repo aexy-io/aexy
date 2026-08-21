@@ -706,6 +706,7 @@ async def convert_to_task(
         data.title,
         data.priority,
         assignee_id=data.assignee_id,
+        pending_with=data.pending_with,
         scope_developer_id=current.id,
     )
 

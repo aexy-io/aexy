@@ -43,9 +43,8 @@ from aexy.services.org_functions import (
     FUNCTIONS,
     FUNCTIONS_BY_KEY,
     canonical_function_key,
-    clean_function_key as _clean_key,
+    canonical_or_grandfathered,
     function_key_spellings,
-    validate_function_key,
 )
 
 
@@ -184,10 +183,8 @@ class OrganizationService:
         rename that department, and refusing the unchanged value would lock the
         whole form. Only a *new* value has to be one we recognise.
         """
-        if current is not None and raw is not None and _clean_key(raw) == _clean_key(current):
-            return current
         try:
-            return validate_function_key(raw)
+            return canonical_or_grandfathered(raw, current)
         except ValueError as exc:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 

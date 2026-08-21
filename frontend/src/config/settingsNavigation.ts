@@ -294,6 +294,15 @@ export const settingsNavigation: SettingsNavCategory[] = [
         keywords: ["master", "data", "accounts", "partners", "customers", "vendors", "insurers", "products", "taxonomy"],
       },
       {
+        id: "service-desk-stakeholders",
+        label: "Pending-With Buckets",
+        href: "/settings/service-desk/stakeholders",
+        icon: Users,
+        description: "The parties a ticket can be waiting on, and which department owns each",
+        permission: PERMISSIONS.CAN_MANAGE_TICKETS,
+        keywords: ["stakeholder", "pending", "bucket", "queue", "handoff", "tech", "product", "department", "taxonomy"],
+      },
+      {
         id: "service-desk-hours",
         label: "Working Hours & SLA",
         href: "/settings/service-desk/hours",
