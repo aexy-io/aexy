@@ -122,7 +122,9 @@
       "downloading": "डाउनलोड हो रहा है…",
       "attachmentUnavailable": "केवल मूल ईमेल में उपलब्ध",
       "showQuoted": "उद्धृत इतिहास दिखाएँ",
-      "hideQuoted": "उद्धृत इतिहास छिपाएँ"
+      "hideQuoted": "उद्धृत इतिहास छिपाएँ",
+      "showImage": "{host} से छवि",
+      "imageFrom": "{host} से छवि"
     },
     "ai": {
       "title": "AI ईमेल वर्गीकरण",

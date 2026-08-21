@@ -233,16 +233,38 @@ export default function ServiceDeskTicketDetailPage() {
         <div className="space-y-4 lg:col-span-2 lg:col-start-1 lg:row-start-1">
           {/* Without this an owner cannot see what they are being asked to pass
               on to a vendor, which is the desk's core job. */}
-          {(ticket.body || ticket.attachments.length > 0) && (
+          {/* One thread, oldest first: the request that opened the ticket, then
+              every reply either way.
+
+              These were two cards. The request is the first email and each
+              reply is another, so splitting them meant reading a conversation
+              across two boxes with different shapes — and the request, which
+              carries the quoted history and the attachments, looked like
+              something other than a message. Same entry shape throughout, so
+              the thread reads top to bottom. */}
+          {(ticket.body || ticket.attachments.length > 0 || ticket.correspondence.length > 0) && (
             <Card className="space-y-3 p-4">
-              <div className="text-sm font-semibold">{t("detail.request")}</div>
-              {/* The request body is the worst offender for quoted history: a
-                  partner request that has been forwarded twice arrives with
-                  three levels of `>` and the actual ask buried at the top. Same
-                  folding as the correspondence entries below. */}
+              <div className="flex items-center gap-1.5 text-sm font-semibold">
+                <Mail className="h-4 w-4" /> {t("detail.correspondence")}
+              </div>
+              <ol className="space-y-3">
+              {(ticket.body || ticket.attachments.length > 0) && (
+              <li className="rounded-md border border-border p-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="break-all text-sm font-medium">
+                    {ticket.requester_email || ticket.requester_name || t("detail.unknownSender")}
+                  </span>
+                  <Badge variant="secondary">{t("detail.incoming")}</Badge>
+                  {/* Marks which entry opened the ticket — without it the first
+                      message is indistinguishable from a later reply. */}
+                  <Badge variant="outline" className="text-[10px]">{t("detail.request")}</Badge>
+                </div>
+                <div className="mt-0.5 text-xs text-muted-foreground">
+                  {new Date(ticket.created_at).toLocaleString()}
+                </div>
               {ticket.body && <QuotedBody body={ticket.body} />}
               {ticket.attachments.length > 0 && (
-                <div className="space-y-2">
+                <div className="mt-2 space-y-2">
                   <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                     <Paperclip className="h-3.5 w-3.5" /> {t("detail.attachments")}
                   </div>
@@ -275,6 +297,28 @@ export default function ServiceDeskTicketDetailPage() {
                   </ul>
                 </div>
               )}
+              </li>
+              )}
+
+              {/* Replies, in the order they happened. */}
+              {ticket.correspondence.map((entry) => (
+                <li key={entry.id} className="rounded-md border border-border p-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="break-all text-sm font-medium">{entry.author_email || t("detail.unknownSender")}</span>
+                    <Badge variant={entry.direction === "outgoing" ? "default" : "secondary"}>
+                      {entry.direction === "outgoing" ? t("detail.outgoing") : t("detail.incoming")}
+                    </Badge>
+                    {entry.direction === "outgoing" && entry.author_name && (
+                      <span className="text-xs text-muted-foreground">
+                        {t("detail.sentBy", { name: entry.author_name })}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">{new Date(entry.created_at).toLocaleString()}</div>
+                  <QuotedBody body={entry.content} />
+                </li>
+              ))}
+              </ol>
             </Card>
           )}
 
@@ -708,31 +752,6 @@ export default function ServiceDeskTicketDetailPage() {
                   <span className="text-sm text-destructive">{t("detail.emailFailed")}</span>
                 )}
               </div>
-            </Card>
-          )}
-
-          {ticket.correspondence.length > 0 && (
-            <Card className="space-y-3 p-4">
-              <div className="flex items-center gap-1.5 text-sm font-semibold"><Mail className="h-4 w-4" /> {t("detail.correspondence")}</div>
-              <ol className="space-y-3">
-                {ticket.correspondence.map((entry) => (
-                  <li key={entry.id} className="rounded-md border border-border p-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="break-all text-sm font-medium">{entry.author_email || t("detail.unknownSender")}</span>
-                      <Badge variant={entry.direction === "outgoing" ? "default" : "secondary"}>
-                        {entry.direction === "outgoing" ? t("detail.outgoing") : t("detail.incoming")}
-                      </Badge>
-                      {entry.direction === "outgoing" && entry.author_name && (
-                        <span className="text-xs text-muted-foreground">
-                          {t("detail.sentBy", { name: entry.author_name })}
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-0.5 text-xs text-muted-foreground">{new Date(entry.created_at).toLocaleString()}</div>
-                    <QuotedBody body={entry.content} />
-                  </li>
-                ))}
-              </ol>
             </Card>
           )}
 
