@@ -122,7 +122,9 @@
       "downloading": "Downloading…",
       "attachmentUnavailable": "Only in the original email",
       "showQuoted": "Show quoted history",
-      "hideQuoted": "Hide quoted history"
+      "hideQuoted": "Hide quoted history",
+      "showImage": "Image from {host}",
+      "imageFrom": "Image from {host}"
     },
     "ai": {
       "title": "AI email categorisation",

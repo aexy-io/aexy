@@ -4,6 +4,8 @@ import React, { useMemo, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { RichText } from "./richText";
+
 /**
  * An email body with its quoted history folded away.
  *
@@ -101,6 +103,34 @@ function unquote(text: string): string {
     .join("\n");
 }
 
+/**
+ * A quoted block, and anything quoted inside it, as nested indentation.
+ *
+ * `unquote` peels one level per step, so a message three replies deep would
+ * otherwise still render with `>` on its oldest lines — the markers the reader
+ * was complaining about, just fewer of them. Recursing turns depth into a left
+ * border, which is what depth means, and leaves no markers at any level.
+ *
+ * Capped because the depth here comes from whatever arrived in the mail, and a
+ * long enough auto-reply loop would otherwise recurse once per exchange.
+ */
+const MAX_QUOTE_DEPTH = 6;
+
+function QuoteLevels({ text, depth }: { text: string; depth: number }) {
+  const { fresh, quoted } = splitQuotedBody(text);
+  if (depth >= MAX_QUOTE_DEPTH || !quoted) {
+    return <RichText text={text} className="whitespace-pre-wrap break-words" />;
+  }
+  return (
+    <>
+      {fresh && <RichText text={fresh} className="whitespace-pre-wrap break-words" />}
+      <blockquote className="mt-1 border-l-2 border-border pl-3">
+        <QuoteLevels text={unquote(quoted)} depth={depth + 1} />
+      </blockquote>
+    </>
+  );
+}
+
 export function QuotedBody({ body }: { body: string }) {
   const t = useTranslations("serviceDesk");
   const [open, setOpen] = useState(false);
@@ -109,9 +139,9 @@ export function QuotedBody({ body }: { body: string }) {
   return (
     <div className="mt-2 text-sm" data-testid="correspondence-body">
       {fresh && (
-        <p className="whitespace-pre-wrap break-words" data-testid="correspondence-fresh">
-          {fresh}
-        </p>
+        <div data-testid="correspondence-fresh">
+          <RichText text={fresh} className="whitespace-pre-wrap break-words" />
+        </div>
       )}
       {quoted && (
         <>
@@ -128,9 +158,9 @@ export function QuotedBody({ body }: { body: string }) {
           {open && (
             <blockquote
               data-testid="correspondence-quoted"
-              className="mt-2 whitespace-pre-wrap break-words border-l-2 border-border pl-3 text-xs text-muted-foreground"
+              className="mt-2 border-l-2 border-border pl-3 text-xs text-muted-foreground"
             >
-              {unquote(quoted)}
+              <QuoteLevels text={unquote(quoted)} depth={1} />
             </blockquote>
           )}
         </>
@@ -138,7 +168,7 @@ export function QuotedBody({ body }: { body: string }) {
       {/* A message that is nothing but quoted history still has to show
           something, or the entry renders as an empty box. */}
       {!fresh && !quoted && (
-        <p className="whitespace-pre-wrap break-words">{body}</p>
+        <RichText text={body} className="whitespace-pre-wrap break-words" />
       )}
     </div>
   );
