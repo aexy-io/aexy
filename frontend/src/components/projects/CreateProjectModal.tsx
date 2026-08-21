@@ -4,10 +4,13 @@ import { getApiErrorMessage } from "@/lib/utils";
 import { useState } from "react";
 import { Plus, RefreshCw } from "lucide-react";
 
+import { useDepartments } from "@/hooks/useOrganization";
+
 export interface CreateProjectInput {
   name: string;
   description?: string;
   color?: string;
+  department_id?: string | null;
 }
 
 interface CreateProjectModalProps {
@@ -32,7 +35,12 @@ export function CreateProjectModal({ onClose, onCreate, isCreating }: CreateProj
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [color, setColor] = useState("#6366f1");
+  // Which department owns the board this project creates. Asked here rather than
+  // left to settings because it is what lets the Service Desk hand a ticket to
+  // this board at all, and a field nobody sees is a field nobody fills in.
+  const [departmentId, setDepartmentId] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const { data: departments } = useDepartments();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,6 +56,7 @@ export function CreateProjectModal({ onClose, onCreate, isCreating }: CreateProj
         name: name.trim(),
         description: description.trim() || undefined,
         color,
+        department_id: departmentId || null,
       });
       onClose();
     } catch (err: unknown) {
@@ -82,6 +91,27 @@ export function CreateProjectModal({ onClose, onCreate, isCreating }: CreateProj
                 rows={2}
                 className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500"
               />
+            </div>
+            <div>
+              <label className="block text-sm text-muted-foreground mb-1">
+                Owning department (optional)
+              </label>
+              <select
+                value={departmentId}
+                onChange={(e) => setDepartmentId(e.target.value)}
+                className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:border-primary-500"
+              >
+                <option value="">No department</option>
+                {(departments ?? []).map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Decides which Service Desk queue a ticket moves to when its work lands
+                on this board. Leave empty and tickets stay where they are.
+              </p>
             </div>
             <div>
               <label className="block text-sm text-muted-foreground mb-2">Color</label>

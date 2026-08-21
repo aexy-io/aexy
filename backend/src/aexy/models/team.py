@@ -85,6 +85,20 @@ class Team(Base):
         index=True,
     )
 
+    # Which Service Desk bucket a ticket moves to when its work lands on this
+    # board — set only to *override* what the department above would resolve to.
+    #
+    # A slug, not a foreign key, for the same reason `ServiceDeskTicket.
+    # pending_with` is one: retiring a bucket must not either erase this or be
+    # made impossible by it. Resolution normally goes board → department →
+    # `Department.function_key` → `ServiceDeskStakeholder.function_key`, and that
+    # is the path to prefer, since it keeps one org axis rather than two. This
+    # exists for the board the org chart cannot describe — a shared triage board
+    # two departments both feed, say — and is deliberately the narrower case.
+    desk_stakeholder_slug: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
+
     # For repo_based teams - list of repository IDs
     source_repository_ids: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     auto_sync_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

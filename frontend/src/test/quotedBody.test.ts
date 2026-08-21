@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { splitQuotedBody } from "@/components/service-desk/QuotedBody";
+import { isLongBody, splitQuotedBody } from "@/components/service-desk/QuotedBody";
 
 /**
  * Correspondence was rendered raw, so every reply repeated the whole thread
@@ -149,5 +149,35 @@ describe("splitQuotedBody", () => {
     expect(fresh).toBe("Please action this.");
     expect(quoted).toContain("On Tue, 11 Aug 2026");
     expect(quoted).toContain("the original ask");
+  });
+});
+
+/**
+ * A long body pushed the ticket's own fields, actions and reply box off the
+ * screen, so reading the ticket meant scrolling past the mail to reach anything
+ * you could act on. It arrives folded now — but only when it is genuinely long,
+ * or every two-line "thanks, done" grows a pointless button.
+ */
+describe("isLongBody", () => {
+  it("leaves a short message unfolded", () => {
+    expect(isLongBody("Thanks, closing this off.")).toBe(false);
+  });
+
+  it("leaves an empty body alone", () => {
+    expect(isLongBody("")).toBe(false);
+  });
+
+  it("folds a wall of short lines", () => {
+    expect(isLongBody(Array.from({ length: 40 }, (_, i) => `line ${i}`).join("\n"))).toBe(true);
+  });
+
+  it("folds few lines that are each long enough to wrap across the card", () => {
+    // Three newlines only, so a line count alone would call this short while it
+    // still renders as half a screen of wrapped text.
+    expect(isLongBody(["x".repeat(400), "y".repeat(400), "z".repeat(400)].join("\n"))).toBe(true);
+  });
+
+  it("does not fold a body that sits just under both thresholds", () => {
+    expect(isLongBody(Array.from({ length: 12 }, () => "a short line").join("\n"))).toBe(false);
   });
 });

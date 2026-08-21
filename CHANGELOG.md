@@ -5,6 +5,116 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.26.0] - 2026-08-21
+
+### Added: a board knows which queue its work is pending with
+
+Converting a ticket to a task said nothing about who now owed the work, so the
+ticket kept whatever `pending_with` it had and somebody moved it by hand every
+time.
+
+The chain to compute it was already in the schema and used by nothing:
+`teams.department_id` (whose own comment said it drives Service Desk pending-with
+resolution) → `departments.function_key` → `service_desk_stakeholders.function_key`.
+Nothing except the bulk org mirror ever wrote `department_id`, and no API exposed
+it, so in practice every board rolled up to nothing.
+
+A board's owning department is now set when the project is created and editable
+on its settings row, with a per-board bucket override for the board the org chart
+cannot describe — a shared triage board two departments feed. Boards resolve only
+to *internal* buckets: a board is where work is done, and pointing one at
+"Partner" would move tickets out of the desk's own queue the moment somebody
+started on them.
+
+Matching tolerates the retired `ops_kam` spelling on either side of the join.
+Live workspaces hold it in `departments.function_key` while newer rows
+canonicalise to `operations`, and comparing a single string is how this kind of
+join silently resolves to nothing — indistinguishable from routing being off.
+
+**Every unresolved case says which one it is.** No department, a department with
+no function, no bucket claiming that function: three distinct answers with three
+distinct sentences, shown on the board row, in the convert dialog before the
+operator commits, and written into the ticket. A routing feature that quietly
+does nothing is the complaint this release is answering; a blank badge would have
+been the same bug wearing a different hat.
+
+### Added: pending-with buckets are editable
+
+The backend has had full CRUD on this taxonomy since `PendingWith` stopped being
+an enum, and nothing rendered it. A desk seeded from the insurance template had
+KAM, Insurer, Partner, Sales, Finance and Marketing — and no amount of clicking
+could add Tech or Product, which is also why an engineering board had nowhere to
+hand a ticket to.
+
+There is a new settings page for it. The server's invariants surface as its
+error messages rather than being re-implemented in the UI: one terminal bucket,
+the terminal bucket cannot be retired or deleted, one claimant per master-data
+table, and no deleting a slug that a ticket or a closed TAT stage still names.
+
+One gap closed underneath: nothing stopped an *internal* bucket being saved with
+no owning department, though the industry templates had always refused it on
+seeded rows. Such a bucket looks finished in the list and then matches nothing.
+The department is now required, chosen as a department rather than as a raw
+function key, so the two sides of the join agree by construction.
+
+Retiring a bucket also now actually keeps it out of the hand-off picker. Nothing
+filtered `is_active` before — harmless while nobody could retire anything.
+
+### Added: the ticket follows its task between boards
+
+Moving the card onto the Tech board is how work gets handed to Tech, so the
+ticket follows.
+
+That surfaced a bug. `move_to_project` is a *fork*: the clone lands on the target
+board and the source is archived or marked done. A ticket raised from the source
+was left pointing at a dead task — and since conversion refuses a ticket that
+already has one, it could not be converted again either. The link now follows the
+fork.
+
+### Added: open tickets rolled up by department
+
+The dashboard matrix answers "which queue is this in". With two departments
+owning three buckets between them, the question being asked is "who is behind".
+Both views are folded from the same numbers server-side, so they cannot disagree,
+and external buckets are kept under their own row rather than dropped — otherwise
+the department view would quietly sum to less than the bucket board.
+
+### Changed: a resolved ticket stops holding its queue
+
+Completing the linked task moved the ticket to Resolved and left `pending_with`
+alone, so it sat in Tech's queue for good — work finished, and the breach clock
+still running against them.
+
+It now moves to the terminal bucket, which is what stops the clock. Deliberately
+*not* through the normal hand-off, which couples the terminal bucket to
+`status = CLOSED` and sends the closure email: both are right when a person
+closes a ticket, and neither is right here, because a developer finishing a card
+has not spoken to the requester. Resolved-not-Closed stands.
+
+### Changed: long email bodies arrive folded
+
+A partner's first email is often the whole history of a case pasted in, and at
+full height it pushed the ticket's own fields, actions and reply box off the
+screen — so reading the ticket meant scrolling past the mail to reach anything
+you could act on. Folded past a threshold, with the cut faded rather than square:
+a hard edge mid-sentence reads as the email itself having been truncated.
+
+### Fixed: converting from the ticket page asks who picks it up
+
+The Log-ticket dialog has always asked for an assignee and the ticket detail
+page's own convert dialog never did, so the same action produced an assigned task
+from one screen and an unowned one from the other. The backend argument existed
+and was simply never sent.
+
+### Migration
+
+`backend/scripts/migrate_team_desk_routing.sql` — adds
+`teams.desk_stakeholder_slug` (nullable) and a partial index. Nothing to
+backfill: an unset override means "resolve through the department", which is the
+behaviour every existing board keeps. Refuses to run if `teams.department_id` is
+absent, so a database missing the organization migration fails there rather than
+at the first conversion.
+
 ## [0.25.1] - 2026-08-21
 
 ### Changed: a ticket is one email thread

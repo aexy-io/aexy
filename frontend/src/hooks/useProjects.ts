@@ -44,6 +44,17 @@ export function useProjects(workspaceId: string | null, status?: ProjectStatus) 
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: ({ projectId, data }: { projectId: string; data: ProjectUpdate }) =>
+      projectApi.update(workspaceId!, projectId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, "Failed to update project"));
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (projectId: string) => projectApi.delete(workspaceId!, projectId),
     onSuccess: () => {
@@ -61,8 +72,10 @@ export function useProjects(workspaceId: string | null, status?: ProjectStatus) 
     error,
     refetch,
     createProject: createMutation.mutateAsync,
+    updateProject: updateMutation.mutateAsync,
     deleteProject: deleteMutation.mutateAsync,
     isCreating: createMutation.isPending,
+    isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
   };
 }

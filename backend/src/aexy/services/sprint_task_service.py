@@ -1396,6 +1396,33 @@ class SprintTaskService:
             },
         )
 
+        # A ticket raised from the source task pointed at a task that is now
+        # archived (or done) on a board it has left. Re-point it and hand the
+        # ticket to whoever owns the new board — moving the card onto the Tech
+        # board is how work actually gets handed to Tech.
+        #
+        # Failure here must not undo the move: the task has already been forked
+        # and the source closed, and a half-applied move is worse than a ticket
+        # that needs nudging by hand.
+        try:
+            from aexy.services.service_desk_ticket_service import (
+                ServiceDeskTicketService,
+            )
+
+            await ServiceDeskTicketService(self.db).follow_linked_task_to_board(
+                workspace_id=str(source.workspace_id),
+                old_task_id=str(source.id),
+                new_task_id=str(new_parent.id),
+                board_id=str(target_project_id),
+                actor_id=actor_id,
+            )
+        except Exception:
+            logger.exception(
+                "Task %s moved to project %s but its linked ticket did not follow",
+                source.id,
+                target_project_id,
+            )
+
         await self.db.flush()
         # Re-fetch so relationships are populated for the API response.
         fresh = await self.get_task(new_parent.id)

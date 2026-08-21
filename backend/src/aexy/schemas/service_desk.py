@@ -480,12 +480,20 @@ class ConvertToTaskRequest(BaseModel):
     # Who picks the work up. Without it the task landed on nobody and had to be
     # assigned in a second trip to the board.
     assignee_id: str | None = None
+    # Which bucket the ticket moves to now that the work sits on a board. The
+    # dialog pre-fills it from what the board resolves to and the operator can
+    # change it, so it is sent rather than derived here — an automatic move
+    # nobody saw is how tickets end up somewhere their owner cannot explain.
+    # Omitted or null leaves the ticket where it is.
+    pending_with: TaxonomySlug | None = Field(None, max_length=64)
 
 
 class ConvertToTaskResponse(BaseModel):
     task_id: str
     task_title: str
     linked: bool
+    #: The bucket the ticket was moved to, or null if it was left alone.
+    pending_with: str | None = None
 
 
 class TicketFieldsUpdate(BaseModel):
@@ -688,8 +696,35 @@ class DashboardTicket(BaseModel):
     status: str | None = None
 
 
+class DepartmentBucket(BaseModel):
+    """The same open tickets, rolled up to the department that owes the action.
+
+    A bucket board answers "which queue is this in"; a department board answers
+    "who is behind", which is the question asked when there are three internal
+    buckets owned by two departments. Rolled up here rather than in the frontend
+    so the two views cannot disagree about the same tickets.
+
+    External and terminal buckets have no department — nobody internal owes the
+    action on a ticket waiting for a partner — so they are reported under
+    ``department_id = None`` rather than dropped, and the two views still sum to
+    the same total.
+    """
+
+    department_id: str | None = None
+    department_name: str | None = None
+    function_key: str | None = None
+    #: The buckets folded into this row, in the workspace's own order.
+    pending_with: list[str] = Field(default_factory=list)
+    green: int = 0
+    amber: int = 0
+    red: int = 0
+    total: int = 0
+
+
 class ServiceDeskDashboard(BaseModel):
     stakeholders: list[StakeholderBucket] = Field(default_factory=list)
+    #: The same numbers grouped by owning department. See `DepartmentBucket`.
+    departments: list[DepartmentBucket] = Field(default_factory=list)
     tickets: list[DashboardTicket] = Field(default_factory=list)
     total_open: int = 0
     breaching: int = 0

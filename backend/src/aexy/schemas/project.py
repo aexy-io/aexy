@@ -14,6 +14,10 @@ class ProjectCreate(BaseModel):
     color: str = Field(default="#3b82f6", max_length=50)
     icon: str = Field(default="FolderGit2", max_length=50)
     settings: dict = Field(default_factory=dict)
+    # Which department owns the board this project creates. Optional, but asked
+    # for up front: a board with no department is one the Service Desk cannot
+    # hand a ticket to.
+    department_id: str | None = None
 
 
 class ProjectUpdate(BaseModel):
@@ -28,6 +32,10 @@ class ProjectUpdate(BaseModel):
         default=None,
         pattern="^(active|archived|on_hold)$"
     )
+    # Nullable *and* meaningful when null — omit the field to leave it alone,
+    # send null to clear it. The service tells the two apart.
+    department_id: str | None = None
+    desk_stakeholder_slug: str | None = None
 
 
 class ProjectResponse(BaseModel):
@@ -50,6 +58,18 @@ class ProjectResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    # ------------------------------------------------------------ board routing
+    #
+    # A board's org rollup, and what the Service Desk resolves it to. All four
+    # are computed from the *board* (`Team`) sharing this project's id; the
+    # project row holds none of them. `desk_routing_reason` is returned even on
+    # success, so the UI can say "via Engineering" rather than only showing a
+    # name — and can explain a blank instead of rendering nothing.
+    department_id: str | None = None
+    department_name: str | None = None
+    desk_stakeholder_slug: str | None = None
+    desk_routing_reason: str | None = None
+
     class Config:
         from_attributes = True
 
@@ -70,6 +90,18 @@ class ProjectListResponse(BaseModel):
     team_count: int
     is_public: bool
     public_slug: str | None
+
+    # ------------------------------------------------------------ board routing
+    #
+    # A board's org rollup, and what the Service Desk resolves it to. All four
+    # are computed from the *board* (`Team`) sharing this project's id; the
+    # project row holds none of them. `desk_routing_reason` is returned even on
+    # success, so the UI can say "via Engineering" rather than only showing a
+    # name — and can explain a blank instead of rendering nothing.
+    department_id: str | None = None
+    department_name: str | None = None
+    desk_stakeholder_slug: str | None = None
+    desk_routing_reason: str | None = None
 
     class Config:
         from_attributes = True

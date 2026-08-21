@@ -63,6 +63,12 @@ def _split_done_indexes(field_values: dict, issue_count: int) -> list[int]:
     return sorted(done)
 
 
+from aexy.models.organization import Department  # noqa: E402
+from aexy.services.desk_board_routing import (  # noqa: E402
+    explain,
+    resolve_board_routing,
+)
+from aexy.services.org_functions import function_key_spellings  # noqa: E402
 from aexy.services.service_desk_clock import load_clock  # noqa: E402
 from aexy.services.service_desk_config import (  # noqa: E402
     display_id as render_display_id,
@@ -387,6 +393,79 @@ class ServiceDeskTicketService:
                 .order_by(TicketPendingSegment.entered_at.desc())
             )
         ).scalars().first()
+
+    async def stop_clock_for_resolution(
+        self,
+        workspace_id: str,
+        ticket_id: str,
+        *,
+        reason: str,
+        actor_id: str | None = None,
+    ) -> str | None:
+        """Park a resolved ticket in the terminal bucket without closing it.
+
+        A ticket resolved by its task being completed used to keep the
+        ``pending_with`` it had all along, so it sat in Tech's queue for good —
+        the work was done, the status said Resolved, and the bucket still said
+        somebody owed an action. The breach clock kept running against them too.
+
+        This deliberately does **not** go through ``change_pending_with``, which
+        couples the terminal bucket to ``status = CLOSED`` and sends the closure
+        email. Both are right when a person closes a ticket and wrong here: the
+        decision on this path is Resolved-not-Closed, because a developer
+        finishing a card has not spoken to the requester, and the resolution
+        notice has already gone out. So the ledger is written directly and the
+        status is left exactly as ``resolve_for_completed_task`` set it.
+
+        Returns the bucket moved to, or None if there was nothing to do.
+        """
+        sd = (
+            await self.db.execute(
+                select(ServiceDeskTicket).where(
+                    ServiceDeskTicket.ticket_id == ticket_id,
+                    ServiceDeskTicket.workspace_id == workspace_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if sd is None:
+            return None
+
+        taxonomy = await load_taxonomy(self.db, workspace_id, seed=False)
+        terminal = next(
+            (st.slug for st in taxonomy.stakeholders if st.semantics == "closed"), None
+        )
+        if terminal is None or sd.pending_with == terminal:
+            # A workspace with no terminal bucket cannot express "the clock has
+            # stopped". Leaving the ticket where it is beats inventing a bucket.
+            return None
+
+        now = datetime.now(timezone.utc)
+        open_seg = await self._open_segment(ticket_id)
+        if open_seg is not None:
+            open_seg.exited_at = now
+            open_seg.duration_seconds = int(
+                (now - _aware(open_seg.entered_at)).total_seconds()
+            )
+
+        old_label = (
+            st.label if (st := taxonomy.stakeholder(sd.pending_with)) else sd.pending_with
+        )
+        sd.pending_with = terminal
+        # No new segment: the terminal bucket has no clock, which is what makes it
+        # terminal.
+
+        new_label = st.label if (st := taxonomy.stakeholder(terminal)) else terminal
+        self.db.add(
+            TicketResponse(
+                id=str(uuid4()),
+                ticket_id=ticket_id,
+                author_id=actor_id,
+                is_internal=True,
+                content=f"Pending With changed from {old_label} to {new_label} — {reason}",
+            )
+        )
+        await self.db.flush()
+        return terminal
 
     # ------------------------------------------------------------ transitions
 
@@ -1341,6 +1420,7 @@ class ServiceDeskTicketService:
         title: str | None = None,
         priority: str = "medium",
         assignee_id: str | None = None,
+        pending_with: str | None = None,
         scope_developer_id: str | None = None,
     ) -> dict:
         """Create a SprintTask from a Service Desk ticket and link them.
@@ -1458,7 +1538,133 @@ class ServiceDeskTicketService:
 
         ticket.linked_task_id = task.id
         await self.db.flush()
-        return {"task_id": task.id, "task_title": task_title, "linked": True}
+
+        # The hand-off, after the link — so the timeline reads "converted to a
+        # task", then "handed to Tech", which is the order it happened in.
+        #
+        # Moved through `change_pending_with` rather than by assigning the column:
+        # that is what closes the open TAT segment and opens the next one, and a
+        # direct write would leave the clock still running against whoever had the
+        # ticket before, silently corrupting every stage-duration report.
+        #
+        # `pending_with` is passed by the caller rather than resolved here, because
+        # the operator is shown the board's bucket in the dialog and may change it.
+        # The board is still resolved, for the sentence explaining *why*.
+        moved_to: str | None = None
+        if pending_with:
+            routing = await resolve_board_routing(self.db, workspace_id, project_id)
+            board_name = (
+                await self.db.execute(select(Team.name).where(Team.id == project_id))
+            ).scalar_one_or_none()
+            if routing.stakeholder_slug == pending_with:
+                reason = explain(routing, board_name)
+            else:
+                # Overridden in the dialog. Recorded as a choice, not dressed up
+                # as the board's own routing.
+                reason = (
+                    f'Moved by hand when converting to a task on "{board_name}".'
+                    if board_name
+                    else "Moved by hand when converting to a task."
+                )
+            await self.change_pending_with(
+                workspace_id,
+                ticket_id,
+                pending_with,
+                changed_by_id=scope_developer_id,
+                note=reason,
+                scope_developer_id=scope_developer_id,
+            )
+            moved_to = pending_with
+
+        return {
+            "task_id": task.id,
+            "task_title": task_title,
+            "linked": True,
+            "pending_with": moved_to,
+        }
+
+    async def follow_linked_task_to_board(
+        self,
+        *,
+        workspace_id: str,
+        old_task_id: str,
+        new_task_id: str,
+        board_id: str,
+        actor_id: str | None = None,
+    ) -> str | None:
+        """Re-point a ticket at a task that moved, and hand it to the new board.
+
+        Moving a task to another project is a *fork*: the clone lands on the new
+        board and the source is archived or marked done. So a ticket raised from
+        the source was left pointing at a dead task — and because
+        ``convert_to_task`` refuses a ticket that already has one, it could not be
+        converted again either. Re-pointing the link is the correctness half of
+        this; the hand-off is the half that was asked for.
+
+        Returns the bucket the ticket moved to, or None if it stayed put.
+        Silent when the task has no ticket, which is the overwhelmingly common
+        case.
+        """
+        from aexy.models.team import Team
+
+        ticket = (
+            await self.db.execute(
+                select(Ticket).where(
+                    Ticket.linked_task_id == old_task_id,
+                    Ticket.workspace_id == workspace_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if ticket is None:
+            return None
+
+        board_name = (
+            await self.db.execute(select(Team.name).where(Team.id == board_id))
+        ).scalar_one_or_none()
+
+        ticket.linked_task_id = new_task_id
+        await self.db.flush()
+
+        routing = await resolve_board_routing(self.db, workspace_id, board_id)
+        if routing.stakeholder_slug is None:
+            # Nothing to hand it to. Written into the ticket rather than only
+            # logged, because the person wondering why it did not move is reading
+            # the ticket, not the server log.
+            self.db.add(
+                TicketResponse(
+                    id=str(uuid4()),
+                    ticket_id=ticket.id,
+                    author_id=actor_id,
+                    content=explain(routing, board_name),
+                    is_internal=True,
+                )
+            )
+            await self.db.flush()
+            return None
+
+        sd = (
+            await self.db.execute(
+                select(ServiceDeskTicket).where(
+                    ServiceDeskTicket.ticket_id == ticket.id,
+                    ServiceDeskTicket.workspace_id == workspace_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if sd is None or sd.pending_with == routing.stakeholder_slug:
+            return None
+
+        await self.change_pending_with(
+            workspace_id,
+            str(ticket.id),
+            routing.stakeholder_slug,
+            changed_by_id=actor_id,
+            note=explain(routing, board_name),
+            # No scope: the mover is acting on the *task*, and their authority over
+            # it was already checked. Scoping here would make the hand-off depend
+            # on whether the developer also happens to have desk visibility.
+            scope_developer_id=None,
+        )
+        return routing.stakeholder_slug
 
     async def _copy_attachments_to_task(self, ticket: Ticket, task) -> None:
         """Put the ticket's files on the task as well.
@@ -1658,10 +1864,84 @@ class ServiceDeskTicketService:
 
         return ServiceDeskDashboard(
             stakeholders=ordered,
+            departments=await self._roll_up_by_department(workspace_id, ordered, taxonomy),
             tickets=tickets,
             total_open=total_open,
             breaching=breaching,
         )
+
+    async def _roll_up_by_department(
+        self, workspace_id: str, buckets: list, taxonomy
+    ) -> list:
+        """Fold the bucket board into one row per owning department.
+
+        Three internal buckets owned by two departments is a board that answers
+        "which queue" but not "who is behind", which is the question actually
+        being asked. Folded from the buckets already computed rather than by
+        re-querying, so the two views cannot report different numbers for the same
+        tickets.
+
+        External and terminal buckets are kept, grouped under no department:
+        nobody internal owes the action on a ticket waiting for a partner, and
+        dropping them would make this view quietly sum to less than the other.
+        """
+        from aexy.schemas.service_desk import DepartmentBucket
+        from aexy.services.org_functions import canonical_function_key
+
+        # Only the functions actually in play, so a workspace with thirty
+        # departments does not get thirty empty rows.
+        wanted: dict[str, str] = {}
+        for bucket in buckets:
+            st = taxonomy.stakeholder(bucket.pending_with)
+            if st is None or st.semantics != "internal" or not st.function_key:
+                continue
+            canonical = canonical_function_key(st.function_key)
+            if canonical:
+                wanted[bucket.pending_with] = canonical
+
+        names: dict[str, tuple[str, str]] = {}
+        if wanted:
+            spellings: set[str] = set()
+            for key in set(wanted.values()):
+                spellings.update(function_key_spellings(key) or (key,))
+            rows = (
+                await self.db.execute(
+                    select(Department.id, Department.name, Department.function_key).where(
+                        Department.workspace_id == workspace_id,
+                        Department.is_active.is_(True),
+                        Department.function_key.in_(spellings),
+                    )
+                )
+            ).all()
+            for dept_id, name, function_key in rows:
+                canonical = canonical_function_key(function_key)
+                if canonical:
+                    names[canonical] = (dept_id, name)
+
+        # Insertion order follows `buckets`, which is already the workspace's own
+        # column order — so the two views read down the page the same way.
+        out: dict[str | None, DepartmentBucket] = {}
+        for bucket in buckets:
+            canonical = wanted.get(bucket.pending_with)
+            dept_id, dept_name = names.get(canonical, (None, None)) if canonical else (None, None)
+            # A function no department claims still groups by that function, so
+            # "Engineering has 4 breaching" is visible before anyone has drawn
+            # Engineering on the org chart.
+            key = dept_id or canonical
+            row = out.get(key)
+            if row is None:
+                row = DepartmentBucket(
+                    department_id=dept_id,
+                    department_name=dept_name,
+                    function_key=canonical,
+                )
+                out[key] = row
+            row.pending_with.append(bucket.pending_with)
+            row.green += bucket.green
+            row.amber += bucket.amber
+            row.red += bucket.red
+            row.total += bucket.total
+        return list(out.values())
 
     # --------------------------------------------------------------- closure
 

@@ -201,3 +201,24 @@ def validate_function_key(raw: str | None) -> str | None:
             "underscores)."
         )
     return canonical
+
+
+def canonical_or_grandfathered(raw: str | None, current: str | None = None) -> str | None:
+    """Canonicalise a key being written, keeping a stored value the registry predates.
+
+    ``current`` grandfathers what is already in the column: a row carrying a key
+    from before this registry existed must still be editable, and rejecting the
+    value the form loaded would lock the whole record. Only a *changed* value has
+    to be one we recognise.
+
+    Shared by departments and Service Desk stakeholders because the two are
+    matched against each other — a stakeholder saved under a spelling a
+    department would have canonicalised silently joins to nothing, which is
+    indistinguishable from "routing is off".
+
+    Raises ``ValueError`` for an unrecognised new value; callers map that to
+    whatever their transport expects.
+    """
+    if current is not None and raw is not None and clean_function_key(raw) == clean_function_key(current):
+        return current
+    return validate_function_key(raw)

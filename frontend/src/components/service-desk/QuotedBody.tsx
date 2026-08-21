@@ -39,6 +39,27 @@ const QUOTE_LINE = /^\s*>/;
 
 export type SplitBody = { fresh: string; quoted: string };
 
+/** Lines, and characters, past which a body arrives folded. */
+const LONG_LINES = 12;
+const LONG_CHARS = 900;
+
+/**
+ * Whether a body is long enough that it should arrive folded.
+ *
+ * Decided from the text, not by measuring the rendered height. Measuring means
+ * rendering at full height and collapsing in an effect, so every ticket opens
+ * with a visible jump; and the answer would depend on the viewport, so the same
+ * email would fold on a laptop and not on a monitor.
+ *
+ * Two thresholds because either alone is wrong: a wall of short lines holds few
+ * characters, and three paragraph-length lines hold few newlines but still wrap
+ * to half a screen.
+ */
+export function isLongBody(text: string): boolean {
+  if (!text) return false;
+  return text.split("\n").length > LONG_LINES || text.length > LONG_CHARS;
+}
+
 /**
  * Split a body into what is new and what is quoted history.
  *
@@ -131,6 +152,52 @@ function QuoteLevels({ text, depth }: { text: string; depth: number }) {
   );
 }
 
+/**
+ * Body text that starts folded when it is long.
+ *
+ * A partner's first email is often the whole history of a case pasted in, and
+ * at full height it pushed the ticket's own fields, actions and reply box off
+ * the screen — so reading the ticket meant scrolling past the mail to reach
+ * anything you could act on. Folding puts the controls back in view and costs
+ * one click when the detail is actually wanted.
+ */
+function FoldedText({ text, testId }: { text: string; testId?: string }) {
+  const t = useTranslations("serviceDesk");
+  const [expanded, setExpanded] = useState(false);
+  const long = isLongBody(text);
+  const folded = long && !expanded;
+
+  return (
+    <div data-testid={testId}>
+      {/* Faded rather than cut square: a hard edge mid-sentence reads as the
+          email itself having been truncated, which is a different and much
+          more alarming thing than "there is more below". */}
+      <div
+        data-testid={folded ? "body-folded" : undefined}
+        className={
+          folded
+            ? "relative max-h-44 overflow-hidden [mask-image:linear-gradient(to_bottom,black_65%,transparent)]"
+            : undefined
+        }
+      >
+        <RichText text={text} className="whitespace-pre-wrap break-words" />
+      </div>
+      {long && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          data-testid="body-fold-toggle"
+          aria-expanded={expanded}
+          className="mt-1 inline-flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-accent"
+        >
+          {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          {expanded ? t("detail.showLess") : t("detail.showMore")}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function QuotedBody({ body }: { body: string }) {
   const t = useTranslations("serviceDesk");
   const [open, setOpen] = useState(false);
@@ -138,11 +205,7 @@ export function QuotedBody({ body }: { body: string }) {
 
   return (
     <div className="mt-2 text-sm" data-testid="correspondence-body">
-      {fresh && (
-        <div data-testid="correspondence-fresh">
-          <RichText text={fresh} className="whitespace-pre-wrap break-words" />
-        </div>
-      )}
+      {fresh && <FoldedText text={fresh} testId="correspondence-fresh" />}
       {quoted && (
         <>
           <button
@@ -167,9 +230,7 @@ export function QuotedBody({ body }: { body: string }) {
       )}
       {/* A message that is nothing but quoted history still has to show
           something, or the entry renders as an empty box. */}
-      {!fresh && !quoted && (
-        <RichText text={body} className="whitespace-pre-wrap break-words" />
-      )}
+      {!fresh && !quoted && <FoldedText text={body} />}
     </div>
   );
 }

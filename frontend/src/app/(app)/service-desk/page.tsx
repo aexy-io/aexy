@@ -100,6 +100,11 @@ export default function ServiceDeskDashboardPage() {
   // See the `justSetUp` note below where the setup screen is rendered.
   const [justSetUp, setJustSetUp] = useState(false);
 
+  // Bucket board or department board. Both are folded from the same numbers
+  // server-side, so switching cannot change the totals — it changes what the
+  // rows are about: "which queue is this in" versus "who is behind".
+  const [matrixView, setMatrixView] = useState<"stakeholder" | "department">("stakeholder");
+
   const [exporting, setExporting] = useState(false);
 
   // Re-fetches unpaged rather than exporting `data.tickets`, which is now one
@@ -160,7 +165,73 @@ export default function ServiceDeskDashboardPage() {
 
           {/* Stakeholder × age matrix */}
           <Card className="overflow-x-auto p-4">
-            <h2 className="mb-3 text-sm font-semibold text-muted-foreground">{t("dashboard.matrixTitle")}</h2>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold text-muted-foreground">{t("dashboard.matrixTitle")}</h2>
+              <div className="inline-flex overflow-hidden rounded-md border border-border text-xs">
+                {(["stakeholder", "department"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    data-testid={`matrix-view-${mode}`}
+                    aria-pressed={matrixView === mode}
+                    onClick={() => setMatrixView(mode)}
+                    className={`px-2 py-1 ${
+                      matrixView === mode
+                        ? "bg-accent font-medium text-foreground"
+                        : "text-muted-foreground hover:bg-accent/50"
+                    }`}
+                  >
+                    {mode === "stakeholder"
+                      ? t("dashboard.byStakeholder")
+                      : t("dashboard.byDepartment")}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {matrixView === "department" ? (
+              <table className="w-full text-sm">
+                <thead className="text-left text-xs uppercase text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-2">{t("dashboard.department")}</th>
+                    <th className="px-3 py-2">{t("dashboard.buckets")}</th>
+                    <th className="px-3 py-2 text-center">{t("dashboard.col01", thresholds)}</th>
+                    <th className="px-3 py-2 text-center">{t("dashboard.col12", thresholds)}</th>
+                    <th className="px-3 py-2 text-center">{t("dashboard.colGt2", thresholds)}</th>
+                    <th className="px-3 py-2 text-center">{t("dashboard.total")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(data.departments ?? []).map((row, i) => (
+                    <tr key={row.department_id ?? row.function_key ?? `external-${i}`} className="border-t border-border">
+                      <td className="px-3 py-2">
+                        {row.department_name ? (
+                          <span>{row.department_name}</span>
+                        ) : row.function_key ? (
+                          // The function is in play but no department claims it —
+                          // worth naming, because "Engineering has 4 breaching" is
+                          // useful before Engineering exists on the org chart.
+                          <span className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-500">
+                            <AlertTriangle className="h-3 w-3" />
+                            {t("dashboard.unclaimedDepartment", { function: row.function_key })}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            {t("dashboard.externalRow")}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">
+                        {row.pending_with.map((slug) => stakeholderLabel(slug)).join(", ")}
+                      </td>
+                      <td className="px-3 py-2 text-center">{ageCell(row.green, "green")}</td>
+                      <td className="px-3 py-2 text-center">{ageCell(row.amber, "amber")}</td>
+                      <td className="px-3 py-2 text-center">{ageCell(row.red, "red")}</td>
+                      <td className="px-3 py-2 text-center font-medium">{row.total}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
             <table className="w-full text-sm">
               <thead className="text-left text-xs uppercase text-muted-foreground">
                 <tr>
@@ -208,6 +279,7 @@ export default function ServiceDeskDashboardPage() {
                 })}
               </tbody>
             </table>
+            )}
           </Card>
 
           {/* Individual tickets */}

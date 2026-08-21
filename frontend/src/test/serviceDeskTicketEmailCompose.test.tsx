@@ -104,6 +104,9 @@ vi.mock("@/hooks/useServiceDesk", () => ({
     stakeholders: [],
     requestTypes: [],
     openStakeholders: [],
+    // Only active buckets may be moved *into*, so the hand-off picker reads this
+    // rather than the full list.
+    assignableStakeholders: [],
     closedSlug: null,
     stakeholderLabel: (slug: string | null | undefined) => slug ?? "—",
     requestTypeLabel: (slug: string | null | undefined) => slug ?? "—",

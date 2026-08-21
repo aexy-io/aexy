@@ -249,6 +249,17 @@ export function useServiceDeskTaxonomy() {
     requestTypes: orderedRequestTypes,
     /** Non-terminal buckets, in the workspace's order — the queue columns. */
     openStakeholders: orderedStakeholders.filter((s) => s.semantics !== "closed"),
+    /**
+     * Buckets a ticket may be *moved into*.
+     *
+     * Retiring a bucket only ever hid it from new work in principle — nothing
+     * filtered `is_active`, so a retired bucket stayed in the hand-off picker and
+     * a ticket could still be parked in one. Harmless while nobody could retire
+     * anything; the settings editor makes it reachable, so the filter has to be
+     * real. Reads stay on the unfiltered list: a ticket already sitting in a
+     * retired bucket still has to render its own label.
+     */
+    assignableStakeholders: orderedStakeholders.filter((s) => s.is_active),
     /** The terminal bucket's slug, for the "close this ticket" action. */
     closedSlug: orderedStakeholders.find((s) => s.semantics === "closed")?.slug ?? null,
     /**
