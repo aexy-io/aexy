@@ -723,6 +723,7 @@ class QuestionnaireService:
                 user_prompt=user_prompt,
                 tokens_estimate=500,
                 workspace_id=workspace_id,
+                feature="hiring.questionnaire_columns",
             )
             response_text = result[0] if isinstance(result, tuple) else result
 

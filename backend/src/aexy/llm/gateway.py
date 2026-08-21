@@ -2,7 +2,6 @@
 
 import hashlib
 import logging
-from functools import lru_cache
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,13 +15,51 @@ from aexy.llm.base import (
     MatchScore,
     TaskSignals,
 )
+from aexy.llm.resolution import LLMNotConfigured, platform_config, resolve_llm
 
 if TYPE_CHECKING:
-    from aexy.services.llm_rate_limiter import LLMRateLimiter
     from aexy.llm.embedding_base import EmbeddingProvider
     from aexy.llm.vision_base import VisionProvider
+    from aexy.services.llm_rate_limiter import LLMRateLimiter
 
 logger = logging.getLogger(__name__)
+
+
+class AIFeatureDormant(RuntimeError):
+    """This feature is switched off in this deployment, and why.
+
+    Distinct from ``AIDisabledError`` (a workspace turned AI off) and from
+    ``LLMNotConfigured`` (nobody set a credential). This one means the feature is
+    off *by policy*, because its call site was broken for its entire existence
+    and repairing it is not the same decision as starting to bill for it.
+
+    A distinct type, not a silent no-op: the original bug was these paths failing
+    invisibly, and a gate that also failed invisibly would be the same defect
+    wearing a flag. Callers that can degrade gracefully catch this by name and
+    say they did; the rest surface it as a 503 that names the switch.
+    """
+
+    def __init__(self, feature: str, reason: str) -> None:
+        self.feature = feature
+        self.reason = reason
+        super().__init__(
+            f"The AI feature {feature!r} is switched off in this deployment. "
+            f"{reason} Set AI_ENABLE_DORMANT_FEATURES={feature} to turn it on."
+        )
+
+
+def _refuse_if_dormant(feature: str | None) -> None:
+    """Stop a dormant feature before it spends anything.
+
+    At the gateway rather than in the resolver, because the settings page reads
+    the resolver to *describe* every feature — including the dormant ones, which
+    it has to render rather than hide.
+    """
+    from aexy.llm.features import is_dormant
+
+    reason = is_dormant(feature)
+    if reason is not None:
+        raise AIFeatureDormant(feature or "", reason)
 
 
 class LLMGateway:
@@ -94,6 +131,8 @@ class LLMGateway:
         from aexy.core.config import get_settings
         from aexy.llm.embedding_base import (
             EmbeddingProvider as _EP,
+        )
+        from aexy.llm.embedding_base import (
             OllamaEmbeddingProvider,
             OpenRouterEmbeddingProvider,
         )
@@ -234,64 +273,99 @@ class LLMGateway:
         return result
 
     # ─── Workspace AI governance ────────────────────────────────────────────
-    async def _workspace_ai(self, workspace_id: str):
-        """Load the workspace's resolved AI settings.
-
-        Deliberately a session of our own, never the caller's: a lookup on the
-        caller's session would autoflush their pending objects mid-analysis, and
-        a failed statement would poison their transaction.
-        """
-        from aexy.core.database import get_async_session
-        from aexy.services.workspace_ai_settings_service import resolve_ai_config
-
-        async with get_async_session() as session:
-            return await resolve_ai_config(session, workspace_id)
-
     async def _ensure_ai_enabled(self, workspace_id: str | None) -> None:
-        """Raise if this workspace has switched AI off. No-op without context."""
+        """Raise if this workspace has switched AI off. No-op without context.
+
+        Still here, and still needed, for the vision path — which resolves its
+        provider from ``VISION_PROVIDER``/``VISION_MODEL`` rather than through
+        ``resolve_llm``, so it would otherwise miss the kill switch entirely.
+        Every text path gets the same check inside the resolver.
+
+        Reads ``resolution._workspace_ai_config`` rather than duplicating the
+        lookup, so there is one seam for the settings read and patching it in a
+        test covers both paths.
+        """
         if not workspace_id:
             return
+        from aexy.llm.resolution import _workspace_ai_config
         from aexy.services.workspace_ai_settings_service import AIDisabledError
 
-        if not (await self._workspace_ai(workspace_id)).enabled:
+        if not (await _workspace_ai_config(workspace_id)).enabled:
             raise AIDisabledError(
                 f"AI is disabled for workspace {workspace_id} by its administrators"
             )
 
-    async def _resolve_provider(self, workspace_id: str | None) -> LLMProvider:
-        """The provider this call must use, honouring the workspace's AI settings.
+    @staticmethod
+    def _provider_cache_scope(provider: LLMProvider) -> str:
+        """What must be part of a cache key besides the prompt.
 
-        This is the single choke point for two workspace-level controls (see
-        ``models/workspace_ai_settings.py``): the AI kill switch, and a
-        bring-your-own provider/credential. Putting it here rather than at each
-        API entry point means Temporal activities, background jobs and webhooks
-        are covered by the same rule as HTTP requests — the switch says "no AI on
-        our data", and a switch that only guards screens would not deliver that.
+        An analysis is a function of the prompt AND the model that answered it.
+        Without this in the key, a workspace using its own Gemini credential
+        reads answers the platform's Claude wrote — which was already true before
+        per-feature models existed, and a feature asking for a stronger model
+        would otherwise be served the cheap model's cached answer.
 
-        ``workspace_id is None`` means the caller has no workspace context
-        (platform-level analysis), which keeps the previous behaviour exactly.
+        Falls back to the class name for a provider exposing no config, so a
+        stand-in in a test still scopes its own entries rather than sharing.
+        """
+        config = getattr(provider, "config", None)
+        if config is None:
+            return type(provider).__name__
+        return f"{config.provider}/{config.model}"
+
+    async def _resolve_provider(
+        self,
+        workspace_id: str | None,
+        *,
+        feature: str | None = None,
+    ) -> LLMProvider:
+        """The provider this call must use.
+
+        Every decision — is AI allowed here, whose credential, which model —
+        belongs to `llm/resolution.resolve_llm`, which is also what agents and
+        Ask now read. This method is only the part the gateway owns: turning a
+        resolved config into a cached provider instance.
+
+        ``workspace_id is None`` means platform-level work with no workspace
+        context, which skips the kill switch and any override.
 
         Raises:
             AIDisabledError: when the workspace has AI switched off.
         """
+        # No workspace means nothing to resolve: the kill switch, the credential
+        # and every model override are workspace-scoped, so platform-level work
+        # runs on the provider this gateway was built with. Short-circuited
+        # rather than resolved, both because it is cheaper and because reaching
+        # for `platform_config()` here would refuse a gateway that was
+        # deliberately constructed with a provider of its own.
         if not workspace_id:
             return self.provider
 
-        from aexy.services.workspace_ai_settings_service import AIDisabledError
-
-        resolved = await self._workspace_ai(workspace_id)
-
-        if not resolved.enabled:
-            raise AIDisabledError(
-                f"AI is disabled for workspace {workspace_id} by its administrators"
-            )
-        if resolved.config is None:
+        base = getattr(self.provider, "config", None)
+        if base is None:
+            # A provider whose config we cannot read: a hand-built client, or a
+            # stand-in in a test. The governance half still applies — the kill
+            # switch is the whole point and does not need a config. The model
+            # override cannot, because there is nothing to rewrite the model on.
+            # Stated rather than left implicit, since "the override silently did
+            # nothing" is the failure this design exists to remove.
+            await self._ensure_ai_enabled(workspace_id)
             return self.provider
+
+        # This gateway's own provider is the base when the workspace has none of
+        # its own — not a freshly read `platform_config()`. A gateway built with
+        # an injected provider must resolve against what it was actually built
+        # with, and a deployment with no platform key at all must still work for
+        # a workspace that brought one.
+        resolved = await resolve_llm(workspace_id, feature, base=base)
 
         try:
             return _provider_for_config(resolved.config)
-        except Exception as exc:  # noqa: BLE001 — bad org config, not a bug here
-            if resolved.allow_platform_fallback:
+        except Exception as exc:
+            # A workspace's own credential is only discovered to be unusable
+            # here, at construction, which is why the fallback lives on this side
+            # of the seam rather than in the resolver.
+            if resolved.allow_platform_fallback and resolved.source != "platform":
                 logger.warning(
                     "Workspace %s provider %s unusable (%s); falling back to the platform provider",
                     workspace_id, resolved.config.provider, exc,
@@ -501,6 +575,7 @@ class LLMGateway:
         developer_id: str | None = None,
         skip_rate_limit: bool = False,
         workspace_id: str | None = None,
+        feature: str | None = None,
     ) -> AnalysisResult:
         """Analyze content with optional caching and rate limiting.
 
@@ -512,6 +587,9 @@ class LLMGateway:
             developer_id: Developer ID for billing usage.
             skip_rate_limit: Skip rate limit check (for internal/priority requests).
             workspace_id: Optional workspace ID for workspace-level rate limiting.
+            feature: The `llm/features.py` id of the product feature making
+                this call, which is how a workspace's model choice for it is
+                found. Omitted, the call takes the workspace default.
 
         Returns:
             Analysis result.
@@ -519,15 +597,20 @@ class LLMGateway:
         Raises:
             LLMRateLimitError: If rate limit is exceeded.
         """
+        # Before the cache and before resolution: a feature that is switched off
+        # must not return a previously-generated answer either.
+        _refuse_if_dormant(feature)
+
         # Before the cache, not after: a workspace that switched AI off should
         # get a hard stop, not a previously-generated answer.
-        provider = await self._resolve_provider(workspace_id)
+        provider = await self._resolve_provider(workspace_id, feature=feature)
 
         cache_key = None
 
         # Check cache first (no rate limit cost)
         if use_cache and self.cache:
             cache_key = self._hash_content(
+                f"{self._provider_cache_scope(provider)}:"
                 f"{request.analysis_type}:{request.content}"
             )
             cached = await self.cache.get(cache_key)
@@ -691,6 +774,7 @@ class LLMGateway:
         workspace_id: str | None = None,
         developer_id: str | None = None,
         db: AsyncSession | None = None,
+        feature: str | None = None,
     ) -> tuple[str, int, int, int]:
         """Call LLM directly with custom prompts and rate limiting.
 
@@ -705,6 +789,10 @@ class LLMGateway:
             workspace_id: Optional workspace ID for workspace-level rate limiting.
             developer_id: Optional developer ID for developer-level rate limiting.
             db: Database session for billing usage tracking.
+            feature: The `llm/features.py` id of the product feature making
+                this call. The workspace's model choice for that feature (or its
+                category) is resolved from it; omitted, the call takes the
+                workspace default.
 
         Returns:
             Tuple of (response_text, total_tokens, input_tokens, output_tokens).
@@ -712,9 +800,11 @@ class LLMGateway:
         Raises:
             LLMRateLimitError: If rate limit is exceeded.
         """
+        _refuse_if_dormant(feature)
+
         # Workspace AI settings first: an org that disabled AI must not spend a
         # rate-limit token, and one with its own key must not be billed ours.
-        provider = await self._resolve_provider(workspace_id)
+        provider = await self._resolve_provider(workspace_id, feature=feature)
 
         # Check rate limit
         if not skip_rate_limit:
@@ -945,6 +1035,37 @@ def _provider_for_config(config: LLMConfig) -> LLMProvider:
     return provider
 
 
+async def resolve_effective_model(
+    workspace_id: str | None,
+    feature: str | None = None,
+) -> tuple[str, str] | None:
+    """The ``(provider, model)`` a call for this workspace and feature would use.
+
+    For settings screens. A picker has to be able to say what the default is,
+    and a feature row has to be able to show what it actually resolves to —
+    otherwise a dropdown gives no way to tell that the answer changed when an
+    admin switched provider at ``/settings/ai``.
+
+    Returns None when nothing is configured at all, which a settings screen
+    should render as "AI is not set up" rather than as an empty picker.
+    """
+    gateway = get_llm_gateway()
+    base = getattr(gateway.provider, "config", None) if gateway else None
+    try:
+        resolved = await resolve_llm(workspace_id, feature, base=base)
+    except LLMNotConfigured:
+        return None
+    except Exception:  # noqa: BLE001 - a disabled workspace still has to render
+        # Including AIDisabledError: "off" is answered by the caller's own
+        # settings, not by this.
+        try:
+            config = platform_config()
+        except LLMNotConfigured:
+            return None
+        return config.provider, config.model
+    return resolved.config.provider, resolved.config.model
+
+
 _llm_gateway_instance: LLMGateway | None = None
 _llm_gateway_initialized: bool = False
 
@@ -952,99 +1073,34 @@ _llm_gateway_initialized: bool = False
 def get_llm_gateway() -> LLMGateway | None:
     """Get the LLM gateway instance.
 
-    Uses lazy initialization and caches successful results.
-    If gateway creation fails, it will retry on next call.
+    Uses lazy initialization and caches successful results. If gateway creation
+    fails, it retries on the next call.
+
+    The platform config comes from `llm/resolution.platform_config`, which is
+    also what the resolver, the agent adapter and Ask read — this function used
+    to carry its own sixty-line copy of that mapping, and the three copies had
+    drifted to three different sets of per-provider defaults.
 
     Returns:
-        LLM gateway if configured, None otherwise.
+        LLM gateway if configured, None otherwise. None rather than a raise
+        because dozens of callers already branch on it.
     """
     global _llm_gateway_instance, _llm_gateway_initialized
 
-    # Return cached instance if available
     if _llm_gateway_initialized and _llm_gateway_instance is not None:
         return _llm_gateway_instance
 
-    from aexy.core.config import get_settings
-
-    settings = get_settings()
-
-    # Check if LLM is configured
-    if not hasattr(settings, "llm"):
-        logger.warning("LLM not configured - gateway not available")
+    try:
+        config = platform_config()
+    except LLMNotConfigured as exc:
+        logger.warning("LLM not configured - gateway not available: %s", exc)
         return None
-
-    llm_settings = settings.llm
-    provider_name = llm_settings.llm_provider
-
-    # Get the appropriate API key based on provider
-    api_key = None
-    base_url = None
-
-    if provider_name == "claude":
-        api_key = llm_settings.anthropic_api_key
-        if not api_key:
-            logger.warning("Anthropic API key not configured for Claude provider")
-            return None
-    elif provider_name == "gemini":
-        api_key = llm_settings.gemini_api_key
-        if not api_key:
-            logger.warning("Gemini API key not configured for Gemini provider")
-            return None
-    elif provider_name == "ollama":
-        base_url = llm_settings.ollama_base_url
-        # Ollama doesn't need an API key
-    elif provider_name == "openrouter":
-        api_key = llm_settings.openrouter_api_key
-        if not api_key:
-            logger.warning("OpenRouter API key not configured for OpenRouter provider")
-            return None
-    elif provider_name == "deepseek":
-        api_key = llm_settings.deepseek_api_key
-        if not api_key:
-            logger.warning("DeepSeek API key not configured for DeepSeek provider")
-            return None
-    elif provider_name == "lmstudio":
-        # LM Studio is local — no key required. `lmstudio_api_key` is only
-        # honored if the user fronted LM Studio with an auth proxy.
-        api_key = llm_settings.lmstudio_api_key or None
-        base_url = llm_settings.lmstudio_base_url
-    else:
-        logger.warning(f"Unknown LLM provider: {provider_name}")
-        return None
-
-    # Parse fallback models for providers that support model fallback
-    fallback_models: list[str] = []
-    if provider_name == "openrouter" and llm_settings.openrouter_fallback_models:
-        fallback_models = [
-            m.strip() for m in llm_settings.openrouter_fallback_models.split(",")
-            if m.strip()
-        ]
-    elif provider_name == "deepseek" and llm_settings.deepseek_fallback_models:
-        fallback_models = [
-            m.strip() for m in llm_settings.deepseek_fallback_models.split(",")
-            if m.strip()
-        ]
-
-    model = llm_settings.llm_model
-    if provider_name == "lmstudio":
-        model = llm_settings.lmstudio_model
-
-    config = LLMConfig(
-        provider=provider_name,
-        model=model,
-        api_key=api_key,
-        base_url=base_url,
-        max_tokens=llm_settings.max_tokens_per_request,
-        temperature=0.0,
-        fallback_models=fallback_models,
-    )
 
     try:
         provider = create_provider(config)
-        # TODO: Add cache when implemented
         _llm_gateway_instance = LLMGateway(provider=provider, cache=None)
         _llm_gateway_initialized = True
         return _llm_gateway_instance
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - any construction failure is the same answer
         logger.error(f"Failed to create LLM provider: {e}")
         return None

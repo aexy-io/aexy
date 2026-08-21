@@ -1,5 +1,7 @@
 """Document management service for Notion-like documentation."""
 
+import hashlib
+import logging
 from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
@@ -9,6 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from aexy.services.activity_logger import log_activity
+from aexy.services.docx_service import extract_structured
+from aexy.services.storage_service import get_storage_service
 from aexy.services.document_templates_catalog import (
     SystemTemplate,
     get_system_template,
@@ -16,6 +20,7 @@ from aexy.services.document_templates_catalog import (
     list_system_templates,
 )
 from aexy.models.documentation import (
+    CONTENT_FORMAT_DOCX,
     CollaborationSession,
     Document,
     DocumentCodeLink,
@@ -32,10 +37,61 @@ from aexy.models.documentation import (
     TemplateCategory,
 )
 
+logger = logging.getLogger(__name__)
+
 # Stamped on the catalogue's templates, which ship with the code and so have no
 # creation date of their own. Fixed rather than `now()` so the same template does
 # not appear to change every time it is listed.
 SYSTEM_TEMPLATE_TIMESTAMP = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+DOCX_CONTENT_TYPE = (
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+)
+
+
+class DocxStorageError(RuntimeError):
+    """The document's bytes could not be written to object storage."""
+
+
+class DocxConflictError(RuntimeError):
+    """Someone else saved this document since it was opened.
+
+    Carries the current sha so the caller can tell the editor what it is now
+    holding a stale copy of.
+    """
+
+    def __init__(self, message: str, current_sha: str | None = None) -> None:
+        super().__init__(message)
+        self.current_sha = current_sha
+
+
+def docx_version_key(document_id: str, version_number: int) -> str:
+    """Where one saved version lives. Written once, never overwritten.
+    
+    There is deliberately no mutable "current" object. An earlier shape wrote
+    both a `current.docx` and a per-version copy, which meant every save touched
+    object storage *before* the row was committed: an interrupted commit left the
+    store holding new bytes while the row still held the previous
+    `docx_content_sha`. The sha then described content that was no longer there,
+    which quietly voids the optimistic-concurrency check — a later save would be
+    accepted against a hash of bytes nobody had.
+    
+    Pointing `documents.docx_storage_key` at the version key instead makes the
+    commit the only thing that publishes a save. An object written for a commit
+    that never landed is simply unreferenced, and the row always describes bytes
+    that exist.
+    """
+    return f"documents/{document_id}/versions/{version_number}.docx"
+
+
+def compute_docx_sha(raw: bytes) -> str:
+    """SHA-256 of a document's bytes.
+
+    The docx counterpart of `compute_content_sha` for TipTap content, and used
+    the same way: as the base an AI proposal records, so approving a stale
+    proposal is caught rather than overwriting an edit made in the meantime.
+    """
+    return hashlib.sha256(raw).hexdigest()
 
 
 class DocumentService:
@@ -156,6 +212,16 @@ class DocumentService:
         if not document:
             return None
 
+        # A Word document's body is a file, and `content` is `{}` by design.
+        # Writing TipTap content into it would leave a document whose two
+        # bodies disagree, and whichever the reader consulted would be wrong.
+        # Title, icon and visibility are format-independent and still allowed.
+        if document.is_docx and content is not None:
+            raise ValueError(
+                f"Document {document_id} is a Word document; its body is edited "
+                "through the docx endpoints, not by writing TipTap content."
+            )
+
         # Track if content changed
         content_changed = content is not None and content != document.content
 
@@ -246,6 +312,28 @@ class DocumentService:
         original = await self.get_document(document_id, workspace_id)
         if not original:
             return None
+
+        # A docx duplicate needs its own copy of the bytes. Reusing
+        # `create_document` would produce a row claiming to be a Word document
+        # with no file behind it — openable only as a blank page.
+        if original.is_docx:
+            raw = await self.get_docx_bytes(original.id)
+            if raw is None:
+                return None
+            duplicate = await self.create_docx_document(
+                workspace_id=workspace_id,
+                created_by_id=duplicated_by_id,
+                raw=raw,
+                title=f"{original.title} (Copy)",
+                parent_id=original.parent_id,
+                space_id=original.space_id,
+                visibility=original.visibility,
+            )
+            if include_children:
+                await self._duplicate_children(
+                    original.id, duplicate.id, duplicated_by_id
+                )
+            return duplicate
 
         # Create duplicate
         duplicate = await self.create_document(
@@ -508,6 +596,15 @@ class DocumentService:
         restored_by_id: str,
     ) -> Document | None:
         """Restore a document to a previous version."""
+        document = await self.get_document(document_id)
+        if document is not None and document.is_docx:
+            # The version's `content` is `{}`; the bytes are the version.
+            return await self.restore_docx_version(
+                document_id=document_id,
+                version_id=version_id,
+                restored_by_id=restored_by_id,
+            )
+
         # Get the version
         stmt = select(DocumentVersion).where(
             and_(
@@ -564,6 +661,255 @@ class DocumentService:
         self.db.add(version)
         await self.db.flush()
         return version
+
+    # ==================== Word documents ====================
+    #
+    # A docx document is a `documents` row whose body is a file rather than a
+    # TipTap tree. These methods own the two things that differ: the bytes go to
+    # object storage, and `content_text` is refreshed from them on every write so
+    # search, embeddings and the knowledge graph keep working with no
+    # docx-specific code of their own.
+
+    async def create_docx_document(
+        self,
+        workspace_id: str,
+        created_by_id: str,
+        raw: bytes,
+        title: str,
+        parent_id: str | None = None,
+        space_id: str | None = None,
+        visibility: str = DocumentVisibility.WORKSPACE.value,
+        source_drive_file_id: str | None = None,
+    ) -> Document:
+        """Create a document whose body is a Word file.
+
+        The bytes are parsed before anything is written: a file that cannot be
+        read should fail the request, not create a document nobody can open.
+        """
+        extract = extract_structured(raw)
+
+        document = Document(
+            id=str(uuid4()),
+            workspace_id=workspace_id,
+            parent_id=parent_id,
+            space_id=space_id,
+            title=title,
+            content={},
+            content_text=extract.markdown,
+            content_format=CONTENT_FORMAT_DOCX,
+            visibility=visibility,
+            created_by_id=created_by_id,
+            last_edited_by_id=created_by_id,
+            position=await self._get_next_position(workspace_id, parent_id),
+            source_drive_file_id=source_drive_file_id,
+        )
+
+        # A new document's first version is always 1, so the key is derivable
+        # before the row exists — which it must be, since the check constraint
+        # requires a key on any docx row.
+        document.docx_storage_key = docx_version_key(document.id, 1)
+        document.docx_size_bytes = len(raw)
+        document.docx_content_sha = compute_docx_sha(raw)
+
+        self.db.add(document)
+        await self.db.flush()
+
+        await self._create_docx_version(
+            document=document,
+            raw=raw,
+            created_by_id=created_by_id,
+            change_summary="Document created",
+        )
+
+        await log_activity(
+            self.db,
+            workspace_id=workspace_id,
+            entity_type="document",
+            entity_id=str(document.id),
+            activity_type="created",
+            actor_id=created_by_id,
+            title=f"Created document '{title}'",
+        )
+
+        await self.db.commit()
+        await self.db.refresh(document)
+        return document
+
+    async def replace_docx_bytes(
+        self,
+        document_id: str,
+        updated_by_id: str,
+        raw: bytes,
+        expected_sha: str | None = None,
+        change_summary: str | None = None,
+    ) -> Document | None:
+        """Save new bytes for a docx document, as a new version.
+
+        ``expected_sha`` is optimistic concurrency: the editor sends the sha it
+        loaded, and a mismatch means someone else saved in between. Refusing is
+        the only safe answer — the editor holds a whole document in memory, so
+        a blind write would silently discard the other person's save in full,
+        not merge around it.
+        """
+        # Locked for the rest of the transaction, which is what makes both the
+        # staleness check and the version number correct under concurrency.
+        # Without it two autosaves can read the same sha, both pass the check,
+        # and both claim the same version number — the first losing its content
+        # and the second failing on the uniqueness constraint. SQLite ignores
+        # row locking, so the tests exercise the logic and Postgres enforces it.
+        document = await self._get_document_for_update(document_id)
+        if not document:
+            return None
+        if not document.is_docx:
+            raise ValueError(
+                f"Document {document_id} is {document.content_format!r}, not a Word document."
+            )
+
+        if expected_sha is not None and document.docx_content_sha != expected_sha:
+            raise DocxConflictError(
+                "This document changed since it was opened.",
+                current_sha=document.docx_content_sha,
+            )
+
+        extract = extract_structured(raw)
+
+        # The version write is what puts the bytes in storage, and the row is
+        # repointed at that object. Nothing overwrites anything, so a commit that
+        # never lands leaves an unreferenced object rather than a row describing
+        # content that is not there.
+        version = await self._create_docx_version(
+            document=document,
+            raw=raw,
+            created_by_id=updated_by_id,
+            change_summary=change_summary or "Content updated",
+        )
+
+        document.content_text = extract.markdown
+        document.docx_storage_key = version.docx_storage_key
+        document.docx_size_bytes = len(raw)
+        document.docx_content_sha = compute_docx_sha(raw)
+        document.last_edited_by_id = updated_by_id
+        document.updated_at = datetime.now(timezone.utc)
+
+        await self.db.commit()
+        await self.db.refresh(document)
+        return document
+
+    async def _get_document_for_update(self, document_id: str) -> Document | None:
+        """The document row, locked until this transaction ends.
+
+        Serialises concurrent saves of one document. `get_document` eager-loads
+        relationships, which cannot be combined with `FOR UPDATE` on every
+        backend, so this is a deliberately bare read.
+        """
+        result = await self.db.execute(
+            select(Document).where(Document.id == document_id).with_for_update()
+        )
+        return result.scalar_one_or_none()
+
+    async def get_docx_bytes(self, document_id: str) -> bytes | None:
+        """The current bytes of a docx document, or None if unreadable."""
+        document = await self.get_document(document_id)
+        if not document or not document.is_docx or not document.docx_storage_key:
+            return None
+        return self._get_docx_bytes(document.docx_storage_key)
+
+    async def _create_docx_version(
+        self,
+        document: Document,
+        raw: bytes,
+        created_by_id: str,
+        change_summary: str | None = None,
+    ) -> DocumentVersion:
+        """Snapshot the bytes as an immutable, numbered object.
+
+        A copy per version rather than a diff chain: this module cannot parse
+        the format, so there is no honest diff to replay, and a restore that
+        reconstructs bytes it does not understand is how a document gets
+        quietly corrupted.
+        """
+        stmt = select(func.max(DocumentVersion.version_number)).where(
+            DocumentVersion.document_id == document.id
+        )
+        result = await self.db.execute(stmt)
+        next_version = (result.scalar() or 0) + 1
+
+        key = docx_version_key(document.id, next_version)
+        self._put_docx_bytes(key, raw)
+
+        version = DocumentVersion(
+            id=str(uuid4()),
+            document_id=document.id,
+            version_number=next_version,
+            content={},
+            content_format=CONTENT_FORMAT_DOCX,
+            docx_storage_key=key,
+            docx_size_bytes=len(raw),
+            created_by_id=created_by_id,
+            change_summary=change_summary,
+        )
+        self.db.add(version)
+        await self.db.flush()
+        return version
+
+    async def restore_docx_version(
+        self,
+        document_id: str,
+        version_id: str,
+        restored_by_id: str,
+    ) -> Document | None:
+        """Make a previous version's bytes current, as a new version.
+
+        Forward-only, matching ``restore_version`` for TipTap documents: the
+        history a restore was made from stays readable instead of being rewritten.
+        """
+        document = await self.get_document(document_id)
+        if not document or not document.is_docx:
+            return None
+
+        stmt = select(DocumentVersion).where(
+            and_(
+                DocumentVersion.id == version_id,
+                DocumentVersion.document_id == document_id,
+            )
+        )
+        result = await self.db.execute(stmt)
+        version = result.scalar_one_or_none()
+        if not version or not version.docx_storage_key:
+            return None
+
+        raw = self._get_docx_bytes(version.docx_storage_key)
+        if raw is None:
+            return None
+
+        return await self.replace_docx_bytes(
+            document_id=document_id,
+            updated_by_id=restored_by_id,
+            raw=raw,
+            change_summary=f"Restored from version {version.version_number}",
+        )
+
+    @staticmethod
+    def _put_docx_bytes(key: str, raw: bytes) -> None:
+        storage = get_storage_service()
+        if not storage.is_configured():
+            # Dev and test run without object storage. Failing here would make
+            # every docx path untestable, so the row is still written — and the
+            # read side returns None rather than pretending to have bytes.
+            logger.warning("Storage not configured; skipped writing %s", key)
+            return
+        if not storage.put_object(
+            key=key, data=raw, content_type=DOCX_CONTENT_TYPE
+        ):
+            raise DocxStorageError(f"Failed to write document bytes to {key}.")
+
+    @staticmethod
+    def _get_docx_bytes(key: str) -> bytes | None:
+        storage = get_storage_service()
+        if not storage.is_configured():
+            return None
+        result = storage.get_object(key)
+        return result[0] if result else None
 
     # ==================== Search ====================
 

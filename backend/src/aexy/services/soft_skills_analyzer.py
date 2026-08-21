@@ -95,7 +95,7 @@ class SoftSkillsAnalyzer:
         )
 
         try:
-            result = await self.llm.analyze(request)
+            result = await self.llm.analyze(request, feature="insights.soft_skills")
             return result.soft_skills
         except Exception as e:
             logger.warning(f"Failed to analyze PR communication: {e}")
@@ -125,7 +125,7 @@ class SoftSkillsAnalyzer:
         )
 
         try:
-            result = await self.llm.analyze(request)
+            result = await self.llm.analyze(request, feature="insights.soft_skills")
             return result.soft_skills
         except Exception as e:
             logger.warning(f"Failed to analyze review style: {e}")

@@ -22,6 +22,7 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -178,6 +179,56 @@ async def get_file(
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
     return _file_to_response(row)
+
+
+@router.get("/files/{file_id}/content")
+async def get_file_content(
+    workspace_id: str,
+    file_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Stream a Drive file's bytes from this origin.
+
+    `file_url` on the response is a presigned URL, which is fine for an `<img>`
+    or an `<iframe>` — the browser navigates and CORS never applies. It is not
+    enough for a reader that has to `fetch` the bytes and parse them in the page,
+    which is how the Word preview works: that is a cross-origin request to the
+    storage endpoint, and no bucket CORS policy is configured anywhere here.
+
+    Streamed, and permission-checked on the same request that serves the file.
+    """
+    await _verify_access(workspace_id, current_user, db, "viewer")
+    service = DriveService(db)
+    row = await service.get_file(workspace_id, file_id)
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+    if row.kind == KIND_FOLDER:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="A folder has no content"
+        )
+
+    storage = get_storage_service()
+    result = (
+        storage.get_object_stream(row.storage_key)
+        if row.storage_key and storage.is_configured()
+        else None
+    )
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="File bytes not available"
+        )
+
+    safe_name = (row.file_name or "file").replace('"', "").replace("\n", " ")
+    headers = {"Content-Disposition": f'inline; filename="{safe_name}"'}
+    if result["content_length"] is not None:
+        headers["Content-Length"] = str(result["content_length"])
+
+    return StreamingResponse(
+        result["iter"],
+        media_type=result["content_type"] or row.content_type or "application/octet-stream",
+        headers=headers,
+    )
 
 
 @router.post("/folders", response_model=DriveFileResponse, status_code=status.HTTP_201_CREATED)

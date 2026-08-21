@@ -355,6 +355,7 @@ class CompetitorIntelService:
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
                 tokens_estimate=300,
+                feature="crm.competitor_change",
             )
             return json.loads(response_text)
         except Exception:
@@ -597,6 +598,7 @@ class CompetitorIntelService:
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
                 tokens_estimate=1500,
+                feature="crm.battle_card",
             )
             return json.loads(response_text)
         except Exception:

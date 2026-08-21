@@ -75,8 +75,15 @@ class ProposedChange(Base):
     )
 
     # The kind-specific part, and the reason this table works at all.
-    #   content: {"content": <editor document>}
+    #   content: {"content": <editor document>}          — a TipTap document
+    #   content: {"format": "docx", "ops": [...]}        — a Word document
     #   action:  {"tool_name", "action", "method", "path", "arguments"}
+    #
+    # A Word document carries ops rather than a replacement body because there
+    # is no useful way to diff two opaque zips for a human: the reviewable form
+    # is a tracked-changes redline, and that is produced by replaying the ops
+    # into the document. The envelope already being JSONB is why this needed no
+    # migration.
     payload: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
     # What produced it — `ProposedEditSource` for content, a policy id for an
@@ -152,6 +159,20 @@ class ProposedChange(Base):
     @property
     def proposed_content(self) -> Any:
         return (self.payload or {}).get("content")
+
+    @property
+    def proposed_ops(self) -> list[dict[str, Any]] | None:
+        """The edit list, for a proposal against a Word document.
+
+        None for a TipTap proposal — the two are mutually exclusive, and a
+        caller that finds ops must not also look for content.
+        """
+        ops = (self.payload or {}).get("ops")
+        return ops if isinstance(ops, list) else None
+
+    @property
+    def is_docx_proposal(self) -> bool:
+        return (self.payload or {}).get("format") == "docx"
 
     @property
     def base_content_sha(self) -> str | None:

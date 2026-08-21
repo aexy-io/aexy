@@ -159,9 +159,8 @@
       "modeOff": "Off",
       "modeOnHint": "Run AI analysis on new commits, PRs, and reviews as they sync.",
       "modeOffHint": "No payloads will be sent to any LLM provider from this workspace.",
-      "modelTierLabel": "Model tier",
-      "modelTierHaiku": "Haiku (fast, low cost)",
-      "modelTierSonnet": "Sonnet (deeper, higher cost)",
+      "modelChoiceMoved": "Which model this runs on is set alongside every other AI feature.",
+      "modelChoiceLink": "AI model settings",
       "save": "Save AI settings",
       "saving": "Saving…",
       "adminOnly": "Only workspace admins can change AI settings."

@@ -126,7 +126,7 @@ class CodeAnalyzer:
             language_hint=language_hint,
         )
 
-        return await self.llm.analyze(request)
+        return await self.llm.analyze(request, feature="code.analyze")
 
     async def analyze_commit_message(
         self,
@@ -156,7 +156,7 @@ class CodeAnalyzer:
             },
         )
 
-        return await self.llm.analyze(request)
+        return await self.llm.analyze(request, feature="code.analyze")
 
     async def analyze_pr_description(
         self,
@@ -189,7 +189,7 @@ class CodeAnalyzer:
             },
         )
 
-        return await self.llm.analyze(request)
+        return await self.llm.analyze(request, feature="code.analyze")
 
     async def analyze_review_comment(
         self,
@@ -211,7 +211,7 @@ class CodeAnalyzer:
             context={"state": state},
         )
 
-        return await self.llm.analyze(request)
+        return await self.llm.analyze(request, feature="code.analyze")
 
     def _should_analyze_file(self, file_path: str, file_size: int | None = None) -> bool:
         """Check if a file should be analyzed.

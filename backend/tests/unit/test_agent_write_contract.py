@@ -28,6 +28,12 @@ NEW = {"type": "doc", "content": [{"type": "paragraph", "attrs": {"n": 2}}]}
 def document(content=EXISTING):
     return SimpleNamespace(
         id=DOC,
+        # A real Document always carries these. `content_format` is what the
+        # TipTap-only guards read; the docx_* fields are on the response.
+        content_format="tiptap",
+        docx_size_bytes=None,
+        docx_content_sha=None,
+        source_drive_file_id=None,
         workspace_id=WORKSPACE,
         parent_id=None,
         title="Session service",
@@ -88,6 +94,9 @@ def _wired(monkeypatch):
             document_id=DOC,
             source=ProposedEditSource.MANUAL_AI_EDIT.value,
             proposed_content=NEW,
+            # A real ProposedChange exposes both; exactly one is populated,
+            # decided by the document's format. This one is TipTap.
+            proposed_ops=None,
             base_content_sha=None,
             diff_summary=None,
             status="pending",

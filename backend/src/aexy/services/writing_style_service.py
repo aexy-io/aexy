@@ -359,6 +359,7 @@ class WritingStyleService:
             workspace_id=workspace_id,
             developer_id=developer_id,
             db=self.db,
+            feature="crm.writing_style_email",
         )
         email_content = result[0] if isinstance(result, tuple) else str(result)
 

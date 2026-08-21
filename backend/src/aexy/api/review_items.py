@@ -23,7 +23,7 @@ from aexy.core.database import get_db
 from aexy.models.developer import Developer
 from aexy.models.documentation import Document
 from aexy.models.proposed_change import ChangeKind, ChangeStatus, ProposedChange
-from aexy.services.proposed_edits_service import compute_content_sha
+from aexy.services.proposed_edits_service import proposal_is_stale
 from aexy.services.workspace_service import WorkspaceService
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/review", tags=["Review"])
@@ -219,8 +219,7 @@ async def list_review_items(
                     created_at=row.created_at,
                     # Stale means the page moved under the proposal, so
                     # approving overwrites edits it never saw.
-                    needs_attention=bool(row.base_version)
-                    and row.base_version != compute_content_sha(document.content),
+                    needs_attention=proposal_is_stale(row, document),
                     document_id=str(document.id),
                     document_icon=document.icon,
                     source=row.source,

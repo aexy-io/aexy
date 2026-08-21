@@ -1,5 +1,7 @@
 """Sprint API endpoints."""
 
+from typing import cast
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,9 +11,11 @@ from aexy.api.developers import get_current_developer
 from aexy.models.developer import Developer
 from aexy.schemas.sprint import (
     SprintCreate,
+    SprintStatus,
     SprintUpdate,
     SprintResponse,
     SprintListResponse,
+    WorkspaceSprintListResponse,
     SprintStatsResponse,
     CarryOverRequest,
     CarryOverResponse,
@@ -115,6 +119,60 @@ async def create_sprint(
 
     await db.commit()
     return sprint_to_response(sprint)
+
+
+@router.get(
+    "/workspaces/{workspace_id}/sprints",
+    response_model=list[WorkspaceSprintListResponse],
+)
+async def list_workspace_sprints(
+    workspace_id: str,
+    include_closed: bool = False,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+) -> list[WorkspaceSprintListResponse]:
+    """Every sprint in the workspace, across teams.
+
+    The team-scoped route above is right for a sprint board, and wrong for
+    anything that starts somewhere else: turning a document into tasks has a
+    workspace and no team, and making the person pick a team first asks them
+    about our schema rather than about their work.
+
+    Closed sprints are excluded by default. A picker offering a completed sprint
+    is offering a mistake — adding a task to it would falsify a velocity figure
+    somebody has already reported.
+    """
+    if not await WorkspaceService(db).check_permission(
+        workspace_id, str(current_user.id), "viewer"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not a member of this workspace",
+        )
+
+    sprints = await SprintService(db).list_workspace_sprints(
+        workspace_id,
+        statuses=None if include_closed else SprintService.OPEN_TO_NEW_WORK,
+    )
+    return [
+        WorkspaceSprintListResponse(
+            id=str(sprint.id),
+            team_id=str(sprint.team_id),
+            # A sprint always has a team (the column is not nullable), but a
+            # row whose team was deleted out from under it should render rather
+            # than 500 a picker.
+            team_name=(sprint.team.name if sprint.team else "Unknown team"),
+            name=sprint.name,
+            # The column is a plain String, so the Literal on the schema is a
+            # narrowing the ORM cannot promise. Cast rather than widen the
+            # schema: the five values are the contract, and a row carrying a
+            # sixth is a data problem worth surfacing at the boundary.
+            status=cast(SprintStatus, sprint.status),
+            start_date=sprint.start_date,
+            end_date=sprint.end_date,
+        )
+        for sprint in sprints
+    ]
 
 
 @router.get(

@@ -1,4 +1,10 @@
 export { DocumentEditor } from "./DocumentEditor";
+// The Word editor and viewer are exported, but `DocxEditorCanvas` deliberately is
+// not: it statically imports the ~5 MB engine, and re-exporting it from a barrel
+// would pull that into every module that imports anything from here.
+export { DocxDocumentEditor } from "./DocxDocumentEditor";
+export { DocxFileViewer } from "./DocxFileViewer";
+export { DocxProposalsBanner } from "./DocxProposalsBanner";
 export { EditorToolbar } from "./EditorToolbar";
 export { DocumentSidebar } from "./DocumentSidebar";
 export { TemplateSelector } from "./TemplateSelector";

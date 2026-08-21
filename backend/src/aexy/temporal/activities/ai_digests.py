@@ -358,6 +358,7 @@ async def compose_developer_digest(
                     tokens_estimate=2000,
                     workspace_id=input.workspace_id,
                     developer_id=input.developer_id,
+                    feature="insights.developer_digest",
                 )
             )
         except Exception as e:
@@ -584,6 +585,7 @@ async def compose_repo_health(input: ComposeRepoHealthInput) -> dict[str, Any]:
                     user_prompt=user_prompt,
                     tokens_estimate=2000,
                     workspace_id=input.workspace_id,
+                    feature="insights.repo_health",
                 )
             )
         except Exception as e:
@@ -788,6 +790,7 @@ async def analyze_task_pr_alignment(
                     ),
                     tokens_estimate=1500,
                     workspace_id=input.workspace_id,
+                    feature="code.task_pr_alignment",
                 )
             )
         except Exception as e:

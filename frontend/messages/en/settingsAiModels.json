@@ -1,0 +1,39 @@
+{
+  "settingsAiModels": {
+    "title": "AI models",
+    "description": "Which model each AI feature runs on. Everything inherits the workspace default unless you say otherwise.",
+    "breadcrumbSettings": "Settings",
+    "breadcrumbAi": "AI & Providers",
+    "breadcrumbModels": "Models",
+    "readOnly": "You can see these settings but not change them. Ask a workspace owner or admin.",
+    "aiDisabled": "AI is switched off for this workspace, so nothing below is running. These choices are kept and will apply again when it is switched back on.",
+    "notConfigured": "No AI provider is set up yet, so there is no model to choose.",
+    "aiSettingsLink": "AI & Providers settings",
+    "defaultTitle": "Workspace default",
+    "defaultValue": "{model} on {provider}",
+    "defaultFromWorkspace": "From this workspace's own provider and key.",
+    "defaultFromPlatform": "From the platform's configuration — this workspace has not set its own.",
+    "changeDefault": "Change it",
+    "categoryModelLabel": "Model for this group",
+    "featureModelLabel": "Model",
+    "inheritDefault": "Workspace default ({model})",
+    "inheritCategory": "Same as this group ({model})",
+    "otherModel": "Something else…",
+    "otherPlaceholder": "Model identifier",
+    "inUseHere": "in use here",
+    "inheritingCount": "{count} of {total} features here follow this group.",
+    "showFeatures": "Configure individual features",
+    "hideFeatures": "Hide individual features",
+    "runsOn": "Runs on {model}",
+    "ignoredLabel": "Not being used:",
+    "source": {
+      "platform": "Platform default",
+      "workspace": "Workspace default",
+      "category": "Group",
+      "feature": "This feature",
+      "instance": "Set on the agent"
+    },
+    "autosave": "Changes apply to the next AI call. Nothing already running is affected.",
+    "dormantLabel": "Not running:"
+  }
+}

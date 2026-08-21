@@ -163,7 +163,11 @@ async def get_available_formats(
     _: str = Depends(get_current_developer_id),
 ) -> dict:
     """Get available export formats and their requirements."""
-    from aexy.services.export_service import REPORTLAB_AVAILABLE, OPENPYXL_AVAILABLE
+    from aexy.services.export_service import (
+        OPENPYXL_AVAILABLE,
+        PYTHON_DOCX_AVAILABLE,
+        REPORTLAB_AVAILABLE,
+    )
 
     formats = [
         {
@@ -193,6 +197,13 @@ async def get_available_formats(
             "description": "Microsoft Excel workbook with formatting and multiple sheets",
             "available": OPENPYXL_AVAILABLE,
             "requirements": "pip install openpyxl" if not OPENPYXL_AVAILABLE else None,
+        },
+        {
+            "format": ExportFormat.DOCX.value,
+            "name": "Word",
+            "description": "Microsoft Word document with headings, lists, and tables",
+            "available": PYTHON_DOCX_AVAILABLE,
+            "requirements": "pip install python-docx" if not PYTHON_DOCX_AVAILABLE else None,
         },
     ]
 

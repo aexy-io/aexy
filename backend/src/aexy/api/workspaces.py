@@ -428,7 +428,10 @@ async def get_ai_analysis_settings(
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    """Read this workspace's AI analysis settings (mode + model tier)."""
+    """Read whether AI analysis runs for this workspace.
+
+    Model choice is not here — it is at /settings/ai/models, per AI feature.
+    """
     from aexy.services.ai_settings import settings_for_workspace
 
     service = WorkspaceService(db)

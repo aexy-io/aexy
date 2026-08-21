@@ -15,7 +15,6 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from aexy.core.config import get_settings
 from aexy.models.ask import AskConversation, AskConversationParticipant, AskMessage, AskShareLink
 from aexy.models.developer import Developer
 from aexy.services.ask_collaboration_service import get_ask_collaboration_service
@@ -78,75 +77,45 @@ class AskService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
-        settings = get_settings()
-        llm = settings.llm
 
-        # API URL for the OpenAI-compatible streaming path. DeepSeek, OpenRouter
-        # and LM Studio all speak the OpenAI wire format, so they reuse
-        # `_stream_openai` with a different base URL.
-        self._api_url = OPENAI_API_URL
+        # Resolution happens per request, in `_resolve`, because it depends on
+        # the workspace: which model, whose credential, and whether AI is
+        # switched off at all are all workspace decisions.
+        #
+        # This used to happen right here, from `settings.llm` alone — which meant
+        # Ask ignored the workspace AI kill switch and any bring-your-own key
+        # entirely. An organisation that turned AI off still had Ask answering
+        # on the platform's credential.
+        self._provider: str = "none"
+        self._api_key: str | None = None
+        self._model: str = ""
+        self._api_url: str = OPENAI_API_URL
 
-        # Honor the configured LLM_PROVIDER (settings.llm.llm_provider). This is
-        # the single source of truth the rest of the platform uses via the LLM
-        # gateway; the Ask feature previously ignored it and auto-picked the
-        # first available key (Anthropic > OpenAI > Gemini), so a deployment set
-        # to `deepseek` still hit Gemini. If the configured provider has no
-        # usable credentials we fall back to auto-detect so deployments that
-        # never set LLM_PROVIDER keep working.
-        anthropic_key = settings.anthropic_api_key or llm.anthropic_api_key
-        resolved = self._resolve_provider(llm.llm_provider, llm, anthropic_key)
-        if resolved is None:
-            resolved = self._auto_detect(llm, anthropic_key)
+    async def _resolve(self, workspace_id: str) -> str | None:
+        """Resolve this workspace's model and credential. Returns an error, or None.
 
-        self._provider, self._api_key, self._model, api_url = resolved
-        if api_url:
-            self._api_url = api_url
-
-    @staticmethod
-    def _resolve_provider(provider: str, llm, anthropic_key: str):
-        """Map the configured provider to (stream_family, api_key, model, api_url).
-
-        `stream_family` is the internal streaming path to use — one of
-        "anthropic", "openai" or "gemini". Returns None when the requested
-        provider has no usable credentials, so the caller can fall back.
+        A returned message rather than a raised exception because the caller is
+        a streaming generator: it has to emit an `error` frame the browser can
+        render, not raise into the middle of an SSE response.
         """
-        provider = (provider or "").lower().strip()
-        if provider in ("claude", "anthropic"):
-            if not anthropic_key:
-                return None
-            return ("anthropic", anthropic_key, llm.llm_model or "claude-sonnet-4-20250514", None)
-        if provider == "openai":
-            if not llm.openai_api_key:
-                return None
-            return ("openai", llm.openai_api_key, llm.openai_model or "gpt-4o-mini", OPENAI_API_URL)
-        if provider == "gemini":
-            if not llm.gemini_api_key:
-                return None
-            return ("gemini", llm.gemini_api_key, llm.gemini_model or "gemini-2.0-flash", None)
-        if provider == "deepseek":
-            if not llm.deepseek_api_key:
-                return None
-            return ("openai", llm.deepseek_api_key, llm.llm_model or "deepseek-chat", DEEPSEEK_API_URL)
-        if provider == "openrouter":
-            if not llm.openrouter_api_key:
-                return None
-            return ("openai", llm.openrouter_api_key, llm.openrouter_model or "openai/gpt-4o", OPENROUTER_API_URL)
-        if provider == "lmstudio":
-            # Local server — no key required unless fronted by an auth proxy.
-            base = (llm.lmstudio_base_url or "http://localhost:1234/v1").rstrip("/")
-            return ("openai", llm.lmstudio_api_key or "not-needed", llm.lmstudio_model, f"{base}/chat/completions")
-        return None
+        from aexy.llm.resolution import LLMNotConfigured, resolve_llm
+        from aexy.services.workspace_ai_settings_service import AIDisabledError
 
-    @staticmethod
-    def _auto_detect(llm, anthropic_key: str):
-        """Legacy fallback: first available key wins (Anthropic > OpenAI > Gemini)."""
-        if anthropic_key:
-            return ("anthropic", anthropic_key, "claude-sonnet-4-20250514", None)
-        if llm.openai_api_key:
-            return ("openai", llm.openai_api_key, llm.openai_model or "gpt-4o-mini", OPENAI_API_URL)
-        if llm.gemini_api_key:
-            return ("gemini", llm.gemini_api_key, llm.gemini_model or "gemini-2.0-flash", None)
-        return ("none", "", "", None)
+        try:
+            resolved = await resolve_llm(workspace_id, "agents.ask")
+        except AIDisabledError:
+            return "AI is switched off for this workspace by its administrators."
+        except LLMNotConfigured:
+            return "No LLM API key configured"
+
+        self._provider = resolved.family
+        self._api_key = resolved.config.api_key
+        self._model = resolved.config.model
+        # Anthropic and Gemini have their own endpoint shapes, so the resolver
+        # reports no chat-completions URL for them and those two streaming paths
+        # build their own from GEMINI_API_URL / ANTHROPIC_API_URL.
+        self._api_url = resolved.chat_completions_url or OPENAI_API_URL
+        return None
 
     # --- CRUD ---
 
@@ -530,8 +499,12 @@ class AskService:
         user_content: str,
     ) -> AsyncGenerator[str, None]:
         """Stream an AI response with tool execution and collaboration support."""
-        if self._provider == "none":
-            yield self._sse({"type": "error", "message": "No LLM API key configured"})
+        # Before anything else, and before the conversation is even loaded: a
+        # workspace that has AI switched off should get a refusal rather than a
+        # half-started stream.
+        error = await self._resolve(workspace_id)
+        if error:
+            yield self._sse({"type": "error", "message": error})
             return
 
         conv = await self.get_conversation(conversation_id, workspace_id, developer_id)

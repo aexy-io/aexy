@@ -69,31 +69,23 @@ def _jsonb_for_sqlite(_type, _compiler, **_kw):  # noqa: ANN001
 # stub tables so the selectin SQL succeeds (and returns no rows).
 from sqlalchemy import Column, MetaData, String, Table
 
+from aexy.models.workspace import Workspace
+
 _stub_meta = MetaData()
 _workspaces_stub = Table(
     "workspaces",
     _stub_meta,
+    # Columns DERIVED from the real model, not listed. They used to be typed out
+    # one per line, so every column added to `Workspace` broke this file with
+    # "no such column" — a failure landing on a test that has nothing to do with
+    # the change. Everything is String because nothing here reads a workspace's
+    # values; the table exists so referenced rows can exist.
     Column("id", String, primary_key=True),
-    Column("name", String),
-    Column("slug", String),
-    Column("type", String),
-    Column("description", String),
-    Column("avatar_url", String),
-    Column("github_org_id", String),
-    Column("owner_id", String),
-    Column("plan_id", String),
-    Column("settings", String),
-    Column("next_task_key", String),
-    Column("llm_tokens_used_this_month", String),
-    Column("llm_input_tokens_this_month", String),
-    Column("llm_output_tokens_this_month", String),
-    Column("llm_requests_this_month", String),
-    Column("llm_tokens_reset_at", String),
-    Column("llm_provider_breakdown", String),
-    Column("llm_overage_cost_cents", String),
-    Column("is_active", String),
-    Column("created_at", String),
-    Column("updated_at", String),
+    *(
+        Column(column.name, String)
+        for column in Workspace.__table__.columns
+        if column.name != "id"
+    ),
 )
 _developers_stub = Table(
     "developers",

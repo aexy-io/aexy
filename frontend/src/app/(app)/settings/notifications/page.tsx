@@ -136,6 +136,8 @@ export const EVENT_TYPE_LABELS: Record<string, { label: string; description: str
   document_commented: { label: "Document comment", description: "When someone comments on a document you own or a thread you're in" },
   document_ai_proposal: { label: "AI proposed a doc update", description: "When an AI suggests an edit to your document and it needs review" },
   document_sync_ownership_transferred: { label: "Doc sync handed to you", description: "When someone leaves the workspace and their doc-to-code syncs become yours" },
+  docx_ai_draft_ready: { label: "Your Word edit is ready", description: "When a background draft you asked for on a Word document has finished and is waiting for you to review as tracked changes" },
+  docx_ai_comment_answered: { label: "Aexy answered your comment", description: "When you left a comment in a Word document and the AI drafted an edit answering it" },
   // Documentation impact
   document_impact_pr_opened: { label: "Your PR affects documentation", description: "When you open a pull request that touches code a page here describes \u2014 while you can still update it in the same branch" },
   document_impact_pr_merged: { label: "Your merge left pages behind", description: "When a pull request you merged made documented pages out of date" },

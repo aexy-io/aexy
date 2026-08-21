@@ -23,6 +23,12 @@ from aexy.agents.tools.enrichment_tools import (
     WebSearchTool,
 )
 from aexy.agents.tools.communication_tools import SendSlackTool, SendSMSTool
+from aexy.agents.tools.document_tools import (
+    CreateDocumentTool,
+    ProposeDocxEditTool,
+    ReadDocumentTool,
+    SearchDocumentsTool,
+)
 
 
 # Registry of available tools
@@ -45,6 +51,11 @@ TOOL_REGISTRY: dict[str, type[BaseTool]] = {
     # Communication tools
     "send_slack": SendSlackTool,
     "send_sms": SendSMSTool,
+    # Document tools
+    "read_document": ReadDocumentTool,
+    "search_documents": SearchDocumentsTool,
+    "create_document": CreateDocumentTool,
+    "propose_docx_edit": ProposeDocxEditTool,
 }
 
 
@@ -131,6 +142,18 @@ class CustomAgent(BaseAgent):
             # Communication tools need workspace
             if tool_name in ["SendSlackTool", "SendSMSTool"]:
                 return tool_class(workspace_id=self.workspace_id)
+
+            # Document tools are workspace-scoped; creating one also needs an
+            # author, since a document with no creator cannot be attributed.
+            if tool_name in ["ReadDocumentTool", "SearchDocumentsTool"]:
+                return tool_class(workspace_id=self.workspace_id, db=self.db)
+
+            if tool_name in ["CreateDocumentTool", "ProposeDocxEditTool"]:
+                return tool_class(
+                    workspace_id=self.workspace_id,
+                    user_id=self.user_id or "",
+                    db=self.db,
+                )
 
             # Enrichment tools don't need special context
             return tool_class()
@@ -262,4 +285,11 @@ Be thorough but efficient in your approach.
             return "enrichment"
         elif name in ["send_slack", "send_sms"]:
             return "communication"
+        elif name in [
+            "read_document",
+            "search_documents",
+            "create_document",
+            "propose_docx_edit",
+        ]:
+            return "documents"
         return "other"

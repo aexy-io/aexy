@@ -21,6 +21,12 @@ from aexy.agents.tools.communication_tools import (
     SendSlackTool,
     SendSMSTool,
 )
+from aexy.agents.tools.document_tools import (
+    CreateDocumentTool,
+    ProposeDocxEditTool,
+    ReadDocumentTool,
+    SearchDocumentsTool,
+)
 
 __all__ = [
     # CRM
@@ -40,4 +46,9 @@ __all__ = [
     # Communication
     "SendSlackTool",
     "SendSMSTool",
+    # Documents
+    "ReadDocumentTool",
+    "SearchDocumentsTool",
+    "CreateDocumentTool",
+    "ProposeDocxEditTool",
 ]

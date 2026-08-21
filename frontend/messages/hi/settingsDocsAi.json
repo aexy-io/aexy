@@ -1,0 +1,34 @@
+{
+  "settingsDocsAi": {
+    "title": "डॉक्यूमेंटेशन",
+    "description": "इस workspace में AI, Word डॉक्युमेंट्स के लिए बदलाव कैसे तैयार करता है, और किसे इसकी सूचना मिलती है।",
+    "readOnly": "आप ये settings देख सकते हैं, बदल नहीं सकते। किसी workspace owner या admin से कहें।",
+
+    "featureTitle": "AI से संपादन",
+    "featureDescription": "AI सीधे डॉक्युमेंट में नहीं लिखता। वह बदलाव तैयार करता है, और कोई व्यक्ति उसे tracked changes के रूप में देखकर एक-एक बदलाव स्वीकार या अस्वीकार करता है।",
+    "modeLabel": "लोगों को AI से बदलाव माँगने दें",
+    "modeDescription": "Ask Aexy बटन, background drafting job और comment trigger — तीनों एक साथ बंद हो जाते हैं।",
+    "allowCommentsLabel": "AI को comment छोड़ने दें",
+    "allowCommentsDescription": "जब AI को कोई बात खटके जिसका अनुमान लगाना ठीक न हो — जैसे एक शर्त दूसरे section से टकरा रही हो — तो वह text बदलने के बजाय हाशिये में comment लगा सकता है।",
+    "maxOpsLabel": "एक draft में अधिकतम बदलाव",
+    "maxOpsDescription": "यह सीमा है, लक्ष्य नहीं। पच्चीस tracked changes कोई पढ़ सकता है; दो सौ बदलाव redline के भेस में पूरा पुनर्लेखन है।",
+
+    "mentionTitle": "डॉक्युमेंट के भीतर से माँगना",
+    "mentionDescription": "Word comment में handle का उल्लेख करें और AI उसका उत्तर देने वाला बदलाव तैयार करके उसी thread में जवाब देता है। यह Word में लिखे और upload किए गए comments पर भी काम करता है, केवल यहाँ लिखे गए पर नहीं।",
+    "commentTriggerLabel": "handle का उल्लेख होने पर बदलाव तैयार करें",
+    "commentTriggerDescription": "डॉक्युमेंट के अगले save पर जाँचा जाता है। हर comment पर एक ही बार काम होता है, फ़ाइल चाहे जितनी बार save हो।",
+    "handleLabel": "Handle",
+    "handleDescription": "AI तक पहुँचने के लिए comment में {mention} लिखें। अक्षर, अंक, बिंदु, डैश और underscore।",
+
+    "attributionTitle": "श्रेय और सूचनाएँ",
+    "attributionDescription": "AI के बदलावों पर एक नाम होता है, और वह नाम फ़ाइल के साथ जाता है — जो भी उसे Word में खोलेगा, हर tracked change और comment पर वही नाम देखेगा।",
+    "authorLabel": "AI अपने बदलावों पर यह नाम लिखे",
+    "authorDescription": "किसी व्यक्ति का नाम न रखें: समीक्षक को AI के सुझाव और सहकर्मी के सुझाव में अंतर दिखना चाहिए।",
+    "notifyOwnerLabel": "बिना माँगे तैयार हुए drafts की सूचना डॉक्युमेंट के owner को दें",
+    "notifyOwnerDescription": "यह background drafts और comment mentions पर लागू होता है। जिसने खुद draft माँगा है, उसे तैयार होने पर हमेशा बताया जाता है।",
+
+    "notificationsHint": "वे सूचनाएँ किन channels से आएँ, यह आपकी अपनी पसंद है — हर event के लिए अलग।",
+    "notificationsLink": "सूचना settings",
+    "autosave": "बदलाव करते ही सहेज लिए जाते हैं।"
+  }
+}

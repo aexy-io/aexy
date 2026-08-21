@@ -2,7 +2,17 @@
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+    status,
+)
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.api.access_guard import ensure_app_enabled
@@ -51,16 +61,31 @@ from aexy.services.github_app_service import (
     GitHubAppService,
     GitHubServiceAdapter,
 )
-from aexy.services.document_service import DocumentService
+from aexy.services.document_service import (
+    DOCX_CONTENT_TYPE,
+    DocumentService,
+    DocxConflictError,
+    DocxStorageError,
+)
+from aexy.services.docx_service import DocxReadError
+from aexy.services.drive_service import DriveService
+from aexy.services.storage_quota_service import StorageQuotaService
+from aexy.services.storage_service import get_storage_service
 from aexy.services.markdown_to_tiptap import MarkdownError, markdown_to_tiptap
 from aexy.services.document_sync_service import DocumentSyncService
 from aexy.services.document_generation_service import DocumentGenerationService
 from aexy.services.proposed_edits_service import (
     ProposedEditsService,
-    compute_content_sha,
+    current_document_sha,
+    proposal_is_stale,
 )
 from aexy.services.workspace_service import WorkspaceService
-from aexy.models.documentation import ProposedEditSource, TemplateCategory
+from aexy.models.documentation import (
+    CONTENT_FORMAT_DOCX,
+    CONTENT_FORMAT_TIPTAP,
+    ProposedEditSource,
+    TemplateCategory,
+)
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/documents", tags=["Documents"])
 template_router = APIRouter(prefix="/templates", tags=["Templates"])
@@ -92,6 +117,12 @@ def document_to_response(doc) -> DocumentResponse:
         title=doc.title,
         content=doc.content,
         content_text=doc.content_text,
+        content_format=doc.content_format,
+        docx_size_bytes=doc.docx_size_bytes,
+        docx_content_sha=doc.docx_content_sha,
+        source_drive_file_id=(
+            str(doc.source_drive_file_id) if doc.source_drive_file_id else None
+        ),
         icon=doc.icon,
         cover_image=doc.cover_image,
         is_template=doc.is_template,
@@ -119,6 +150,7 @@ def document_to_list_response(doc) -> DocumentListResponse:
         parent_id=str(doc.parent_id) if doc.parent_id else None,
         title=doc.title,
         icon=doc.icon,
+        content_format=doc.content_format,
         generation_status=doc.generation_status,
         created_at=doc.created_at,
         updated_at=doc.updated_at,
@@ -380,7 +412,7 @@ async def list_workspace_proposed_edits(
             # Staleness is per-document and each proposal carries the sha it
             # was written against, so it costs nothing extra here.
             is_stale=bool(proposal.base_content_sha)
-            and proposal.base_content_sha != compute_content_sha(document.content),
+            and proposal_is_stale(proposal, document),
         )
         out.append(
             WorkspaceProposedEdit(
@@ -636,6 +668,12 @@ async def update_document(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Document not found",
         )
+
+    # A Word document's body is a file. Both branches below write TipTap
+    # content, and for a docx document either would produce a document whose
+    # two bodies disagree.
+    if data.content is not None:
+        require_tiptap_body(existing)
 
     if (
         data.content is not None
@@ -1331,6 +1369,7 @@ async def generate_documentation(
             detail="Document not found",
         )
 
+    require_tiptap_body(document)
     # Get code links
     code_links = await doc_service.get_code_links(document_id)
     if not code_links:
@@ -1832,6 +1871,7 @@ async def suggest_improvements(
             detail="Document not found",
         )
 
+    require_tiptap_body(document)
     gen_service = DocumentGenerationService(db, workspace_id=workspace_id)
 
     try:
@@ -1878,6 +1918,7 @@ async def apply_suggestion(
             status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
         )
 
+    require_tiptap_body(document)
     gen_service = DocumentGenerationService(db, workspace_id=workspace_id)
     try:
         # No linked code is required — improvements act on the
@@ -1948,6 +1989,7 @@ async def setup_github_sync(
             detail="Document not found",
         )
 
+    require_tiptap_body(document)
     from aexy.services.github_sync_service import GitHubSyncService
 
     sync_service = GitHubSyncService(db)
@@ -2407,6 +2449,7 @@ def _to_proposed_edit_response(
         document_id=str(proposal.document_id),
         source=proposal.source,
         proposed_content=proposal.proposed_content,
+        proposed_ops=proposal.proposed_ops,
         base_content_sha=proposal.base_content_sha,
         diff_summary=proposal.diff_summary,
         status=proposal.status,
@@ -2454,6 +2497,7 @@ async def propose_document_update(
             status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
         )
 
+    require_tiptap_body(document)
     try:
         content = markdown_to_tiptap(data.markdown)
     except MarkdownError as exc:
@@ -2474,8 +2518,7 @@ async def propose_document_update(
 
     return _to_proposed_edit_response(
         proposal,
-        is_stale=bool(proposal.base_content_sha)
-        and proposal.base_content_sha != compute_content_sha(document.content),
+        is_stale=proposal_is_stale(proposal, document),
     )
 
 
@@ -2523,7 +2566,7 @@ async def list_proposed_edits(
 
     # Compute current content sha once; stale check just compares
     # against it.
-    current_sha = compute_content_sha(document.content)
+    current_sha = current_document_sha(document)
     return [
         _to_proposed_edit_response(
             p,
@@ -2558,6 +2601,7 @@ async def approve_proposed_edit(
             status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
         )
 
+    require_tiptap_body(document)
     proposed_edits = ProposedEditsService(db)
     proposal = await proposed_edits.get_proposal(proposal_id)
     if not proposal or proposal.document_id != document_id:
@@ -2607,6 +2651,396 @@ async def reject_proposed_edit(
     )
     await db.commit()
     # Stale flag is computed against the (unchanged) doc content.
-    current_sha = compute_content_sha(document.content)
+    current_sha = current_document_sha(document)
     is_stale = bool(rejected.base_content_sha) and rejected.base_content_sha != current_sha
     return _to_proposed_edit_response(rejected, is_stale=is_stale)
+
+
+# ==================== Word documents ====================
+#
+# Bytes are served and accepted through this API rather than by presigning the
+# object directly. Uploads are private, so a persisted URL is a dead link and a
+# presigned one has to be minted per read — but the deciding reason is CORS: the
+# editor `fetch`es these bytes from the page, and no bucket CORS policy is
+# configured anywhere in this repo. A same-origin proxy needs none, and it keeps
+# the workspace permission check on the same request that serves the file. This
+# mirrors `api/tickets.py::stream_attachment`.
+
+# A Word document is prose, not media. Well past anything real, small enough that
+# a mistake cannot exhaust a worker's memory — the whole file is read to parse it.
+MAX_DOCX_BYTES = 50 * 1024 * 1024
+
+
+def require_tiptap_body(document) -> None:
+    """Refuse a Word document where only TipTap content makes sense.
+
+    409 rather than 400: the request is well-formed, it is the document that is
+    the wrong kind. Every one of these guards protects an operation that would
+    otherwise *succeed* while doing nothing — a TipTap walker over a docx
+    document's `{}` body returns no nodes and reports no error, so a
+    regeneration or a GitHub export would report success having written an empty
+    document over a real one.
+    """
+    if getattr(document, "content_format", CONTENT_FORMAT_TIPTAP) == CONTENT_FORMAT_DOCX:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "This is a Word document. That operation works on TipTap content; "
+                "edit the document through the docx endpoints instead."
+            ),
+        )
+
+
+def require_docx_body(document) -> None:
+    """The inverse guard, for the docx endpoints themselves."""
+    if getattr(document, "content_format", CONTENT_FORMAT_TIPTAP) != CONTENT_FORMAT_DOCX:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This document's body is TipTap content, not a Word file.",
+        )
+
+
+async def _load_document_for_write(
+    workspace_id: str,
+    document_id: str,
+    current_user: Developer,
+    db: AsyncSession,
+):
+    await check_workspace_permission(workspace_id, current_user, db, "member")
+    service = DocumentService(db)
+    document = await service.get_document(document_id, workspace_id)
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
+        )
+    return service, document
+
+
+async def _read_docx_upload(file: UploadFile) -> bytes:
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="The uploaded file is empty"
+        )
+    if len(raw) > MAX_DOCX_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=(
+                f"Document is {len(raw) // (1024 * 1024)} MB; "
+                f"the limit is {MAX_DOCX_BYTES // (1024 * 1024)} MB."
+            ),
+        )
+    return raw
+
+
+def _stream_docx(
+    storage_key: str | None,
+    filename: str,
+    extra_headers: dict[str, str] | None = None,
+) -> StreamingResponse:
+    """Stream document bytes from storage without buffering them."""
+    storage = get_storage_service()
+    result = storage.get_object_stream(storage_key) if storage_key else None
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="This document's bytes are not available",
+        )
+
+    safe_name = filename.replace('"', "").replace("\n", " ")
+    headers = {
+        # `attachment` would make the editor's own fetch trigger a download in
+        # some browsers; the editor reads the bytes itself and never navigates.
+        "Content-Disposition": f'inline; filename="{safe_name}"',
+    }
+    if result["content_length"] is not None:
+        headers["Content-Length"] = str(result["content_length"])
+    if extra_headers:
+        headers.update(extra_headers)
+
+    return StreamingResponse(
+        result["iter"],
+        media_type=result["content_type"] or DOCX_CONTENT_TYPE,
+        headers=headers,
+    )
+
+
+@router.post("/docx", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
+async def create_docx_document(
+    workspace_id: str,
+    file: UploadFile = File(...),
+    title: str | None = Query(None),
+    parent_id: str | None = Query(None),
+    space_id: str | None = Query(None),
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Upload a .docx and get a first-class document back."""
+    await check_workspace_permission(workspace_id, current_user, db, "member")
+    raw = await _read_docx_upload(file)
+
+    quota = StorageQuotaService(db)
+    await quota.assert_storage_available(
+        workspace_id=workspace_id,
+        # One object per save: the row points at the version, and there is no
+        # separate mutable copy to pay for.
+        incoming_bytes=len(raw),
+        developer_id=str(current_user.id),
+    )
+
+    # Default the title from the filename minus its extension: it is what the
+    # author already named the thing, and "Untitled" for an uploaded file is
+    # strictly worse than a slightly ugly real name.
+    fallback = (file.filename or "Untitled").rsplit("/", 1)[-1]
+    if fallback.lower().endswith(".docx"):
+        fallback = fallback[: -len(".docx")]
+
+    service = DocumentService(db)
+    try:
+        document = await service.create_docx_document(
+            workspace_id=workspace_id,
+            created_by_id=str(current_user.id),
+            raw=raw,
+            title=(title or fallback or "Untitled").strip(),
+            parent_id=parent_id,
+            space_id=space_id,
+        )
+    except DocxReadError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"That file could not be read as a Word document: {exc}",
+        ) from exc
+    except DocxStorageError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+        ) from exc
+
+    await quota.invalidate_workspace_usage(workspace_id)
+    return document_to_response(document)
+
+
+@router.get("/{document_id}/docx")
+async def download_docx(
+    workspace_id: str,
+    document_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Stream a Word document's current bytes.
+
+    Streamed rather than buffered so a large document does not sit in the
+    worker's memory once per concurrent reader.
+    """
+    await check_workspace_permission(workspace_id, current_user, db, "viewer")
+    service = DocumentService(db)
+    document = await service.get_document(document_id, workspace_id)
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
+        )
+    require_docx_body(document)
+
+    return _stream_docx(
+        document.docx_storage_key,
+        filename=f"{document.title}.docx",
+        # The editor needs to know which bytes it loaded to save safely, and it
+        # cannot hash a stream it hands straight to a WASM parser.
+        extra_headers={"X-Docx-Content-Sha": document.docx_content_sha or ""},
+    )
+
+
+@router.put("/{document_id}/docx", response_model=DocumentResponse)
+async def save_docx(
+    workspace_id: str,
+    document_id: str,
+    file: UploadFile = File(...),
+    expected_sha: str | None = Query(
+        None,
+        description=(
+            "The sha this edit was based on, from X-Docx-Content-Sha on the GET. "
+            "Omitting it forfeits conflict detection."
+        ),
+    ),
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Replace a Word document's bytes, creating a new version."""
+    service, document = await _load_document_for_write(
+        workspace_id, document_id, current_user, db
+    )
+    require_docx_body(document)
+    raw = await _read_docx_upload(file)
+
+    quota = StorageQuotaService(db)
+    await quota.assert_storage_available(
+        workspace_id=workspace_id,
+        incoming_bytes=len(raw),
+        developer_id=str(current_user.id),
+    )
+
+    try:
+        updated = await service.replace_docx_bytes(
+            document_id=document_id,
+            updated_by_id=str(current_user.id),
+            raw=raw,
+            expected_sha=expected_sha,
+        )
+    except DocxConflictError as exc:
+        # 409 with the current sha: the editor holds a whole document in memory,
+        # so it must be told to reload rather than retry — a blind retry would
+        # discard the other author's save in full.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"message": str(exc), "current_sha": exc.current_sha},
+        ) from exc
+    except DocxReadError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"That file could not be read as a Word document: {exc}",
+        ) from exc
+    except DocxStorageError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+        ) from exc
+
+    if not updated:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
+        )
+
+    await quota.invalidate_workspace_usage(workspace_id)
+
+    # The third door into AI editing: a reviewer opened this file in Word, typed
+    # `@aexy` in a comment asking for a change, and sent it back. Dispatched, not
+    # inline — a save must not wait on a model call to return the bytes the
+    # editor is expecting, and the scan is usually a no-op.
+    #
+    # Keyed on the content sha so re-saving the same bytes does not re-answer
+    # comments that were already answered.
+    from aexy.temporal.dispatch import dispatch
+    from aexy.temporal.task_queues import TaskQueue
+
+    await dispatch(
+        "scan_docx_comments_for_mentions",
+        {
+            "document_id": document_id,
+            "workspace_id": workspace_id,
+            "saved_by_id": str(current_user.id),
+        },
+        task_queue=TaskQueue.ANALYSIS,
+        workflow_id=f"docx-mention-scan-{document_id}-{updated.docx_content_sha}",
+    )
+
+    return document_to_response(updated)
+
+
+@router.get("/{document_id}/docx/versions/{version_id}")
+async def download_docx_version(
+    workspace_id: str,
+    document_id: str,
+    version_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Stream one saved version's bytes, so history is readable before restoring."""
+    await check_workspace_permission(workspace_id, current_user, db, "viewer")
+    service = DocumentService(db)
+    document = await service.get_document(document_id, workspace_id)
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
+        )
+    require_docx_body(document)
+
+    version = next(
+        (v for v in document.versions if str(v.id) == version_id), None
+    )
+    if version is None or not version.docx_storage_key:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Version not found"
+        )
+
+    return _stream_docx(
+        version.docx_storage_key,
+        filename=f"{document.title} (v{version.version_number}).docx",
+    )
+
+
+@router.post(
+    "/from-drive-file/{file_id}",
+    response_model=DocumentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def promote_drive_file_to_document(
+    workspace_id: str,
+    file_id: str,
+    parent_id: str | None = Query(None),
+    space_id: str | None = Query(None),
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Turn a .docx already sitting in Drive into an editable document.
+
+    Copies the bytes rather than pointing at the Drive object. The two then have
+    independent histories, which is the honest model: editing the document must
+    not silently rewrite a file someone else linked to from Drive. The link back
+    is recorded so the two views stay connected.
+    """
+    await check_workspace_permission(workspace_id, current_user, db, "member")
+
+    drive = DriveService(db)
+    drive_file = await drive.get_file(workspace_id, file_id)
+    if not drive_file:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="File not found"
+        )
+    if not (drive_file.file_name or "").lower().endswith(".docx"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only .docx files can be opened as documents",
+        )
+    if not drive_file.storage_key:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This file has no stored bytes to open",
+        )
+
+    storage = get_storage_service()
+    fetched = storage.get_object(drive_file.storage_key) if storage.is_configured() else None
+    if fetched is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="The file's bytes could not be read from storage",
+        )
+    raw = fetched[0]
+
+    quota = StorageQuotaService(db)
+    await quota.assert_storage_available(
+        workspace_id=workspace_id,
+        incoming_bytes=len(raw),
+        developer_id=str(current_user.id),
+    )
+
+    title = drive_file.file_name
+    if title.lower().endswith(".docx"):
+        title = title[: -len(".docx")]
+
+    service = DocumentService(db)
+    try:
+        document = await service.create_docx_document(
+            workspace_id=workspace_id,
+            created_by_id=str(current_user.id),
+            raw=raw,
+            title=title or "Untitled",
+            parent_id=parent_id,
+            space_id=space_id,
+            source_drive_file_id=str(drive_file.id),
+        )
+    except DocxReadError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"That file could not be read as a Word document: {exc}",
+        ) from exc
+
+    await quota.invalidate_workspace_usage(workspace_id)
+    return document_to_response(document)

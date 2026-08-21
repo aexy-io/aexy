@@ -142,6 +142,7 @@ class DocumentGenerationService:
             db=self.db,
             developer_id=developer_id,
             workspace_id=self.workspace_id,
+            feature="docs.generate",
         )
 
         # Parse the result
@@ -284,6 +285,7 @@ class DocumentGenerationService:
             use_cache=False,
             db=self.db,
             developer_id=developer_id,
+            feature="docs.generate",
         )
 
         try:
@@ -339,6 +341,7 @@ class DocumentGenerationService:
             use_cache=False,
             db=self.db,
             developer_id=developer_id,
+            feature="docs.generate",
         )
 
         try:
@@ -389,6 +392,7 @@ class DocumentGenerationService:
             use_cache=True,
             db=self.db,
             developer_id=developer_id,
+            feature="docs.suggest_improvements",
         )
 
         try:
@@ -446,6 +450,7 @@ class DocumentGenerationService:
             use_cache=False,
             db=self.db,
             developer_id=developer_id,
+            feature="docs.generate",
         )
 
         try:

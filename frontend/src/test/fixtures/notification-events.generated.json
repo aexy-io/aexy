@@ -291,6 +291,24 @@
         "web_push": false
       }
     },
+    "docx_ai_comment_answered": {
+      "category": "documents",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
+    "docx_ai_draft_ready": {
+      "category": "documents",
+      "defaults": {
+        "in_app": true,
+        "email": true,
+        "slack": false,
+        "web_push": false
+      }
+    },
     "feedback_status_changed": {
       "category": "feedback",
       "defaults": {

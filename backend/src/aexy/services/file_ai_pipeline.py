@@ -126,6 +126,7 @@ async def run_pipeline(
             file_name=resolved.file_name,
             content=text_for_summary[:6000],
             gateway=gateway,
+            workspace_id=resolved.workspace_id,
         )
 
         metadata.ai_summary = summary
@@ -321,11 +322,21 @@ def _extract_pdf(raw: bytes) -> str:
 
 
 def _extract_docx(raw: bytes) -> str:
-    try:
-        from docx import Document  # python-docx
+    """A Word document as Markdown, structure intact.
 
-        doc = Document(io.BytesIO(raw))
-        return "\n".join(p.text for p in doc.paragraphs)
+    Delegates to ``docx_service`` rather than reading ``doc.paragraphs``, which
+    is what this did and which returned nothing at all for table content — so a
+    requirements matrix or a pricing grid was summarised, tagged, and embedded
+    as though the document had never contained it.
+
+    Still best-effort: this feeds tagging and embeddings, where a file that
+    cannot be read should degrade to no text rather than fail the pipeline for
+    every other file in the batch.
+    """
+    from aexy.services.docx_service import extract_structured
+
+    try:
+        return extract_structured(raw).markdown
     except Exception as exc:
         logger.warning("DOCX extraction failed: %s", exc)
         return ""
@@ -391,7 +402,11 @@ async def _embed_chunks(
 
 # ─── Summary + tags ───────────────────────────────────────────────────────
 async def _summarise_and_tag(
-    *, file_name: str, content: str, gateway: LLMGateway
+    *,
+    file_name: str,
+    content: str,
+    gateway: LLMGateway,
+    workspace_id: str | None = None,
 ) -> tuple[str, list[str], list[str]]:
     prompt = (
         "You are tagging a file for a developer-focused knowledge base. "
@@ -407,7 +422,21 @@ async def _summarise_and_tag(
         content=prompt, analysis_type=AnalysisType.TASK_DESCRIPTION
     )
     try:
-        result = await gateway.provider.analyze(request)
+        # Through the gateway, not straight at `gateway.provider`. Reaching for
+        # the provider skipped everything the gateway is for: the workspace AI
+        # kill switch, a bring-your-own credential, rate limiting, usage
+        # recording and the cache. This runs on every upload, so it was the
+        # highest-volume path in the product doing none of that — a workspace
+        # that had switched AI off still had its files read on our key.
+        #
+        # A disabled workspace now raises, which the `except` below turns into a
+        # file with no AI tags. That is the right outcome: the tags are optional
+        # and the refusal is deliberate.
+        result = await gateway.analyze(
+            request,
+            workspace_id=workspace_id,
+            feature="media.file_metadata",
+        )
         raw = result.raw_response or result.summary or ""
         parsed = extract_json_object(raw) or {}
     except Exception as exc:

@@ -7,6 +7,7 @@ import os
 import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import select, and_
@@ -39,6 +40,11 @@ try:
     REPORTLAB_AVAILABLE = True
 except ImportError:
     REPORTLAB_AVAILABLE = False
+
+try:
+    from aexy.services.docx_service import PYTHON_DOCX_AVAILABLE, render_docx
+except ImportError:  # pragma: no cover
+    PYTHON_DOCX_AVAILABLE = False
 
 try:
     from openpyxl import Workbook
@@ -76,6 +82,8 @@ class ExportService:
             raise ValueError("PDF export requires reportlab. Install with: pip install reportlab")
         if request.format == ExportFormat.XLSX and not OPENPYXL_AVAILABLE:
             raise ValueError("Excel export requires openpyxl. Install with: pip install openpyxl")
+        if request.format == ExportFormat.DOCX and not PYTHON_DOCX_AVAILABLE:
+            raise ValueError("Word export requires python-docx. Install with: pip install python-docx")
 
         job = ExportJob(
             id=str(uuid4()),
@@ -207,6 +215,8 @@ class ExportService:
                 file_path = await self._export_pdf(job, data)
             elif format_type == ExportFormat.XLSX:
                 file_path = await self._export_xlsx(job, data)
+            elif format_type == ExportFormat.DOCX:
+                file_path = await self._export_docx(job, data)
             else:
                 raise ValueError(f"Unsupported export format: {format_type}")
 
@@ -825,6 +835,91 @@ class ExportService:
                 row_num += 1
 
         return row_num
+
+    async def _export_docx(self, job: ExportJob, data: dict) -> str:
+        """Export data to a Word document.
+
+        Builds Markdown and hands it to ``docx_service.render_docx`` rather
+        than driving python-docx here, so a Word export and a Word rendering
+        of a wiki document come out of the same renderer and cannot drift in
+        their heading, list, or table styling.
+        """
+        if not PYTHON_DOCX_AVAILABLE:
+            raise ImportError("python-docx is required for Word export")
+
+        filename = f"{job.id}.docx"
+        file_path = self.export_dir / filename
+
+        title = job.export_type.replace("_", " ").title()
+        lines = [
+            f"# {title}",
+            "",
+            f"Generated {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}",
+            "",
+        ]
+
+        table = self._data_to_table(data)
+        if table:
+            width = max(len(row) for row in table)
+            padded = [
+                [str(cell).replace("|", "\\|") for cell in row]
+                + [""] * (width - len(row))
+                for row in table
+            ]
+            lines.append("| " + " | ".join(padded[0]) + " |")
+            lines.append("| " + " | ".join(["---"] * width) + " |")
+            for row in padded[1:]:
+                lines.append("| " + " | ".join(row) + " |")
+        else:
+            lines.extend(self._data_to_markdown(data))
+
+        rendered = render_docx("\n".join(lines))
+        with open(file_path, "wb") as handle:
+            handle.write(rendered)
+
+        return str(file_path)
+
+    def _data_to_markdown(self, data: Any, depth: int = 2) -> list[str]:
+        """Nested export data as Markdown sections.
+
+        The tabular path covers most exports; this is the fallback for the
+        nested shapes (a report with several widgets, a profile with grouped
+        metrics) that ``_data_to_table`` returns None for. Without it those
+        exports would produce a document containing only a title.
+        """
+        lines: list[str] = []
+
+        if isinstance(data, dict):
+            for key, value in data.items():
+                label = str(key).replace("_", " ").title()
+                if isinstance(value, dict):
+                    lines.append(f"{'#' * min(depth, 6)} {label}")
+                    lines.append("")
+                    lines.extend(self._data_to_markdown(value, depth + 1))
+                elif isinstance(value, list):
+                    lines.append(f"{'#' * min(depth, 6)} {label}")
+                    lines.append("")
+                    for item in value[:50]:
+                        if isinstance(item, (dict, list)):
+                            lines.extend(self._data_to_markdown(item, depth + 1))
+                        else:
+                            lines.append(f"- {item}")
+                    lines.append("")
+                else:
+                    lines.append(f"- **{label}:** {value}")
+            lines.append("")
+        elif isinstance(data, list):
+            for item in data[:50]:
+                if isinstance(item, (dict, list)):
+                    lines.extend(self._data_to_markdown(item, depth))
+                else:
+                    lines.append(f"- {item}")
+            lines.append("")
+        else:
+            lines.append(str(data))
+            lines.append("")
+
+        return lines
 
     # -------------------------------------------------------------------------
     # Convenience Methods

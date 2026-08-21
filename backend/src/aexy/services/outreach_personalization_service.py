@@ -88,6 +88,7 @@ class OutreachPersonalizationService:
                 user_prompt,
                 tokens_estimate=800,
                 workspace_id=workspace_id,
+                feature="crm.email_personalisation",
             )
 
             logger.info(

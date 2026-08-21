@@ -14,7 +14,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 
-from aexy.core.config import settings
+from aexy.llm.resolution import ResolvedLLM, resolve_llm
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,6 @@ class BaseAgent(ABC):
 
     name: str = "base_agent"
     description: str = "Base agent class"
-    default_model: str = "claude-3-sonnet-20240229"
 
     def __init__(
         self,
@@ -47,93 +46,101 @@ class BaseAgent(ABC):
         agent_config: Any | None = None,
         execution_id: str | None = None,
     ):
-        self.model_name = model or self.default_model
+        # None means "inherit", which is what the model-configuration page is
+        # for. The old default was a hardcoded Claude id that had since been
+        # retired by Anthropic, so every agent nobody had reconfigured was
+        # pointed at a model that no longer existed.
+        self.model_name = model or None
         self.llm_provider = llm_provider
         self.max_iterations = max_iterations
         self.timeout_seconds = timeout_seconds
         self._llm: BaseChatModel | None = None
+        self._resolved: ResolvedLLM | None = None
         self._tools: list[BaseTool] = []
         self._graph: StateGraph | None = None
         self.policy_engine = policy_engine
         self.agent_config = agent_config
         self.execution_id = execution_id
 
+    async def prepare(self) -> None:
+        """Resolve which model and credential this run uses.
+
+        Separate from ``llm`` and asynchronous because that is what routing
+        through the shared resolver costs: resolution reads the workspace's AI
+        settings and its model overrides from the database, while
+        ``_call_model`` is a synchronous LangGraph node. So it happens once, up
+        front, in ``run``/``astream``.
+
+        Before this, agents built their own client straight from
+        ``settings.llm`` — which meant the workspace AI **kill switch** and
+        bring-your-own-key did not apply to them at all. An organisation that
+        turned AI off still had agents running on the platform's credential.
+
+        Raises:
+            AIDisabledError: the workspace has AI switched off.
+            LLMNotConfigured: no provider has a usable credential.
+        """
+        workspace_id = getattr(self.agent_config, "workspace_id", None) or None
+        self._resolved = await resolve_llm(
+            workspace_id,
+            "agents.run",
+            # This agent's own configured model, checked against the provider
+            # actually serving the call. Its provider is only there to say which
+            # API the model id belongs to — whose key pays stays the workspace's
+            # decision.
+            instance_model=self.model_name,
+            instance_provider=self.llm_provider,
+        )
+        # Rebuilt whenever resolution changes, so a cached client from a previous
+        # run cannot outlive the settings it was built from.
+        self._llm = None
+
     @property
     def llm(self) -> BaseChatModel:
-        """Get the LLM instance based on provider."""
-        if self._llm is None:
-            family, model_id, base_url, api_key = self._plan_llm(
-                self.llm_provider, self.model_name, self.default_model, settings.llm
+        """The chat model for this run.
+
+        Raises if ``prepare()`` has not run. Loud on purpose: falling back to the
+        environment's provider here is exactly the behaviour that let agents
+        ignore a workspace's AI settings, and a silent fallback would put it
+        straight back.
+        """
+        if self._resolved is None:
+            raise RuntimeError(
+                "Agent.prepare() must be awaited before the model is used — "
+                "resolving the workspace's model and credential needs the "
+                "database."
             )
-            if family == "gemini":
+
+        if self._llm is None:
+            resolved = self._resolved
+            config = resolved.config
+            if resolved.family == "gemini":
                 self._llm = ChatGoogleGenerativeAI(
-                    model=model_id,
-                    google_api_key=api_key,
+                    model=config.model,
+                    google_api_key=config.api_key,
                     max_output_tokens=4096,
                 )
-            elif family == "anthropic":
+            elif resolved.family == "anthropic":
                 self._llm = ChatAnthropic(
-                    model=model_id,
-                    anthropic_api_key=api_key,
+                    model=config.model,
+                    anthropic_api_key=config.api_key,
                     max_tokens=4096,
                 )
-            else:  # openai-compatible (openai, deepseek, openrouter, ollama, lmstudio)
+            else:  # every OpenAI-compatible provider
                 # Imported lazily so deployments that never use these providers
                 # don't require langchain-openai at import time.
                 from langchain_openai import ChatOpenAI
 
                 kwargs: dict = {
-                    "model": model_id,
-                    "api_key": api_key,
+                    "model": config.model,
+                    "api_key": config.api_key,
                     "max_tokens": 4096,
-                    "temperature": 0.0,
+                    "temperature": config.temperature,
                 }
-                if base_url:
-                    kwargs["base_url"] = base_url
+                if resolved.api_base:
+                    kwargs["base_url"] = resolved.api_base
                 self._llm = ChatOpenAI(**kwargs)
         return self._llm
-
-    @staticmethod
-    def _plan_llm(provider: str, model_name: str, default_model: str, llm):
-        """Resolve (family, model, base_url, api_key) for the agent's provider.
-
-        `family` is the LangChain client to build — "gemini", "anthropic", or
-        "openai" (used for every OpenAI-compatible provider: openai, deepseek,
-        openrouter, ollama, lmstudio). Kept pure/static so it is unit-testable
-        without constructing real chat-model clients. Raises on an unknown
-        provider instead of silently falling back to Claude.
-        """
-        provider = (provider or "claude").lower().strip()
-
-        def model_or(default: str) -> str:
-            # Use the agent's configured model unless it's still the class
-            # default (a Claude id) — then use the provider's own default.
-            if model_name and model_name != default_model:
-                return model_name
-            return default
-
-        if provider == "gemini":
-            gem = model_name if model_name.startswith("gemini") else "gemini-1.5-pro"
-            return ("gemini", gem, None, llm.gemini_api_key)
-        if provider in ("claude", "anthropic"):
-            return ("anthropic", model_name, None, llm.anthropic_api_key)
-        if provider == "lmstudio":
-            return ("openai", model_or(llm.lmstudio_model), llm.lmstudio_base_url,
-                    llm.lmstudio_api_key or "lm-studio")
-        if provider == "deepseek":
-            return ("openai", model_or("deepseek-chat"), "https://api.deepseek.com",
-                    llm.deepseek_api_key)
-        if provider == "openrouter":
-            return ("openai", model_or(llm.openrouter_model or "openai/gpt-4o"),
-                    "https://openrouter.ai/api/v1", llm.openrouter_api_key)
-        if provider == "ollama":
-            # Ollama ignores the key but the OpenAI client requires a non-empty one.
-            return ("openai", model_or(llm.ollama_model),
-                    f"{llm.ollama_base_url.rstrip('/')}/v1", "ollama")
-        if provider == "openai":
-            return ("openai", model_or(llm.openai_model or "gpt-4o-mini"), None,
-                    llm.openai_api_key)
-        raise ValueError(f"Unsupported agent LLM provider: {provider!r}")
 
     @property
     @abstractmethod
@@ -417,7 +424,14 @@ IMPORTANT: You MUST use the available tools to accomplish this task. Do not just
             record_data: Optional record data dict
             context: Additional context for the agent
             conversation_history: Optional list of previous messages for multi-turn conversation
+
+        Raises:
+            AIDisabledError: the workspace has AI switched off. Deliberately not
+                caught: an agent that quietly did nothing would be worse than one
+                that says why it will not run.
         """
+        await self.prepare()
+
         record_data = record_data or {}
         context = context or {}
 
@@ -495,7 +509,12 @@ IMPORTANT: You MUST use the available tools to accomplish this task. Do not just
         + tool boundaries from one stream. The agent's existing `run`
         path is left untouched for non-streaming callers (executions
         triggered by Temporal, etc.); only the chat surface uses this.
+
+        Raises:
+            AIDisabledError: the workspace has AI switched off.
         """
+        await self.prepare()
+
         record_data = record_data or {}
         context = context or {}
 

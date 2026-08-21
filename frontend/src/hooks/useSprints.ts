@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   sprintApi,
+  type WorkspaceSprintListItem,
   Sprint,
   SprintListItem,
   SprintTask,
@@ -596,4 +597,23 @@ export function useSprintRetrospective(sprintId: string | null) {
     isDeletingItem: deleteItemMutation.isPending,
     isVoting: voteItemMutation.isPending,
   };
+}
+
+
+/**
+ * Every sprint in the workspace, for anything that has no team to scope by.
+ *
+ * `useSprints` above requires a `teamId` and stays disabled without one, which
+ * is correct for a sprint board and useless anywhere else. A document being
+ * turned into tasks has a workspace and no team, and asking the person to pick a
+ * team first would be asking them about our schema rather than their work.
+ */
+export function useWorkspaceSprints(workspaceId: string | null) {
+  const { data, isLoading, error } = useQuery<WorkspaceSprintListItem[]>({
+    queryKey: ["workspaceSprints", workspaceId],
+    queryFn: () => sprintApi.listForWorkspace(workspaceId!),
+    enabled: !!workspaceId,
+  });
+
+  return { sprints: data ?? [], isLoading, error };
 }

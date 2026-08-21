@@ -11,6 +11,7 @@ from aexy.api.mcp_oauth import router as mcp_oauth_router
 from aexy.core.config import get_settings
 from aexy.core.database import engine, Base
 from aexy.middleware import CommunityIsolationMiddleware, UsageTrackingMiddleware
+from aexy.llm.gateway import AIFeatureDormant
 from aexy.services.data_table_service import DuplicateValueError
 
 settings = get_settings()
@@ -71,12 +72,32 @@ async def lifespan(app: FastAPI):
     await engine.dispose()
 
 
+def _package_version() -> str:
+    """The installed version of this package, or a marker that says so.
+
+    Falls back rather than raising: running from a source tree with no
+    installed distribution is a normal thing to do, and an unbuildable app is a
+    worse outcome than an imprecise version in the docs.
+    """
+    from importlib.metadata import PackageNotFoundError, version
+
+    try:
+        return version("aexy")
+    except PackageNotFoundError:
+        return "0.0.0+unknown"
+
+
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
     app = FastAPI(
         title=settings.app_name,
         description="The open-source operating system for engineering organizations",
-        version="0.1.0",
+        # Read from the installed package rather than typed here. It said
+        # "0.1.0" while the project was on 0.22.1 — a third place to keep a
+        # version number is a third place to forget, and the one that ends up
+        # wrong is the one nobody looks at, which is the OpenAPI document every
+        # client generates from.
+        version=_package_version(),
         docs_url="/docs",
         redoc_url="/redoc",
         lifespan=lifespan,
@@ -125,6 +146,22 @@ def create_app() -> FastAPI:
                 "detail": str(exc),
                 "field": exc.field,
                 "existing_record_id": exc.existing_record_id,
+            },
+        )
+
+    # A feature switched off by configuration is unavailable, not broken. 503
+    # with the reason and the switch, rather than the 500 an unhandled
+    # RuntimeError would give — the whole point of the flag is that an operator
+    # can see why nothing happened.
+    @app.exception_handler(AIFeatureDormant)
+    async def _dormant_feature_handler(request: Request, exc: AIFeatureDormant):
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "detail": str(exc),
+                "feature": exc.feature,
+                "reason": exc.reason,
+                "enable_with": f"AI_ENABLE_DORMANT_FEATURES={exc.feature}",
             },
         )
 

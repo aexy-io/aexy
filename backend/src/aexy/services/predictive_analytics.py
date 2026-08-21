@@ -39,10 +39,36 @@ from aexy.schemas.analytics import (
 
 
 class PredictiveAnalyticsService:
-    """Service for LLM-powered predictive analytics."""
+    """Service for LLM-powered predictive analytics.
 
-    def __init__(self, llm_gateway: LLMGateway):
-        self.llm = llm_gateway
+    The gateway is optional because not everything here needs one.
+    ``get_cached_insight`` reads a row that a previous analysis wrote and never
+    touches an LLM, and `report_builder` calls exactly that — deliberately, so
+    report rendering stays cheap. It constructed this service with no argument
+    and raised ``TypeError`` every time, which meant reports containing
+    TEAM_HEALTH, BUS_FACTOR or ATTRITION_RISK crashed instead of rendering.
+
+    Optional rather than defaulted to ``get_llm_gateway()``: a cached read should
+    not depend on an LLM being configured at all. Declared on the attribute so
+    the optionality is visible to anybody reading it, and the four analysis
+    methods go through ``_gateway`` so a missing one is a sentence rather than an
+    ``AttributeError`` on ``None``.
+    """
+
+    def __init__(self, llm_gateway: LLMGateway | None = None):
+        self.llm: LLMGateway | None = llm_gateway
+
+    @property
+    def _gateway(self) -> LLMGateway:
+        """The gateway, or a refusal that names what to do about it."""
+        if self.llm is None:
+            raise RuntimeError(
+                "PredictiveAnalyticsService needs an LLM gateway to run a fresh "
+                "analysis. It was constructed without one — pass "
+                "get_llm_gateway(), or use get_cached_insight(), which reads a "
+                "previously computed insight and needs no gateway."
+            )
+        return self.llm
 
     async def analyze_attrition_risk(
         self,
@@ -158,12 +184,19 @@ class PredictiveAnalyticsService:
         )
 
         # Call LLM
+        # `system_prompt` used to be passed to `analyze()`, which has never had
+        # such a parameter — so every call here raised TypeError. The gateway
+        # reads the system prompt from `context`, which is the convention
+        # `document_generation_service` follows.
         request = AnalysisRequest(
             content=prompt,
             analysis_type=AnalysisType.ATTRITION_RISK,
-            context={"developer_id": developer_id},
+            context={
+                "developer_id": developer_id,
+                "system_prompt": ATTRITION_RISK_SYSTEM_PROMPT,
+            },
         )
-        llm_result = await self.llm.analyze(request, system_prompt=ATTRITION_RISK_SYSTEM_PROMPT)
+        llm_result = await self._gateway.analyze(request, feature="insights.attrition_risk")
 
         # Parse response
         try:
@@ -190,7 +223,7 @@ class PredictiveAnalyticsService:
             recommendations=analysis.get("recommendations", []),
             raw_analysis=analysis,
             data_window_days=days,
-            generated_by_model=self.llm.get_model_name(),
+            generated_by_model=self._gateway.get_model_name(),
             expires_at=datetime.now(timezone.utc) + timedelta(days=7),
         )
         db.add(insight)
@@ -341,9 +374,12 @@ class PredictiveAnalyticsService:
         request = AnalysisRequest(
             content=prompt,
             analysis_type=AnalysisType.BURNOUT_RISK,
-            context={"developer_id": developer_id},
+            context={
+                "developer_id": developer_id,
+                "system_prompt": BURNOUT_RISK_SYSTEM_PROMPT,
+            },
         )
-        llm_result = await self.llm.analyze(request, system_prompt=BURNOUT_RISK_SYSTEM_PROMPT)
+        llm_result = await self._gateway.analyze(request, feature="insights.burnout_risk")
 
         # Parse response
         try:
@@ -370,7 +406,7 @@ class PredictiveAnalyticsService:
             recommendations=analysis.get("recommendations", []),
             raw_analysis=analysis,
             data_window_days=days,
-            generated_by_model=self.llm.get_model_name(),
+            generated_by_model=self._gateway.get_model_name(),
             expires_at=datetime.now(timezone.utc) + timedelta(days=3),
         )
         db.add(insight)
@@ -507,9 +543,12 @@ class PredictiveAnalyticsService:
         request = AnalysisRequest(
             content=prompt,
             analysis_type=AnalysisType.PERFORMANCE_TRAJECTORY,
-            context={"developer_id": developer_id},
+            context={
+                "developer_id": developer_id,
+                "system_prompt": PERFORMANCE_TRAJECTORY_SYSTEM_PROMPT,
+            },
         )
-        llm_result = await self.llm.analyze(request, system_prompt=PERFORMANCE_TRAJECTORY_SYSTEM_PROMPT)
+        llm_result = await self._gateway.analyze(request, feature="insights.performance_trajectory")
 
         # Parse response
         try:
@@ -540,7 +579,7 @@ class PredictiveAnalyticsService:
             recommendations=analysis.get("recommendations", []),
             raw_analysis=analysis,
             data_window_days=months * 30,
-            generated_by_model=self.llm.get_model_name(),
+            generated_by_model=self._gateway.get_model_name(),
             expires_at=datetime.now(timezone.utc) + timedelta(days=14),
         )
         db.add(insight)
@@ -681,9 +720,13 @@ class PredictiveAnalyticsService:
         request = AnalysisRequest(
             content=prompt,
             analysis_type=AnalysisType.TEAM_HEALTH,
-            context={"team_id": team_id, "developer_ids": developer_ids},
+            context={
+                "team_id": team_id,
+                "developer_ids": developer_ids,
+                "system_prompt": TEAM_HEALTH_SYSTEM_PROMPT,
+            },
         )
-        llm_result = await self.llm.analyze(request, system_prompt=TEAM_HEALTH_SYSTEM_PROMPT)
+        llm_result = await self._gateway.analyze(request, feature="insights.team_health")
 
         # Parse response
         try:
@@ -713,7 +756,7 @@ class PredictiveAnalyticsService:
             recommendations=analysis.get("recommendations", []),
             raw_analysis=analysis,
             data_window_days=30,
-            generated_by_model=self.llm.get_model_name(),
+            generated_by_model=self._gateway.get_model_name(),
             expires_at=datetime.now(timezone.utc) + timedelta(days=7),
         )
         db.add(insight)

@@ -20,6 +20,7 @@ from aexy.models.workspace import Workspace, WorkspaceMember
 from aexy.models.workspace_ai_settings import WorkspaceAISettings
 from aexy.schemas.workspace_ai_settings import AISettingsUpdate
 from aexy.services import workspace_ai_settings_service as svc
+from aexy.llm import resolution
 from aexy.services.workspace_ai_settings_service import (
     AIDisabledError,
     WorkspaceAISettingsService,
@@ -364,10 +365,12 @@ async def test_gateway_refuses_a_disabled_workspace(monkeypatch):
 
     gateway = LLMGateway(provider=object())
 
-    async def _disabled(self, workspace_id):
+    # The settings read moved into `llm/resolution`, which is now the one seam
+    # every path shares — the gateway, the agents and Ask all read it.
+    async def _disabled(workspace_id):
         return WorkspaceAIConfig(False, None, False, "disabled")
 
-    monkeypatch.setattr(LLMGateway, "_workspace_ai", _disabled)
+    monkeypatch.setattr(resolution, "_workspace_ai_config", _disabled)
 
     with pytest.raises(AIDisabledError):
         await gateway._resolve_provider("ws-1")
@@ -383,10 +386,10 @@ async def test_gateway_without_workspace_context_is_unchanged(monkeypatch):
     platform = object()
     gateway = LLMGateway(provider=platform)
 
-    async def _boom(self, workspace_id):  # must never be reached
+    async def _boom(workspace_id):  # must never be reached
         raise AssertionError("workspace settings consulted without a workspace")
 
-    monkeypatch.setattr(LLMGateway, "_workspace_ai", _boom)
+    monkeypatch.setattr(resolution, "_workspace_ai_config", _boom)
 
     assert await gateway._resolve_provider(None) is platform
     await gateway._ensure_ai_enabled(None)
@@ -400,10 +403,10 @@ async def test_gateway_uses_the_platform_provider_when_none_is_configured(monkey
     platform = object()
     gateway = LLMGateway(provider=platform)
 
-    async def _platform(self, workspace_id):
+    async def _platform(workspace_id):
         return WorkspaceAIConfig(True, None, True, "platform")
 
-    monkeypatch.setattr(LLMGateway, "_workspace_ai", _platform)
+    monkeypatch.setattr(resolution, "_workspace_ai_config", _platform)
     assert await gateway._resolve_provider("ws-1") is platform
 
 

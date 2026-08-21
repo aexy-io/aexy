@@ -228,7 +228,7 @@ class LearningPathService:
                 context={"system_prompt": LEARNING_PATH_SYSTEM_PROMPT},
             )
 
-            result = await self.llm_gateway.analyze(request, use_cache=False)
+            result = await self.llm_gateway.analyze(request, use_cache=False, feature="insights.learning_path")
 
             # Parse JSON from response
             if result.raw_response:
@@ -629,7 +629,7 @@ class LearningPathService:
                 context={},
             )
 
-            result = await self.llm_gateway.analyze(request, use_cache=True)
+            result = await self.llm_gateway.analyze(request, use_cache=True, feature="insights.stretch_assignment")
 
             if result.raw_response:
                 try:

@@ -540,6 +540,7 @@ class ContributionService:
             )
 
             result = await self.llm_gateway.analyze(
+                feature="code.contribution_insights",
                 analysis_type="contribution_summary",
                 context=prompt,
                 data={},

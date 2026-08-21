@@ -359,7 +359,7 @@ class CommitAnalyzer:
     async def _analyze_with_llm(self, commit: Commit) -> dict | None:
         """Use LLM for deeper semantic analysis."""
         try:
-            from aexy.llm.gateway import get_llm_gateway
+            from aexy.llm.gateway import AIFeatureDormant, get_llm_gateway
             from aexy.llm.base import AnalysisType
 
             gateway = get_llm_gateway()
@@ -388,18 +388,41 @@ Respond with JSON:
   "tags": ["tag1", "tag2"]
 }}"""
 
-            result = await gateway.call_llm(
-                prompt=prompt,
-                system_prompt="You are an expert at analyzing git commits. Respond only with valid JSON.",
-                provider="claude",
+            # This call used to pass `prompt=` and `provider=` and read
+            # `result["content"]`. `call_llm` has never had either parameter and
+            # has always returned a tuple, so it raised TypeError every time —
+            # swallowed by the `except Exception` below, which meant commit LLM
+            # analysis silently never ran. Corrected to the real signature.
+            #
+            # Because of that history the feature ships *dormant*: repairing the
+            # call is not the same decision as starting to bill for a model call
+            # on every commit. See DORMANT_FEATURES in aexy/llm/features.py.
+            content, *_ = await gateway.call_llm(
+                system_prompt=(
+                    "You are an expert at analyzing git commits. "
+                    "Respond only with valid JSON."
+                ),
+                user_prompt=prompt,
+                feature="code.commit_message",
             )
 
-            if result and result.get("content"):
+            if content:
                 import json
                 try:
-                    return json.loads(result["content"])
+                    return json.loads(content)
                 except json.JSONDecodeError:
                     logger.warning("Failed to parse LLM response as JSON")
+
+        except AIFeatureDormant as dormant:
+            # Named explicitly, above the blanket handler below. Falling through
+            # to that would put this back where it started: not running, and
+            # nothing in the logs to say why. Info rather than warning — this is
+            # the configured state, not a fault.
+            logger.info(
+                "Commit LLM analysis is switched off; using the non-AI path. %s",
+                dormant,
+            )
+            return None
 
         except Exception as e:
             logger.warning(f"LLM analysis failed for commit {commit.sha}: {e}")

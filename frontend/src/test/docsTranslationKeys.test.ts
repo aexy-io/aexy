@@ -27,6 +27,10 @@ const FILES = [
   "components/docs/impact/ImpactGuidance.tsx",
   "app/(app)/docs/impact/[repositoryId]/[prNumber]/page.tsx",
   "components/settings/DocImpactSettings.tsx",
+  "app/(app)/settings/docs/page.tsx",
+  "app/(app)/settings/ai/models/page.tsx",
+  "components/docs/DocxReviewRail.tsx",
+  "components/docs/DocxIntakePanel.tsx",
 ];
 
 const LOCALES = ["en", "hi"] as const;
